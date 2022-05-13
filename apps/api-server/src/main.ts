@@ -2,8 +2,15 @@ import { Logger, ValidationPipe, ValidationPipeOptions } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'fastify-helmet';
 import { AppModule } from './app.module';
+
+function bootstrapApiDocumentation(app: NestFastifyApplication): void {
+  const config = new DocumentBuilder().setTitle('API documentation').build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+}
 
 async function bootstrap(): Promise<void> {
   const logger: Logger = new Logger('main.ts');
@@ -20,6 +27,8 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.register(helmet, HELMET);
+
+  bootstrapApiDocumentation(app);
 
   await app.listen(PORT, HOST);
   logger.log(`Server has been started on HOST: ${HOST}, PORT: ${PORT}`);

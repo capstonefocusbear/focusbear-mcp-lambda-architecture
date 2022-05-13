@@ -1,7 +1,6 @@
 {
   "extends": ["@commitlint/config-angular"],
   "rules": {
-    "references-empty": [2, "never"],
     "type-enum": [
       2,
       "always",

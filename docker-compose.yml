@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  backend:
+    build: .
+    command: npm run start:dev
+    ports:
+      - "8000:5035"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      # - redis
+
+  db:
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: testpass1122
+    volumes:
+      - .dbdata:/var/lib/postgresql/data
+    ports:
+      - "54322:5432"
+
+# GUI for DB
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+       - 8080:8080
+
+
+  # redis:
+  #   image: redis:6.2-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "63799:6379"
+
+  # s3:
+  #   image: minio/minio
+  #   restart: "unless-stopped"
+  #   volumes:
+  #     - ./storage/minio:/data
+  #   environment:
+  #     MINIO_ROOT_USER: minio
+  #     MINIO_ROOT_PASSWORD: minio123
+  #   # Allow all incoming hosts to access the server by using 0.0.0.0
+  #   command: server --address 0.0.0.0:9090 --console-address ":9091" /data
+  #   ports:
+  #     # Bind explicitly to 127.0.0.1
+  #     - "127.0.0.1:9090:9090"
+  #     - "9091:9091" # Port for GUI dashboard
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://127.0.0.1:9090/minio/health/live"]
+  #     interval: 30s
+  #     timeout: 20s
+  #     retries: 3

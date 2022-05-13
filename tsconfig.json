@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@app/fastify-content-types": [
+        "libs/fastify-content-types/src"
+      ],
+      "@app/fastify-content-types/*": [
+        "libs/fastify-content-types/src/*"
+      ],
+      "@app/crypto": [
+        "libs/crypto/src"
+      ],
+      "@app/crypto/*": [
+        "libs/crypto/src/*"
+      ],
+      "@app/dynamic-module": [
+        "libs/dynamic-module/src"
+      ],
+      "@app/dynamic-module/*": [
+        "libs/dynamic-module/src/*"
+      ]
+    }
+  }
+}

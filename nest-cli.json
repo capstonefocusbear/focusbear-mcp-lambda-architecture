@@ -1,0 +1,48 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/api-server/src",
+  "monorepo": true,
+  "root": "apps/api-server",
+  "compilerOptions": {
+    "webpack": true,
+    "tsConfigPath": "apps/api-server/tsconfig.app.json"
+  },
+  "projects": {
+    "api-server": {
+      "type": "application",
+      "root": "apps/api-server",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-server/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-server/tsconfig.app.json"
+      }
+    },
+    "fastify-content-types": {
+      "type": "library",
+      "root": "libs/fastify-content-types",
+      "entryFile": "index",
+      "sourceRoot": "libs/fastify-content-types/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/fastify-content-types/tsconfig.lib.json"
+      }
+    },
+    "crypto": {
+      "type": "library",
+      "root": "libs/crypto",
+      "entryFile": "index",
+      "sourceRoot": "libs/crypto/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/crypto/tsconfig.lib.json"
+      }
+    },
+    "dynamic-module": {
+      "type": "library",
+      "root": "libs/dynamic-module",
+      "entryFile": "index",
+      "sourceRoot": "libs/dynamic-module/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/dynamic-module/tsconfig.lib.json"
+      }
+    }
+  }
+}

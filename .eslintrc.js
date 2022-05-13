@@ -1,0 +1,36 @@
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json',
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint/eslint-plugin', 'prettier'],
+  extends: [
+    'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended',
+    'airbnb-typescript/base',
+  ],
+  root: true,
+  env: {
+    node: true,
+    jest: true,
+  },
+  ignorePatterns: ['.eslintrc.js'],
+  rules: {
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    'import/prefer-default-export': 'off',
+    'class-methods-use-this': 'off',
+    'object-curly-newline': 'off',
+    '@typescript-eslint/indent': 'off',
+    'implicit-arrow-linebreak': 'off',
+    'import/no-extraneous-dependencies': 'off',
+    '@typescript-eslint/brace-style': 'off',
+    'prettier/prettier': ['error', require('./.prettierrc.js')],
+    '@typescript-eslint/comma-dangle': 'off',
+    'no-restricted-syntax': 'off',
+    'max-len': [0, 120, 2, { ignoreUrls: true }]
+  },
+};

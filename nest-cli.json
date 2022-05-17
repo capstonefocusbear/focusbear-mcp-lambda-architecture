@@ -43,6 +43,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/dynamic-module/tsconfig.lib.json"
       }
+    },
+    "auth0": {
+      "type": "library",
+      "root": "libs/auth0",
+      "entryFile": "index",
+      "sourceRoot": "libs/auth0/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/auth0/tsconfig.lib.json"
+      }
     }
   }
 }

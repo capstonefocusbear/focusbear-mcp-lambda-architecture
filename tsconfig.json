@@ -30,6 +30,12 @@
       ],
       "@app/dynamic-module/*": [
         "libs/dynamic-module/src/*"
+      ],
+      "@app/auth0": [
+        "libs/auth0/src"
+      ],
+      "@app/auth0/*": [
+        "libs/auth0/src/*"
       ]
     }
   }

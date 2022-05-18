@@ -1,7 +1,11 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
 import { configsArray } from './config';
+import { AuthModule } from './modules/auth/auth.module';
+import { PassportMiddleware } from './modules/auth/middlewares/passport.middleware';
+import { HelperModule } from './modules/helper/helper.module';
 
 @Module({
   imports: [
@@ -12,6 +16,13 @@ import { configsArray } from './config';
       useFactory: (configService: ConfigService): TypeOrmModuleAsyncOptions =>
         configService.get<TypeOrmModuleOptions>('typeorm'),
     }),
+    AuthModule,
+    HelperModule,
   ],
+  controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(PassportMiddleware).forRoutes(':splat*');
+  }
+}

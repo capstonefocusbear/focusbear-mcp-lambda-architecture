@@ -1,3 +1,3 @@
-import { AuthenticationClient } from 'auth0';
-
-export type IAuthenticationService = AuthenticationClient;
+export interface IAuthenticationService {
+  validateAccessToken(token: string): Promise<[boolean, { payload?: any; declineReason?: string }]>;
+}

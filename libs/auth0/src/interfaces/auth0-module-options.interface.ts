@@ -1,10 +1,9 @@
 export interface IAuth0Options {
+  management: {
+    clientId: string;
+    clientSecret: string;
+  };
   domain: string;
-  clientId: string;
-  clientSecret: string;
-  scope?: string;
   connection: string;
-  nonInteractiveClientId: string;
-  nonInteractiveClientSecret: string;
   identifier: string;
 }

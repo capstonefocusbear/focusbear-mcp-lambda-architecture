@@ -7,12 +7,8 @@ import { IAuth0Options, IManagementService } from '../interfaces';
 export class Auth0ManagementService extends ManagementClient implements IManagementService {
   private readonly logger: Logger;
 
-  constructor(@Inject(AUTH0_MODULE_OPTIONS) private Auth0Options: IAuth0Options) {
-    super({
-      clientId: Auth0Options.nonInteractiveClientId,
-      clientSecret: Auth0Options.nonInteractiveClientSecret,
-      domain: Auth0Options.domain,
-    });
+  constructor(@Inject(AUTH0_MODULE_OPTIONS) private readonly options: IAuth0Options) {
+    super({ domain: options.domain, ...options.management });
     this.logger = new Logger('Auth0ManagementService');
   }
 }

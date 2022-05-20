@@ -1,0 +1,44 @@
+previewsEnabled: true
+previewsExpireAfterDays: 1
+
+services:
+- type: web
+  name: eyst-backend-prod
+  env: docker
+  region: oregon
+  plan: starter
+  branch: main
+  dockerfilePath: ./infra/deploy/Dockerfile
+  dockerContext: ./nest-app
+  # domains:
+  #   - api.coolapp.dev
+  envVars:
+  - key: SERVER_PORT
+    value: 4000
+  - key: SERVER_HOST
+    value: 0.0.0.0
+  - key: POSTGRES_HOST
+    fromDatabase:
+      name: eyst-postgres
+      property: host
+  - key: POSTGRES_PORT
+    fromDatabase:
+      name: eyst-postgres
+      property: port
+  - key: POSTGRES_USERNAME
+    fromDatabase:
+      name: eyst-postgres
+      property: user
+  - key: POSTGRES_PASSWORD
+    fromDatabase:
+      name: eyst-postgres
+      property: password
+  - key: POSTGRES_DB
+    fromDatabase:
+      name: eyst-postgres
+      property: database
+
+databases:
+- name: eyst-postgres
+  databaseName: eyst-production
+  user: some_user

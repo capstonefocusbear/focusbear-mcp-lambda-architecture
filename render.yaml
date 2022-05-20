@@ -6,7 +6,7 @@ services:
   name: eyst-backend-prod
   env: docker
   region: oregon
-  plan: starter
+  plan: free
   branch: main
   dockerfilePath: ./infra/deploy/Dockerfile
   dockerContext: ./nest-app

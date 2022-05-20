@@ -40,5 +40,6 @@ services:
 
 databases:
 - name: eyst-postgres
+  plan: free
   databaseName: eyst_production
   user: some_user

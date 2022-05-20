@@ -6,6 +6,7 @@ import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
 import { PassportMiddleware } from './modules/auth/middlewares/passport.middleware';
 import { HelperModule } from './modules/helper/helper.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HelperModule } from './modules/helper/helper.module';
     }),
     AuthModule,
     HelperModule,
+    UserModule,
   ],
   controllers: [AppController],
 })

@@ -8,8 +8,6 @@ services:
   region: oregon
   plan: free
   branch: main
-  dockerfilePath: ./infra/deploy/Dockerfile
-  dockerContext: ./infra/deploy/
   # domains:
   #   - api.coolapp.dev
   envVars:

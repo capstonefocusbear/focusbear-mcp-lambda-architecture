@@ -40,5 +40,5 @@ services:
 
 databases:
 - name: eyst-postgres
-  databaseName: eyst-production
+  databaseName: eyst_production
   user: some_user

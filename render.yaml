@@ -9,7 +9,7 @@ services:
   plan: free
   branch: main
   dockerfilePath: ./infra/deploy/Dockerfile
-  dockerContext: ./nest-app
+  dockerContext: ./infra/deploy/
   # domains:
   #   - api.coolapp.dev
   envVars:

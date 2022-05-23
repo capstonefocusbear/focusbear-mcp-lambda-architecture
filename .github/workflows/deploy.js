@@ -28,8 +28,12 @@ const checkDeployStatus = async ({ id: deployId, status }) => {
 }
 
 const bootstrap = async () => {
-  const deploy = await triggerDeploy();
-  await checkDeployStatus({ ...deploy });
+  try {
+    const deploy = await triggerDeploy();
+    await checkDeployStatus({ ...deploy });
+  } catch (error) {
+    throw new Error(error);
+  }
 }
 
 bootstrap();

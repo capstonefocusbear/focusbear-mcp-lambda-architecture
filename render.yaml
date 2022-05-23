@@ -6,7 +6,7 @@ services:
   name: eyst-backend-prod
   env: docker
   region: oregon
-  plan: free
+  plan: starter
   branch: main
   # domains:
   #   - api.coolapp.dev
@@ -48,6 +48,6 @@ services:
 
 databases:
 - name: eyst-postgres
-  plan: free
+  plan: starter
   databaseName: eyst_production
   user: some_user

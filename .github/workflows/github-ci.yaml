@@ -34,7 +34,7 @@ jobs:
       - name: Run tests
         run: npm run test
 
-      - name: Deploy no render.com
+      - name: Deploy on render.com
         run: npm run render:deploy
 
 

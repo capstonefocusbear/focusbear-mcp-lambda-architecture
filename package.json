@@ -24,7 +24,7 @@
     "migration:create": "npm run typeorm -- migration:create -n ",
     "migration:up": "npm run typeorm -- migration:run",
     "migration:down": "npm run typeorm -- migration:revert",
-    "render:deploy": "node /.github/workflows/deploy.js"
+    "render:deploy": "node ./.github/workflows/deploy.js"
   },
   "dependencies": {
     "@fastify/swagger": "^6.0.1",

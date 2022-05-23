@@ -8,7 +8,7 @@ const LIVE_STATUS = 'live';
 
 sdk.auth(RENDER_API_KEY);
 
-const compose = (...funcs) => input => funcs.reduce((chain, func) => chain.then(func), Promise.resolve(input));
+const compose = (...funcs) => input => funcs.reduce((chain, func) => chain.then(func), Promise.resolve(input)).catch(err => { new Error(err) });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -28,9 +28,7 @@ const checkDeployStatus = async ({ id: deployId, status }) => {
 }
 
 
-compose(triggerDeploy, checkDeployStatus)().catch((err) => {
-  throw new Error(err)
-})
+compose(triggerDeploy, checkDeployStatus)();
 
 
 

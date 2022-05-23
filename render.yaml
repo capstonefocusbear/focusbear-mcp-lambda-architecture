@@ -7,9 +7,7 @@ services:
   env: docker
   region: oregon
   plan: starter
-  branch: main
-  # domains:
-  #   - api.coolapp.dev
+  healthCheckPath: /healthcheck
   envVars:
   - key: SERVER_PORT
     value: 4000

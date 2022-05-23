@@ -1,11 +1,9 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { IsAuth } from './modules/auth/guards/is-auth.guard';
+import { Controller, Get } from '@nestjs/common';
 
 @Controller()
 export class AppController {
-  @UseGuards(IsAuth)
-  @Get('/test')
-  test() {
+  @Get('/healthcheck')
+  healthcheck() {
     return 'Alive';
   }
 }

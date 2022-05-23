@@ -27,4 +27,10 @@ const checkDeployStatus = async ({ id: deployId, status }) => {
   return checkDeployStatus({ ...deploy });
 }
 
-compose(triggerDeploy, checkDeployStatus)();
+
+compose(triggerDeploy, checkDeployStatus)().catch((err) => {
+  throw new Error(err)
+})
+
+
+

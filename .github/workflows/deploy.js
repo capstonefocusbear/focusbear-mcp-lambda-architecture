@@ -32,7 +32,8 @@ const bootstrap = async () => {
     const deploy = await triggerDeploy();
     await checkDeployStatus({ ...deploy });
   } catch (error) {
-    throw new Error(error);
+    console.warn(error);
+    process.exit(1);
   }
 }
 

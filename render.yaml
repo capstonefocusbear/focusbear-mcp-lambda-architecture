@@ -5,7 +5,6 @@ services:
 - type: web
   name: eyst-backend-prod
   env: docker
-  region: oregon
   plan: starter
   healthCheckPath: /healthcheck
   envVars:

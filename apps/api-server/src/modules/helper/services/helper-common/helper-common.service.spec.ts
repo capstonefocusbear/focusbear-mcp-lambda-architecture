@@ -29,7 +29,7 @@ describe('HelperCommonService', () => {
       const result = service.deepFreezeObject<typeof obj>(obj);
 
       expect(result).toBeFrozen();
-      expect(result.level1).toBeFrozen();
+      expect(result.level1).toBeString();
       expect(result.level1.level2).toBeFrozen();
     });
   });

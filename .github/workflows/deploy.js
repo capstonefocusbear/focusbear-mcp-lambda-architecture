@@ -8,7 +8,7 @@ const LIVE_STATUS = 'live';
 
 sdk.auth(RENDER_API_KEY);
 
-const compose = (...funcs) => input => funcs.reduce((chain, func) => chain.then(func), Promise.resolve(input)).catch(err => { new Error(err) });
+// const compose = (...funcs) => input => funcs.reduce((chain, func) => chain.then(func), Promise.resolve(input)).catch(err => { new Error(err) });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -27,8 +27,14 @@ const checkDeployStatus = async ({ id: deployId, status }) => {
   return checkDeployStatus({ ...deploy });
 }
 
+const bootstrap = async () => {
+  const deploy = await triggerDeploy();
+  await checkDeployStatus({ ...deploy });
+}
 
-compose(triggerDeploy, checkDeployStatus)();
+bootstrap();
+
+// compose(triggerDeploy, checkDeployStatus)();
 
 
 

@@ -6,6 +6,8 @@ const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 3 min
 const LIVE_STATUS = 'live';
 
+console.log({ serviceId, RENDER_API_KEY })
+
 sdk.auth(RENDER_API_KEY);
 
 // const compose = (...funcs) => input => funcs.reduce((chain, func) => chain.then(func), Promise.resolve(input)).catch(err => { new Error(err) });

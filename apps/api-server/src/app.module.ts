@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PassportMiddleware } from './modules/auth/middlewares/passport.middleware';
 import { HelperModule } from './modules/helper/helper.module';
 import { UserModule } from './modules/user/user.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UserModule } from './modules/user/user.module';
     AuthModule,
     HelperModule,
     UserModule,
+    ActivityModule,
   ],
   controllers: [AppController],
 })

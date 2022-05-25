@@ -31,7 +31,7 @@ export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
         .then(({ raw }: UpdateResult) => raw[0]);
     }
 
-    async upsertOne(item: T, conflictTarget: string[]): Promise<T> {
+    async upsert(item: T, conflictTarget: string[]): Promise<T> {
       const keys = Object.keys(item);
       const keysForUpdate = keys.filter((e) => ![...conflictTarget, 'id'].includes(e));
       return this.orm
@@ -45,7 +45,7 @@ export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
         .then(({ raw }: UpdateResult) => raw[0]);
     }
 
-    async upsert(items: T[], conflictTarget: string[]): Promise<T[]> {
+    async upsertMany(items: T[], conflictTarget: string[]): Promise<T[]> {
       const keys = Object.keys(items[0]);
       const keysForUpdate = keys.filter((e) => ![...conflictTarget, 'id'].includes(e));
       return this.orm

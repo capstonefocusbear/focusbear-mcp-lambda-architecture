@@ -5,7 +5,16 @@
   "root": "apps/api-server",
   "compilerOptions": {
     "webpack": true,
-    "tsConfigPath": "apps/api-server/tsconfig.app.json"
+    "tsConfigPath": "apps/api-server/tsconfig.app.json",
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true
+        }
+      }
+    ]
   },
   "projects": {
     "api-server": {

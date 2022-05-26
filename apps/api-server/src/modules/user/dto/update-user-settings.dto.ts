@@ -2,7 +2,6 @@ import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsNotEmpty, IsString, Matches, ValidateNested } from 'class-validator';
 import { constants } from '../../../config';
 import { ActivityData } from '../../activity/domain/activity-data.model';
-import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -34,6 +33,6 @@ export class UpdateUserSettingsDto {
   @IsNotEmpty()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => UpdateActivityDto)
-  break_activities: UpdateActivityDto[];
+  @Type(() => ActivityData)
+  break_activities: ActivityData[];
 }

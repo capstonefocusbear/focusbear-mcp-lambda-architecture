@@ -18,7 +18,7 @@ RUN rm -rf test
 
 
 # Application
-FROM node:14-alpine
+FROM node:14
 
 COPY --from=builder /app /app
 WORKDIR /app

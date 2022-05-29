@@ -7,4 +7,5 @@ COPY . .
 
 EXPOSE 4000
 
+RUN npm i -g @nestjs/cli
 CMD npm run start

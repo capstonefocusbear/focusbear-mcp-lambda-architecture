@@ -1,25 +1,30 @@
 require('dotenv').config();
 const sdk = require('api')('@render-api/v1.0#54d5p1kl39a18af');
 
+const DeployStatus = {
+  build_in_progress: 'build_in_progress',
+  update_in_progress: 'update_in_progress',
+  live: 'live',
+}
 
 const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min
-const LIVE_STATUS = 'live';
 
 sdk.auth(RENDER_API_KEY);
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const triggerDeploy = async () => {
-  const { id, status } = await sdk['create-deploy']({ serviceId });
+  const { id, status } = await sdk['create-deploy']({ clearCache: 'clear' }, { serviceId });
   console.log(`Deploy has beed started! id: ${id}, currectStatus: ${status}`);
   return { id, status };
 }
 
-const checkDeployStatus = async ({ id: deployId, status }) => {
+const checkDeployStatus = async ({ id: deployId, status, finishedAt }) => {
   if (!deployId) throw new Error('DeployId was not provided!');
-  if (status === LIVE_STATUS) return console.log(`Deploy status: ${LIVE_STATUS}`);
-  console.log(`Await ${TIMEOUT / 60 * 1000} minutes... `);
+  if (status === DeployStatus.live) return console.log(`Deploy status: ${status}`);
+  if (finishedAt) throw new Error(`Check the deployment! Current status: ${status}`);
+  console.log(`Await ${TIMEOUT / 60 / 1000} minutes... `);
   await sleep(TIMEOUT);
   const deploy = await sdk['get-deploy']({ serviceId, deployId });
   return checkDeployStatus({ ...deploy });

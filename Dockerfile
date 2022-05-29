@@ -1,11 +1,27 @@
-FROM node:14
-WORKDIR /app/backend
+# Builder
+FROM node:14 AS builder
 
+# Prepare data
+WORKDIR /app
 COPY ["package.json", "package-lock.json*", "./"]
 RUN npm install
 COPY . .
 
-EXPOSE 4000
+# Build
+RUN npm run build
+RUN rm -rf node_modules
 
-RUN npm i -g @nestjs/cli
-CMD npm run start
+# Install production dependencies
+RUN npm install --production
+RUN rm -rf src
+RUN rm -rf test
+
+
+# Application
+FROM node:14-alpine
+
+COPY --from=builder /app /app
+WORKDIR /app
+
+EXPOSE 4000
+CMD ["npm", "run", "start:prod"]

@@ -14,7 +14,7 @@ RUN rm -rf node_modules
 # Install production dependencies
 RUN npm install --production
 # RUN rm -rf src
-# RUN rm -rf test
+
 
 EXPOSE 4000
 CMD ["npm", "run", "start:prod"]

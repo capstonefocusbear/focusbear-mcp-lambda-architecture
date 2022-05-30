@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { ActivityChoiceType } from 'apps/api-server/src/modules/activity/domain/activity-choice-type.enum';
+import { ActivityChoiceType } from '../../src/modules/activity/domain/activity-choice-type.enum';
 import { SerializedActivity } from '../../src/modules/activity/services/activity-parser/activity-parser.service';
 import { Passport } from '../../src/modules/auth/domain/passport.model';
 import { User } from '../../src/modules/user/entities/user.entity';

@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class CreateTableActivities1652434393705 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "activity_types" AS ENUM ('break', 'morning_routine', 'evening_routine');
+      CREATE TYPE "activity_types" AS ENUM ('break', 'morning', 'evening');
       CREATE TYPE "log_quantity_summary_types" AS ENUM ('SUM', 'AVERAGE');
 
       CREATE TABLE "activities" (

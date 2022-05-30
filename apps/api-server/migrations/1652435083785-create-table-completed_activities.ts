@@ -5,7 +5,7 @@ export class CreateTableCompletedActivities1652435083785 implements MigrationInt
     await queryRunner.query(`
       CREATE TABLE "completed_activities" (
         "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        "activity_sequence_id" UUID REFERENCES "activitity_sequences",
+        "activity_sequence_id" UUID REFERENCES "activity_sequences",
         "activity_id" UUID REFERENCES "activities",
         "user_id" UUID REFERENCES "users",
         "timestamp" TIMESTAMP,

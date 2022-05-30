@@ -5,7 +5,7 @@ export class CreateTableCompletedActivitySequences1652435831161 implements Migra
     await queryRunner.query(`
       CREATE TABLE "completed_activity_sequences" (
         "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        "activity_sequence_id" UUID REFERENCES "activitity_sequences",
+        "activity_sequence_id" UUID REFERENCES "activity_sequences",
         "user_id" UUID REFERENCES "users",
         "start_time" TIMESTAMP,
         "duration_minutes" NUMERIC,

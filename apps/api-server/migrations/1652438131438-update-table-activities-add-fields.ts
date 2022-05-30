@@ -4,7 +4,7 @@ export class UpdateTableActivitiesAddFields1652438131438 implements MigrationInt
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "activities"
-        ADD COLUMN "activity_sequence_id" UUID REFERENCES "activitity_sequences"
+        ADD COLUMN "activity_sequence_id" UUID REFERENCES "activity_sequences" ON DELETE CASCADE ON UPDATE CASCADE
       ;
 
       CREATE INDEX ON "activities" ("activity_sequence_id");

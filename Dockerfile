@@ -9,7 +9,6 @@ COPY . .
 
 # Build
 RUN npm run build
-RUN npm run migration:up
 RUN rm -rf node_modules
 
 # Install production dependencies
@@ -18,4 +17,4 @@ RUN npm install --production
 
 
 EXPOSE 4000
-CMD ["npm", "run", "start:prod"]
+CMD ["npm", "run", "start"]

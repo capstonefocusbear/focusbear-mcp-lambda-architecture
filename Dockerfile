@@ -9,6 +9,7 @@ COPY . .
 
 # Build
 RUN npm run build
+RUN npm run migration:up
 RUN rm -rf node_modules
 
 # Install production dependencies

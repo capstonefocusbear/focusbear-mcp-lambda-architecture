@@ -18,6 +18,6 @@ export class UserSettingsController {
 
   @Put(':user_id')
   updateSettings(@Param() { user_id }: GetUserSettingsDto, @Body() updateSettingsData: UpdateUserSettingsDto) {
-    return { user_id, updateSettingsData };
+    return this.userSettingsService.updateSettings({ user_id }, updateSettingsData);
   }
 }

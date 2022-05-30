@@ -5,6 +5,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'fastify-helmet';
 import { AppModule } from './app.module';
+import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder().setTitle('API documentation').build();
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
+  app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.register(helmet, HELMET);
 
   bootstrapApiDocumentation(app);

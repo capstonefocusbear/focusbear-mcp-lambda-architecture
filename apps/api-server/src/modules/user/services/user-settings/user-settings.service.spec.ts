@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { UserRepositoryMock } from '../../../../../test/mocks';
+import { ActivityParserServiceMock, UserRepositoryMock } from '../../../../../test/mocks';
+import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserSettingsService } from './user-settings.service';
 
@@ -8,10 +9,12 @@ describe('UserSettingsService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [UserRepository, UserSettingsService],
+      providers: [UserRepository, UserSettingsService, ActivityParserService],
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ActivityParserService)
+      .useValue(ActivityParserServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);

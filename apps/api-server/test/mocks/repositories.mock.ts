@@ -11,3 +11,8 @@ export const BaseRepositoryMock = {
 };
 
 export const UserRepositoryMock = { ...BaseRepositoryMock };
+
+export const ActivitySequenceRepositoryMock = {
+  findOneByTypeForUser: jest.fn(),
+  ...BaseRepositoryMock,
+};

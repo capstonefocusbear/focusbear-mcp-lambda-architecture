@@ -1,8 +1,14 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
+  constructor({ id, ...user }: Partial<User> = {}, options = { generateId: false }) {
+    super(id, options);
+    Object.assign(this, { ...user });
+  }
+
   @Column({
     type: 'varchar',
     length: 255,
@@ -35,7 +41,7 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
   })
-  shutdownTime?: string;
+  shutdown_time?: string;
 
   @Column({
     type: 'varchar',
@@ -57,21 +63,24 @@ export class User extends BaseEntity {
   @Column({
     type: 'boolean',
   })
-  is_office_mode_activated: boolean;
+  is_office_mode_activated?: boolean;
 
   @Column({
     type: 'uuid',
   })
-  current_activity_sequence_id: string;
+  current_activity_sequence_id?: string;
 
   @Column({
     type: 'uuid',
   })
-  current_focus_mode_id: string;
+  current_focus_mode_id?: string;
 
   @Column({
     type: 'uuid',
     nullable: false,
   })
-  current_activity_id: string;
+  current_activity_id?: string;
+
+  @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
+  activity_sequences?: ActivitySequence[];
 }

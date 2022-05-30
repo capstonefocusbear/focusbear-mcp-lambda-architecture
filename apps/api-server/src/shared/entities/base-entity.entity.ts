@@ -1,6 +1,11 @@
+import { randomUUID } from 'crypto';
 import { Column, PrimaryGeneratedColumn } from 'typeorm';
 
 export class BaseEntity {
+  constructor(id?: string, { generateId } = { generateId: false }) {
+    this.id = generateId ? randomUUID() : id;
+  }
+
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 

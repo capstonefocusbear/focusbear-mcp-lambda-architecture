@@ -31,6 +31,8 @@ module.exports = {
     'prettier/prettier': ['error', require('./.prettierrc.js')],
     '@typescript-eslint/comma-dangle': 'off',
     'no-restricted-syntax': 'off',
+    'import/no-cycle': 'off',
+    '@typescript-eslint/naming-convention': 'off',
     'max-len': [0, 120, 2, { ignoreUrls: true }]
   },
 };

@@ -28,7 +28,7 @@ export class Auth0AuthenticationService implements IAuthenticationService {
       const publicKey = signingKey.getPublicKey();
       const validToken = await jwt.verify(token, publicKey);
       const isValid = Boolean(validToken);
-      return [isValid, payload];
+      return [isValid, { payload }];
     } catch ({ message }) {
       return [false, { declineReason: message }];
     }

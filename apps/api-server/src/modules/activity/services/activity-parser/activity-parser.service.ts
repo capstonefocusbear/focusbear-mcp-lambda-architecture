@@ -33,7 +33,6 @@ export class ActivityParserService {
   }
 
   async deserialize(serialized: SerializedActivity, user_id: string): Promise<DeserializedActivity[]> {
-    console.log(JSON.stringify(serialized));
     const entries = Object.entries(serialized);
     return Promise.all(
       entries.map(async ([name, serializedActivities]) => {

@@ -8,7 +8,11 @@ import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
-  const config = new DocumentBuilder().setTitle('API documentation').build();
+  const config = new DocumentBuilder()
+    .setTitle('API documentation')
+    .addSecurity('Auth0AccessToken', { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
+    .addSecurity('Auth0ActionSecret', { name: 'auth0_action_secret', type: 'apiKey', in: 'header' })
+    .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 }

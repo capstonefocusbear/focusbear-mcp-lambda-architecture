@@ -1,4 +1,4 @@
-import { User } from '../../user/entities/user.entity';
+import { UserAuthContext } from './user-auth-context.model';
 
 export class Passport {
   constructor({ user, isAuth, declineReason }: Partial<Passport> = {}) {
@@ -7,7 +7,7 @@ export class Passport {
     this.declineReason = isAuth ? null : declineReason;
   }
 
-  user: Partial<User>;
+  user: UserAuthContext;
 
   declineReason: string;
 

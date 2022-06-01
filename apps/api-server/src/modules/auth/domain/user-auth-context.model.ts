@@ -1,7 +1,11 @@
-export class UserAuthContext {
-  id: string;
+import { ApiProperty } from '@nestjs/swagger';
+import { IsUUID } from 'class-validator';
+import { randomUUID } from 'crypto';
 
-  auth0Id: string;
+export class UserAuthContext {
+  @ApiProperty({ example: randomUUID() })
+  @IsUUID()
+  id: string;
 
   // ...
 }

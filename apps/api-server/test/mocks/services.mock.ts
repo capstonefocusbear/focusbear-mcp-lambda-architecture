@@ -10,3 +10,7 @@ export const ActivityParserServiceMock = {
   serialize: jest.fn(),
   deserialize: jest.fn(),
 };
+
+export const ConfigServiceMock = {
+  get: jest.fn(),
+};

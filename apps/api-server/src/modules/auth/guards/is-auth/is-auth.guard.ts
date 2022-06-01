@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { Passport } from '../domain/passport.model';
+import { Passport } from '../../domain/passport.model';
 
 const contextStrategy = Object.freeze({
   http: (ctx: ExecutionContext) => ctx.switchToHttp().getRequest().raw,

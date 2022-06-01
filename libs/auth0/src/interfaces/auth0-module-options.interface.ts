@@ -6,4 +6,5 @@ export interface IAuth0Options {
   domain: string;
   connection: string;
   identifier: string;
+  actionSecret?: string;
 }

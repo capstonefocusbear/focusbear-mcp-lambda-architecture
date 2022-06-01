@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { IsAuth } from '../../../auth/guards/is-auth.guard';
-import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
+import { AuthContext } from '../../../../shared/decorators/passport.decorator';
+import { Passport } from '../../../auth/domain/passport.model';
+import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsService } from '../../services/user-settings/user-settings.service';
 
@@ -11,13 +12,13 @@ import { UserSettingsService } from '../../services/user-settings/user-settings.
 export class UserSettingsController {
   constructor(private readonly userSettingsService: UserSettingsService) {}
 
-  @Get(':user_id')
-  getSettings(@Param() { user_id }: GetUserSettingsDto) {
-    return this.userSettingsService.getSettings({ user_id });
+  @Get()
+  getSettings(@AuthContext() { user }: Passport) {
+    return this.userSettingsService.getSettings({ user_id: user.id });
   }
 
-  @Put(':user_id')
-  updateSettings(@Param() { user_id }: GetUserSettingsDto, @Body() updateSettingsData: UpdateUserSettingsDto) {
-    return this.userSettingsService.updateSettings({ user_id }, updateSettingsData);
+  @Put()
+  updateSettings(@AuthContext() { user }: Passport, @Body() updateSettingsData: UpdateUserSettingsDto) {
+    return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData);
   }
 }

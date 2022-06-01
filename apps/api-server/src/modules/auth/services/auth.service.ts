@@ -10,8 +10,8 @@ export class AuthService {
     const token: string = this.extractBearerToken(authorization);
     const [isAuth, { payload, declineReason }] = await this.auth0AuthService.validateAccessToken(token);
     if (!isAuth) return new Passport({ declineReason });
-    // const { userAuthMetadata } = this.extractCustomTokenClaim(payload);
-    const passport = new Passport({ isAuth, user: payload });
+    const { user } = this.extractCustomTokenClaim(payload);
+    const passport = new Passport({ isAuth, user });
     return passport;
   }
 

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { IsAuth } from './is-auth.guard';
-import { Passport } from '../domain/passport.model';
+import { Passport } from '../../domain/passport.model';
 
 describe('IsAuth', () => {
   let isAuthGuard: IsAuth;

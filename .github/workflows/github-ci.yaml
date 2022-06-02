@@ -34,8 +34,8 @@ jobs:
       - name: Lint code
         run: npm run lint
       
-      - name: Run tests
-        run: npm run test
+      - name: Run unit tests and check coverage (should be > 80%)
+        run: npm run test:cov
 
       - name: Deploy on render.com
         run: npm run render:deploy

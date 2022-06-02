@@ -14,3 +14,7 @@ export const ActivityParserServiceMock = {
 export const ConfigServiceMock = {
   get: jest.fn(),
 };
+
+export const Auth0ManagementServiceMock = {
+  getUser: jest.fn(),
+};

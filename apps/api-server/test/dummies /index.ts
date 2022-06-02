@@ -1,8 +1,10 @@
 import { randomUUID } from 'crypto';
+import { User as Auth0User } from 'auth0';
 import { ActivityChoiceType } from '../../src/modules/activity/domain/activity-choice-type.enum';
 import { SerializedActivity } from '../../src/modules/activity/services/activity-parser/activity-parser.service';
 import { Passport } from '../../src/modules/auth/domain/passport.model';
 import { User } from '../../src/modules/user/entities/user.entity';
+import { ActivityType } from '../../src/modules/activity/domain/activity-type.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -24,6 +26,12 @@ export const userDummy = new User(
   },
   { generateId: true },
 );
+
+export const auth0UserDummy: Auth0User = {
+  _id: '1',
+  email: 'some@email',
+  email_verified: true,
+};
 
 export const serializedActivityDummy: SerializedActivity = {
   morning_activities: [
@@ -152,6 +160,191 @@ export const serializedActivityDummy: SerializedActivity = {
       log_quantity: true,
       name: 'test ',
       log_quantity_question: 'Log quantity data?',
+    },
+  ],
+};
+
+export const userSettingsDBResponseDummy = {
+  id: 'e1477f9a-515f-49f5-be2b-0c39af087324',
+  startup_time: '06:15',
+  shutdown_time: '20:30',
+  break_after_minutes: 15,
+  activity_sequences: [
+    {
+      id: '60621532-b71b-49fd-a6ed-efeb6ba19209',
+      type: ActivityType.morning,
+      activity_ids: [
+        '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+        'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+        '3b57f802-23b0-47e2-a188-b07001db8e1f',
+      ],
+      activities: [
+        {
+          id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+          activity_data: {
+            name: 'Journalling',
+            video_urls: [],
+            duration_seconds: 300,
+          },
+        },
+        {
+          id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+          activity_data: {
+            name: 'Yoga',
+            video_urls: [],
+            log_quantity: false,
+            duration_seconds: 300,
+          },
+        },
+        {
+          id: '3b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Deep breathing',
+            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+            log_quantity: false,
+            duration_seconds: 180,
+          },
+        },
+      ],
+    },
+    {
+      id: '629247b9-caed-4262-a69a-10c25d25dc07',
+      type: ActivityType.evening,
+      activity_ids: [
+        '4b57f802-23b0-47e2-a188-b07001db8e1f',
+        '0b57f802-23b0-47e2-a188-b07001db8e1f',
+        '1b57f802-23b0-47e2-a188-b07001db8e1f',
+      ],
+      activities: [
+        {
+          id: '4b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Tidy up desk',
+            video_urls: [],
+            log_quantity: false,
+            duration_seconds: 180,
+          },
+        },
+        {
+          id: '0b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Journal about day',
+            video_urls: [],
+            log_quantity: false,
+            duration_seconds: 300,
+          },
+        },
+        {
+          id: '1b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Plan to-do list and schedule for tomorrow',
+            video_urls: [],
+            duration_seconds: 420,
+          },
+        },
+      ],
+    },
+    {
+      id: '066d3712-16b8-49c2-98a7-7187ad385e4b',
+      type: ActivityType.break,
+      activity_ids: [
+        '8b57f802-23b0-47e2-a188-b07001db8e1f',
+        '7b57f802-23b0-47e2-a188-b07001db8e1f',
+        '6b57f802-23b0-47e2-a188-b07001db8e1f',
+        '5b57f802-23b0-47e2-a188-b07001db8e1f',
+      ],
+      activities: [
+        {
+          id: '8b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Micro-workout',
+            choices: [
+              {
+                name: 'Pushups',
+                video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+                log_quantity: true,
+              },
+              {
+                name: 'Situps',
+                video_urls: [],
+                log_quantity: true,
+              },
+              {
+                name: 'Squats',
+                video_urls: [],
+                log_quantity: true,
+              },
+              {
+                name: 'Lunges',
+                video_urls: [],
+                log_quantity: true,
+              },
+              {
+                name: 'Burpees',
+                video_urls: [],
+                log_quantity: true,
+              },
+              {
+                name: 'Plank',
+                video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+                log_quantity: false,
+              },
+            ],
+            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE', 'https://www.youtube.com/watch?v=W1I9M7g6VK8'],
+            choice_type: ActivityChoiceType.random,
+            allowed_apps: ['test app'],
+            allowed_urls: [],
+            log_quantity: false,
+            duration_seconds: 60,
+            log_quantity_question: '',
+            include_in_every_break: false,
+          },
+        },
+        {
+          id: '7b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'Deep breathing',
+            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+            duration_seconds: 20,
+            include_in_every_break: true,
+          },
+        },
+        {
+          id: '6b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: "Dance like no-one's watching",
+            video_urls: [],
+            log_quantity: false,
+            duration_seconds: 40,
+          },
+        },
+        {
+          id: '5b57f802-23b0-47e2-a188-b07001db8e1f',
+          activity_data: {
+            name: 'test ',
+            choices: [
+              {
+                name: 'Choice',
+                video_urls: ['https://www.youtube.com/watch?v=xcrc5wTZwNk'],
+                log_quantity: true,
+                log_quantity_question: 'choice djdjdjd',
+              },
+              {
+                name: 'some name',
+                video_urls: [],
+                log_quantity: true,
+                log_quantity_question: 'sdcdsc',
+              },
+            ],
+            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+            allowed_apps: [],
+            log_quantity: true,
+            duration_seconds: 60,
+            log_quantity_question: 'Log quantity data?',
+            include_in_every_break: false,
+          },
+        },
+      ],
     },
   ],
 };

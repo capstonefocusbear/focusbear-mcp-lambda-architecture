@@ -1,8 +1,10 @@
 import { Test } from '@nestjs/testing';
 import { ActivitySequenceRepositoryMock } from '../../../../../test/mocks';
+import { ActivitySequence } from '../../entities/activity-sequence.entity';
+import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { ActivityParserService } from './activity-parser.service';
-// import { serializedActivityDummy, userDummy } from '../../../../../test/dummies ';
+import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies ';
 
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;
@@ -23,21 +25,27 @@ describe('ActivityParserService', () => {
   });
 
   describe('serialize', () => {
-    // it('positive: should return an authorized Passport instance', async () => {
-    //   ActivitySequenceRepositoryMock.findOneByTypeForUser.mockReturnValue();
-    //   // UserRepositoryMock.validateAccessToken.mockResolvedValueOnce([true, { payload }]);
-    //   const result = await activityParserService.deserialize(serializedActivityDummy, userDummy.id);
-    //   expect(result).toBeDefined();
-    //   // expect(result).toBeInstanceOf(Passport);
-    //   // expect(result.isAuth).toBeTrue();
-    //   // expect(result.declineReason).toBeNull();
-    // });
-    // it('negative: should return an unauthorized Passport instance', async () => {
-    //   UserRepositoryMock.validateAccessToken.mockResolvedValueOnce([false, { declineReason }]);
-    //   const result = await ActivityParserService.authenticate(headers);
-    //   expect(result).toBeInstanceOf(Passport);
-    //   expect(result.isAuth).toBeFalse();
-    //   expect(result.declineReason).toEqual(declineReason);
-    // });
+    it('positive: should return a serialized activities', async () => {
+      const { activity_sequences } = userSettingsDBResponseDummy;
+
+      const result = activityParserService.serialize(activity_sequences);
+
+      expect(result).toBeDefined();
+      expect(result.break_activities).toBeArray();
+      expect(result.evening_activities).toBeArray();
+      expect(result.morning_activities).toBeArray();
+    });
+
+    it('positive: should return a deserialized activities', async () => {
+      ActivitySequenceRepositoryMock.findOneByTypeForUser.mockReturnValue(userDummy);
+
+      const result = await activityParserService.deserialize(serializedActivityDummy, userDummy.id);
+
+      expect(result).toBeDefined();
+      expect(result).toBeArray();
+      expect(result[0].sequence).toBeInstanceOf(ActivitySequence);
+      expect(result[0].activities).toBeArray();
+      expect(result[0].activities.every((e) => e instanceof Activity)).toBeTrue();
+    });
   });
 });

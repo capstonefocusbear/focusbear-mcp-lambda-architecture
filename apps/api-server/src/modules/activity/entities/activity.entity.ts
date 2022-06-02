@@ -16,13 +16,13 @@ export class Activity extends BaseEntity {
     type: 'uuid',
     nullable: false,
   })
-  user_id: string;
+  user_id?: string;
 
   @Column({
     type: 'uuid',
     nullable: false,
   })
-  activity_sequence_id: string;
+  activity_sequence_id?: string;
 
   @Column({
     type: 'enum',
@@ -30,20 +30,20 @@ export class Activity extends BaseEntity {
     enum: ActivityType,
     nullable: false,
   })
-  type: ActivityType;
+  type?: ActivityType;
 
   @Column({
     type: 'enum',
     enum: LogQuantitySummaryType,
     nullable: false,
   })
-  log_quantity_summary_type: string;
+  log_quantity_summary_type?: string;
 
   @Column({
     type: 'jsonb',
     nullable: false,
   })
-  activity_data: ActivityData;
+  activity_data?: ActivityData;
 
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
   @JoinColumn({ name: 'activity_sequence_id' })

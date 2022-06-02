@@ -10,9 +10,12 @@ export const BaseRepositoryMock = {
   upsertMany: jest.fn(),
 };
 
-export const UserRepositoryMock = { ...BaseRepositoryMock };
+export const UserRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserSettings: jest.fn(),
+};
 
 export const ActivitySequenceRepositoryMock = {
-  findOneByTypeForUser: jest.fn(),
   ...BaseRepositoryMock,
+  findOneByTypeForUser: jest.fn(),
 };

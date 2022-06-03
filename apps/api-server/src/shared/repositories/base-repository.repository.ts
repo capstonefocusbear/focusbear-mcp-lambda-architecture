@@ -1,10 +1,10 @@
 import { Connection, EntityTarget, Repository, UpdateResult } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
-export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
+export const createBaseRepository = <T>(Entity: EntityTarget<T> | any) =>
   class BaseRepository {
     constructor(connection: Connection) {
-      this.orm = connection.getRepository(Entity);
+      this.orm = connection.getRepository<T>(Entity);
     }
 
     readonly orm: Repository<T>;
@@ -17,7 +17,7 @@ export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
         .values([item])
         .returning('*')
         .execute()
-        .then(({ raw }: UpdateResult) => raw[0]);
+        .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOne(id));
     }
 
     async update(id: string, values: QueryDeepPartialEntity<T>): Promise<T> {
@@ -28,7 +28,7 @@ export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
         .where('id = :id', { id })
         .returning('*')
         .execute()
-        .then(({ raw }: UpdateResult) => raw[0]);
+        .then(({ raw: [{ id: item_id }] }: UpdateResult) => this.orm.findOne(item_id));
     }
 
     async upsert(item: T, conflictTarget: string[]): Promise<T> {
@@ -42,20 +42,6 @@ export const createBaseRepository = <T>(Entity: EntityTarget<T>) =>
         .orUpdate({ conflict_target: conflictTarget, overwrite: keysForUpdate })
         .returning('*')
         .execute()
-        .then(({ raw }: UpdateResult) => raw[0]);
-    }
-
-    async upsertMany(items: T[], conflictTarget: string[]): Promise<T[]> {
-      const keys = Object.keys(items[0]);
-      const keysForUpdate = keys.filter((e) => ![...conflictTarget, 'id'].includes(e));
-      return this.orm
-        .createQueryBuilder()
-        .insert()
-        .into(Entity)
-        .values(items)
-        .orUpdate({ conflict_target: conflictTarget, overwrite: keysForUpdate })
-        .returning('*')
-        .execute()
-        .then(({ raw }: UpdateResult) => raw);
+        .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOne(id));
     }
   };

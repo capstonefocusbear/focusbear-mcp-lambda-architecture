@@ -17,11 +17,13 @@ export class BaseEntity {
   @Column({ type: 'timestamptz' })
   updated_at?: string;
 
-  protected static encrypteField?() {
-    return new EncryptionTransformer(typeormEncryptionConfig());
+  protected static encrypteField?(localSalt?: string) {
+    const config = typeormEncryptionConfig(localSalt);
+    return new EncryptionTransformer(config);
   }
 
-  protected static encrypteJSONField?() {
-    return new JSONEncryptionTransformer(typeormEncryptionConfig());
+  protected static encrypteJSONField?(localSalt?: string) {
+    const config = typeormEncryptionConfig(localSalt);
+    return new JSONEncryptionTransformer(config);
   }
 }

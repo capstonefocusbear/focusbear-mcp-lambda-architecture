@@ -42,7 +42,7 @@ export class Activity extends BaseEntity {
   @Column({
     type: 'jsonb',
     nullable: false,
-    transformer: BaseEntity.encrypteJSONField(),
+    transformer: BaseEntity.encrypteJSONField('activity_data'),
   })
   activity_data?: ActivityData;
 

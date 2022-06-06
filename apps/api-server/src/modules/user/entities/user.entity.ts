@@ -13,7 +13,7 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: false,
-    transformer: BaseEntity.encrypteField(),
+    transformer: BaseEntity.encrypteField('email'),
   })
   email?: string;
 
@@ -28,7 +28,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    transformer: BaseEntity.encrypteField(),
+    transformer: BaseEntity.encrypteField('first_name'),
   })
   first_name?: string;
 

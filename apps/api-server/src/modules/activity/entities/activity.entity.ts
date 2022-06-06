@@ -1,9 +1,10 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityData } from '../domain/activity-data.model';
 import { ActivityType } from '../domain/activity-type.enum';
 import { LogQuantitySummaryType } from '../domain/log-quantity-summary-type.enum';
 import { ActivitySequence } from './activity-sequence.entity';
+import { ComplitedActivity } from './complited-activity.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -49,4 +50,7 @@ export class Activity extends BaseEntity {
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
+
+  @OneToMany(() => ComplitedActivity, (complited_activity) => complited_activity.activity)
+  complited_activities?: ComplitedActivity[];
 }

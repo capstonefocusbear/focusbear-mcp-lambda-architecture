@@ -54,7 +54,7 @@ describe('ComplitedActivityService', () => {
       note_logged: 'some text',
       device_id: randomUUID(),
       activity_sequence_id: ActivitySequenceDummy.id,
-      timestamp: Date.now().toString(),
+      timestamp: new Date(Date.now()),
     };
 
     const user_id = randomUUID();

@@ -18,3 +18,7 @@ export const ConfigServiceMock = {
 export const Auth0ManagementServiceMock = {
   getUser: jest.fn(),
 };
+
+export const DeviceServiceMock = {
+  markAsLeader: jest.fn(),
+};

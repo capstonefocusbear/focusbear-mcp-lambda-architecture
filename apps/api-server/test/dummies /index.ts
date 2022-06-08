@@ -5,6 +5,9 @@ import { SerializedActivity } from '../../src/modules/activity/services/activity
 import { Passport } from '../../src/modules/auth/domain/passport.model';
 import { User } from '../../src/modules/user/entities/user.entity';
 import { ActivityType } from '../../src/modules/activity/domain/activity-type.enum';
+import { Device } from '../../src/modules/device/entities/device.entity';
+import { OperatingSystem } from '../../src/modules/device/domain/operating-system.enum';
+import { ActivitySequence } from '../../src/modules/activity/entities/activity-sequence.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -348,3 +351,30 @@ export const userSettingsDBResponseDummy = {
     },
   ],
 };
+
+export const DeviceDummy = new Device(
+  {
+    operating_system: OperatingSystem.Android,
+    user_id: userDummy.id,
+    is_leader: false,
+  },
+  { generateId: true },
+);
+
+export const LeaderDeviceDummy = new Device(
+  {
+    operating_system: OperatingSystem.iOS,
+    is_leader: true,
+  },
+  { generateId: true },
+);
+
+export const UserDevicesListDummy: Device[] = [DeviceDummy, LeaderDeviceDummy];
+
+export const ActivitySequenceDummy = new ActivitySequence(
+  {
+    type: ActivityType.morning,
+    activity_ids: new Array(3).fill(null).map(() => randomUUID()),
+  },
+  { generateId: true },
+);

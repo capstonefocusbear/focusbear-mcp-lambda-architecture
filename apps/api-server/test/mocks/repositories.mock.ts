@@ -2,6 +2,8 @@ export const BaseRepositoryMock = {
   orm: {
     find: jest.fn(),
     findOne: jest.fn(),
+    update: jest.fn(),
+    save: jest.fn(),
     // ... rest methods can be added on demand
   },
   create: jest.fn(),
@@ -18,4 +20,12 @@ export const UserRepositoryMock = {
 export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),
+};
+
+export const ComplitedActivityRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const DeviceRepositoryMock = {
+  ...BaseRepositoryMock,
 };

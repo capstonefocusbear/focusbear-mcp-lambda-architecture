@@ -8,6 +8,7 @@ import { PassportMiddleware } from './modules/auth/middlewares/passport.middlewa
 import { HelperModule } from './modules/helper/helper.module';
 import { UserModule } from './modules/user/user.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { DeviceModule } from './modules/device/device.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ActivityModule } from './modules/activity/activity.module';
     HelperModule,
     UserModule,
     ActivityModule,
+    DeviceModule,
   ],
   controllers: [AppController],
 })

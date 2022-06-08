@@ -29,7 +29,7 @@ export class ComplitedActivity extends BaseEntity {
   @Column({
     type: 'timestamp',
   })
-  timestamp?: string;
+  timestamp?: Date;
 
   @Column({
     type: 'numeric',

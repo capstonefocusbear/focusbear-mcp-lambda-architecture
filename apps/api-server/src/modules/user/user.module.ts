@@ -13,6 +13,7 @@ import { UserService } from './services/user/user.service';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService],
+  exports: [UserRepository],
   imports: [
     TypeOrmModule.forFeature([User]),
     Auth0Module.registerAsync({

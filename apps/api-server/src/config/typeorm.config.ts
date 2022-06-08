@@ -4,6 +4,7 @@ import { join } from 'path';
 import { ActivitySequence } from '../modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../modules/activity/entities/activity.entity';
 import { ComplitedActivity } from '../modules/activity/entities/complited-activity.entity';
+import { Device } from '../modules/device/entities/device.entity';
 import { User } from '../modules/user/entities/user.entity';
 
 export const typeormConfig = registerAs(
@@ -17,7 +18,7 @@ export const typeormConfig = registerAs(
     database: process.env.POSTGRES_DB,
     synchronize: false,
     logging: true,
-    entities: [User, Activity, ActivitySequence, ComplitedActivity],
+    entities: [User, Activity, ActivitySequence, ComplitedActivity, Device],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
     cli: { migrationsDir: './apps/api-server/migrations' },
   }),

@@ -41,7 +41,7 @@ export class ActivityParserService {
         const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
         const sequence = new ActivitySequence(
           { type, activity_ids, user_id, id: sequenceItem?.id },
-          { generateId: true },
+          { generateId: !sequenceItem?.id },
         );
         const activity_sequence_id = sequence.id;
         const createActivity = ({ id, ...activity_data }: UpdateActivityDto) =>

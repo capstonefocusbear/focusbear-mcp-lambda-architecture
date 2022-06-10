@@ -24,8 +24,13 @@ export const ActivitySequenceRepositoryMock = {
 
 export const CompletedActivityRepositoryMock = {
   ...BaseRepositoryMock,
+  getAggregatedQuantityLogsPerDay: jest.fn(),
 };
 
 export const DeviceRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const ActivityRepositoryMock = {
   ...BaseRepositoryMock,
 };

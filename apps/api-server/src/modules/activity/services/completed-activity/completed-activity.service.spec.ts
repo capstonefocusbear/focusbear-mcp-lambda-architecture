@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import {
+  ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
   DeviceServiceMock,
@@ -16,6 +17,7 @@ import { CompletedActivityService } from './completed-activity.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { CompletedActivity } from '../../entities/completed-activity.entity';
+import { ActivityRepository } from '../../repositories/activity.repository';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -28,6 +30,7 @@ describe('CompletedActivityService', () => {
         DeviceService,
         ActivitySequenceRepository,
         UserRepository,
+        ActivityRepository,
       ],
     })
       .overrideProvider(CompletedActivityRepository)
@@ -38,6 +41,8 @@ describe('CompletedActivityService', () => {
       .useValue(DeviceServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ActivityRepository)
+      .useValue(ActivityRepositoryMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);

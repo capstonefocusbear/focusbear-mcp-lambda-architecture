@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Connection } from 'typeorm';
 import { createBaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 
 @Injectable()
@@ -12,7 +13,7 @@ export class CompletedActivityRepository extends createBaseRepository<CompletedA
   async getAggregatedQuantityLogsPerDay(
     activity_id: string,
     { log_quantity_summary_type = 'SUM', days_number = 30 }: any,
-  ) {
+  ): Promise<CompletedActivityStatItem[]> {
     return this.orm.query(
       `
       SELECT 

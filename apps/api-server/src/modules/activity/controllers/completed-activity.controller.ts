@@ -3,6 +3,7 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { CompletedActivityStats } from '../domain/completed-activity-stats.model';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import {
   GetCompletedActivityStatsParamsDto,
@@ -26,7 +27,7 @@ export class CompletedActivityController {
   getStatsByActivityPerDay(
     @Param() { activity_id }: GetCompletedActivityStatsParamsDto,
     @Query() { days_number }: GetCompletedActivityStatsQueryDto,
-  ) {
+  ): Promise<CompletedActivityStats> {
     return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number });
   }
 }

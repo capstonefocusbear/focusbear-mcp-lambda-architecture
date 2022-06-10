@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
 import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
 import {
   GetCompletedActivityStatsParamsDto,
@@ -29,12 +30,12 @@ export class CompletedActivityService {
   ): Promise<CompletedActivity> {
     const { device_id, activity_sequence_id, activity_id } = completedActivity;
     const sequence = await this.activitySequenceRepository.orm.findOne(activity_sequence_id);
-    if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`); // +
-    const nextCurrentActivity = this.defineNextCurrentActivity(sequence, activity_id); // +
-    await this.deviceService.markAsLeader(device_id, user_id); // +
-    await this.userRepository.orm.update(user_id, { ...nextCurrentActivity }); // +
+    if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
+    const nextCurrentActivity = this.defineNextCurrentActivity(sequence, activity_id);
+    await this.deviceService.markAsLeader(device_id, user_id);
+    await this.userRepository.orm.update(user_id, { ...nextCurrentActivity });
     const newCompletedActivity = new CompletedActivity({ ...completedActivity, user_id });
-    return this.completedActivityRepository.create(newCompletedActivity); // +
+    return this.completedActivityRepository.create(newCompletedActivity);
   }
 
   private defineNextCurrentActivity(
@@ -58,11 +59,16 @@ export class CompletedActivityService {
   async getStatsByActivityPerDay(
     { activity_id }: GetCompletedActivityStatsParamsDto,
     { days_number }: GetCompletedActivityStatsQueryDto,
-  ) {
+  ): Promise<CompletedActivityStats> {
     const activity = await this.activityRepository.orm.findOne(activity_id);
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
     const { log_quantity_summary_type } = activity;
     const aggregationParams = { days_number, log_quantity_summary_type };
-    return this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, aggregationParams);
+    const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(
+      activity_id,
+      aggregationParams,
+    );
+    const stats = new CompletedActivityStats({ items, log_quantity_summary_type });
+    return stats;
   }
 }

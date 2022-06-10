@@ -1,5 +1,9 @@
-export class CompletedActivityStatItem {
-  data?: string;
+import { ApiProperty } from '@nestjs/swagger';
 
-  value?: number;
+export class CompletedActivityStatItem {
+  @ApiProperty()
+  date?: string;
+
+  @ApiProperty()
+  summary?: string;
 }

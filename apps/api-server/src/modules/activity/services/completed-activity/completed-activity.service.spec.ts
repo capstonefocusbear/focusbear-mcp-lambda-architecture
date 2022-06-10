@@ -147,4 +147,30 @@ describe('CompletedActivityService', () => {
       );
     });
   });
+
+  describe('getStatsByActivityPerDay', () => {
+    const params = {
+      activity_id: randomUUID(),
+    };
+
+    const query = {
+      days_number: 30,
+    };
+
+    it('negative: should throw NotFoundException if activity does not exist', async () => {
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `Activity with id: ${params.activity_id} does not exist!`;
+      let exception: any;
+
+      try {
+        await completedactivityService.getStatsByActivityPerDay(params, query);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+  });
 });

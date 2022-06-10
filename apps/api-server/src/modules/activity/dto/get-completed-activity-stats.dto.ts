@@ -11,5 +11,5 @@ export class GetCompletedActivityStatsQueryDto {
 export class GetCompletedActivityStatsParamsDto {
   @IsNotEmpty()
   @IsUUID('4')
-  activity_id?: string;
+  activity_id: string;
 }

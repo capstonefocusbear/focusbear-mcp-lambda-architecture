@@ -3,9 +3,14 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
+import {
+  GetCompletedActivityStatsParamsDto,
+  GetCompletedActivityStatsQueryDto,
+} from '../../dto/get-completed-activity-stats.dto';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { CompletedActivity } from '../../entities/completed-activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
+import { ActivityRepository } from '../../repositories/activity.repository';
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 
 @Injectable()
@@ -15,6 +20,7 @@ export class CompletedActivityService {
     private readonly deviceService: DeviceService,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
+    private readonly activityRepository: ActivityRepository,
   ) {}
 
   async compliteActivity(
@@ -47,5 +53,16 @@ export class CompletedActivityService {
     const current_activity_id = nextActivity || null;
     const current_activity_sequence_id = nextActivity ? id : null;
     return { current_activity_sequence_id, current_activity_id };
+  }
+
+  async getStatsByActivityPerDay(
+    { activity_id }: GetCompletedActivityStatsParamsDto,
+    { days_number }: GetCompletedActivityStatsQueryDto,
+  ) {
+    const activity = await this.activityRepository.orm.findOne(activity_id);
+    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    const { log_quantity_summary_type } = activity;
+    const aggregationParams = { days_number, log_quantity_summary_type };
+    return this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, aggregationParams);
   }
 }

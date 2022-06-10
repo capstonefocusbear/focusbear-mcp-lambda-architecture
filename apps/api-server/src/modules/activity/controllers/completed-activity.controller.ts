@@ -1,9 +1,13 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
+import {
+  GetCompletedActivityStatsParamsDto,
+  GetCompletedActivityStatsQueryDto,
+} from '../dto/get-completed-activity-stats.dto';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 
 @Controller('completed-activity')
@@ -16,5 +20,13 @@ export class CompletedActivityController {
   @Post()
   createCompletedActivity(@Body() completedActivity: CreateCompletedActivityDto, @AuthContext() { user }: Passport) {
     return this.completedActivityService.compliteActivity(completedActivity, { user_id: user.id });
+  }
+
+  @Get(':activity_id/stats')
+  getStatsByActivityPerDay(
+    @Param() { activity_id }: GetCompletedActivityStatsParamsDto,
+    @Query() { days_number }: GetCompletedActivityStatsQueryDto,
+  ) {
+    return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number });
   }
 }

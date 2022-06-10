@@ -22,7 +22,7 @@ export const ActivitySequenceRepositoryMock = {
   findOneByTypeForUser: jest.fn(),
 };
 
-export const ComplitedActivityRepositoryMock = {
+export const CompletedActivityRepositoryMock = {
   ...BaseRepositoryMock,
 };
 

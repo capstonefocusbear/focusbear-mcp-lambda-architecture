@@ -5,8 +5,8 @@ import { Activity } from './activity.entity';
 import { ActivitySequence } from './activity-sequence.entity';
 
 @Entity('completed_activities')
-export class ComplitedActivity extends BaseEntity {
-  constructor({ id, ...sequence }: Partial<ComplitedActivity> = {}, options = { generateId: false }) {
+export class CompletedActivity extends BaseEntity {
+  constructor({ id, ...sequence }: Partial<CompletedActivity> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...sequence });
   }
@@ -42,15 +42,15 @@ export class ComplitedActivity extends BaseEntity {
   })
   activity_note?: string;
 
-  @ManyToOne(() => User, (user) => user.complited_activities)
+  @ManyToOne(() => User, (user) => user.completed_activities)
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => Activity, (activity) => activity.complited_activities)
+  @ManyToOne(() => Activity, (activity) => activity.completed_activities)
   @JoinColumn({ name: 'activity_id' })
   activity?: Activity;
 
-  @ManyToOne(() => ActivitySequence, (sequence) => sequence.complited_activities)
+  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activities)
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_secuence?: ActivitySequence;
 }

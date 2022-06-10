@@ -4,7 +4,7 @@ import { ActivityData } from '../domain/activity-data.model';
 import { ActivityType } from '../domain/activity-type.enum';
 import { LogQuantitySummaryType } from '../domain/log-quantity-summary-type.enum';
 import { ActivitySequence } from './activity-sequence.entity';
-import { ComplitedActivity } from './complited-activity.entity';
+import { CompletedActivity } from './completed-activity.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -51,6 +51,6 @@ export class Activity extends BaseEntity {
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
 
-  @OneToMany(() => ComplitedActivity, (complited_activity) => complited_activity.activity)
-  complited_activities?: ComplitedActivity[];
+  @OneToMany(() => CompletedActivity, (completed_activity) => completed_activity.activity)
+  completed_activities?: CompletedActivity[];
 }

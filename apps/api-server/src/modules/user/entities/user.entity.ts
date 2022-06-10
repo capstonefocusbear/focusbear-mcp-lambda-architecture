@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
-import { ComplitedActivity } from '../../activity/entities/complited-activity.entity';
+import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -86,6 +86,6 @@ export class User extends BaseEntity {
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 
-  @OneToMany(() => ComplitedActivity, (complited_activity) => complited_activity.user)
-  complited_activities?: ComplitedActivity[];
+  @OneToMany(() => CompletedActivity, (completed_activity) => completed_activity.user)
+  completed_activities?: CompletedActivity[];
 }

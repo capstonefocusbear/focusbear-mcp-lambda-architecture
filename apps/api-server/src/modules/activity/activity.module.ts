@@ -1,16 +1,16 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
-import { ComplitedActivityController } from './controllers/complited-activity.controller';
+import { CompletedActivityController } from './controllers/completed-activity.controller';
 import { ActivitySequenceRepository } from './repositories/activity-sequence.repository';
-import { ComplitedActivityRepository } from './repositories/complited-activity.repository';
+import { CompletedActivityRepository } from './repositories/completed-activity.repository';
 import { ActivityParserService } from './services/activity-parser/activity-parser.service';
-import { ComplitedActivityService } from './services/complited-activity/complited-activity.service';
+import { CompletedActivityService } from './services/completed-activity/completed-activity.service';
 
 @Module({
-  providers: [ActivitySequenceRepository, ActivityParserService, ComplitedActivityService, ComplitedActivityRepository],
+  providers: [ActivitySequenceRepository, ActivityParserService, CompletedActivityService, CompletedActivityRepository],
   exports: [ActivityParserService, ActivitySequenceRepository],
-  controllers: [ComplitedActivityController],
+  controllers: [CompletedActivityController],
   imports: [DeviceModule, forwardRef(() => UserModule)],
 })
 export class ActivityModule {}

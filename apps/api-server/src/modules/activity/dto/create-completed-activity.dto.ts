@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxDate } from 'class-validator';
 
-export class CreateComplitedActivityDto {
+export class CreateCompletedActivityDto {
   @IsNotEmpty()
   @IsUUID('4')
   activity_id: string;

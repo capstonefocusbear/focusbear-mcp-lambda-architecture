@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { join } from 'path';
 import { ActivitySequence } from '../modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../modules/activity/entities/activity.entity';
+import { CompletedActivitySequence } from '../modules/activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../modules/activity/entities/completed-activity.entity';
 import { Device } from '../modules/device/entities/device.entity';
 import { User } from '../modules/user/entities/user.entity';
@@ -18,7 +19,7 @@ export const typeormConfig = registerAs(
     database: process.env.POSTGRES_DB,
     synchronize: false,
     logging: true,
-    entities: [User, Activity, ActivitySequence, CompletedActivity, Device],
+    entities: [User, Activity, ActivitySequence, CompletedActivity, Device, CompletedActivitySequence],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
     cli: { migrationsDir: './apps/api-server/migrations' },
   }),

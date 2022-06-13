@@ -4,6 +4,7 @@ import { ActivityType } from '../domain/activity-type.enum';
 import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
 import { CompletedActivity } from './completed-activity.entity';
+import { CompletedActivitySequence } from './completed-activity-sequence.entity';
 
 @Entity('activity_sequences')
 export class ActivitySequence extends BaseEntity {
@@ -41,4 +42,7 @@ export class ActivitySequence extends BaseEntity {
 
   @OneToMany(() => CompletedActivity, (completed) => completed.activity_secuence)
   completed_activities?: CompletedActivity[];
+
+  @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.activity_secuence)
+  completed_activity_sequences?: CompletedActivitySequence[];
 }

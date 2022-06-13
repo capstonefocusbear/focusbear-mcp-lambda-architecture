@@ -8,8 +8,4 @@ export class ActivityRepository extends createBaseRepository<Activity>(Activity)
   constructor(private readonly connection: Connection) {
     super(connection);
   }
-
-  async findOneByTypeForUser(type: string, user_id: string): Promise<Activity> {
-    return this.orm.findOne({ where: { type, user_id } });
-  }
 }

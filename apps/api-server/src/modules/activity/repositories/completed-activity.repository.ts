@@ -22,7 +22,7 @@ export class CompletedActivityRepository extends createBaseRepository<CompletedA
       FROM completed_activities
       WHERE activity_id = $1
       GROUP BY date_trunc('day', finish_time)
-      ORDER BY date ASC
+      ORDER BY date DESC
       LIMIT $2
     `,
       [activity_id, days_number],

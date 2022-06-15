@@ -8,6 +8,10 @@ import { ActivityType } from '../../src/modules/activity/domain/activity-type.en
 import { Device } from '../../src/modules/device/entities/device.entity';
 import { OperatingSystem } from '../../src/modules/device/domain/operating-system.enum';
 import { ActivitySequence } from '../../src/modules/activity/entities/activity-sequence.entity';
+import { Activity } from '../../src/modules/activity/entities/activity.entity';
+import { LogSummaryType } from '../../src/modules/activity/domain/log-summary-type.enum';
+import { ActivityData } from '../../src/modules/activity/domain/activity-data.model';
+import { CompletedActivity } from '../../src/modules/activity/entities/completed-activity.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -375,6 +379,41 @@ export const ActivitySequenceDummy = new ActivitySequence(
   {
     type: ActivityType.morning,
     activity_ids: new Array(3).fill(null).map(() => randomUUID()),
+    user_id: userDummy.id,
+  },
+  { generateId: true },
+);
+
+export const CompletedActivitiesForSequenceDummy = (sequence: ActivitySequence): CompletedActivity[] => {
+  const duration_logged = 600;
+  return sequence.activity_ids.map(
+    (e, i) =>
+      new CompletedActivity(
+        {
+          activity_id: e,
+          activity_sequence_id: sequence.id,
+          quantity_logged: 50,
+          duration_logged,
+          start_time: new Date(Date.now() + i * duration_logged),
+          finish_time: new Date(Date.now() + i * duration_logged + duration_logged),
+        },
+        {
+          generateId: true,
+          log_quantity: true,
+        },
+      ),
+  );
+};
+
+export const ActivityDummy: Activity = new Activity(
+  {
+    user_id: userDummy.id,
+    type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    duration_seconds: 600,
+    activity_data: new ActivityData(),
+    activity_sequence_id: ActivitySequenceDummy.id,
   },
   { generateId: true },
 );

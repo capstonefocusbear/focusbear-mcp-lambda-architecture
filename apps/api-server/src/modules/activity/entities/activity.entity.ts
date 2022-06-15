@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityData } from '../domain/activity-data.model';
 import { ActivityType } from '../domain/activity-type.enum';
-import { LogQuantitySummaryType } from '../domain/log-quantity-summary-type.enum';
+import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivity } from './completed-activity.entity';
 
@@ -35,10 +35,22 @@ export class Activity extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: LogQuantitySummaryType,
+    enum: LogSummaryType,
+    default: LogSummaryType.SUM,
+  })
+  log_summary_type?: string;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  log_quantity?: boolean;
+
+  @Column({
+    type: 'numeric',
     nullable: false,
   })
-  log_quantity_summary_type?: string;
+  duration_seconds?: number;
 
   @Column({
     type: 'jsonb',

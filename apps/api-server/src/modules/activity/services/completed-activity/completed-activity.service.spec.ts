@@ -1,14 +1,21 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import {
   ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
+  CompletedActivitySequenceServiceMock,
   DeviceServiceMock,
   UserRepositoryMock,
 } from '../../../../../test/mocks';
-import { ActivitySequenceDummy, LeaderDeviceDummy } from '../../../../../test/dummies ';
+import {
+  ActivityDummy,
+  ActivitySequenceDummy,
+  DeviceDummy,
+  LeaderDeviceDummy,
+  userDummy,
+} from '../../../../../test/dummies ';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
@@ -18,6 +25,11 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { CompletedActivity } from '../../entities/completed-activity.entity';
 import { ActivityRepository } from '../../repositories/activity.repository';
+import { CompletedActivitySequenceService } from '../completed-activity-sequence/completed-activity-sequence.service';
+import { User } from '../../../user/entities/user.entity';
+import { Activity } from '../../entities/activity.entity';
+import { ActivityStatType } from '../../domain/activity-stat-type.enum';
+import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -31,6 +43,7 @@ describe('CompletedActivityService', () => {
         ActivitySequenceRepository,
         UserRepository,
         ActivityRepository,
+        CompletedActivitySequenceService,
       ],
     })
       .overrideProvider(CompletedActivityRepository)
@@ -43,6 +56,8 @@ describe('CompletedActivityService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityRepository)
       .useValue(ActivityRepositoryMock)
+      .overrideProvider(CompletedActivitySequenceService)
+      .useValue(CompletedActivitySequenceServiceMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -54,15 +69,17 @@ describe('CompletedActivityService', () => {
 
   describe('compliteActivity', () => {
     const completedActivity: CreateCompletedActivityDto = {
-      activity_id: randomUUID(),
+      activity_id: ActivityDummy.id,
       quantity_logged: randomInt(20),
+      duration_logged: 600,
       note_logged: 'some text',
-      device_id: randomUUID(),
-      activity_sequence_id: ActivitySequenceDummy.id,
-      timestamp: new Date(Date.now()),
+      device_id: DeviceDummy.id,
+      activity_sequence_id: ActivityDummy.activity_sequence_id,
+      start_time: new Date(Date.now() - 60),
+      finish_time: new Date(Date.now() - 1),
     };
 
-    const user_id = randomUUID();
+    const user_id = userDummy.id;
 
     const sequenceWhenThereIsNextActivity: ActivitySequence = {
       ...ActivitySequenceDummy,
@@ -90,8 +107,87 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: should throw ConflictException if activity aequence does not containe comoplited activity id', async () => {
+    it('negative: should throw NotFoundException if activity does not exist', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `Activity with id: ${completedActivity.activity_id} does not exist!`;
+      let exception: any;
+
+      try {
+        await completedactivityService.compliteActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: should throw NotFoundException if user does not exist', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `User with id: ${user_id} does not exist!`;
+      let exception: any;
+
+      try {
+        await completedactivityService.compliteActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: should throw BadRequestException if the completing activity_sequence is not a current one for a given user', async () => {
+      const userWithWrongSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithWrongSequence);
+      const errorMsg = `activity_sequence_id: ${completedActivity.activity_sequence_id} is not a current sequence: ${userWithWrongSequence.current_activity_sequence_id}`;
+      let exception: any;
+
+      try {
+        await completedactivityService.compliteActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMsg);
+    });
+
+    it('negative: should throw BadRequestException if the completing activity is not a current one for a given user', async () => {
+      const userWithWrongActivity: User = {
+        ...userDummy,
+        current_activity_id: randomUUID(),
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithWrongActivity);
+      const errorMsg = `activity_id: ${completedActivity.activity_id} is not a current activity: ${userWithWrongActivity.current_activity_id}`;
+      let exception: any;
+
+      try {
+        await completedactivityService.compliteActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMsg);
+    });
+
+    it('negative: should throw ConflictException if activity aequence does not containe completing activity id', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const errorMessage = `Activity with id: ${completedActivity.activity_id} does not exist in the Secuense with id: ${completedActivity.activity_sequence_id}!`;
       let exception: any;
 
@@ -108,6 +204,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: the target device should be marked as leader', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
 
       await completedactivityService.compliteActivity(completedActivity, { user_id });
 
@@ -116,6 +214,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if there is the next activity in the sequence, its id should be set as current_activity_id for the given User', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
 
       await completedactivityService.compliteActivity(completedActivity, { user_id });
 
@@ -127,6 +227,9 @@ describe('CompletedActivityService', () => {
 
     it('positive: if there is no next activity in the sequence, current_activity_id should be set NULL for the given User', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivitySequenceServiceMock.compliteActivitySequence.mockResolvedValueOnce(null);
 
       await completedactivityService.compliteActivity(completedActivity, { user_id });
 
@@ -138,19 +241,41 @@ describe('CompletedActivityService', () => {
 
     it('positive: completed activity record should be created', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.compliteActivitySequence.mockResolvedValueOnce(null);
 
       await completedactivityService.compliteActivity(completedActivity, { user_id });
 
       expect(CompletedActivityRepositoryMock.create).toBeCalledWith(
-        new CompletedActivity({ ...completedActivity, user_id }),
+        new CompletedActivity(
+          { ...completedActivity, user_id },
+          { generateId: false, log_quantity: ActivityDummy.log_quantity },
+        ),
+      );
+    });
+
+    it('positive: if there is no next activity in the sequence, this sequence should be completed', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivityRepositoryMock.create.mockResolvedValue(null);
+
+      await completedactivityService.compliteActivity(completedActivity, { user_id });
+
+      const { activity_sequence_id } = completedActivity;
+      expect(CompletedActivitySequenceServiceMock.compliteActivitySequence).toBeCalledWith(
+        activity_sequence_id,
+        user_id,
       );
     });
   });
 
   describe('getStatsByActivityPerDay', () => {
     const params = {
-      activity_id: randomUUID(),
+      activity_id: ActivityDummy.id,
     };
 
     const query = {
@@ -171,6 +296,43 @@ describe('CompletedActivityService', () => {
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: if log_quantity set to false, stat_type value should be "duration"', async () => {
+      const activityWithFalsyQuantityLogs: Activity = { ...ActivityDummy, log_quantity: false };
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
+
+      await completedactivityService.getStatsByActivityPerDay(params, query);
+
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
+        days_number: query.days_number,
+        log_summary_type: activityWithFalsyQuantityLogs.log_summary_type,
+        stat_type: ActivityStatType.duration,
+      });
+    });
+
+    it('positive: if log_quantity set to true, stat_type value should be "quantity"', async () => {
+      const activityWithTruthyQuantityLogs: Activity = { ...ActivityDummy, log_quantity: true };
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(activityWithTruthyQuantityLogs);
+
+      await completedactivityService.getStatsByActivityPerDay(params, query);
+
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
+        days_number: query.days_number,
+        log_summary_type: activityWithTruthyQuantityLogs.log_summary_type,
+        stat_type: ActivityStatType.quantity,
+      });
+    });
+
+    it('positive: should return instance of CompletedActivityStats', async () => {
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      const statItemsDummy = [{ date: new Date(Date.now()), summary: '30' }];
+      CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce(statItemsDummy);
+
+      const result = await completedactivityService.getStatsByActivityPerDay(params, query);
+
+      expect(result).toBeDefined();
+      expect(result).toBeInstanceOf(CompletedActivityStats);
     });
   });
 });

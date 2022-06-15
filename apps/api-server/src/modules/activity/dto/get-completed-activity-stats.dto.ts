@@ -1,9 +1,10 @@
 /* eslint-disable */
-import { IsInt, IsNotEmpty, IsUUID, Max } from 'class-validator';
+import { IsInt, IsNotEmpty, IsUUID, Max, Min } from 'class-validator';
 
 export class GetCompletedActivityStatsQueryDto {
   @IsNotEmpty()
   @IsInt()
+  @Min(1)
   @Max(180)
   days_number: number = 30; // default value
 }

@@ -22,3 +22,7 @@ export const Auth0ManagementServiceMock = {
 export const DeviceServiceMock = {
   markAsLeader: jest.fn(),
 };
+
+export const CompletedActivitySequenceServiceMock = {
+  compliteActivitySequence: jest.fn(),
+};

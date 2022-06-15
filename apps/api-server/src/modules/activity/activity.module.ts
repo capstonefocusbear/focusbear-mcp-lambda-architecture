@@ -7,6 +7,7 @@ import { ActivityRepository } from './repositories/activity.repository';
 import { CompletedActivitySequenceRepository } from './repositories/completed-activity-sequence.repository';
 import { CompletedActivityRepository } from './repositories/completed-activity.repository';
 import { ActivityParserService } from './services/activity-parser/activity-parser.service';
+import { CompletedActivitySequenceService } from './services/completed-activity-sequence/completed-activity-sequence.service';
 import { CompletedActivityService } from './services/completed-activity/completed-activity.service';
 
 @Module({
@@ -17,6 +18,7 @@ import { CompletedActivityService } from './services/completed-activity/complete
     CompletedActivityRepository,
     ActivityRepository,
     CompletedActivitySequenceRepository,
+    CompletedActivitySequenceService,
   ],
   exports: [ActivityParserService, ActivitySequenceRepository],
   controllers: [CompletedActivityController],

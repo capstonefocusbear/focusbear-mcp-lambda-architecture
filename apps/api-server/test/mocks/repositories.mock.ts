@@ -25,6 +25,8 @@ export const ActivitySequenceRepositoryMock = {
 export const CompletedActivityRepositoryMock = {
   ...BaseRepositoryMock,
   getAggregatedQuantityLogsPerDay: jest.fn(),
+  findInSequenceAfterTime: jest.fn(),
+  getTotalDurationsPerTimeRange: jest.fn(),
 };
 
 export const DeviceRepositoryMock = {
@@ -33,4 +35,9 @@ export const DeviceRepositoryMock = {
 
 export const ActivityRepositoryMock = {
   ...BaseRepositoryMock,
+};
+
+export const CompletedActivitySequenceRepositoryMock = {
+  ...BaseRepositoryMock,
+  getMostRecentCompletedTime: jest.fn(),
 };

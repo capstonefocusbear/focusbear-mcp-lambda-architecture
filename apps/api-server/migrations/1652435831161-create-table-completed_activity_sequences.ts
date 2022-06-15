@@ -8,6 +8,7 @@ export class CreateTableCompletedActivitySequences1652435831161 implements Migra
         "activity_sequence_id" UUID REFERENCES "activity_sequences" ON DELETE SET NULL ON UPDATE CASCADE,
         "user_id" UUID REFERENCES "users",
         "start_time" TIMESTAMP,
+        "finish_time" TIMESTAMP,
         "duration_minutes" NUMERIC,
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -16,6 +17,7 @@ export class CreateTableCompletedActivitySequences1652435831161 implements Migra
       CREATE INDEX ON "completed_activity_sequences" ("activity_sequence_id");
       CREATE INDEX ON "completed_activity_sequences" ("user_id");
       CREATE INDEX ON "completed_activity_sequences" ("start_time");
+      CREATE INDEX ON "completed_activity_sequences" ("finish_time");
     `);
   }
 

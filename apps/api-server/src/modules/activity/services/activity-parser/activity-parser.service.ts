@@ -25,7 +25,13 @@ export class ActivityParserService {
     for (const { type, activities, activity_ids } of activity_sequences) {
       const key = `${type}_activities`;
       const findActivity = (id): Activity => activities.find((e) => e.id === id);
-      const mapActivity = ({ id, activity_data }: Activity) => ({ id, ...activity_data });
+      const mapActivity = ({ id, duration_seconds, log_quantity, log_summary_type, activity_data }: Activity) => ({
+        id,
+        duration_seconds,
+        log_quantity,
+        log_summary_type,
+        ...activity_data,
+      });
       const orderedActivities = activity_ids.map(findActivity).map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
     }
@@ -44,8 +50,23 @@ export class ActivityParserService {
           { generateId: !sequenceItem?.id },
         );
         const activity_sequence_id = sequence.id;
-        const createActivity = ({ id, ...activity_data }: UpdateActivityDto) =>
-          new Activity({ id, activity_data, type, user_id, activity_sequence_id });
+        const createActivity = ({
+          id,
+          duration_seconds,
+          log_quantity,
+          log_summary_type,
+          ...activity_data
+        }: UpdateActivityDto) =>
+          new Activity({
+            id,
+            activity_data,
+            type,
+            user_id,
+            activity_sequence_id,
+            duration_seconds,
+            log_quantity,
+            log_summary_type,
+          });
         const activities = serializedActivities.map(createActivity);
         return { sequence, activities };
       }),

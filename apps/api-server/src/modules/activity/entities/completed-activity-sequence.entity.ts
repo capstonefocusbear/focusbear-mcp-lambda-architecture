@@ -26,6 +26,11 @@ export class CompletedActivitySequence extends BaseEntity {
   start_time?: Date;
 
   @Column({
+    type: 'timestamp',
+  })
+  finish_time?: Date;
+
+  @Column({
     type: 'numeric',
   })
   duration_minutes?: number;

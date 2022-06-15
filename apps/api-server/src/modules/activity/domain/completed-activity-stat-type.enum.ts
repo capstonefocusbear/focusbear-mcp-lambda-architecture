@@ -1,4 +1,4 @@
 export enum CompletedActivityStatType {
-  logQuantity = 'logQuantity',
+  quantity = 'quantity',
   duration = 'duration',
 }

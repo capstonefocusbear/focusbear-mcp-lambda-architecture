@@ -6,9 +6,13 @@ import { ActivitySequence } from './activity-sequence.entity';
 
 @Entity('completed_activities')
 export class CompletedActivity extends BaseEntity {
-  constructor({ id, ...sequence }: Partial<CompletedActivity> = {}, options = { generateId: false }) {
-    super(id, options);
-    Object.assign(this, { ...sequence });
+  constructor(
+    { id, ...sequence }: Partial<CompletedActivity> = {},
+    options = { generateId: false, log_quantity: false },
+  ) {
+    super(id, { ...options });
+    const quantity_logged = options.log_quantity ? sequence.quantity_logged : null;
+    Object.assign(this, { ...sequence, quantity_logged });
   }
 
   @Column({
@@ -29,12 +33,22 @@ export class CompletedActivity extends BaseEntity {
   @Column({
     type: 'timestamp',
   })
-  timestamp?: Date;
+  start_time?: Date;
+
+  @Column({
+    type: 'timestamp',
+  })
+  finish_time?: Date;
 
   @Column({
     type: 'numeric',
   })
   quantity_logged?: number;
+
+  @Column({
+    type: 'numeric',
+  })
+  duration_logged?: number;
 
   @Column({
     type: 'text',

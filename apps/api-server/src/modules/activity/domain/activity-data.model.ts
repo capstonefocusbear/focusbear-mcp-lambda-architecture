@@ -5,7 +5,6 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
-  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -22,11 +21,6 @@ export class ActivityData {
   @ApiProperty()
   name: string;
 
-  @IsNotEmpty()
-  @IsInt()
-  @ApiProperty()
-  duration_seconds: number;
-
   @IsArray()
   @IsOptional()
   @ValidateIf((o) => o.video_urls?.length > 0)
@@ -39,11 +33,6 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty()
   include_in_every_break?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty()
-  log_quantity?: boolean;
 
   @IsString()
   @IsOptional()

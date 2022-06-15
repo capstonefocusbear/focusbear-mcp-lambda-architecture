@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import {
@@ -142,6 +142,24 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: should throw BadRequestException if there is no current sequence and given activity is not first in the sequence', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const errorMsg = `Unable to set new current sequence: ${sequenceWhenThereIsNoNextActivity.id}, given activity: ${completedActivity.activity_id} is not first!`;
+      let exception: any;
+
+      try {
+        await completedactivityService.compliteActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMsg);
+    });
+
     it('negative: should throw BadRequestException if the completing activity_sequence is not a current one for a given user', async () => {
       const userWithWrongSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
@@ -184,24 +202,6 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMsg);
     });
 
-    it('negative: should throw ConflictException if activity aequence does not containe completing activity id', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
-      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      const errorMessage = `Activity with id: ${completedActivity.activity_id} does not exist in the Secuense with id: ${completedActivity.activity_sequence_id}!`;
-      let exception: any;
-
-      try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(ConflictException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
     it('positive: the target device should be marked as leader', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
@@ -226,9 +226,14 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: if there is no next activity in the sequence, current_activity_id should be set NULL for the given User', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+      };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
       CompletedActivitySequenceServiceMock.compliteActivitySequence.mockResolvedValueOnce(null);
 
       await completedactivityService.compliteActivity(completedActivity, { user_id });
@@ -257,9 +262,14 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: if there is no next activity in the sequence, this sequence should be completed', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+      };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivityRepositoryMock.create.mockResolvedValue(null);
 

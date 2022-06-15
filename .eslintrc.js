@@ -33,6 +33,7 @@ module.exports = {
     'no-restricted-syntax': 'off',
     'import/no-cycle': 'off',
     '@typescript-eslint/naming-convention': 'off',
+    'consistent-return': 'off',
     'max-len': [0, 120, 2, { ignoreUrls: true }]
   },
 };

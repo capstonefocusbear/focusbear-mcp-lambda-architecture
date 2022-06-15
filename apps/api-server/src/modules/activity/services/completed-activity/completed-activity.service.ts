@@ -35,7 +35,7 @@ export class CompletedActivityService {
   ): Promise<CompletedActivity> {
     const { device_id, activity_sequence_id, activity_id } = completedActivity;
     const [sequence, activity, user] = await this.fetchPreparatoryData(activity_sequence_id, activity_id, user_id);
-    this.validateComplitingActivity(user, { activity_sequence_id, activity_id });
+    this.validateComplitingActivity(user, sequence, activity_id);
     const { nextActivity, ...currentValues } = this.defineNextCurrentActivity(sequence, activity_id);
     await this.deviceService.markAsLeader(device_id, user_id);
     await this.userRepository.orm.update(user_id, { ...currentValues });
@@ -65,16 +65,23 @@ export class CompletedActivityService {
     return [sequence, activity, user];
   }
 
-  private validateComplitingActivity(user: User, { activity_sequence_id, activity_id }): void | never {
+  private validateComplitingActivity(user: User, sequence: ActivitySequence, activity_id: string): void | never {
     const { current_activity_id, current_activity_sequence_id } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
-    if (isNewCurrentSequence) return; // additional check, if it is a new Sequence, compliting activity should be first in the order
-    const isComplitingActivitySequenceTheCurrent = activity_sequence_id === current_activity_sequence_id;
+    if (isNewCurrentSequence) return this.validateNewSequence(sequence, activity_id);
+    const isComplitingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
     const isComplitingActivityTheCurrent = activity_id === current_activity_id;
-    const notCurrentSequenceMessage = `activity_sequence_id: ${activity_sequence_id} is not a current sequence: ${current_activity_sequence_id}`;
+    const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
     const notCurrentActivityMessage = `activity_id: ${activity_id} is not a current activity: ${current_activity_id}`;
     if (!isComplitingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
     if (!isComplitingActivityTheCurrent) throw new BadRequestException(notCurrentActivityMessage);
+  }
+
+  private validateNewSequence({ activity_ids, id }: ActivitySequence, activity_id: string): void | never {
+    const completingActivityOrder = activity_ids.indexOf(activity_id);
+    const isFirstItemInSequence = completingActivityOrder === 0;
+    const errorMessage = `Unable to set new current sequence: ${id}, given activity: ${activity_id} is not first!`;
+    if (!isFirstItemInSequence) throw new BadRequestException(errorMessage);
   }
 
   private defineNextCurrentActivity(

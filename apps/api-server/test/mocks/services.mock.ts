@@ -24,5 +24,5 @@ export const DeviceServiceMock = {
 };
 
 export const CompletedActivitySequenceServiceMock = {
-  compliteActivitySequence: jest.fn(),
+  completeActivitySequence: jest.fn(),
 };

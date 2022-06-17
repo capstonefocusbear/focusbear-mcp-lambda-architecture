@@ -41,7 +41,7 @@ describe('CompletedActivitySequenceService', () => {
     expect(completedActivitySequenceService).toBeDefined();
   });
 
-  describe('compliteActivitySequence', () => {
+  describe('completeActivitySequence', () => {
     const activity_sequence_id = ActivitySequenceDummy.id;
     const { user_id } = ActivitySequenceDummy;
 
@@ -51,7 +51,7 @@ describe('CompletedActivitySequenceService', () => {
       let exception: any;
 
       try {
-        await completedActivitySequenceService.compliteActivitySequence(activity_sequence_id, user_id);
+        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
       } catch (error) {
         exception = error;
       }
@@ -71,7 +71,7 @@ describe('CompletedActivitySequenceService', () => {
       let exception: any;
 
       try {
-        await completedActivitySequenceService.compliteActivitySequence(activity_sequence_id, user_id);
+        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
       } catch (error) {
         exception = error;
       }
@@ -93,7 +93,7 @@ describe('CompletedActivitySequenceService', () => {
       let exception: any;
 
       try {
-        await completedActivitySequenceService.compliteActivitySequence(activity_sequence_id, user_id);
+        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
       } catch (error) {
         exception = error;
       }
@@ -111,7 +111,7 @@ describe('CompletedActivitySequenceService', () => {
       const completedActivities = CompletedActivitiesForSequenceDummy(ActivitySequenceDummy);
       CompletedActivityRepositoryMock.findInSequenceAfterTime.mockResolvedValueOnce(completedActivities);
 
-      await completedActivitySequenceService.compliteActivitySequence(activity_sequence_id, user_id);
+      await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
 
       const timeRange = {
         start_time: completedActivities[0].finish_time,
@@ -133,7 +133,7 @@ describe('CompletedActivitySequenceService', () => {
       const totalDuration = '1000';
       CompletedActivityRepositoryMock.getTotalDurationsPerTimeRange.mockResolvedValueOnce(totalDuration);
 
-      await completedActivitySequenceService.compliteActivitySequence(activity_sequence_id, user_id);
+      await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
 
       expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith(
         new CompletedActivitySequence({

@@ -67,7 +67,7 @@ describe('CompletedActivityService', () => {
     expect(completedactivityService).toBeDefined();
   });
 
-  describe('compliteActivity', () => {
+  describe('completeActivity', () => {
     const completedActivity: CreateCompletedActivityDto = {
       activity_id: ActivityDummy.id,
       quantity_logged: randomInt(20),
@@ -97,7 +97,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -114,7 +114,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -132,7 +132,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -150,7 +150,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -169,7 +169,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -192,7 +192,7 @@ describe('CompletedActivityService', () => {
       let exception: any;
 
       try {
-        await completedactivityService.compliteActivity(completedActivity, { user_id });
+        await completedactivityService.completeActivity(completedActivity, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -207,7 +207,7 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
 
-      await completedactivityService.compliteActivity(completedActivity, { user_id });
+      await completedactivityService.completeActivity(completedActivity, { user_id });
 
       expect(DeviceServiceMock.markAsLeader).toBeCalledWith(completedActivity.device_id, user_id);
     });
@@ -217,7 +217,7 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
 
-      await completedactivityService.compliteActivity(completedActivity, { user_id });
+      await completedactivityService.completeActivity(completedActivity, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
@@ -234,9 +234,9 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
-      CompletedActivitySequenceServiceMock.compliteActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
 
-      await completedactivityService.compliteActivity(completedActivity, { user_id });
+      await completedactivityService.completeActivity(completedActivity, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: null,
@@ -249,9 +249,9 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
-      CompletedActivitySequenceServiceMock.compliteActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
 
-      await completedactivityService.compliteActivity(completedActivity, { user_id });
+      await completedactivityService.completeActivity(completedActivity, { user_id });
 
       expect(CompletedActivityRepositoryMock.create).toBeCalledWith(
         new CompletedActivity(
@@ -273,10 +273,10 @@ describe('CompletedActivityService', () => {
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivityRepositoryMock.create.mockResolvedValue(null);
 
-      await completedactivityService.compliteActivity(completedActivity, { user_id });
+      await completedactivityService.completeActivity(completedActivity, { user_id });
 
       const { activity_sequence_id } = completedActivity;
-      expect(CompletedActivitySequenceServiceMock.compliteActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
         activity_sequence_id,
         user_id,
       );

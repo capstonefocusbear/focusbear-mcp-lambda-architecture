@@ -29,7 +29,7 @@ export class CompletedActivityService {
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
   ) {}
 
-  async compliteActivity(
+  async completeActivity(
     completedActivity: CreateCompletedActivityDto,
     { user_id }: GetUserSettingsDto,
   ): Promise<CompletedActivity> {
@@ -45,7 +45,7 @@ export class CompletedActivityService {
       { log_quantity, generateId: false },
     );
     const createdItem = await this.completedActivityRepository.create(newCompletedActivity);
-    if (!nextActivity) await this.completedActivitySequenceService.compliteActivitySequence(sequence.id, user_id);
+    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
     return createdItem;
   }
 

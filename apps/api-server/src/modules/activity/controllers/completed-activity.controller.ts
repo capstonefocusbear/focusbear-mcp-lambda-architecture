@@ -20,7 +20,7 @@ export class CompletedActivityController {
 
   @Post()
   createCompletedActivity(@Body() completedActivity: CreateCompletedActivityDto, @AuthContext() { user }: Passport) {
-    return this.completedActivityService.compliteActivity(completedActivity, { user_id: user.id });
+    return this.completedActivityService.completeActivity(completedActivity, { user_id: user.id });
   }
 
   @Get(':activity_id/stats')

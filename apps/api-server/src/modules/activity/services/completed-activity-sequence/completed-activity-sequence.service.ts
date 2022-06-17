@@ -14,16 +14,14 @@ export class CompletedActivitySequenceService {
     private readonly activitySequenceRepository: ActivitySequenceRepository,
   ) {}
 
-  async compliteActivitySequence(activity_sequence_id: string, user_id: string): Promise<CompletedActivitySequence> {
+  async completeActivitySequence(activity_sequence_id: string, user_id: string): Promise<CompletedActivitySequence> {
     const sequence = await this.activitySequenceRepository.orm.findOne(activity_sequence_id);
     if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
     const { activity_ids, id } = sequence;
-    const lastCompletedSequenceFinishTime = await this.completedActivitySequenceRepository.getMostRecentCompletedTime(
-      id,
-    );
+    const lastCompletedSequenceTime = await this.completedActivitySequenceRepository.getMostRecentCompletedTime(id);
     const completedActivities = await this.completedActivityRepository.findInSequenceAfterTime(
       id,
-      lastCompletedSequenceFinishTime,
+      lastCompletedSequenceTime,
     );
     const mappedCompletedActivities = this.mapCompletedActivitiesWithSequence(activity_ids, completedActivities);
     const metrics = await this.defineCompletedSequenceMetrics(mappedCompletedActivities, activity_ids);

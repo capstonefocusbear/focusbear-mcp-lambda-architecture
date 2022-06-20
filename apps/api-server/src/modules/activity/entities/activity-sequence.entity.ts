@@ -33,6 +33,12 @@ export class ActivitySequence extends BaseEntity {
   })
   activity_ids?: string[];
 
+  @Column({
+    type: 'numeric',
+    nullable: false,
+  })
+  total_duration_seconds?: number;
+
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
   user?: User;

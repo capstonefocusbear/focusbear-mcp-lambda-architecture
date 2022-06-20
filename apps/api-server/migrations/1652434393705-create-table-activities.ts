@@ -12,7 +12,7 @@ export class CreateTableActivities1652434393705 implements MigrationInterface {
         "activity_type" "activity_types",
         "log_summary_type" "log_summary_types" DEFAULT 'SUM',
         "log_quantity" BOOLEAN DEFAULT 'false',
-        "duration_seconds" NUMERIC,
+        "duration_seconds" NUMERIC NOT NULL DEFAULT 0,
         "activity_data" JSONB,
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

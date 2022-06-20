@@ -43,12 +43,7 @@ export class ActivityParserService {
     return Promise.all(
       entries.map(async ([name, serializedActivities]) => {
         const [type] = name.split('_') as [ActivityType];
-        const activity_ids = serializedActivities.map(({ id }) => id);
-        const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
-        const sequence = new ActivitySequence(
-          { type, activity_ids, user_id, id: sequenceItem?.id },
-          { generateId: !sequenceItem?.id },
-        );
+        const sequence = await this.createActivitySequence(serializedActivities, { type, user_id });
         const activity_sequence_id = sequence.id;
         const createActivity = ({
           id,
@@ -71,5 +66,24 @@ export class ActivityParserService {
         return { sequence, activities };
       }),
     );
+  }
+
+  private async createActivitySequence(serializedActivities: Activity[], { type, user_id }): Promise<ActivitySequence> {
+    const activity_ids = serializedActivities.map(({ id }) => id);
+    const total_duration_seconds = this.calculateSequenceDuration(serializedActivities);
+    const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+    const sequence = new ActivitySequence(
+      { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id },
+      { generateId: !sequenceItem?.id },
+    );
+    return sequence;
+  }
+
+  private calculateSequenceDuration(activities: Activity[]): number {
+    const durations = activities.map(({ duration_seconds }) => Number(duration_seconds));
+    const addUp = (accumulator: number, item: number): number => accumulator + item;
+    const initialAccumulator = 0;
+    const sequenceDuration = durations.reduce(addUp, initialAccumulator);
+    return sequenceDuration;
   }
 }

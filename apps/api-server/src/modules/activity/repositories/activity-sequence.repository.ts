@@ -12,4 +12,8 @@ export class ActivitySequenceRepository extends createBaseRepository<ActivitySeq
   async findOneByTypeForUser(type: string, user_id: string): Promise<ActivitySequence> {
     return this.orm.findOne({ where: { type, user_id } });
   }
+
+  async findOneByIdForUser(id: string, user_id: string): Promise<ActivitySequence> {
+    return this.orm.findOne({ where: { id, user_id } });
+  }
 }

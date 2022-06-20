@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsString, Min, ValidateNested } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
 export class UpdateUserSettingsDto {
@@ -16,6 +16,7 @@ export class UpdateUserSettingsDto {
 
   @IsNotEmpty()
   @IsInt()
+  @Min(15)
   break_after_minutes?: number;
 
   @IsNotEmpty()

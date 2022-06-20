@@ -1,5 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceMetrics } from '../../domain/completed-activity-sequence-metrics.interface';
+import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
+import { CompletedActivityStatItem } from '../../domain/completed-activity-stat-item.model';
+import { GetCompletedActivitySequenceStatsParamsDto } from '../../dto/get-completed-activity-sequence-stats.dto';
+import { GetCompletedActivityStatsQueryDto } from '../../dto/get-completed-activity-stats.dto';
+import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../../entities/completed-activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
@@ -12,6 +18,7 @@ export class CompletedActivitySequenceService {
     private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async completeActivitySequence(activity_sequence_id: string, user_id: string): Promise<CompletedActivitySequence> {
@@ -62,5 +69,85 @@ export class CompletedActivitySequenceService {
       finish_time: tailItem.finish_time,
       duration_minutes,
     };
+  }
+
+  async getStatsByActivitySequencePerDay(
+    { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
+    { days_number }: GetCompletedActivityStatsQueryDto,
+    user_id: string,
+  ): Promise<any> {
+    const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
+    const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
+    if (!sequence) throw new NotFoundException(notFoundMessage);
+    const planningDailyDurationSeconds = await this.calculatePlanningDailyDuration(sequence);
+    const planningDailyDurationMinutes = planningDailyDurationSeconds * 60;
+    const daily_durations_minutes = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
+      activity_sequence_id,
+      { days_number },
+    );
+    const average_completion_percent = this.calculateCompletionPercent(
+      daily_durations_minutes,
+      planningDailyDurationMinutes,
+    );
+    return new CompletedActivitySequenceStats({
+      days_number,
+      daily_durations_minutes,
+      activity_sequence_id,
+      average_completion_percent,
+    });
+  }
+
+  private async calculatePlanningDailyDuration(sequence: ActivitySequence): Promise<number> {
+    const strategy = Object.freeze({
+      morning: (e: ActivitySequence) => e.total_duration_seconds,
+      evening: (e: ActivitySequence) => e.total_duration_seconds,
+      break: this.calculatePlanningDailyBreaksDuration,
+    });
+    return strategy[sequence.type](sequence);
+  }
+
+  private async calculatePlanningDailyBreaksDuration(sequence: ActivitySequence): Promise<number> {
+    const { total_duration_seconds, user_id } = sequence;
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const { startup_time, shutdown_time, break_after_minutes } = user;
+    const dayDurationSeconds = this.countDayDurationSeconds(startup_time, shutdown_time);
+    const breakAfterSeconds = break_after_minutes * 60;
+    const breaksPerDay = this.countBreaksPerDay(breakAfterSeconds, total_duration_seconds, dayDurationSeconds);
+    const planningDailyBreaksDurationSeconds = breaksPerDay * total_duration_seconds;
+    return planningDailyBreaksDurationSeconds;
+  }
+
+  private countDayDurationSeconds(startup_time: string, shutdown_time: string): number {
+    const parseMilitaryTimeToNumber = (time: string): number => Number(time.split(':').join('.'));
+    const startup = parseMilitaryTimeToNumber(startup_time);
+    const shutdown = parseMilitaryTimeToNumber(shutdown_time);
+    const dayDurationSeconds = (shutdown - startup) * 60 * 60;
+    return dayDurationSeconds;
+  }
+
+  private countBreaksPerDay(
+    breakAfterSeconds: number,
+    breakDurationSeconds: number,
+    dayDurationSeconds: number,
+  ): number {
+    const breakIterationDurationSeconds = breakAfterSeconds + breakDurationSeconds;
+    const breaks = Math.floor(dayDurationSeconds / breakIterationDurationSeconds);
+    return breaks;
+  }
+
+  private calculateCompletionPercent(
+    dailyDurationsMinutes: CompletedActivityStatItem[],
+    planningDailyDurationMinutes: number,
+  ): number {
+    const acceptableDeviation = 20; // based on business requirements
+    const countDailyCompletionPercentDeviation = ({ summary }) => (summary / planningDailyDurationMinutes) * 100 - 100;
+    const dailyCompetionPercentDeviations = dailyDurationsMinutes.map(countDailyCompletionPercentDeviation);
+    const hasAcceptableDeviation = (deviation: number): boolean => +deviation < acceptableDeviation;
+    const itemsWithAcceptableDeviation = dailyCompetionPercentDeviations.filter(hasAcceptableDeviation);
+    const totalDaysWithAcceptableDeviation = itemsWithAcceptableDeviation.length;
+    const totalDays = dailyDurationsMinutes.length;
+    const completionPercent = (totalDaysWithAcceptableDeviation / totalDays) * 100;
+    return completionPercent;
   }
 }

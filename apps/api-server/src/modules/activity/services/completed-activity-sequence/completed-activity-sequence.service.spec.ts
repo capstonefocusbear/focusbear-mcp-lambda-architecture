@@ -4,13 +4,17 @@ import {
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
   CompletedActivitySequenceRepositoryMock,
+  UserRepositoryMock,
 } from '../../../../../test/mocks';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 import { CompletedActivitySequenceService } from './completed-activity-sequence.service';
-import { ActivitySequenceDummy, CompletedActivitiesForSequenceDummy } from '../../../../../test/dummies ';
+import { ActivitySequenceDummy, CompletedActivitiesForSequenceDummy, userDummy } from '../../../../../test/dummies ';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
+import { UserRepository } from '../../../user/repositories/user.repository';
+import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
+import { ActivityType } from '../../domain/activity-type.enum';
 
 describe('CompletedActivitySequenceService', () => {
   let completedActivitySequenceService: CompletedActivitySequenceService;
@@ -22,6 +26,7 @@ describe('CompletedActivitySequenceService', () => {
         CompletedActivitySequenceRepository,
         CompletedActivityRepository,
         ActivitySequenceRepository,
+        UserRepository,
       ],
     })
       .overrideProvider(CompletedActivitySequenceRepository)
@@ -30,6 +35,8 @@ describe('CompletedActivitySequenceService', () => {
       .useValue(CompletedActivityRepositoryMock)
       .overrideProvider(ActivitySequenceRepository)
       .useValue(ActivitySequenceRepositoryMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     completedActivitySequenceService = moduleRef.get<CompletedActivitySequenceService>(
@@ -144,6 +151,74 @@ describe('CompletedActivitySequenceService', () => {
           duration_minutes: Number(totalDuration) / 60,
         }),
       );
+    });
+  });
+
+  describe('getStatsByActivitySequencePerDay', () => {
+    const activity_sequence_id = ActivitySequenceDummy.id;
+    const days_number = 30;
+    const user_id = userDummy.id;
+
+    it('negative: should throw NotFoundException if activity_sequence does not exist for user', async () => {
+      ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(null);
+      const errorMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
+      let exception: any;
+
+      try {
+        await completedActivitySequenceService.getStatsByActivitySequencePerDay(
+          { activity_sequence_id },
+          { days_number },
+          user_id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return instance of CompletedActivitySequenceStats', async () => {
+      ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(ActivitySequenceDummy);
+      const statItemsDummy = [{ date: new Date(Date.now()), summary: '6' }];
+      CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
+
+      const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
+        { activity_sequence_id },
+        { days_number },
+        user_id,
+      );
+
+      expect(result).toBeDefined();
+      expect(result).toBeInstanceOf(CompletedActivitySequenceStats);
+      expect(result.activity_sequence_id).toEqual(activity_sequence_id);
+      expect(result.days_number).toEqual(days_number);
+      expect(result.average_completion_percent).toEqual(100);
+      expect(result.daily_durations_minutes.length).toEqual(1);
+      expect(result.daily_durations_minutes[0].date).toEqual(statItemsDummy[0].date);
+      expect(result.daily_durations_minutes[0].summary).toEqual(statItemsDummy[0].summary);
+    });
+
+    it('positive: if sequence type is "break", total planning duration should be counted as "breaks * sequence_duration"', async () => {
+      const breakTypeActivitySequence = { ...ActivitySequenceDummy, type: ActivityType.break };
+      ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(breakTypeActivitySequence);
+      const statItemsDummy = [
+        { date: new Date(Date.now()), summary: '6' },
+        { date: new Date(Date.now() - 1000), summary: '6' },
+      ];
+      CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+
+      const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
+        { activity_sequence_id },
+        { days_number },
+        user_id,
+      );
+
+      expect(result).toBeDefined();
+      expect(result).toBeInstanceOf(CompletedActivitySequenceStats);
+      expect(result.average_completion_percent).toEqual(0);
     });
   });
 });

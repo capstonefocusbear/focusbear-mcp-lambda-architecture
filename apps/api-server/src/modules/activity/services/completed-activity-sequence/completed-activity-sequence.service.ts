@@ -75,12 +75,12 @@ export class CompletedActivitySequenceService {
     { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
     { days_number }: GetCompletedActivityStatsQueryDto,
     user_id: string,
-  ): Promise<any> {
+  ): Promise<CompletedActivitySequenceStats> {
     const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
     const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
     if (!sequence) throw new NotFoundException(notFoundMessage);
     const planningDailyDurationSeconds = await this.calculatePlanningDailyDuration(sequence);
-    const planningDailyDurationMinutes = planningDailyDurationSeconds * 60;
+    const planningDailyDurationMinutes = planningDailyDurationSeconds / 60;
     const daily_durations_minutes = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
       activity_sequence_id,
       { days_number },
@@ -101,7 +101,7 @@ export class CompletedActivitySequenceService {
     const strategy = Object.freeze({
       morning: (e: ActivitySequence) => e.total_duration_seconds,
       evening: (e: ActivitySequence) => e.total_duration_seconds,
-      break: this.calculatePlanningDailyBreaksDuration,
+      break: (e: ActivitySequence) => this.calculatePlanningDailyBreaksDuration(e),
     });
     return strategy[sequence.type](sequence);
   }
@@ -109,11 +109,10 @@ export class CompletedActivitySequenceService {
   private async calculatePlanningDailyBreaksDuration(sequence: ActivitySequence): Promise<number> {
     const { total_duration_seconds, user_id } = sequence;
     const user = await this.userRepository.orm.findOne(user_id);
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const { startup_time, shutdown_time, break_after_minutes } = user;
     const dayDurationSeconds = this.countDayDurationSeconds(startup_time, shutdown_time);
     const breakAfterSeconds = break_after_minutes * 60;
-    const breaksPerDay = this.countBreaksPerDay(breakAfterSeconds, total_duration_seconds, dayDurationSeconds);
+    const breaksPerDay = this.countBreaksPerDay(breakAfterSeconds, Number(total_duration_seconds), dayDurationSeconds);
     const planningDailyBreaksDurationSeconds = breaksPerDay * total_duration_seconds;
     return planningDailyBreaksDurationSeconds;
   }
@@ -141,9 +140,9 @@ export class CompletedActivitySequenceService {
     planningDailyDurationMinutes: number,
   ): number {
     const acceptableDeviation = 20; // based on business requirements
-    const countDailyCompletionPercentDeviation = ({ summary }) => (summary / planningDailyDurationMinutes) * 100 - 100;
+    const countDailyCompletionPercentDeviation = ({ summary }) => (+summary / planningDailyDurationMinutes) * 100 - 100;
     const dailyCompetionPercentDeviations = dailyDurationsMinutes.map(countDailyCompletionPercentDeviation);
-    const hasAcceptableDeviation = (deviation: number): boolean => +deviation < acceptableDeviation;
+    const hasAcceptableDeviation = (deviation: number): boolean => Math.abs(deviation) < acceptableDeviation;
     const itemsWithAcceptableDeviation = dailyCompetionPercentDeviations.filter(hasAcceptableDeviation);
     const totalDaysWithAcceptableDeviation = itemsWithAcceptableDeviation.length;
     const totalDays = dailyDurationsMinutes.length;

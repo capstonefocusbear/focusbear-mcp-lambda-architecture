@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
+import { CompletedActivitySequenceController } from './controllers/completed-activity-sequence.controller';
 import { CompletedActivityController } from './controllers/completed-activity.controller';
 import { ActivitySequenceRepository } from './repositories/activity-sequence.repository';
 import { ActivityRepository } from './repositories/activity.repository';
@@ -21,7 +22,7 @@ import { CompletedActivityService } from './services/completed-activity/complete
     CompletedActivitySequenceService,
   ],
   exports: [ActivityParserService, ActivitySequenceRepository],
-  controllers: [CompletedActivityController],
+  controllers: [CompletedActivityController, CompletedActivitySequenceController],
   imports: [DeviceModule, forwardRef(() => UserModule)],
 })
 export class ActivityModule {}

@@ -20,6 +20,7 @@ export const UserRepositoryMock = {
 export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),
+  findOneByIdForUser: jest.fn(),
 };
 
 export const CompletedActivityRepositoryMock = {
@@ -40,4 +41,5 @@ export const ActivityRepositoryMock = {
 export const CompletedActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   getMostRecentCompletedTime: jest.fn(),
+  getAggregatedDurationLogsPerDay: jest.fn(),
 };

@@ -380,6 +380,7 @@ export const ActivitySequenceDummy = new ActivitySequence(
     type: ActivityType.morning,
     activity_ids: new Array(3).fill(null).map(() => randomUUID()),
     user_id: userDummy.id,
+    total_duration_seconds: 360,
   },
   { generateId: true },
 );

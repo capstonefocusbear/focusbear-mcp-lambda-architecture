@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { randomUUID } from 'crypto';
 import { auth0UserDummy, userDummy } from '../../../../../test/dummies ';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { Auth0ManagementServiceMock, UserRepositoryMock } from '../../../../../test/mocks';
@@ -58,6 +59,36 @@ describe('UserService', () => {
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
       expect(result.id).toBeString();
+    });
+  });
+
+  describe('getUserDetails', () => {
+    const id = randomUUID();
+
+    it('positive: getUserDetails should be called', async () => {
+      try {
+        await userService.getUserDetails(id);
+      } catch (err) {
+        console.log(err);
+      }
+
+      expect(UserRepositoryMock.getUserDetails).toBeCalledWith(id);
+    });
+
+    it('negative: if user account does not exist, throw the NotFoundException', async () => {
+      UserRepositoryMock.getUserDetails.mockResolvedValueOnce(null);
+      const errorMessage = `User with id: ${id} does not exit!`;
+      let exception: any;
+
+      try {
+        await userService.getUserDetails(id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
     });
   });
 });

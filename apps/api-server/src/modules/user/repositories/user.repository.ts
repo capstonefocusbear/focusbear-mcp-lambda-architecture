@@ -51,4 +51,12 @@ export class UserRepository extends createBaseRepository<User>(User) {
       .where('users.id = :id', { id })
       .getOne();
   }
+
+  async getUserDetails(id: string): Promise<User> {
+    return this.orm
+      .createQueryBuilder('users')
+      .leftJoinAndSelect('users.devices', 'devices')
+      .where('users.id = :id', { id })
+      .getOne();
+  }
 }

@@ -15,6 +15,7 @@ export const BaseRepositoryMock = {
 export const UserRepositoryMock = {
   ...BaseRepositoryMock,
   getUserSettings: jest.fn(),
+  getUserDetails: jest.fn(),
 };
 
 export const ActivitySequenceRepositoryMock = {

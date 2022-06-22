@@ -3,6 +3,7 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
+import { Device } from '../../device/entities/device.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -60,6 +61,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
+    select: false,
   })
   password_for_settings?: string;
 
@@ -92,4 +94,7 @@ export class User extends BaseEntity {
 
   @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.user)
   completed_activity_sequences?: CompletedActivitySequence[];
+
+  @OneToMany(() => Device, (device) => device.user)
+  devices?: Device[];
 }

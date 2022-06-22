@@ -8,7 +8,7 @@ import { OperatingSystem } from '../domain/operating-system.enum';
 export class Device extends BaseEntity {
   constructor({ id, ...device }: Partial<Device> = {}, options = { generateId: false }) {
     super(id, options);
-    Object.assign(this, { ...device });
+    Object.assign(this, { ...device, is_leader: !!device.is_leader });
   }
 
   @Column({

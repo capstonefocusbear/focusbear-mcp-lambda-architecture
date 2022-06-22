@@ -3,6 +3,9 @@ import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { DeviceDummy } from '../../../../../test/dummies ';
 import { DeviceRepositoryMock } from '../../../../../test/mocks';
+import { OperatingSystem } from '../../domain/operating-system.enum';
+import { CreateDeviceDto } from '../../dto/create-device.dto';
+import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
 import { DeviceService } from './device.service';
 
@@ -22,6 +25,20 @@ describe('DeviceService', () => {
 
   it('should be defined', () => {
     expect(deviceService).toBeDefined();
+  });
+
+  describe('createDevice', () => {
+    const createDeviceDto: CreateDeviceDto = {
+      operating_system: OperatingSystem.Android,
+      metadata: {},
+    };
+    const user_id = randomUUID();
+
+    it('positive: new item should be created', async () => {
+      await deviceService.createDevice(createDeviceDto, user_id);
+
+      expect(DeviceRepositoryMock.create).toBeCalledWith(new Device({ ...createDeviceDto, user_id }));
+    });
   });
 
   describe('markAsLeader', () => {

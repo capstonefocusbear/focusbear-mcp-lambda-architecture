@@ -7,14 +7,14 @@ import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { FinishFocusModeDto } from '../../dto/finish-focus-mode.dto';
 import { GetFocusModeParamsDto } from '../../dto/get-focus-mode-params.dto';
 import { StartFocusModeDto } from '../../dto/start-focus-mode.dto';
-import { FocusModeService } from '../../services/focus-mode/focus-mode.service';
+import { FocusModeManagerService } from '../../services/focus-mode-manager/focus-mode-manager.service';
 
 @Controller('focus-mode')
 @ApiTags('focus-mode')
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class FocusModeController {
-  constructor(private readonly focusModeService: FocusModeService) {}
+  constructor(private readonly focusModeManagerService: FocusModeManagerService) {}
 
   @Post(':focus_mode_id/start')
   async startCurrentFocusMode(
@@ -22,7 +22,7 @@ export class FocusModeController {
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeService.startCurrentFocusMode(
+    await this.focusModeManagerService.startCurrentFocusMode(
       { finish_time, intention, start_time },
       { focus_mode_id },
       user.id,
@@ -36,7 +36,7 @@ export class FocusModeController {
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeService.finishCurrentFocusMode(
+    await this.focusModeManagerService.finishCurrentFocusMode(
       { achievements, distractions, finish_time },
       { focus_mode_id },
       user.id,

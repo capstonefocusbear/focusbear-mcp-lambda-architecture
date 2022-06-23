@@ -44,3 +44,12 @@ export const CompletedActivitySequenceRepositoryMock = {
   getMostRecentCompletedTime: jest.fn(),
   getAggregatedDurationLogsPerDay: jest.fn(),
 };
+
+export const FocusModeRepositoryMock = {
+  ...BaseRepositoryMock,
+  findOneByIdForUser: jest.fn(),
+};
+
+export const CompletedFocusBlockRepositoryMock = {
+  ...BaseRepositoryMock,
+};

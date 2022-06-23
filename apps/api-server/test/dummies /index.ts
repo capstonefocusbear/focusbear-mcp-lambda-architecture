@@ -12,6 +12,8 @@ import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { LogSummaryType } from '../../src/modules/activity/domain/log-summary-type.enum';
 import { ActivityData } from '../../src/modules/activity/domain/activity-data.model';
 import { CompletedActivity } from '../../src/modules/activity/entities/completed-activity.entity';
+import { FocusMode } from '../../src/modules/focus-mode/entities/focus-mode.entity';
+import { CompletedFocusBlock } from '../../src/modules/focus-mode/entities/completed-focus-block.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -415,6 +417,29 @@ export const ActivityDummy: Activity = new Activity(
     duration_seconds: 600,
     activity_data: new ActivityData(),
     activity_sequence_id: ActivitySequenceDummy.id,
+  },
+  { generateId: true },
+);
+
+export const FocusModeDummy = new FocusMode(
+  {
+    user_id: userDummy.id,
+    name: 'Some string value',
+    allowed_apps: [],
+    allowed_urls: [],
+  },
+  { generateId: true },
+);
+
+export const CompletedFocusBlockDummy = new CompletedFocusBlock(
+  {
+    user_id: FocusModeDummy.user_id,
+    focus_mode_id: FocusModeDummy.id,
+    finish_time: new Date(Date.now() + 1000 * 60 * 60),
+    scheduled_finish_time: new Date(Date.now() + 1000 * 60 * 60),
+    start_time: new Date(),
+    intention: 'Some string',
+    achievements: 'Some string',
   },
   { generateId: true },
 );

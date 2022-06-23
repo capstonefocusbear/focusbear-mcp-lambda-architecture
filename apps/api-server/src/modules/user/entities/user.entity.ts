@@ -4,6 +4,7 @@ import { ActivitySequence } from '../../activity/entities/activity-sequence.enti
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
+import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -56,7 +57,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'timestamptz',
   })
-  current_focus_mode_finish_time?: string;
+  current_focus_mode_finish_time?: Date;
 
   @Column({
     type: 'varchar',
@@ -82,6 +83,11 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'uuid',
+  })
+  current_completing_focus_block_id?: string;
+
+  @Column({
+    type: 'uuid',
     nullable: false,
   })
   current_activity_id?: string;
@@ -97,4 +103,7 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Device, (device) => device.user)
   devices?: Device[];
+
+  @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
+  focus_modes?: FocusMode[];
 }

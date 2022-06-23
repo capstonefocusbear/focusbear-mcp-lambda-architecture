@@ -9,6 +9,7 @@ import { HelperModule } from './modules/helper/helper.module';
 import { UserModule } from './modules/user/user.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { DeviceModule } from './modules/device/device.module';
+import { FocusModeModule } from './modules/focus-mode/focus-mode.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DeviceModule } from './modules/device/device.module';
     UserModule,
     ActivityModule,
     DeviceModule,
+    FocusModeModule,
   ],
   controllers: [AppController],
 })

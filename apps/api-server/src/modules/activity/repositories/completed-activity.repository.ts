@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Connection, In, MoreThan } from 'typeorm';
-import { createBaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 
 @Injectable()
-export class CompletedActivityRepository extends createBaseRepository<CompletedActivity>(CompletedActivity) {
+export class CompletedActivityRepository extends BaseRepository<CompletedActivity> {
   constructor(private readonly connection: Connection) {
-    super(connection);
+    super(connection, CompletedActivity);
   }
 
   async getAggregatedQuantityLogsPerDay(

@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Connection } from 'typeorm';
-import { createBaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { FocusMode } from '../entities/focus-mode.entity';
 
 @Injectable()
-export class FocusModeRepository extends createBaseRepository<FocusMode>(FocusMode) {
+export class FocusModeRepository extends BaseRepository<FocusMode> {
   constructor(private readonly connection: Connection) {
-    super(connection);
+    super(connection, FocusMode);
   }
 
   async findOneByIdForUser(id: string, user_id: string): Promise<FocusMode> {

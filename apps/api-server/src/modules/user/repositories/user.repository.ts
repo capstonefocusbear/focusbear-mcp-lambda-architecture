@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Connection, Not, In, Transaction, TransactionManager, EntityManager } from 'typeorm';
-import { createBaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { User } from '../entities/user.entity';
 
 @Injectable()
-export class UserRepository extends createBaseRepository<User>(User) {
+export class UserRepository extends BaseRepository<User> {
   constructor(private readonly connection: Connection) {
-    super(connection);
+    super(connection, User);
   }
 
   @Transaction({ isolation: 'SERIALIZABLE' })
@@ -56,6 +56,7 @@ export class UserRepository extends createBaseRepository<User>(User) {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.devices', 'devices')
+      .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .where('users.id = :id', { id })
       .getOne();
   }

@@ -4,6 +4,7 @@ export const BaseRepositoryMock = {
     findOne: jest.fn(),
     update: jest.fn(),
     save: jest.fn(),
+    delete: jest.fn(),
     // ... rest methods can be added on demand
   },
   create: jest.fn(),

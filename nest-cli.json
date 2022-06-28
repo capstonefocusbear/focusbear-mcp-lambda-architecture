@@ -12,7 +12,11 @@
         "options": {
           "classValidatorShim": true,
           "introspectComments": true,
-          "dtoFileNameSuffix": [".dto.ts", ".entity.ts", ".model.ts"]
+          "dtoFileNameSuffix": [
+            ".dto.ts",
+            ".entity.ts",
+            ".model.ts"
+          ]
         }
       }
     ]
@@ -61,6 +65,15 @@
       "sourceRoot": "libs/auth0/src",
       "compilerOptions": {
         "tsConfigPath": "libs/auth0/tsconfig.lib.json"
+      }
+    },
+    "pusher": {
+      "type": "library",
+      "root": "libs/pusher",
+      "entryFile": "index",
+      "sourceRoot": "libs/pusher/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/pusher/tsconfig.lib.json"
       }
     }
   }

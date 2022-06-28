@@ -45,6 +45,7 @@
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^2.1.2",
     "pg": "^8.7.1",
+    "pusher": "^5.1.0-beta",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
@@ -133,7 +134,8 @@
       "^@app/fastify-content-types(|/.*)$": "<rootDir>/libs/fastify-content-types/src/$1",
       "^@app/crypto(|/.*)$": "<rootDir>/libs/crypto/src/$1",
       "^@app/dynamic-module(|/.*)$": "<rootDir>/libs/dynamic-module/src/$1",
-      "^@app/auth0(|/.*)$": "<rootDir>/libs/auth0/src/$1"
+      "^@app/auth0(|/.*)$": "<rootDir>/libs/auth0/src/$1",
+      "^@app/pusher(|/.*)$": "<rootDir>/libs/pusher/src/$1"
     }
   }
 }

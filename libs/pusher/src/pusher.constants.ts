@@ -1,0 +1,1 @@
+export const PUSHER_MODULE_OPTIONS = Symbol('PUSHER_MODULE_OPTIONS');

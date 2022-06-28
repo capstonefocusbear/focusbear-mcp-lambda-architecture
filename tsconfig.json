@@ -36,6 +36,12 @@
       ],
       "@app/auth0/*": [
         "libs/auth0/src/*"
+      ],
+      "@app/pusher": [
+        "libs/pusher/src"
+      ],
+      "@app/pusher/*": [
+        "libs/pusher/src/*"
       ]
     }
   }

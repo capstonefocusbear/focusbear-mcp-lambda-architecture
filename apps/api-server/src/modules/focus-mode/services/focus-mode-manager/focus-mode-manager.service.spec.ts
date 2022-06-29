@@ -5,6 +5,7 @@ import { CompletedFocusBlockDummy, FocusModeDummy, userDummy } from '../../../..
 import {
   CompletedFocusBlockRepositoryMock,
   FocusModeRepositoryMock,
+  PusherServiceMock,
   UserRepositoryMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
@@ -16,13 +17,20 @@ import { CompletedFocusBlock } from '../../entities/completed-focus-block.entity
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeManagerService } from './focus-mode-manager.service';
+import { PusherService } from '../../../../../../../libs/pusher/src';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [FocusModeManagerService, FocusModeRepository, CompletedFocusBlockRepository, UserRepository],
+      providers: [
+        FocusModeManagerService,
+        FocusModeRepository,
+        CompletedFocusBlockRepository,
+        UserRepository,
+        PusherService,
+      ],
     })
       .overrideProvider(FocusModeRepository)
       .useValue(FocusModeRepositoryMock)
@@ -30,6 +38,8 @@ describe('FocusModeManagerService', () => {
       .useValue(CompletedFocusBlockRepositoryMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(PusherService)
+      .useValue(PusherServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);
@@ -117,6 +127,16 @@ describe('FocusModeManagerService', () => {
         }),
       );
     });
+
+    it('positive: push notification should be sent via "focus_mode" channel', async () => {
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+
+      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
+
+      expect(PusherServiceMock.trigger).toBeCalledWith('focus_mode', 'started', CompletedFocusBlockDummy);
+    });
   });
 
   describe('finishCurrentFocusMode', () => {
@@ -183,12 +203,25 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
-      expect(CompletedFocusBlockRepositoryMock.orm.update).toBeCalledWith(
+      expect(CompletedFocusBlockRepositoryMock.update).toBeCalledWith(
         userWithCurrentFocusMode.current_completing_focus_block_id,
         {
           ...finishFocusModeDto,
         },
       );
+    });
+
+    it('positive: push notification should be sent via "focus_mode" channel', async () => {
+      const current_focus_mode_id = FocusModeDummy.id;
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+      const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.update.mockResolvedValueOnce(CompletedFocusBlockDummy);
+
+      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+
+      expect(PusherServiceMock.trigger).toBeCalledWith('focus_mode', 'finished', CompletedFocusBlockDummy);
     });
   });
 });

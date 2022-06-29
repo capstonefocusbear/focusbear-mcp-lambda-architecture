@@ -26,3 +26,7 @@ export const DeviceServiceMock = {
 export const CompletedActivitySequenceServiceMock = {
   completeActivitySequence: jest.fn(),
 };
+
+export const PusherServiceMock = {
+  trigger: jest.fn(),
+};

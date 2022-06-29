@@ -1,3 +1,4 @@
+import { PusherService } from '@app/pusher';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -16,6 +17,7 @@ export class FocusModeManagerService {
     private readonly focusModeRepository: FocusModeRepository,
     private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
     private readonly userRepository: UserRepository,
+    private readonly pusher: PusherService,
   ) {}
 
   async startCurrentFocusMode(
@@ -36,6 +38,7 @@ export class FocusModeManagerService {
     const completed_mode_id = completedMode.id;
     const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
     await this.userRepository.orm.update(user_id, userDataToUpdate);
+    await this.pusher.trigger('focus_mode', 'started', completedMode);
   }
 
   private async validateStartingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
@@ -63,10 +66,11 @@ export class FocusModeManagerService {
     const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
     const updateCriteria = user.current_completing_focus_block_id;
     const completedBlockDataToUpdate = { distractions, achievements, finish_time };
-    await Promise.all([
+    const [, completedMode] = await Promise.all([
       this.nullifyCurrentFocusModeForUser(user_id),
-      this.completedFocusBlockRepository.orm.update(updateCriteria, completedBlockDataToUpdate),
+      this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
     ]);
+    await this.pusher.trigger('focus_mode', 'finished', completedMode);
   }
 
   private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {

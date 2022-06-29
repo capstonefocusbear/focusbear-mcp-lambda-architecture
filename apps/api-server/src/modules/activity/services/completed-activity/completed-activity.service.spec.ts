@@ -7,6 +7,7 @@ import {
   CompletedActivityRepositoryMock,
   CompletedActivitySequenceServiceMock,
   DeviceServiceMock,
+  PusherServiceMock,
   UserRepositoryMock,
 } from '../../../../../test/mocks';
 import {
@@ -30,6 +31,8 @@ import { User } from '../../../user/entities/user.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivityStatType } from '../../domain/activity-stat-type.enum';
 import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
+import { PusherService } from '../../../../../../../libs/pusher/src';
+import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -44,6 +47,7 @@ describe('CompletedActivityService', () => {
         UserRepository,
         ActivityRepository,
         CompletedActivitySequenceService,
+        PusherService,
       ],
     })
       .overrideProvider(CompletedActivityRepository)
@@ -58,6 +62,8 @@ describe('CompletedActivityService', () => {
       .useValue(ActivityRepositoryMock)
       .overrideProvider(CompletedActivitySequenceService)
       .useValue(CompletedActivitySequenceServiceMock)
+      .overrideProvider(PusherService)
+      .useValue(PusherServiceMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -206,6 +212,7 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedactivityService.completeActivity(completedActivity, { user_id });
 
@@ -216,6 +223,7 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedactivityService.completeActivity(completedActivity, { user_id });
 
@@ -235,6 +243,7 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedactivityService.completeActivity(completedActivity, { user_id });
 
@@ -250,6 +259,7 @@ describe('CompletedActivityService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedactivityService.completeActivity(completedActivity, { user_id });
 
@@ -258,6 +268,24 @@ describe('CompletedActivityService', () => {
           { ...completedActivity, user_id },
           { generateId: false, log_quantity: ActivityDummy.log_quantity },
         ),
+      );
+    });
+
+    it('positive: push notification should be sent via pusher', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      const completedActivityId = randomUUID();
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: completedActivityId });
+
+      await completedactivityService.completeActivity(completedActivity, { user_id });
+
+      expect(PusherServiceMock.trigger).toBeCalledWith(
+        'activity',
+        'completed',
+        new ActivityCompletedPush(completedActivityId, { ...completedActivity }),
       );
     });
 
@@ -271,7 +299,7 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
-      CompletedActivityRepositoryMock.create.mockResolvedValue(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedactivityService.completeActivity(completedActivity, { user_id });
 

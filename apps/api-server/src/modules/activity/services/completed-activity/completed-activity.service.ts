@@ -17,6 +17,8 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 import { CompletedActivitySequenceService } from '../completed-activity-sequence/completed-activity-sequence.service';
+import { PusherService } from '../../../../../../../libs/pusher/src';
+import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 
 @Injectable()
 export class CompletedActivityService {
@@ -27,6 +29,7 @@ export class CompletedActivityService {
     private readonly userRepository: UserRepository,
     private readonly activityRepository: ActivityRepository,
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
+    private readonly pusher: PusherService,
   ) {}
 
   async completeActivity(
@@ -46,6 +49,7 @@ export class CompletedActivityService {
     );
     const createdItem = await this.completedActivityRepository.create(newCompletedActivity);
     if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
+    await this.broadcastCompletionEvent(createdItem.id, { ...completedActivity });
     return createdItem;
   }
 
@@ -101,6 +105,14 @@ export class CompletedActivityService {
     const current_activity_id = nextActivity || null;
     const current_activity_sequence_id = nextActivity ? id : null;
     return { current_activity_sequence_id, current_activity_id, nextActivity };
+  }
+
+  private async broadcastCompletionEvent(
+    completed_activity_id: string,
+    completedActivity: CreateCompletedActivityDto,
+  ): Promise<void> {
+    const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
+    await this.pusher.trigger('activity', 'completed', pushData);
   }
 
   async getStatsByActivityPerDay(

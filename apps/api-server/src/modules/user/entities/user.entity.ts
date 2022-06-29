@@ -1,10 +1,11 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
+import { Subscription } from '../../subscription/entities/subscription.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -106,4 +107,7 @@ export class User extends BaseEntity {
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];
+
+  @OneToOne(() => Subscription, (sub) => sub.user)
+  subscription?: Subscription;
 }

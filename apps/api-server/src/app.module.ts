@@ -10,6 +10,7 @@ import { UserModule } from './modules/user/user.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { DeviceModule } from './modules/device/device.module';
 import { FocusModeModule } from './modules/focus-mode/focus-mode.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FocusModeModule } from './modules/focus-mode/focus-mode.module';
     ActivityModule,
     DeviceModule,
     FocusModeModule,
+    SubscriptionModule,
   ],
   controllers: [AppController],
 })

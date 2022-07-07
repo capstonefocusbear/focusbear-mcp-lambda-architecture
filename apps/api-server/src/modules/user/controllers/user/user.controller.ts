@@ -16,7 +16,7 @@ export class UserController {
   @Put('/account-sync')
   @ApiSecurity('Auth0ActionSecret')
   @ApiOperation({
-    summary: 'DO NOT USE IT FROM THE FRONT_END! This route should be used only by the Auth0\'s "post-login" hook.',
+    summary: 'DO NOT USE IT FROM THE FRONT_END! This route should be used only by the Auth0s "post-login" hook.',
   })
   @UseGuards(HasAuth0ActionSecret)
   async syncUserAccount(@Body() { auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {

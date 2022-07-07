@@ -75,6 +75,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/pusher/tsconfig.lib.json"
       }
+    },
+    "revenue-cat": {
+      "type": "library",
+      "root": "libs/revenue-cat",
+      "entryFile": "index",
+      "sourceRoot": "libs/revenue-cat/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/revenue-cat/tsconfig.lib.json"
+      }
     }
   }
 }

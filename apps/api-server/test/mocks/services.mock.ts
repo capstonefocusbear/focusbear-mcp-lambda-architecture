@@ -30,3 +30,7 @@ export const CompletedActivitySequenceServiceMock = {
 export const PusherServiceMock = {
   trigger: jest.fn(),
 };
+
+export const RevenueCatServiceMock = {
+  getOrCreateSubscriber: jest.fn(),
+};

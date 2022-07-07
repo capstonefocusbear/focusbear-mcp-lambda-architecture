@@ -10,6 +10,7 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserSettingsService } from './services/user-settings/user-settings.service';
 import { UserService } from './services/user/user.service';
+import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService],
@@ -20,6 +21,11 @@ import { UserService } from './services/user/user.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('auth0'),
+    }),
+    RevenueCatModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IRevenueCatOptions => configService.get('revenueCat'),
     }),
     ActivityModule,
     AuthModule,

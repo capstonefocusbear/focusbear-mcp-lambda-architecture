@@ -4,6 +4,7 @@ import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
+import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { User } from '../../entities/user.entity';
 import { UserService } from '../../services/user/user.service';
@@ -24,6 +25,8 @@ export class UserController {
   }
 
   @Get('/details')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async getUserDetails(@AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserDetails(user.id);
   }

@@ -26,4 +26,11 @@ export class ActivityChoiceData {
   @IsUrl({}, { each: true })
   @ApiProperty()
   video_urls?: string[];
+
+  @IsArray()
+  @IsOptional()
+  @ValidateIf((o) => o.allowed_apps?.length > 0)
+  @IsString({ each: true })
+  @ApiProperty()
+  allowed_apps?: string[];
 }

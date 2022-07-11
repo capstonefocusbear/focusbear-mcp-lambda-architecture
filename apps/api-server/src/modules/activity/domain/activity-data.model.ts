@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -20,6 +21,16 @@ export class ActivityData {
   @IsString()
   @ApiProperty()
   name: string;
+
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty()
+  is_office_friendly?: boolean;
+
+  @IsUUID('4')
+  @IsOptional()
+  @ApiProperty()
+  allowed_focus_mode_id?: string;
 
   @IsArray()
   @IsOptional()

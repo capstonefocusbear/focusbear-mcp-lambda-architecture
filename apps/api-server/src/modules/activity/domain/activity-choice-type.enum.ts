@@ -1,4 +1,5 @@
 export enum ActivityChoiceType {
   random = 'random',
-  normal = 'normal',
+  // normal = 'manual',
+  // none = 'none',
 }

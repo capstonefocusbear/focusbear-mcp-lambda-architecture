@@ -1,5 +1,5 @@
-import { PusherService } from '@app/pusher';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PusherService } from '../../../../../../../libs/pusher/src';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CurrentFocusModeData } from '../../domain/current-focus-mode-data.model';

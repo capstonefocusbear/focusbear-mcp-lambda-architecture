@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import { IsArray, IsNotEmpty, IsObject, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
 
 export class CreateFocusModeDto {
   @IsNotEmpty()
@@ -20,4 +20,8 @@ export class CreateFocusModeDto {
   @IsString({ each: true })
   @ApiProperty()
   allowed_apps?: string[];
+
+  @IsOptional()
+  @IsObject()
+  metadata?: any; // no model for now
 }

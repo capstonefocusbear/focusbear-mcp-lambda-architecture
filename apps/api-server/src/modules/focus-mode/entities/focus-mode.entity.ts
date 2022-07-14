@@ -35,6 +35,12 @@ export class FocusMode extends BaseEntity {
   })
   allowed_urls?: string[];
 
+  @Column({
+    type: 'jsonb',
+    transformer: BaseEntity.encrypteJSONField('metadata'),
+  })
+  metadata?: any;
+
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
   user?: User;

@@ -26,18 +26,18 @@ export class FocusModeController {
 
   @Post()
   async createFocusMode(
-    @Body() { name, allowed_apps, allowed_urls }: CreateFocusModeDto,
+    @Body() { name, allowed_apps, allowed_urls, metadata }: CreateFocusModeDto,
     @AuthContext() { user }: Passport,
   ): Promise<FocusMode> {
-    return this.focusModeService.create({ name, allowed_apps, allowed_urls, user_id: user.id });
+    return this.focusModeService.create({ name, allowed_apps, allowed_urls, metadata, user_id: user.id });
   }
 
   @Patch(':focus_mode_id')
   async updateFocusMode(
-    @Body() { name, allowed_apps, allowed_urls }: UpdateFocusModeDto,
+    @Body() { name, allowed_apps, allowed_urls, metadata }: UpdateFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
   ): Promise<FocusMode> {
-    return this.focusModeService.update(focus_mode_id, { name, allowed_apps, allowed_urls });
+    return this.focusModeService.update(focus_mode_id, { name, allowed_apps, allowed_urls, metadata });
   }
 
   @Delete()

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsIn, IsNotEmpty, IsObject, IsOptional } from 'class-validator';
 import { DeviceMetadata } from '../domain/device-metadata.model';
 import { OperatingSystem } from '../domain/operating-system.enum';
 
@@ -11,5 +11,6 @@ export class CreateDeviceDto {
   operating_system: OperatingSystem;
 
   @IsOptional()
+  @IsObject()
   metadata?: any | DeviceMetadata; // no model for now
 }

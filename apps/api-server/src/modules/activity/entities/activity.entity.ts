@@ -21,6 +21,17 @@ export class Activity extends BaseEntity {
 
   @Column({
     type: 'uuid',
+  })
+  parent_id?: string;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  has_choices?: boolean;
+
+  @Column({
+    type: 'uuid',
     nullable: false,
   })
   activity_sequence_id?: string;
@@ -65,4 +76,11 @@ export class Activity extends BaseEntity {
 
   @OneToMany(() => CompletedActivity, (completed_activity) => completed_activity.activity)
   completed_activities?: CompletedActivity[];
+
+  @ManyToOne(() => Activity, (activity) => activity.choices)
+  @JoinColumn({ name: 'parent_id' })
+  parent_activity?: ActivitySequence;
+
+  @OneToMany(() => Activity, (activity) => activity.parent_activity)
+  choices?: Activity[];
 }

@@ -148,6 +148,30 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: should throw BadRequestException if the completing activity cannot be created without choice provided', async () => {
+      const activityWithChoices: Activity = {
+        ...ActivityDummy,
+        has_choices: true,
+        choices: [{ ...ActivityDummy, id: randomUUID(), parent_id: ActivityDummy.id }],
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(activityWithChoices);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+
+      const errorMsg = `Activity with id: ${activityWithChoices.id} cannot be completed without choice_id provided`;
+      let exception: any;
+
+      try {
+        await completedactivityService.completeActivity(completedActivity, { user_id });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMsg);
+    });
+
     it('negative: should throw BadRequestException if there is no current sequence and given activity is not first in the sequence', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
@@ -270,7 +294,6 @@ describe('CompletedActivityService', () => {
         ),
       );
     });
-
     it('positive: push notification should be sent via pusher', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
@@ -307,6 +330,39 @@ describe('CompletedActivityService', () => {
       expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
         activity_sequence_id,
         user_id,
+      );
+    });
+    it('positive: if activity requires choice, completed activity record should be created for parent activity and for choice activity', async () => {
+      const activityWithChoices: Activity = {
+        ...ActivityDummy,
+        has_choices: true,
+        choices: [{ ...ActivityDummy, id: randomUUID(), parent_id: ActivityDummy.id }],
+      };
+      const dtoWithChoice: CreateCompletedActivityDto = {
+        ...completedActivity,
+        choice_id: activityWithChoices.choices[0].id,
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(activityWithChoices);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(activityWithChoices.choices[0]);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedactivityService.completeActivity(dtoWithChoice, { user_id });
+
+      expect(CompletedActivityRepositoryMock.create).toBeCalledWith(
+        new CompletedActivity(
+          { ...completedActivity, quantity_logged: null, user_id },
+          { generateId: false, log_quantity: false },
+        ),
+      );
+      expect(CompletedActivityRepositoryMock.create).toBeCalledWith(
+        new CompletedActivity(
+          { ...completedActivity, activity_id: dtoWithChoice.choice_id, activity_sequence_id: null, user_id },
+          { generateId: false, log_quantity: activityWithChoices.choices[0].log_quantity },
+        ),
       );
     });
   });

@@ -35,8 +35,12 @@ export class CreateCompletedActivityDto {
   activity_id: string;
 
   @IsOptional()
+  @IsUUID('4')
+  choice_id?: string;
+
+  @IsOptional()
   @IsNumber()
-  quantity_logged: number;
+  quantity_logged: number; // +
 
   @IsNotEmpty()
   @IsNumber()
@@ -52,7 +56,7 @@ export class CreateCompletedActivityDto {
 
   @IsNotEmpty()
   @IsUUID('4')
-  activity_sequence_id: string;
+  activity_sequence_id: string; // +
 
   @IsNotEmpty()
   @MaxDate(new Date(Date.now()), { message: 'start_time should be lesser than now' })

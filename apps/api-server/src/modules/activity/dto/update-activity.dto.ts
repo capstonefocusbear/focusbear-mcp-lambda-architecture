@@ -1,5 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import { ActivityChoiceData } from '../domain/activity-choice-data.model';
 import { ActivityData } from '../domain/activity-data.model';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 
@@ -23,4 +37,13 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @ApiProperty({ enum: LogSummaryType })
   log_summary_type?: LogSummaryType;
+
+  @IsArray()
+  @IsOptional()
+  @ArrayMinSize(1)
+  @ValidateIf((o) => o.choices?.length > 0)
+  @ValidateNested({ each: true })
+  @Type(() => ActivityChoiceData)
+  @ApiProperty({ isArray: true, type: ActivityChoiceData })
+  choices?: ActivityChoiceData[];
 }

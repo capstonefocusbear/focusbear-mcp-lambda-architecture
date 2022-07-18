@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ActivityChoiceData } from '../../domain/activity-choice-data.model';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { UpdateActivityDto } from '../../dto/update-activity.dto';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
@@ -25,8 +26,16 @@ export class ActivityParserService {
     for (const { type, activities, activity_ids } of activity_sequences) {
       const key = `${type}_activities`;
       const findActivity = (id): Activity => activities.find((e) => e.id === id);
-      const mapActivity = ({ id, duration_seconds, log_quantity, log_summary_type, activity_data }: Activity) => ({
+      const mapActivity = ({
         id,
+        duration_seconds,
+        log_quantity,
+        log_summary_type,
+        activity_data,
+        choices,
+      }: Activity) => ({
+        id,
+        choices: choices?.map(mapActivity),
         duration_seconds,
         log_quantity,
         log_summary_type,
@@ -45,26 +54,50 @@ export class ActivityParserService {
         const [type] = name.split('_') as [ActivityType];
         const sequence = await this.createActivitySequence(serializedActivities, { type, user_id });
         const activity_sequence_id = sequence.id;
-        const createActivity = ({
-          id,
-          duration_seconds,
-          log_quantity,
-          log_summary_type,
-          ...activity_data
-        }: UpdateActivityDto) =>
-          new Activity({
-            id,
-            activity_data,
-            type,
-            user_id,
-            activity_sequence_id,
-            duration_seconds,
-            log_quantity,
-            log_summary_type,
-          });
-        const activities = serializedActivities.map(createActivity);
+        const context = { type, user_id, activity_sequence_id };
+        const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
+        const activities = serializedActivities.flatMap(createActivity(context));
         return { sequence, activities };
       }),
+    );
+  }
+
+  private createActivity(
+    { id, duration_seconds, log_quantity, log_summary_type, choices, ...activity_data }: UpdateActivityDto,
+    { type, user_id, activity_sequence_id },
+  ): Activity[] {
+    const has_choices = choices?.length > 0;
+    const activity = new Activity({
+      id,
+      activity_data,
+      type,
+      user_id,
+      activity_sequence_id,
+      duration_seconds,
+      log_quantity: has_choices ? false : log_quantity,
+      log_summary_type: has_choices ? 'SUM' : log_summary_type,
+      has_choices,
+    });
+    const result = [activity];
+    if (has_choices) result.push(...this.deserializeChoices(choices, activity));
+    return result;
+  }
+
+  private deserializeChoices(choices: ActivityChoiceData[], parent: Activity): Activity[] {
+    return choices.map(
+      ({ id, log_quantity, log_summary_type, ...activity_data }) =>
+        new Activity({
+          id,
+          activity_data,
+          parent_id: parent.id,
+          type: parent.type,
+          user_id: parent.user_id,
+          activity_sequence_id: null,
+          duration_seconds: parent.duration_seconds,
+          log_quantity,
+          log_summary_type,
+          has_choices: null,
+        }),
     );
   }
 

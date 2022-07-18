@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -11,9 +10,7 @@ import {
   IsUrl,
   IsUUID,
   ValidateIf,
-  ValidateNested,
 } from 'class-validator';
-import { ActivityChoiceData } from './activity-choice-data.model';
 import { ActivityChoiceType } from './activity-choice-type.enum';
 
 export class ActivityData {
@@ -57,14 +54,6 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty({ enum: ActivityChoiceType })
   choice_type?: ActivityChoiceType;
-
-  @IsArray()
-  @IsOptional()
-  @ValidateIf((o) => o.choices?.length > 0)
-  @ValidateNested({ each: true })
-  @Type(() => ActivityChoiceData)
-  @ApiProperty({ isArray: true, type: ActivityChoiceData })
-  choices?: ActivityChoiceData[];
 
   @IsArray()
   @IsOptional()

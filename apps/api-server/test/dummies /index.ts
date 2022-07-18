@@ -96,31 +96,37 @@ export const serializedActivityDummy: SerializedActivity = {
       include_in_every_break: false,
       choices: [
         {
+          id: randomUUID(),
           name: 'Pushups',
           video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           name: 'Situps',
           video_urls: [],
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           name: 'Squats',
           video_urls: [],
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           name: 'Lunges',
           video_urls: [],
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           name: 'Burpees',
           video_urls: [],
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           name: 'Plank',
           video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
           log_quantity: false,
@@ -150,12 +156,14 @@ export const serializedActivityDummy: SerializedActivity = {
       id: '5b57f802-23b0-47e2-a188-b07001db8e1f',
       choices: [
         {
+          id: randomUUID(),
           video_urls: ['https://www.youtube.com/watch?v=xcrc5wTZwNk'],
           log_quantity_question: 'choice djdjdjd',
           name: 'Choice',
           log_quantity: true,
         },
         {
+          id: randomUUID(),
           video_urls: [],
           log_quantity_question: 'sdcsdc',
           name: 'some name',

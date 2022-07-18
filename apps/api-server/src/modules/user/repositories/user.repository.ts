@@ -23,7 +23,10 @@ export class UserRepository extends BaseRepository<User> {
       activitiesData.map(async ({ sequence, activities }) => {
         const { identifiers } = await manager.upsert(ActivitySequence, sequence, ['type', 'user_id']);
         await manager.delete(Activity, { activity_sequence_id: identifiers[0].id, id: Not(In(sequence.activity_ids)) });
-        await manager.upsert(Activity, activities, ['id']);
+        const parents = activities.filter(({ parent_id }) => !parent_id);
+        const choices = activities.filter(({ parent_id }) => !!parent_id);
+        await manager.upsert(Activity, parents, ['id']);
+        await manager.upsert(Activity, choices, ['id']);
       }),
     );
   }
@@ -33,6 +36,7 @@ export class UserRepository extends BaseRepository<User> {
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.activity_sequences', 'activity_sequences')
       .leftJoinAndSelect('activity_sequences.activities', 'activities')
+      .leftJoinAndSelect('activities.choices', 'choices')
       .select([
         'users.id',
         'users.startup_time',
@@ -44,6 +48,12 @@ export class UserRepository extends BaseRepository<User> {
         'activities.log_summary_type',
         'activities.activity_type',
         'activities.activity_data',
+        'choices.id',
+        'choices.log_quantity',
+        'choices.duration_seconds',
+        'choices.log_summary_type',
+        'choices.activity_type',
+        'choices.activity_data',
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',

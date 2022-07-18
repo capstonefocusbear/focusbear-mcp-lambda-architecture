@@ -3,6 +3,7 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { SubscriptionProvider } from '../domain/subscription-provider.enum';
 import { SubscriptionStatus } from '../domain/subscription-status.enum';
+import { SubscriptionType } from '../domain/subscription-type.enum';
 
 @Entity('subscriptions')
 export class Subscription extends BaseEntity {
@@ -19,6 +20,14 @@ export class Subscription extends BaseEntity {
 
   @Column({
     type: 'enum',
+    enum: SubscriptionType,
+    nullable: false,
+    default: SubscriptionType.trial,
+  })
+  type?: SubscriptionType;
+
+  @Column({
+    type: 'enum',
     enum: SubscriptionStatus,
     nullable: false,
   })
@@ -27,7 +36,7 @@ export class Subscription extends BaseEntity {
   @Column({
     type: 'enum',
     enum: SubscriptionProvider,
-    nullable: false,
+    nullable: true,
   })
   provider?: SubscriptionProvider;
 

@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  MaxDate,
+  // MaxDate,
   registerDecorator,
   ValidationArguments,
   ValidationOptions,
@@ -59,13 +59,13 @@ export class CreateCompletedActivityDto {
   activity_sequence_id: string; // +
 
   @IsNotEmpty()
-  @MaxDate(new Date(Date.now()), { message: 'start_time should be lesser than now' })
+  // @MaxDate(new Date(), { message: 'start_time should be lesser than now' })
   @Type(() => Date)
   @IsDate({ message: 'start_time should be a valid UTC string or unix-time number' })
   start_time?: Date;
 
   @IsNotEmpty()
-  @MaxDate(new Date(Date.now()), { message: 'finish_time should be lesser than now' })
+  // @MaxDate(new Date(Date.now()), { message: 'finish_time should be lesser than now' })
   @Type(() => Date)
   @IsDate({ message: 'finish_time should be a valid UTC string or unix-time number' })
   @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than start_time' })

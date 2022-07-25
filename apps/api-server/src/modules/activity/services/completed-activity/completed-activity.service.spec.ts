@@ -306,7 +306,7 @@ describe('CompletedActivityService', () => {
       await completedactivityService.completeActivity(completedActivity, { user_id });
 
       expect(PusherServiceMock.trigger).toBeCalledWith(
-        'app',
+        `private-${user_id}`,
         'activity-completed',
         new ActivityCompletedPush(completedActivityId, { ...completedActivity }),
       );

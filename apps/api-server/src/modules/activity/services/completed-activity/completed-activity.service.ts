@@ -49,7 +49,7 @@ export class CompletedActivityService {
     await this.userRepository.orm.update(user_id, { ...currentValues });
     const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
     if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
-    await this.broadcastCompletionEvent(createdItem.id, { ...completedActivity });
+    await this.broadcastCompletionEvent(user_id, createdItem.id, { ...completedActivity });
     return createdItem;
   }
 
@@ -151,11 +151,12 @@ export class CompletedActivityService {
   }
 
   private async broadcastCompletionEvent(
+    user_id: string,
     completed_activity_id: string,
     completedActivity: CreateCompletedActivityDto,
   ): Promise<void> {
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
-    await this.pusher.trigger('app', 'activity-completed', pushData);
+    await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
   }
 
   async getStatsByActivityPerDay(

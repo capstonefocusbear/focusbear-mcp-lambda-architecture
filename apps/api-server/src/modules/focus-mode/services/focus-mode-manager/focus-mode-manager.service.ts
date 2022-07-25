@@ -38,7 +38,7 @@ export class FocusModeManagerService {
     const completed_mode_id = completedMode.id;
     const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
     await this.userRepository.orm.update(user_id, userDataToUpdate);
-    await this.pusher.trigger('app', 'focus_mode-started', completedMode);
+    await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
   }
 
   private async validateStartingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
@@ -70,7 +70,7 @@ export class FocusModeManagerService {
       this.nullifyCurrentFocusModeForUser(user_id),
       this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
     ]);
-    await this.pusher.trigger('app', 'focus_mode-finished', completedMode);
+    await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
   }
 
   private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {

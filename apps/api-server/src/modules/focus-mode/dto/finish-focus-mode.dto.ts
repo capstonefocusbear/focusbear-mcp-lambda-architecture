@@ -11,8 +11,8 @@ export class FinishFocusModeDto {
   distractions?: string;
 
   @IsNotEmpty()
-  @MaxDate(new Date(Date.now()), { message: 'finish_time should be lesser than now' })
+  @MaxDate(new Date(Date.now()), { message: `finish_time should be lesser than now: ${new Date()}` })
   @Type(() => Date)
-  @IsDate({ message: 'finish_time should be a valid UTC string or unix-time number' })
+  @IsDate({ message: 'finish_time  should be a valid ISO string in UTC zone' })
   finish_time: Date;
 }

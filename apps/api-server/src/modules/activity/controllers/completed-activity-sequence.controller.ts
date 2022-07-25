@@ -18,12 +18,12 @@ export class CompletedActivitySequenceController {
   @Get(':activity_sequence_id/stats')
   getStatsByActivityPerDay(
     @Param() { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
-    @Query() { days_number }: GetCompletedActivityStatsQueryDto,
+    @Query() { days_number, timezone }: GetCompletedActivityStatsQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<CompletedActivitySequenceStats> {
     return this.completedActivitySequenceService.getStatsByActivitySequencePerDay(
       { activity_sequence_id },
-      { days_number },
+      { days_number, timezone },
       user.id,
     );
   }

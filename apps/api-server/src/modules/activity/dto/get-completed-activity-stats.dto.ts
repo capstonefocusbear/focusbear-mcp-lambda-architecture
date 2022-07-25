@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { IsInt, IsNotEmpty, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class GetCompletedActivityStatsQueryDto {
   @IsNotEmpty()
@@ -7,6 +7,10 @@ export class GetCompletedActivityStatsQueryDto {
   @Min(1)
   @Max(180)
   days_number: number = 30; // default value
+
+  @IsNotEmpty()
+  @IsString()
+  timezone: string = 'UTC'; // default value
 }
 
 export class GetCompletedActivityStatsParamsDto {

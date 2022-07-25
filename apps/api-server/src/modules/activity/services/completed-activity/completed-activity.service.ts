@@ -161,15 +161,22 @@ export class CompletedActivityService {
 
   async getStatsByActivityPerDay(
     { activity_id }: GetCompletedActivityStatsParamsDto,
-    { days_number }: GetCompletedActivityStatsQueryDto,
+    { days_number, timezone }: GetCompletedActivityStatsQueryDto,
   ): Promise<CompletedActivityStats> {
     const activity = await this.activityRepository.orm.findOne(activity_id);
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
     const { log_summary_type, log_quantity } = activity;
     const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
-    const params = { days_number, log_summary_type, stat_type };
+    const params = { days_number, log_summary_type, stat_type, timezone };
     const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, params);
-    const stats = new CompletedActivityStats({ activity_id, days_number, items, log_summary_type, stat_type });
+    const stats = new CompletedActivityStats({
+      activity_id,
+      days_number,
+      items,
+      log_summary_type,
+      stat_type,
+      timezone,
+    });
     return stats;
   }
 }

@@ -12,20 +12,20 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
 
   async getAggregatedQuantityLogsPerDay(
     activity_id: string,
-    { log_summary_type = 'SUM', days_number = 30, stat_type }: any,
+    { log_summary_type = 'SUM', days_number = 30, stat_type, timezone = 'UTC' }: any,
   ): Promise<CompletedActivityStatItem[]> {
     return this.orm.query(
       `
       SELECT 
-        date_trunc('day', finish_time) as date,
+        date_trunc('day', timezone($3, finish_time)) as date,
         ${log_summary_type}(${stat_type}_logged) as summary
       FROM completed_activities
       WHERE activity_id = $1
-      GROUP BY date_trunc('day', finish_time)
+      GROUP BY date_trunc('day', timezone($3, finish_time))
       ORDER BY date DESC
       LIMIT $2
     `,
-      [activity_id, days_number],
+      [activity_id, days_number, timezone],
     );
   }
 

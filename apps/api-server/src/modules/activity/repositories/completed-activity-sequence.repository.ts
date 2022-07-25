@@ -21,20 +21,20 @@ export class CompletedActivitySequenceRepository extends BaseRepository<Complete
 
   async getAggregatedDurationLogsPerDay(
     activity_sequence_id: string,
-    { days_number = 30 }: any,
+    { days_number = 30, timezone = 'UTC' }: any,
   ): Promise<CompletedActivityStatItem[]> {
     return this.orm.query(
       `
       SELECT 
-        date_trunc('day', finish_time) as date,
+        date_trunc('day', timezone($3, finish_time)) as date,
         SUM(duration_minutes) as summary
       FROM completed_activity_sequences
       WHERE activity_sequence_id = $1
-      GROUP BY date_trunc('day', finish_time)
+      GROUP BY date_trunc('day', timezone($3, finish_time))
       ORDER BY date DESC
       LIMIT $2
     `,
-      [activity_sequence_id, days_number],
+      [activity_sequence_id, days_number, timezone],
     );
   }
 }

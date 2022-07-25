@@ -26,8 +26,8 @@ export class CompletedActivityController {
   @Get(':activity_id/stats')
   getStatsByActivityPerDay(
     @Param() { activity_id }: GetCompletedActivityStatsParamsDto,
-    @Query() { days_number }: GetCompletedActivityStatsQueryDto,
+    @Query() { days_number, timezone }: GetCompletedActivityStatsQueryDto,
   ): Promise<CompletedActivityStats> {
-    return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number });
+    return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number, timezone });
   }
 }

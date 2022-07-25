@@ -7,6 +7,7 @@ export class CompletedActivityStats {
   constructor(data: CompletedActivityStats) {
     this.activity_id = data.activity_id;
     this.days_number = data.days_number;
+    this.timezone = data.timezone;
     this.log_summary_type = data.log_summary_type;
     this.stat_type = data.stat_type;
     this.items = data.items;
@@ -14,6 +15,9 @@ export class CompletedActivityStats {
 
   @ApiProperty()
   activity_id?: string;
+
+  @ApiProperty()
+  timezone?: string;
 
   @ApiProperty()
   days_number?: number;

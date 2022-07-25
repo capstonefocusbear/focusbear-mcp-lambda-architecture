@@ -73,7 +73,7 @@ export class CompletedActivitySequenceService {
 
   async getStatsByActivitySequencePerDay(
     { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
-    { days_number }: GetCompletedActivityStatsQueryDto,
+    { days_number, timezone }: GetCompletedActivityStatsQueryDto,
     user_id: string,
   ): Promise<CompletedActivitySequenceStats> {
     const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
@@ -83,7 +83,7 @@ export class CompletedActivitySequenceService {
     const planningDailyDurationMinutes = planningDailyDurationSeconds / 60;
     const daily_durations_minutes = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
       activity_sequence_id,
-      { days_number },
+      { days_number, timezone },
     );
     const average_completion_percent = this.calculateCompletionPercent(
       daily_durations_minutes,
@@ -94,6 +94,7 @@ export class CompletedActivitySequenceService {
       daily_durations_minutes,
       activity_sequence_id,
       average_completion_percent,
+      timezone,
     });
   }
 

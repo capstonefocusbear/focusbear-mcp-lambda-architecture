@@ -7,6 +7,7 @@ export class CompletedActivitySequenceStats {
     this.days_number = data.days_number;
     this.daily_durations_minutes = data.daily_durations_minutes;
     this.average_completion_percent = data.average_completion_percent;
+    this.timezone = data.timezone;
   }
 
   @ApiProperty()
@@ -14,6 +15,9 @@ export class CompletedActivitySequenceStats {
 
   @ApiProperty()
   days_number: number;
+
+  @ApiProperty()
+  timezone?: string;
 
   @ApiProperty()
   daily_durations_minutes: CompletedActivityStatItem[];

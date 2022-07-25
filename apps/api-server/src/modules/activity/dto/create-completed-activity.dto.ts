@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
 import {
   IsDate,
-  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -60,15 +59,13 @@ export class CreateCompletedActivityDto {
   activity_sequence_id: string;
 
   @IsNotEmpty()
-  @IsDateString()
-  @MaxDate(new Date(), { message: `start_time should be lesser than now: ${new Date()}` })
+  @MaxDate(new Date(), { message: `start_time should be lesser than now : ${new Date().toISOString()}` })
   @Type(() => Date)
   @IsDate({ message: 'start_time should be a valid ISO string in UTC zone' })
   start_time?: Date;
 
   @IsNotEmpty()
-  @IsDateString()
-  @MaxDate(new Date(Date.now()), { message: `finish_time should be lesser than now: ${new Date()}` })
+  @MaxDate(new Date(Date.now()), { message: `finish_time should be lesser than now : ${new Date().toISOString()}` })
   @Type(() => Date)
   @IsDate({ message: 'finish_time should be a valid ISO string in UTC zone' })
   @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than start_time' })

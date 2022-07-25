@@ -7,13 +7,13 @@ export class StartFocusModeDto {
   intention?: string;
 
   @IsNotEmpty()
-  @MinDate(new Date(), { message: `finish_time should be greater than now: ${new Date()}}` })
+  @MinDate(new Date(), { message: `finish_time should be greater than now : ${new Date().toISOString()}}` })
   @Type(() => Date)
   @IsDate({ message: 'finish_time  should be a valid ISO string in UTC zone' })
   finish_time: Date;
 
   @IsNotEmpty()
-  @MaxDate(new Date(), { message: `finish_time should be lesser than now: ${new Date()}}` })
+  @MaxDate(new Date(), { message: `finish_time should be lesser than now : ${new Date().toISOString()}}` })
   @Type(() => Date)
   @IsDate({ message: 'start_time  should be a valid ISO string in UTC zone' })
   start_time: Date;

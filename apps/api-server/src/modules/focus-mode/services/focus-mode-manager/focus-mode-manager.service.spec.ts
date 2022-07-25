@@ -135,7 +135,7 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
 
-      expect(PusherServiceMock.trigger).toBeCalledWith('focus_mode', 'started', CompletedFocusBlockDummy);
+      expect(PusherServiceMock.trigger).toBeCalledWith('app', 'focus_mode-started', CompletedFocusBlockDummy);
     });
   });
 
@@ -221,7 +221,7 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
-      expect(PusherServiceMock.trigger).toBeCalledWith('focus_mode', 'finished', CompletedFocusBlockDummy);
+      expect(PusherServiceMock.trigger).toBeCalledWith('app', 'focus_mode-finished', CompletedFocusBlockDummy);
     });
   });
 });

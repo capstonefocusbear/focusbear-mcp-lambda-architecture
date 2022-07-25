@@ -155,7 +155,7 @@ export class CompletedActivityService {
     completedActivity: CreateCompletedActivityDto,
   ): Promise<void> {
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
-    await this.pusher.trigger('activity', 'completed', pushData);
+    await this.pusher.trigger('app', 'activity-completed', pushData);
   }
 
   async getStatsByActivityPerDay(

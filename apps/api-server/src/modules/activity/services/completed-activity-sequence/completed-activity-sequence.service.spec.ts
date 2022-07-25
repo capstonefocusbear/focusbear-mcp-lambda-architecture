@@ -157,6 +157,7 @@ describe('CompletedActivitySequenceService', () => {
   describe('getStatsByActivitySequencePerDay', () => {
     const activity_sequence_id = ActivitySequenceDummy.id;
     const days_number = 30;
+    const timezone = 'UTC';
     const user_id = userDummy.id;
 
     it('negative: should throw NotFoundException if activity_sequence does not exist for user', async () => {
@@ -167,7 +168,7 @@ describe('CompletedActivitySequenceService', () => {
       try {
         await completedActivitySequenceService.getStatsByActivitySequencePerDay(
           { activity_sequence_id },
-          { days_number },
+          { days_number, timezone },
           user_id,
         );
       } catch (error) {
@@ -186,7 +187,7 @@ describe('CompletedActivitySequenceService', () => {
 
       const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
         { activity_sequence_id },
-        { days_number },
+        { days_number, timezone },
         user_id,
       );
 
@@ -212,7 +213,7 @@ describe('CompletedActivitySequenceService', () => {
 
       const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
         { activity_sequence_id },
-        { days_number },
+        { days_number, timezone },
         user_id,
       );
 

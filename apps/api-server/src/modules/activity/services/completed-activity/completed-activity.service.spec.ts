@@ -374,6 +374,7 @@ describe('CompletedActivityService', () => {
 
     const query = {
       days_number: 30,
+      timezone: 'UTC',
     };
 
     it('negative: should throw NotFoundException if activity does not exist', async () => {
@@ -399,7 +400,7 @@ describe('CompletedActivityService', () => {
       await completedactivityService.getStatsByActivityPerDay(params, query);
 
       expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
-        days_number: query.days_number,
+        ...query,
         log_summary_type: activityWithFalsyQuantityLogs.log_summary_type,
         stat_type: ActivityStatType.duration,
       });
@@ -412,7 +413,7 @@ describe('CompletedActivityService', () => {
       await completedactivityService.getStatsByActivityPerDay(params, query);
 
       expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
-        days_number: query.days_number,
+        ...query,
         log_summary_type: activityWithTruthyQuantityLogs.log_summary_type,
         stat_type: ActivityStatType.quantity,
       });

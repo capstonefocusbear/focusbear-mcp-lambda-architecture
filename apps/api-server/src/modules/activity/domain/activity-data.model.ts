@@ -14,6 +14,18 @@ import {
 import { ActivityChoiceType } from './activity-choice-type.enum';
 
 export class ActivityData {
+  constructor(data: Partial<ActivityData> = {}) {
+    this.name = data.name;
+    this.is_office_friendly = data?.is_office_friendly;
+    this.allowed_focus_mode_id = data?.allowed_focus_mode_id;
+    this.video_urls = data?.video_urls;
+    this.allowed_apps = data?.allowed_apps;
+    this.include_in_every_break = data?.include_in_every_break;
+    this.log_quantity_question = data?.log_quantity_question;
+    this.choice_type = data?.choice_type;
+    this.allowed_urls = data?.allowed_urls;
+  }
+
   @IsNotEmpty()
   @IsString()
   @ApiProperty()

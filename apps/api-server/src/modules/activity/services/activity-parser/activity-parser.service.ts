@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ActivityChoiceData } from '../../domain/activity-choice-data.model';
+import { ActivityData } from '../../domain/activity-data.model';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { UpdateActivityDto } from '../../dto/update-activity.dto';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
@@ -29,6 +30,7 @@ export class ActivityParserService {
       const mapActivity = ({
         id,
         duration_seconds,
+        activity_sequence_id,
         log_quantity,
         log_summary_type,
         activity_data,
@@ -37,6 +39,7 @@ export class ActivityParserService {
         id,
         choices: choices?.map(mapActivity),
         duration_seconds,
+        activity_sequence_id,
         log_quantity,
         log_summary_type,
         ...activity_data,
@@ -63,10 +66,11 @@ export class ActivityParserService {
   }
 
   private createActivity(
-    { id, duration_seconds, log_quantity, log_summary_type, choices, ...activity_data }: UpdateActivityDto,
+    { id, duration_seconds, log_quantity, log_summary_type, choices, ...rest }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
   ): Activity[] {
     const has_choices = choices?.length > 0;
+    const activity_data = new ActivityData(rest);
     const activity = new Activity({
       id,
       activity_data,
@@ -85,10 +89,10 @@ export class ActivityParserService {
 
   private deserializeChoices(choices: ActivityChoiceData[], parent: Activity): Activity[] {
     return choices.map(
-      ({ id, log_quantity, log_summary_type, ...activity_data }) =>
+      ({ id, log_quantity, log_summary_type, ...rest }) =>
         new Activity({
           id,
-          activity_data,
+          activity_data: new ActivityData(rest),
           parent_id: parent.id,
           type: parent.type,
           user_id: parent.user_id,

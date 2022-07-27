@@ -48,6 +48,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.log_summary_type',
         'activities.activity_type',
         'activities.activity_data',
+        'activities.activity_sequence_id',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',

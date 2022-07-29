@@ -67,7 +67,6 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.devices', 'devices')
-      .leftJoinAndSelect('users.subscription', 'suscriptions')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .where('users.id = :id', { id })
       .getOne();

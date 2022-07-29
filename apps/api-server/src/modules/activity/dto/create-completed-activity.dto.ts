@@ -56,7 +56,7 @@ export class CreateCompletedActivityDto {
 
   @IsOptional()
   @IsNumber()
-  quantity_logged: number;
+  quantity_logged?: number;
 
   @IsNotEmpty()
   @IsNumber()
@@ -64,7 +64,7 @@ export class CreateCompletedActivityDto {
 
   @IsOptional()
   @IsString()
-  note_logged: string;
+  note_logged?: string;
 
   @IsNotEmpty()
   @IsUUID('4')

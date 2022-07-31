@@ -56,8 +56,8 @@ export class ActivityData {
 
   @IsString()
   @IsOptional()
-  @ValidateIf((o) => !!o.log_quantity)
-  @IsNotEmpty()
+  // @ValidateIf((o) => !!o.log_quantity)
+  // @IsNotEmpty()
   @ApiProperty()
   log_quantity_question?: string;
 

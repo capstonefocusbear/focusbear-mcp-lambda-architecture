@@ -38,7 +38,7 @@ export class ActivityParserService {
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
-        duration_seconds,
+        duration_seconds: Number(duration_seconds),
         activity_sequence_id,
         log_quantity,
         log_summary_type,

@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
+// import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
 
 export class FinishFocusModeDto {
   @IsOptional()
@@ -12,7 +12,7 @@ export class FinishFocusModeDto {
   distractions?: string;
 
   @IsNotEmpty()
-  @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
+  // @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'finish_time  should be a valid ISO string in UTC zone' })
   finish_time: Date;

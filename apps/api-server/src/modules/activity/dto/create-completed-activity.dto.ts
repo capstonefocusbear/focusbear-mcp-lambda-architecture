@@ -28,22 +28,22 @@ function IsTimestampGreaterThan(property: string, validationOptions?: Validation
   };
 }
 
-export function IsTimestampLesserThanNow(property: string, validationOptions?: ValidationOptions) {
-  return function (object: any, propertyName: string) {
-    registerDecorator({
-      target: object.constructor,
-      propertyName,
-      constraints: [property],
-      options: validationOptions,
-      validator: {
-        validate(value: any) {
-          const now = new Date();
-          return value <= now;
-        },
-      },
-    });
-  };
-}
+// export function IsTimestampLesserThanNow(property: string, validationOptions?: ValidationOptions) {
+//   return function (object: any, propertyName: string) {
+//     registerDecorator({
+//       target: object.constructor,
+//       propertyName,
+//       constraints: [property],
+//       options: validationOptions,
+//       validator: {
+//         validate(value: any) {
+//           const now = new Date();
+//           return value <= now;
+//         },
+//       },
+//     });
+//   };
+// }
 
 export class CreateCompletedActivityDto {
   @IsNotEmpty()
@@ -75,13 +75,13 @@ export class CreateCompletedActivityDto {
   activity_sequence_id: string;
 
   @IsNotEmpty()
-  @IsTimestampLesserThanNow(null, { message: 'start_time should be lesser than NOW!' })
+  // @IsTimestampLesserThanNow(null, { message: 'start_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'start_time should be a valid ISO string in UTC zone' })
   start_time?: Date;
 
   @IsNotEmpty()
-  @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
+  // @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'finish_time should be a valid ISO string in UTC zone' })
   @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than start_time' })

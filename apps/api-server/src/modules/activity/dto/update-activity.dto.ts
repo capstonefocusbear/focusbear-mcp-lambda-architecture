@@ -20,7 +20,7 @@ import { ActivityChoiceData } from '../domain/activity-choice-data.model';
 import { ActivityData } from '../domain/activity-data.model';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 
-function IsSkippedWhenHasChoices(property: string, validationOptions?: ValidationOptions) {
+function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return function (object: any, propertyName: string) {
     registerDecorator({
       target: object.constructor,
@@ -34,7 +34,7 @@ function IsSkippedWhenHasChoices(property: string, validationOptions?: Validatio
           const choices = args.object?.['choices'];
           const hasChoices = choices?.length > 0;
           if (!hasChoices) return true;
-          return !fieldValue;
+          return fieldValue === property;
         },
       },
     });
@@ -48,9 +48,8 @@ export class UpdateActivityDto extends ActivityData {
 
   @IsOptional()
   @IsBoolean()
-  @IsSkippedWhenHasChoices(null, {
-    message:
-      'log_quantity value should be skipped for Activity with choices inside! Leave this field empty in this case!',
+  @IsEqualWhenHasChoices(false, {
+    message: 'log_quantity value should be skipped or equal false for Activity with choices inside!',
   })
   @ApiProperty()
   log_quantity?: boolean;
@@ -63,9 +62,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsEnum(LogSummaryType)
   @IsIn(Object.values(LogSummaryType))
   @IsOptional()
-  @IsSkippedWhenHasChoices(null, {
-    message:
-      'log_summary_type value hould be skipped for Activity with choices inside! Leave this field empty in this case!',
+  @IsEqualWhenHasChoices(LogSummaryType.SUM, {
+    message: 'log_summary_type value should be skipped or equal SUM for Activity with choices inside!',
   })
   @ApiProperty({ enum: LogSummaryType })
   log_summary_type?: LogSummaryType;

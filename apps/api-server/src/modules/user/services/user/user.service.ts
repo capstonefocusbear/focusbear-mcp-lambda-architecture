@@ -9,6 +9,7 @@ import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { SubscriptionService } from '../../../subscription/services/subscription/subscription.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
+import { SubscriptionStatusService } from '../../../subscription/services/subscription-status/subscription-status.service';
 
 @Injectable()
 export class UserService {
@@ -17,6 +18,7 @@ export class UserService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly subscriptionStatusService: SubscriptionStatusService,
     private readonly userSettingsService: UserSettingsService,
     private readonly config: ConfigService,
   ) {}
@@ -29,7 +31,8 @@ export class UserService {
     const { id } = await this.userRepository.upsert({ auth0_id, email }, ['auth0_id']);
     await this.revenueCatService.getOrCreateSubscriber(id);
     if (isNewUser) await this.handleNewUser(id);
-    return { id };
+    const { hasActiveSubscription } = await this.subscriptionStatusService.getSubscriptionStatus(id, { syncup: true });
+    return { id, hasActiveSubscription };
   }
 
   private async handleNewUser(id: string): Promise<void> {

@@ -7,5 +7,6 @@ export class UserAuthContext {
   @IsUUID()
   id: string;
 
-  // ...
+  @ApiProperty()
+  hasActiveSubscription?: boolean;
 }

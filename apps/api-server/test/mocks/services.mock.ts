@@ -34,3 +34,7 @@ export const PusherServiceMock = {
 export const RevenueCatServiceMock = {
   getOrCreateSubscriber: jest.fn(),
 };
+
+export const UserSettingsServiceMock = {
+  getOrCreateSubscriber: jest.fn(),
+};

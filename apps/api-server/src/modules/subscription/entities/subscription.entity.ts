@@ -19,6 +19,12 @@ export class Subscription extends BaseEntity {
   user_id?: string;
 
   @Column({
+    type: 'timestamp',
+    nullable: false,
+  })
+  expires_date?: string;
+
+  @Column({
     type: 'enum',
     enum: SubscriptionType,
     nullable: false,

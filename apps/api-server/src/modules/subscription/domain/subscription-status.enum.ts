@@ -1,6 +1,6 @@
 export enum SubscriptionStatus {
-  trial = 'trial',
-  active = 'active',
-  payment_failed = 'payment failed',
-  cancelled = 'cancelled',
+  active = 'active', // has not expired subscription
+  payment_failed = 'payment failed', // not active because of payment failure
+  cancelled = 'cancelled', // not active because of cancelation
+  expired = 'expired', // not active because of reaching expiration date
 }

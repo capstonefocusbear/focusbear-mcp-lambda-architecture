@@ -11,9 +11,11 @@ import { UserRepository } from './repositories/user.repository';
 import { UserSettingsService } from './services/user-settings/user-settings.service';
 import { UserService } from './services/user/user.service';
 import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
+import { SubscriptionModule } from '../subscription/subscription.module';
+import { UserSubscriber } from './repositories/user.subscriber';
 
 @Module({
-  providers: [UserSettingsService, UserRepository, UserService],
+  providers: [UserSettingsService, UserRepository, UserService, UserSubscriber],
   exports: [UserRepository],
   imports: [
     TypeOrmModule.forFeature([User]),
@@ -30,6 +32,7 @@ import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenu
     ActivityModule,
     AuthModule,
     ConfigModule,
+    SubscriptionModule,
   ],
   controllers: [UserSettingsController, UserController],
 })

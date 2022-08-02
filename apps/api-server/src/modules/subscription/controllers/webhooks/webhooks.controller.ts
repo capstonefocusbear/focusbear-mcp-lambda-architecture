@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 
 @Controller('subscription/webhooks')
@@ -7,8 +7,8 @@ export class WebhooksController {
 
   @Post()
   @HttpCode(200)
-  async handleRevenueCatWebhooks({ type }) {
-    const strategy = this.webhookStrategy[type];
+  async handleRevenueCatWebhooks(@Body() { event }) {
+    const strategy = this.webhookStrategy[event.type];
     return strategy ? strategy() : null;
   }
 }

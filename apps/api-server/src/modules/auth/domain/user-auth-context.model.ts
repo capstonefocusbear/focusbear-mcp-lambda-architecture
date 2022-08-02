@@ -8,5 +8,5 @@ export class UserAuthContext {
   id: string;
 
   @ApiProperty()
-  subscriptionStatus: { hasActiveSubscription: boolean; entitlements: string[] };
+  subscriptionStatus?: { hasActiveSubscription: boolean; entitlements: string[] };
 }

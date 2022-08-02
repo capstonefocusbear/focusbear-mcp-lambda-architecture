@@ -1,5 +1,7 @@
-import { Injectable, CanActivate, ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, HttpException, HttpStatus, SetMetadata } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Passport } from '../../../auth/domain/passport.model';
+import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 
 const contextStrategy = Object.freeze({
   http: (ctx: ExecutionContext) => ctx.switchToHttp().getRequest().raw,
@@ -7,11 +9,18 @@ const contextStrategy = Object.freeze({
 
 @Injectable()
 export class HasSubscription implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
   canActivate(ctx: ExecutionContext): boolean {
     const ctxType = ctx.getType();
     const context = contextStrategy[ctxType](ctx);
     const { user }: Passport = context.passport;
-    const isAllowed = user?.hasActiveSubscription;
+    const meta = this.reflector.get<string[]>('RequireEntitlements', context.getHandler());
+    return meta ? this.hasEntitlements(user, meta) : this.hasSubscription(user);
+  }
+
+  private hasSubscription(user: UserAuthContext): boolean {
+    const isAllowed = user?.subscriptionStatus.hasActiveSubscription;
     const exception = new HttpException(
       {
         statusCode: 402,
@@ -20,7 +29,24 @@ export class HasSubscription implements CanActivate {
       },
       HttpStatus.PAYMENT_REQUIRED,
     );
-    if (!user?.hasActiveSubscription) throw exception;
+    if (!isAllowed) throw exception;
+    return isAllowed;
+  }
+
+  private hasEntitlements(user: UserAuthContext, acceptedEntitlements: string[]): boolean {
+    const { entitlements } = user.subscriptionStatus;
+    const isAllowed = acceptedEntitlements.every((e) => entitlements.includes(e));
+    const exception = new HttpException(
+      {
+        statusCode: 402,
+        message: 'The user has no required entitlement to access this route!',
+        error: 'Active Subscription Required',
+      },
+      HttpStatus.PAYMENT_REQUIRED,
+    );
+    if (!isAllowed) throw exception;
     return isAllowed;
   }
 }
+
+export const RequireEntitlements = (entitlements: string[]) => SetMetadata('RequireEntitlements', entitlements);

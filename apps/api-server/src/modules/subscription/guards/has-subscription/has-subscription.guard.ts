@@ -15,7 +15,7 @@ export class HasSubscription implements CanActivate {
     const ctxType = ctx.getType();
     const context = contextStrategy[ctxType](ctx);
     const { user }: Passport = context.passport;
-    const meta = this.reflector.get<string[]>('RequireEntitlements', context.getHandler());
+    const meta = this.reflector.get<string[]>('RequireEntitlements', ctx.getHandler());
     return meta ? this.hasEntitlements(user, meta) : this.hasSubscription(user);
   }
 
@@ -39,7 +39,7 @@ export class HasSubscription implements CanActivate {
     const exception = new HttpException(
       {
         statusCode: 402,
-        message: 'The user has no required entitlement to access this route!',
+        message: `The user has no entitlements to get access! Required ones: ${acceptedEntitlements.join(', ')}!`,
         error: 'Active Subscription Required',
       },
       HttpStatus.PAYMENT_REQUIRED,

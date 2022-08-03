@@ -8,7 +8,6 @@ export class WebhooksController {
   @Post()
   @HttpCode(200)
   async handleRevenueCatWebhooks(@Body() { event }) {
-    const strategy = this.webhookStrategy[event.type];
-    return strategy ? strategy() : null;
+    return this.webhookStrategy[event.type](event);
   }
 }

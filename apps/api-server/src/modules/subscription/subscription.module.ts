@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { constants } from '../../config';
+import { TeamModule } from '../team/team.module';
+import { UserModule } from '../user/user.module';
 import { WebhooksController } from './controllers/webhooks/webhooks.controller';
 import { HasSubscription } from './guards/has-subscription/has-subscription.guard';
 import { SubscriptionRepository } from './repositories/subscription.repository';
@@ -19,7 +21,7 @@ import { WebhookHandlerStrategy } from './services/webhook-handler/webhook-handl
     HasSubscription,
   ],
   exports: [SubscriptionService, SubscriptionStatusService, HasSubscription],
-  imports: [ConfigModule.forRoot({ load: [constants] })],
+  imports: [ConfigModule.forRoot({ load: [constants] }), TeamModule, forwardRef(() => UserModule)],
   controllers: [WebhooksController],
 })
 export class SubscriptionModule {}

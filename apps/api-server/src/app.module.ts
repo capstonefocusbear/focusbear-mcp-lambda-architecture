@@ -11,6 +11,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { DeviceModule } from './modules/device/device.module';
 import { FocusModeModule } from './modules/focus-mode/focus-mode.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { TeamModule } from './modules/team/team.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     DeviceModule,
     FocusModeModule,
     SubscriptionModule,
+    TeamModule,
   ],
   controllers: [AppController],
 })

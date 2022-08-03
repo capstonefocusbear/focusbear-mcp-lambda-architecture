@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
@@ -6,6 +6,7 @@ import { CompletedActivity } from '../../activity/entities/completed-activity.en
 import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { Subscription } from '../../subscription/entities/subscription.entity';
+import { Team } from '../../team/entities/team.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -93,6 +94,16 @@ export class User extends BaseEntity {
   })
   current_activity_id?: string;
 
+  @Column({
+    type: 'uuid',
+  })
+  member_of_team_id?: string;
+
+  @Column({
+    type: 'uuid',
+  })
+  owner_of_team_id?: string;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 
@@ -110,4 +121,12 @@ export class User extends BaseEntity {
 
   @OneToOne(() => Subscription, (sub) => sub.user)
   subscription?: Subscription;
+
+  @OneToOne(() => Team, (team) => team.owner)
+  @JoinColumn({ name: 'owner_of_team_id' })
+  owner_of_team?: Team;
+
+  @ManyToOne(() => Team, (team) => team.members)
+  @JoinColumn({ name: 'member_of_team_id' })
+  member_of_team?: Team;
 }

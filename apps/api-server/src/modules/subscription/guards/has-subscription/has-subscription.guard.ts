@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, HttpException, HttpStatus, S
 import { Reflector } from '@nestjs/core';
 import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
+import { Entitlement } from '../../domain/entitlement.enum';
 
 const contextStrategy = Object.freeze({
   http: (ctx: ExecutionContext) => ctx.switchToHttp().getRequest().raw,
@@ -15,7 +16,7 @@ export class HasSubscription implements CanActivate {
     const ctxType = ctx.getType();
     const context = contextStrategy[ctxType](ctx);
     const { user }: Passport = context.passport;
-    const meta = this.reflector.get<string[]>('RequireEntitlements', ctx.getHandler());
+    const meta = this.reflector.get<Entitlement[]>('RequireEntitlements', ctx.getHandler());
     return meta ? this.hasEntitlements(user, meta) : this.hasSubscription(user);
   }
 
@@ -33,9 +34,9 @@ export class HasSubscription implements CanActivate {
     return isAllowed;
   }
 
-  private hasEntitlements(user: UserAuthContext, acceptedEntitlements: string[]): boolean {
-    const { entitlements } = user.subscriptionStatus;
-    const isAllowed = acceptedEntitlements.every((e) => entitlements.includes(e));
+  private hasEntitlements(user: UserAuthContext, acceptedEntitlements: Entitlement[]): boolean {
+    const { activeEntitlements } = user.subscriptionStatus;
+    const isAllowed = acceptedEntitlements.every((e) => activeEntitlements.includes(e));
     const exception = new HttpException(
       {
         statusCode: 402,
@@ -49,4 +50,4 @@ export class HasSubscription implements CanActivate {
   }
 }
 
-export const RequireEntitlements = (entitlements: string[]) => SetMetadata('RequireEntitlements', entitlements);
+export const RequireEntitlements = (entitlements: Entitlement[]) => SetMetadata('RequireEntitlements', entitlements);

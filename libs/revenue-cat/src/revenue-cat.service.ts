@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
+
 import * as axios from 'axios';
+import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
+import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';
 import { IRevenueCatOptions } from './interfaces';
 import { REVENUE_CAT_MODULE_OPTIONS } from './revenue-cat.constants';
 
@@ -18,9 +21,9 @@ export class RevenueCatService {
 
   async grantTrialAccess(app_user_id: string) {
     await this.getOrCreateSubscriber(app_user_id);
-    const personal_access = 'personal_access';
+    const personalAccess = Entitlement.personal;
     const duration = 'daily';
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${personal_access}/promotional`;
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${personalAccess}/promotional`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
     return this.httpService
@@ -28,9 +31,19 @@ export class RevenueCatService {
       .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
   }
 
-  checkSubscriptionStatus(subscriber): { hasActiveSubscription: boolean; entitlements: string[] } {
-    const hasActiveSubscription = Boolean(subscriber?.entitlements?.personal_access);
-    const entitlements = Object.keys(subscriber?.entitlements);
-    return { hasActiveSubscription, entitlements };
+  checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
+    const emtitlementsEntries = Object.entries(entitlements);
+    const hasNoEntitlements = emtitlementsEntries.length < 1;
+    if (hasNoEntitlements) return new SubscriptionStatus();
+    const activeEntitlementsEntries = emtitlementsEntries.filter(this.validateEntitlement);
+    const activeEntitlements = Object.keys(Object.fromEntries(activeEntitlementsEntries));
+    return new SubscriptionStatus({ activeEntitlements });
+  }
+
+  private validateEntitlement([, { expires_date }]): boolean {
+    const now = new Date();
+    const endDate = new Date(expires_date);
+    const isEntitlementValid = endDate > now;
+    return isEntitlementValid;
   }
 }

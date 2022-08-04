@@ -27,6 +27,7 @@ describe('FocusModeService', () => {
 
   describe('create', () => {
     const createFocusModeDto: CreateFocusModeDto = {
+      id: randomUUID(),
       name: 'some string',
     };
     const user_id = userDummy.id;

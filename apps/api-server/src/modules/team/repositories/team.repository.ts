@@ -8,4 +8,8 @@ export class TeamRepository extends BaseRepository<Team> {
   constructor(private readonly connection: Connection) {
     super(connection, Team);
   }
+
+  async findActiveTeamWithMembersByOwnerId(owner_id: string): Promise<Team> {
+    return this.orm.findOne({ where: { owner_id, is_active: true }, relations: ['members'] });
+  }
 }

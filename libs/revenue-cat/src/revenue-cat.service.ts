@@ -31,6 +31,18 @@ export class RevenueCatService {
       .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
   }
 
+  async grantTeamMembershipe(app_user_id: string) {
+    await this.getOrCreateSubscriber(app_user_id);
+    const access = Entitlement.team_member;
+    const duration = 'lifetime';
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/promotional`;
+    const Authorization = `Bearer ${this.options.secretApiKey}`;
+    const headers = { Authorization };
+    return this.httpService
+      .post(callUrl, { duration }, { headers })
+      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+  }
+
   checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
     const emtitlementsEntries = Object.entries(entitlements);
     const hasNoEntitlements = emtitlementsEntries.length < 1;

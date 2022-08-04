@@ -38,7 +38,6 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('activity_sequences.activities', 'activities')
       .leftJoinAndSelect('activities.choices', 'choices')
       .select([
-        'users.id',
         'users.startup_time',
         'users.shutdown_time',
         'users.break_after_minutes',

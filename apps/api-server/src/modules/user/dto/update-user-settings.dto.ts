@@ -16,7 +16,7 @@ export class UpdateUserSettingsDto {
 
   @IsNotEmpty()
   @IsInt()
-  @Min(15)
+  @Min(1)
   break_after_minutes?: number;
 
   @IsNotEmpty()

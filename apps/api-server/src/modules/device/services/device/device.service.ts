@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
 
 @Injectable()
-export class DeviceService {
-  constructor(private readonly deviceRepository: DeviceRepository) {}
+export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
+  constructor(private readonly deviceRepository: DeviceRepository) {
+    super(deviceRepository);
+  }
 
   async createDevice({ operating_system, metadata }: CreateDeviceDto, user_id: string): Promise<Device> {
     const newDevice = new Device({ operating_system, user_id, metadata });

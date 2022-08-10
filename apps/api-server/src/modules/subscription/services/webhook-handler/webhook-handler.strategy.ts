@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
+import { Team } from '../../../team/entities/team.entity';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
 
 @Injectable()
 export class WebhookHandlerStrategy {
-  constructor(private readonly teamRepository: TeamRepository, private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly teamRepository: TeamRepository,
+    private readonly userRepository: UserRepository,
+    private readonly revenueCatService: RevenueCatService,
+  ) {}
 
   async INITIAL_PURCHASE(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
@@ -34,25 +40,70 @@ export class WebhookHandlerStrategy {
     return maxAllowedSize;
   }
 
-  // NON_RENEWING_PURCHASE() {} // it is promotional type things, will be used for giving access for team_members
-
   // should be handled // for team_owners and members
   async RENEWAL(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
     if (!isTeamOwner) return null;
     const owner_id = event.app_user_id;
-    const team = await this.teamRepository.orm.findOne({ where: { owner_id } });
+    const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
     team.is_active = true;
     team.expires_date = new Date(event.expiration_at_ms);
-    return this.teamRepository.orm.save(team);
+    const membersIds = this.extractMemberIds(team);
+    const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembershipe(id);
+    const bulckGrantMembersAccess = Promise.all(membersIds.map(grantMemberAccess));
+    const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckGrantMembersAccess]);
+    return updatedTeam;
   }
 
   async EXPIRATION(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
     if (!isTeamOwner) return null;
     const owner_id = event.app_user_id;
-    const team = await this.teamRepository.orm.findOne({ where: { owner_id } });
+    const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
     team.is_active = false;
-    return this.teamRepository.orm.save(team);
+    console.log(team);
+    const membersIds = this.extractMemberIds(team);
+    const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
+    const bulckRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
+    const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckRevokeMembersAccess]);
+    return updatedTeam;
+  }
+
+  private extractMemberIds(team: Team): string[] {
+    const membersIds = team.members.map(({ id }) => id);
+    const membersWithoutOwnerIds = membersIds.filter((id) => id !== team.owner_id);
+    return membersWithoutOwnerIds;
+  }
+
+  TEST() {
+    return null;
+  }
+
+  NON_RENEWING_PURCHASE() {
+    return null;
+  }
+
+  PRODUCT_CHANGE() {
+    return null;
+  }
+
+  CANCELLATION() {
+    return null;
+  }
+
+  UNCANCELLATION() {
+    return null;
+  }
+
+  BILLING_ISSUE() {
+    return null;
+  }
+
+  SUBSCRIPTION_PAUSED() {
+    return null;
+  }
+
+  TRANSFER() {
+    return null;
   }
 }

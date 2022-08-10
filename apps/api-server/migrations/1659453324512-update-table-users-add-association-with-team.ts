@@ -4,8 +4,8 @@ export class UpdateTableUsersAddAssociationWithTeam1659453324512 implements Migr
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "users"
-        ADD COLUMN "member_of_team_id" UUID REFERENCES "teams" ON DELETE CASCADE ON UPDATE CASCADE,
-        ADD COLUMN "owner_of_team_id" UUID REFERENCES "teams" ON DELETE CASCADE ON UPDATE CASCADE
+        ADD COLUMN "member_of_team_id" UUID REFERENCES "teams" ON DELETE SET NULL ON UPDATE SET NULL,
+        ADD COLUMN "owner_of_team_id" UUID REFERENCES "teams" ON DELETE SET NULL ON UPDATE SET NULL
       ;
     
       CREATE INDEX ON "users" ("member_of_team_id");

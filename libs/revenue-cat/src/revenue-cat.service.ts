@@ -58,4 +58,12 @@ export class RevenueCatService {
     const isEntitlementValid = endDate > now;
     return isEntitlementValid;
   }
+
+  async revokeTeamMembershipe(app_user_id: string) {
+    const access = Entitlement.team_member;
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/revoke_promotionals`;
+    const Authorization = `Bearer ${this.options.secretApiKey}`;
+    const headers = { Authorization };
+    return this.httpService.post(callUrl, { headers }).then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+  }
 }

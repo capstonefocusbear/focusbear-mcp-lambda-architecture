@@ -1,5 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { constants } from '../../config';
 import { TeamModule } from '../team/team.module';
 import { UserModule } from '../user/user.module';
@@ -10,6 +10,7 @@ import { SubscriptionStatusService } from './services/subscription-status/subscr
 import { SyncSubscriptionStatusStrategy } from './services/subscription-status/sync-subscription-status.strategy';
 import { SubscriptionService } from './services/subscription/subscription.service';
 import { WebhookHandlerStrategy } from './services/webhook-handler/webhook-handler.strategy';
+import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 
 @Module({
   providers: [
@@ -21,7 +22,16 @@ import { WebhookHandlerStrategy } from './services/webhook-handler/webhook-handl
     HasSubscription,
   ],
   exports: [SubscriptionService, SubscriptionStatusService, HasSubscription],
-  imports: [ConfigModule.forRoot({ load: [constants] }), TeamModule, forwardRef(() => UserModule)],
+  imports: [
+    ConfigModule.forRoot({ load: [constants] }),
+    TeamModule,
+    forwardRef(() => UserModule),
+    RevenueCatModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IRevenueCatOptions => configService.get('revenueCat'),
+    }),
+  ],
   controllers: [WebhooksController],
 })
 export class SubscriptionModule {}

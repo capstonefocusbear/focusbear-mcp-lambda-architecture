@@ -3,6 +3,7 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { CompletedActivityResponse } from '../domain/completed-activity-response.model';
 import { CompletedActivityStats } from '../domain/completed-activity-stats.model';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import {
@@ -19,7 +20,10 @@ export class CompletedActivityController {
   constructor(private readonly completedActivityService: CompletedActivityService) {}
 
   @Post()
-  createCompletedActivity(@Body() completedActivity: CreateCompletedActivityDto, @AuthContext() { user }: Passport) {
+  createCompletedActivity(
+    @Body() completedActivity: CreateCompletedActivityDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<CompletedActivityResponse> {
     return this.completedActivityService.completeActivity(completedActivity, { user_id: user.id });
   }
 

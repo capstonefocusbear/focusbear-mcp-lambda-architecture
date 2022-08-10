@@ -19,6 +19,7 @@ import { CompletedActivityRepository } from '../../repositories/completed-activi
 import { CompletedActivitySequenceService } from '../completed-activity-sequence/completed-activity-sequence.service';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
+import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 
 @Injectable()
 export class CompletedActivityService {
@@ -35,7 +36,7 @@ export class CompletedActivityService {
   async completeActivity(
     completedActivity: CreateCompletedActivityDto,
     { user_id }: GetUserSettingsDto,
-  ): Promise<CompletedActivity> {
+  ): Promise<CompletedActivityResponse> {
     const { device_id, activity_sequence_id, activity_id, choice_id } = completedActivity;
     const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
       activity_sequence_id,
@@ -49,7 +50,7 @@ export class CompletedActivityService {
     await this.userRepository.orm.update(user_id, { ...currentValues });
     const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
     if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
-    await this.broadcastCompletionEvent(user_id, createdItem.id, { ...completedActivity });
+    await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
     return createdItem;
   }
 
@@ -130,7 +131,7 @@ export class CompletedActivityService {
     activity: Activity,
     choice: Activity,
     user_id: string,
-  ): Promise<CompletedActivity> {
+  ): Promise<CompletedActivityResponse> {
     const { choice_id, ...data } = completedActivity;
     const { has_choices } = activity;
     const completedItem = new CompletedActivity(
@@ -143,11 +144,11 @@ export class CompletedActivityService {
     );
     const nullifiedParent = { quantity_logged: null };
     if (has_choices) Object.assign(completedItem, nullifiedParent);
-    const [savedCompletedActivity] = await Promise.all([
+    const [completed_activity_log, completed_choice_log] = await Promise.all([
       this.completedActivityRepository.create(completedItem),
       has_choices ? this.completedActivityRepository.create(completedChoice) : null,
     ]);
-    return savedCompletedActivity;
+    return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });
   }
 
   private async broadcastCompletionEvent(

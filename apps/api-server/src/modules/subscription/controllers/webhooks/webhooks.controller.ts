@@ -8,6 +8,7 @@ export class WebhooksController {
   @Post()
   @HttpCode(200)
   async handleRevenueCatWebhooks(@Body() { event }) {
+    console.log({ test: event.type });
     return this.webhookStrategy[event.type](event);
   }
 }

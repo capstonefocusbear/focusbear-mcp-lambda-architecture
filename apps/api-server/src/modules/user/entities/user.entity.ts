@@ -7,6 +7,7 @@ import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { Subscription } from '../../subscription/entities/subscription.entity';
 import { Team } from '../../team/entities/team.entity';
+import { UpdateLocalDeviceSettingsDto } from '../dto/update-local-device-settings.dto';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -103,6 +104,12 @@ export class User extends BaseEntity {
     type: 'uuid',
   })
   owner_of_team_id?: string;
+
+  @Column({
+    type: 'jsonb',
+    transformer: BaseEntity.encrypteJSONField('local_device_settings'),
+  })
+  local_device_settings?: UpdateLocalDeviceSettingsDto;
 
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];

@@ -13,6 +13,7 @@ import { UserService } from './services/user/user.service';
 import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserSubscriber } from './repositories/user.subscriber';
+import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService, UserSubscriber],
@@ -34,6 +35,6 @@ import { UserSubscriber } from './repositories/user.subscriber';
     ConfigModule,
     SubscriptionModule,
   ],
-  controllers: [UserSettingsController, UserController],
+  controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController],
 })
 export class UserModule {}

@@ -7,6 +7,7 @@ import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { UserSettingsService } from '../user-settings/user-settings.service';
+import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 
 @Injectable()
 export class UserService {
@@ -48,5 +49,21 @@ export class UserService {
     const userDetails = await this.userRepository.getUserDetails(id);
     if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exit!`);
     return userDetails;
+  }
+
+  async updateUserLocalDeviceSettings(
+    user_id: string,
+    local_device_settings: UpdateLocalDeviceSettingsDto,
+  ): Promise<UpdateLocalDeviceSettingsDto> {
+    const updateUser = await this.userRepository.update(user_id, { local_device_settings });
+    if (!updateUser) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+    return updateUser.local_device_settings;
+  }
+
+  async getUserLocalDeviceSettings(user_id: string): Promise<UpdateLocalDeviceSettingsDto> {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+    if (!user.local_device_settings) return { iOS: null, Windows: null, MacOS: null, Android: null };
+    return user.local_device_settings;
   }
 }

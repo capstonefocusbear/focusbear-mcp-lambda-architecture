@@ -180,4 +180,11 @@ export class CompletedActivityService {
     });
     return stats;
   }
+
+  async getCompletedLogsByActivityInTimeRange(
+    { activity_id }: GetCompletedActivityStatsParamsDto,
+    { from_time, to_time },
+  ): Promise<CompletedActivity[]> {
+    return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
+  }
 }

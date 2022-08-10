@@ -11,7 +11,7 @@ import {
   ValidationOptions,
 } from 'class-validator';
 
-function IsTimestampGreaterThan(property: string, validationOptions?: ValidationOptions) {
+export function IsTimestampGreaterThan(property: string, validationOptions?: ValidationOptions) {
   return function (object: any, propertyName: string) {
     registerDecorator({
       target: object.constructor,

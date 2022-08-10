@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, MoreThan } from 'typeorm';
+import { Between, Connection, In, MoreThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { CompletedActivity } from '../entities/completed-activity.entity';
@@ -47,5 +47,17 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     const where = { activity_sequence_id };
     if (timestamp) Object.assign(where, { finish_time: MoreThan(timestamp) });
     return this.orm.find(where);
+  }
+
+  async getLogsByActivityInTimeRange(
+    activity_id: string,
+    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+  ): Promise<CompletedActivity[]> {
+    return this.orm.find({
+      where: {
+        activity_id,
+        finish_time: Between(from_time, to_time),
+      },
+    });
   }
 }

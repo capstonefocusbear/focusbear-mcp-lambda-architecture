@@ -6,10 +6,12 @@ import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CompletedActivityResponse } from '../domain/completed-activity-response.model';
 import { CompletedActivityStats } from '../domain/completed-activity-stats.model';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
+import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-logs.dto';
 import {
   GetCompletedActivityStatsParamsDto,
   GetCompletedActivityStatsQueryDto,
 } from '../dto/get-completed-activity-stats.dto';
+import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 
 @Controller('completed-activity')
@@ -33,5 +35,13 @@ export class CompletedActivityController {
     @Query() { days_number, timezone }: GetCompletedActivityStatsQueryDto,
   ): Promise<CompletedActivityStats> {
     return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number, timezone });
+  }
+
+  @Get(':activity_id')
+  getCompletedLogsByActivityInTimeRange(
+    @Param() { activity_id }: GetCompletedActivityStatsParamsDto,
+    @Query() { from_time, to_time }: GetCompletedActivityLogsQueryDto,
+  ): Promise<CompletedActivity[]> {
+    return this.completedActivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, { from_time, to_time });
   }
 }

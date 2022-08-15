@@ -10,4 +10,7 @@ export class UserAuthContext {
 
   @ApiProperty()
   subscriptionStatus?: SubscriptionStatus;
+
+  @ApiProperty()
+  stripeCustomerId?: string;
 }

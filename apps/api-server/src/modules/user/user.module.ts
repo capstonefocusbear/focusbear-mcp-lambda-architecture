@@ -14,6 +14,7 @@ import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenu
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserSubscriber } from './repositories/user.subscriber';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
+import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService, UserSubscriber],
@@ -29,6 +30,11 @@ import { UserLocalDeviceSettingsController } from './controllers/user-local-devi
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IRevenueCatOptions => configService.get('revenueCat'),
+    }),
+    StripeModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     ActivityModule,
     AuthModule,

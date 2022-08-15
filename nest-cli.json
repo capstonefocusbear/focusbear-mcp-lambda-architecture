@@ -84,6 +84,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/revenue-cat/tsconfig.lib.json"
       }
+    },
+    "stripe": {
+      "type": "library",
+      "root": "libs/stripe",
+      "entryFile": "index",
+      "sourceRoot": "libs/stripe/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/stripe/tsconfig.lib.json"
+      }
     }
   }
 }

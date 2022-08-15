@@ -48,6 +48,12 @@
       ],
       "@app/revenue-cat/*": [
         "libs/revenue-cat/src/*"
+      ],
+      "@app/stripe": [
+        "libs/stripe/src"
+      ],
+      "@app/stripe/*": [
+        "libs/stripe/src/*"
       ]
     }
   }

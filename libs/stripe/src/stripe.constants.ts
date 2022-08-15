@@ -1,0 +1,1 @@
+export const STRIPE_MODULE_OPTIONS = Symbol('STRIPE_MODULE_OPTIONS');

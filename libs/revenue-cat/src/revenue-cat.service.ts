@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-
 import * as axios from 'axios';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';

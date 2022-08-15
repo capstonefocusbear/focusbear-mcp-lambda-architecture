@@ -8,6 +8,7 @@ import { User } from '../../entities/user.entity';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
+import { StripeService } from '../../../../../../../libs/stripe/src';
 
 @Injectable()
 export class UserService {
@@ -16,17 +17,18 @@ export class UserService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
     private readonly userSettingsService: UserSettingsService,
+    private readonly stripeService: StripeService,
     private readonly config: ConfigService,
   ) {}
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
     const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
     if (!auth0User) throw new NotFoundException('User does not exit in Auth0!');
-    const { id } = await this.userRepository.upsert({ auth0_id, email }, ['auth0_id']);
+    const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
     if (!registeredUser) await this.handleInitialRegistration(id);
     const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
     const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
-    return { id, subscriptionStatus };
+    return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
   }
 
   private async consistentlyGetUser(auth0_id: string): Promise<[any, User]> {
@@ -34,6 +36,16 @@ export class UserService {
     const dbUserPromise = this.userRepository.orm.findOne({ where: { auth0_id } });
     const [auth0User, dbUser] = await Promise.all([auth0UserPromise, dbUserPromise]);
     return [auth0User, dbUser];
+  }
+
+  private async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
+    const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
+    const userProperties = { auth0_id, email };
+    if (hasNoStripeCustomer) {
+      const stripeCustomer = await this.stripeService.registerNewCustomer(email);
+      Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+    }
+    return this.userRepository.upsert(userProperties, ['auth0_id']);
   }
 
   private async handleInitialRegistration(id: string): Promise<void> {

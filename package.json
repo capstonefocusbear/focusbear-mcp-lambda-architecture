@@ -49,6 +49,7 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
+    "stripe": "^10.2.0",
     "typeorm": "^0.2.36",
     "typeorm-encrypted": "^0.7.0"
   },
@@ -136,7 +137,8 @@
       "^@app/dynamic-module(|/.*)$": "<rootDir>/libs/dynamic-module/src/$1",
       "^@app/auth0(|/.*)$": "<rootDir>/libs/auth0/src/$1",
       "^@app/pusher(|/.*)$": "<rootDir>/libs/pusher/src/$1",
-      "^@app/revenue-cat(|/.*)$": "<rootDir>/libs/revenue-cat/src/$1"
+      "^@app/revenue-cat(|/.*)$": "<rootDir>/libs/revenue-cat/src/$1",
+      "^@app/stripe(|/.*)$": "<rootDir>/libs/stripe/src/$1"
     }
   }
 }

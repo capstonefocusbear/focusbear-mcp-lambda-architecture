@@ -55,9 +55,11 @@ export class UserService {
     user_id: string,
     local_device_settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
-    const updateUser = await this.userRepository.update(user_id, { local_device_settings });
-    if (!updateUser) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
-    return updateUser.local_device_settings;
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+    const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
+    await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
+    return updatedSettings;
   }
 
   async getUserLocalDeviceSettings(user_id: string): Promise<UpdateLocalDeviceSettingsDto> {
@@ -65,5 +67,17 @@ export class UserService {
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
     if (!user.local_device_settings) return { iOS: null, Windows: null, MacOS: null, Android: null };
     return user.local_device_settings;
+  }
+
+  mergeLocalSettings(saved?: UpdateLocalDeviceSettingsDto, update?: UpdateLocalDeviceSettingsDto) {
+    const baseVersion = {
+      MacOS: saved?.MacOS || null,
+      Windows: saved?.Windows || null,
+      Android: saved?.Android || null,
+      iOS: saved?.iOS || null,
+    };
+    const hasWrongSchema = !update || typeof update !== 'object' || Array.isArray(update);
+    if (hasWrongSchema) return baseVersion;
+    return Object.assign(baseVersion, update);
   }
 }

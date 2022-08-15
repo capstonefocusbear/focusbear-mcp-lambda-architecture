@@ -1,19 +1,15 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 export class UpdateLocalDeviceSettingsDto {
-  @IsString()
   @IsOptional()
-  MacOS?: string;
+  MacOS?: any;
 
-  @IsString()
   @IsOptional()
-  Windows?: string;
+  Windows?: any;
 
-  @IsString()
   @IsOptional()
-  Android?: string;
+  Android?: any;
 
-  @IsString()
   @IsOptional()
-  iOS?: string;
+  iOS?: any;
 }

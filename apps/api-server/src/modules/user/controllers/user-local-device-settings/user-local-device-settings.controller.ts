@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
@@ -19,10 +19,11 @@ export class UserLocalDeviceSettingsController {
   }
 
   @Put()
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   updateLocalDeviceSettings(
     @AuthContext() { user }: Passport,
-    @Body() { MacOS, iOS, Windows, Android }: UpdateLocalDeviceSettingsDto,
+    @Body() setings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
-    return this.userService.updateUserLocalDeviceSettings(user.id, { MacOS, iOS, Windows, Android });
+    return this.userService.updateUserLocalDeviceSettings(user.id, setings);
   }
 }

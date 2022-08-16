@@ -38,4 +38,11 @@ export class StripeService extends Stripe {
   async registerNewCustomer(email?: string) {
     return this.customers.create({ email });
   }
+
+  async decodeWebhookEvent(payload: any, headers: unknown): Promise<Stripe.Event> {
+    const signature = headers['stripe-signature'];
+    const webhookSecret = this.options.webhook.secret;
+    const event = await this.webhooks.constructEventAsync(payload, signature, webhookSecret);
+    return event;
+  }
 }

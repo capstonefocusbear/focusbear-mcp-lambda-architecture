@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as axios from 'axios';
+import { SubscriptionProvider } from '../../../apps/api-server/src/modules/subscription/domain/subscription-provider.enum';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';
 import { IRevenueCatOptions } from './interfaces';
@@ -64,5 +65,16 @@ export class RevenueCatService {
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
     return this.httpService.post(callUrl, { headers }).then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+  }
+
+  async createPurchase(provider: SubscriptionProvider, { app_user_id, fetch_token }) {
+    const callUrl = 'https://api.revenuecat.com/v1/receipts';
+    const Authorization = `Bearer ${this.options.publicApiKey}`;
+    const headers = { Authorization };
+    headers['X-Platform'] = provider;
+    const body = { app_user_id, fetch_token };
+    return this.httpService
+      .post(callUrl, body, { headers })
+      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
   }
 }

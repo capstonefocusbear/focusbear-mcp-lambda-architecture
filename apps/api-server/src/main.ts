@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'fastify-helmet';
+import fastifyRawBody from 'fastify-raw-body';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 
@@ -33,6 +34,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.register(helmet, HELMET);
+  app.register(fastifyRawBody, { global: true }); // turn off global and set route spesific // routes: ['/subscription/webhooks/stripe']
 
   bootstrapApiDocumentation(app);
 

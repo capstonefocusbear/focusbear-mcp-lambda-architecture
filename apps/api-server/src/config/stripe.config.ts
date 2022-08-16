@@ -9,5 +9,8 @@ export const stripeConfig = registerAs(
       success_url: process.env.STRIPE_CHECKOUT_SUCCESS_URL,
       cancel_url: process.env.STRIPE_CHECKOUT_CANCEL_URL,
     },
+    webhook: {
+      secret: process.env.STRIPE_WEBHOOK_SECRET,
+    },
   }),
 );

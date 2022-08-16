@@ -5,4 +5,7 @@ export interface IStripeOptions {
     success_url?: string;
     cancel_url?: string;
   };
+  webhook: {
+    secret?: string;
+  };
 }

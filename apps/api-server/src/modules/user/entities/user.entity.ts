@@ -27,7 +27,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    transformer: BaseEntity.encrypteField('stripe_customer_id'),
+    unique: true,
   })
   stripe_customer_id?: string;
 

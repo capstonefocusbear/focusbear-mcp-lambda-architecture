@@ -30,12 +30,15 @@ export class WebhooksController {
   async handleStripeWebhooks(@RawBody() body, @Headers() headers: unknown) {
     const event = await this.stripeService.decodeWebhookEvent(body, headers);
     if (event.type !== 'customer.subscription.created') return null;
+    this.rcLogger.warn(event.type);
     try {
       const payload = JSON.parse(JSON.stringify(event.data.object));
       const user = await this.userRepository.orm.findOne({
         where: { stripe_customer_id: payload.customer },
       });
+      this.rcLogger.warn(user);
       const purchaseData = { app_user_id: user.id, fetch_token: payload.id };
+      this.rcLogger.warn(purchaseData);
       await this.revenueCatService.createPurchase(SubscriptionProvider.stripe, purchaseData);
       return null;
     } catch (error) {

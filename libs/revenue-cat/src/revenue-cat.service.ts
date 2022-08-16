@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import * as axios from 'axios';
 import { SubscriptionProvider } from '../../../apps/api-server/src/modules/subscription/domain/subscription-provider.enum';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
@@ -75,6 +75,9 @@ export class RevenueCatService {
     const body = { app_user_id, fetch_token };
     return this.httpService
       .post(callUrl, body, { headers })
-      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data)
+      .catch((err) => {
+        throw new BadRequestException(err);
+      });
   }
 }

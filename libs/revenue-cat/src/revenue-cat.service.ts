@@ -72,11 +72,13 @@ export class RevenueCatService {
     const Authorization = `Bearer ${this.options.publicApiKey}`;
     const headers = { Authorization };
     headers['X-Platform'] = provider;
+    console.error({ headers });
     const body = { app_user_id, fetch_token };
     return this.httpService
       .post(callUrl, body, { headers })
       .then(({ data }: axios.AxiosResponse<unknown, any>): any => data)
       .catch((err) => {
+        console.error(err);
         throw new BadRequestException(err);
       });
   }

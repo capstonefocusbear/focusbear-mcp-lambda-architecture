@@ -36,7 +36,7 @@ export class WebhooksController {
       const user = await this.userRepository.orm.findOne({
         where: { stripe_customer_id: payload.customer },
       });
-      this.rcLogger.warn(user);
+      this.rcLogger.warn(JSON.stringify(user || 'empty'));
       const purchaseData = { app_user_id: user.id, fetch_token: payload.id };
       this.rcLogger.warn(purchaseData);
       await this.revenueCatService.createPurchase(SubscriptionProvider.stripe, purchaseData);

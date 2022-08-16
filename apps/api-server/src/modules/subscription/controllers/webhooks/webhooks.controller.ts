@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Logger, Post } from '@nestjs/common';
-import { StripeService } from '@app/stripe';
+import { StripeService } from '../../../../../../../libs/stripe/src';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 import { Headers } from '../../../../shared/decorators/headers.decorator';
 import { RawBody } from '../../../../shared/decorators/raw-body.decorator';
@@ -30,7 +30,8 @@ export class WebhooksController {
   async handleStripeWebhooks(@RawBody() body, @Headers() headers: unknown) {
     const event = await this.stripeService.decodeWebhookEvent(body, headers);
     if (event.type !== 'customer.subscription.created') return null;
-    const { customer, id } = event.data.object as any;
+    const { id } = event.data.object as any;
+    const { customer } = event.data as any;
     const { id: app_user_id } = await this.userRepository.orm.findOne({ where: { stripe_customer_id: customer } });
     const purchaseData = { app_user_id, fetch_token: id };
     await this.revenueCatService.createPurchase(SubscriptionProvider.stripe, purchaseData);

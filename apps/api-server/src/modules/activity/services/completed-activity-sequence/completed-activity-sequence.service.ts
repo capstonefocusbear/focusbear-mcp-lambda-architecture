@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceMetrics } from '../../domain/completed-activity-sequence-metrics.interface';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
@@ -140,7 +141,7 @@ export class CompletedActivitySequenceService {
     dailyDurationsMinutes: CompletedActivityStatItem[],
     planningDailyDurationMinutes: number,
   ): number {
-    const acceptableDeviation = 20; // based on business requirements
+    const acceptableDeviation = 20; // based on business requirements, move that value to the config
     const countDailyCompletionPercentDeviation = ({ summary }) => (+summary / planningDailyDurationMinutes) * 100 - 100;
     const dailyCompetionPercentDeviations = dailyDurationsMinutes.map(countDailyCompletionPercentDeviation);
     const hasAcceptableDeviation = (deviation: number): boolean => Math.abs(deviation) < acceptableDeviation;
@@ -149,5 +150,59 @@ export class CompletedActivitySequenceService {
     const totalDays = dailyDurationsMinutes.length;
     const completionPercent = (totalDaysWithAcceptableDeviation / totalDays) * 100;
     return completionPercent;
+  }
+
+  async forceCompleteCurrentSequence(activity_sequence_id: string, user_id: string): Promise<any> {
+    const getUserOptions = { relations: ['current_activity', 'current_activity_sequence'] };
+    const user = await this.userRepository.orm.findOne(user_id, getUserOptions);
+    this.validateCurrentActivitySequence(user, activity_sequence_id);
+    const currentActivityId = user.current_activity_id;
+    const uncompletedActivityIds = this.defineUncompletedActivitiesInTheSequence(
+      user.current_activity_sequence,
+      currentActivityId,
+    );
+    const emptyCompletedActivityLogs = this.createEmptyCompletedActivityLogs(user, uncompletedActivityIds);
+    await Promise.all(emptyCompletedActivityLogs.map((e) => this.completedActivityRepository.orm.save(e)));
+    await this.completeActivitySequence(activity_sequence_id, user_id);
+    const nullifiedCurrentSequence = {
+      current_activity_sequence_id: null,
+      current_activity_id: null,
+      current_activity_assigned_at: null,
+    };
+    const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
+    return updatedUser;
+  }
+
+  private validateCurrentActivitySequence(user: User, activity_sequence_id: string): never | void {
+    const userHasNoCurrentSequence = !user.current_activity_sequence_id;
+    const givenSequenceIsNotCurren = user.current_activity_sequence_id !== activity_sequence_id;
+    const userHasNoCurrentSequenceMessage = 'This User has no current activity sequence specified!';
+    if (userHasNoCurrentSequence) throw new BadRequestException(userHasNoCurrentSequenceMessage);
+    const givenSequenceIsNotCurrenMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
+    if (givenSequenceIsNotCurren) throw new BadRequestException(givenSequenceIsNotCurrenMessage);
+  }
+
+  private defineUncompletedActivitiesInTheSequence(
+    currentSequence: ActivitySequence,
+    currentActivityId: string,
+  ): string[] {
+    const currentActivityOrder = currentSequence.activity_ids.lastIndexOf(currentActivityId);
+    const sequenceLength = currentSequence.activity_ids.length;
+    const uncompletedActivityIds = currentSequence.activity_ids.slice(currentActivityOrder, sequenceLength);
+    return uncompletedActivityIds;
+  }
+
+  private createEmptyCompletedActivityLogs(user: User, uncompletedActivityIds: string[]): CompletedActivity[] {
+    return uncompletedActivityIds.map(
+      (id: string): CompletedActivity =>
+        new CompletedActivity({
+          activity_sequence_id: user.current_activity_sequence_id,
+          activity_id: id,
+          user_id: user.id,
+          start_time: user.current_activity_assigned_at,
+          finish_time: user.current_activity_assigned_at,
+          duration_logged: 0,
+        }),
+    );
   }
 }

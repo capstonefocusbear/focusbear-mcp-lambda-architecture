@@ -113,6 +113,7 @@ export class CompletedActivityService {
   ): {
     current_activity_sequence_id: string | null;
     current_activity_id: string | null;
+    current_activity_assigned_at: Date | null;
     nextActivity: string | null | undefined;
   } {
     const { activity_ids, id } = sequence;
@@ -123,7 +124,8 @@ export class CompletedActivityService {
     const nextActivity = activity_ids[completedActivityIndexInTheSequence + 1];
     const current_activity_id = nextActivity || null;
     const current_activity_sequence_id = nextActivity ? id : null;
-    return { current_activity_sequence_id, current_activity_id, nextActivity };
+    const current_activity_assigned_at = nextActivity ? new Date() : null;
+    return { current_activity_sequence_id, current_activity_id, current_activity_assigned_at, nextActivity };
   }
 
   private async saveCompletedLog(

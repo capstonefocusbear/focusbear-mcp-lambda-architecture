@@ -254,6 +254,7 @@ describe('CompletedActivityService', () => {
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
         current_activity_sequence_id: sequenceWhenThereIsNextActivity.id,
+        current_activity_assigned_at: expect.toBeDate(),
       });
     });
 
@@ -274,6 +275,7 @@ describe('CompletedActivityService', () => {
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: null,
         current_activity_sequence_id: null,
+        current_activity_assigned_at: null,
       });
     });
 

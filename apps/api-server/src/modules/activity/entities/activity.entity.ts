@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { User } from '../../user/entities/user.entity';
 import { ActivityData } from '../domain/activity-data.model';
 import { ActivityType } from '../domain/activity-type.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
@@ -83,4 +84,8 @@ export class Activity extends BaseEntity {
 
   @OneToMany(() => Activity, (activity) => activity.parent_activity)
   choices?: Activity[];
+
+  @ManyToOne(() => User, (user) => user.current_activity)
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
 }

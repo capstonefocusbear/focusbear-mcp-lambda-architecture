@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
+import { Activity } from '../../activity/entities/activity.entity';
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
@@ -103,6 +104,11 @@ export class User extends BaseEntity {
   current_activity_id?: string;
 
   @Column({
+    type: 'timestamptz',
+  })
+  current_activity_assigned_at?: Date;
+
+  @Column({
     type: 'uuid',
   })
   member_of_team_id?: string;
@@ -143,4 +149,12 @@ export class User extends BaseEntity {
   @ManyToOne(() => Team, (team) => team.members)
   @JoinColumn({ name: 'member_of_team_id' })
   member_of_team?: Team;
+
+  @OneToOne(() => Activity, (activity) => activity.user)
+  @JoinColumn({ name: 'current_activity_id' })
+  current_activity?: Activity;
+
+  @OneToOne(() => ActivitySequence, (sequence) => sequence.user)
+  @JoinColumn({ name: 'current_activity_sequence_id' })
+  current_activity_sequence?: ActivitySequence;
 }

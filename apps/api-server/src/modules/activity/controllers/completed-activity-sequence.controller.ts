@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -26,5 +26,13 @@ export class CompletedActivitySequenceController {
       { days_number, timezone },
       user.id,
     );
+  }
+
+  @Post(':activity_sequence_id/force-complete-current-sequence')
+  async forceCompleteCurrentSequence(
+    @Param() { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
+    @AuthContext() { user: { id: user_id } }: Passport,
+  ) {
+    return this.completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, user_id);
   }
 }

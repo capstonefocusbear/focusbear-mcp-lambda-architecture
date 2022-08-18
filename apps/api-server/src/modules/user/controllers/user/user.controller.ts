@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
+import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
@@ -29,5 +30,12 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserDetails(@AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserDetails(user.id);
+  }
+
+  @Get('/details/current-activity-props')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserCurrentActivity(@AuthContext() { user }: Passport): Promise<CurrentActivityProps> {
+    return this.userService.getUserCurrentActivityProps(user.id);
   }
 }

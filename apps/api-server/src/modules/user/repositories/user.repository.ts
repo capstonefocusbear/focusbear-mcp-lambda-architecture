@@ -70,4 +70,14 @@ export class UserRepository extends BaseRepository<User> {
       .where('users.id = :id', { id })
       .getOne();
   }
+
+  async getUserCurrentActivityProps(id: string): Promise<Partial<User>> {
+    return this.orm
+      .createQueryBuilder('users')
+      .leftJoinAndSelect('users.current_activity', 'current_activity')
+      .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
+      .select(['users.current_activity_assigned_at', 'users.id', 'current_activity', 'current_activity_sequence'])
+      .where('users.id = :id', { id })
+      .getOne();
+  }
 }

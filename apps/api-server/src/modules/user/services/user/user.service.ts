@@ -9,6 +9,7 @@ import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { StripeService } from '../../../../../../../libs/stripe/src';
+import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 
 @Injectable()
 export class UserService {
@@ -61,6 +62,13 @@ export class UserService {
     const userDetails = await this.userRepository.getUserDetails(id);
     if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exit!`);
     return userDetails;
+  }
+
+  async getUserCurrentActivityProps(id: string): Promise<CurrentActivityProps> {
+    const partialUser = await this.userRepository.getUserCurrentActivityProps(id);
+    if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exit!`);
+    const currentActivityProps = new CurrentActivityProps(partialUser);
+    return currentActivityProps;
   }
 
   async updateUserLocalDeviceSettings(

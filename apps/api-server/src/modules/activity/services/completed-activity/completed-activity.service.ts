@@ -20,6 +20,7 @@ import { CompletedActivitySequenceService } from '../completed-activity-sequence
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
+import { CurrentActivityState } from '../../domain/current-activity-state.mode';
 
 @Injectable()
 export class CompletedActivityService {
@@ -45,9 +46,9 @@ export class CompletedActivityService {
       choice_id,
     );
     this.validateComplitingActivity(user, sequence, activity, choice);
-    const { nextActivity, ...currentValues } = this.defineNextCurrentActivity(sequence, activity_id);
+    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id);
     await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentValues });
+    await this.userRepository.orm.update(user_id, { ...currentState });
     const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
     if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
     await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
@@ -111,9 +112,7 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     activity_id: string,
   ): {
-    current_activity_sequence_id: string | null;
-    current_activity_id: string | null;
-    current_activity_assigned_at: Date | null;
+    currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
   } {
     const { activity_ids, id } = sequence;
@@ -122,10 +121,8 @@ export class CompletedActivityService {
     const noActivityInTheSequenseMessage = `Activity with id: ${activity_id} does not exist in the Secuense with id: ${id}!`;
     if (noActivityInTheSequense) throw new ConflictException(noActivityInTheSequenseMessage);
     const nextActivity = activity_ids[completedActivityIndexInTheSequence + 1];
-    const current_activity_id = nextActivity || null;
-    const current_activity_sequence_id = nextActivity ? id : null;
-    const current_activity_assigned_at = nextActivity ? new Date() : null;
-    return { current_activity_sequence_id, current_activity_id, current_activity_assigned_at, nextActivity };
+    const currentState = new CurrentActivityState({ nextActivity, lastSequenceId: id });
+    return { nextActivity, currentState };
   }
 
   private async saveCompletedLog(

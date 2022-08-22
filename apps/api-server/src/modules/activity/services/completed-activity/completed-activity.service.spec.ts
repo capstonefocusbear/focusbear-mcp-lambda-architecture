@@ -276,6 +276,8 @@ describe('CompletedActivityService', () => {
         current_activity_id: null,
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
+        last_completed_sequence_id: userWithCurrentActivity.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
       });
     });
 

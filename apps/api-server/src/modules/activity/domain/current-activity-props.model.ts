@@ -8,6 +8,8 @@ export class CurrentActivityProps {
     this.current_activity_sequence = data?.current_activity_sequence || null;
     this.current_activity = data?.current_activity || null;
     this.current_activity_assigned_at = data?.current_activity_assigned_at || null;
+    this.last_completed_sequence = data?.last_completed_sequence || null;
+    this.last_completed_sequence_at = data?.last_completed_sequence_at || null;
   }
 
   @ApiProperty()
@@ -18,4 +20,10 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   current_activity_assigned_at?: Date | null;
+
+  @ApiProperty()
+  last_completed_sequence?: ActivitySequence | null;
+
+  @ApiProperty()
+  last_completed_sequence_at?: Date | null;
 }

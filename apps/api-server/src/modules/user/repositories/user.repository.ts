@@ -75,8 +75,16 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.current_activity', 'current_activity')
+      .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
-      .select(['users.current_activity_assigned_at', 'users.id', 'current_activity', 'current_activity_sequence'])
+      .select([
+        'users.current_activity_assigned_at',
+        'users.id',
+        'users.last_completed_sequence_at',
+        'current_activity',
+        'current_activity_sequence',
+        'last_completed_sequence',
+      ])
       .where('users.id = :id', { id })
       .getOne();
   }

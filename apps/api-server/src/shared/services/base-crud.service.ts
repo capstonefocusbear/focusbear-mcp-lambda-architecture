@@ -19,4 +19,8 @@ export class BaseCRUDService<R extends BaseRepository<E>, E> {
   async delete(id: string[] | string): Promise<void> {
     await this.repository.orm.delete(id);
   }
+
+  async softDelete(id: string[] | string): Promise<void> {
+    await this.repository.orm.softDelete(id);
+  }
 }

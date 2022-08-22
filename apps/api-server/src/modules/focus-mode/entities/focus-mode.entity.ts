@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 
@@ -40,6 +40,9 @@ export class FocusMode extends BaseEntity {
     transformer: BaseEntity.encrypteJSONField('metadata'),
   })
   metadata?: any;
+
+  @DeleteDateColumn()
+  deleted_at?: Date;
 
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })

@@ -21,7 +21,7 @@ export class RevenueCatService {
 
   async grantTrialAccess(app_user_id: string) {
     await this.getOrCreateSubscriber(app_user_id);
-    const personalAccess = Entitlement.personal;
+    const personalAccess = Entitlement.trial;
     const duration = 'daily';
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${personalAccess}/promotional`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
@@ -72,13 +72,11 @@ export class RevenueCatService {
     const Authorization = `Bearer ${this.options.publicApiKey}`;
     const headers = { Authorization };
     headers['X-Platform'] = provider;
-    console.error({ headers });
     const body = { app_user_id, fetch_token };
     return this.httpService
       .post(callUrl, body, { headers })
       .then(({ data }: axios.AxiosResponse<unknown, any>): any => data)
       .catch((err) => {
-        console.error(err);
         throw new BadRequestException(err);
       });
   }

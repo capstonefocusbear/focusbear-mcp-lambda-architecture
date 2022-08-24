@@ -45,4 +45,52 @@ export class StripeService extends Stripe {
     const event = await this.webhooks.constructEventAsync(payload, signature, webhookSecret);
     return event;
   }
+
+  async getProductsList({
+    ending_before,
+    starting_after,
+    limit = 10,
+    active = true,
+  }: Stripe.ProductListParams): Promise<Stripe.ApiListPromise<Stripe.Product>> {
+    return this.products
+      .list({
+        active,
+        limit,
+        ending_before,
+        starting_after,
+      })
+      .catch((err) => {
+        throw new BadRequestException(err.message);
+      });
+  }
+
+  async getProductPrices({
+    product,
+    currency,
+    ending_before,
+    limit,
+    lookup_keys,
+    starting_after,
+    active = true,
+  }: Stripe.PriceListParams): Promise<Stripe.ApiListPromise<Stripe.Price>> {
+    return this.prices
+      .list({
+        product,
+        currency,
+        ending_before,
+        limit,
+        lookup_keys,
+        starting_after,
+        active,
+      })
+      .catch((err) => {
+        throw new BadRequestException(err.message);
+      });
+  }
+
+  async getPriceDetails(price_id: string): Promise<Stripe.Response<Stripe.Price>> {
+    return this.prices.retrieve(price_id).catch((err) => {
+      throw new BadRequestException(err.message);
+    });
+  }
 }

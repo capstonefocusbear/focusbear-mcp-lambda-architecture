@@ -397,7 +397,7 @@ export const ActivitySequenceDummy = new ActivitySequence(
 
 export const CompletedActivitiesForSequenceDummy = (sequence: ActivitySequence): CompletedActivity[] => {
   const duration_logged = 600;
-  return sequence.activity_ids.map(
+  return sequence.sequenceActivityIds.map(
     (e, i) =>
       new CompletedActivity(
         {

@@ -8,6 +8,7 @@ export class CompletedActivitySequence extends BaseEntity {
   constructor({ id, ...sequence }: Partial<CompletedActivitySequence> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...sequence });
+    this.duration_percent_deviation = Math.round((this.plan_duration_minutes / this.duration_minutes) * 100 - 100);
   }
 
   @Column({
@@ -34,6 +35,16 @@ export class CompletedActivitySequence extends BaseEntity {
     type: 'numeric',
   })
   duration_minutes?: number;
+
+  @Column({
+    type: 'numeric',
+  })
+  plan_duration_minutes?: number;
+
+  @Column({
+    type: 'integer',
+  })
+  duration_percent_deviation?: number;
 
   @ManyToOne(() => User, (user) => user.completed_activity_sequences)
   @JoinColumn({ name: 'user_id' })

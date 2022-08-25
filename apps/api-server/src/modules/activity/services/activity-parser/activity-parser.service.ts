@@ -22,7 +22,7 @@ export interface SerializedActivity {
 export class ActivityParserService {
   constructor(private readonly activitySequenceRepository: ActivitySequenceRepository) {}
 
-  serialize(activity_sequences: ActivitySequence[]): SerializedActivity {
+  serialize(activity_sequences: Partial<ActivitySequence>[]): SerializedActivity {
     const serializedActivities: SerializedActivity = {};
     for (const { type, activities, activity_ids } of activity_sequences) {
       const key = `${type}_activities`;

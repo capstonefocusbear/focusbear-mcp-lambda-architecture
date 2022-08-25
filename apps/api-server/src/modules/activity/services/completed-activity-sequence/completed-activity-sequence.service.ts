@@ -25,27 +25,30 @@ export class CompletedActivitySequenceService {
   async completeActivitySequence(activity_sequence_id: string, user_id: string): Promise<CompletedActivitySequence> {
     const sequence = await this.activitySequenceRepository.orm.findOne(activity_sequence_id);
     if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
-    const { activity_ids, id } = sequence;
+    const { sequenceActivityIds, id } = sequence;
     const lastCompletedSequenceTime = await this.completedActivitySequenceRepository.getMostRecentCompletedTime(id);
     const completedActivities = await this.completedActivityRepository.findInSequenceAfterTime(
       id,
       lastCompletedSequenceTime,
     );
-    const mappedCompletedActivities = this.mapCompletedActivitiesWithSequence(activity_ids, completedActivities);
-    const metrics = await this.defineCompletedSequenceMetrics(mappedCompletedActivities, activity_ids);
-    const newItem = new CompletedActivitySequence({ activity_sequence_id, user_id, ...metrics });
+    const mappedCompletedActivities = this.mapCompletedActivitiesWithSequence(sequenceActivityIds, completedActivities);
+    const metrics = await this.defineCompletedSequenceMetrics(mappedCompletedActivities, sequenceActivityIds);
+    const plan_duration_minutes = sequence.sequenceDurationMinutes;
+    const newItem = new CompletedActivitySequence({ activity_sequence_id, plan_duration_minutes, user_id, ...metrics });
+    sequence.resetFlexSequence();
+    await this.activitySequenceRepository.orm.save(sequence);
     return this.completedActivitySequenceRepository.create(newItem);
   }
 
   private mapCompletedActivitiesWithSequence(
-    activity_ids: string[],
+    sequenceActivityIds: string[],
     completedActivities: CompletedActivity[],
   ): Array<CompletedActivity> {
     const result = [];
-    for (const id of activity_ids) {
+    for (const id of sequenceActivityIds) {
       const doesMatchActivityId = (e: CompletedActivity) => e?.activity_id === id;
       const item = completedActivities?.find(doesMatchActivityId);
-      const index = activity_ids.indexOf(id);
+      const index = sequenceActivityIds.indexOf(id);
       const noItemMsg = `Unable to complete sequence, no completed log for activity with id: ${id}, order: ${index}!`;
       if (!item) throw new BadRequestException(noItemMsg);
       result.push(item);
@@ -55,13 +58,13 @@ export class CompletedActivitySequenceService {
 
   private async defineCompletedSequenceMetrics(
     mappedCompletedActivities: CompletedActivity[],
-    activity_ids: string[],
+    sequenceActivityIds: string[],
   ): Promise<CompletedActivitySequenceMetrics> {
     const headItem = mappedCompletedActivities[0];
     const tailItem = mappedCompletedActivities[mappedCompletedActivities.length - 1];
     const timeRange = { start_time: headItem.finish_time, finish_time: tailItem.finish_time };
     const total_duration = await this.completedActivityRepository.getTotalDurationsPerTimeRange(
-      activity_ids,
+      sequenceActivityIds,
       timeRange,
     );
     const duration_minutes = total_duration ? Number(total_duration) / 60 : 0;
@@ -80,16 +83,12 @@ export class CompletedActivitySequenceService {
     const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
     const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
     if (!sequence) throw new NotFoundException(notFoundMessage);
-    const planningDailyDurationSeconds = await this.calculatePlanningDailyDuration(sequence);
-    const planningDailyDurationMinutes = planningDailyDurationSeconds / 60;
-    const daily_durations_minutes = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
+    const dailyStats = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
       activity_sequence_id,
       { days_number, timezone },
     );
-    const average_completion_percent = this.calculateCompletionPercent(
-      daily_durations_minutes,
-      planningDailyDurationMinutes,
-    );
+    const daily_durations_minutes = dailyStats.map((e) => new CompletedActivityStatItem(e));
+    const average_completion_percent = this.calculateCompletionPercent(dailyStats);
     return new CompletedActivitySequenceStats({
       days_number,
       daily_durations_minutes,
@@ -99,55 +98,18 @@ export class CompletedActivitySequenceService {
     });
   }
 
-  private async calculatePlanningDailyDuration(sequence: ActivitySequence): Promise<number> {
-    const strategy = Object.freeze({
-      morning: (e: ActivitySequence) => e.total_duration_seconds,
-      evening: (e: ActivitySequence) => e.total_duration_seconds,
-      break: (e: ActivitySequence) => this.calculatePlanningDailyBreaksDuration(e),
-    });
-    return strategy[sequence.type](sequence);
-  }
-
-  private async calculatePlanningDailyBreaksDuration(sequence: ActivitySequence): Promise<number> {
-    const { total_duration_seconds, user_id } = sequence;
-    const user = await this.userRepository.orm.findOne(user_id);
-    const { startup_time, shutdown_time, break_after_minutes } = user;
-    const dayDurationSeconds = this.countDayDurationSeconds(startup_time, shutdown_time);
-    const breakAfterSeconds = break_after_minutes * 60;
-    const breaksPerDay = this.countBreaksPerDay(breakAfterSeconds, Number(total_duration_seconds), dayDurationSeconds);
-    const planningDailyBreaksDurationSeconds = breaksPerDay * total_duration_seconds;
-    return planningDailyBreaksDurationSeconds;
-  }
-
-  private countDayDurationSeconds(startup_time: string, shutdown_time: string): number {
-    const parseMilitaryTimeToNumber = (time: string): number => Number(time.split(':').join('.'));
-    const startup = parseMilitaryTimeToNumber(startup_time);
-    const shutdown = parseMilitaryTimeToNumber(shutdown_time);
-    const dayDurationSeconds = (shutdown - startup) * 60 * 60;
-    return dayDurationSeconds;
-  }
-
-  private countBreaksPerDay(
-    breakAfterSeconds: number,
-    breakDurationSeconds: number,
-    dayDurationSeconds: number,
-  ): number {
-    const breakIterationDurationSeconds = breakAfterSeconds + breakDurationSeconds;
-    const breaks = Math.floor(dayDurationSeconds / breakIterationDurationSeconds);
-    return breaks;
-  }
-
   private calculateCompletionPercent(
-    dailyDurationsMinutes: CompletedActivityStatItem[],
-    planningDailyDurationMinutes: number,
+    dailyStats: ({
+      average_duration_percent_deviation: string;
+    } & CompletedActivityStatItem)[],
   ): number {
     const acceptableDeviation = 20; // based on business requirements, move that value to the config
-    const countDailyCompletionPercentDeviation = ({ summary }) => (+summary / planningDailyDurationMinutes) * 100 - 100;
-    const dailyCompetionPercentDeviations = dailyDurationsMinutes.map(countDailyCompletionPercentDeviation);
+    const getDailyCompletionPercentDeviation = (e) => Number(e.average_duration_percent_deviation);
+    const dailyCompetionPercentDeviations = dailyStats.map(getDailyCompletionPercentDeviation);
     const hasAcceptableDeviation = (deviation: number): boolean => Math.abs(deviation) < acceptableDeviation;
     const itemsWithAcceptableDeviation = dailyCompetionPercentDeviations.filter(hasAcceptableDeviation);
     const totalDaysWithAcceptableDeviation = itemsWithAcceptableDeviation.length;
-    const totalDays = dailyDurationsMinutes.length;
+    const totalDays = dailyStats.length;
     const completionPercent = (totalDaysWithAcceptableDeviation / totalDays) * 100;
     return completionPercent;
   }
@@ -188,9 +150,9 @@ export class CompletedActivitySequenceService {
     currentSequence: ActivitySequence,
     currentActivityId: string,
   ): string[] {
-    const currentActivityOrder = currentSequence.activity_ids.lastIndexOf(currentActivityId);
-    const sequenceLength = currentSequence.activity_ids.length;
-    const uncompletedActivityIds = currentSequence.activity_ids.slice(currentActivityOrder, sequenceLength);
+    const currentActivityOrder = currentSequence.sequenceActivityIds.lastIndexOf(currentActivityId);
+    const sequenceLength = currentSequence.sequenceActivityIds.length;
+    const uncompletedActivityIds = currentSequence.sequenceActivityIds.slice(currentActivityOrder, sequenceLength);
     return uncompletedActivityIds;
   }
 

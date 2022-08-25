@@ -125,7 +125,7 @@ describe('CompletedActivitySequenceService', () => {
         finish_time: completedActivities[completedActivities.length - 1].finish_time,
       };
       expect(CompletedActivityRepositoryMock.getTotalDurationsPerTimeRange).toBeCalledWith(
-        ActivitySequenceDummy.activity_ids,
+        ActivitySequenceDummy.sequenceActivityIds,
         timeRange,
       );
     });
@@ -142,13 +142,17 @@ describe('CompletedActivitySequenceService', () => {
 
       await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
 
+      const duration_minutes = Number(totalDuration) / 60;
+      const plan_duration_minutes = ActivitySequenceDummy.sequenceDurationMinutes;
       expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith(
         new CompletedActivitySequence({
           user_id,
           activity_sequence_id,
           start_time: completedActivities[0].start_time,
           finish_time: completedActivities[completedActivities.length - 1].finish_time,
-          duration_minutes: Number(totalDuration) / 60,
+          duration_minutes,
+          plan_duration_minutes,
+          duration_percent_deviation: Math.round((plan_duration_minutes / duration_minutes) * 100 - 100),
         }),
       );
     });
@@ -182,7 +186,7 @@ describe('CompletedActivitySequenceService', () => {
 
     it('positive: should return instance of CompletedActivitySequenceStats', async () => {
       ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(ActivitySequenceDummy);
-      const statItemsDummy = [{ date: new Date(Date.now()), summary: '6' }];
+      const statItemsDummy = [{ date: new Date(Date.now()), summary: '6', average_duration_percent_deviation: -5 }];
       CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
 
       const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(

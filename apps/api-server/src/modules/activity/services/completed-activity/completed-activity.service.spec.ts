@@ -87,15 +87,15 @@ describe('CompletedActivityService', () => {
 
     const user_id = userDummy.id;
 
-    const sequenceWhenThereIsNextActivity: ActivitySequence = {
+    const sequenceWhenThereIsNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [completedActivity.activity_id, ...ActivitySequenceDummy.activity_ids],
-    };
+    });
 
-    const sequenceWhenThereIsNoNextActivity: ActivitySequence = {
+    const sequenceWhenThereIsNoNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
-    };
+    });
 
     it('negative: should throw NotFoundException if activity sequence does not exist', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);

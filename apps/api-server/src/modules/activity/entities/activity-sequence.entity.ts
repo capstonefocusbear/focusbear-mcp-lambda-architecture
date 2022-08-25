@@ -34,10 +34,23 @@ export class ActivitySequence extends BaseEntity {
   activity_ids?: string[];
 
   @Column({
+    type: 'jsonb',
+    nullable: true,
+    // transformer: BaseEntity.encrypteJSONField('generated_sequence_activity_ids'),
+  })
+  generated_sequence_activity_ids?: string[];
+
+  @Column({
     type: 'numeric',
     nullable: false,
   })
   total_duration_seconds?: number;
+
+  @Column({
+    type: 'numeric',
+    nullable: true,
+  })
+  generated_total_duration_seconds?: number;
 
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
@@ -51,4 +64,21 @@ export class ActivitySequence extends BaseEntity {
 
   @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.activity_secuence)
   completed_activity_sequences?: CompletedActivitySequence[];
+
+  get sequenceActivityIds() {
+    return this.generated_sequence_activity_ids || this.activity_ids;
+  }
+
+  get sequenceDurationSeconds() {
+    return this.generated_total_duration_seconds || this.total_duration_seconds;
+  }
+
+  get sequenceDurationMinutes() {
+    return this.sequenceDurationSeconds / 60;
+  }
+
+  resetFlexSequence() {
+    this.generated_sequence_activity_ids = null;
+    this.generated_total_duration_seconds = null;
+  }
 }

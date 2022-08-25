@@ -16,4 +16,17 @@ export class ActivitySequenceRepository extends BaseRepository<ActivitySequence>
   async findOneByIdForUser(id: string, user_id: string): Promise<ActivitySequence> {
     return this.orm.findOne({ where: { id, user_id } });
   }
+
+  async countSequenceTotalDuration(activity_ids: string[]): Promise<number> {
+    return this.orm
+      .query(
+        `
+      SELECT SUM(duration_seconds) as total
+      FROM "activities"
+      WHERE id = ANY($1::uuid[])
+      `,
+        [activity_ids],
+      )
+      .then(([{ total }]) => Number(total));
+  }
 }

@@ -91,8 +91,8 @@ export class CompletedActivityService {
     if (!isComplitingActivityTheCurrent) throw new BadRequestException(notCurrentActivityMessage);
   }
 
-  private validateNewSequence({ activity_ids, id }: ActivitySequence, activity_id: string): void | never {
-    const completingActivityOrder = activity_ids.indexOf(activity_id);
+  private validateNewSequence({ sequenceActivityIds, id }: ActivitySequence, activity_id: string): void | never {
+    const completingActivityOrder = sequenceActivityIds.indexOf(activity_id);
     const isFirstItemInSequence = completingActivityOrder === 0;
     const errorMessage = `Unable to set new current sequence: ${id}, given activity: ${activity_id} is not first!`;
     if (!isFirstItemInSequence) throw new BadRequestException(errorMessage);
@@ -115,12 +115,12 @@ export class CompletedActivityService {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
   } {
-    const { activity_ids, id } = sequence;
-    const completedActivityIndexInTheSequence = activity_ids.findIndex((e) => e === activity_id);
+    const { sequenceActivityIds, id } = sequence;
+    const completedActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === activity_id);
     const noActivityInTheSequense = completedActivityIndexInTheSequence === -1;
     const noActivityInTheSequenseMessage = `Activity with id: ${activity_id} does not exist in the Secuense with id: ${id}!`;
     if (noActivityInTheSequense) throw new ConflictException(noActivityInTheSequenseMessage);
-    const nextActivity = activity_ids[completedActivityIndexInTheSequence + 1];
+    const nextActivity = sequenceActivityIds[completedActivityIndexInTheSequence + 1];
     const currentState = new CurrentActivityState({ nextActivity, lastSequenceId: id });
     return { nextActivity, currentState };
   }

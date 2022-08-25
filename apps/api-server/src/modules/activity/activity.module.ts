@@ -13,6 +13,7 @@ import { ActivityParserService } from './services/activity-parser/activity-parse
 import { CompletedActivitySequenceService } from './services/completed-activity-sequence/completed-activity-sequence.service';
 import { CompletedActivityService } from './services/completed-activity/completed-activity.service';
 import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
+import { ActivitySequenceService } from './services/activity-sequence/activity-sequence.service';
 
 @Module({
   providers: [
@@ -23,6 +24,7 @@ import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
     ActivityRepository,
     CompletedActivitySequenceRepository,
     CompletedActivitySequenceService,
+    ActivitySequenceService,
   ],
   exports: [ActivityParserService, ActivitySequenceRepository],
   controllers: [CompletedActivityController, CompletedActivitySequenceController],

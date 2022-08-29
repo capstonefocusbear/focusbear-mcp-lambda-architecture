@@ -7,7 +7,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   IsUUID,
   ValidateIf,
 } from 'class-validator';
@@ -46,7 +45,7 @@ export class ActivityChoiceData {
   @IsOptional()
   @ValidateIf((o) => o.video_urls?.length > 0)
   @IsString({ each: true })
-  @IsUrl({}, { each: true })
+  // @IsUrl({}, { each: true })
   @ApiProperty()
   video_urls?: string[];
 

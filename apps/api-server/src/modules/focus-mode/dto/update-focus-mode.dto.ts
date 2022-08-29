@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsObject, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import { IsArray, IsObject, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class UpdateFocusModeDto {
   @IsOptional()
@@ -10,7 +10,7 @@ export class UpdateFocusModeDto {
   @IsOptional()
   @ValidateIf((o) => o.allowed_urls?.length > 0)
   @IsString({ each: true })
-  @IsUrl({}, { each: true })
+  // @IsUrl({}, { each: true })
   @ApiProperty()
   allowed_urls?: string[];
 

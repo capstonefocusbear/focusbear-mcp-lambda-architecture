@@ -7,7 +7,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   IsUUID,
   ValidateIf,
 } from 'class-validator';
@@ -45,7 +44,7 @@ export class ActivityData {
   @IsOptional()
   @ValidateIf((o) => o.video_urls?.length > 0)
   @IsString({ each: true })
-  @IsUrl({}, { each: true })
+  // @IsUrl({}, { each: true })
   @ApiProperty()
   video_urls?: string[];
 
@@ -78,7 +77,7 @@ export class ActivityData {
   @IsOptional()
   @ValidateIf((o) => o.allowed_urls?.length > 0)
   @IsString({ each: true })
-  @IsUrl({}, { each: true })
+  // @IsUrl({}, { each: true })
   @ApiProperty()
   allowed_urls?: string[];
 }

@@ -21,6 +21,7 @@ import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 import { CurrentActivityState } from '../../domain/current-activity-state.mode';
+import { ActivityType } from '../../domain/activity-type.enum';
 
 @Injectable()
 export class CompletedActivityService {
@@ -45,12 +46,22 @@ export class CompletedActivityService {
       user_id,
       choice_id,
     );
-    this.validateComplitingActivity(user, sequence, activity, choice);
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id);
+    if (activity.type === ActivityType.break) {
+      const isThereIncompletedCurrentSequence = user.current_activity_sequence_id;
+      const incompletSequenceMsg = 'There is incomplete current sequence for the user, finish it before doing break!';
+      if (isThereIncompletedCurrentSequence) throw new BadRequestException(incompletSequenceMsg);
+      this.validateChoice(activity, choice);
+      await this.deviceService.markAsLeader(device_id, user_id);
+      const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
+      await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
+      return createdItem;
+    }
+    this.validateComplitingActivity(user, sequence, activity, choice); // ! create validateCompletingBreak
+    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id); // skip !
     await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentState });
+    await this.userRepository.orm.update(user_id, { ...currentState }); // skip !
     const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id);
+    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id); // skip !
     await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
     return createdItem;
   }
@@ -70,6 +81,8 @@ export class CompletedActivityService {
     if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const invalidSequenceMsg = `Activity with id: ${activity_id} is not a part of the sequence with id: ${sequence.id}!`;
+    if (activity.activity_sequence_id !== sequence.id) throw new BadRequestException(invalidSequenceMsg);
     return [sequence, activity, user, choice];
   }
 

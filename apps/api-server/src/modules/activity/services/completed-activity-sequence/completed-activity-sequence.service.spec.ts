@@ -14,7 +14,6 @@ import { ActivitySequenceDummy, CompletedActivitiesForSequenceDummy, userDummy }
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
-import { ActivityType } from '../../domain/activity-type.enum';
 
 describe('CompletedActivitySequenceService', () => {
   let completedActivitySequenceService: CompletedActivitySequenceService;
@@ -205,25 +204,25 @@ describe('CompletedActivitySequenceService', () => {
       expect(result.daily_durations_minutes[0].summary).toEqual(statItemsDummy[0].summary);
     });
 
-    it('positive: if sequence type is "break", total planning duration should be counted as "breaks * sequence_duration"', async () => {
-      const breakTypeActivitySequence = { ...ActivitySequenceDummy, type: ActivityType.break };
-      ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(breakTypeActivitySequence);
-      const statItemsDummy = [
-        { date: new Date(Date.now()), summary: '6' },
-        { date: new Date(Date.now() - 1000), summary: '6' },
-      ];
-      CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+    // it('positive: if sequence type is "break", total planning duration should be counted as "breaks * sequence_duration"', async () => {
+    //   const breakTypeActivitySequence = { ...ActivitySequenceDummy, type: ActivityType.break };
+    //   ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(breakTypeActivitySequence);
+    //   const statItemsDummy = [
+    //     { date: new Date(Date.now()), summary: '6' },
+    //     { date: new Date(Date.now() - 1000), summary: '6' },
+    //   ];
+    //   CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
+    //   UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
 
-      const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
-        { activity_sequence_id },
-        { days_number, timezone },
-        user_id,
-      );
+    //   const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
+    //     { activity_sequence_id },
+    //     { days_number, timezone },
+    //     user_id,
+    //   );
 
-      expect(result).toBeDefined();
-      expect(result).toBeInstanceOf(CompletedActivitySequenceStats);
-      expect(result.average_completion_percent).toEqual(0);
-    });
+    //   expect(result).toBeDefined();
+    //   expect(result).toBeInstanceOf(CompletedActivitySequenceStats);
+    //   expect(result.average_completion_percent).toEqual(0);
+    // });
   });
 });

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { ActivityType } from '../../domain/activity-type.enum';
 import { CompletedActivitySequenceMetrics } from '../../domain/completed-activity-sequence-metrics.interface';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
 import { CompletedActivityStatItem } from '../../domain/completed-activity-stat-item.model';
@@ -83,6 +84,8 @@ export class CompletedActivitySequenceService {
     const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
     const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
     if (!sequence) throw new NotFoundException(notFoundMessage);
+    const isBreak = sequence.type === ActivityType.break;
+    if (isBreak) throw new BadRequestException('Unable to create stats! The provided sequence is a break type.');
     const dailyStats = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
       activity_sequence_id,
       { days_number, timezone },

@@ -9,9 +9,9 @@ import { CompletedActivity } from './completed-activity.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
-  constructor({ id, ...activity }: Partial<Activity> = {}, options = { generateId: false }) {
+  constructor({ id, log_summary_type, ...activity }: Partial<Activity> = {}, options = { generateId: false }) {
     super(id, options);
-    Object.assign(this, { ...activity });
+    Object.assign(this, { ...activity, log_summary_type: log_summary_type || LogSummaryType.SUM });
   }
 
   @Column({

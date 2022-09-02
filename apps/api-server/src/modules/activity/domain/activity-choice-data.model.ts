@@ -1,15 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsIn,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
-  ValidateIf,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 import { LogSummaryType } from './log-summary-type.enum';
 
 export class ActivityChoiceData {
@@ -33,8 +23,8 @@ export class ActivityChoiceData {
   @ApiProperty()
   log_quantity_question?: string;
 
-  @IsEnum(LogSummaryType)
-  @IsIn(Object.values(LogSummaryType))
+  // @IsEnum(LogSummaryType)
+  @IsIn([...Object.values(LogSummaryType), ''])
   @IsOptional()
   @ApiProperty({ enum: LogSummaryType })
   log_summary_type?: LogSummaryType;

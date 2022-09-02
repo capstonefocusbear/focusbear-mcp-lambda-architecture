@@ -4,7 +4,6 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
-  IsEnum,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -34,6 +33,7 @@ function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOpti
           const choices = args.object?.['choices'];
           const hasChoices = choices?.length > 0;
           if (!hasChoices) return true;
+          if (!fieldValue) return true;
           return fieldValue === property;
         },
       },
@@ -59,8 +59,8 @@ export class UpdateActivityDto extends ActivityData {
   @ApiProperty()
   duration_seconds: number;
 
-  @IsEnum(LogSummaryType)
-  @IsIn(Object.values(LogSummaryType))
+  // @IsEnum(LogSummaryType)
+  @IsIn([...Object.values(LogSummaryType), ''])
   @IsOptional()
   @IsEqualWhenHasChoices(LogSummaryType.SUM, {
     message: 'log_summary_type value should be skipped or equal SUM for Activity with choices inside!',

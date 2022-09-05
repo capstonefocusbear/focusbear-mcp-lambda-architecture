@@ -25,7 +25,8 @@ export class ActivityParserService {
   serialize(activity_sequences: Partial<ActivitySequence>[]): SerializedActivity {
     const serializedActivities: SerializedActivity = {};
     for (const { type, activities, activity_ids } of activity_sequences) {
-      const key = `${type}_activities`;
+      let key = `${type}_activities`;
+      if (type === ActivityType.break) key = 'break_activities';
       const findActivity = (id): Activity => activities.find((e) => e.id === id);
       const mapActivity = ({
         id,
@@ -54,7 +55,8 @@ export class ActivityParserService {
     const entries = Object.entries(serialized);
     return Promise.all(
       entries.map(async ([name, serializedActivities]) => {
-        const [type] = name.split('_') as [ActivityType];
+        let [type] = name.split('_');
+        if (type === 'break') type = ActivityType.break;
         const sequence = await this.createActivitySequence(serializedActivities, { type, user_id });
         const activity_sequence_id = sequence.id;
         const context = { type, user_id, activity_sequence_id };

@@ -1,5 +1,5 @@
 export enum ActivityType {
-  break = 'break',
+  break = 'breaking',
   morning = 'morning',
   evening = 'evening',
 }

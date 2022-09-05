@@ -12,12 +12,11 @@ import { UserSettingsService } from './services/user-settings/user-settings.serv
 import { UserService } from './services/user/user.service';
 import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 import { SubscriptionModule } from '../subscription/subscription.module';
-import { UserSubscriber } from './repositories/user.subscriber';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
 import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
 
 @Module({
-  providers: [UserSettingsService, UserRepository, UserService, UserSubscriber],
+  providers: [UserSettingsService, UserRepository, UserService],
   exports: [UserRepository],
   imports: [
     TypeOrmModule.forFeature([User]),

@@ -8,7 +8,6 @@ import { CompletedActivity } from '../modules/activity/entities/completed-activi
 import { Device } from '../modules/device/entities/device.entity';
 import { CompletedFocusBlock } from '../modules/focus-mode/entities/completed-focus-block.entity';
 import { FocusMode } from '../modules/focus-mode/entities/focus-mode.entity';
-import { Subscription } from '../modules/subscription/entities/subscription.entity';
 import { Team } from '../modules/team/entities/team.entity';
 import { User } from '../modules/user/entities/user.entity';
 
@@ -32,7 +31,6 @@ export const typeormConfig = registerAs(
       CompletedActivitySequence,
       FocusMode,
       CompletedFocusBlock,
-      Subscription,
       Team,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],

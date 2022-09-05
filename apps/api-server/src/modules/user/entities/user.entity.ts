@@ -6,7 +6,6 @@ import { CompletedActivitySequence } from '../../activity/entities/completed-act
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
-import { Subscription } from '../../subscription/entities/subscription.entity';
 import { Team } from '../../team/entities/team.entity';
 import { UpdateLocalDeviceSettingsDto } from '../dto/update-local-device-settings.dto';
 
@@ -148,9 +147,6 @@ export class User extends BaseEntity {
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];
-
-  @OneToOne(() => Subscription, (sub) => sub.user)
-  subscription?: Subscription;
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

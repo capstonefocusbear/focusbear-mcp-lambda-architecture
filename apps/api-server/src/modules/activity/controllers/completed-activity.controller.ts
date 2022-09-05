@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -11,6 +11,7 @@ import {
   GetCompletedActivityStatsParamsDto,
   GetCompletedActivityStatsQueryDto,
 } from '../dto/get-completed-activity-stats.dto';
+import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 
@@ -43,5 +44,13 @@ export class CompletedActivityController {
     @Query() { from_time, to_time }: GetCompletedActivityLogsQueryDto,
   ): Promise<CompletedActivity[]> {
     return this.completedActivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, { from_time, to_time });
+  }
+
+  @Patch('revise/:completed_activity_id')
+  reviseCompletedActivity(
+    @Param() { completed_activity_id },
+    @Body() { quantity_logged }: ReviseCompletedActivityDto,
+  ): Promise<CompletedActivity> {
+    return this.completedActivityService.reviseCompletedLog(completed_activity_id, { quantity_logged });
   }
 }

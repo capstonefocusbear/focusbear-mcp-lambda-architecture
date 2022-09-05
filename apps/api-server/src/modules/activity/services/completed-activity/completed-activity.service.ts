@@ -22,6 +22,7 @@ import { ActivityCompletedPush } from '../../domain/activity-completed-push.mode
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 import { CurrentActivityState } from '../../domain/current-activity-state.mode';
 import { ActivityType } from '../../domain/activity-type.enum';
+import { ReviseCompletedActivityDto } from '../../dto/revise-completed-activity.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -198,5 +199,12 @@ export class CompletedActivityService {
     { from_time, to_time },
   ): Promise<CompletedActivity[]> {
     return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
+  }
+
+  async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {
+    const log = await this.completedActivityRepository.orm.findOne(id);
+    if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
+    log.quantity_logged = quantity_logged;
+    return this.completedActivityRepository.orm.save(log);
   }
 }

@@ -66,5 +66,5 @@ export class CompletedActivity extends BaseEntity {
 
   @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activities)
   @JoinColumn({ name: 'activity_sequence_id' })
-  activity_secuence?: ActivitySequence;
+  activity_sequence?: ActivitySequence;
 }

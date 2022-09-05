@@ -59,10 +59,10 @@ export class ActivitySequence extends BaseEntity {
   @OneToMany(() => Activity, (activity) => activity.activity_sequence)
   activities?: Activity[];
 
-  @OneToMany(() => CompletedActivity, (completed) => completed.activity_secuence)
+  @OneToMany(() => CompletedActivity, (completed) => completed.activity_sequence)
   completed_activities?: CompletedActivity[];
 
-  @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.activity_secuence)
+  @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.activity_sequence)
   completed_activity_sequences?: CompletedActivitySequence[];
 
   get sequenceActivityIds() {

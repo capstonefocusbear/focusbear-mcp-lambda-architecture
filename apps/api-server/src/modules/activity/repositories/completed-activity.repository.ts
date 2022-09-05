@@ -58,6 +58,9 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         activity_id,
         finish_time: Between(from_time, to_time),
       },
+      order: {
+        start_time: 'DESC',
+      },
     });
   }
 }

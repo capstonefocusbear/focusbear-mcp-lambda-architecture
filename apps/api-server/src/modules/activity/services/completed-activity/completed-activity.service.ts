@@ -58,7 +58,12 @@ export class CompletedActivityService {
       return createdItem;
     }
     this.validateComplitingActivity(user, sequence, activity, choice); // ! create validateCompletingBreak
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id); // skip !
+    const { nextActivity, currentState } = this.defineNextCurrentActivity(
+      sequence,
+      activity_id,
+      completedActivity,
+      user,
+    );
     await this.deviceService.markAsLeader(device_id, user_id);
     await this.userRepository.orm.update(user_id, { ...currentState }); // skip !
     const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
@@ -125,6 +130,8 @@ export class CompletedActivityService {
   private defineNextCurrentActivity(
     sequence: ActivitySequence,
     activity_id: string,
+    completedActivity: CreateCompletedActivityDto,
+    user: User,
   ): {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
@@ -135,7 +142,16 @@ export class CompletedActivityService {
     const noActivityInTheSequenseMessage = `Activity with id: ${activity_id} does not exist in the Secuense with id: ${id}!`;
     if (noActivityInTheSequense) throw new ConflictException(noActivityInTheSequenseMessage);
     const nextActivity = sequenceActivityIds[completedActivityIndexInTheSequence + 1];
-    const currentState = new CurrentActivityState({ nextActivity, lastSequenceId: id });
+    const currentActivityIndex = completedActivityIndexInTheSequence;
+    const currentState = new CurrentActivityState(
+      {
+        nextActivity,
+        lastSequenceId: id,
+        currentActivityIndex,
+      },
+      completedActivity,
+      user,
+    );
     return { nextActivity, currentState };
   }
 

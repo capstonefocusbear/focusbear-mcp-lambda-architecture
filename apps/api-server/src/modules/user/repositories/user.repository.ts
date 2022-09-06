@@ -79,6 +79,7 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
       .select([
         'users.current_activity_assigned_at',
+        'users.last_completed_sequence_started_at',
         'users.id',
         'users.last_completed_sequence_at',
         'current_activity',

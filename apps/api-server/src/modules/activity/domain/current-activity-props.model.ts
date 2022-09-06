@@ -6,6 +6,7 @@ import { Activity } from '../entities/activity.entity';
 export class CurrentActivityProps {
   constructor(data?: User) {
     this.current_activity_sequence = data?.current_activity_sequence || null;
+    this.last_completed_sequence_started_at = data?.last_completed_sequence_started_at || null;
     this.current_activity = data?.current_activity || null;
     this.current_activity_assigned_at = data?.current_activity_assigned_at || null;
     this.last_completed_sequence = data?.last_completed_sequence || null;
@@ -14,6 +15,9 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   current_activity_sequence?: ActivitySequence | null;
+
+  @ApiProperty()
+  last_completed_sequence_started_at?: Date | null;
 
   @ApiProperty()
   current_activity?: Activity | null;

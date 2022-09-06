@@ -1,11 +1,23 @@
+import { User } from '../../user/entities/user.entity';
+import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
+
 export class CurrentActivityState {
-  constructor({ nextActivity, lastSequenceId }) {
+  constructor(
+    { nextActivity, lastSequenceId, currentActivityIndex },
+    completedActivity: CreateCompletedActivityDto,
+    user: User,
+  ) {
     this.current_activity_id = nextActivity || null;
     this.current_activity_sequence_id = nextActivity ? lastSequenceId : null;
     this.current_activity_assigned_at = nextActivity ? new Date() : null;
     if (!nextActivity) {
       this.last_completed_sequence_id = lastSequenceId;
       this.last_completed_sequence_at = new Date();
+      this.last_completed_sequence_started_at = user.current_sequence_started_at;
+      this.current_sequence_started_at = null;
+    }
+    if (currentActivityIndex === 0) {
+      this.current_sequence_started_at = completedActivity.start_time;
     }
   }
 
@@ -18,4 +30,8 @@ export class CurrentActivityState {
   last_completed_sequence_id?: string;
 
   last_completed_sequence_at?: Date;
+
+  last_completed_sequence_started_at?: Date;
+
+  current_sequence_started_at?: Date;
 }

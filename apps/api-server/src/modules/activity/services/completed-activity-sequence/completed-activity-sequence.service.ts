@@ -135,6 +135,8 @@ export class CompletedActivitySequenceService {
       current_activity_assigned_at: null,
       last_completed_sequence_id: activity_sequence_id,
       last_completed_sequence_at: new Date(),
+      last_completed_sequence_started_at: user.current_sequence_started_at,
+      current_sequence_started_at: null,
     };
     const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
     return updatedUser;

@@ -118,6 +118,16 @@ export class User extends BaseEntity {
   last_completed_sequence_at?: Date;
 
   @Column({
+    type: 'timestamptz',
+  })
+  last_completed_sequence_started_at?: Date;
+
+  @Column({
+    type: 'timestamptz',
+  })
+  current_sequence_started_at?: Date;
+
+  @Column({
     type: 'uuid',
   })
   member_of_team_id?: string;

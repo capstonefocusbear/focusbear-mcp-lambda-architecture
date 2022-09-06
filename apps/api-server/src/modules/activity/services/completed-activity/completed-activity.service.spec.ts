@@ -255,6 +255,7 @@ describe('CompletedActivityService', () => {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
         current_activity_sequence_id: sequenceWhenThereIsNextActivity.id,
         current_activity_assigned_at: expect.toBeDate(),
+        current_sequence_started_at: expect.toBeDate(),
       });
     });
 
@@ -263,6 +264,7 @@ describe('CompletedActivityService', () => {
         ...userDummy,
         current_activity_id: completedActivity.activity_id,
         current_activity_sequence_id: completedActivity.activity_sequence_id,
+        current_sequence_started_at: new Date(),
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
@@ -278,6 +280,8 @@ describe('CompletedActivityService', () => {
         current_activity_assigned_at: null,
         last_completed_sequence_id: userWithCurrentActivity.current_activity_sequence_id,
         last_completed_sequence_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        last_completed_sequence_started_at: expect.toBeDate(),
       });
     });
 

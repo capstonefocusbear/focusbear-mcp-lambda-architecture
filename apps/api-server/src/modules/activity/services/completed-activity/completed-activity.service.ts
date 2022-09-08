@@ -23,6 +23,7 @@ import { CompletedActivityResponse } from '../../domain/completed-activity-respo
 import { CurrentActivityState } from '../../domain/current-activity-state.mode';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { ReviseCompletedActivityDto } from '../../dto/revise-completed-activity.dto';
+import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 
 @Injectable()
 export class CompletedActivityService {
@@ -57,17 +58,28 @@ export class CompletedActivityService {
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       return createdItem;
     }
-    this.validateComplitingActivity(user, sequence, activity, choice); // ! create validateCompletingBreak
+    this.validateComplitingActivity(user, sequence, activity, choice);
+    const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
+      user,
+      completedActivity,
+    );
     const { nextActivity, currentState } = this.defineNextCurrentActivity(
       sequence,
       activity_id,
       completedActivity,
       user,
     );
+    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentState }); // skip !
-    const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(sequence.id, user_id); // skip !
+    await this.userRepository.orm.update(user_id, { ...currentState, current_completing_sequence_log_id });
+    const createdItem = await this.saveCompletedLog(
+      completedActivity,
+      activity,
+      choice,
+      user_id,
+      completingSequenceLog,
+    );
+    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
     await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
     return createdItem;
   }
@@ -81,7 +93,7 @@ export class CompletedActivityService {
     const [sequence, activity, user, choice] = await Promise.all([
       this.activitySequenceRepository.orm.findOne(activity_sequence_id),
       this.activityRepository.orm.findOne(activity_id),
-      this.userRepository.orm.findOne(user_id),
+      this.userRepository.orm.findOne(user_id, { relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOne(choice_id) : null,
     ]);
     if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
@@ -103,7 +115,7 @@ export class CompletedActivityService {
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return this.validateNewSequence(sequence, activity.id);
     const isComplitingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    const isComplitingActivityTheCurrent = activity.id === current_activity_id;
+    const isComplitingActivityTheCurrent = activity.id === current_activity_id || !current_activity_id;
     const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
     const notCurrentActivityMessage = `activity_id: ${activity.id} is not a current activity: ${current_activity_id}`;
     if (!isComplitingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
@@ -160,11 +172,12 @@ export class CompletedActivityService {
     activity: Activity,
     choice: Activity,
     user_id: string,
+    sequenceLog?: CompletedActivitySequence,
   ): Promise<CompletedActivityResponse> {
     const { choice_id, ...data } = completedActivity;
     const { has_choices } = activity;
     const completedItem = new CompletedActivity(
-      { ...data, user_id },
+      { ...data, user_id, completed_sequence_id: sequenceLog?.id },
       { log_quantity: activity.log_quantity, generateId: false },
     );
     const completedChoice = new CompletedActivity(

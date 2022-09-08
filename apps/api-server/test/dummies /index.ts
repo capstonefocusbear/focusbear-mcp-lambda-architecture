@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
+import { CompletedActivitySequence } from '../../src/modules/activity/entities/completed-activity-sequence.entity';
 import { ActivityChoiceType } from '../../src/modules/activity/domain/activity-choice-type.enum';
 import { SerializedActivity } from '../../src/modules/activity/services/activity-parser/activity-parser.service';
 import { Passport } from '../../src/modules/auth/domain/passport.model';
@@ -451,3 +452,11 @@ export const CompletedFocusBlockDummy = new CompletedFocusBlock(
   },
   { generateId: true },
 );
+
+export const UncompletedSequenceLogDummy = new CompletedActivitySequence({
+  activity_sequence_id: ActivitySequenceDummy.id,
+  user_id: userDummy.id,
+  start_time: new Date(),
+  is_completed: false,
+  completed_activity_logs: CompletedActivitiesForSequenceDummy(ActivitySequenceDummy),
+});

@@ -19,6 +19,13 @@ export class CompletedActivitySequenceRepository extends BaseRepository<Complete
       .then(([{ last_time }]) => last_time);
   }
 
+  async getUncompletedSequenceLog(id: string): Promise<CompletedActivitySequence> {
+    return this.orm.findOne({
+      where: { id, is_completed: false },
+      relations: ['activity_sequence', 'completed_activity_logs'],
+    });
+  }
+
   async getAggregatedDurationLogsPerDay(
     activity_sequence_id: string,
     { days_number = 30, timezone = 'UTC' }: any,
@@ -30,7 +37,9 @@ export class CompletedActivitySequenceRepository extends BaseRepository<Complete
         SUM(duration_minutes) as summary,
         AVG(duration_percent_deviation) as average_duration_percent_deviation
       FROM completed_activity_sequences
-      WHERE activity_sequence_id = $1
+      WHERE 
+        activity_sequence_id = $1
+        AND is_completed = true
       GROUP BY date_trunc('day', timezone($3, finish_time))
       ORDER BY date DESC
       LIMIT $2

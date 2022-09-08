@@ -25,6 +25,7 @@ export const DeviceServiceMock = {
 
 export const CompletedActivitySequenceServiceMock = {
   completeActivitySequence: jest.fn(),
+  getOrCreateCompletingSequenceLog: jest.fn(),
 };
 
 export const PusherServiceMock = {

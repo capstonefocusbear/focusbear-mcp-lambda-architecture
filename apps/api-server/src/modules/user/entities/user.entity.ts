@@ -113,6 +113,11 @@ export class User extends BaseEntity {
   last_completed_sequence_id?: string;
 
   @Column({
+    type: 'uuid',
+  })
+  current_completing_sequence_log_id?: string;
+
+  @Column({
     type: 'timestamptz',
   })
   last_completed_sequence_at?: Date;
@@ -177,4 +182,8 @@ export class User extends BaseEntity {
   @OneToOne(() => ActivitySequence, (sequence) => sequence.user)
   @JoinColumn({ name: 'last_completed_sequence_id' })
   last_completed_sequence?: ActivitySequence;
+
+  @OneToOne(() => CompletedActivitySequence, (sequence_log) => sequence_log.user)
+  @JoinColumn({ name: 'current_completing_sequence_log_id' })
+  completing_sequence_log?: CompletedActivitySequence;
 }

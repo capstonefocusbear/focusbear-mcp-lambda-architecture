@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
@@ -10,10 +11,11 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 import { CompletedActivitySequenceService } from './completed-activity-sequence.service';
-import { ActivitySequenceDummy, CompletedActivitiesForSequenceDummy, userDummy } from '../../../../../test/dummies ';
+import { ActivitySequenceDummy, UncompletedSequenceLogDummy, userDummy } from '../../../../../test/dummies ';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
+import { User } from '../../../user/entities/user.entity';
 
 describe('CompletedActivitySequenceService', () => {
   let completedActivitySequenceService: CompletedActivitySequenceService;
@@ -47,17 +49,64 @@ describe('CompletedActivitySequenceService', () => {
     expect(completedActivitySequenceService).toBeDefined();
   });
 
-  describe('completeActivitySequence', () => {
-    const activity_sequence_id = ActivitySequenceDummy.id;
-    const { user_id } = ActivitySequenceDummy;
+  describe('getOrCreateCompletingSequenceLog', () => {
+    it('positive: if user has current sequence and consistent completing sequence log, should return existing completing_sequence_log', async () => {
+      const user: User = {
+        ...userDummy,
+        current_activity_sequence: ActivitySequenceDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      const completedActivity = {
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: new Date(),
+        activity_id: randomUUID(),
+        duration_logged: Number(),
+        device_id: randomUUID(),
+      };
 
-    it('negative: should throw NotFoundException if activity_sequence does not exist', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      const errorMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist!`;
+      const result = await completedActivitySequenceService.getOrCreateCompletingSequenceLog(user, completedActivity);
+
+      expect(result).toEqual(user.completing_sequence_log);
+    });
+
+    it('positive: if user has no current sequence or completing sequence log is inconsistent, should create new completed sequence log', async () => {
+      const user: User = {
+        ...userDummy,
+        current_activity_sequence: null,
+        current_activity_sequence_id: null,
+        current_completing_sequence_log_id: null,
+        completing_sequence_log: null,
+      };
+      const completedActivity = {
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: new Date(),
+        activity_id: randomUUID(),
+        duration_logged: Number(),
+        device_id: randomUUID(),
+      };
+
+      await completedActivitySequenceService.getOrCreateCompletingSequenceLog(user, completedActivity);
+
+      expect(CompletedActivityRepositoryMock.create).toBeCalledWith({
+        id: undefined,
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: completedActivity.start_time,
+        user_id: user.id,
+        is_completed: false,
+      });
+    });
+  });
+
+  describe('completeActivitySequence', () => {
+    it('negative: should throw NotFoundException if there is no uncompleted sequence log to complete', async () => {
+      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(null);
+      const errorMessage = `There is no uncompleted sequence log with id: ${UncompletedSequenceLogDummy.id}`;
       let exception: any;
 
       try {
-        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
+        await completedActivitySequenceService.completeActivitySequence(UncompletedSequenceLogDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -67,93 +116,14 @@ describe('CompletedActivitySequenceService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: should throw BadRequestException if no completed logs for all activities in the sequence (no logs at all)', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
-      CompletedActivitySequenceRepositoryMock.getMostRecentCompletedTime.mockResolvedValueOnce(
-        new Date(Date.now() - 100),
-      );
-      CompletedActivityRepositoryMock.findInSequenceAfterTime.mockResolvedValueOnce([]); // no logs at all
-      const errorMessage = `Unable to complete sequence, no completed log for activity with id: ${ActivitySequenceDummy.activity_ids[0]}, order: 0!`;
-      let exception: any;
+    it('positive: new completedActivitySequence should be finalized ', async () => {
+      const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });
+      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(log);
 
-      try {
-        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
-      } catch (error) {
-        exception = error;
-      }
+      await completedActivitySequenceService.completeActivitySequence(log.id);
 
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('negative: should throw BadRequestException if no completed logs for all activities in the sequence (missed log for second item in the sequence)', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
-      CompletedActivitySequenceRepositoryMock.getMostRecentCompletedTime.mockResolvedValueOnce(
-        new Date(Date.now() - 100),
-      );
-      const completedActivities = CompletedActivitiesForSequenceDummy(ActivitySequenceDummy);
-      completedActivities[1] = null;
-      CompletedActivityRepositoryMock.findInSequenceAfterTime.mockResolvedValueOnce(completedActivities); // no logs for second item in sequence
-      const errorMessage = `Unable to complete sequence, no completed log for activity with id: ${ActivitySequenceDummy.activity_ids[1]}, order: 1!`;
-      let exception: any;
-
-      try {
-        await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: total duration should be calculated in timerange from first activity in the sequence to the last one', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
-      CompletedActivitySequenceRepositoryMock.getMostRecentCompletedTime.mockResolvedValueOnce(
-        new Date(Date.now() - 100),
-      );
-      const completedActivities = CompletedActivitiesForSequenceDummy(ActivitySequenceDummy);
-      CompletedActivityRepositoryMock.findInSequenceAfterTime.mockResolvedValueOnce(completedActivities);
-
-      await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
-
-      const timeRange = {
-        start_time: completedActivities[0].finish_time,
-        finish_time: completedActivities[completedActivities.length - 1].finish_time,
-      };
-      expect(CompletedActivityRepositoryMock.getTotalDurationsPerTimeRange).toBeCalledWith(
-        ActivitySequenceDummy.sequenceActivityIds,
-        timeRange,
-      );
-    });
-
-    it('positive: new completedActivitySequence should be created ', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);
-      CompletedActivitySequenceRepositoryMock.getMostRecentCompletedTime.mockResolvedValueOnce(
-        new Date(Date.now() - 100),
-      );
-      const completedActivities = CompletedActivitiesForSequenceDummy(ActivitySequenceDummy);
-      CompletedActivityRepositoryMock.findInSequenceAfterTime.mockResolvedValueOnce(completedActivities);
-      const totalDuration = '1000';
-      CompletedActivityRepositoryMock.getTotalDurationsPerTimeRange.mockResolvedValueOnce(totalDuration);
-
-      await completedActivitySequenceService.completeActivitySequence(activity_sequence_id, user_id);
-
-      const duration_minutes = Number(totalDuration) / 60;
-      const plan_duration_minutes = ActivitySequenceDummy.sequenceDurationMinutes;
-      expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith(
-        new CompletedActivitySequence({
-          user_id,
-          activity_sequence_id,
-          start_time: completedActivities[0].start_time,
-          finish_time: completedActivities[completedActivities.length - 1].finish_time,
-          duration_minutes,
-          plan_duration_minutes,
-          duration_percent_deviation: Math.round((plan_duration_minutes / duration_minutes) * 100 - 100),
-        }),
-      );
+      log.finalizeUncompletedLog();
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
     });
   });
 
@@ -203,26 +173,5 @@ describe('CompletedActivitySequenceService', () => {
       expect(result.daily_durations_minutes[0].date).toEqual(statItemsDummy[0].date);
       expect(result.daily_durations_minutes[0].summary).toEqual(statItemsDummy[0].summary);
     });
-
-    // it('positive: if sequence type is "break", total planning duration should be counted as "breaks * sequence_duration"', async () => {
-    //   const breakTypeActivitySequence = { ...ActivitySequenceDummy, type: ActivityType.break };
-    //   ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(breakTypeActivitySequence);
-    //   const statItemsDummy = [
-    //     { date: new Date(Date.now()), summary: '6' },
-    //     { date: new Date(Date.now() - 1000), summary: '6' },
-    //   ];
-    //   CompletedActivitySequenceRepositoryMock.getAggregatedDurationLogsPerDay.mockResolvedValueOnce(statItemsDummy);
-    //   UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-
-    //   const result = await completedActivitySequenceService.getStatsByActivitySequencePerDay(
-    //     { activity_sequence_id },
-    //     { days_number, timezone },
-    //     user_id,
-    //   );
-
-    //   expect(result).toBeDefined();
-    //   expect(result).toBeInstanceOf(CompletedActivitySequenceStats);
-    //   expect(result.average_completion_percent).toEqual(0);
-    // });
   });
 });

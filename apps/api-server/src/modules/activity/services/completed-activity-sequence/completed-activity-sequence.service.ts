@@ -2,78 +2,43 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
-import { CompletedActivitySequenceMetrics } from '../../domain/completed-activity-sequence-metrics.interface';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
 import { CompletedActivityStatItem } from '../../domain/completed-activity-stat-item.model';
+import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
 import { GetCompletedActivitySequenceStatsParamsDto } from '../../dto/get-completed-activity-sequence-stats.dto';
 import { GetCompletedActivityStatsQueryDto } from '../../dto/get-completed-activity-stats.dto';
-import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
-import { CompletedActivity } from '../../entities/completed-activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
-import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 
 @Injectable()
 export class CompletedActivitySequenceService {
   constructor(
     private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
-    private readonly completedActivityRepository: CompletedActivityRepository,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
   ) {}
 
-  async completeActivitySequence(activity_sequence_id: string, user_id: string): Promise<CompletedActivitySequence> {
-    const sequence = await this.activitySequenceRepository.orm.findOne(activity_sequence_id);
-    if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
-    const { sequenceActivityIds, id } = sequence;
-    const lastCompletedSequenceTime = await this.completedActivitySequenceRepository.getMostRecentCompletedTime(id);
-    const completedActivities = await this.completedActivityRepository.findInSequenceAfterTime(
-      id,
-      lastCompletedSequenceTime,
-    );
-    const mappedCompletedActivities = this.mapCompletedActivitiesWithSequence(sequenceActivityIds, completedActivities);
-    const metrics = await this.defineCompletedSequenceMetrics(mappedCompletedActivities, sequenceActivityIds);
-    const plan_duration_minutes = sequence.sequenceDurationMinutes;
-    const newItem = new CompletedActivitySequence({ activity_sequence_id, plan_duration_minutes, user_id, ...metrics });
-    sequence.resetFlexSequence();
-    await this.activitySequenceRepository.orm.save(sequence);
-    return this.completedActivitySequenceRepository.create(newItem);
+  async getOrCreateCompletingSequenceLog(user: User, completedActivity: CreateCompletedActivityDto): Promise<any> {
+    const { activity_sequence_id, start_time } = completedActivity;
+    const { current_activity_sequence_id, completing_sequence_log } = user;
+    const hasCurrentSequence = user?.current_activity_sequence_id;
+    const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;
+    if (hasCurrentSequence && hasConsistentSequence) return completing_sequence_log;
+    const newCompletingSequenceLog = new CompletedActivitySequence({
+      activity_sequence_id,
+      user_id: user.id,
+      start_time,
+      is_completed: false,
+    });
+    return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
 
-  private mapCompletedActivitiesWithSequence(
-    sequenceActivityIds: string[],
-    completedActivities: CompletedActivity[],
-  ): Array<CompletedActivity> {
-    const result = [];
-    for (const id of sequenceActivityIds) {
-      const doesMatchActivityId = (e: CompletedActivity) => e?.activity_id === id;
-      const item = completedActivities?.find(doesMatchActivityId);
-      const index = sequenceActivityIds.indexOf(id);
-      const noItemMsg = `Unable to complete sequence, no completed log for activity with id: ${id}, order: ${index}!`;
-      if (!item) throw new BadRequestException(noItemMsg);
-      result.push(item);
-    }
-    return result;
-  }
-
-  private async defineCompletedSequenceMetrics(
-    mappedCompletedActivities: CompletedActivity[],
-    sequenceActivityIds: string[],
-  ): Promise<CompletedActivitySequenceMetrics> {
-    const headItem = mappedCompletedActivities[0];
-    const tailItem = mappedCompletedActivities[mappedCompletedActivities.length - 1];
-    const timeRange = { start_time: headItem.finish_time, finish_time: tailItem.finish_time };
-    const total_duration = await this.completedActivityRepository.getTotalDurationsPerTimeRange(
-      sequenceActivityIds,
-      timeRange,
-    );
-    const duration_minutes = total_duration ? Number(total_duration) / 60 : 0;
-    return {
-      start_time: headItem.start_time,
-      finish_time: tailItem.finish_time,
-      duration_minutes,
-    };
+  async completeActivitySequence(log_id: string): Promise<CompletedActivitySequence> {
+    const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
+    if (!uncompletedSequenceLog) throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
+    uncompletedSequenceLog.finalizeUncompletedLog();
+    return this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
   }
 
   async getStatsByActivitySequencePerDay(
@@ -118,60 +83,35 @@ export class CompletedActivitySequenceService {
   }
 
   async forceCompleteCurrentSequence(activity_sequence_id: string, user_id: string): Promise<any> {
-    const getUserOptions = { relations: ['current_activity', 'current_activity_sequence'] };
+    const getUserOptions = { relations: ['current_activity', 'current_activity_sequence', 'completing_sequence_log'] };
     const user = await this.userRepository.orm.findOne(user_id, getUserOptions);
-    this.validateCurrentActivitySequence(user, activity_sequence_id);
-    const currentActivityId = user.current_activity_id;
-    const uncompletedActivityIds = this.defineUncompletedActivitiesInTheSequence(
-      user.current_activity_sequence,
-      currentActivityId,
-    );
-    const emptyCompletedActivityLogs = this.createEmptyCompletedActivityLogs(user, uncompletedActivityIds);
-    await Promise.all(emptyCompletedActivityLogs.map((e) => this.completedActivityRepository.orm.save(e)));
-    await this.completeActivitySequence(activity_sequence_id, user_id);
+    const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
+    hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id) : null;
     const nullifiedCurrentSequence = {
       current_activity_sequence_id: null,
       current_activity_id: null,
       current_activity_assigned_at: null,
       last_completed_sequence_id: activity_sequence_id,
       last_completed_sequence_at: new Date(),
-      last_completed_sequence_started_at: user.current_sequence_started_at,
+      last_completed_sequence_started_at: user.current_sequence_started_at ?? new Date(),
       current_sequence_started_at: null,
+      current_completing_sequence_log_id: null,
     };
     const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
     return updatedUser;
   }
 
-  private validateCurrentActivitySequence(user: User, activity_sequence_id: string): never | void {
-    const userHasNoCurrentSequence = !user.current_activity_sequence_id;
-    const givenSequenceIsNotCurren = user.current_activity_sequence_id !== activity_sequence_id;
-    const userHasNoCurrentSequenceMessage = 'This User has no current activity sequence specified!';
-    if (userHasNoCurrentSequence) throw new BadRequestException(userHasNoCurrentSequenceMessage);
-    const givenSequenceIsNotCurrenMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
-    if (givenSequenceIsNotCurren) throw new BadRequestException(givenSequenceIsNotCurrenMessage);
-  }
-
-  private defineUncompletedActivitiesInTheSequence(
-    currentSequence: ActivitySequence,
-    currentActivityId: string,
-  ): string[] {
-    const currentActivityOrder = currentSequence.sequenceActivityIds.lastIndexOf(currentActivityId);
-    const sequenceLength = currentSequence.sequenceActivityIds.length;
-    const uncompletedActivityIds = currentSequence.sequenceActivityIds.slice(currentActivityOrder, sequenceLength);
-    return uncompletedActivityIds;
-  }
-
-  private createEmptyCompletedActivityLogs(user: User, uncompletedActivityIds: string[]): CompletedActivity[] {
-    return uncompletedActivityIds.map(
-      (id: string): CompletedActivity =>
-        new CompletedActivity({
-          activity_sequence_id: user.current_activity_sequence_id,
-          activity_id: id,
-          user_id: user.id,
-          start_time: user.current_activity_assigned_at,
-          finish_time: user.current_activity_assigned_at,
-          duration_logged: 0,
-        }),
-    );
+  private validateCurrentActivitySequence(
+    user: User,
+    activity_sequence_id: string,
+  ): never | { hasConsistentCurrentSet: boolean } {
+    const userHasCurrentSequence = Boolean(user?.current_activity_sequence_id);
+    const userHasCompletingLog = Boolean(user?.completing_sequence_log);
+    const hasConsistentCurrentSet = userHasCompletingLog && userHasCurrentSequence;
+    const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
+    const hasWrongCurrentSequence = userHasCurrentSequence && givenSequenceIsNotCurrent;
+    const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
+    if (hasWrongCurrentSequence) throw new BadRequestException(givenSequenceIsNotCurrentMessage);
+    return { hasConsistentCurrentSet };
   }
 }

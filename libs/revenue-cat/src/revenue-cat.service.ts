@@ -49,7 +49,15 @@ export class RevenueCatService {
     if (hasNoEntitlements) return new SubscriptionStatus();
     const activeEntitlementsEntries = emtitlementsEntries.filter(this.validateEntitlement);
     const activeEntitlements = Object.keys(Object.fromEntries(activeEntitlementsEntries));
-    return new SubscriptionStatus({ activeEntitlements });
+    const expirations = Object.fromEntries(activeEntitlementsEntries.map((e) => this.getExpirations(e)));
+    return new SubscriptionStatus({ activeEntitlements, expirations });
+  }
+
+  private getExpirations([key, { expires_date, purchase_date }]: [string, any]): [string, unknown] {
+    const now = Date.now();
+    const endDate = new Date(expires_date).getTime();
+    const days_left = Math.round((endDate - now) / (24 * 60 * 60 * 1000));
+    return [key, { expires_date, purchase_date, days_left }];
   }
 
   private validateEntitlement([, { expires_date }]): boolean {

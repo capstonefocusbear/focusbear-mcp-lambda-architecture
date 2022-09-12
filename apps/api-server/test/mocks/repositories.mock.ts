@@ -54,4 +54,5 @@ export const FocusModeRepositoryMock = {
 
 export const CompletedFocusBlockRepositoryMock = {
   ...BaseRepositoryMock,
+  getLogsByUserInTimeRange: jest.fn(),
 };

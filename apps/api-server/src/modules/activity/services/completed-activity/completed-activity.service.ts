@@ -26,6 +26,10 @@ import { ReviseCompletedActivityDto } from '../../dto/revise-completed-activity.
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
+import { FocusModeDaySummaryItem } from '../../../focus-mode/domain/focus-mode-day-summary-item.model';
+import { ActivityDurationDaySummaryItem } from '../../domain/activity-duration-day-summary-item.mode';
+import { ActivityQuantityDaySummaryItem } from '../../domain/activity-quantity-day-summary-item.mode';
+import { DaySummary } from '../../domain/day-summary.mode';
 
 @Injectable()
 export class CompletedActivityService {
@@ -240,7 +244,7 @@ export class CompletedActivityService {
     return this.completedActivityRepository.orm.save(log);
   }
 
-  async getDaySummary(user_id: string) {
+  async getDaySummary(user_id: string): Promise<DaySummary> {
     const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
       this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, {}),
       this.completedActivityRepository.getDaySummaryAVG(user_id, {}),
@@ -265,7 +269,7 @@ export class CompletedActivityService {
     return Object.fromEntries(result);
   }
 
-  private countSummaryAVG(logs: CompletedActivity[]) {
+  private countSummaryAVG(logs: CompletedActivity[]): ActivityQuantityDaySummaryItem[] {
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -274,7 +278,7 @@ export class CompletedActivityService {
     }));
   }
 
-  private countSummarySUM(logs: CompletedActivity[]) {
+  private countSummarySUM(logs: CompletedActivity[]): ActivityQuantityDaySummaryItem[] {
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -283,7 +287,7 @@ export class CompletedActivityService {
     }));
   }
 
-  private countSummaryDuration(logs: CompletedActivity[]) {
+  private countSummaryDuration(logs: CompletedActivity[]): ActivityDurationDaySummaryItem[] {
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -292,7 +296,7 @@ export class CompletedActivityService {
     }));
   }
 
-  private countFocusModeSummary(items: CompletedFocusBlock[]) {
+  private countFocusModeSummary(items: CompletedFocusBlock[]): FocusModeDaySummaryItem[] {
     return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '' }) => ({
       name: focus_mode.name,
       start_time,

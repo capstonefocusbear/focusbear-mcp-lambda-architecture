@@ -5,6 +5,7 @@ import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CompletedActivityResponse } from '../domain/completed-activity-response.model';
 import { CompletedActivityStats } from '../domain/completed-activity-stats.model';
+import { DaySummary } from '../domain/day-summary.mode';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-logs.dto';
 import {
@@ -55,7 +56,7 @@ export class CompletedActivityController {
   }
 
   @Get('/day-summary')
-  getdaySummary(@AuthContext() { user }: Passport): Promise<any> {
+  getdaySummary(@AuthContext() { user }: Passport): Promise<DaySummary> {
     return this.completedActivityService.getDaySummary(user.id);
   }
 }

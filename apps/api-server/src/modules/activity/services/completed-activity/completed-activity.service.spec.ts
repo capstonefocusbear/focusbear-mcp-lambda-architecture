@@ -34,6 +34,7 @@ import { ActivityStatType } from '../../domain/activity-stat-type.enum';
 import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -49,6 +50,7 @@ describe('CompletedActivityService', () => {
         ActivityRepository,
         CompletedActivitySequenceService,
         PusherService,
+        CompletedFocusBlockRepository,
       ],
     })
       .overrideProvider(CompletedActivityRepository)
@@ -65,6 +67,8 @@ describe('CompletedActivityService', () => {
       .useValue(CompletedActivitySequenceServiceMock)
       .overrideProvider(PusherService)
       .useValue(PusherServiceMock)
+      .overrideProvider(CompletedFocusBlockRepository)
+      .useValue(CompletedActivityRepositoryMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);

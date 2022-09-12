@@ -24,6 +24,8 @@ import { CurrentActivityState } from '../../domain/current-activity-state.mode';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { ReviseCompletedActivityDto } from '../../dto/revise-completed-activity.dto';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
+import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
 
 @Injectable()
 export class CompletedActivityService {
@@ -35,6 +37,7 @@ export class CompletedActivityService {
     private readonly activityRepository: ActivityRepository,
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly pusher: PusherService,
+    private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
   ) {}
 
   async completeActivity(
@@ -235,5 +238,67 @@ export class CompletedActivityService {
     if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
     log.quantity_logged = quantity_logged;
     return this.completedActivityRepository.orm.save(log);
+  }
+
+  async getDaySummary(user_id: string) {
+    const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
+      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, {}),
+      this.completedActivityRepository.getDaySummaryAVG(user_id, {}),
+      this.completedActivityRepository.getDaySummarySUM(user_id, {}),
+      this.completedActivityRepository.getDaySummaryDuration(user_id, {}),
+    ]);
+    return {
+      focusSummary: this.countFocusModeSummary(focusSummaryItems),
+      daySummaryAVG: this.countSummaryAVG(daySummaryAVGItems),
+      daySummarySUM: this.countSummarySUM(daySummarySUMItems),
+      daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
+    };
+  }
+
+  private groupByName(items: CompletedActivity[]) {
+    const result = new Map();
+    for (const item of items) {
+      const existingValue = result.get(item.activity.activity_data.name) ?? [];
+      if (existingValue.length < 1) result.set(item.activity.activity_data.name, existingValue);
+      existingValue.push(item);
+    }
+    return Object.fromEntries(result);
+  }
+
+  private countSummaryAVG(logs: CompletedActivity[]) {
+    const groupedItems = this.groupByName(logs);
+    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    return entries.map(([name, items]) => ({
+      name,
+      quantity: items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0) / items.length,
+    }));
+  }
+
+  private countSummarySUM(logs: CompletedActivity[]) {
+    const groupedItems = this.groupByName(logs);
+    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    return entries.map(([name, items]) => ({
+      name,
+      quantity: items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0),
+    }));
+  }
+
+  private countSummaryDuration(logs: CompletedActivity[]) {
+    const groupedItems = this.groupByName(logs);
+    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    return entries.map(([name, items]) => ({
+      name,
+      duration: items.reduce((acc, { duration_logged = 0 }) => acc + Number(duration_logged), 0),
+    }));
+  }
+
+  private countFocusModeSummary(items: CompletedFocusBlock[]) {
+    return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '' }) => ({
+      name: focus_mode.name,
+      start_time,
+      duration: (new Date(finish_time).getTime() - new Date(start_time).getTime()) * 1000,
+      achievements,
+      distractions,
+    }));
   }
 }

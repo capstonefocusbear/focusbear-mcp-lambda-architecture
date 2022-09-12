@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Between, Connection, In, MoreThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
+import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 
 @Injectable()
@@ -58,6 +59,65 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         activity_id,
         finish_time: Between(from_time, to_time),
       },
+      order: {
+        start_time: 'DESC',
+      },
+    });
+  }
+
+  async getDaySummarySUM(
+    user_id: string,
+    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+  ): Promise<any> {
+    return this.orm.find({
+      where: {
+        user_id,
+        finish_time: Between(from_time, to_time),
+        activity: {
+          log_quantity: true,
+          log_summary_type: LogSummaryType.SUM,
+        },
+      },
+      relations: ['activity'],
+      order: {
+        start_time: 'DESC',
+      },
+    });
+  }
+
+  async getDaySummaryAVG(
+    user_id: string,
+    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+  ): Promise<any[]> {
+    return this.orm.find({
+      where: {
+        user_id,
+        finish_time: Between(from_time, to_time),
+        activity: {
+          log_quantity: true,
+          log_summary_type: LogSummaryType.AVERAGE,
+        },
+      },
+      relations: ['activity'],
+      order: {
+        start_time: 'DESC',
+      },
+    });
+  }
+
+  async getDaySummaryDuration(
+    user_id: string,
+    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+  ): Promise<any> {
+    return this.orm.find({
+      where: {
+        user_id,
+        finish_time: Between(from_time, to_time),
+        activity: {
+          has_choices: In([false, null]),
+        },
+      },
+      relations: ['activity'],
       order: {
         start_time: 'DESC',
       },

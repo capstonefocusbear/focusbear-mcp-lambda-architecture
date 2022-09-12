@@ -1,6 +1,7 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { CompletedFocusBlock } from './completed-focus-block.entity';
 
 @Entity('focus_modes')
 export class FocusMode extends BaseEntity {
@@ -47,4 +48,7 @@ export class FocusMode extends BaseEntity {
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @OneToMany(() => CompletedFocusBlock, (log) => log.focus_mode)
+  completed_logs?: CompletedFocusBlock[];
 }

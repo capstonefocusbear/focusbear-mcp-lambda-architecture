@@ -53,4 +53,9 @@ export class CompletedActivityController {
   ): Promise<CompletedActivity> {
     return this.completedActivityService.reviseCompletedLog(completed_activity_id, { quantity_logged });
   }
+
+  @Get('/day-summary')
+  getdaySummary(@AuthContext() { user }: Passport): Promise<any> {
+    return this.completedActivityService.getDaySummary(user.id);
+  }
 }

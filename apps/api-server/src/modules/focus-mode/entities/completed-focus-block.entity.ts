@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { FocusMode } from './focus-mode.entity';
 
 @Entity('completed_focus_blocks')
 export class CompletedFocusBlock extends BaseEntity {
@@ -60,4 +61,8 @@ export class CompletedFocusBlock extends BaseEntity {
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @ManyToOne(() => FocusMode, (mode) => mode.completed_logs)
+  @JoinColumn({ name: 'focus_mode_id' })
+  focus_mode?: FocusMode;
 }

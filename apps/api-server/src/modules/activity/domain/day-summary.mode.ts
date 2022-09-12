@@ -4,15 +4,15 @@ import { ActivityDurationDaySummaryItem } from './activity-duration-day-summary-
 import { ActivityQuantityDaySummaryItem } from './activity-quantity-day-summary-item.mode';
 
 export class DaySummary {
-  @ApiProperty()
+  @ApiProperty({ isArray: true, type: FocusModeDaySummaryItem })
   focusSummary: FocusModeDaySummaryItem[];
 
-  @ApiProperty()
+  @ApiProperty({ isArray: true, type: ActivityQuantityDaySummaryItem })
   daySummaryAVG: ActivityQuantityDaySummaryItem[];
 
-  @ApiProperty()
+  @ApiProperty({ isArray: true, type: ActivityQuantityDaySummaryItem })
   daySummarySUM: ActivityQuantityDaySummaryItem[];
 
-  @ApiProperty()
+  @ApiProperty({ isArray: true, type: ActivityDurationDaySummaryItem })
   daySummaryDuration: ActivityDurationDaySummaryItem[];
 }

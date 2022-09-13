@@ -75,16 +75,19 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.current_activity', 'current_activity')
+      .leftJoinAndSelect('users.current_focus_mode', 'current_focus_mode')
       .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
       .select([
         'users.current_activity_assigned_at',
+        'users.current_focus_mode_finish_time',
         'users.last_completed_sequence_started_at',
         'users.id',
         'users.last_completed_sequence_at',
         'current_activity',
         'current_activity_sequence',
         'last_completed_sequence',
+        'current_focus_mode',
       ])
       .where('users.id = :id', { id })
       .getOne();

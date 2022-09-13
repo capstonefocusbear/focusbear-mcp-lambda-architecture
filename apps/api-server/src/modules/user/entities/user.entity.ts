@@ -186,4 +186,8 @@ export class User extends BaseEntity {
   @OneToOne(() => CompletedActivitySequence, (sequence_log) => sequence_log.user)
   @JoinColumn({ name: 'current_completing_sequence_log_id' })
   completing_sequence_log?: CompletedActivitySequence;
+
+  @OneToOne(() => FocusMode, (mode) => mode.user)
+  @JoinColumn({ name: 'current_focus_mode_id' })
+  current_focus_mode?: FocusMode;
 }

@@ -23,6 +23,7 @@ export class ActivityParserService {
   constructor(private readonly activitySequenceRepository: ActivitySequenceRepository) {}
 
   serialize(activity_sequences: Partial<ActivitySequence>[]): SerializedActivity {
+    console.log({ data: JSON.stringify(activity_sequences) });
     const serializedActivities: SerializedActivity = {};
     for (const { type, activities, activity_ids } of activity_sequences) {
       let key = `${type}_activities`;

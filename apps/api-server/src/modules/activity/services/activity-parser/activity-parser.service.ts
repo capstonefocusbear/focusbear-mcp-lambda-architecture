@@ -45,7 +45,7 @@ export class ActivityParserService {
         log_summary_type,
         ...activity_data,
       });
-      const orderedActivities = activity_ids.map(findActivity).map(mapActivity);
+      const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
     }
     return serializedActivities;

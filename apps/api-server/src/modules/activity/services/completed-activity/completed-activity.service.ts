@@ -247,7 +247,7 @@ export class CompletedActivityService {
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
     const timerange = await this.defineStartupTimestamp(user_id, timezone);
     const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
-      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange, timezone }),
+      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange }),
       this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),
       this.completedActivityRepository.getDaySummarySUM(user_id, { ...timerange }),
       this.completedActivityRepository.getDaySummaryDuration(user_id, { ...timerange }),

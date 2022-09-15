@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Between, Connection, In, MoreThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { ActivityType } from '../domain/activity-type.enum';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { CompletedActivity } from '../entities/completed-activity.entity';
@@ -75,6 +76,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         finish_time: Between(from_time, to_time),
         activity: {
           log_quantity: true,
+          type: ActivityType.break,
           log_summary_type: LogSummaryType.SUM,
         },
       },
@@ -95,6 +97,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         finish_time: Between(from_time, to_time),
         activity: {
           log_quantity: true,
+          type: ActivityType.break,
           log_summary_type: LogSummaryType.AVERAGE,
         },
       },
@@ -115,6 +118,8 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         finish_time: Between(from_time, to_time),
         activity: {
           has_choices: In([false, null]),
+          log_quantity: false,
+          type: ActivityType.break,
         },
       },
       relations: ['activity'],

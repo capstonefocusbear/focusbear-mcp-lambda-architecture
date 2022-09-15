@@ -244,12 +244,13 @@ export class CompletedActivityService {
     return this.completedActivityRepository.orm.save(log);
   }
 
-  async getDaySummary(user_id: string): Promise<DaySummary> {
+  async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
+    const timerange = await this.defineStartupTimestamp(user_id, timezone);
     const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
-      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, {}),
-      this.completedActivityRepository.getDaySummaryAVG(user_id, {}),
-      this.completedActivityRepository.getDaySummarySUM(user_id, {}),
-      this.completedActivityRepository.getDaySummaryDuration(user_id, {}),
+      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange, timezone }),
+      this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),
+      this.completedActivityRepository.getDaySummarySUM(user_id, { ...timerange }),
+      this.completedActivityRepository.getDaySummaryDuration(user_id, { ...timerange }),
     ]);
     return {
       focusSummary: this.countFocusModeSummary(focusSummaryItems),
@@ -257,6 +258,29 @@ export class CompletedActivityService {
       daySummarySUM: this.countSummarySUM(daySummarySUMItems),
       daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
     };
+  }
+
+  private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const { startup_time } = user;
+    if (!startup_time) throw new BadRequestException('The user has no startup_time setting specified!');
+    const timerange = this.buildTimestamp(startup_time, timezone);
+    return timerange;
+  }
+
+  private buildTimestamp(startup_time: string, timeZone: string): { from_time: string; to_time: string } {
+    const now = new Date();
+    const nowLocalString = now.toLocaleString('en-US', {
+      hour12: false,
+      timeZone,
+      timeZoneName: 'short',
+    });
+    const to_time = new Date(nowLocalString).toISOString();
+    const [nowDate, , nowTimezone] = nowLocalString.split(' ');
+    const startupTime = `${startup_time}:00`;
+    const from_time = new Date(`${nowDate} ${startupTime} ${nowTimezone}`).toISOString();
+    return { from_time, to_time };
   }
 
   private groupByName(items: CompletedActivity[]) {

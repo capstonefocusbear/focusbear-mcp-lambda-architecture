@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ActivityChoiceData } from '../../domain/activity-choice-data.model';
 import { ActivityData } from '../../domain/activity-data.model';
 import { ActivityType } from '../../domain/activity-type.enum';
@@ -23,37 +23,32 @@ export class ActivityParserService {
   constructor(private readonly activitySequenceRepository: ActivitySequenceRepository) {}
 
   serialize(activity_sequences: Partial<ActivitySequence>[]): SerializedActivity {
-    try {
-      console.log({ data: JSON.stringify(activity_sequences) });
-      const serializedActivities: SerializedActivity = {};
-      for (const { type, activities, activity_ids } of activity_sequences) {
-        let key = `${type}_activities`;
-        if (type === ActivityType.break) key = 'break_activities';
-        const findActivity = (id): Activity => activities.find((e) => e.id === id);
-        const mapActivity = ({
-          id,
-          duration_seconds,
-          activity_sequence_id,
-          log_quantity,
-          log_summary_type,
-          activity_data,
-          choices,
-        }: Activity) => ({
-          id,
-          choices: choices?.map(mapActivity),
-          duration_seconds: Number(duration_seconds),
-          activity_sequence_id,
-          log_quantity,
-          log_summary_type,
-          ...activity_data,
-        });
-        const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
-        Object.assign(serializedActivities, { [key]: orderedActivities });
-      }
-      return serializedActivities;
-    } catch (error) {
-      throw new BadRequestException(JSON.stringify({ error, activity_sequences }));
+    const serializedActivities: SerializedActivity = {};
+    for (const { type, activities, activity_ids } of activity_sequences) {
+      let key = `${type}_activities`;
+      if (type === ActivityType.break) key = 'break_activities';
+      const findActivity = (id): Activity => activities.find((e) => e.id === id);
+      const mapActivity = ({
+        id,
+        duration_seconds,
+        activity_sequence_id,
+        log_quantity,
+        log_summary_type,
+        activity_data,
+        choices,
+      }: Activity) => ({
+        id,
+        choices: choices?.map(mapActivity),
+        duration_seconds: Number(duration_seconds),
+        activity_sequence_id,
+        log_quantity,
+        log_summary_type,
+        ...activity_data,
+      });
+      const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
+      Object.assign(serializedActivities, { [key]: orderedActivities });
     }
+    return serializedActivities;
   }
 
   async deserialize(serialized: SerializedActivity, user_id: string): Promise<DeserializedActivity[]> {

@@ -12,6 +12,7 @@ import {
   GetCompletedActivityStatsParamsDto,
   GetCompletedActivityStatsQueryDto,
 } from '../dto/get-completed-activity-stats.dto';
+import { GetDaySummaryQueryDto } from '../dto/get-day-summary-query.dto';
 import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
@@ -56,7 +57,7 @@ export class CompletedActivityController {
   }
 
   @Get('/day-summary')
-  getdaySummary(@AuthContext() { user }: Passport): Promise<DaySummary> {
-    return this.completedActivityService.getDaySummary(user.id);
+  getdaySummary(@AuthContext() { user }: Passport, @Query() { timezone }: GetDaySummaryQueryDto): Promise<DaySummary> {
+    return this.completedActivityService.getDaySummary(user.id, timezone);
   }
 }

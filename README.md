@@ -77,9 +77,10 @@ $ STRIPE_CHECKOUT_CANCEL_URL =
 $ STRIPE_WEBHOOK_SECRET =
 ```
 
-3. Update .env file with actual values for PostgreSQL and REDIS
-   In case of using docker-compose - take values from docker-compose.yml
-   If you don't use docker take values from your system
+3. Update .env file with actual values for PostgreSQL
+
+- In case of using docker-compose - take values from docker-compose.yml
+- If you don't use docker take values from your system
 
 4. Install application dependencies
 

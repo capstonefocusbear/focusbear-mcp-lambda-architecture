@@ -1,17 +1,6 @@
 version: '3.9'
 
 services:
-  backend:
-    build: .
-    command: npm run start:dev
-    ports:
-      - "8000:5035"
-    volumes:
-      - .:/app
-    depends_on:
-      - db
-      # - redis
-
   db:
     image: postgres:13
     restart: unless-stopped

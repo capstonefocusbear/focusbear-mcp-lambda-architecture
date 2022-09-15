@@ -1,49 +1,112 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
-</p>
+## Project local setup
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+### Prepare utilities and components for your OS and install it
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+1. Install NodeJS and npm (You need version 14.\* or higher of Node.js): https://nodejs.org/en/download/
+2. Download Git: https://git-scm.com/downloads
+3. Clone project repository. Take repository link from GitHub (Focus-Bear/backend) account.
 
-## Description
+```bash
+$ git clone https://github.com/Focus-Bear/backend.git
+```
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Third-party services local setup in Docker / Docker-compose
 
-## Installation
+1. Download and install Docker daemon for youe OS: https://www.docker.com/products/docker-desktop/
+2. You can update docker-compose.yml with changed env vars if needed (can be used as it is)
+3. Open Terminal in the project root and execute docker-compose.yml file:
+
+```bash
+$ docker-compose up --build
+```
+
+4. Two containers will be running: "Postgres" (common purpose DataBase) and "Adminer" (GUI for it)
+
+### Server app startup
+
+1. Create .env file in root of project
+
+```bash
+$ touch .env
+```
+
+2. Update environment variables (don't contain secure credentials) to .env file with this snippet
+
+```bash
+$ SERVER_PORT = 5038
+$ SERVER_HOST = 127.0.0.1
+
+# populate those variables with your local DB values to connect with
+$ POSTGRES_PORT =
+$ POSTGRES_HOST =
+$ POSTGRES_USERNAME =
+$ POSTGRES_PASSWORD =
+$ POSTGRES_DB =
+
+# this should be any randomly generated string (used for enciphering certain fields in DB)
+$ TYPEORM_ENCRYPTION_KEY =
+
+# Got to the Auth0 dashboard, Application => Application, open "Server API" and take values to populate those keys
+$ AUTH0_DOMAIN = dev-2hidr8ad.us.auth0.com
+$ AUTH0_CONNECTION = Username-Password-Authentication
+$ AUTH0_INDENTIFIER = https://dev-2hidr8ad.us.auth0.com/api/v2/
+$ AUTH0_MANAGEMENT_CLIENT_ID =
+$ AUTH0_MANAGEMENT_CLIENT_SECRET =
+
+# This is a custom randomly generated secret for Auth0 action (hook) usage, basically, it's uneeded locally because Auth0 cannot call localhost but it's critical on the Prod server. For local set up it can be skipped
+$ AUTH0_ACTION_SECRET =
+
+# Go to the Render.com account and take those secrets from there (those values are needed to test or change the CI\CD script in the .github folder, it's critical to have in it the GitHub and Prod server but optional for local server start up)
+$ RENDER_SERVICE_ID=
+$ RENDER_API_KEY=
+
+# Go to the Pusher Channels account to take those values
+$ PUSHER_APP_ID =
+$ PUSHER_APP_KEY =
+$ PUSHER_APP_SECRET =
+$ PUSHER_APP_CLUSTER =
+
+# Take those for RevenueCat account
+$ REVENUE_CAT_SECRET_KEY =
+$ REVENUE_CAT_PUBLIC_KEY =
+
+# Take those from Stripe account
+$ STRIPE_SECRET_KEY =
+$ STRIPE_CHECKOUT_SUCCESS_URL =
+$ STRIPE_CHECKOUT_CANCEL_URL =
+$ STRIPE_WEBHOOK_SECRET =
+```
+
+3. Update .env file with actual values for PostgreSQL and REDIS
+   In case of using docker-compose - take values from docker-compose.yml
+   If you don't use docker take values from your system
+
+4. Install application dependencies
 
 ```bash
 $ npm install
 ```
 
-## Running the app
+5. Go to project root and run migrations. Migrations will create all tables and seed data
 
 ```bash
-# development
+$ npm run migration:up
+```
+
+6. Run app by executing one of commands. Depends on your needs
+
+```bash
+# Production mode
 $ npm run start
 
-# watch mode
+# Dev mode
 $ npm run start:dev
 
-# production mode
-$ npm run start:prod
+# Debug
+$ npm run start:debug
 ```
+
+7. Make sure the server is alive quering GET http://127.0.0.1:5038/healthcheck in the Browser or curl
 
 ## Test
 
@@ -57,17 +120,3 @@ $ npm run test:e2e
 # test coverage
 $ npm run test:cov
 ```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -41,6 +41,7 @@ export class FocusModeController {
   }
 
   @Delete()
+  @HttpCode(204)
   async bulkDeleteFocusModes(@Query() { id }: BulckDeleteQueryDto): Promise<void> {
     return this.focusModeService.softDelete(id);
   }

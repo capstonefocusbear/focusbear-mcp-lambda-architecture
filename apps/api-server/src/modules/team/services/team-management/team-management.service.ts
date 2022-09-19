@@ -37,4 +37,25 @@ export class TeamManagementService {
     const isUserMemberOfAnotherTeam = !!user.member_of_team_id;
     if (isUserMemberOfAnotherTeam) throw new BadRequestException('The User already participates in another Team!');
   }
+
+  async bulkDeleteTeamMembers(member_ids: string[], owner_id: string): Promise<any> {
+    const team = await this.teamRepository.findActiveTeamWithMembersByOwnerId(owner_id);
+    if (!team) throw new NotFoundException(`The Team with owner_id: ${owner_id} does not exist or is inactive!`);
+    const checkTargetMember = ({ id }: User) => member_ids.includes(id) && id !== owner_id;
+    const membersToDelete = team.members.filter(checkTargetMember);
+    return Promise.all(membersToDelete.map((e) => this.disassociateMemberFromTheTeam(e)));
+  }
+
+  private disassociateMemberFromTheTeam(member: User) {
+    member.nullifyTeamMembership();
+    const savedUserPromise = this.userRepository.orm.save(member);
+    const revokedMembershipeEntitlementPromise = this.revenueCatService.revokeTeamMembershipe(member.id);
+    return Promise.all([savedUserPromise, revokedMembershipeEntitlementPromise]);
+  }
+
+  async disassociateSelf(member_id: string): Promise<User> {
+    const user = await this.userRepository.orm.findOne(member_id);
+    const [updatedUser] = await this.disassociateMemberFromTheTeam(user);
+    return updatedUser;
+  }
 }

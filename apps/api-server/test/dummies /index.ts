@@ -15,6 +15,7 @@ import { ActivityData } from '../../src/modules/activity/domain/activity-data.mo
 import { CompletedActivity } from '../../src/modules/activity/entities/completed-activity.entity';
 import { FocusMode } from '../../src/modules/focus-mode/entities/focus-mode.entity';
 import { CompletedFocusBlock } from '../../src/modules/focus-mode/entities/completed-focus-block.entity';
+import { Team } from '../../src/modules/team/entities/team.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -460,3 +461,20 @@ export const UncompletedSequenceLogDummy = new CompletedActivitySequence({
   is_completed: false,
   completed_activity_logs: CompletedActivitiesForSequenceDummy(ActivitySequenceDummy),
 });
+
+export const TeamWithMembersDummy = new Team({
+  owner_id: userDummy.id,
+  owner: userDummy,
+  is_active: true,
+  team_size: 5,
+  members: [userDummy],
+});
+
+export const TeamMemberDummy = new User({
+  ...userDummy,
+  id: randomUUID(),
+  member_of_team_id: TeamWithMembersDummy.id,
+  member_of_team: TeamWithMembersDummy,
+});
+
+TeamWithMembersDummy.members.push(TeamMemberDummy);

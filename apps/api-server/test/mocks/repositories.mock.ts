@@ -56,3 +56,8 @@ export const CompletedFocusBlockRepositoryMock = {
   ...BaseRepositoryMock,
   getLogsByUserInTimeRange: jest.fn(),
 };
+
+export const TeamRepositoryMock = {
+  ...BaseRepositoryMock,
+  findActiveTeamWithMembersByOwnerId: jest.fn(),
+};

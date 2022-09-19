@@ -190,4 +190,8 @@ export class User extends BaseEntity {
   @OneToOne(() => FocusMode, (mode) => mode.user)
   @JoinColumn({ name: 'current_focus_mode_id' })
   current_focus_mode?: FocusMode;
+
+  nullifyTeamMembership?() {
+    this.member_of_team_id = null;
+  }
 }

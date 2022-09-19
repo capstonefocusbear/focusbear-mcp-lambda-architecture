@@ -10,6 +10,7 @@ import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
+import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 
 @Injectable()
 export class UserService {
@@ -99,5 +100,9 @@ export class UserService {
     const hasWrongSchema = !update || typeof update !== 'object' || Array.isArray(update);
     if (hasWrongSchema) return baseVersion;
     return Object.assign(baseVersion, update);
+  }
+
+  async getUsers({ search }: GetUsersQueryDto) {
+    return this.userRepository.getUsersList({ search });
   }
 }

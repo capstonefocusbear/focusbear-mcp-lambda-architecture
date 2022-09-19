@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -6,6 +6,12 @@ import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
+import { Entitlement } from '../../../subscription/domain/entitlement.enum';
+import {
+  HasSubscription,
+  RequireEntitlements,
+} from '../../../subscription/guards/has-subscription/has-subscription.guard';
+import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { User } from '../../entities/user.entity';
 import { UserService } from '../../services/user/user.service';
@@ -37,5 +43,12 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserCurrentActivity(@AuthContext() { user }: Passport): Promise<CurrentActivityProps> {
     return this.userService.getUserCurrentActivityProps(user.id);
+  }
+
+  @Get('/list')
+  @UseGuards(IsAuth, HasSubscription)
+  @RequireEntitlements([Entitlement.team_owner])
+  async getUsersList(@Query() { search }: GetUsersQueryDto): Promise<User[]> {
+    return this.userService.getUsers({ search });
   }
 }

@@ -4,6 +4,7 @@ import { BaseRepository } from '../../../shared/repositories/base-repository.rep
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
+import { GetUsersQueryDto } from '../dto/get-users-query.dto';
 import { User } from '../entities/user.entity';
 
 @Injectable()
@@ -91,5 +92,21 @@ export class UserRepository extends BaseRepository<User> {
       ])
       .where('users.id = :id', { id })
       .getOne();
+  }
+
+  async getUsersList({ search }: GetUsersQueryDto): Promise<User[]> {
+    return this.orm
+      .createQueryBuilder('users')
+      .select([
+        'users.id',
+        'users.email',
+        'users.first_name',
+        'users.member_of_team_id',
+        'users.owner_of_team_id',
+        'users.created_at',
+        'users.updated_at',
+      ])
+      .where('users.email ILIKE :search', { search })
+      .getMany();
   }
 }

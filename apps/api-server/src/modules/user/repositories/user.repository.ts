@@ -100,7 +100,7 @@ export class UserRepository extends BaseRepository<User> {
       .select([
         'users.id',
         'users.email',
-        'users.first_name',
+        'users.name',
         'users.member_of_team_id',
         'users.owner_of_team_id',
         'users.created_at',

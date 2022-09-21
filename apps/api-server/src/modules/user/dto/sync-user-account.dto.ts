@@ -9,4 +9,7 @@ export class SyncUserAccountDto {
   @IsString()
   @IsEmail()
   email: string;
+
+  @IsString()
+  name?: string;
 }

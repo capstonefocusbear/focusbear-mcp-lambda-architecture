@@ -23,10 +23,10 @@ export class UserService {
     private readonly config: ConfigService,
   ) {}
 
-  async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
+  async syncUserAccount({ auth0_id, email, name }: SyncUserAccountDto): Promise<UserAuthContext> {
     const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
     if (!auth0User) throw new NotFoundException('User does not exit in Auth0!');
-    const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
+    const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email, name }, registeredUser);
     if (!registeredUser) await this.handleInitialRegistration(id);
     const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
     const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
@@ -40,9 +40,13 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
-  private async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
+  private async updateOrCreateUser(
+    { auth0_id, email, name }: SyncUserAccountDto,
+    registeredUser?: User,
+  ): Promise<User> {
     const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
-    const userProperties = { auth0_id, email };
+    const hasNameDefined = Boolean(registeredUser?.name);
+    const userProperties = hasNameDefined ? { auth0_id, email } : { auth0_id, email, name };
     if (hasNoStripeCustomer) {
       const stripeCustomer = await this.stripeService.registerNewCustomer(email);
       Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });

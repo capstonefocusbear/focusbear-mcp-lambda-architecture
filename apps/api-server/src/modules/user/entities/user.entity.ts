@@ -41,9 +41,9 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    transformer: BaseEntity.encrypteField('first_name'),
+    transformer: BaseEntity.encrypteField('name'),
   })
-  first_name?: string;
+  name?: string;
 
   @Column({
     type: 'varchar',

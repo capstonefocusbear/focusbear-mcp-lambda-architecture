@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -21,6 +22,11 @@ import { TeamModule } from './modules/team/team.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): TypeOrmModuleAsyncOptions =>
         configService.get<TypeOrmModuleOptions>('typeorm'),
+    }),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => config.get('pino'),
     }),
     AuthModule,
     HelperModule,

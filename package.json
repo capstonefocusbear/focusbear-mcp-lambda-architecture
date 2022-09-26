@@ -35,6 +35,7 @@
     "@nestjs/swagger": "^5.2.1",
     "@nestjs/typeorm": "^8.0.2",
     "@nestjs/websockets": "^8.0.6",
+    "@sendgrid/mail": "^7.7.0",
     "api": "^4.5.1",
     "auth0": "^2.40.0",
     "class-transformer": "^0.4.0",
@@ -141,6 +142,8 @@
       "^@app/auth0(|/.*)$": "<rootDir>/libs/auth0/src/$1",
       "^@app/pusher(|/.*)$": "<rootDir>/libs/pusher/src/$1",
       "^@app/revenue-cat(|/.*)$": "<rootDir>/libs/revenue-cat/src/$1",
+      "^@app/send-grid(|/.*)$": "<rootDir>/libs/send-grid/src/$1",
+      "^@app/jwt(|/.*)$": "<rootDir>/libs/jwt/src/$1",
       "^@app/stripe(|/.*)$": "<rootDir>/libs/stripe/src/$1"
     }
   }

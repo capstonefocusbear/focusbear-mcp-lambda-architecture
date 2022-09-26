@@ -8,5 +8,6 @@ export * from './pusher.config';
 export * from './revenue-cat.config';
 export * from './stripe.config';
 export * from './pino.config';
+export * from './send-grid.config';
 
 export const configsArray: any = Object.values(this).slice(1);

@@ -93,6 +93,24 @@
       "compilerOptions": {
         "tsConfigPath": "libs/stripe/tsconfig.lib.json"
       }
+    },
+    "send-grid": {
+      "type": "library",
+      "root": "libs/send-grid",
+      "entryFile": "index",
+      "sourceRoot": "libs/send-grid/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/send-grid/tsconfig.lib.json"
+      }
+    },
+    "jwt": {
+      "type": "library",
+      "root": "libs/jwt",
+      "entryFile": "index",
+      "sourceRoot": "libs/jwt/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/jwt/tsconfig.lib.json"
+      }
     }
   }
 }

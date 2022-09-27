@@ -56,7 +56,7 @@ export class RevenueCatService {
   private getExpirations([key, { expires_date, purchase_date }]: [string, any]): [string, unknown] {
     const now = Date.now();
     const endDate = new Date(expires_date).getTime();
-    const days_left = Math.round((endDate - now) / (24 * 60 * 60 * 1000));
+    const days_left = Math.ceil((endDate - now) / (24 * 60 * 60 * 1000));
     return [key, { expires_date, purchase_date, days_left }];
   }
 

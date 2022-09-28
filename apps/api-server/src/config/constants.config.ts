@@ -26,7 +26,7 @@ export const constants = registerAs('constants', () => ({
         },
         {
           id: randomUUID(),
-          name: 'Journalling',
+          name: 'Journaling',
           video_urls: [],
           duration_seconds: 300,
         },

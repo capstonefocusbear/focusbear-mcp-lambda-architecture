@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   ActivitySequenceRepositoryMock,
@@ -11,7 +11,12 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 import { CompletedActivitySequenceService } from './completed-activity-sequence.service';
-import { ActivitySequenceDummy, UncompletedSequenceLogDummy, userDummy } from '../../../../../test/dummies ';
+import {
+  ActivityDummy,
+  ActivitySequenceDummy,
+  UncompletedSequenceLogDummy,
+  userDummy,
+} from '../../../../../test/dummies ';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
@@ -172,6 +177,89 @@ describe('CompletedActivitySequenceService', () => {
       expect(result.daily_durations_minutes.length).toEqual(1);
       expect(result.daily_durations_minutes[0].date).toEqual(statItemsDummy[0].date);
       expect(result.daily_durations_minutes[0].summary).toEqual(statItemsDummy[0].summary);
+    });
+  });
+
+  describe('forceCompleteCurrentSequence', () => {
+    const testUser: User = {
+      ...userDummy,
+      current_activity_sequence_id: ActivitySequenceDummy.id,
+      current_activity_sequence: ActivitySequenceDummy,
+      current_activity_id: ActivityDummy.id,
+      current_activity: ActivityDummy,
+      completing_sequence_log: UncompletedSequenceLogDummy,
+    };
+
+    it('negative: if user has another current sequence thorw BadRequestExcaption', async () => {
+      const activity_sequence_id = randomUUID();
+      const userWithWrongCurrentSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithWrongCurrentSequence);
+      let exception: any;
+
+      try {
+        await completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: if user has consistent current sequence, this sequence should be completed', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(testUser);
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      const spyMethod = jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+      );
+
+      expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id);
+    });
+
+    it('positive: if user has inconsistent current sequence or null values, skip conplete operation and set given id as last completed', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_activity_sequence_id: null });
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      const spyMethod = jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+      );
+
+      expect(spyMethod).not.toBeCalled();
+    });
+
+    it('positive: nullified current sequence should be saved for given user', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(testUser);
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+      );
+
+      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: testUser.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      });
     });
   });
 });

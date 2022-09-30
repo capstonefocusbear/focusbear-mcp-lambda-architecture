@@ -17,6 +17,8 @@ export const UserRepositoryMock = {
   ...BaseRepositoryMock,
   getUserSettings: jest.fn(),
   getUserDetails: jest.fn(),
+  getUsersList: jest.fn(),
+  getUserCurrentActivityProps: jest.fn(),
 };
 
 export const ActivitySequenceRepositoryMock = {
@@ -30,6 +32,10 @@ export const CompletedActivityRepositoryMock = {
   getAggregatedQuantityLogsPerDay: jest.fn(),
   findInSequenceAfterTime: jest.fn(),
   getTotalDurationsPerTimeRange: jest.fn(),
+  getLogsByActivityInTimeRange: jest.fn(),
+  getDaySummaryAVG: jest.fn(),
+  getDaySummarySUM: jest.fn(),
+  getDaySummaryDuration: jest.fn(),
 };
 
 export const DeviceRepositoryMock = {

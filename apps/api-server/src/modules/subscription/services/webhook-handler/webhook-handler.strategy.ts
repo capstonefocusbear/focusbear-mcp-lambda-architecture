@@ -61,7 +61,6 @@ export class WebhookHandlerStrategy {
     const owner_id = event.app_user_id;
     const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
     team.is_active = false;
-    console.log(team);
     const membersIds = this.extractMemberIds(team);
     const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
     const bulckRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));

@@ -16,6 +16,6 @@ export class SendGridService implements ISendGridService {
     payload: sendGrid.MailDataRequired | sendGrid.MailDataRequired[],
     isMultiple?: boolean,
   ): Promise<any | void> {
-    return sendGrid.send(payload, isMultiple);
+    return this.sendGridClient.send(payload, isMultiple);
   }
 }

@@ -36,8 +36,24 @@ export const RevenueCatServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   grantTeamMembershipe: jest.fn(),
   revokeTeamMembershipe: jest.fn(),
+  grantTrialAccess: jest.fn(),
+  checkSubscriptionStatus: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {
   getOrCreateSubscriber: jest.fn(),
+  updateSettings: jest.fn(),
+};
+
+export const JwtServiceMock = {
+  asyncSign: jest.fn(),
+  asyncVerify: jest.fn(),
+};
+
+export const SendGridServiceMock = {
+  sendEmail: jest.fn(),
+};
+
+export const StripeServiceMock = {
+  registerNewCustomer: jest.fn(),
 };

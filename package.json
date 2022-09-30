@@ -118,15 +118,15 @@
     },
     "collectCoverageFrom": [
       "**/*.service.(t|j)s",
-      "**/*.quard.(t|j)s",
+      "**/*.guard.(t|j)s",
+      "**/*.strategy.(t|j)s",
       "**/*.middleware.(t|j)s"
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 0,
-        "functions": 50,
-        "lines": 50,
-        "statements": 50
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
       }
     },
     "coverageDirectory": "./coverage",

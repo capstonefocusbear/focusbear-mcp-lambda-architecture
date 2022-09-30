@@ -431,6 +431,22 @@ export const ActivityDummy: Activity = new Activity(
   { generateId: true },
 );
 
+export const CompletedActivityDummy = new CompletedActivity(
+  {
+    activity_id: ActivityDummy.id,
+    activity: ActivityDummy,
+    activity_sequence_id: ActivityDummy.activity_sequence_id,
+    quantity_logged: 50,
+    duration_logged: 13,
+    start_time: new Date(Date.now() - 50 * 1000),
+    finish_time: new Date(),
+  },
+  {
+    generateId: true,
+    log_quantity: true,
+  },
+);
+
 export const FocusModeDummy = new FocusMode(
   {
     user_id: userDummy.id,
@@ -445,6 +461,7 @@ export const CompletedFocusBlockDummy = new CompletedFocusBlock(
   {
     user_id: FocusModeDummy.user_id,
     focus_mode_id: FocusModeDummy.id,
+    focus_mode: FocusModeDummy,
     finish_time: new Date(Date.now() + 1000 * 60 * 60),
     scheduled_finish_time: new Date(Date.now() + 1000 * 60 * 60),
     start_time: new Date(),

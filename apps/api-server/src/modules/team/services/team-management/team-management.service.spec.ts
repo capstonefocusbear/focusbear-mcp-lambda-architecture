@@ -2,8 +2,17 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { TeamMemberDummy, TeamWithMembersDummy } from '../../../../../test/dummies ';
-import { RevenueCatServiceMock, TeamRepositoryMock, UserRepositoryMock } from '../../../../../test/mocks';
+import { ConfigService } from '@nestjs/config';
+import { SendGridService } from '../../../../../../../libs/send-grid/src';
+import { JwtService } from '../../../../../../../libs/jwt/src';
+import { TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies ';
+import {
+  JwtServiceMock,
+  RevenueCatServiceMock,
+  SendGridServiceMock,
+  TeamRepositoryMock,
+  UserRepositoryMock,
+} from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
 import { TeamManagementService } from './team-management.service';
@@ -13,7 +22,15 @@ describe('TeamManagementService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [UserRepository, TeamRepository, TeamManagementService, RevenueCatService],
+      providers: [
+        UserRepository,
+        TeamRepository,
+        TeamManagementService,
+        RevenueCatService,
+        JwtService,
+        SendGridService,
+        ConfigService,
+      ],
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
@@ -21,6 +38,10 @@ describe('TeamManagementService', () => {
       .useValue(TeamRepositoryMock)
       .overrideProvider(RevenueCatService)
       .useValue(RevenueCatServiceMock)
+      .overrideProvider(JwtService)
+      .useValue(JwtServiceMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -171,6 +192,52 @@ describe('TeamManagementService', () => {
 
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...TeamMemberDummy, member_of_team_id: null });
       expect(RevenueCatServiceMock.revokeTeamMembershipe).toBeCalledWith(TeamMemberDummy.id);
+    });
+  });
+
+  describe('inviteTeamMember', () => {
+    const email = 'test@gamil.com';
+
+    it('negative: if user with invitation email already exist in DB, throw the BadRequest', async () => {
+      const user = { ...userDummy, id: randomUUID(), email };
+      UserRepositoryMock.orm.findOne.mockResolvedValue(user);
+      let exception: any;
+
+      try {
+        await teamManagementService.inviteTeamMember(email, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `The user with email: ${user.email} already exists!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: jwt should be created with email and owner_id in payload', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValue(TeamWithMembersDummy);
+
+      await teamManagementService.inviteTeamMember(email, userDummy.id);
+
+      expect(JwtServiceMock.asyncSign).toBeCalledWith({ email, owner_id: userDummy.id });
+    });
+
+    it('positive: email should be sent with invitation link inside', async () => {
+      const singedJwt = 'some.test.jwt.string';
+      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValue(TeamWithMembersDummy);
+      JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
+
+      await teamManagementService.inviteTeamMember(email, userDummy.id);
+
+      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        to: email,
+        from: 'marketing@focusbear.io',
+        text: expect.toInclude(`?token=${singedJwt}`),
+        subject: 'You where invited to join team in Focus Bear app.',
+      });
     });
   });
 });

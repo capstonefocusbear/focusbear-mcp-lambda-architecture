@@ -10,17 +10,20 @@ import {
   RequireEntitlements,
 } from '../../subscription/guards/has-subscription/has-subscription.guard';
 import { User } from '../../user/entities/user.entity';
+import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
 import { AddTeamMemberDto } from '../dto/add-team-member.dto';
+import { InviteTeamMemberDto } from '../dto/invite-team-member.dto';
 import { TeamManagementService } from '../services/team-management/team-management.service';
 
 @Controller('team-management')
 @ApiTags('team-management')
-@UseGuards(IsAuth, HasSubscription)
+@UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class TeamManagementController {
   constructor(private readonly teamManagementService: TeamManagementService) {}
 
   @Post('/add-member')
+  @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_owner])
   addTeamMember(
     @Body() { member_id }: AddTeamMemberDto,
@@ -31,6 +34,7 @@ export class TeamManagementController {
 
   @Delete('bulk-delete-members')
   @HttpCode(204)
+  @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_owner])
   bulkDeleteTeamMembers(
     @Query() { id }: BulckDeleteQueryDto,
@@ -41,8 +45,27 @@ export class TeamManagementController {
   }
 
   @Post('/disassociate-self')
+  @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_member])
   disassociateSelf(@AuthContext() { user: { id: member_id } }: Passport): Promise<User> {
     return this.teamManagementService.disassociateSelf(member_id);
+  }
+
+  @Post('/invite-member')
+  @UseGuards(HasSubscription)
+  @RequireEntitlements([Entitlement.team_owner])
+  async inviteTeamMember(
+    @Body() { email }: InviteTeamMemberDto,
+    @AuthContext() { user: { id: owner_id } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.inviteTeamMember(email, owner_id);
+  }
+
+  @Post('/accept-invitation')
+  async acceptInvitation(
+    @Body() { token }: AcceptInvitationDto,
+    @AuthContext() { user: { id: user_id } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.acceptInvitation(token, user_id);
   }
 }

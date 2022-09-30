@@ -252,12 +252,12 @@ export class CompletedActivityService {
       this.completedActivityRepository.getDaySummarySUM(user_id, { ...timerange }),
       this.completedActivityRepository.getDaySummaryDuration(user_id, { ...timerange }),
     ]);
-    return {
+    return new DaySummary({
       focusSummary: this.countFocusModeSummary(focusSummaryItems),
       daySummaryAVG: this.countSummaryAVG(daySummaryAVGItems),
       daySummarySUM: this.countSummarySUM(daySummarySUMItems),
       daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
-    };
+    });
   }
 
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {

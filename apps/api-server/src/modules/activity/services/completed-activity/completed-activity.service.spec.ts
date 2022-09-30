@@ -6,6 +6,7 @@ import {
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
   CompletedActivitySequenceServiceMock,
+  CompletedFocusBlockRepositoryMock,
   DeviceServiceMock,
   PusherServiceMock,
   UserRepositoryMock,
@@ -13,6 +14,8 @@ import {
 import {
   ActivityDummy,
   ActivitySequenceDummy,
+  CompletedActivityDummy,
+  CompletedFocusBlockDummy,
   DeviceDummy,
   LeaderDeviceDummy,
   UncompletedSequenceLogDummy,
@@ -35,6 +38,8 @@ import { CompletedActivityStats } from '../../domain/completed-activity-stats.mo
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
+import { ActivityType } from '../../domain/activity-type.enum';
+import { DaySummary } from '../../domain/day-summary.mode';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -68,7 +73,7 @@ describe('CompletedActivityService', () => {
       .overrideProvider(PusherService)
       .useValue(PusherServiceMock)
       .overrideProvider(CompletedFocusBlockRepository)
-      .useValue(CompletedActivityRepositoryMock)
+      .useValue(CompletedFocusBlockRepositoryMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -399,6 +404,25 @@ describe('CompletedActivityService', () => {
         ),
       );
     });
+
+    it('positive: if target activity is break type the se quence check should be skiiped', async () => {
+      ActivityDummy.type = ActivityType.break;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedactivityService.completeActivity(completedActivity, { user_id });
+
+      expect(CompletedActivityRepositoryMock.create).toBeCalledWith(
+        new CompletedActivity(
+          { ...completedActivity, user_id },
+          { generateId: false, log_quantity: ActivityDummy.log_quantity },
+        ),
+      );
+    });
   });
 
   describe('getStatsByActivityPerDay', () => {
@@ -463,5 +487,109 @@ describe('CompletedActivityService', () => {
       expect(result).toBeDefined();
       expect(result).toBeInstanceOf(CompletedActivityStats);
     });
+  });
+
+  describe('getCompletedLogsByActivityInTimeRange', () => {
+    it('positive: repository query should be called', async () => {
+      const activity_id = randomUUID();
+      const timeRange = { from_time: new Date(), to_time: new Date() };
+      await completedactivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, timeRange);
+
+      expect(CompletedActivityRepositoryMock.getLogsByActivityInTimeRange).toBeCalledWith(activity_id, timeRange);
+    });
+  });
+
+  describe('reviseCompletedLog', () => {
+    const quantity_logged = 113;
+
+    it('negative: should throw NotFoundException if activity does not exist', async () => {
+      const id = randomUUID();
+      CompletedActivityRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+
+      try {
+        await completedactivityService.reviseCompletedLog(id, { quantity_logged });
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Completed log with id: ${id} does not exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: guantity_logged value should be reassigned and the updated item saved', async () => {
+      CompletedActivityRepositoryMock.orm.findOne.mockResolvedValue(CompletedActivityDummy);
+
+      await completedactivityService.reviseCompletedLog(CompletedActivityDummy.id, { quantity_logged });
+
+      const updatedItem = { ...CompletedActivityDummy, quantity_logged };
+      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith(updatedItem);
+    });
+  });
+
+  describe('getDaySummary', () => {
+    it('negative: should throw NotFoundException if user does not exist', async () => {
+      const user_id = randomUUID();
+      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+
+      try {
+        await completedactivityService.getDaySummary(user_id, 'UTC');
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${user_id} does not exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: should throw BadRequestException if user has no startup_time value specified', async () => {
+      const testUser = { ...userDummy, startup_time: null };
+      UserRepositoryMock.orm.findOne.mockResolvedValue(testUser);
+      let exception: any;
+
+      try {
+        await completedactivityService.getDaySummary(testUser.id, 'UTC');
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = 'The user has no startup_time setting specified!';
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+  });
+
+  it('positive: aggregation queries should be called with a correct time range', async () => {
+    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+
+    await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+
+    const timerange = { from_time: expect.toBeDateString(), to_time: expect.toBeDateString() };
+    expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+    expect(CompletedActivityRepositoryMock.getDaySummaryAVG).toBeCalledWith(userDummy.id, timerange);
+    expect(CompletedActivityRepositoryMock.getDaySummarySUM).toBeCalledWith(userDummy.id, timerange);
+    expect(CompletedActivityRepositoryMock.getDaySummaryDuration).toBeCalledWith(userDummy.id, timerange);
+  });
+
+  it('positive: should return DaySummary data model', async () => {
+    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+
+    const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+
+    expect(result).toBeInstanceOf(DaySummary);
   });
 });

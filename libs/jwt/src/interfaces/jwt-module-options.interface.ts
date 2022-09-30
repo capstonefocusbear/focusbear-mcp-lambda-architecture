@@ -5,4 +5,5 @@ export interface IJwtOptions {
   verifyOptions?: jwt.VerifyOptions & {
     complete: true;
   };
+  secret?: jwt.Secret;
 }

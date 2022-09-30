@@ -94,7 +94,7 @@ export class UserService {
     return user.local_device_settings;
   }
 
-  mergeLocalSettings(saved?: UpdateLocalDeviceSettingsDto, update?: UpdateLocalDeviceSettingsDto) {
+  private mergeLocalSettings(saved?: UpdateLocalDeviceSettingsDto, update?: UpdateLocalDeviceSettingsDto) {
     const baseVersion = {
       MacOS: saved?.MacOS || null,
       Windows: saved?.Windows || null,

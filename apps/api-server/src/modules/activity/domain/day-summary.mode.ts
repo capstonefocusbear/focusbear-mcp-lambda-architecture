@@ -4,6 +4,10 @@ import { ActivityDurationDaySummaryItem } from './activity-duration-day-summary-
 import { ActivityQuantityDaySummaryItem } from './activity-quantity-day-summary-item.mode';
 
 export class DaySummary {
+  constructor(data: DaySummary) {
+    Object.assign(this, { ...data });
+  }
+
   @ApiProperty({ isArray: true, type: FocusModeDaySummaryItem })
   focusSummary: FocusModeDaySummaryItem[];
 

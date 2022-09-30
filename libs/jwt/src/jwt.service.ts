@@ -10,7 +10,7 @@ export class JwtService implements IJwtService {
 
   async asyncSign(
     payload: string | object | Buffer,
-    secretOrPrivateKey: jwt.Secret,
+    secretOrPrivateKey: jwt.Secret = this.jwtOptions.secret,
     options: jwt.SignOptions = this.jwtOptions.signOptions,
   ): Promise<string> {
     return this.promiseAdapter<string>(jwt.sign, payload, secretOrPrivateKey, options);
@@ -25,7 +25,7 @@ export class JwtService implements IJwtService {
 
   async asyncVerify<T extends object = any>(
     token: string,
-    secretOrPublicKey: jwt.Secret | jwt.GetPublicKeyOrSecret,
+    secretOrPublicKey: jwt.Secret | jwt.GetPublicKeyOrSecret = this.jwtOptions.secret,
     options: jwt.VerifyOptions & {
       complete: true;
     } = this.jwtOptions.verifyOptions,

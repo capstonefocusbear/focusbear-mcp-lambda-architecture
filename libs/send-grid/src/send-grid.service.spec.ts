@@ -8,8 +8,8 @@ import { configsArray } from '../../../apps/api-server/src/config';
 describe('SendGridService', () => {
   let service: SendGridService;
   const payload = {
-    to: 'zhygliy@itirra.com',
-    from: 'testuser@aidaforparents.com',
+    to: 'evgeniy.zhygliy@gmail.com',
+    from: 'marketing@focusbear.io',
     text: 'SendGrid is home!',
     subject: 'Sending with Twilio SendGrid is Fun',
   };

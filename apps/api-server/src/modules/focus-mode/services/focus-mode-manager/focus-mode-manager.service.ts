@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -18,6 +19,7 @@ export class FocusModeManagerService {
     private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
     private readonly userRepository: UserRepository,
     private readonly pusher: PusherService,
+    private readonly pusherBeamsService: PusherBeamsService,
   ) {}
 
   async startCurrentFocusMode(
@@ -37,8 +39,10 @@ export class FocusModeManagerService {
     const completedMode = await this.completedFocusBlockRepository.create(completedFocusBlock);
     const completed_mode_id = completedMode.id;
     const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
+    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
     await this.userRepository.orm.update(user_id, userDataToUpdate);
     await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
+    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
   }
 
   private async validateStartingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
@@ -70,7 +74,9 @@ export class FocusModeManagerService {
       this.nullifyCurrentFocusModeForUser(user_id),
       this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
     ]);
+    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
     await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
+    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
   }
 
   private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {

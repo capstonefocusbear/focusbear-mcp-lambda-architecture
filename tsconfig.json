@@ -43,6 +43,12 @@
       "@app/pusher/*": [
         "libs/pusher/src/*"
       ],
+      "@app/pusher-beams": [
+        "libs/pusher-beams/src"
+      ],
+      "@app/pusher-beams/*": [
+        "libs/pusher-beams/src/*"
+      ],
       "@app/revenue-cat": [
         "libs/revenue-cat/src"
       ],

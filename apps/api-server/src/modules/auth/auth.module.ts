@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { IPusherBeamsOptions, PusherBeamsModule } from '../../../../../libs/pusher-beams/src';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { AuthService } from './services/auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
@@ -7,9 +8,11 @@ import { HelperModule } from '../helper/helper.module';
 import { HasAuth0ActionSecret } from './guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { PusherAuthController } from './controllers/pusher-auth.controller';
+import { PusherBeamsAuthService } from './services/pusher-beams-auth.service';
+import { UserRepository } from '../user/repositories/user.repository';
 
 @Module({
-  providers: [AuthService, IsAuth, HasAuth0ActionSecret],
+  providers: [AuthService, IsAuth, HasAuth0ActionSecret, PusherBeamsAuthService, UserRepository],
   exports: [IsAuth, AuthService, HasAuth0ActionSecret],
   controllers: [PusherAuthController],
   imports: [
@@ -22,6 +25,11 @@ import { PusherAuthController } from './controllers/pusher-auth.controller';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherOptions => configService.get('pusher'),
+    }),
+    PusherBeamsModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
     HelperModule,
     ConfigModule,

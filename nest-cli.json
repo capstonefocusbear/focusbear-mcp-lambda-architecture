@@ -76,6 +76,15 @@
         "tsConfigPath": "libs/pusher/tsconfig.lib.json"
       }
     },
+    "pusher-beams": {
+      "type": "library",
+      "root": "libs/pusher-beams",
+      "entryFile": "index",
+      "sourceRoot": "libs/pusher-beams/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/pusher-beams/tsconfig.lib.json"
+      }
+    },
     "revenue-cat": {
       "type": "library",
       "root": "libs/revenue-cat",

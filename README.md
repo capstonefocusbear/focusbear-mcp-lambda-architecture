@@ -66,6 +66,10 @@ $ PUSHER_APP_KEY =
 $ PUSHER_APP_SECRET =
 $ PUSHER_APP_CLUSTER =
 
+# Go to the Pusher Beams account to take those values
+$ PUSHER_BEAMS_INSTANCE_ID =
+$ PUSHER_BEAMS_PRIMARY_KEY =
+
 # Take those for RevenueCat account
 $ REVENUE_CAT_SECRET_KEY =
 $ REVENUE_CAT_PUBLIC_KEY =

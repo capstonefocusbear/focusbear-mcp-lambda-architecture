@@ -7,6 +7,7 @@ import {
   FocusModeRepositoryMock,
   PusherServiceMock,
   UserRepositoryMock,
+  PusherBeamsServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -18,6 +19,7 @@ import { CompletedFocusBlockRepository } from '../../repositories/completed-focu
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeManagerService } from './focus-mode-manager.service';
 import { PusherService } from '../../../../../../../libs/pusher/src';
+import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -30,6 +32,7 @@ describe('FocusModeManagerService', () => {
         CompletedFocusBlockRepository,
         UserRepository,
         PusherService,
+        PusherBeamsService,
       ],
     })
       .overrideProvider(FocusModeRepository)
@@ -40,6 +43,8 @@ describe('FocusModeManagerService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(PusherService)
       .useValue(PusherServiceMock)
+      .overrideProvider(PusherBeamsService)
+      .useValue(PusherBeamsServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);

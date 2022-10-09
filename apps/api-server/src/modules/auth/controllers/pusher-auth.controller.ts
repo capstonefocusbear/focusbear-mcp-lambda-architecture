@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthResponse } from 'pusher';
 import { PusherService } from '../../../../../../libs/pusher/src';
@@ -6,16 +6,31 @@ import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../domain/passport.model';
 import { PusherAuthDto } from '../dto/pusher-auth.dto';
 import { IsAuth } from '../guards/is-auth/is-auth.guard';
+import { PusherBeamsAuthResponse } from '../dto/pusher-beams-auth-response.dto';
+import { PusherBeamsAuthService } from '../services/pusher-beams-auth.service';
 
 @Controller('pusher')
 @ApiTags('pusher')
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class PusherAuthController {
-  constructor(private readonly pusher: PusherService) {}
+  constructor(
+    private readonly pusher: PusherService,
+    private readonly pusherBeamsAuthService: PusherBeamsAuthService,
+  ) {}
 
   @Post('user-auth')
   pusherAuth(@Body() { socket_id }: PusherAuthDto, @AuthContext() { user }: Passport): AuthResponse {
     return this.pusher.authenticate(socket_id, `private-${user.id}`, { user_id: user.id });
+  }
+
+  @Get('beams-auth')
+  getPusherBeamsToken(@AuthContext() { user }: Passport): Promise<PusherBeamsAuthResponse> {
+    return this.pusherBeamsAuthService.getPusherBeamsToken(user.id);
+  }
+
+  @Get('beams-unsubscribe')
+  unsubscribeFromBeams(@AuthContext() { user }: Passport): Promise<void> {
+    return this.pusherBeamsAuthService.unsubscribeFromBeams(user.id);
   }
 }

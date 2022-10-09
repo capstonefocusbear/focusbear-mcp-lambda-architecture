@@ -32,6 +32,13 @@ export const PusherServiceMock = {
   trigger: jest.fn(),
 };
 
+export const PusherBeamsServiceMock = {
+  generateToken: jest.fn(),
+  deleteUser: jest.fn(),
+  publishToUsers: jest.fn(),
+  createBeamsPublishRequest: jest.fn(),
+};
+
 export const RevenueCatServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   grantTeamMembershipe: jest.fn(),

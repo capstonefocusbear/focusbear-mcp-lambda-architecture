@@ -12,7 +12,7 @@ export class PusherBeamsService extends PusherBeams {
     super({ ...options });
   }
 
-  createBeamsPublishRequest(pushData?: ActivityCompletedPush | CompletedFocusBlock) {
+  createBeamsPublishRequest(pushData?: ActivityCompletedPush | CompletedFocusBlock): PusherBeams.PublishRequest {
     const data: PusherBeams.PublishRequestWithApnsAndFcm = {
       apns: {
         aps: {},

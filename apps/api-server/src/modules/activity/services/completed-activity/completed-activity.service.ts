@@ -270,17 +270,28 @@ export class CompletedActivityService {
   }
 
   private buildTimestamp(startup_time: string, timeZone: string): { from_time: string; to_time: string } {
-    const now = new Date();
-    const nowLocalString = now.toLocaleString('en-US', {
-      hour12: false,
-      timeZone,
-      timeZoneName: 'short',
-    });
-    const to_time = new Date(nowLocalString).toISOString();
-    const [nowDate, , nowTimezone] = nowLocalString.split(' ');
-    const startupTime = `${startup_time}:00`;
-    const from_time = new Date(`${nowDate} ${startupTime} ${nowTimezone}`).toISOString();
-    return { from_time, to_time };
+    let nowLocalString;
+    let to_time;
+    let startupTime;
+    let from_time;
+    try {
+      const now = new Date();
+      nowLocalString = now.toLocaleString('en-US', {
+        hour12: false,
+        timeZone,
+        timeZoneName: 'short',
+      });
+      to_time = new Date(nowLocalString).toISOString();
+      const [nowDate, , nowTimezone] = nowLocalString.split(' ');
+      startupTime = `${startup_time}:00`;
+      from_time = new Date(`${nowDate} ${startupTime} ${nowTimezone}`).toISOString();
+      return { from_time, to_time };
+    } catch (e) {
+      console.error(
+        `Error in buildtimeStamp. nowLocalString: ${nowLocalString}, to_time: ${to_time}, startupTime: ${startupTime}, from_time: ${from_time}`,
+      );
+      throw e;
+    }
   }
 
   private groupByName(items: CompletedActivity[]) {

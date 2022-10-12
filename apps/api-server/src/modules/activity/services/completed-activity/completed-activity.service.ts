@@ -277,7 +277,7 @@ export class CompletedActivityService {
     try {
       const now = new Date();
       nowLocalString = now.toLocaleString('en-US', {
-        hour12: false,
+        hourCycle: 'h23',
         timeZone,
         timeZoneName: 'short',
       });

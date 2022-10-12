@@ -592,4 +592,19 @@ describe('CompletedActivityService', () => {
 
     expect(result).toBeInstanceOf(DaySummary);
   });
+
+  it('positive: should return DaySummary with current time between 24:00 and 01:00', async () => {
+    const mockDate = new Date('Tue Oct 11 2022 00:30:00 GMT+0000 (Greenwich Mean Time)');
+    const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as string);
+
+    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+    const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+
+    expect(result).toBeInstanceOf(DaySummary);
+    spy.mockRestore();
+  });
 });

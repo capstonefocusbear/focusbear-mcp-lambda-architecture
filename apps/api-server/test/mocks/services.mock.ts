@@ -6,6 +6,11 @@ export const Auth0AuthenticationServiceMock = {
   validateAccessToken: jest.fn(),
 };
 
+export const PusherBeamsAuthServiceMock = {
+  getPusherBeamsToken: jest.fn(),
+  unsubscribeFromBeams: jest.fn(),
+};
+
 export const ActivityParserServiceMock = {
   serialize: jest.fn(),
   deserialize: jest.fn(),

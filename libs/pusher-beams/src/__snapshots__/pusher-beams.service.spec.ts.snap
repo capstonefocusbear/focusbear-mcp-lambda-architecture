@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`PusherBeamsService createBeamsPublishRequest positive: new item should be created 1`] = `
+exports[`PusherBeamsService createBeamsPublishRequest should return a pusher beams publishRequest object 1`] = `
 BeamsPublishRequest {
   "apns": Object {
     "aps": Object {},

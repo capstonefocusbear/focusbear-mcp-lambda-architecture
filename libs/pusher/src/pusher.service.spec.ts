@@ -5,6 +5,8 @@ import { IPusherOptions } from './interfaces';
 import { PusherModule } from './pusher.module';
 import { PusherService } from './pusher.service';
 
+jest.mock('pusher');
+
 describe('PusherService', () => {
   let service: PusherService;
 

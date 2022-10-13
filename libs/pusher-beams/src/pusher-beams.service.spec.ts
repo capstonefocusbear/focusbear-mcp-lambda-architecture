@@ -1,10 +1,13 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { pusherBeamsPublishRequestFocusBlockDummy } from '../../../apps/api-server/test/dummies ';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IPusherBeamsOptions } from './interfaces';
 import { PusherBeamsModule } from './pusher-beams.module';
 import { PusherBeamsService } from './pusher-beams.service';
-import { pusherBeamsPublishRequestFocusBlockDummy } from '../../../apps/api-server/test/dummies ';
+import { BeamsPublishRequest } from './domains/pusher-beams-publish-request.model';
+
+jest.mock('@pusher/push-notifications-server');
 
 describe('PusherBeamsService', () => {
   let service: PusherBeamsService;
@@ -29,11 +32,10 @@ describe('PusherBeamsService', () => {
   });
 
   describe('createBeamsPublishRequest', () => {
-    it('positive: new item should be created', async () => {
-      const publishRequest = service.createBeamsPublishRequest(pusherBeamsPublishRequestFocusBlockDummy);
-
-      expect(publishRequest).toBeDefined();
-      expect(publishRequest).toMatchSnapshot();
+    it('should return a pusher beams publishRequest object', () => {
+      const result = service.createBeamsPublishRequest(pusherBeamsPublishRequestFocusBlockDummy);
+      expect(result).toBeInstanceOf(BeamsPublishRequest);
+      expect(result).toMatchSnapshot();
     });
   });
 });

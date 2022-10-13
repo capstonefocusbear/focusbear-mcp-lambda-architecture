@@ -1,7 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { CompletedFocusBlockDummy, FocusModeDummy, userDummy } from '../../../../../test/dummies ';
+import {
+  CompletedFocusBlockDummy,
+  FocusModeDummy,
+  pusherBeamsPublishRequestDummy,
+  userDummy,
+} from '../../../../../test/dummies ';
 import {
   CompletedFocusBlockRepositoryMock,
   FocusModeRepositoryMock,
@@ -137,6 +142,7 @@ describe('FocusModeManagerService', () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
 
@@ -145,6 +151,7 @@ describe('FocusModeManagerService', () => {
         'focus_mode-started',
         CompletedFocusBlockDummy,
       );
+      expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });
   });
 
@@ -227,6 +234,7 @@ describe('FocusModeManagerService', () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.update.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
@@ -235,6 +243,7 @@ describe('FocusModeManagerService', () => {
         'focus_mode-finished',
         CompletedFocusBlockDummy,
       );
+      expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });
   });
 });

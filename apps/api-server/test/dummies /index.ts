@@ -496,6 +496,54 @@ export const TeamMemberDummy = new User({
 
 TeamWithMembersDummy.members.push(TeamMemberDummy);
 
+export const pusherBeamsPublishRequestDummy = {
+  apns: {
+    aps: {},
+    data: {
+      pushData: {
+        achievements: 'Some string',
+        finish_time: '2022-10-10T04:21:46.269Z',
+        focus_mode: {
+          allowed_apps: [],
+          allowed_urls: [],
+          id: '7a9368e1-9b80-462f-9975-ab29e9b2f171',
+          name: 'Some string value',
+          user_id: 'f7aa0206-e3bc-4057-a3ab-6e387dd4107a',
+        },
+        focus_mode_id: '4429522e-fb45-494d-8d2b-26b14a005aea',
+        id: 'f8f763de-ab61-4e61-9d8f-16c14982edf4',
+        intention: 'Some string',
+        is_finished: true,
+        scheduled_finish_time: '2022-10-10T04:21:46.269Z',
+        start_time: '2022-10-10T03:38:11.892Z',
+        user_id: '1026fb59-f854-42de-8f53-a4c9c750bebd',
+      },
+    },
+  },
+  fcm: {
+    data: {
+      pushData: {
+        achievements: 'Some string',
+        finish_time: '2022-10-10T04:21:46.269Z',
+        focus_mode: {
+          allowed_apps: [],
+          allowed_urls: [],
+          id: '7a9368e1-9b80-462f-9975-ab29e9b2f171',
+          name: 'Some string value',
+          user_id: 'f7aa0206-e3bc-4057-a3ab-6e387dd4107a',
+        },
+        focus_mode_id: '4429522e-fb45-494d-8d2b-26b14a005aea',
+        id: 'f8f763de-ab61-4e61-9d8f-16c14982edf4',
+        intention: 'Some string',
+        is_finished: true,
+        scheduled_finish_time: '2022-10-10T04:21:46.269Z',
+        start_time: '2022-10-10T03:38:11.892Z',
+        user_id: '1026fb59-f854-42de-8f53-a4c9c750bebd',
+      },
+    },
+  },
+};
+
 export const pusherBeamsFocusModeDummy = new FocusMode(
   {
     id: '7a9368e1-9b80-462f-9975-ab29e9b2f171',

@@ -22,8 +22,9 @@ export class UserRepository extends BaseRepository<User> {
     await manager.update(User, { id }, { ...updateData });
     await Promise.all(
       activitiesData.map(async ({ sequence, activities }) => {
-        const { identifiers } = await manager.upsert(ActivitySequence, sequence, ['type', 'user_id']);
-        await manager.delete(Activity, { activity_sequence_id: identifiers[0].id, id: Not(In(sequence.activity_ids)) });
+        await manager.upsert(ActivitySequence, sequence, ['type', 'user_id']);
+        const activityIdsToKeep = activities.map((activity) => activity.id);
+        await manager.delete(Activity, { user_id: id, id: Not(In(activityIdsToKeep)) });
         const parents = activities.filter(({ parent_id }) => !parent_id);
         const choices = activities.filter(({ parent_id }) => !!parent_id);
         await manager.upsert(Activity, parents, ['id']);

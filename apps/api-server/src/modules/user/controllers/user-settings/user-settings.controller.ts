@@ -23,6 +23,6 @@ export class UserSettingsController {
     @AuthContext() { user }: Passport,
     @Body() updateSettingsData: UpdateUserSettingsDto,
   ): Promise<UpdateUserSettingsDto> {
-    return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData);
+    return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData, true);
   }
 }

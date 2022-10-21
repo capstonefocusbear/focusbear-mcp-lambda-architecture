@@ -52,7 +52,7 @@ export class HabitPackManagerService {
       habitPack.evening_activities,
     );
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, newSettings);
+    await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
     return new ResponseMessage(
       `Habit pack with ID: ${pack_id} was successfully installed for user with ID: ${user_id}!`,
     );
@@ -118,7 +118,7 @@ export class HabitPackManagerService {
     newSettings.morning_activities = activityTemplateIdsToRemove(morning_activities, activityTemplateIds);
     newSettings.break_activities = activityTemplateIdsToRemove(break_activities, activityTemplateIds);
     newSettings.evening_activities = activityTemplateIdsToRemove(evening_activities, activityTemplateIds);
-    await this.userSettingsService.updateSettings({ user_id }, newSettings);
+    await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
     await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);
     return new ResponseMessage(
       `Habit pack with ID: ${pack_id} was successfully uninstalled for user with ID: ${user_id}!`,

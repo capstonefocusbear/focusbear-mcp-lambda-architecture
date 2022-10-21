@@ -33,6 +33,13 @@ export const Auth0ManagementServiceMock = {
   getUser: jest.fn(),
 };
 
+export const UserServiceMock = {
+  markUserSettingsAsEdited: jest.fn(),
+  getUserLocalDeviceSettings: jest.fn(),
+  consistentlyUpdateUserSettings: jest.fn(),
+  // rest can be added if needed
+};
+
 export const DeviceServiceMock = {
   markAsLeader: jest.fn(),
 };

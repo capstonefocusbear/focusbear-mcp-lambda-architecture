@@ -1,4 +1,5 @@
 import { IsOptional } from 'class-validator';
+import { WebDeviceSettingsDto } from './web-device-settings.dto';
 
 export class UpdateLocalDeviceSettingsDto {
   @IsOptional()
@@ -12,4 +13,7 @@ export class UpdateLocalDeviceSettingsDto {
 
   @IsOptional()
   iOS?: any;
+
+  @IsOptional()
+  Web?: WebDeviceSettingsDto;
 }

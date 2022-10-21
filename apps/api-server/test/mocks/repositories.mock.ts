@@ -20,6 +20,7 @@ export const UserRepositoryMock = {
   getUserDetails: jest.fn(),
   getUsersList: jest.fn(),
   getUserCurrentActivityProps: jest.fn(),
+  consistentlyUpdateUserSettings: jest.fn(),
 };
 
 export const ActivitySequenceRepositoryMock = {

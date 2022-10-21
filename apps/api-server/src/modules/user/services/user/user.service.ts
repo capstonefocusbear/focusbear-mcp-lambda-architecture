@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
@@ -18,6 +18,7 @@ export class UserService {
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
+    @Inject(forwardRef(() => UserSettingsService))
     private readonly userSettingsService: UserSettingsService,
     private readonly stripeService: StripeService,
     private readonly config: ConfigService,
@@ -59,7 +60,7 @@ export class UserService {
     const defaultSettings = settingsConfig.generateDefault();
     await Promise.all([
       this.revenueCatService.grantTrialAccess(id),
-      this.userSettingsService.updateSettings({ user_id: id }, defaultSettings),
+      this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
     ]);
   }
 
@@ -90,7 +91,9 @@ export class UserService {
   async getUserLocalDeviceSettings(user_id: string): Promise<UpdateLocalDeviceSettingsDto> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
-    if (!user.local_device_settings) return { iOS: null, Windows: null, MacOS: null, Android: null };
+    if (!user.local_device_settings) {
+      return { iOS: null, Windows: null, MacOS: null, Android: null, Web: { hasEditedSettings: false } };
+    }
     return user.local_device_settings;
   }
 
@@ -100,10 +103,19 @@ export class UserService {
       Windows: saved?.Windows || null,
       Android: saved?.Android || null,
       iOS: saved?.iOS || null,
+      Web: saved?.Web || { hasEditedSettings: false },
     };
     const hasWrongSchema = !update || typeof update !== 'object' || Array.isArray(update);
     if (hasWrongSchema) return baseVersion;
     return Object.assign(baseVersion, update);
+  }
+
+  async markUserSettingsAsEdited(user_id: string) {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+    const updatedWebSettings = { Web: { hasEditedSettings: true } };
+    const updatedSettings = this.mergeLocalSettings(user.local_device_settings, updatedWebSettings);
+    await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
   }
 
   async getUsers({ search }: GetUsersQueryDto) {

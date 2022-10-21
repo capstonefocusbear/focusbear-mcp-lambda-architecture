@@ -60,6 +60,81 @@ export const auth0UserDummy: Auth0User = {
   email_verified: true,
 };
 
+export const deserializedActivitiesDummy = [
+  {
+    sequence: {
+      id: '1293da0c-2055-4b30-9664-4736973e1dcf',
+      type: 'morning',
+      activity_ids: ['3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 480,
+    },
+    activities: [
+      {
+        id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+        duration_seconds: 300,
+        video_urls: [],
+        name: 'Yoga',
+        log_quantity: false,
+      },
+      {
+        id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+        name: 'Journalling',
+        video_urls: [],
+        duration_seconds: 300,
+      },
+    ],
+  },
+  {
+    sequence: {
+      id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
+      type: 'evening',
+      activity_ids: ['555c587e-6c64-4c02-aeb0-61e015cc0290'],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 720,
+    },
+    activities: [
+      {
+        id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+        duration_seconds: 300,
+        video_urls: [],
+        name: 'Yoga',
+        log_quantity: false,
+      },
+      {
+        id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+        name: 'Journalling',
+        video_urls: [],
+        duration_seconds: 300,
+      },
+    ],
+  },
+  {
+    sequence: {
+      id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
+      type: 'breaking',
+      activity_ids: ['856eb9fb-8c12-418d-b12c-fec0f2dae49d', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 60,
+    },
+    activities: [
+      {
+        id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+        duration_seconds: 300,
+        video_urls: [],
+        name: 'Yoga',
+        log_quantity: false,
+      },
+      {
+        id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+        name: 'Journalling',
+        video_urls: [],
+        duration_seconds: 300,
+      },
+    ],
+  },
+];
+
 export const serializedActivityDummy: SerializedActivity = {
   morning_activities: [
     {
@@ -585,3 +660,69 @@ export const pusherBeamsPublishRequestFocusBlockDummy = new CompletedFocusBlock(
   },
   { generateId: false },
 );
+
+export const userSettingsDummy = {
+  has_edited_settings: false,
+  startup_time: '05:45',
+  shutdown_time: '20:45',
+  break_after_minutes: 20,
+  break_activities: [
+    {
+      id: '666da3c5-50b7-4205-a481-13b402de53d6',
+      choices: [
+        {
+          id: '310b74aa-d6c2-4153-93f1-dab6cd1db49a',
+          duration_seconds: 30,
+          log_quantity: true,
+          log_summary_type: LogSummaryType.SUM,
+          name: 'Pushups',
+          video_urls: ['https://www.youtube.com/watch?v=StXac04arIc', 'https://www.youtube.com/watch?v=dOY-VkXbJCY'],
+        },
+      ],
+      duration_seconds: 30,
+      activity_sequence_id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      name: 'Micro-workout',
+      is_office_friendly: false,
+      video_urls: [],
+      allowed_apps: [],
+      include_in_every_break: true,
+      log_quantity_question: '',
+      choice_type: ActivityChoiceType.random,
+      allowed_urls: [],
+    },
+  ],
+  morning_activities: [
+    {
+      id: 'a4758757-5894-46c6-9f33-a081a351a2f6',
+      choices: [],
+      duration_seconds: 180,
+      activity_sequence_id: '1293da0c-2055-4b30-9664-4736973e1dcf',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      name: 'Deep breathing',
+      video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+    },
+  ],
+  evening_activities: [
+    {
+      id: 'daec162d-dedf-45fb-81af-6c55e9394668',
+      choices: [],
+      duration_seconds: 300,
+      activity_sequence_id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      name: 'Journal about day',
+      video_urls: [],
+    },
+  ],
+};
+
+export const localDeviceSettingsDummy = {
+  Android: '...',
+  MacOS: '...',
+  Windows: '...',
+  iOS: '...',
+  Web: { hasEditedSettings: false },
+};

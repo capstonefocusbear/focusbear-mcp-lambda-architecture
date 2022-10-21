@@ -1,26 +1,68 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies ';
-import { ActivityParserServiceMock, UserRepositoryMock } from '../../../../../test/mocks';
+import { ConfigService } from '@nestjs/config';
+import {
+  deserializedActivitiesDummy,
+  localDeviceSettingsDummy,
+  serializedActivityDummy,
+  userDummy,
+  userSettingsDBResponseDummy,
+  userSettingsDummy,
+} from '../../../../../test/dummies ';
+import {
+  ActivityParserServiceMock,
+  UserRepositoryMock,
+  Auth0ManagementServiceMock,
+  RevenueCatServiceMock,
+  StripeServiceMock,
+  UserServiceMock,
+} from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
+import { UserService } from '../user/user.service';
 import { UserSettingsService } from './user-settings.service';
+import { StripeService } from '../../../../../../../libs/stripe/src';
+import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
+import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
+import { User } from '../../entities/user.entity';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [UserRepository, UserSettingsService, ActivityParserService],
+      providers: [
+        UserRepository,
+        UserSettingsService,
+        ActivityParserService,
+        UserService,
+        Auth0ManagementService,
+        RevenueCatService,
+        StripeService,
+        ConfigService,
+      ],
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityParserService)
       .useValue(ActivityParserServiceMock)
+      .overrideProvider(RevenueCatService)
+      .useValue(RevenueCatServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(StripeService)
+      .useValue(StripeServiceMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
+  });
+
+  afterEach(async () => {
+    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -48,24 +90,24 @@ describe('UserSettingsService', () => {
 
     it('positive: should return serialized user settings data', async () => {
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce(userSettingsDBResponseDummy);
+      UserServiceMock.getUserLocalDeviceSettings.mockResolvedValueOnce(localDeviceSettingsDummy);
       ActivityParserServiceMock.serialize.mockResolvedValueOnce(serializedActivityDummy);
 
       const result = await userSettingsService.getSettings({ user_id });
 
-      expect(result).toBeDefined();
+      expect(result).toMatchSnapshot();
     });
   });
 
   describe('updateSettings', () => {
-    const user_id = randomUUID();
-
-    it('negative: if user user does not exist in DB, throw the NotFoundException', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+    it('negative: if user user does not exist in DB, throw NotFoundException', async () => {
+      const user_id = randomUUID();
+      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
       const errorMessage = `User with id: ${user_id} does not exists!`;
       let exception: any;
 
       try {
-        await userSettingsService.updateSettings({ user_id }, serializedActivityDummy);
+        await userSettingsService.updateSettings({ user_id }, serializedActivityDummy, false);
       } catch (error) {
         exception = error;
       }
@@ -75,14 +117,21 @@ describe('UserSettingsService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should return serialized user settings data', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.getUserSettings.mockResolvedValueOnce(userSettingsDBResponseDummy);
-      ActivityParserServiceMock.serialize.mockResolvedValueOnce(serializedActivityDummy);
+    it('positive: consistentlyUpdateUserSettings should be called', async () => {
+      const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
+      const updatedUser = new User({ id: userDummy.id, startup_time, shutdown_time, break_after_minutes });
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.getUserLocalDeviceSettings.mockResolvedValue(localDeviceSettingsDummy);
 
-      const result = await userSettingsService.getSettings({ user_id });
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
 
-      expect(result).toBeDefined();
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
+        updatedUser,
+        deserializedActivitiesDummy,
+      );
+      expect(UserServiceMock.markUserSettingsAsEdited).toBeCalledWith(userDummy.id);
     });
   });
 });

@@ -168,6 +168,7 @@ describe('UserService', () => {
       MacOS: '...',
       Windows: '...',
       iOS: '...',
+      Web: { hasEditedSettings: false },
     };
 
     it('negative: if there is no user throw NotFoundExcaption', async () => {
@@ -225,6 +226,7 @@ describe('UserService', () => {
       expect(result.MacOS).toBeNull();
       expect(result.Windows).toBeNull();
       expect(result.iOS).toBeNull();
+      expect(result.Web).toStrictEqual({ hasEditedSettings: false });
     });
 
     it('positive: return local setings object', async () => {
@@ -233,6 +235,7 @@ describe('UserService', () => {
         MacOS: '...',
         Windows: '...',
         iOS: '...',
+        Web: { hasEditedSettings: false },
       };
       userDummy.local_device_settings = localSettings;
       UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
@@ -245,6 +248,25 @@ describe('UserService', () => {
       expect(result.MacOS).toBeDefined();
       expect(result.Windows).toBeDefined();
       expect(result.iOS).toBeDefined();
+      expect(result.Web).toBeDefined();
+    });
+  });
+
+  describe('markUserSettingsAsEdited', () => {
+    it('positive: UserRepositoryMock.orm.update should be called with updated local device settings', async () => {
+      const updatedSettings = {
+        MacOS: '...',
+        Windows: '...',
+        Android: '...',
+        iOS: '...',
+        Web: { hasEditedSettings: true },
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      await userService.markUserSettingsAsEdited(userDummy.id);
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        local_device_settings: updatedSettings,
+      });
     });
   });
 

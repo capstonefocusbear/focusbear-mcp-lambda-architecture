@@ -6,8 +6,12 @@ import { CompletedActivitySequence } from '../../activity/entities/completed-act
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
+import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
+import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
+import { InstalledPack } from '../../habit-pack/entity/installed-pack.entity';
 import { Team } from '../../team/entities/team.entity';
 import { UpdateLocalDeviceSettingsDto } from '../dto/update-local-device-settings.dto';
+import { UserTypes } from '../domain/user-types.enum';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -147,6 +151,14 @@ export class User extends BaseEntity {
   })
   local_device_settings?: UpdateLocalDeviceSettingsDto;
 
+  @Column({
+    type: 'enum',
+    name: 'user_type',
+    enum: UserTypes,
+    default: UserTypes.STANDARD,
+  })
+  user_type?: UserTypes;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 
@@ -161,6 +173,15 @@ export class User extends BaseEntity {
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];
+
+  @OneToMany(() => HabitPack, (habit_pack) => habit_pack.user)
+  created_habit_packs?: HabitPack[];
+
+  @OneToMany(() => InstalledPack, (installed_packs) => installed_packs.user)
+  installed_packs?: InstalledPack[];
+
+  @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.user)
+  activity_templates?: ActivityTemplate[];
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

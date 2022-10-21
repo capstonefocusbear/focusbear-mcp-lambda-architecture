@@ -16,6 +16,7 @@ import { CompletedActivity } from '../../src/modules/activity/entities/completed
 import { FocusMode } from '../../src/modules/focus-mode/entities/focus-mode.entity';
 import { CompletedFocusBlock } from '../../src/modules/focus-mode/entities/completed-focus-block.entity';
 import { Team } from '../../src/modules/team/entities/team.entity';
+import { UserTypes } from '../../src/modules/user/domain/user-types.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -29,13 +30,28 @@ export const unthtorizedPassportDummy = new Passport({
 
 export const userDummy = new User(
   {
+    id: '3a4f0bb1-5313-49da-9ae6-cc28e864763f',
     startup_time: '06:15',
     break_after_minutes: 15,
     shutdown_time: '20:30',
     email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
+    user_type: UserTypes.STANDARD,
   },
-  { generateId: true },
+  { generateId: false },
+);
+
+export const adminUserDummy = new User(
+  {
+    id: '7b4f0bb4-7521-85da-1ae2-cc28e864763e',
+    startup_time: '06:15',
+    break_after_minutes: 15,
+    shutdown_time: '20:30',
+    email: 'some@gmail.com',
+    auth0_id: '123dfewvwbt4de3e',
+    user_type: UserTypes.ADMIN,
+  },
+  { generateId: false },
 );
 
 export const auth0UserDummy: Auth0User = {

@@ -1,0 +1,81 @@
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { User } from '../../user/entities/user.entity';
+import { InstalledPack } from './installed-pack.entity';
+import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
+import { HabitPackType } from '../domain/habit-pack-type.enum';
+import { MarketplaceRequestType } from '../domain/marketplace-request.enum';
+
+@Entity('habit_packs')
+export class HabitPack extends BaseEntity {
+  constructor({ id, ...pack }: Partial<HabitPack> = {}, options = { generateId: false }) {
+    super(id, options);
+    Object.assign(this, { ...pack });
+  }
+
+  @Column({
+    type: 'uuid',
+    nullable: false,
+  })
+  user_id?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  pack_type?: HabitPackType;
+
+  @Column({
+    type: 'varchar',
+  })
+  pack_name?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  creator_name?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  description?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  description_video_url?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  welcome_message?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  welcome_video_url?: string;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  marketplace_approval_status?: boolean;
+
+  @Column({
+    type: 'boolean',
+    default: MarketplaceRequestType.unrequested,
+  })
+  marketplace_request?: MarketplaceRequestType;
+
+  @DeleteDateColumn()
+  deleted_at?: Date;
+
+  @OneToMany(() => InstalledPack, (installed_pack) => installed_pack.habit_pack)
+  installs?: InstalledPack[];
+
+  @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.habit_pack)
+  activity_templates?: ActivityTemplate[];
+
+  @ManyToOne(() => User, (user) => user.created_habit_packs)
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
+}

@@ -35,6 +35,7 @@ module.exports = {
     '@typescript-eslint/naming-convention': 'off',
     'consistent-return': 'off',
     "@typescript-eslint/no-unused-expressions": 'off',
-    'max-len': [0, 120, 2, { ignoreUrls: true }]
+    'max-len': [0, 120, 2, { ignoreUrls: true }],
+    "arrow-body-style": "off"
   },
 };

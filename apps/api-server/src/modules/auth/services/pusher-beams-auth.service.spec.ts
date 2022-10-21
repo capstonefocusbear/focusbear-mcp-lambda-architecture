@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
+import { userDummy } from '../../../../test/dummies ';
 import { PusherBeamsAuthService } from './pusher-beams-auth.service';
-import { PusherBeamsAuthServiceMock, PusherBeamsServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
+import { PusherBeamsServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { PusherBeamsService } from '../../../../../../libs/pusher-beams/src';
 
@@ -11,8 +12,6 @@ describe('PusherBeamsAuthService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [PusherBeamsAuthService, PusherBeamsService, UserRepository],
     })
-      .overrideProvider(PusherBeamsAuthService)
-      .useValue(PusherBeamsAuthServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .overrideProvider(PusherBeamsService)
@@ -24,5 +23,24 @@ describe('PusherBeamsAuthService', () => {
 
   it('should be defined', () => {
     expect(pusherBeamsAuthService).toBeDefined();
+  });
+
+  describe('getBeamsToken', () => {
+    it('positive: should return a beams token', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      PusherBeamsServiceMock.generateToken.mockResolvedValueOnce('someJwtString');
+      const result = await pusherBeamsAuthService.getPusherBeamsToken(userDummy.id);
+
+      expect(result).toBe('someJwtString');
+    });
+  });
+
+  describe('unsubscribeFromBeams', () => {
+    it('positive: deleteUser from PusherBeamsService should be called', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      await pusherBeamsAuthService.unsubscribeFromBeams(userDummy.id);
+
+      expect(PusherBeamsServiceMock.deleteUser).toBeCalledWith(userDummy.id);
+    });
   });
 });

@@ -7,8 +7,8 @@ import { auth0LoginUser } from '../utils/auth0-login';
 describe('Auth0', () => {
   let app: NestFastifyApplication;
   const testUser = {
-    email: 'evgeniy.zhygliy@gmail.com',
-    password: '1233218293Wer*7',
+    email: 'test3@mail.com',
+    password: 'Passw0rd!',
   };
 
   beforeAll(async () => {

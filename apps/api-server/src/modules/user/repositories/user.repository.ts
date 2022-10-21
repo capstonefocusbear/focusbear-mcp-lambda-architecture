@@ -50,6 +50,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.activity_type',
         'activities.activity_data',
         'activities.activity_sequence_id',
+        'activities.activity_template_id',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',

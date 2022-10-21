@@ -1,3 +1,5 @@
+import { userDummy } from '../dummies ';
+
 export const AuthServiceMock = {
   authenticate: jest.fn(),
 };
@@ -9,6 +11,13 @@ export const Auth0AuthenticationServiceMock = {
 export const PusherBeamsAuthServiceMock = {
   getPusherBeamsToken: jest.fn(),
   unsubscribeFromBeams: jest.fn(),
+};
+
+export const PusherBeamsServiceMock = {
+  generateToken: jest.fn(),
+  deleteUser: jest.fn(),
+  publishToUsers: jest.fn(),
+  createBeamsPublishRequest: jest.fn(),
 };
 
 export const ActivityParserServiceMock = {
@@ -37,13 +46,6 @@ export const PusherServiceMock = {
   trigger: jest.fn(),
 };
 
-export const PusherBeamsServiceMock = {
-  generateToken: jest.fn(),
-  deleteUser: jest.fn(),
-  publishToUsers: jest.fn(),
-  createBeamsPublishRequest: jest.fn(),
-};
-
 export const RevenueCatServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   grantTeamMembershipe: jest.fn(),
@@ -55,6 +57,7 @@ export const RevenueCatServiceMock = {
 export const UserSettingsServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   updateSettings: jest.fn(),
+  getSettings: jest.fn(),
 };
 
 export const JwtServiceMock = {
@@ -68,4 +71,37 @@ export const SendGridServiceMock = {
 
 export const StripeServiceMock = {
   registerNewCustomer: jest.fn(),
+};
+
+export const ActivityTemplateServiceMock = {
+  bulkDeleteActivityTemplates: jest.fn(),
+};
+
+export const ActivityTemplateParserServiceMock = {
+  deserializeStandaloneActivities: jest.fn(),
+  deserializeRoutineActivities: jest.fn(),
+  createActivityTemplate: jest.fn(),
+  deserializeActivityTemplateChoices: jest.fn(),
+  serialize: jest.fn(),
+};
+
+export const HabitPackServiceMock = {
+  deleteHabitPack: jest.fn(),
+  createHabitPack: jest.fn(),
+  getMarketplaceApprovedPacks: jest.fn(),
+  serializeHabitPack: jest.fn(),
+  getHabitPack: jest.fn(),
+  checkForValidUser: jest.fn(() => userDummy),
+  checkIfPackExists: jest.fn(),
+};
+
+export const HabitPackManagerServiceMock = {
+  installHabitPack: jest.fn(),
+  convertActivityTemplatesToUpdateActivityDtos: jest.fn(),
+  uninstallHabitPack: jest.fn(),
+};
+
+export const InstalledPackServiceMock = {
+  setPackAsInstalledForUser: jest.fn(),
+  setPackAsUninstalledForUser: jest.fn(),
 };

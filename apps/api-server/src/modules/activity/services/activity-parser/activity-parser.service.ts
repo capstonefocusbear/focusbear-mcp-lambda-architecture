@@ -32,6 +32,7 @@ export class ActivityParserService {
         id,
         duration_seconds,
         activity_sequence_id,
+        activity_template_id,
         log_quantity,
         log_summary_type,
         activity_data,
@@ -41,6 +42,7 @@ export class ActivityParserService {
         choices: choices?.map(mapActivity),
         duration_seconds: Number(duration_seconds),
         activity_sequence_id,
+        activity_template_id,
         log_quantity,
         log_summary_type,
         ...activity_data,
@@ -68,7 +70,7 @@ export class ActivityParserService {
   }
 
   private createActivity(
-    { id, duration_seconds, log_quantity, log_summary_type, choices, ...rest }: UpdateActivityDto,
+    { id, duration_seconds, log_quantity, log_summary_type, activity_template_id, choices, ...rest }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
   ): Activity[] {
     const has_choices = choices?.length > 0;
@@ -83,6 +85,7 @@ export class ActivityParserService {
       log_quantity: has_choices ? false : log_quantity,
       log_summary_type: has_choices ? 'SUM' : log_summary_type,
       has_choices,
+      activity_template_id,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));

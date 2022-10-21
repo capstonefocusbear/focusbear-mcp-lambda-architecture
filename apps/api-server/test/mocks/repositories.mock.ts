@@ -5,6 +5,7 @@ export const BaseRepositoryMock = {
     update: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+    softDelete: jest.fn(),
     // ... rest methods can be added on demand
   },
   create: jest.fn(),
@@ -25,6 +26,11 @@ export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),
   findOneByIdForUser: jest.fn(),
+};
+
+export const ActivityTemplateRepositoryMock = {
+  ...BaseRepositoryMock,
+  getActivityTemplateIds: jest.fn(),
 };
 
 export const CompletedActivityRepositoryMock = {
@@ -66,4 +72,15 @@ export const CompletedFocusBlockRepositoryMock = {
 export const TeamRepositoryMock = {
   ...BaseRepositoryMock,
   findActiveTeamWithMembersByOwnerId: jest.fn(),
+};
+
+export const HabitPackRepositoryMock = {
+  ...BaseRepositoryMock,
+  getHabitPack: jest.fn(),
+  getApprovedHabitPacks: jest.fn(),
+  consistentlyUpdateHabitPack: jest.fn(),
+};
+
+export const InstalledPackRepositoryMock = {
+  ...BaseRepositoryMock,
 };

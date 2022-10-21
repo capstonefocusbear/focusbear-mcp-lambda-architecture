@@ -6,6 +6,7 @@ import { ActivityType } from '../domain/activity-type.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivity } from './completed-activity.entity';
+import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -24,6 +25,11 @@ export class Activity extends BaseEntity {
     type: 'uuid',
   })
   parent_id?: string;
+
+  @Column({
+    type: 'uuid',
+  })
+  activity_template_id?: string;
 
   @Column({
     type: 'boolean',
@@ -88,4 +94,8 @@ export class Activity extends BaseEntity {
   @ManyToOne(() => User, (user) => user.current_activity)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.activities)
+  @JoinColumn({ name: 'activity_template_id' })
+  activity_template?: ActivityTemplate;
 }

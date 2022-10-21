@@ -1,0 +1,91 @@
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { ActivityData } from '../../activity/domain/activity-data.model';
+import { LogSummaryType } from '../../activity/domain/log-summary-type.enum';
+import { User } from '../../user/entities/user.entity';
+import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
+import { Activity } from '../../activity/entities/activity.entity';
+import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
+
+@Entity('activity_template')
+export class ActivityTemplate extends BaseEntity {
+  constructor({ id, ...activity }: Partial<ActivityTemplate> = {}, options = { generateId: false }) {
+    super(id, options);
+    Object.assign(this, { ...activity });
+  }
+
+  @Column({
+    type: 'uuid',
+    nullable: false,
+  })
+  pack_id?: string;
+
+  @Column({
+    type: 'uuid',
+    nullable: false,
+  })
+  user_id?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  activity_type?: string;
+
+  @Column({
+    type: 'enum',
+    enum: LogSummaryType,
+    default: LogSummaryType.SUM,
+  })
+  log_summary_type?: string;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  log_quantity?: boolean;
+
+  @Column({
+    type: 'jsonb',
+    nullable: false,
+    transformer: BaseEntity.encrypteJSONField('activity_data'),
+  })
+  activity_data?: ActivityData;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  has_choices?: boolean;
+
+  @Column({
+    type: 'numeric',
+    nullable: false,
+  })
+  duration_seconds?: number;
+
+  @Column({
+    type: 'uuid',
+  })
+  parent_id?: string;
+
+  @DeleteDateColumn()
+  deleted_at?: Date;
+
+  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.choices)
+  @JoinColumn({ name: 'parent_id' })
+  parent_activity?: ActivitySequence;
+
+  @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.parent_activity)
+  choices?: ActivityTemplate[];
+
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_templates)
+  @JoinColumn({ name: 'pack_id' })
+  habit_pack?: HabitPack;
+
+  @ManyToOne(() => User, (user) => user.activity_templates)
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
+
+  @OneToMany(() => Activity, (activity) => activity.activity_template)
+  activities?: Activity[];
+}

@@ -13,6 +13,8 @@ import { DeviceModule } from './modules/device/device.module';
 import { FocusModeModule } from './modules/focus-mode/focus-mode.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { TeamModule } from './modules/team/team.module';
+import { HabitPackModule } from './modules/habit-pack/habit-pack.module';
+import { ActivityTemplateModule } from './modules/activity-template/activty-template.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { TeamModule } from './modules/team/team.module';
     FocusModeModule,
     SubscriptionModule,
     TeamModule,
+    HabitPackModule,
+    ActivityTemplateModule,
   ],
   controllers: [AppController],
 })

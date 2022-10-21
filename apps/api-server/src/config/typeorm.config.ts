@@ -10,6 +10,9 @@ import { CompletedFocusBlock } from '../modules/focus-mode/entities/completed-fo
 import { FocusMode } from '../modules/focus-mode/entities/focus-mode.entity';
 import { Team } from '../modules/team/entities/team.entity';
 import { User } from '../modules/user/entities/user.entity';
+import { HabitPack } from '../modules/habit-pack/entity/habit-pack.entity';
+import { InstalledPack } from '../modules/habit-pack/entity/installed-pack.entity';
+import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -32,6 +35,9 @@ export const typeormConfig = registerAs(
       FocusMode,
       CompletedFocusBlock,
       Team,
+      HabitPack,
+      InstalledPack,
+      ActivityTemplate,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
     cli: { migrationsDir: './apps/api-server/migrations' },

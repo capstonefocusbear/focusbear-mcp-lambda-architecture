@@ -57,7 +57,7 @@ export class UpdateActivityDto extends ActivityData {
   @IsNotEmpty()
   @IsInt()
   @ApiProperty()
-  duration_seconds: number;
+  duration_seconds?: number;
 
   // @IsEnum(LogSummaryType)
   @IsIn([...Object.values(LogSummaryType), ''])
@@ -76,4 +76,8 @@ export class UpdateActivityDto extends ActivityData {
   @Type(() => ActivityChoiceData)
   @ApiProperty({ isArray: true, type: ActivityChoiceData })
   choices?: ActivityChoiceData[];
+
+  @IsUUID('4')
+  @IsOptional()
+  activity_template_id?: string;
 }

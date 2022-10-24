@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import * as _ from 'lodash';
 import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activity-template.dto';
@@ -10,6 +10,13 @@ import { HabitPackService } from './habit-pack.service';
 import { InstalledPackService } from '../installed-packs/installed-pack.service';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { InstalledPackRepository } from '../../repositories/installed-pack.repository';
+import {
+  ActivityParserService,
+  SerializedActivity,
+} from '../../../activity/services/activity-parser/activity-parser.service';
+import { HabitPackRepository } from '../../repositories/habit-pack.repository';
+import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
+import { HabitPackType } from '../../domain/habit-pack-type.enum';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -19,17 +26,34 @@ export class HabitPackManagerService {
     private readonly installedPackService: InstalledPackService,
     private readonly activityTemplateRepository: ActivityTemplateRepository,
     private readonly installedPackRepository: InstalledPackRepository,
+    private readonly activityParserService: ActivityParserService,
+    private readonly habitPackRepository: HabitPackRepository,
+    private readonly activitySequenceRepository: ActivitySequenceRepository,
   ) {}
 
-  async installHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
-    await this.habitPackService.checkIfPackExists(pack_id);
+  async installHabitPack(user_id: string, pack_id: string) {
     await this.habitPackService.checkForValidUser(user_id);
+    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+    const { pack_type } = pack;
     const installedPack = await this.installedPackRepository.orm.findOne({
       where: { user_id, pack_id, installation_status: true },
     });
     if (installedPack) {
       throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
     }
+
+    if (pack_type === HabitPackType.routine) {
+      const response = await this.installRoutineHabitPack(user_id, pack_id);
+      return response;
+    }
+    if (pack_type === HabitPackType.standalone) {
+      const response = await this.installStandaloneHabitPack(user_id, pack_id);
+      return response;
+    }
+  }
+
+  async installRoutineHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
     const userSettings = await this.userSettingsService.getSettings({ user_id });
     const newSettings = _.cloneDeep(userSettings);
     const habitPack: CreateHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
@@ -53,9 +77,18 @@ export class HabitPackManagerService {
     );
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
     await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
-    return new ResponseMessage(
-      `Habit pack with ID: ${pack_id} was successfully installed for user with ID: ${user_id}!`,
-    );
+    return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
+  }
+
+  async installStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    const habitPack: CreateHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
+    const { standalone_activities } = habitPack;
+    const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities);
+    const serializedActivities: SerializedActivity = { standalone_activities: newActivities };
+    const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id);
+    await this.habitPackRepository.consistentlyInstallStandaloneHabitPack(deserializedActivities[0]);
+    await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id, deserializedActivities[0].sequence.id);
+    return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 
   convertActivityTemplatesToUpdateActivityDtos(
@@ -99,15 +132,29 @@ export class HabitPackManagerService {
     return activities;
   }
 
-  async uninstallHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
-    await this.habitPackService.checkIfPackExists(pack_id);
+  async uninstallHabitPack(user_id: string, pack_id: string) {
     await this.habitPackService.checkForValidUser(user_id);
+    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+    const { pack_type } = pack;
     const installedPack = await this.installedPackRepository.orm.findOne({
       where: { user_id, pack_id, installation_status: true },
     });
     if (!installedPack) {
-      throw new BadRequestException(`User with ID: ${user_id} does not have habit pack with ID: ${pack_id} installed!`);
+      throw new BadRequestException(`User with ID: ${user_id} doesn't have pack with ID: ${pack_id} installed!`);
     }
+
+    if (pack_type === HabitPackType.routine) {
+      const response = await this.uninstallRoutineHabitPack(user_id, pack_id);
+      return response;
+    }
+    if (pack_type === HabitPackType.standalone) {
+      const response = await this.uninstallStandaloneHabitPack(user_id, pack_id);
+      return response;
+    }
+  }
+
+  async uninstallRoutineHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
     const activityTemplateIds = await this.activityTemplateRepository.getActivityTemplateIds(pack_id);
     const userSettings = await this.userSettingsService.getSettings({ user_id });
     const { morning_activities, break_activities, evening_activities } = userSettings;
@@ -120,8 +167,14 @@ export class HabitPackManagerService {
     newSettings.evening_activities = activityTemplateIdsToRemove(evening_activities, activityTemplateIds);
     await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
     await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);
-    return new ResponseMessage(
-      `Habit pack with ID: ${pack_id} was successfully uninstalled for user with ID: ${user_id}!`,
-    );
+    return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully uninstalled for user with ID: ${user_id}!`);
+  }
+
+  async uninstallStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    const installedRecord = await this.installedPackRepository.orm.findOne({ where: { user_id, pack_id } });
+    const { activity_sequence_id } = installedRecord;
+    await this.activitySequenceRepository.orm.delete(activity_sequence_id);
+    await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);
+    return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully uninstalled for user with ID: ${user_id}!`);
   }
 }

@@ -22,9 +22,13 @@ export class UserRepository extends BaseRepository<User> {
     await manager.update(User, { id }, { ...updateData });
     await Promise.all(
       activitiesData.map(async ({ sequence, activities }) => {
-        await manager.upsert(ActivitySequence, sequence, ['type', 'user_id']);
+        await manager.upsert(ActivitySequence, sequence, ['id']);
         const activityIdsToKeep = activities.map((activity) => activity.id);
-        await manager.delete(Activity, { user_id: id, id: Not(In(activityIdsToKeep)) });
+        await manager.delete(Activity, {
+          user_id: id,
+          id: Not(In(activityIdsToKeep)),
+          type: Not('standalone'),
+        });
         const parents = activities.filter(({ parent_id }) => !parent_id);
         const choices = activities.filter(({ parent_id }) => !!parent_id);
         await manager.upsert(Activity, parents, ['id']);
@@ -36,8 +40,12 @@ export class UserRepository extends BaseRepository<User> {
   async getUserSettings(id: string): Promise<User> {
     return this.orm
       .createQueryBuilder('users')
-      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences')
-      .leftJoinAndSelect('activity_sequences.activities', 'activities')
+      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences', 'activity_sequences.type != :standalone', {
+        standalone: 'standalone',
+      })
+      .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.activity_type != :standalone', {
+        standalone: 'standalone',
+      })
       .leftJoinAndSelect('activities.choices', 'choices')
       .select([
         'users.startup_time',

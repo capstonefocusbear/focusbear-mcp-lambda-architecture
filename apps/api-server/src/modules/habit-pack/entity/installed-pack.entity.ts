@@ -28,6 +28,11 @@ export class InstalledPack extends BaseEntity {
   })
   installation_status?: boolean;
 
+  @Column({
+    type: 'uuid',
+  })
+  activity_sequence_id?: string;
+
   @ManyToOne(() => User, (user) => user.installed_packs)
   @JoinColumn({ name: 'user_id' })
   user?: User;

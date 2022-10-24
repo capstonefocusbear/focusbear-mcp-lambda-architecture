@@ -6,10 +6,11 @@ import { InstalledPackRepository } from '../../repositories/installed-pack.repos
 export class InstalledPackService {
   constructor(private readonly installedPackRepository: InstalledPackRepository) {}
 
-  async setPackAsInstalledForUser(user_id: string, pack_id: string) {
+  async setPackAsInstalledForUser(user_id: string, pack_id: string, sequence_id?: string) {
     const recordToUpdate = await this.installedPackRepository.orm.findOne({ where: { user_id, pack_id } });
     if (recordToUpdate) {
       recordToUpdate.installation_status = true;
+      recordToUpdate.activity_sequence_id = sequence_id || null;
       await this.installedPackRepository.update(recordToUpdate.id, recordToUpdate);
       return;
     }
@@ -17,6 +18,7 @@ export class InstalledPackService {
       user_id,
       pack_id,
       installation_status: true,
+      activity_sequence_id: sequence_id || null,
     });
     await this.installedPackRepository.create(newInstalledPackRecord);
   }

@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Connection, EntityManager, In, Not, Transaction, TransactionManager } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
+import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
+import { Activity } from '../../activity/entities/activity.entity';
+import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { HabitPack } from '../entity/habit-pack.entity';
 
 @Injectable()
@@ -27,6 +30,19 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         await manager.upsert(ActivityTemplate, choices, ['id']);
       }),
     );
+  }
+
+  @Transaction({ isolation: 'SERIALIZABLE' })
+  async consistentlyInstallStandaloneHabitPack(
+    activitiesData: DeserializedActivity,
+    @TransactionManager() manager?: EntityManager,
+  ) {
+    const { sequence, activities } = activitiesData;
+    await manager.upsert(ActivitySequence, sequence, ['id']);
+    const parents = activities.filter(({ parent_id }) => !parent_id);
+    const choices = activities.filter(({ parent_id }) => !!parent_id);
+    await manager.upsert(Activity, parents, ['id']);
+    await manager.upsert(Activity, choices, ['id']);
   }
 
   async getHabitPack(pack_id: string): Promise<HabitPack> {

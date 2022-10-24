@@ -456,6 +456,42 @@ export const deserializedRoutineActivitiesDummy = [
   ],
 ];
 
+export const deserializedActivitiesDummy = [
+  {
+    sequence: {
+      id: 'dbce759c-00e4-429f-8d5a-0a10c76777f3',
+      type: 'standalone',
+      activity_ids: [Array],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 780,
+    },
+    activities: [
+      {
+        id: 'c4dbeeb1-7284-4d39-eed4-04cc17d40b7b',
+        pack_id: '34dd7441-16f9-4772-be6c-416f9af5689b',
+        activity_data: { name: 'Journal about day', video_urls: [] },
+        activity_type: ActivityType.evening,
+        user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+        duration_seconds: 150,
+        log_quantity: false,
+        log_summary_type: 'SUM',
+        has_choices: false,
+      },
+      {
+        id: 'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
+        pack_id: '34dd7441-16f9-4772-be6c-416f9af5689b',
+        activity_data: { name: 'Journal about day', video_urls: [] },
+        activity_type: ActivityType.evening,
+        user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+        duration_seconds: 150,
+        log_quantity: false,
+        log_summary_type: 'SUM',
+        has_choices: false,
+      },
+    ],
+  },
+];
+
 export const userSettingsDummy = {
   shutdown_time: '20:45',
   startup_time: '05:45',
@@ -511,13 +547,18 @@ export const userSettingsDummy = {
   ],
 };
 
-export const activityTemplateIdsDummy = ['uuid-1', 'uuid-2', 'uuid-3'];
+export const activityTemplateIdsDummy = [
+  'b4cec92c-b0c3-45fa-9d76-2666b7c929d0',
+  'a2de8c6b-cd51-4840-af3f-d2c0b0a4e353',
+  '379bbed0-ef7c-4ddb-b396-69d5f2861306',
+];
 
 export const installedPackRecordDummy: InstalledPack = {
   id: 'uuid-1',
   pack_id: 'uuid-2',
   user_id: 'uuid-3',
   installation_status: true,
+  activity_sequence_id: '934bbed0-a3ec-4bdb-b396-89d5f2862845',
 };
 
 export const uninstalledPackRecordDummy: InstalledPack = {

@@ -15,6 +15,7 @@ import { InstalledPackService } from './services/installed-packs/installed-pack.
 import { InstalledPack } from './entity/installed-pack.entity';
 import { InstalledPackRepository } from './repositories/installed-pack.repository';
 import { ActivityTemplateRepository } from '../activity-template/repository/activity-template.repository';
+import { ActivityRepository } from '../activity/repositories/activity.repository';
 import { UserService } from '../user/services/user/user.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
@@ -31,6 +32,7 @@ import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
     ActivityTemplateRepository,
     InstalledPackService,
     InstalledPackRepository,
+    ActivityRepository,
     UserService,
     ConfigService,
   ],

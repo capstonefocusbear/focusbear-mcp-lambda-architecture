@@ -16,6 +16,7 @@ export interface SerializedActivity {
   morning_activities?: UpdateActivityDto[];
   evening_activities?: UpdateActivityDto[];
   break_activities?: UpdateActivityDto[];
+  standalone_activities?: UpdateActivityDto[];
 }
 
 @Injectable()
@@ -113,7 +114,15 @@ export class ActivityParserService {
   private async createActivitySequence(serializedActivities: Activity[], { type, user_id }): Promise<ActivitySequence> {
     const activity_ids = serializedActivities.map(({ id }) => id);
     const total_duration_seconds = this.calculateSequenceDuration(serializedActivities);
-    const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+    let sequenceItem;
+    /*
+      If activities are of type "standalone", searching in DB for a sequence to update should be skipped.
+      A new activity sequence needs to be created each time a standalone habit pack is installed
+      to ensure that activities from different standalone packs aren't merged
+    */
+    if (type !== ActivityType.standalone) {
+      sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+    }
     const sequence = new ActivitySequence(
       { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id },
       { generateId: !sequenceItem?.id },

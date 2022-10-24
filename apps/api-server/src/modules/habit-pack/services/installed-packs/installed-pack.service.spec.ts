@@ -43,6 +43,7 @@ describe('HabitPackManagerService', () => {
         user_id: userDummy.id,
         pack_id: routineHabitPackDummy.id,
         installation_status: true,
+        activity_sequence_id: null,
       };
       await installedPackService.setPackAsInstalledForUser(userDummy.id, routineHabitPackDummy.id);
 

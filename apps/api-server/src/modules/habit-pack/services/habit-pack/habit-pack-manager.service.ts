@@ -17,6 +17,7 @@ import {
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 import { HabitPackType } from '../../domain/habit-pack-type.enum';
+import { UserRepository } from '../../../user/repositories/user.repository';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -29,10 +30,12 @@ export class HabitPackManagerService {
     private readonly activityParserService: ActivityParserService,
     private readonly habitPackRepository: HabitPackRepository,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async installHabitPack(user_id: string, pack_id: string) {
-    await this.habitPackService.checkForValidUser(user_id);
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const pack = await this.habitPackRepository.orm.findOne(pack_id);
     if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
     const { pack_type } = pack;
@@ -42,7 +45,6 @@ export class HabitPackManagerService {
     if (installedPack) {
       throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
     }
-
     if (pack_type === HabitPackType.routine) {
       const response = await this.installRoutineHabitPack(user_id, pack_id);
       return response;
@@ -133,7 +135,8 @@ export class HabitPackManagerService {
   }
 
   async uninstallHabitPack(user_id: string, pack_id: string) {
-    await this.habitPackService.checkForValidUser(user_id);
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const pack = await this.habitPackRepository.orm.findOne(pack_id);
     if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
     const { pack_type } = pack;

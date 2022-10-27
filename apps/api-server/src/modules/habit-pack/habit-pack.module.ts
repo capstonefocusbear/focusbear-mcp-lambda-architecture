@@ -20,6 +20,7 @@ import { UserService } from '../user/services/user/user.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
+import { UserRepository } from '../user/repositories/user.repository';
 
 @Module({
   providers: [
@@ -35,6 +36,7 @@ import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
     ActivityRepository,
     UserService,
     ConfigService,
+    UserRepository,
   ],
   imports: [
     TypeOrmModule.forFeature([HabitPack]),

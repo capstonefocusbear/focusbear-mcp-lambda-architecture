@@ -91,6 +91,20 @@ describe('HabitPackService', () => {
   });
 
   describe('getMarketplaceApprovedPacks', () => {
+    it('Negative: should return that the user does not exist', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+
+      let response;
+      try {
+        response = await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+
     it('Positive: should return an array of habit packs', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.getApprovedHabitPacks.mockResolvedValueOnce(marketplaceApprovedPacksDummy);
@@ -175,6 +189,20 @@ describe('HabitPackService', () => {
   });
 
   describe('createHabitPack', () => {
+    it('Negative: should return that the user does not exist', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+
+      let response;
+      try {
+        response = await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+
     it('Positive: should call habitPackRepository.consistentlyUpdateHabitPack to create standalone habit pack', async () => {
       const user_id = userDummy.id;
       const {

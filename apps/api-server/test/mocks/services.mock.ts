@@ -1,5 +1,3 @@
-import { userDummy } from '../dummies ';
-
 export const AuthServiceMock = {
   authenticate: jest.fn(),
 };
@@ -98,7 +96,6 @@ export const HabitPackServiceMock = {
   getMarketplaceApprovedPacks: jest.fn(),
   serializeHabitPack: jest.fn(),
   getHabitPack: jest.fn(),
-  checkForValidUser: jest.fn(() => userDummy),
   checkIfPackExists: jest.fn(),
 };
 
@@ -111,4 +108,8 @@ export const HabitPackManagerServiceMock = {
 export const InstalledPackServiceMock = {
   setPackAsInstalledForUser: jest.fn(),
   setPackAsUninstalledForUser: jest.fn(),
+};
+
+export const SendinblueServiceMock = {
+  registerSendinblueEvent: jest.fn(),
 };

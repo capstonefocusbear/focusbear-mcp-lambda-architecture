@@ -15,6 +15,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { TeamModule } from './modules/team/team.module';
 import { HabitPackModule } from './modules/habit-pack/habit-pack.module';
 import { ActivityTemplateModule } from './modules/activity-template/activty-template.module';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ActivityTemplateModule } from './modules/activity-template/activty-temp
     TeamModule,
     HabitPackModule,
     ActivityTemplateModule,
+    EventsModule,
   ],
   controllers: [AppController],
 })

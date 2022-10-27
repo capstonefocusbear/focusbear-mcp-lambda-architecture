@@ -157,7 +157,7 @@ export const constants = registerAs('constants', () => ({
           duration_seconds: 30,
           is_office_friendly: true,
           include_in_every_break: true,
-          video_urls: ['https://youtu.be/HhMXYsk_Pvo'],
+          video_urls: ['https://youtu.be/CUre1WgjIyU'],
           log_quantity: false,
           log_summary_type: LogSummaryType.SUM,
           log_quantity_question: '',

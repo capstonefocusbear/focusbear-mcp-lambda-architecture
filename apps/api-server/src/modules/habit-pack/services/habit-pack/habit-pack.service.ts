@@ -19,11 +19,6 @@ export class HabitPackService {
     private readonly activityTemplateParserService: ActivityTemplateParserService,
   ) {}
 
-  async checkForValidUser(user_id: string) {
-    const user = await this.userRepository.orm.findOne(user_id);
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-  }
-
   async checkIfPackExists(pack_id: string) {
     const habitPack = await this.habitPackRepository.orm.findOne(pack_id);
     if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
@@ -36,7 +31,8 @@ export class HabitPackService {
   }
 
   async getMarketplaceApprovedPacks(user_id: string): Promise<HabitPack[]> {
-    await this.checkForValidUser(user_id);
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const marketplaceApprovedPacks = await this.habitPackRepository.getApprovedHabitPacks();
     const serializedApprovedPacks = marketplaceApprovedPacks.map((pack) => this.serializeHabitPack(pack));
     return serializedApprovedPacks;
@@ -50,7 +46,7 @@ export class HabitPackService {
 
   async createHabitPack(user_id: string, createHabitPackDto: CreateHabitPackDto): Promise<CreateHabitPackDto> {
     const user = await this.userRepository.orm.findOne(user_id);
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const {
       pack_name,
       pack_type,

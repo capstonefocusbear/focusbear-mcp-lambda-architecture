@@ -726,3 +726,9 @@ export const localDeviceSettingsDummy = {
   iOS: '...',
   Web: { hasEditedSettings: false },
 };
+
+export const sendinblueEventDummy = {
+  event_type: 'test-event',
+  user_properties: { first_name: 'Some name', last_name: 'some last name' },
+  event_data: { id: 'eventId-123', data: { example_key: 'example-value' } },
+};

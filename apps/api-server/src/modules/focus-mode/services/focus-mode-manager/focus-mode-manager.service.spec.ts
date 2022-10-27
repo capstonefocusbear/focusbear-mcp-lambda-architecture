@@ -105,7 +105,7 @@ describe('FocusModeManagerService', () => {
 
     it('positive: new completed focus block item should be created', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);

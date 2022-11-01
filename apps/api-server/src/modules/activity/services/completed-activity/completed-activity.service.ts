@@ -279,7 +279,9 @@ export class CompletedActivityService {
       nowLocalString = now.toLocaleString('en-US', {
         hourCycle: 'h23',
         timeZone,
-        timeZoneName: 'short',
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        timeZoneName: 'shortOffset',
       });
       to_time = new Date(nowLocalString).toISOString();
       const [nowDate, , nowTimezone] = nowLocalString.split(' ');

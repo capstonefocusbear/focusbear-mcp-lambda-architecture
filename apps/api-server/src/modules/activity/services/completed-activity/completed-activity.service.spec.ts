@@ -565,6 +565,22 @@ describe('CompletedActivityService', () => {
     });
   });
 
+  it('negative: should throw error because of invalid timezone', async () => {
+    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+    let exception: any;
+
+    try {
+      await completedactivityService.getDaySummary(userDummy.id, '...');
+    } catch (error) {
+      exception = error;
+    }
+    expect(exception.message).toEqual('Invalid time zone specified: ...');
+  });
+
   it('positive: aggregation queries should be called with a correct time range', async () => {
     UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
     CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
@@ -593,7 +609,7 @@ describe('CompletedActivityService', () => {
     expect(result).toBeInstanceOf(DaySummary);
   });
 
-  it('positive: should return DaySummary with current time between 24:00 and 01:00', async () => {
+  it('positive: should return DaySummary with current time between 24:00 and 01:00 (test previous error)', async () => {
     const mockDate = new Date('Tue Oct 11 2022 00:30:00 GMT+0000 (Greenwich Mean Time)');
     const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as string);
 
@@ -603,6 +619,21 @@ describe('CompletedActivityService', () => {
     CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
     CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
     const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+
+    expect(result).toBeInstanceOf(DaySummary);
+    spy.mockRestore();
+  });
+
+  it('positive: should return DaySummary with timezone unsupported by .toISOString (test previous error)', async () => {
+    const mockDate = new Date('Mon Oct 31 2022 20:42:15 GMT-0300 (Atlantic Daylight Time)');
+    const spy = jest.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as string);
+
+    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+    const result = await completedactivityService.getDaySummary(userDummy.id, 'America/Moncton');
 
     expect(result).toBeInstanceOf(DaySummary);
     spy.mockRestore();

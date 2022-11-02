@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -270,27 +271,28 @@ export class CompletedActivityService {
   }
 
   private buildTimestamp(startup_time: string, timeZone: string): { from_time: string; to_time: string } {
-    let nowLocalString;
     let to_time;
     let startupTime;
     let from_time;
     try {
-      const now = new Date();
-      nowLocalString = now.toLocaleString('en-US', {
-        hourCycle: 'h23',
-        timeZone,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        timeZoneName: 'shortOffset',
-      });
-      to_time = new Date(nowLocalString).toISOString();
-      const [nowDate, , nowTimezone] = nowLocalString.split(' ');
       startupTime = `${startup_time}:00`;
-      from_time = new Date(`${nowDate} ${startupTime} ${nowTimezone}`).toISOString();
+      to_time = DateTime.local({ zone: timeZone }).toUTC().toISO();
+      if (to_time === null) throw new BadRequestException(`Invalid timezone: ${timeZone}`);
+      const currentTime = DateTime.local({ zone: timeZone });
+      const { year, month, day } = currentTime;
+      let [hours, minutes, seconds] = startupTime.split(':');
+      hours = Number(hours);
+      minutes = Number(minutes);
+      seconds = Number(seconds);
+      from_time = DateTime.local(year, month, day, hours, minutes, seconds, {
+        zone: timeZone,
+      })
+        .toUTC()
+        .toISO();
       return { from_time, to_time };
     } catch (e) {
       console.error(
-        `Error in buildtimeStamp. nowLocalString: ${nowLocalString}, to_time: ${to_time}, startupTime: ${startupTime}, from_time: ${from_time}`,
+        `Error in buildtimeStamp. to_time: ${to_time}, startupTime: ${startupTime}, from_time: ${from_time}, timezone: ${timeZone}`,
       );
       throw e;
     }

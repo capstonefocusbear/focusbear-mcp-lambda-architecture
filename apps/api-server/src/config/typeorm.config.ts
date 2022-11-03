@@ -13,6 +13,7 @@ import { User } from '../modules/user/entities/user.entity';
 import { HabitPack } from '../modules/habit-pack/entity/habit-pack.entity';
 import { InstalledPack } from '../modules/habit-pack/entity/installed-pack.entity';
 import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
+import { Notification } from '../modules/notification/entities/notification.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -38,6 +39,7 @@ export const typeormConfig = registerAs(
       HabitPack,
       InstalledPack,
       ActivityTemplate,
+      Notification,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
     cli: { migrationsDir: './apps/api-server/migrations' },

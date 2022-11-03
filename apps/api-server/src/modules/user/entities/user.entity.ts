@@ -12,6 +12,7 @@ import { InstalledPack } from '../../habit-pack/entity/installed-pack.entity';
 import { Team } from '../../team/entities/team.entity';
 import { UpdateLocalDeviceSettingsDto } from '../dto/update-local-device-settings.dto';
 import { UserTypes } from '../domain/user-types.enum';
+import { Notification } from '../../notification/entities/notification.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -170,6 +171,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Device, (device) => device.user)
   devices?: Device[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications?: Notification[];
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];

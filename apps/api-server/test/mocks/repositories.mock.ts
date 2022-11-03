@@ -86,3 +86,7 @@ export const HabitPackRepositoryMock = {
 export const InstalledPackRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const NotificationRepositoryMock = {
+  ...BaseRepositoryMock,
+};

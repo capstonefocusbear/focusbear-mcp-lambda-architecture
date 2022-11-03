@@ -732,3 +732,39 @@ export const sendinblueEventDummy = {
   user_properties: { first_name: 'Some name', last_name: 'some last name' },
   event_data: { id: 'eventId-123', data: { example_key: 'example-value' } },
 };
+
+export const updateCalendarEventDummy = {
+  id: '7a5f0bb2-5313-49da-9ae6-cc28e869014u',
+  external_id: '12345',
+  summary: 'Radom text...',
+  description: 'More random text',
+  event_begins: new Date(),
+  event_ends: new Date(),
+  is_dismissed: true,
+  dismiss_reason: 'Noted',
+  received: true,
+};
+
+export const createCalendarEventDummy = {
+  external_id: '12345',
+  summary: 'Radom text...',
+  description: 'More random text',
+  event_begins: new Date(),
+  event_ends: new Date(),
+  is_dismissed: false,
+  dismiss_reason: '',
+  received: false,
+};
+
+export const notificationDBResponseDummy = {
+  id: '7a5f0bb2-5313-49da-9ae6-cc28e869014u',
+  user_id: '3a4f0bb1-5313-49da-1ef2-cc28e864763f',
+  summary: 'Radom text...',
+  description: 'More random text',
+  external_id: '12345',
+  event_begins: '2022-10-31T03:45:29.198Z',
+  event_ends: '2022-10-31T03:45:29.198Z',
+  is_dismissed: false,
+  dismiss_reason: '',
+  received: false,
+};

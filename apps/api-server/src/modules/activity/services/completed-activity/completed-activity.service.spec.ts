@@ -530,9 +530,6 @@ describe('CompletedActivityService', () => {
   });
 
   describe('getDaySummary', () => {
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
     it('negative: should throw NotFoundException if user does not exist', async () => {
       const user_id = randomUUID();
       UserRepositoryMock.orm.findOne.mockResolvedValue(null);
@@ -568,79 +565,84 @@ describe('CompletedActivityService', () => {
     });
   });
 
-  it('negative: should throw error because of invalid timezone', async () => {
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
-    let exception: any;
+  describe('buildTimestamp', () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+    it('negative: should throw error because of invalid timezone', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      let exception: any;
 
-    try {
-      await completedactivityService.getDaySummary(userDummy.id, '...');
-    } catch (error) {
-      exception = error;
-    }
-    expect(exception).toBeInstanceOf(BadRequestException);
-    expect(exception.message).toEqual('Invalid timezone: ...');
-  });
+      try {
+        await completedactivityService.getDaySummary(userDummy.id, '...');
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('Invalid timezone: ...');
+    });
 
-  it('positive: aggregation queries should be called with a correct time range', async () => {
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+    it('positive: aggregation queries should be called with a correct time range', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
 
-    await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+      await completedactivityService.getDaySummary(userDummy.id, 'UTC');
 
-    const timerange = { from_time: expect.toBeDateString(), to_time: expect.toBeDateString() };
-    expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
-    expect(CompletedActivityRepositoryMock.getDaySummaryAVG).toBeCalledWith(userDummy.id, timerange);
-    expect(CompletedActivityRepositoryMock.getDaySummarySUM).toBeCalledWith(userDummy.id, timerange);
-    expect(CompletedActivityRepositoryMock.getDaySummaryDuration).toBeCalledWith(userDummy.id, timerange);
-  });
+      const timerange = { from_time: expect.toBeDateString(), to_time: expect.toBeDateString() };
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummaryAVG).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummarySUM).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummaryDuration).toBeCalledWith(userDummy.id, timerange);
+    });
 
-  it('positive: should return DaySummary data model', async () => {
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+    it('positive: should return DaySummary data model', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
 
-    const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+      const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
 
-    expect(result).toBeInstanceOf(DaySummary);
-  });
+      expect(result).toBeInstanceOf(DaySummary);
+    });
 
-  it('positive: should return DaySummary with current time between 24:00 and 01:00 (test previous error)', async () => {
-    Date.UTC = jest.fn(() => 1665448200000);
-    Date.now = jest.fn(() => new Date(Date.UTC(2022, 10, 11, 0, 30, 0)).valueOf());
-    const timerange = { from_time: '2022-10-11T00:30:00.000Z', to_time: '2022-10-11T00:30:00.000Z' };
+    it('positive: should return DaySummary with current time between 24:00 and 01:00 (test previous error)', async () => {
+      Date.UTC = jest.fn(() => 1665448200000);
+      Date.now = jest.fn(() => new Date(Date.UTC(2022, 10, 11, 0, 30, 0)).valueOf());
+      const timerange = { from_time: '2022-10-11T00:30:00.000Z', to_time: '2022-10-11T00:30:00.000Z' };
 
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
-    const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      const result = await completedactivityService.getDaySummary(userDummy.id, 'UTC');
 
-    expect(result).toBeInstanceOf(DaySummary);
-    expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
-  });
+      expect(result).toBeInstanceOf(DaySummary);
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+    });
 
-  it('positive: should return DaySummary with timezone unsupported by .toISOString (test previous error)', async () => {
-    Date.UTC = jest.fn(() => 1667248935000);
-    Date.now = jest.fn(() => new Date(Date.UTC(2022, 10, 31, 20, 42, 15)).valueOf());
-    const timerange = { from_time: '2022-10-31T20:42:15.000Z', to_time: '2022-10-31T20:42:15.000Z' };
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-    CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
-    CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
-    const result = await completedactivityService.getDaySummary(userDummy.id, 'America/Moncton');
+    it('positive: should return DaySummary with timezone unsupported by .toISOString (test previous error)', async () => {
+      Date.UTC = jest.fn(() => 1667248935000);
+      Date.now = jest.fn(() => new Date(Date.UTC(2022, 10, 31, 20, 42, 15)).valueOf());
+      const timerange = { from_time: '2022-10-31T20:42:15.000Z', to_time: '2022-10-31T20:42:15.000Z' };
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
+      CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      const result = await completedactivityService.getDaySummary(userDummy.id, 'America/Moncton');
 
-    expect(result).toBeInstanceOf(DaySummary);
-    expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+      expect(result).toBeInstanceOf(DaySummary);
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+    });
   });
 });

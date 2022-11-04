@@ -8,6 +8,11 @@ services:
   plan: starter
   healthCheckPath: /healthcheck
   autoDeploy: false
+  scaling:
+    minInstances: 1
+    maxInstances: 5
+    targetMemoryPercent: 60 
+    targetCPUPercent: 60 
   envVars:
   - key: SERVER_PORT
     value: 4000
@@ -49,9 +54,3 @@ databases:
   plan: standard
   databaseName: eyst_production
   user: some_user
-
-scaling:
-  minInstances: 1
-  maxInstances: 5
-  targetMemoryPercent: 60 
-  targetCPUPercent: 60 

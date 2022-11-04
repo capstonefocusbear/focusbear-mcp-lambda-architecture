@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Put, UseGuards, Delete, Get } from '@nestjs/common';
+import { Body, Controller, Param, Put, UseGuards, Delete, Get, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -7,9 +7,9 @@ import { HabitPack } from '../entity/habit-pack.entity';
 import { CreateHabitPackDto } from '../dto/create-habit-pack-param.dto';
 import { HabitPackService } from '../services/habit-pack/habit-pack.service';
 import { GetHabitPackParamDto } from '../dto/get-habit-pack.dto';
-import { DeleteHabitPackParamDto } from '../dto/delete-habit-pack-param.dto';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { HabitPackManagerService } from '../services/habit-pack/habit-pack-manager.service';
+import { InstallPackAsDefaultSettingsDto } from '../dto/install-pack-as-default-settings.dto';
 
 @Controller('habit-packs')
 @ApiTags('habit-packs')
@@ -45,7 +45,7 @@ export class HabitPackController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   deleteHabitPack(
-    @Param() { pack_id }: DeleteHabitPackParamDto,
+    @Param() { pack_id }: GetHabitPackParamDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
     return this.habitPackService.deleteHabitPack(user.id, pack_id);
@@ -54,14 +54,22 @@ export class HabitPackController {
   @Get(':pack_id/install')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  installHabitPack(@Param() { pack_id }: DeleteHabitPackParamDto, @AuthContext() { user }: Passport) {
+  installHabitPack(@Param() { pack_id }: GetHabitPackParamDto, @AuthContext() { user }: Passport) {
     return this.habitPackManagerService.installHabitPack(user.id, pack_id);
   }
 
   @Get(':pack_id/uninstall')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  uninstallHabitPack(@Param() { pack_id }: DeleteHabitPackParamDto, @AuthContext() { user }: Passport) {
+  uninstallHabitPack(@Param() { pack_id }: GetHabitPackParamDto, @AuthContext() { user }: Passport) {
     return this.habitPackManagerService.uninstallHabitPack(user.id, pack_id);
+  }
+
+  @Get('/default')
+  async installPackAsDefaultSettings(
+    @Query() { pack_id, format }: InstallPackAsDefaultSettingsDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<ResponseMessage> {
+    return this.habitPackManagerService.installPackAsDefaultSettings(user.id, pack_id, format);
   }
 }

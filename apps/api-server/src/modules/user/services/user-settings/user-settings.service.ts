@@ -1,7 +1,11 @@
 import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import * as _ from 'lodash';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
+import { DefaultPackFormatType } from '../../../habit-pack/domain/install-pack-format.enum';
+import { TimeSettingsWhenNoRoutineEnabled } from '../../domain/time-settings-when-no-routine-enabled.enum';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
+import { UserSettingsResponseDto } from '../../dto/user-settings-response.dto';
 import { User } from '../../entities/user.entity';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserService } from '../user/user.service';
@@ -25,7 +29,7 @@ export class UserSettingsService {
     const serializedActivities = this.activityParserService.serialize(activity_sequences);
     const localDeviceSettings = await this.userService.getUserLocalDeviceSettings(user.id);
     const { hasEditedSettings } = localDeviceSettings.Web;
-    const settings: UpdateUserSettingsDto = {
+    const settings: UserSettingsResponseDto = {
       has_edited_settings: hasEditedSettings,
       ...user,
       ...serializedActivities,
@@ -50,5 +54,19 @@ export class UserSettingsService {
       await this.userService.markUserSettingsAsEdited(user_id);
     }
     return this.getSettings({ user_id });
+  }
+
+  async clearUserActivities(user_id: string, format: DefaultPackFormatType) {
+    const userSettings = await this.getSettings({ user_id });
+    const newSettings: UpdateUserSettingsDto = _.cloneDeep(userSettings);
+    if (format === DefaultPackFormatType.BREAK_ONLY) {
+      newSettings.startup_time = TimeSettingsWhenNoRoutineEnabled.STARTUP_TIME;
+      newSettings.shutdown_time = TimeSettingsWhenNoRoutineEnabled.SHUTDOWN_TIME;
+    }
+    newSettings.break_after_minutes = 20;
+    newSettings.morning_activities = [];
+    newSettings.break_activities = [];
+    newSettings.evening_activities = [];
+    await this.updateSettings({ user_id }, newSettings, false);
   }
 }

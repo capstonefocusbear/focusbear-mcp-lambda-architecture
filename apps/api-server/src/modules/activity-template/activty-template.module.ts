@@ -7,7 +7,7 @@ import { ActivityTemplate } from './entity/activity-template.entity';
 
 @Module({
   providers: [ActivityTemplateService, ActivityTemplateRepository, ActivityTemplateParserService],
-  exports: [ActivityTemplateParserService, ActivityTemplateService],
+  exports: [ActivityTemplateParserService, ActivityTemplateService, ActivityTemplateRepository],
   controllers: [],
   imports: [TypeOrmModule.forFeature([ActivityTemplate])],
 })

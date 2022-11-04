@@ -63,6 +63,7 @@ export const UserSettingsServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   updateSettings: jest.fn(),
   getSettings: jest.fn(),
+  clearUserActivities: jest.fn(),
 };
 
 export const JwtServiceMock = {

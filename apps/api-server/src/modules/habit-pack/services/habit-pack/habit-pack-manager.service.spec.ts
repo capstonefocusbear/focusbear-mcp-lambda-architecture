@@ -32,6 +32,7 @@ import { InstalledPackRepository } from '../../repositories/installed-pack.repos
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { DefaultPackFormatType } from '../../domain/install-pack-format.enum';
 
 describe('HabitPackManagerService', () => {
   let habitPackManagerService: HabitPackManagerService;
@@ -297,5 +298,72 @@ describe('HabitPackManagerService', () => {
         standaloneHabitPackDummy.id,
       );
     });
+  });
+
+  describe('installPackAsDefaultSettings', () => {
+    it('negative: should return that the user does not exist', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+
+      let response;
+      try {
+        response = await habitPackManagerService.installPackAsDefaultSettings(
+          userDummy.id,
+          routineHabitPackDummy.id,
+          DefaultPackFormatType.ROUTINE_AND_BREAK,
+        );
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+  });
+
+  it('negative: should return that pack does not exist', async () => {
+    UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+    HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+    const responseMessage = `Habit pack with ID: ${routineHabitPackDummy.id} does not exist!`;
+
+    let response;
+    try {
+      response = await habitPackManagerService.installPackAsDefaultSettings(
+        userDummy.id,
+        routineHabitPackDummy.id,
+        DefaultPackFormatType.ROUTINE_AND_BREAK,
+      );
+    } catch (error) {
+      response = error;
+    }
+
+    expect(response.message).toMatch(responseMessage);
+  });
+
+  it('positive: should return a successfull response install message', async () => {
+    UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
+    HabitPackRepositoryMock.orm.findOne
+      .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
+      .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+    InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+    UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
+    HabitPackServiceMock.getHabitPack.mockResolvedValue(routineHabitPackDummy);
+    const responseMessage = `Habit pack with ID: ${routineHabitPackDummy.id} successfully installed for user with ID: ${userDummy.id}!`;
+    const user_id = userDummy.id;
+
+    const response = await habitPackManagerService.installPackAsDefaultSettings(
+      userDummy.id,
+      routineHabitPackDummy.id,
+      DefaultPackFormatType.ROUTINE_AND_BREAK,
+    );
+
+    expect(UserSettingsServiceMock.clearUserActivities).toBeCalledWith(
+      userDummy.id,
+      DefaultPackFormatType.ROUTINE_AND_BREAK,
+    );
+    expect(response.message).toMatch(responseMessage);
+    expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
+    expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
+    expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
+    expect(UserSettingsServiceMock.updateSettings).toBeCalled();
   });
 });

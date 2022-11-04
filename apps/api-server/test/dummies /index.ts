@@ -135,6 +135,39 @@ export const deserializedActivitiesDummy = [
   },
 ];
 
+export const emptyDeserializedActivitiesDummy = [
+  {
+    sequence: {
+      id: '1293da0c-2055-4b30-9664-4736973e1dcf',
+      type: 'morning',
+      activity_ids: [],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 480,
+    },
+    activities: [],
+  },
+  {
+    sequence: {
+      id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
+      type: 'evening',
+      activity_ids: [],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 720,
+    },
+    activities: [],
+  },
+  {
+    sequence: {
+      id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
+      type: 'breaking',
+      activity_ids: [],
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      total_duration_seconds: 60,
+    },
+    activities: [],
+  },
+];
+
 export const serializedActivityDummy: SerializedActivity = {
   morning_activities: [
     {
@@ -663,9 +696,9 @@ export const pusherBeamsPublishRequestFocusBlockDummy = new CompletedFocusBlock(
 
 export const userSettingsDummy = {
   has_edited_settings: false,
-  startup_time: '05:45',
-  shutdown_time: '20:45',
-  break_after_minutes: 20,
+  startup_time: '06:15',
+  shutdown_time: '20:30',
+  break_after_minutes: 15,
   break_activities: [
     {
       id: '666da3c5-50b7-4205-a481-13b402de53d6',

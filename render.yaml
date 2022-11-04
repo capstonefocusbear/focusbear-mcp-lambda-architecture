@@ -49,3 +49,9 @@ databases:
   plan: standard
   databaseName: eyst_production
   user: some_user
+
+scaling:
+  minInstances: 1
+  maxInstances: 5
+  targetMemoryPercent: 60 
+  targetCPUPercent: 60 

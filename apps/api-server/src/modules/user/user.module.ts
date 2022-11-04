@@ -14,10 +14,11 @@ import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenu
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
 import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
+import { HabitPackModule } from '../habit-pack/habit-pack.module';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService],
-  exports: [UserRepository],
+  exports: [UserRepository, UserService, UserSettingsService],
   imports: [
     TypeOrmModule.forFeature([User]),
     Auth0Module.registerAsync({
@@ -39,6 +40,7 @@ import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
     AuthModule,
     ConfigModule,
     SubscriptionModule,
+    HabitPackModule,
   ],
   controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController],
 })

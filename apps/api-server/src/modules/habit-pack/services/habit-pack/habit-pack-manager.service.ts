@@ -18,6 +18,7 @@ import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 import { HabitPackType } from '../../domain/habit-pack-type.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { DefaultPackFormatType } from '../../domain/install-pack-format.enum';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -179,5 +180,19 @@ export class HabitPackManagerService {
     await this.activitySequenceRepository.orm.delete(activity_sequence_id);
     await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully uninstalled for user with ID: ${user_id}!`);
+  }
+
+  async installPackAsDefaultSettings(
+    user_id: string,
+    pack_id: string,
+    format: DefaultPackFormatType,
+  ): Promise<ResponseMessage> {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+    await this.userSettingsService.clearUserActivities(user_id, format);
+    await this.installHabitPack(user_id, pack_id);
+    return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 }

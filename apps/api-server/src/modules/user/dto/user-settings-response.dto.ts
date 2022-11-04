@@ -1,9 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsMilitaryTime,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
-export class UpdateUserSettingsDto {
+export class UserSettingsResponseDto {
   @IsNotEmpty()
   @IsString()
   @IsMilitaryTime()
@@ -39,4 +49,8 @@ export class UpdateUserSettingsDto {
   @Type(() => UpdateActivityDto)
   @ApiProperty({ isArray: true, type: UpdateActivityDto })
   break_activities?: UpdateActivityDto[];
+
+  @IsBoolean()
+  @IsOptional()
+  has_edited_settings?: boolean;
 }

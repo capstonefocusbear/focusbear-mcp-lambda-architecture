@@ -5,7 +5,7 @@ import { Notification } from './apps/api-server/src/modules/notification/entitie
 const { Pool } = require('pg');
 const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
-const moment = require('moment');
+const { DateTime } = require('luxon');
 
 dotenv.config();
 
@@ -21,8 +21,8 @@ const fetchNotifications = async () => {
       port: Number(process.env.POSTGRES_PORT) || 5432,
     });
     await pool.connect();
-    const currentTime = new Date();
-    const timeInFifiteenMinutes = moment(currentTime).add(15, 'm').toDate();
+    const currentTime = DateTime.now().toISO();
+    const timeInFifiteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
     const res = await pool.query({
       text: 'SELECT * FROM notifications WHERE event_begins >= $1 AND event_begins <= $2 AND received IS NOT TRUE;',
       values: [currentTime, timeInFifiteenMinutes],

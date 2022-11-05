@@ -27,8 +27,6 @@ import { StripeService } from '../../../../../../../libs/stripe/src';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { User } from '../../entities/user.entity';
-import { DefaultPackFormatType } from '../../../habit-pack/domain/install-pack-format.enum';
-import { TimeSettingsWhenNoRoutineEnabled } from '../../domain/time-settings-when-no-routine-enabled.enum';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -150,35 +148,12 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValue(emptyDeserializedActivitiesDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
 
-      await userSettingsService.clearUserActivities(userDummy.id, DefaultPackFormatType.ROUTINE_AND_BREAK);
+      await userSettingsService.clearUserActivities(userDummy.id);
 
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
         updatedUser,
         emptyDeserializedActivitiesDummy,
       );
     });
-  });
-
-  it('positive: should update settings with empty activity arrays for BREAK_ONLY format', async () => {
-    const updatedUser = new User({
-      id: userDummy.id,
-      startup_time: TimeSettingsWhenNoRoutineEnabled.STARTUP_TIME,
-      shutdown_time: TimeSettingsWhenNoRoutineEnabled.SHUTDOWN_TIME,
-      break_after_minutes: 20,
-    });
-    UserRepositoryMock.getUserSettings.mockResolvedValue({ ...userSettingsDBResponseDummy, break_after_minutes: 20 });
-    ActivityParserServiceMock.serialize.mockResolvedValue(serializedActivityDummy);
-    UserServiceMock.getUserLocalDeviceSettings
-      .mockReturnValueOnce(localDeviceSettingsDummy)
-      .mockReturnValue(localDeviceSettingsDummy);
-    ActivityParserServiceMock.deserialize.mockResolvedValue(emptyDeserializedActivitiesDummy);
-    UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-
-    await userSettingsService.clearUserActivities(userDummy.id, DefaultPackFormatType.BREAK_ONLY);
-
-    expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
-      updatedUser,
-      emptyDeserializedActivitiesDummy,
-    );
   });
 });

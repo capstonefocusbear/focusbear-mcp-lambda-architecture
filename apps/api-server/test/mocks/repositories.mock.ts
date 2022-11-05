@@ -81,10 +81,12 @@ export const HabitPackRepositoryMock = {
   getApprovedHabitPacks: jest.fn(),
   consistentlyUpdateHabitPack: jest.fn(),
   consistentlyInstallStandaloneHabitPack: jest.fn(),
+  getUserInstalledPacks: jest.fn(),
 };
 
 export const InstalledPackRepositoryMock = {
   ...BaseRepositoryMock,
+  fetchUserInstalledPackIds: jest.fn(),
 };
 
 export const NotificationRepositoryMock = {

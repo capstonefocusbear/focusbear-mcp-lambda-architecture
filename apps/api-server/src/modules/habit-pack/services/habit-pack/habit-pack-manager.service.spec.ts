@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   activityTemplateIdsDummy,
   deserializedActivitiesDummy,
@@ -365,5 +366,36 @@ describe('HabitPackManagerService', () => {
     expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
     expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
     expect(UserSettingsServiceMock.updateSettings).toBeCalled();
+  });
+
+  describe('getUserInstalledPacks', () => {
+    it('negative: should return that the user does not exist', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+
+      let response;
+      try {
+        response = await habitPackManagerService.getUserInstalledPacks(userDummy.id);
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+
+    it("positive: should return the user's installed packs", async () => {
+      const packId = randomUUID();
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      InstalledPackRepositoryMock.fetchUserInstalledPackIds.mockResolvedValueOnce([packId]);
+      HabitPackRepositoryMock.getUserInstalledPacks.mockResolvedValueOnce([routineHabitPackDBResponseDummy]);
+      HabitPackServiceMock.serializeHabitPack.mockReturnValue(routineHabitPackDummy);
+
+      const result = await habitPackManagerService.getUserInstalledPacks(userDummy.id);
+      console.log(result);
+
+      expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toBeCalledWith(userDummy.id);
+      expect(HabitPackRepositoryMock.getUserInstalledPacks).toBeCalledWith([packId]);
+      expect(result).toMatchSnapshot();
+    });
   });
 });

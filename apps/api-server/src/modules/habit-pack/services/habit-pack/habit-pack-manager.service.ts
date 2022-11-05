@@ -19,6 +19,7 @@ import { ActivitySequenceRepository } from '../../../activity/repositories/activ
 import { HabitPackType } from '../../domain/habit-pack-type.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { DefaultPackFormatType } from '../../domain/install-pack-format.enum';
+import { HabitPack } from '../../entity/habit-pack.entity';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -194,5 +195,16 @@ export class HabitPackManagerService {
     await this.userSettingsService.clearUserActivities(user_id, format);
     await this.installHabitPack(user_id, pack_id);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
+  }
+
+  async getUserInstalledPacks(user_id: string): Promise<HabitPack[]> {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    const installedPackIds = await this.installedPackRepository.fetchUserInstalledPackIds(user_id);
+    const deserializedInstalledPacks = await this.habitPackRepository.getUserInstalledPacks(installedPackIds);
+    const serializedInstalledPacks = deserializedInstalledPacks.map((habitPack) => {
+      return this.habitPackService.serializeHabitPack(habitPack);
+    });
+    return serializedInstalledPacks;
   }
 }

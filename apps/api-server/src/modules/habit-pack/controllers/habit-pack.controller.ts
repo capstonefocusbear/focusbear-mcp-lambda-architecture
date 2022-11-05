@@ -66,10 +66,19 @@ export class HabitPackController {
   }
 
   @Get('/default')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async installPackAsDefaultSettings(
     @Query() { pack_id, format }: InstallPackAsDefaultSettingsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
     return this.habitPackManagerService.installPackAsDefaultSettings(user.id, pack_id, format);
+  }
+
+  @Get('/user-packs')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  getUserInstalledPacks(@AuthContext() { user }: Passport): Promise<HabitPack[]> {
+    return this.habitPackManagerService.getUserInstalledPacks(user.id);
   }
 }

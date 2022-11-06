@@ -10,6 +10,7 @@ import { GetHabitPackParamDto } from '../dto/get-habit-pack.dto';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { HabitPackManagerService } from '../services/habit-pack/habit-pack-manager.service';
 import { InstallPackAsDefaultSettingsDto } from '../dto/install-pack-as-default-settings.dto';
+import { UserSettingsResponseDto } from '../../user/dto/user-settings-response.dto';
 
 @Controller('habit-packs')
 @ApiTags('habit-packs')
@@ -66,10 +67,19 @@ export class HabitPackController {
   }
 
   @Get('/default')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async installPackAsDefaultSettings(
-    @Query() { pack_id, format }: InstallPackAsDefaultSettingsDto,
+    @Query() { pack_id }: InstallPackAsDefaultSettingsDto,
     @AuthContext() { user }: Passport,
-  ): Promise<ResponseMessage> {
-    return this.habitPackManagerService.installPackAsDefaultSettings(user.id, pack_id, format);
+  ): Promise<UserSettingsResponseDto> {
+    return this.habitPackManagerService.installPackAsDefaultSettings(user.id, pack_id);
+  }
+
+  @Get('/user-packs')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  getUserInstalledPacks(@AuthContext() { user }: Passport): Promise<HabitPack[]> {
+    return this.habitPackManagerService.getUserInstalledPacks(user.id);
   }
 }

@@ -1,8 +1,6 @@
 import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as _ from 'lodash';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
-import { DefaultPackFormatType } from '../../../habit-pack/domain/install-pack-format.enum';
-import { TimeSettingsWhenNoRoutineEnabled } from '../../domain/time-settings-when-no-routine-enabled.enum';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsResponseDto } from '../../dto/user-settings-response.dto';
@@ -56,13 +54,9 @@ export class UserSettingsService {
     return this.getSettings({ user_id });
   }
 
-  async clearUserActivities(user_id: string, format: DefaultPackFormatType) {
+  async clearUserActivities(user_id: string) {
     const userSettings = await this.getSettings({ user_id });
     const newSettings: UpdateUserSettingsDto = _.cloneDeep(userSettings);
-    if (format === DefaultPackFormatType.BREAK_ONLY) {
-      newSettings.startup_time = TimeSettingsWhenNoRoutineEnabled.STARTUP_TIME;
-      newSettings.shutdown_time = TimeSettingsWhenNoRoutineEnabled.SHUTDOWN_TIME;
-    }
     newSettings.break_after_minutes = 20;
     newSettings.morning_activities = [];
     newSettings.break_activities = [];

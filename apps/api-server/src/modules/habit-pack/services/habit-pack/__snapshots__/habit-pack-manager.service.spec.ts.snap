@@ -16,3 +16,67 @@ Object {
   "video_urls": Array [],
 }
 `;
+
+exports[`HabitPackManagerService getUserInstalledPacks positive: should return the user's installed packs 1`] = `
+Array [
+  Object {
+    "break_activities": Array [
+      Object {
+        "activity_type": "break_activity",
+        "allowed_apps": Array [],
+        "allowed_urls": Array [],
+        "choice_type": "random",
+        "choices": Array [],
+        "duration_seconds": 30,
+        "id": "630c921d-dc9c-4107-acd2-023d7930d9bf",
+        "include_in_every_break": true,
+        "is_office_friendly": false,
+        "log_quantity": false,
+        "log_quantity_question": "",
+        "log_summary_type": "SUM",
+        "name": "Micro-workout",
+        "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+        "video_urls": Array [],
+      },
+    ],
+    "description": "Test 12/10/22 12:27.",
+    "description_video_url": "www.google.com",
+    "evening_activities": Array [
+      Object {
+        "activity_type": "evening_activity",
+        "choices": Array [],
+        "duration_seconds": 150,
+        "id": "f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e",
+        "log_quantity": false,
+        "log_summary_type": "SUM",
+        "name": "Mess up desk",
+        "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+        "video_urls": Array [],
+      },
+    ],
+    "id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+    "marketplace_approval_status": false,
+    "marketplace_request": "requested",
+    "morning_activities": Array [
+      Object {
+        "activity_type": "morning_activity",
+        "choices": Array [],
+        "duration_seconds": 300,
+        "id": "b24c9383-f8a0-409c-bbd9-e37b9566de3b",
+        "log_quantity": false,
+        "log_summary_type": "SUM",
+        "name": "Yoga",
+        "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+        "video_urls": Array [
+          "https://www.youtube.com/watch?v=nz5MCv0sFDA",
+          "https://www.youtube.com/watch?v=oexYiIy75V8",
+        ],
+      },
+    ],
+    "pack_name": "Best routine pack",
+    "pack_type": "routine",
+    "welcome_message": "Welcome to Focus Bear!",
+    "welcome_video_url": "www.youtube.com",
+  },
+]
+`;

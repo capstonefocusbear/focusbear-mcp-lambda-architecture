@@ -331,7 +331,7 @@ describe('HabitPackManagerService', () => {
     expect(response.message).toMatch(responseMessage);
   });
 
-  it('positive: should instal habit pack for user as default settings', async () => {
+  it('positive: should install habit pack for user as default settings', async () => {
     UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
     HabitPackRepositoryMock.orm.findOne
       .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
@@ -376,7 +376,6 @@ describe('HabitPackManagerService', () => {
       HabitPackServiceMock.serializeHabitPack.mockReturnValue(routineHabitPackDummy);
 
       const result = await habitPackManagerService.getUserInstalledPacks(userDummy.id);
-      console.log(result);
 
       expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toBeCalledWith(userDummy.id);
       expect(HabitPackRepositoryMock.getUserInstalledPacks).toBeCalledWith([packId]);

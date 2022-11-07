@@ -78,7 +78,7 @@ export const TeamRepositoryMock = {
 export const HabitPackRepositoryMock = {
   ...BaseRepositoryMock,
   getHabitPack: jest.fn(),
-  getApprovedHabitPacks: jest.fn(),
+  fetchPacksByFilter: jest.fn(),
   consistentlyUpdateHabitPack: jest.fn(),
   consistentlyInstallStandaloneHabitPack: jest.fn(),
   getUserInstalledPacks: jest.fn(),

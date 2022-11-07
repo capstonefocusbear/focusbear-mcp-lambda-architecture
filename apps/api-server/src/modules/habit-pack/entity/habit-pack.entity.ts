@@ -66,6 +66,12 @@ export class HabitPack extends BaseEntity {
   })
   marketplace_request?: MarketplaceRequestType;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  is_featured?: boolean;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 
@@ -74,6 +80,9 @@ export class HabitPack extends BaseEntity {
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.habit_pack)
   activity_templates?: ActivityTemplate[];
+
+  @OneToMany(() => User, (user) => user.sign_up_habit_pack)
+  signed_up_users?: User[];
 
   @ManyToOne(() => User, (user) => user.created_habit_packs)
   @JoinColumn({ name: 'user_id' })

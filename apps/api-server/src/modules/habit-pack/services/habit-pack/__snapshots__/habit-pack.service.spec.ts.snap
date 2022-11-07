@@ -52,7 +52,7 @@ Object {
 }
 `;
 
-exports[`HabitPackService getMarketplaceApprovedPacks Positive: should return an array of habit packs 1`] = `
+exports[`HabitPackService getMultipleHabitPacks positive: should fetch habit packs 1`] = `
 Array [
   Object {
     "description": "Sweeter pack!",

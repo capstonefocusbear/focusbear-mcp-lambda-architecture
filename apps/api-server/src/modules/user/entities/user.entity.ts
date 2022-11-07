@@ -160,6 +160,11 @@ export class User extends BaseEntity {
   })
   user_type?: UserTypes;
 
+  @Column({
+    type: 'uuid',
+  })
+  signed_up_via_habit_pack?: string;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 
@@ -194,6 +199,10 @@ export class User extends BaseEntity {
   @ManyToOne(() => Team, (team) => team.members)
   @JoinColumn({ name: 'member_of_team_id' })
   member_of_team?: Team;
+
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id)
+  @JoinColumn({ name: 'signed_up_via_habit_pack' })
+  sign_up_habit_pack?: User;
 
   @OneToOne(() => Activity, (activity) => activity.user)
   @JoinColumn({ name: 'current_activity_id' })

@@ -11,6 +11,7 @@ import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { HabitPackManagerService } from '../services/habit-pack/habit-pack-manager.service';
 import { InstallPackAsDefaultSettingsDto } from '../dto/install-pack-as-default-settings.dto';
 import { UserSettingsResponseDto } from '../../user/dto/user-settings-response.dto';
+import { GetMultiplePacksQueryDto } from '../dto/get-multiple-packs-query.dto';
 
 @Controller('habit-packs')
 @ApiTags('habit-packs')
@@ -25,11 +26,21 @@ export class HabitPackController {
     return this.habitPackService.getHabitPack(pack_id);
   }
 
-  @Get('marketplace-approved')
+  @Get()
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  getMarketplaceApprovedPacks(@AuthContext() { user }: Passport): Promise<HabitPack[]> {
-    return this.habitPackService.getMarketplaceApprovedPacks(user.id);
+  getHabitPacks(
+    @Query() { pack_type, marketplace_approval_status, is_featured }: GetMultiplePacksQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<HabitPack[]> {
+    return this.habitPackService.getMultipleHabitPacks(
+      {
+        pack_type,
+        marketplace_approval_status,
+        is_featured,
+      },
+      user.id,
+    );
   }
 
   @Put()

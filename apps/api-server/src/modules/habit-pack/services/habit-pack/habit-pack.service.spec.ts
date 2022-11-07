@@ -90,7 +90,7 @@ describe('HabitPackService', () => {
     });
   });
 
-  describe('getMarketplaceApprovedPacks', () => {
+  describe('getMultipleHabitPacks', () => {
     it('Negative: should return that the user does not exist', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
@@ -105,16 +105,26 @@ describe('HabitPackService', () => {
       expect(response.message).toMatch(responseMessage);
     });
 
-    it('Positive: should return an array of habit packs', async () => {
+    it('positive: should fetch habit packs', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.getApprovedHabitPacks.mockResolvedValueOnce(marketplaceApprovedPacksDummy);
+      HabitPackRepositoryMock.fetchPacksByFilter.mockResolvedValueOnce(marketplaceApprovedPacksDummy);
       ActivityTemplateParserServiceMock.serialize
         .mockReturnValueOnce(standaloneHabitPackDummy)
         .mockReturnValueOnce(routineHabitPackDummy);
-      const result = await habitPackService.getMarketplaceApprovedPacks(userDummy.id);
+
+      const result = await habitPackService.getMultipleHabitPacks(
+        {
+          is_featured: false,
+          marketplace_approval_status: true,
+        },
+        userDummy.id,
+      );
 
       expect(ActivityTemplateParserServiceMock.serialize).toBeCalled();
-      expect(HabitPackRepositoryMock.getApprovedHabitPacks).toBeCalled();
+      expect(HabitPackRepositoryMock.fetchPacksByFilter).toBeCalledWith({
+        is_featured: false,
+        marketplace_approval_status: true,
+      });
       expect(result).toMatchSnapshot();
     });
   });

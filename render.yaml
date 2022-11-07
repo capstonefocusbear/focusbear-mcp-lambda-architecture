@@ -5,7 +5,7 @@ services:
 - type: web
   name: eyst-backend-prod
   env: docker
-  plan: starter
+  plan: standard
   healthCheckPath: /healthcheck
   autoDeploy: false
   scaling:

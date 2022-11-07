@@ -9,6 +9,7 @@ import { ActivityTemplateParserService } from '../../../activity-template/servic
 import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activity-template.dto';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { UserTypes } from '../../../user/domain/user-types.enum';
+import { GetMultiplePacksQueryDto } from '../../dto/get-multiple-packs-query.dto';
 
 @Injectable()
 export class HabitPackService {
@@ -30,11 +31,18 @@ export class HabitPackService {
     return this.serializeHabitPack(habitPack);
   }
 
-  async getMarketplaceApprovedPacks(user_id: string): Promise<HabitPack[]> {
+  async getMultipleHabitPacks(
+    { pack_type, marketplace_approval_status, is_featured }: GetMultiplePacksQueryDto,
+    user_id: string,
+  ): Promise<HabitPack[]> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const marketplaceApprovedPacks = await this.habitPackRepository.getApprovedHabitPacks();
-    const serializedApprovedPacks = marketplaceApprovedPacks.map((pack) => this.serializeHabitPack(pack));
+    const fetchedPacks = await this.habitPackRepository.fetchPacksByFilter({
+      pack_type,
+      marketplace_approval_status,
+      is_featured,
+    });
+    const serializedApprovedPacks = fetchedPacks.map((pack) => this.serializeHabitPack(pack));
     return serializedApprovedPacks;
   }
 

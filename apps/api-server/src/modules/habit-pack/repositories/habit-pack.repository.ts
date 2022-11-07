@@ -5,6 +5,7 @@ import { ActivityTemplate } from '../../activity-template/entity/activity-templa
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
+import { GetMultiplePacksQueryDto } from '../dto/get-multiple-packs-query.dto';
 import { HabitPack } from '../entity/habit-pack.entity';
 
 @Injectable()
@@ -119,8 +120,12 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     return fetchedPacks;
   }
 
-  async getApprovedHabitPacks(): Promise<HabitPack[]> {
-    const fetchedPack = await this.orm
+  async fetchPacksByFilter({
+    pack_type,
+    marketplace_approval_status,
+    is_featured,
+  }: GetMultiplePacksQueryDto): Promise<HabitPack[]> {
+    const query = this.orm
       .createQueryBuilder('habit_packs')
       .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
       .leftJoinAndSelect('activity_templates.choices', 'choices')
@@ -135,6 +140,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'habit_packs.welcome_video_url',
         'habit_packs.marketplace_approval_status',
         'habit_packs.marketplace_request',
+        'habit_packs.is_featured',
         'activity_templates.id',
         'activity_templates.log_quantity',
         'activity_templates.duration_seconds',
@@ -149,10 +155,16 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
-      ])
-      .where('habit_packs.marketplace_approval_status = :true', { true: true })
-      .getMany();
+      ]);
 
-    return fetchedPack;
+    if (pack_type) {
+      query.andWhere('habit_packs.pack_type = :pack_type', { pack_type });
+    }
+    query.andWhere('habit_packs.marketplace_approval_status = :marketplace_approval_status', {
+      marketplace_approval_status,
+    });
+    query.andWhere('habit_packs.is_featured = :is_featured', { is_featured });
+    const fetchedPacks = await query.getMany();
+    return fetchedPacks;
   }
 }

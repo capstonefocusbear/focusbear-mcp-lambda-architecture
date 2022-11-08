@@ -326,6 +326,7 @@ describe('CompletedActivityService', () => {
         ),
       );
     });
+
     it('positive: push notification should be sent via pusher', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
@@ -422,6 +423,94 @@ describe('CompletedActivityService', () => {
           { generateId: false, log_quantity: ActivityDummy.log_quantity },
         ),
       );
+    });
+  });
+
+  describe('skipActivity', () => {
+    const completedActivity: CreateCompletedActivityDto = {
+      activity_id: ActivityDummy.id,
+      quantity_logged: randomInt(20),
+      duration_logged: 600,
+      note_logged: 'some text',
+      device_id: DeviceDummy.id,
+      activity_sequence_id: ActivityDummy.activity_sequence_id,
+      start_time: new Date(Date.now() - 60),
+      finish_time: new Date(Date.now() - 1),
+    };
+
+    const user_id = userDummy.id;
+
+    const sequenceWhenThereIsNextActivity = new ActivitySequence({
+      ...ActivitySequenceDummy,
+      activity_ids: [completedActivity.activity_id, ...ActivitySequenceDummy.activity_ids],
+    });
+
+    const sequenceWhenThereIsNoNextActivity = new ActivitySequence({
+      ...ActivitySequenceDummy,
+      activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
+    });
+    it('positive: the target device should be marked as leader', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedactivityService.skipActivity(completedActivity, { user_id });
+
+      expect(DeviceServiceMock.markAsLeader).toBeCalledWith(completedActivity.device_id, user_id);
+    });
+
+    it('positive: if there is the next activity in the sequence, its id should be set as current_activity_id for the given User', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedactivityService.skipActivity(completedActivity, { user_id });
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+        current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
+        current_activity_sequence_id: sequenceWhenThereIsNextActivity.id,
+        current_activity_assigned_at: expect.toBeDate(),
+        current_sequence_started_at: expect.toBeDate(),
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+      });
+    });
+
+    it('positive: if there is no next activity in the sequence, current_activity_id should be set NULL for the given User', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+        current_sequence_started_at: new Date(),
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedactivityService.skipActivity(completedActivity, { user_id });
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+        current_activity_id: null,
+        current_activity_sequence_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: userWithCurrentActivity.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_completing_sequence_log_id: null,
+      });
     });
   });
 

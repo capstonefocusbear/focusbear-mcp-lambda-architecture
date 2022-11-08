@@ -4,8 +4,8 @@ import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto
 export class CurrentActivityState {
   constructor(
     { nextActivity, lastSequenceId, currentActivityIndex },
-    completedActivity: CreateCompletedActivityDto,
     user: User,
+    completedActivity?: CreateCompletedActivityDto,
   ) {
     this.current_activity_id = nextActivity || null;
     this.current_activity_sequence_id = nextActivity ? lastSequenceId : null;
@@ -17,7 +17,7 @@ export class CurrentActivityState {
       this.current_sequence_started_at = null;
     }
     if (currentActivityIndex === 0) {
-      this.current_sequence_started_at = completedActivity.start_time;
+      this.current_sequence_started_at = completedActivity ? completedActivity.start_time : new Date();
     }
   }
 

@@ -25,6 +25,7 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: false,
+    transformer: BaseEntity.encrypteField('email'),
   })
   email?: string;
 

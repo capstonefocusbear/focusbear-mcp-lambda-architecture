@@ -56,16 +56,20 @@ export class WebhookHandlerStrategy {
   }
 
   async EXPIRATION(event) {
-    const isTeamOwner = this.checkTeamOwnerEntitlement(event);
-    if (!isTeamOwner) return null;
-    const owner_id = event.app_user_id;
-    const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
-    team.is_active = false;
-    const membersIds = this.extractMemberIds(team);
-    const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
-    const bulckRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
-    const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckRevokeMembersAccess]);
-    return updatedTeam;
+    try {
+      const isTeamOwner = this.checkTeamOwnerEntitlement(event);
+      if (!isTeamOwner) return null;
+      const owner_id = event.app_user_id;
+      const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
+      team.is_active = false;
+      const membersIds = this.extractMemberIds(team);
+      const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
+      const bulckRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
+      const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckRevokeMembersAccess]);
+      return updatedTeam;
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   private extractMemberIds(team: Team): string[] {
@@ -78,6 +82,8 @@ export class WebhookHandlerStrategy {
     return null;
   }
 
+  // TODO: handle creating teams for subscriptions
+  // assigned from the RevenueCat dashboard
   NON_RENEWING_PURCHASE() {
     return null;
   }

@@ -35,8 +35,7 @@ export class ActivitySequence extends BaseEntity {
 
   @Column({
     type: 'jsonb',
-    nullable: true,
-    // transformer: BaseEntity.encryptJSONField('generated_sequence_activity_ids'),
+    nullable: true
   })
   generated_sequence_activity_ids?: string[];
 

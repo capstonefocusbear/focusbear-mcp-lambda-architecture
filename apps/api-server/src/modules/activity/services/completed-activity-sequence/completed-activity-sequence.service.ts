@@ -4,7 +4,6 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
 import { CompletedActivityStatItem } from '../../domain/completed-activity-stat-item.model';
-import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
 import { GetCompletedActivitySequenceStatsParamsDto } from '../../dto/get-completed-activity-sequence-stats.dto';
 import { GetCompletedActivityStatsQueryDto } from '../../dto/get-completed-activity-stats.dto';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
@@ -19,8 +18,7 @@ export class CompletedActivitySequenceService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async getOrCreateCompletingSequenceLog(user: User, completedActivity: CreateCompletedActivityDto): Promise<any> {
-    const { activity_sequence_id, start_time } = completedActivity;
+  async getOrCreateCompletingSequenceLog(user: User, activity_sequence_id: string, start_time: Date): Promise<any> {
     const { current_activity_sequence_id, completing_sequence_log } = user;
     const hasCurrentSequence = user?.current_activity_sequence_id;
     const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;

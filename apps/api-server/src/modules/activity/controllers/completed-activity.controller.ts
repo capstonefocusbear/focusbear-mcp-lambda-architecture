@@ -14,6 +14,7 @@ import {
 } from '../dto/get-completed-activity-stats.dto';
 import { GetDaySummaryQueryDto } from '../dto/get-day-summary-query.dto';
 import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
+import { SkipActivityDto } from '../dto/skip-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 
@@ -30,6 +31,11 @@ export class CompletedActivityController {
     @AuthContext() { user }: Passport,
   ): Promise<CompletedActivityResponse> {
     return this.completedActivityService.completeActivity(completedActivity, { user_id: user.id });
+  }
+
+  @Post('skip')
+  skipActivity(@Body() skippedActivity: SkipActivityDto, @AuthContext() { user }: Passport) {
+    return this.completedActivityService.skipActivity(skippedActivity, { user_id: user.id });
   }
 
   @Get(':activity_id/stats')

@@ -71,7 +71,11 @@ describe('CompletedActivitySequenceService', () => {
         device_id: randomUUID(),
       };
 
-      const result = await completedActivitySequenceService.getOrCreateCompletingSequenceLog(user, completedActivity);
+      const result = await completedActivitySequenceService.getOrCreateCompletingSequenceLog(
+        user,
+        completedActivity.activity_sequence_id,
+        completedActivity.start_time,
+      );
 
       expect(result).toEqual(user.completing_sequence_log);
     });
@@ -92,7 +96,11 @@ describe('CompletedActivitySequenceService', () => {
         device_id: randomUUID(),
       };
 
-      await completedActivitySequenceService.getOrCreateCompletingSequenceLog(user, completedActivity);
+      await completedActivitySequenceService.getOrCreateCompletingSequenceLog(
+        user,
+        completedActivity.activity_sequence_id,
+        completedActivity.start_time,
+      );
 
       expect(CompletedActivityRepositoryMock.create).toBeCalledWith({
         id: undefined,

@@ -58,7 +58,7 @@ export class CompletedActivity extends BaseEntity {
 
   @Column({
     type: 'text',
-    transformer: BaseEntity.encrypteField('activity_note'),
+    transformer: BaseEntity.encryptField('activity_note'),
   })
   activity_note?: string;
 

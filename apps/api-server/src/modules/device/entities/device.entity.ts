@@ -33,7 +33,7 @@ export class Device extends BaseEntity {
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encrypteJSONField('metadata'),
+    transformer: BaseEntity.encryptJSONField('metadata'),
   })
   metadata?: DeviceMetadata;
 

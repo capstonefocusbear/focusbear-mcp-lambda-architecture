@@ -31,6 +31,7 @@ import { FocusModeDaySummaryItem } from '../../../focus-mode/domain/focus-mode-d
 import { ActivityDurationDaySummaryItem } from '../../domain/activity-duration-day-summary-item.mode';
 import { ActivityQuantityDaySummaryItem } from '../../domain/activity-quantity-day-summary-item.mode';
 import { DaySummary } from '../../domain/day-summary.mode';
+import { SkipActivityDto } from '../../dto/skip-activity.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -66,20 +67,15 @@ export class CompletedActivityService {
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       return createdItem;
     }
-    this.validateComplitingActivity(user, sequence, activity, choice);
-    const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
-      user,
+    const completingSequenceLog = await this.updateUserAndSequence(
       completedActivity,
-    );
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(
+      { user_id },
+      user,
       sequence,
-      activity_id,
-      completedActivity,
-      user,
+      activity,
+      choice,
+      true,
     );
-    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
-    await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentState, current_completing_sequence_log_id });
     const createdItem = await this.saveCompletedLog(
       completedActivity,
       activity,
@@ -87,9 +83,54 @@ export class CompletedActivityService {
       user_id,
       completingSequenceLog,
     );
-    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
     await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
     return createdItem;
+  }
+
+  async skipActivity(activityData: SkipActivityDto, { user_id }: GetUserSettingsDto) {
+    const { activity_sequence_id, activity_id, choice_id } = activityData;
+    const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
+      activity_sequence_id,
+      activity_id,
+      user_id,
+      choice_id,
+    );
+    await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+  }
+
+  async updateUserAndSequence(
+    activityData: CreateCompletedActivityDto | SkipActivityDto,
+    { user_id }: GetUserSettingsDto,
+    user: User,
+    sequence: ActivitySequence,
+    activity: Activity,
+    choice: Activity,
+    is_skipped: boolean,
+  ) {
+    this.validateCompletingActivity(user, sequence, activity, choice);
+    const { device_id, activity_sequence_id, activity_id } = activityData;
+    const start_time = activityData?.start_time ?? new Date();
+    const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
+      user,
+      activity_sequence_id,
+      start_time,
+    );
+    let current_state;
+    let next_activity;
+    if (is_skipped) {
+      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user);
+      current_state = currentState;
+      next_activity = nextActivity;
+    } else {
+      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user, activityData);
+      current_state = currentState;
+      next_activity = nextActivity;
+    }
+    const current_completing_sequence_log_id = next_activity ? completingSequenceLog.id : null;
+    await this.deviceService.markAsLeader(device_id, user_id);
+    await this.userRepository.orm.update(user_id, { ...current_state, current_completing_sequence_log_id });
+    if (!next_activity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
+    return completingSequenceLog;
   }
 
   private async fetchPreparatoryData(
@@ -112,7 +153,7 @@ export class CompletedActivityService {
     return [sequence, activity, user, choice];
   }
 
-  private validateComplitingActivity(
+  private validateCompletingActivity(
     user: User,
     sequence: ActivitySequence,
     activity: Activity,
@@ -150,8 +191,8 @@ export class CompletedActivityService {
   private defineNextCurrentActivity(
     sequence: ActivitySequence,
     activity_id: string,
-    completedActivity: CreateCompletedActivityDto,
     user: User,
+    completedActivity?: CreateCompletedActivityDto | SkipActivityDto,
   ): {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
@@ -169,8 +210,8 @@ export class CompletedActivityService {
         lastSequenceId: id,
         currentActivityIndex,
       },
-      completedActivity,
       user,
+      completedActivity,
     );
     return { nextActivity, currentState };
   }

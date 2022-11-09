@@ -29,14 +29,14 @@ export class ActivitySequence extends BaseEntity {
   @Column({
     type: 'jsonb',
     nullable: false,
-    transformer: BaseEntity.encrypteJSONField('activity_ids'),
+    transformer: BaseEntity.encryptJSONField('activity_ids'),
   })
   activity_ids?: string[];
 
   @Column({
     type: 'jsonb',
     nullable: true,
-    // transformer: BaseEntity.encrypteJSONField('generated_sequence_activity_ids'),
+    // transformer: BaseEntity.encryptJSONField('generated_sequence_activity_ids'),
   })
   generated_sequence_activity_ids?: string[];
 

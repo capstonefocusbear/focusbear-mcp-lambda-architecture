@@ -20,25 +20,25 @@ export class FocusMode extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: false,
-    transformer: BaseEntity.encrypteField('name'),
+    transformer: BaseEntity.encryptField('name'),
   })
   name?: string;
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encrypteJSONField('allowed_apps'),
+    transformer: BaseEntity.encryptJSONField('allowed_apps'),
   })
   allowed_apps?: string[];
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encrypteJSONField('allowed_urls'),
+    transformer: BaseEntity.encryptJSONField('allowed_urls'),
   })
   allowed_urls?: string[];
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encrypteJSONField('metadata'),
+    transformer: BaseEntity.encryptJSONField('metadata'),
   })
   metadata?: any;
 

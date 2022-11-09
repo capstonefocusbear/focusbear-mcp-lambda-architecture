@@ -16,4 +16,7 @@ export class SkipActivityDto {
   @IsOptional()
   @IsUUID('4')
   choice_id?: string;
+
+  @IsOptional()
+  start_time?: Date;
 }

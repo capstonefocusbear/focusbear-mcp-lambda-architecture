@@ -50,8 +50,8 @@ export class WebhookHandlerStrategy {
     team.expires_date = new Date(event.expiration_at_ms);
     const membersIds = this.extractMemberIds(team);
     const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembershipe(id);
-    const bulckGrantMembersAccess = Promise.all(membersIds.map(grantMemberAccess));
-    const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckGrantMembersAccess]);
+    const bulkGrantMembersAccess = Promise.all(membersIds.map(grantMemberAccess));
+    const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkGrantMembersAccess]);
     return updatedTeam;
   }
 
@@ -64,8 +64,8 @@ export class WebhookHandlerStrategy {
       team.is_active = false;
       const membersIds = this.extractMemberIds(team);
       const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
-      const bulckRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
-      const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulckRevokeMembersAccess]);
+      const bulkRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
+      const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkRevokeMembersAccess]);
       return updatedTeam;
     } catch (error) {
       console.error(error);
@@ -84,6 +84,7 @@ export class WebhookHandlerStrategy {
 
   // TODO: handle creating teams for subscriptions
   // assigned from the RevenueCat dashboard
+  // https://github.com/Focus-Bear/backend/issues/54
   NON_RENEWING_PURCHASE() {
     return null;
   }

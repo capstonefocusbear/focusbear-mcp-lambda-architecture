@@ -50,7 +50,7 @@ export class CompletedActivityService {
     completedActivity: CreateCompletedActivityDto,
     { user_id }: GetUserSettingsDto,
   ): Promise<CompletedActivityResponse> {
-    const { device_id, activity_sequence_id, activity_id, choice_id, start_time } = completedActivity;
+    const { device_id, activity_sequence_id, activity_id, choice_id } = completedActivity;
     const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
       activity_sequence_id,
       activity_id,
@@ -67,21 +67,15 @@ export class CompletedActivityService {
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       return createdItem;
     }
-    this.validateCompletingActivity(user, sequence, activity, choice);
-    const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
-      user,
-      activity_sequence_id,
-      start_time,
-    );
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(
-      sequence,
-      activity_id,
-      user,
+    const completingSequenceLog = await this.updateUserAndSequence(
       completedActivity,
+      { user_id },
+      user,
+      sequence,
+      activity,
+      choice,
+      true,
     );
-    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
-    await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentState, current_completing_sequence_log_id });
     const createdItem = await this.saveCompletedLog(
       completedActivity,
       activity,
@@ -89,33 +83,54 @@ export class CompletedActivityService {
       user_id,
       completingSequenceLog,
     );
-    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
     await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
     return createdItem;
   }
 
-  async skipActivity(
-    { activity_id, activity_sequence_id, choice_id, device_id }: SkipActivityDto,
-    { user_id }: GetUserSettingsDto,
-  ) {
+  async skipActivity(activityData: SkipActivityDto, { user_id }: GetUserSettingsDto) {
+    const { activity_sequence_id, activity_id, choice_id } = activityData;
     const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
       activity_sequence_id,
       activity_id,
       user_id,
       choice_id,
     );
+    await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+  }
+
+  async updateUserAndSequence(
+    activityData: CreateCompletedActivityDto | SkipActivityDto,
+    { user_id }: GetUserSettingsDto,
+    user: User,
+    sequence: ActivitySequence,
+    activity: Activity,
+    choice: Activity,
+    is_skipped: boolean,
+  ) {
     this.validateCompletingActivity(user, sequence, activity, choice);
-    const start_time = new Date();
+    const { device_id, activity_sequence_id, activity_id } = activityData;
+    const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       user,
       activity_sequence_id,
       start_time,
     );
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user);
-    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
+    let current_state;
+    let next_activity;
+    if (is_skipped) {
+      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user);
+      current_state = currentState;
+      next_activity = nextActivity;
+    } else {
+      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user, activityData);
+      current_state = currentState;
+      next_activity = nextActivity;
+    }
+    const current_completing_sequence_log_id = next_activity ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...currentState, current_completing_sequence_log_id });
-    if (!nextActivity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
+    await this.userRepository.orm.update(user_id, { ...current_state, current_completing_sequence_log_id });
+    if (!next_activity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
+    return completingSequenceLog;
   }
 
   private async fetchPreparatoryData(
@@ -177,7 +192,7 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     activity_id: string,
     user: User,
-    completedActivity?: CreateCompletedActivityDto,
+    completedActivity?: CreateCompletedActivityDto | SkipActivityDto,
   ): {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;

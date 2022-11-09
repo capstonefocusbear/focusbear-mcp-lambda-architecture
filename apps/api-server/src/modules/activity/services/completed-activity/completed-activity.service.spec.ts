@@ -449,6 +449,7 @@ describe('CompletedActivityService', () => {
       ...ActivitySequenceDummy,
       activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
     });
+
     it('positive: the target device should be marked as leader', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);

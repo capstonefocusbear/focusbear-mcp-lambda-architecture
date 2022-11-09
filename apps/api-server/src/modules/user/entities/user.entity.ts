@@ -25,7 +25,7 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: false,
-    transformer: BaseEntity.encrypteField('email'),
+    // transformer: BaseEntity.encryptField('email'),
   })
   email?: string;
 
@@ -47,7 +47,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    transformer: BaseEntity.encrypteField('name'),
+    transformer: BaseEntity.encryptField('name'),
   })
   name?: string;
 
@@ -149,7 +149,7 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encrypteJSONField('local_device_settings'),
+    transformer: BaseEntity.encryptJSONField('local_device_settings'),
   })
   local_device_settings?: UpdateLocalDeviceSettingsDto;
 

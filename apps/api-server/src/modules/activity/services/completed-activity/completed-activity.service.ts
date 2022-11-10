@@ -95,7 +95,14 @@ export class CompletedActivityService {
       user_id,
       choice_id,
     );
+    await this.saveActivityAsSkipped(user, activity_id);
     await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+  }
+
+  async saveActivityAsSkipped(user: User, activity_id: string) {
+    const skippedActivities = user.current_sequence_skipped_activities ?? [];
+    skippedActivities.push(activity_id);
+    await this.userRepository.update(user.id, { current_sequence_skipped_activities: skippedActivities });
   }
 
   async updateUserAndSequence(
@@ -115,8 +122,8 @@ export class CompletedActivityService {
       activity_sequence_id,
       start_time,
     );
-    let current_state;
-    let next_activity;
+    let current_state: CurrentActivityState;
+    let next_activity: string;
     if (is_skipped) {
       const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user);
       current_state = currentState;
@@ -129,7 +136,9 @@ export class CompletedActivityService {
     const current_completing_sequence_log_id = next_activity ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
     await this.userRepository.orm.update(user_id, { ...current_state, current_completing_sequence_log_id });
-    if (!next_activity) await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id);
+    if (!next_activity) {
+      await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
+    }
     return completingSequenceLog;
   }
 
@@ -159,16 +168,13 @@ export class CompletedActivityService {
     activity: Activity,
     choice?: Activity,
   ): void | never {
-    const { current_activity_id, current_activity_sequence_id } = user;
+    const { current_activity_sequence_id } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return this.validateNewSequence(sequence, activity.id);
     const isComplitingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    const isComplitingActivityTheCurrent = activity.id === current_activity_id || !current_activity_id;
     const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
-    const notCurrentActivityMessage = `activity_id: ${activity.id} is not a current activity: ${current_activity_id}`;
     if (!isComplitingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
-    if (!isComplitingActivityTheCurrent) throw new BadRequestException(notCurrentActivityMessage);
   }
 
   private validateNewSequence({ sequenceActivityIds, id }: ActivitySequence, activity_id: string): void | never {

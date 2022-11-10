@@ -32,11 +32,16 @@ export class CompletedActivitySequenceService {
     return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
 
-  async completeActivitySequence(log_id: string): Promise<CompletedActivitySequence> {
+  async completeActivitySequence(log_id: string, user_id: string): Promise<CompletedActivitySequence> {
     const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
     if (!uncompletedSequenceLog) throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
     uncompletedSequenceLog.finalizeUncompletedLog();
+    await this.nullifyCurrentSequenceSkippedActivities(user_id);
     return this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+  }
+
+  async nullifyCurrentSequenceSkippedActivities(user_id: string) {
+    await this.userRepository.update(user_id, { current_sequence_skipped_activities: null });
   }
 
   async getStatsByActivitySequencePerDay(
@@ -84,7 +89,7 @@ export class CompletedActivitySequenceService {
     const getUserOptions = { relations: ['current_activity', 'current_activity_sequence', 'completing_sequence_log'] };
     const user = await this.userRepository.orm.findOne(user_id, getUserOptions);
     const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
-    hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id) : null;
+    hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
     const nullifiedCurrentSequence = {
       current_activity_sequence_id: null,
       current_activity_id: null,

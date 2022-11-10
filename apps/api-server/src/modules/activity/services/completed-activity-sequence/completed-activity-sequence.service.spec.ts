@@ -48,6 +48,8 @@ describe('CompletedActivitySequenceService', () => {
     completedActivitySequenceService = moduleRef.get<CompletedActivitySequenceService>(
       CompletedActivitySequenceService,
     );
+
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -119,7 +121,7 @@ describe('CompletedActivitySequenceService', () => {
       let exception: any;
 
       try {
-        await completedActivitySequenceService.completeActivitySequence(UncompletedSequenceLogDummy.id);
+        await completedActivitySequenceService.completeActivitySequence(UncompletedSequenceLogDummy.id, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -130,10 +132,11 @@ describe('CompletedActivitySequenceService', () => {
     });
 
     it('positive: new completedActivitySequence should be finalized ', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });
       CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(log);
 
-      await completedActivitySequenceService.completeActivitySequence(log.id);
+      await completedActivitySequenceService.completeActivitySequence(log.id, userDummy.id);
 
       log.finalizeUncompletedLog();
       expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
@@ -201,11 +204,11 @@ describe('CompletedActivitySequenceService', () => {
     it('negative: if user has another current sequence thorw BadRequestExcaption', async () => {
       const activity_sequence_id = randomUUID();
       const userWithWrongCurrentSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithWrongCurrentSequence);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithWrongCurrentSequence);
       let exception: any;
 
       try {
-        await completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, userDummy.id);
+        await completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, testUser.id);
       } catch (error) {
         exception = error;
       }
@@ -228,7 +231,7 @@ describe('CompletedActivitySequenceService', () => {
         testUser.id,
       );
 
-      expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id);
+      expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id, testUser.id);
     });
 
     it('positive: if user has inconsistent current sequence or null values, skip conplete operation and set given id as last completed', async () => {
@@ -268,6 +271,14 @@ describe('CompletedActivitySequenceService', () => {
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
       });
+    });
+  });
+
+  describe('nullifyCurrentSequenceSkippedActivities', () => {
+    it('positive: should set the users current_sequence_skipped_activities to null', async () => {
+      await completedActivitySequenceService.nullifyCurrentSequenceSkippedActivities(userDummy.id);
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { current_sequence_skipped_activities: null });
     });
   });
 });

@@ -35,7 +35,7 @@ export class ActivitySequence extends BaseEntity {
 
   @Column({
     type: 'jsonb',
-    nullable: true
+    nullable: true,
   })
   generated_sequence_activity_ids?: string[];
 

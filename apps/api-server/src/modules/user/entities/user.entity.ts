@@ -166,6 +166,11 @@ export class User extends BaseEntity {
   })
   signed_up_via_habit_pack?: string;
 
+  @Column({
+    type: 'jsonb',
+  })
+  current_sequence_skipped_activities?: string[];
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 

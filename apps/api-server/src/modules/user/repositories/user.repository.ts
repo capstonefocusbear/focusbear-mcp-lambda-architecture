@@ -95,6 +95,7 @@ export class UserRepository extends BaseRepository<User> {
         'users.last_completed_sequence_started_at',
         'users.id',
         'users.last_completed_sequence_at',
+        'users.current_sequence_skipped_activities',
         'current_activity',
         'current_activity_sequence',
         'last_completed_sequence',

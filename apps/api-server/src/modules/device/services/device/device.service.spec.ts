@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { DeviceDummy } from '../../../../../test/dummies ';
+import { DeviceDummy } from '../../../../../test/dummies';
 import { DeviceRepositoryMock } from '../../../../../test/mocks';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';

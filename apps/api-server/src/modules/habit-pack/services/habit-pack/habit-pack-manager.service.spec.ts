@@ -10,8 +10,8 @@ import {
   standaloneHabitPackDBResponseDummy,
   standaloneHabitPackDummy,
   userSettingsDummy,
-} from '../../../../../test/dummies /habit-packs.dummies';
-import { userDummy } from '../../../../../test/dummies ';
+} from '../../../../../test/dummies/habit-packs.dummies';
+import { userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {

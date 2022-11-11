@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SendGridService } from '../../../../../../../libs/send-grid/src';
 import { JwtService } from '../../../../../../../libs/jwt/src';
-import { TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies ';
+import { TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
 import {
   JwtServiceMock,
   RevenueCatServiceMock,

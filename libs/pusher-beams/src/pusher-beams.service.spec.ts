@@ -1,6 +1,6 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { pusherBeamsPublishRequestFocusBlockDummy } from '../../../apps/api-server/test/dummies ';
+import { pusherBeamsPublishRequestFocusBlockDummy } from '../../../apps/api-server/test/dummies';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IPusherBeamsOptions } from './interfaces';
 import { PusherBeamsModule } from './pusher-beams.module';

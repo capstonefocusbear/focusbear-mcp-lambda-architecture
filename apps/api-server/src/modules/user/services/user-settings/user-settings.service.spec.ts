@@ -10,7 +10,7 @@ import {
   userDummy,
   userSettingsDBResponseDummy,
   userSettingsDummy,
-} from '../../../../../test/dummies ';
+} from '../../../../../test/dummies';
 import {
   ActivityParserServiceMock,
   UserRepositoryMock,

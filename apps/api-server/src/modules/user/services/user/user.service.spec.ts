@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { configsArray } from '../../../../config/index';
 import { StripeService } from '../../../../../../../libs/stripe/src';
-import { auth0UserDummy, userDummy } from '../../../../../test/dummies ';
+import { auth0UserDummy, userDummy } from '../../../../../test/dummies';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,

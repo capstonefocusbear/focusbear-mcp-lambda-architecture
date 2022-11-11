@@ -7,8 +7,8 @@ import {
   createActivityTemplateContextDummy,
   createActivityTemplateActivityDataDummy,
   activityTemplateArrayDummy,
-} from '../../../../test/dummies /habit-packs.dummies';
-import { userDummy } from '../../../../test/dummies ';
+} from '../../../../test/dummies/habit-packs.dummies';
+import { userDummy } from '../../../../test/dummies';
 import { ActivityTemplateRepositoryMock, HabitPackRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
 import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { HabitPackRepository } from '../../habit-pack/repositories/habit-pack.repository';

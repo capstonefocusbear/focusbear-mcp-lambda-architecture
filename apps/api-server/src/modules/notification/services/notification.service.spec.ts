@@ -5,7 +5,7 @@ import {
   notificationDBResponseDummy,
   updateCalendarEventDummy,
   userDummy,
-} from '../../../../test/dummies ';
+} from '../../../../test/dummies';
 import { NotificationRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { NotificationRepository } from '../repository/notification.repository';

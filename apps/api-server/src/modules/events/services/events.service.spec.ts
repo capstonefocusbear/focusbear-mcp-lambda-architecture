@@ -3,7 +3,7 @@ import { SendinblueServiceMock, UserRepositoryMock } from '../../../../test/mock
 import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { sendinblueEventDummy, userDummy } from '../../../../test/dummies ';
+import { sendinblueEventDummy, userDummy } from '../../../../test/dummies';
 
 describe('EventService', () => {
   let eventsService: EventsService;

@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { standaloneHabitPackDummy } from '../../../../test/dummies /habit-packs.dummies';
+import { standaloneHabitPackDummy } from '../../../../test/dummies/habit-packs.dummies';
 import {
   ActivityTemplateRepositoryMock,
   HabitPackRepositoryMock,

@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { installedPackRecordDummy, routineHabitPackDummy } from '../../../../../test/dummies /habit-packs.dummies';
-import { userDummy } from '../../../../../test/dummies ';
+import { installedPackRecordDummy, routineHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
+import { userDummy } from '../../../../../test/dummies';
 import { InstalledPackRepositoryMock } from '../../../../../test/mocks';
 import { InstalledPackService } from './installed-pack.service';
 import { InstalledPackRepository } from '../../repositories/installed-pack.repository';

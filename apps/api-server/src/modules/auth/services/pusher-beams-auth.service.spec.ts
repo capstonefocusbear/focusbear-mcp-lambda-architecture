@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { userDummy } from '../../../../test/dummies ';
+import { userDummy } from '../../../../test/dummies';
 import { PusherBeamsAuthService } from './pusher-beams-auth.service';
 import { PusherBeamsServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
 import { UserRepository } from '../../user/repositories/user.repository';

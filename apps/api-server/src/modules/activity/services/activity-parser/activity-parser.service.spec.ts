@@ -4,7 +4,7 @@ import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { ActivityParserService } from './activity-parser.service';
-import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies ';
+import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
 
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;

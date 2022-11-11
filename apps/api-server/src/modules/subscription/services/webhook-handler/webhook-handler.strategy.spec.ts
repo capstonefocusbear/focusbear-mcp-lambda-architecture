@@ -1,7 +1,7 @@
 import { RevenueCatService } from '@app/revenue-cat';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { TeamWithMembersDummy, userDummy } from '../../../../../test/dummies ';
+import { TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
 import { UserRepositoryMock, TeamRepositoryMock, RevenueCatServiceMock } from '../../../../../test/mocks';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';

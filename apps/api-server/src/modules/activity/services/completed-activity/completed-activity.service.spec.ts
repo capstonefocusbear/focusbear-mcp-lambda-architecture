@@ -20,7 +20,7 @@ import {
   LeaderDeviceDummy,
   UncompletedSequenceLogDummy,
   userDummy,
-} from '../../../../../test/dummies ';
+} from '../../../../../test/dummies';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { CreateCompletedActivityDto } from '../../dto/create-completed-activity.dto';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';

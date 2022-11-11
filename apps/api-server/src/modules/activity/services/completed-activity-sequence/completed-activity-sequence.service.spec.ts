@@ -16,7 +16,7 @@ import {
   ActivitySequenceDummy,
   UncompletedSequenceLogDummy,
   userDummy,
-} from '../../../../../test/dummies ';
+} from '../../../../../test/dummies';
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';

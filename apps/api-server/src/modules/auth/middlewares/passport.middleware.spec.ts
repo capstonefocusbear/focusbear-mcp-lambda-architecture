@@ -3,7 +3,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { PassportMiddleware } from './passport.middleware';
 import { AuthService } from '../services/auth.service';
 import { AuthServiceMock } from '../../../../test/mocks';
-import { authtorizedPassportDummy } from '../../../../test/dummies ';
+import { authtorizedPassportDummy } from '../../../../test/dummies';
 import { HelperModule } from '../../helper/helper.module';
 
 describe('PassportMiddleware', () => {

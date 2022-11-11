@@ -6,7 +6,7 @@ import {
   FocusModeDummy,
   pusherBeamsPublishRequestDummy,
   userDummy,
-} from '../../../../../test/dummies ';
+} from '../../../../../test/dummies';
 import {
   CompletedFocusBlockRepositoryMock,
   FocusModeRepositoryMock,

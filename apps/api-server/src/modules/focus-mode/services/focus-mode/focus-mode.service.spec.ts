@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { userDummy } from '../../../../../test/dummies ';
+import { userDummy } from '../../../../../test/dummies';
 import { FocusModeRepositoryMock } from '../../../../../test/mocks';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';

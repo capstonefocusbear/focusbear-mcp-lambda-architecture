@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import * as _ from 'lodash';
+import { In } from 'typeorm';
 import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
@@ -198,7 +199,10 @@ export class HabitPackManagerService {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const installedPackIds = await this.installedPackRepository.fetchUserInstalledPackIds(user_id);
-    const deserializedInstalledPacks = await this.habitPackRepository.getUserInstalledPacks(installedPackIds);
+    const deserializedInstalledPacks = await this.habitPackRepository.orm.find({
+      where: { id: In(installedPackIds) },
+      relations: ['activity_templates', 'activity_templates.choices'],
+    });
     const serializedInstalledPacks = deserializedInstalledPacks.map((habitPack) => {
       return this.habitPackService.serializeHabitPack(habitPack);
     });

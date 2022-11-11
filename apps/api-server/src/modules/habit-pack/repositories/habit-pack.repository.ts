@@ -83,43 +83,6 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     return fetchedPack;
   }
 
-  async getUserInstalledPacks(packIds: string[]): Promise<HabitPack[]> {
-    const fetchedPacks = await this.orm
-      .createQueryBuilder('habit_packs')
-      .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
-      .leftJoinAndSelect('activity_templates.choices', 'choices')
-      .select([
-        'habit_packs.id',
-        'habit_packs.pack_name',
-        'habit_packs.creator_name',
-        'habit_packs.pack_type',
-        'habit_packs.description',
-        'habit_packs.description_video_url',
-        'habit_packs.welcome_message',
-        'habit_packs.welcome_video_url',
-        'habit_packs.marketplace_approval_status',
-        'habit_packs.marketplace_request',
-        'activity_templates.id',
-        'activity_templates.log_quantity',
-        'activity_templates.duration_seconds',
-        'activity_templates.log_summary_type',
-        'activity_templates.activity_type',
-        'activity_templates.activity_data',
-        'activity_templates.parent_id',
-        'activity_templates.pack_id',
-        'choices.id',
-        'choices.log_quantity',
-        'choices.duration_seconds',
-        'choices.log_summary_type',
-        'choices.activity_type',
-        'choices.activity_data',
-      ])
-      .where('habit_packs.id IN (:...id_array)', { id_array: packIds })
-      .getMany();
-
-    return fetchedPacks;
-  }
-
   async fetchPacksByFilter({
     pack_type,
     marketplace_approval_status,

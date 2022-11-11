@@ -372,13 +372,12 @@ describe('HabitPackManagerService', () => {
       const packId = randomUUID();
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       InstalledPackRepositoryMock.fetchUserInstalledPackIds.mockResolvedValueOnce([packId]);
-      HabitPackRepositoryMock.getUserInstalledPacks.mockResolvedValueOnce([routineHabitPackDBResponseDummy]);
+      HabitPackRepositoryMock.orm.find.mockResolvedValueOnce([routineHabitPackDBResponseDummy]);
       HabitPackServiceMock.serializeHabitPack.mockReturnValue(routineHabitPackDummy);
 
       const result = await habitPackManagerService.getUserInstalledPacks(userDummy.id);
 
       expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toBeCalledWith(userDummy.id);
-      expect(HabitPackRepositoryMock.getUserInstalledPacks).toBeCalledWith([packId]);
       expect(result).toMatchSnapshot();
     });
   });

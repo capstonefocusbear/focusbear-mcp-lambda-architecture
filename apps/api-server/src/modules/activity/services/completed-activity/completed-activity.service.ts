@@ -308,6 +308,19 @@ export class CompletedActivityService {
     });
   }
 
+  async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
+    const user = await this.userRepository.orm.findOne(user_id);
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const currentTime = DateTime.local();
+    const weekDays = DateTime.fromObject({
+      weekYear: currentTime.year,
+      weekNumber: currentTime.weekNumber,
+    });
+    const weekStartDay = weekDays.startOf('week');
+    const weekEndDay = weekDays.endOf('week');
+    return this.completedActivityRepository.getWeekSummaryAVG(user_id, weekStartDay, weekEndDay);
+  }
+
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);

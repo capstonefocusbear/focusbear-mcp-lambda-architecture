@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { Between, Connection, In, MoreThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityType } from '../domain/activity-type.enum';
@@ -105,6 +106,21 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       order: {
         start_time: 'DESC',
       },
+    });
+  }
+
+  async getWeekSummaryAVG(user_id: string, start_date: DateTime, end_date: DateTime): Promise<CompletedActivity[]> {
+    return this.orm.find({
+      where: {
+        user_id,
+        finish_time: Between(start_date, end_date),
+        activity: {
+          log_quantity: true,
+          type: ActivityType.break,
+          log_summary_type: LogSummaryType.AVERAGE,
+        },
+      },
+      relations: ['activity'],
     });
   }
 

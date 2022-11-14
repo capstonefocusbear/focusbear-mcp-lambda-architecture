@@ -318,7 +318,7 @@ export class CompletedActivityService {
     });
     const weekStartDay = weekDays.startOf('week');
     const weekEndDay = weekDays.endOf('week');
-    return this.completedActivityRepository.getWeekSummaryAVG(user_id, weekStartDay, weekEndDay);
+    return this.completedActivityRepository.getWeekSummaryTotal(user_id, weekStartDay, weekEndDay);
   }
 
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {

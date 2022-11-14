@@ -245,6 +245,9 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.deserializeStandaloneActivities.mockResolvedValueOnce(
         deserializedStandaloneActivitiesDummy,
       );
+      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
 
       await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
 
@@ -287,6 +290,9 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
         deserializedRoutineActivitiesDummy,
       );
+      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
 
       await habitPackService.createHabitPack(userDummy.id, routineHabitPackDummy);
 

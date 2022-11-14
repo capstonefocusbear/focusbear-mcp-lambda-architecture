@@ -72,6 +72,17 @@ export class HabitPack extends BaseEntity {
   })
   is_featured?: boolean;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  featured_for_onboarding?: boolean;
+
+  @Column({
+    type: 'varchar',
+  })
+  language?: string;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

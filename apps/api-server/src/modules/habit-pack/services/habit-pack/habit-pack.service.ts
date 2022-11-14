@@ -31,17 +31,10 @@ export class HabitPackService {
     return this.serializeHabitPack(habitPack);
   }
 
-  async getMultipleHabitPacks(
-    { pack_type, marketplace_approval_status, is_featured }: GetMultiplePacksQueryDto,
-    user_id: string,
-  ): Promise<HabitPack[]> {
+  async getMultipleHabitPacks(getPacksQuery: GetMultiplePacksQueryDto, user_id: string): Promise<HabitPack[]> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const fetchedPacks = await this.habitPackRepository.fetchPacksByFilter({
-      pack_type,
-      marketplace_approval_status,
-      is_featured,
-    });
+    const fetchedPacks = await this.habitPackRepository.fetchPacksByFilter(getPacksQuery);
     const serializedApprovedPacks = fetchedPacks.map((pack) => this.serializeHabitPack(pack));
     return serializedApprovedPacks;
   }
@@ -52,7 +45,7 @@ export class HabitPackService {
     return pack;
   }
 
-  async createHabitPack(user_id: string, createHabitPackDto: CreateHabitPackDto): Promise<CreateHabitPackDto> {
+  async createHabitPack(user_id: string, createHabitPackDto: CreateHabitPackDto): Promise<HabitPack> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const {
@@ -103,7 +96,7 @@ export class HabitPackService {
       });
     });
     await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
-    return createHabitPackDto;
+    return this.getHabitPack(id);
   }
 
   async deleteHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {

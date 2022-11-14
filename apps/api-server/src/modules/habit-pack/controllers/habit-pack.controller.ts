@@ -30,17 +30,11 @@ export class HabitPackController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   getHabitPacks(
-    @Query() { pack_type, marketplace_approval_status, is_featured }: GetMultiplePacksQueryDto,
+    @Query()
+    getPacksQuery: GetMultiplePacksQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<HabitPack[]> {
-    return this.habitPackService.getMultipleHabitPacks(
-      {
-        pack_type,
-        marketplace_approval_status,
-        is_featured,
-      },
-      user.id,
-    );
+    return this.habitPackService.getMultipleHabitPacks(getPacksQuery, user.id);
   }
 
   @Put()
@@ -49,7 +43,7 @@ export class HabitPackController {
   async createOrUpdateHabitPack(
     @Body() createHabitPackDto: CreateHabitPackDto,
     @AuthContext() { user }: Passport,
-  ): Promise<CreateHabitPackDto> {
+  ): Promise<HabitPack> {
     return this.habitPackService.createHabitPack(user.id, createHabitPackDto);
   }
 

@@ -87,6 +87,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     pack_type,
     marketplace_approval_status,
     is_featured,
+    featured_for_onboarding,
+    language,
   }: GetMultiplePacksQueryDto): Promise<HabitPack[]> {
     const query = this.orm
       .createQueryBuilder('habit_packs')
@@ -123,10 +125,20 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     if (pack_type) {
       query.andWhere('habit_packs.pack_type = :pack_type', { pack_type });
     }
-    query.andWhere('habit_packs.marketplace_approval_status = :marketplace_approval_status', {
-      marketplace_approval_status,
-    });
-    query.andWhere('habit_packs.is_featured = :is_featured', { is_featured });
+    if (typeof marketplace_approval_status === 'boolean') {
+      query.andWhere('habit_packs.marketplace_approval_status = :marketplace_approval_status', {
+        marketplace_approval_status,
+      });
+    }
+    if (typeof is_featured === 'boolean') {
+      query.andWhere('habit_packs.is_featured = :is_featured', { is_featured });
+    }
+    if (typeof featured_for_onboarding === 'boolean') {
+      query.andWhere('habit_packs.featured_for_onboarding = :featured_for_onboarding', { featured_for_onboarding });
+    }
+    if (language) {
+      query.andWhere('habit_packs.language = :language', { language });
+    }
     const fetchedPacks = await query.getMany();
     return fetchedPacks;
   }

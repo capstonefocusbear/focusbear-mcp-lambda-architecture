@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class GetMultiplePacksQueryDto {
   @IsOptional()
@@ -40,4 +40,8 @@ export class GetMultiplePacksQueryDto {
 
   @IsOptional()
   language?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  user_id?: string;
 }

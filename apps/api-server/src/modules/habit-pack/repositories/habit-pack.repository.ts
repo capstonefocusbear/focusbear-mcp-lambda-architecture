@@ -89,6 +89,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     is_featured,
     featured_for_onboarding,
     language,
+    user_id,
   }: GetMultiplePacksQueryDto): Promise<HabitPack[]> {
     const query = this.orm
       .createQueryBuilder('habit_packs')
@@ -138,6 +139,9 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     }
     if (language) {
       query.andWhere('habit_packs.language = :language', { language });
+    }
+    if (user_id) {
+      query.andWhere('habit_packs.user_id = :user_id', { user_id });
     }
     const fetchedPacks = await query.getMany();
     return fetchedPacks;

@@ -109,7 +109,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     });
   }
 
-  async getWeekSummaryTotal(user_id: string, start_date: DateTime, end_date: DateTime): Promise<CompletedActivity[]> {
+  async getWeekSummary(user_id: string, start_date: DateTime, end_date: DateTime): Promise<CompletedActivity[]> {
     return this.orm.find({
       where: {
         user_id,
@@ -117,10 +117,10 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         activity: {
           log_quantity: true,
           type: ActivityType.break,
-          log_summary_type: LogSummaryType.SUM,
         },
       },
       relations: ['activity'],
+      select: ['finish_time', 'quantity_logged'],
     });
   }
 

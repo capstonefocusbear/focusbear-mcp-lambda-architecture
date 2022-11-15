@@ -116,7 +116,6 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
         finish_time: Between(start_date, end_date),
         activity: {
           log_quantity: true,
-          type: ActivityType.break,
         },
       },
       relations: ['activity'],

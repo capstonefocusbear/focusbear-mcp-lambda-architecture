@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Put, UseGuards, Delete, Get, Query } from '@nestjs/common';
+import { Body, Controller, Param, Put, UseGuards, Delete, Get, Query, Post } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -57,14 +57,14 @@ export class HabitPackController {
     return this.habitPackService.deleteHabitPack(user.id, pack_id);
   }
 
-  @Get(':pack_id/install')
+  @Post(':pack_id/install')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   installHabitPack(@Param() { pack_id }: GetHabitPackParamDto, @AuthContext() { user }: Passport) {
     return this.habitPackManagerService.installHabitPack(user.id, pack_id);
   }
 
-  @Get(':pack_id/uninstall')
+  @Delete(':pack_id/uninstall')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   uninstallHabitPack(@Param() { pack_id }: GetHabitPackParamDto, @AuthContext() { user }: Passport) {

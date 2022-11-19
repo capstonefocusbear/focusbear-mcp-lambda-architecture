@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UserRepository } from '../../../user/repositories/user.repository';
-import { CreateHabitPackDto } from '../../dto/create-habit-pack-param.dto';
+import { UpsertHabitPackDto } from '../../dto/upsert-habit-pack.dto';
 import { HabitPack } from '../../entity/habit-pack.entity';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import { ActivityTemplateService } from '../../../activity-template/services/activity-template.service';
@@ -39,15 +39,21 @@ export class HabitPackService {
     return serializedApprovedPacks;
   }
 
-  serializeHabitPack({ activity_templates, pack_type, ...packData }: HabitPack): CreateHabitPackDto {
+  serializeHabitPack({ activity_templates, pack_type, ...packData }: HabitPack): UpsertHabitPackDto {
     const serializedActivityTemplates = this.activityTemplateParserService.serialize(pack_type, activity_templates);
     const pack: HabitPack = { pack_type, ...packData, ...serializedActivityTemplates };
     return pack;
   }
 
-  async createHabitPack(user_id: string, createHabitPackDto: CreateHabitPackDto): Promise<HabitPack> {
+  async upsertHabitPack(user_id: string, upsertHabitPackDto: UpsertHabitPackDto): Promise<HabitPack> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    const habitPack = await this.habitPackRepository.orm.findOne(upsertHabitPackDto.id);
+    if (habitPack && habitPack.user_id !== user_id && user.user_type !== UserTypes.ADMIN) {
+      throw new UnauthorizedException(
+        `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${upsertHabitPackDto.id}!`,
+      );
+    }
     const {
       pack_name,
       pack_type,
@@ -57,7 +63,7 @@ export class HabitPackService {
       welcome_video_url,
       marketplace_request,
       id,
-    } = createHabitPackDto;
+    } = upsertHabitPackDto;
     const newPack = new HabitPack({
       creator_name: user.name,
       pack_name,
@@ -71,8 +77,8 @@ export class HabitPackService {
       id,
     });
     let deserializedActivityTemplates;
-    if (createHabitPackDto.pack_type === HabitPackType.standalone) {
-      const { standalone_activities } = createHabitPackDto;
+    if (upsertHabitPackDto.pack_type === HabitPackType.standalone) {
+      const { standalone_activities } = upsertHabitPackDto;
       const activities = { standalone_activities };
       deserializedActivityTemplates = await this.activityTemplateParserService.deserializeStandaloneActivities(
         activities,
@@ -80,8 +86,8 @@ export class HabitPackService {
         id,
       );
     }
-    if (createHabitPackDto.pack_type === HabitPackType.routine) {
-      const { morning_activities, break_activities, evening_activities } = createHabitPackDto;
+    if (upsertHabitPackDto.pack_type === HabitPackType.routine) {
+      const { morning_activities, break_activities, evening_activities } = upsertHabitPackDto;
       const activities = { morning_activities, break_activities, evening_activities };
       deserializedActivityTemplates = await this.activityTemplateParserService.deserializeRoutineActivities(
         activities,

@@ -6,7 +6,7 @@ import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activi
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
-import { CreateHabitPackDto } from '../../dto/create-habit-pack-param.dto';
+import { UpsertHabitPackDto } from '../../dto/upsert-habit-pack.dto';
 import { HabitPackService } from './habit-pack.service';
 import { InstalledPackService } from '../installed-packs/installed-pack.service';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
@@ -61,7 +61,7 @@ export class HabitPackManagerService {
   async installRoutineHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
     const userSettings = await this.userSettingsService.getSettings({ user_id });
     const newSettings = _.cloneDeep(userSettings);
-    const habitPack: CreateHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
+    const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const formatAndMergeTemplatesWithActivities = (
       activities: UpdateActivityDto[],
       templates: UpdateActivityTemplateDto[],
@@ -86,7 +86,7 @@ export class HabitPackManagerService {
   }
 
   async installStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
-    const habitPack: CreateHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
+    const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const { standalone_activities } = habitPack;
     const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities);
     const serializedActivities: SerializedActivity = { standalone_activities: newActivities };

@@ -3,7 +3,7 @@ import { UpdateActivityTemplateDto } from '../../activity-template/dto/activity-
 import { HabitPackType } from '../domain/habit-pack-type.enum';
 import { MarketplaceRequestType } from '../domain/marketplace-request.enum';
 
-export class CreateHabitPackDto {
+export class UpsertHabitPackDto {
   @IsNotEmpty()
   @IsUUID('4')
   id?: string;

@@ -54,6 +54,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .select([
         'habit_packs.id',
         'habit_packs.pack_name',
+        'habit_packs.user_id',
         'habit_packs.creator_name',
         'habit_packs.pack_type',
         'habit_packs.description',
@@ -98,6 +99,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .select([
         'habit_packs.id',
         'habit_packs.pack_name',
+        'habit_packs.user_id',
         'habit_packs.creator_name',
         'habit_packs.pack_type',
         'habit_packs.description',

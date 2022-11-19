@@ -93,7 +93,7 @@ export const ActivityTemplateParserServiceMock = {
 
 export const HabitPackServiceMock = {
   deleteHabitPack: jest.fn(),
-  createHabitPack: jest.fn(),
+  upsertHabitPack: jest.fn(),
   getMultipleHabitPacks: jest.fn(),
   serializeHabitPack: jest.fn(),
   getHabitPack: jest.fn(),

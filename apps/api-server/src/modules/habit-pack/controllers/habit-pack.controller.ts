@@ -4,7 +4,7 @@ import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { HabitPack } from '../entity/habit-pack.entity';
-import { CreateHabitPackDto } from '../dto/create-habit-pack-param.dto';
+import { UpsertHabitPackDto } from '../dto/upsert-habit-pack.dto';
 import { HabitPackService } from '../services/habit-pack/habit-pack.service';
 import { GetHabitPackParamDto } from '../dto/get-habit-pack.dto';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
@@ -41,10 +41,10 @@ export class HabitPackController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   async createOrUpdateHabitPack(
-    @Body() createHabitPackDto: CreateHabitPackDto,
+    @Body() upsertHabitPackDto: UpsertHabitPackDto,
     @AuthContext() { user }: Passport,
   ): Promise<HabitPack> {
-    return this.habitPackService.createHabitPack(user.id, createHabitPackDto);
+    return this.habitPackService.upsertHabitPack(user.id, upsertHabitPackDto);
   }
 
   @Delete(':pack_id')

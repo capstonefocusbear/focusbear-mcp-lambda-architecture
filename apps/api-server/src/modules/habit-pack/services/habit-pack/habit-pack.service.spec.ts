@@ -97,7 +97,7 @@ describe('HabitPackService', () => {
 
       let response;
       try {
-        response = await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
+        response = await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
       } catch (error) {
         response = error;
       }
@@ -205,7 +205,30 @@ describe('HabitPackService', () => {
 
       let response;
       try {
-        response = await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
+        response = await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+
+    it('negative: should throw an unauthorized exception because user is not the pack author', async () => {
+      const unauthorizedUserDummy = { ...userDummy, id: randomUUID() };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
+        deserializedRoutineActivitiesDummy,
+      );
+      HabitPackRepositoryMock.orm.findOne
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
+      const responseMessage = `User with ID: ${unauthorizedUserDummy.id} is not authorized to delete habit pack with ID: ${routineHabitPackDummy.id}!`;
+
+      let response;
+      try {
+        response = await habitPackService.upsertHabitPack(unauthorizedUserDummy.id, routineHabitPackDummy);
       } catch (error) {
         response = error;
       }
@@ -245,11 +268,13 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.deserializeStandaloneActivities.mockResolvedValueOnce(
         deserializedStandaloneActivitiesDummy,
       );
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.orm.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
 
-      await habitPackService.createHabitPack(userDummy.id, standaloneHabitPackDummy);
+      await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
         newPack,
@@ -290,11 +315,13 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
         deserializedRoutineActivitiesDummy,
       );
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.orm.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
 
-      await habitPackService.createHabitPack(userDummy.id, routineHabitPackDummy);
+      await habitPackService.upsertHabitPack(userDummy.id, routineHabitPackDummy);
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
         newPack,

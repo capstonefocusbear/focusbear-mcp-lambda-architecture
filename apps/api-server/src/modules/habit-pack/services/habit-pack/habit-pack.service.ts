@@ -62,6 +62,7 @@ export class HabitPackService {
       welcome_message,
       welcome_video_url,
       marketplace_request,
+      marketplace_approval_status,
       id,
     } = upsertHabitPackDto;
     const newPack = new HabitPack({
@@ -73,6 +74,7 @@ export class HabitPackService {
       welcome_message,
       welcome_video_url,
       marketplace_request,
+      marketplace_approval_status,
       user_id,
       id,
     });

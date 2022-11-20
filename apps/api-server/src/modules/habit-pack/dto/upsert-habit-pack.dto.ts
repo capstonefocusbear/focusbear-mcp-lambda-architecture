@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, IsArray, IsUUID, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsArray, IsUUID, IsNotEmpty, IsBoolean } from 'class-validator';
 import { UpdateActivityTemplateDto } from '../../activity-template/dto/activity-template.dto';
 import { HabitPackType } from '../domain/habit-pack-type.enum';
 import { MarketplaceRequestType } from '../domain/marketplace-request.enum';
@@ -37,6 +37,10 @@ export class UpsertHabitPackDto {
   @IsOptional()
   @IsString()
   marketplace_request?: MarketplaceRequestType;
+
+  @IsOptional()
+  @IsBoolean()
+  marketplace_approval_status?: boolean;
 
   @IsOptional()
   @IsArray()

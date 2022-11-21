@@ -72,8 +72,12 @@ export class HabitPackService {
     if (userIsAdmin) {
       approvalStatus = marketplace_approval_status;
     } else if (approvalStatusHasChanged && approvalStatusIsFalse) {
+      // only allows normal users to revoke marketplace approval, admin will review and approve
+      // habit packs for the marketplace
       approvalStatus = false;
     } else {
+      // if "marketplace_approval_status" is not sent with the request body the packs current status will be used,
+      // if pack doesn't exist yet it will be "false" by default
       approvalStatus = habitPack?.marketplace_approval_status ?? false;
     }
     const newPack = new HabitPack({

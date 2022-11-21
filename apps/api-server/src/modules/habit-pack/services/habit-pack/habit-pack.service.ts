@@ -48,8 +48,9 @@ export class HabitPackService {
   async upsertHabitPack(user_id: string, upsertHabitPackDto: UpsertHabitPackDto): Promise<HabitPack> {
     const user = await this.userRepository.orm.findOne(user_id);
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    const userIsAdmin = user.user_type === UserTypes.ADMIN;
     const habitPack = await this.habitPackRepository.orm.findOne(upsertHabitPackDto.id);
-    if (habitPack && habitPack.user_id !== user_id && user.user_type !== UserTypes.ADMIN) {
+    if (habitPack && habitPack.user_id !== user_id && !userIsAdmin) {
       throw new UnauthorizedException(
         `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${upsertHabitPackDto.id}!`,
       );
@@ -62,8 +63,23 @@ export class HabitPackService {
       welcome_message,
       welcome_video_url,
       marketplace_request,
+      marketplace_approval_status,
       id,
     } = upsertHabitPackDto;
+    let approvalStatus;
+    const approvalStatusHasChanged = marketplace_approval_status !== habitPack?.marketplace_approval_status;
+    const approvalStatusIsFalse = typeof marketplace_approval_status !== 'undefined' && !marketplace_approval_status;
+    if (userIsAdmin) {
+      approvalStatus = marketplace_approval_status;
+    } else if (approvalStatusHasChanged && approvalStatusIsFalse) {
+      // only allows normal users to revoke marketplace approval, admin will review and approve
+      // habit packs for the marketplace
+      approvalStatus = false;
+    } else {
+      // if "marketplace_approval_status" is not sent with the request body the packs current status will be used,
+      // if pack doesn't exist yet it will be "false" by default
+      approvalStatus = habitPack?.marketplace_approval_status ?? false;
+    }
     const newPack = new HabitPack({
       creator_name: user.name,
       pack_name,
@@ -73,6 +89,7 @@ export class HabitPackService {
       welcome_message,
       welcome_video_url,
       marketplace_request,
+      marketplace_approval_status: approvalStatus,
       user_id,
       id,
     });

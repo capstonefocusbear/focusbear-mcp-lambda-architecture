@@ -256,6 +256,7 @@ describe('HabitPackService', () => {
         welcome_message,
         welcome_video_url,
         marketplace_request,
+        marketplace_approval_status: false,
         user_id,
         id,
       });
@@ -293,6 +294,7 @@ describe('HabitPackService', () => {
         welcome_message,
         welcome_video_url,
         marketplace_request,
+        marketplace_approval_status,
         id,
       } = routineHabitPackDummy;
       const newPack = new HabitPack({
@@ -303,6 +305,7 @@ describe('HabitPackService', () => {
         welcome_message,
         welcome_video_url,
         marketplace_request,
+        marketplace_approval_status,
         user_id,
         id,
       });

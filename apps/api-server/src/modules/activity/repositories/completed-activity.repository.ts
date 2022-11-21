@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { Between, Connection, In, MoreThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityType } from '../domain/activity-type.enum';
@@ -104,6 +105,23 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       relations: ['activity'],
       order: {
         start_time: 'DESC',
+      },
+    });
+  }
+
+  async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
+    const currentTime = DateTime.local();
+    const end_date = currentTime;
+    const start_date = currentTime.minus({ days: 6 });
+    return this.orm.find({
+      relations: ['activity'],
+      select: ['finish_time', 'quantity_logged'],
+      where: {
+        user_id,
+        created_at: Between(start_date, end_date),
+        activity: {
+          log_quantity: true,
+        },
       },
     });
   }

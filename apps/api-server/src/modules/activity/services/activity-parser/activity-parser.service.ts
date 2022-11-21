@@ -130,7 +130,7 @@ export class ActivityParserService {
     return sequence;
   }
 
-  private calculateSequenceDuration(activities: Activity[]): number {
+  calculateSequenceDuration(activities: Activity[]): number {
     const durations = activities.map(({ duration_seconds }) => Number(duration_seconds));
     const addUp = (accumulator: number, item: number): number => accumulator + item;
     const initialAccumulator = 0;

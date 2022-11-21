@@ -83,6 +83,11 @@ export class HabitPack extends BaseEntity {
   })
   language?: string;
 
+  @Column({
+    type: 'numeric',
+  })
+  duration?: number;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

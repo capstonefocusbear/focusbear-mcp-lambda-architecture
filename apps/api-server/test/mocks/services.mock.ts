@@ -21,6 +21,7 @@ export const PusherBeamsServiceMock = {
 export const ActivityParserServiceMock = {
   serialize: jest.fn(),
   deserialize: jest.fn(),
+  calculateSequenceDuration: jest.fn(),
 };
 
 export const ConfigServiceMock = {

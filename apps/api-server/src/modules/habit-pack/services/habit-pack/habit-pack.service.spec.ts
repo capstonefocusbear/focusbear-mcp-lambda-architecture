@@ -15,6 +15,7 @@ import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {
+  ActivityParserServiceMock,
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
   ActivityTemplateServiceMock,
@@ -27,6 +28,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { HabitPack } from '../../entity/habit-pack.entity';
+import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 
 describe('HabitPackService', () => {
   let habitPackService: HabitPackService;
@@ -39,6 +41,7 @@ describe('HabitPackService', () => {
         ActivityTemplateService,
         ActivityTemplateParserService,
         UserRepository,
+        ActivityParserService,
       ],
     })
       .overrideProvider(HabitPackRepository)
@@ -51,6 +54,8 @@ describe('HabitPackService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityTemplateRepository)
       .useValue(ActivityTemplateRepositoryMock)
+      .overrideProvider(ActivityParserService)
+      .useValue(ActivityParserServiceMock)
       .compile();
 
     habitPackService = moduleRef.get<HabitPackService>(HabitPackService);
@@ -259,6 +264,8 @@ describe('HabitPackService', () => {
         marketplace_approval_status: false,
         user_id,
         id,
+        duration: 100,
+        creator_name: 'User Dummy',
       });
       const activityIds = [
         '116af843-818a-4e09-aaa2-53da041896de',
@@ -274,6 +281,7 @@ describe('HabitPackService', () => {
         .mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
+      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(100);
 
       await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
 
@@ -308,6 +316,8 @@ describe('HabitPackService', () => {
         marketplace_approval_status,
         user_id,
         id,
+        duration: 100,
+        creator_name: 'User Dummy',
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -323,6 +333,7 @@ describe('HabitPackService', () => {
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
+      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(100);
 
       await habitPackService.upsertHabitPack(userDummy.id, routineHabitPackDummy);
 

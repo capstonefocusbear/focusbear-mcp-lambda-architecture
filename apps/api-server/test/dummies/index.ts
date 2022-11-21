@@ -37,6 +37,7 @@ export const userDummy = new User(
     email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.STANDARD,
+    name: 'User Dummy',
   },
   { generateId: false },
 );

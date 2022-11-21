@@ -111,11 +111,11 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
 
   async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
     const currentTime = DateTime.local();
-    const start_date = currentTime;
-    const end_date = currentTime.minus({ days: 6 });
+    const end_date = currentTime;
+    const start_date = currentTime.minus({ days: 6 });
     return this.orm.find({
-      select: ['finish_time', 'quantity_logged'],
       relations: ['activity'],
+      select: ['finish_time', 'quantity_logged'],
       where: {
         user_id,
         created_at: Between(start_date, end_date),

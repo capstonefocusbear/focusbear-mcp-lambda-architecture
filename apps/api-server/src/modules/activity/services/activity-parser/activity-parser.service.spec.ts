@@ -5,6 +5,7 @@ import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { ActivityParserService } from './activity-parser.service';
 import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
+import { standaloneHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
 
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;
@@ -46,6 +47,23 @@ describe('ActivityParserService', () => {
       expect(result[0].sequence).toBeInstanceOf(ActivitySequence);
       expect(result[0].activities).toBeArray();
       expect(result[0].activities.every((e) => e instanceof Activity)).toBeTrue();
+    });
+  });
+
+  describe('calculateSequenceDuration', () => {
+    it('positive: should return 0 for empty sequence', () => {
+      const sequence = [];
+      const result = activityParserService.calculateSequenceDuration(sequence);
+
+      expect(result).toBe(0);
+    });
+
+    it('positive: should return correct sequence duration', () => {
+      // has duration of 600 seconds
+      const sequence = standaloneHabitPackDummy.standalone_activities;
+      const result = activityParserService.calculateSequenceDuration(sequence);
+
+      expect(result).toBe(600);
     });
   });
 });

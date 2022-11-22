@@ -15,7 +15,7 @@ import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {
-  ActivityParserServiceMock,
+  ActivitySequenceRepositoryMock,
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
   ActivityTemplateServiceMock,
@@ -29,6 +29,7 @@ import { ResponseMessage } from '../../../../shared/domain/response-message.mode
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { HabitPack } from '../../entity/habit-pack.entity';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
+import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 
 describe('HabitPackService', () => {
   let habitPackService: HabitPackService;
@@ -42,6 +43,7 @@ describe('HabitPackService', () => {
         ActivityTemplateParserService,
         UserRepository,
         ActivityParserService,
+        ActivitySequenceRepository,
       ],
     })
       .overrideProvider(HabitPackRepository)
@@ -54,8 +56,8 @@ describe('HabitPackService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityTemplateRepository)
       .useValue(ActivityTemplateRepositoryMock)
-      .overrideProvider(ActivityParserService)
-      .useValue(ActivityParserServiceMock)
+      .overrideProvider(ActivitySequenceRepository)
+      .useValue(ActivitySequenceRepositoryMock)
       .compile();
 
     habitPackService = moduleRef.get<HabitPackService>(HabitPackService);
@@ -264,7 +266,7 @@ describe('HabitPackService', () => {
         marketplace_approval_status: false,
         user_id,
         id,
-        duration: 100,
+        duration: 600,
         creator_name: 'User Dummy',
       });
       const activityIds = [
@@ -281,7 +283,6 @@ describe('HabitPackService', () => {
         .mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
-      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(100);
 
       await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
 
@@ -316,7 +317,7 @@ describe('HabitPackService', () => {
         marketplace_approval_status,
         user_id,
         id,
-        duration: 100,
+        duration: 300,
         creator_name: 'User Dummy',
       });
       const activityIds = [
@@ -333,7 +334,6 @@ describe('HabitPackService', () => {
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
-      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(100);
 
       await habitPackService.upsertHabitPack(userDummy.id, routineHabitPackDummy);
 
@@ -353,8 +353,7 @@ describe('HabitPackService', () => {
       expect(result).toBe(0);
     });
 
-    it('positive: should return the longest sequence duration', () => {
-      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(300);
+    it('positive: should return the longest sequence duration (morning sequence is 300 sec)', () => {
       const sequenceArray = [
         routineHabitPackDummy.morning_activities,
         routineHabitPackDummy.break_activities,

@@ -27,7 +27,7 @@ export class UserRepository extends BaseRepository<User> {
         await manager.delete(Activity, {
           user_id: id,
           id: Not(In(activityIdsToKeep)),
-          type: Not('standalone'),
+          type: sequence.type,
         });
         const parents = activities.filter(({ parent_id }) => !parent_id);
         const choices = activities.filter(({ parent_id }) => !!parent_id);

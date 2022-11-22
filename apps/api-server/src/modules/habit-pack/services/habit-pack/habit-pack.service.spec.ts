@@ -344,4 +344,25 @@ describe('HabitPackService', () => {
       );
     });
   });
+
+  describe('getHabitPackLongestSequence', () => {
+    it('positive: should return 0 for undefined sequence (case when pack is routine and no standalone sequence is present and the other way around', () => {
+      const sequenceArray = [undefined];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(0);
+    });
+
+    it('positive: should return the longest sequence duration', () => {
+      ActivityParserServiceMock.calculateSequenceDuration.mockReturnValue(300);
+      const sequenceArray = [
+        routineHabitPackDummy.morning_activities,
+        routineHabitPackDummy.break_activities,
+        routineHabitPackDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(300);
+    });
+  });
 });

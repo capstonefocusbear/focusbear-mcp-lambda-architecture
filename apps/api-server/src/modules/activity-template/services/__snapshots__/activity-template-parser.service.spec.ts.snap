@@ -140,7 +140,7 @@ Array [
         ],
       },
       "activity_type": "evening",
-      "duration_seconds": 180,
+      "duration_seconds": 300,
       "has_choices": false,
       "id": "67935284-e936-4247-8afa-e453484865e0",
       "log_quantity": false,

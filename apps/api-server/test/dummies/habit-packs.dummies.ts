@@ -280,7 +280,7 @@ export const serializedRoutineActivityDummy = {
       id: '67935284-e936-4247-8afa-e453484865e0',
       pack_id: 'bc55568b-59bb-4842-8a83-e92843356978',
       name: 'Deep breathing',
-      duration_seconds: 180,
+      duration_seconds: 300,
       log_quantity: false,
       video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
     },

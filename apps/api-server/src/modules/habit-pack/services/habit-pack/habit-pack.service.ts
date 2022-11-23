@@ -10,6 +10,8 @@ import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activi
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { UserTypes } from '../../../user/domain/user-types.enum';
 import { GetMultiplePacksQueryDto } from '../../dto/get-multiple-packs-query.dto';
+import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
+import { Activity } from '../../../activity/entities/activity.entity';
 
 @Injectable()
 export class HabitPackService {
@@ -18,6 +20,7 @@ export class HabitPackService {
     private readonly habitPackRepository: HabitPackRepository,
     private readonly activityTemplateService: ActivityTemplateService,
     private readonly activityTemplateParserService: ActivityTemplateParserService,
+    private readonly activityParserService: ActivityParserService,
   ) {}
 
   async checkIfPackExists(pack_id: string) {
@@ -39,7 +42,7 @@ export class HabitPackService {
     return serializedApprovedPacks;
   }
 
-  serializeHabitPack({ activity_templates, pack_type, ...packData }: HabitPack): UpsertHabitPackDto {
+  serializeHabitPack({ activity_templates, pack_type, ...packData }: HabitPack): HabitPack {
     const serializedActivityTemplates = this.activityTemplateParserService.serialize(pack_type, activity_templates);
     const pack: HabitPack = { pack_type, ...packData, ...serializedActivityTemplates };
     return pack;
@@ -65,6 +68,10 @@ export class HabitPackService {
       marketplace_request,
       marketplace_approval_status,
       id,
+      morning_activities,
+      break_activities,
+      evening_activities,
+      standalone_activities,
     } = upsertHabitPackDto;
     let approvalStatus;
     const approvalStatusHasChanged = marketplace_approval_status !== habitPack?.marketplace_approval_status;
@@ -80,22 +87,14 @@ export class HabitPackService {
       // if pack doesn't exist yet it will be "false" by default
       approvalStatus = habitPack?.marketplace_approval_status ?? false;
     }
-    const newPack = new HabitPack({
-      creator_name: user.name,
-      pack_name,
-      pack_type,
-      description,
-      description_video_url,
-      welcome_message,
-      welcome_video_url,
-      marketplace_request,
-      marketplace_approval_status: approvalStatus,
-      user_id,
-      id,
-    });
+    const longestSequenceDuration = this.getHabitPackLongestSequence([
+      morning_activities,
+      break_activities,
+      evening_activities,
+      standalone_activities,
+    ]);
     let deserializedActivityTemplates;
     if (upsertHabitPackDto.pack_type === HabitPackType.standalone) {
-      const { standalone_activities } = upsertHabitPackDto;
       const activities = { standalone_activities };
       deserializedActivityTemplates = await this.activityTemplateParserService.deserializeStandaloneActivities(
         activities,
@@ -104,7 +103,6 @@ export class HabitPackService {
       );
     }
     if (upsertHabitPackDto.pack_type === HabitPackType.routine) {
-      const { morning_activities, break_activities, evening_activities } = upsertHabitPackDto;
       const activities = { morning_activities, break_activities, evening_activities };
       deserializedActivityTemplates = await this.activityTemplateParserService.deserializeRoutineActivities(
         activities,
@@ -117,6 +115,20 @@ export class HabitPackService {
       return activityType.map((activity_template: UpdateActivityTemplateDto) => {
         return activityIds.push(activity_template.id);
       });
+    });
+    const newPack = new HabitPack({
+      creator_name: user.name,
+      pack_name,
+      pack_type,
+      description,
+      description_video_url,
+      welcome_message,
+      welcome_video_url,
+      marketplace_request,
+      marketplace_approval_status: approvalStatus,
+      user_id,
+      id,
+      duration: longestSequenceDuration,
     });
     await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
     return this.getHabitPack(id);
@@ -134,5 +146,15 @@ export class HabitPackService {
     throw new UnauthorizedException(
       `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${pack_id}!`,
     );
+  }
+
+  getHabitPackLongestSequence(sequences: Activity[][]): number {
+    const durations = sequences.map((sequence) => {
+      if (sequence) {
+        return this.activityParserService.calculateSequenceDuration(sequence);
+      }
+      return 0;
+    });
+    return Math.max(...durations);
   }
 }

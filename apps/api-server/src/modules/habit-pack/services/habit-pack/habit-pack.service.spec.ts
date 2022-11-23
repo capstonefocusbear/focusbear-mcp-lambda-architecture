@@ -10,11 +10,14 @@ import {
   serializedStandaloneActivityDummy,
   marketplaceApprovedPacksDummy,
   routineHabitPackDBResponseDummy,
+  serializedRoutineActivityDummy,
+  userSettingsDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
 import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {
+  ActivitySequenceRepositoryMock,
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
   ActivityTemplateServiceMock,
@@ -27,6 +30,8 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { HabitPack } from '../../entity/habit-pack.entity';
+import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
+import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 
 describe('HabitPackService', () => {
   let habitPackService: HabitPackService;
@@ -39,6 +44,8 @@ describe('HabitPackService', () => {
         ActivityTemplateService,
         ActivityTemplateParserService,
         UserRepository,
+        ActivityParserService,
+        ActivitySequenceRepository,
       ],
     })
       .overrideProvider(HabitPackRepository)
@@ -51,6 +58,8 @@ describe('HabitPackService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityTemplateRepository)
       .useValue(ActivityTemplateRepositoryMock)
+      .overrideProvider(ActivitySequenceRepository)
+      .useValue(ActivitySequenceRepositoryMock)
       .compile();
 
     habitPackService = moduleRef.get<HabitPackService>(HabitPackService);
@@ -259,6 +268,8 @@ describe('HabitPackService', () => {
         marketplace_approval_status: false,
         user_id,
         id,
+        duration: 600,
+        creator_name: 'User Dummy',
       });
       const activityIds = [
         '116af843-818a-4e09-aaa2-53da041896de',
@@ -308,6 +319,8 @@ describe('HabitPackService', () => {
         marketplace_approval_status,
         user_id,
         id,
+        duration: 300,
+        creator_name: 'User Dummy',
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -331,6 +344,48 @@ describe('HabitPackService', () => {
         activityIds,
         deserializedRoutineActivitiesDummy,
       );
+    });
+  });
+
+  describe('getHabitPackLongestSequence', () => {
+    it('positive: should return 0 for undefined sequence (case when pack is routine and no standalone sequence is present and the other way around', () => {
+      const sequenceArray = [undefined];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(0);
+    });
+
+    it('positive: should return the longest sequence duration (morning sequence is 300 sec)', () => {
+      const sequenceArray = [
+        routineHabitPackDummy.morning_activities,
+        routineHabitPackDummy.break_activities,
+        routineHabitPackDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(300);
+    });
+
+    it('positive: should return the longest sequence duration (evening sequence is 600 sec)', () => {
+      const sequenceArray = [
+        serializedRoutineActivityDummy.morning_activities,
+        serializedRoutineActivityDummy.break_activities,
+        serializedRoutineActivityDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(600);
+    });
+
+    it('positive: should return the longest sequence duration (both morning & evening sequences are the 180 seconds)', () => {
+      const sequenceArray = [
+        userSettingsDummy.morning_activities,
+        userSettingsDummy.break_activities,
+        userSettingsDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(180);
     });
   });
 });

@@ -182,24 +182,6 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMsg);
     });
 
-    it('negative: should throw BadRequestException if there is no current sequence and given activity is not first in the sequence', async () => {
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
-      ActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      const errorMsg = `Unable to set new current sequence: ${sequenceWhenThereIsNoNextActivity.id}, given activity: ${completedActivity.activity_id} is not first!`;
-      let exception: any;
-
-      try {
-        await completedactivityService.completeActivity(completedActivity, { user_id });
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMsg);
-    });
-
     it('negative: should throw BadRequestException if the completing activity_sequence is not a current one for a given user', async () => {
       const userWithWrongSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceDummy);

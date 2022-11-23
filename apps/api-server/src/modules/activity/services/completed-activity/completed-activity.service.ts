@@ -171,17 +171,10 @@ export class CompletedActivityService {
     const { current_activity_sequence_id } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
-    if (isNewCurrentSequence) return this.validateNewSequence(sequence, activity.id);
+    if (isNewCurrentSequence) return;
     const isComplitingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
     const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
     if (!isComplitingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
-  }
-
-  private validateNewSequence({ sequenceActivityIds, id }: ActivitySequence, activity_id: string): void | never {
-    const completingActivityOrder = sequenceActivityIds.indexOf(activity_id);
-    const isFirstItemInSequence = completingActivityOrder === 0;
-    const errorMessage = `Unable to set new current sequence: ${id}, given activity: ${activity_id} is not first!`;
-    if (!isFirstItemInSequence) throw new BadRequestException(errorMessage);
   }
 
   private validateChoice(activity: Activity, choice?: Activity): void | never {

@@ -172,9 +172,9 @@ export class CompletedActivityService {
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
-    const isComplitingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
+    const isCompletingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
     const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
-    if (!isComplitingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
+    if (!isCompletingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
   }
 
   private validateChoice(activity: Activity, choice?: Activity): void | never {

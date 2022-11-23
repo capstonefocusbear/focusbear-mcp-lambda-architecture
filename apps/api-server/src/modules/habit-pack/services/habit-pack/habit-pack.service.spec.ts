@@ -10,6 +10,8 @@ import {
   serializedStandaloneActivityDummy,
   marketplaceApprovedPacksDummy,
   routineHabitPackDBResponseDummy,
+  serializedRoutineActivityDummy,
+  userSettingsDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
 import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
@@ -362,6 +364,28 @@ describe('HabitPackService', () => {
       const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
 
       expect(result).toBe(300);
+    });
+
+    it('positive: should return the longest sequence duration (evening sequence is 600 sec)', () => {
+      const sequenceArray = [
+        serializedRoutineActivityDummy.morning_activities,
+        serializedRoutineActivityDummy.break_activities,
+        serializedRoutineActivityDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(600);
+    });
+
+    it('positive: should return the longest sequence duration (both morning & evening sequences are the 180 seconds)', () => {
+      const sequenceArray = [
+        userSettingsDummy.morning_activities,
+        userSettingsDummy.break_activities,
+        userSettingsDummy.evening_activities,
+      ];
+      const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
+
+      expect(result).toBe(180);
     });
   });
 });

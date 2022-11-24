@@ -99,9 +99,7 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
-    "@nestjs/platform-fastify": {
       "fastify": "^4.10.2"
-    }
   },
   "husky": {
     "hooks": {

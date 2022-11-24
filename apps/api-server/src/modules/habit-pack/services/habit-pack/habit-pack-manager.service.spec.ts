@@ -339,7 +339,6 @@ describe('HabitPackManagerService', () => {
       UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
       const user_id = userDummy.id;
 
-      console.log('here');
       const response = await habitPackManagerService.installPackAsDefaultSettings(
         userDummy.id,
         routineHabitPackDummy.id,

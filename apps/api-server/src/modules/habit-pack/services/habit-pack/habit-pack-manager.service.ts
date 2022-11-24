@@ -45,7 +45,6 @@ export class HabitPackManagerService {
     const installedPack = await this.installedPackRepository.orm.findOne({
       where: { user_id, pack_id, installation_status: true },
     });
-    console.log(pack_type);
     if (installedPack) {
       throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
     }

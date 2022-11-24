@@ -34,7 +34,7 @@ describe('NotificationService', () => {
 
   describe('updateOrCreateCalendarEvent', () => {
     it('negative: should return that the user was not found', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
       try {
@@ -48,7 +48,7 @@ describe('NotificationService', () => {
     });
 
     it('positive: should call create on NotificationRepository', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       NotificationRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       const newNotification = new Notification({
@@ -69,7 +69,7 @@ describe('NotificationService', () => {
     });
 
     it('positive: should call update on NotificationRepository', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       NotificationRepositoryMock.orm.findOne.mockResolvedValueOnce(notificationDBResponseDummy);
 
       const updatedNotification = {

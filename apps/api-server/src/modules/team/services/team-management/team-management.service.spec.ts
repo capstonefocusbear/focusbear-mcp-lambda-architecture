@@ -54,7 +54,7 @@ describe('TeamManagementService', () => {
   describe('addTeamMember', () => {
     it('negative: if user does not exist in DB, throw the NotFoundException', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `The User with id: ${user_id} does not exist!`;
       let exception: any;
 
@@ -71,7 +71,7 @@ describe('TeamManagementService', () => {
 
     it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
       const owner_id = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(null);
       const errorMessage = `The Team with owner_id: ${owner_id} does not exist or is inactive!`;
       let exception: any;
@@ -90,7 +90,7 @@ describe('TeamManagementService', () => {
     it('negative: if team has no free spots, throw the BadRequestException', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID() };
       const teamWithNoFreeSpots = { ...TeamWithMembersDummy, team_size: TeamWithMembersDummy.members.length };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(newMember);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMember);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(teamWithNoFreeSpots);
       let exception: any;
 
@@ -107,7 +107,7 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if user already participates that team, throw the BadRequestException', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
       let exception: any;
 
@@ -125,7 +125,7 @@ describe('TeamManagementService', () => {
 
     it('negative: if user already participates another team, throw the BadRequestException', async () => {
       const newMemberWithAnotherTeam = { ...TeamMemberDummy, id: randomUUID(), member_of_team_id: randomUUID() };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(newMemberWithAnotherTeam);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMemberWithAnotherTeam);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
       let exception: any;
 
@@ -143,7 +143,7 @@ describe('TeamManagementService', () => {
 
     it('positive: user with team assosiation should be saved in the DB and the membershipe entitlement need to be granted via RevenueCat', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID(), member_of_team_id: null, member_of_team: null };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(newMember);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMember);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
 
       await teamManagementService.addTeamMember(newMember.id, TeamWithMembersDummy.owner_id);
@@ -174,7 +174,7 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: user should be disassosiated from the team in the DB and the membershipe entitlement needs to be revoked via RevenueCat', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
 
       await teamManagementService.bulkDeleteTeamMembers([TeamMemberDummy.id], TeamWithMembersDummy.owner_id);
@@ -186,7 +186,7 @@ describe('TeamManagementService', () => {
 
   describe('disassociateSelf', () => {
     it('positive: user should be disassosiated from the team in the DB and the membershipe entitlement needs to be revoked via RevenueCat', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
 
       await teamManagementService.disassociateSelf(TeamMemberDummy.id);
 

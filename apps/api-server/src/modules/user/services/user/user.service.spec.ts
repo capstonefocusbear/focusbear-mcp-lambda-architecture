@@ -95,7 +95,7 @@ describe('UserService', () => {
     it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and defsult settings assigned', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.upsert.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 
@@ -173,7 +173,7 @@ describe('UserService', () => {
 
     it('negative: if there is no user throw NotFoundExcaption', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       let exception: any;
 
       try {
@@ -189,7 +189,7 @@ describe('UserService', () => {
     });
 
     it('positive: user should be saved with updated settings', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
 
       await userService.updateUserLocalDeviceSettings(userDummy.id, localSettings);
 
@@ -200,7 +200,7 @@ describe('UserService', () => {
   describe('getUserLocalDeviceSettings', () => {
     it('negative: if there is no user throw NotFoundExcaption', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       let exception: any;
 
       try {
@@ -216,7 +216,7 @@ describe('UserService', () => {
     });
 
     it('positive: if user exists but settings field is empty return null settings ', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
 
       const result = await userService.getUserLocalDeviceSettings(userDummy.id);
 
@@ -238,7 +238,7 @@ describe('UserService', () => {
         Web: { hasEditedSettings: false },
       };
       userDummy.local_device_settings = localSettings;
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
 
       const result = await userService.getUserLocalDeviceSettings(userDummy.id);
 
@@ -261,7 +261,7 @@ describe('UserService', () => {
         iOS: '...',
         Web: { hasEditedSettings: true },
       };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       await userService.markUserSettingsAsEdited(userDummy.id);
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {

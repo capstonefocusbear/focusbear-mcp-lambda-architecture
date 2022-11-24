@@ -37,14 +37,15 @@ export class HabitPackManagerService {
   ) {}
 
   async installHabitPack(user_id: string, pack_id: string) {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
     if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
     const { pack_type } = pack;
     const installedPack = await this.installedPackRepository.orm.findOne({
       where: { user_id, pack_id, installation_status: true },
     });
+    console.log(pack_type);
     if (installedPack) {
       throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
     }
@@ -138,9 +139,9 @@ export class HabitPackManagerService {
   }
 
   async uninstallHabitPack(user_id: string, pack_id: string) {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
     if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
     const { pack_type } = pack;
     const installedPack = await this.installedPackRepository.orm.findOne({
@@ -185,9 +186,9 @@ export class HabitPackManagerService {
   }
 
   async installPackAsDefaultSettings(user_id: string, pack_id: string): Promise<UserSettingsResponseDto> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOne(pack_id);
+    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
     if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
     await this.userSettingsService.clearUserActivities(user_id);
     await this.installHabitPack(user_id, pack_id);
@@ -196,7 +197,7 @@ export class HabitPackManagerService {
   }
 
   async getUserInstalledPacks(user_id: string): Promise<HabitPack[]> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const installedPackIds = await this.installedPackRepository.fetchUserInstalledPackIds(user_id);
     const deserializedInstalledPacks = await this.habitPackRepository.orm.find({

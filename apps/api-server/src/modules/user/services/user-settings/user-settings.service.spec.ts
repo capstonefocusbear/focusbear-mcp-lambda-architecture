@@ -103,7 +103,7 @@ describe('UserSettingsService', () => {
   describe('updateSettings', () => {
     it('negative: if user user does not exist in DB, throw NotFoundException', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       const errorMessage = `User with id: ${user_id} does not exists!`;
       let exception: any;
 
@@ -121,7 +121,7 @@ describe('UserSettingsService', () => {
     it('positive: consistentlyUpdateUserSettings should be called', async () => {
       const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
       const updatedUser = new User({ id: userDummy.id, startup_time, shutdown_time, break_after_minutes });
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
       UserServiceMock.getUserLocalDeviceSettings.mockResolvedValue(localDeviceSettingsDummy);
@@ -146,7 +146,7 @@ describe('UserSettingsService', () => {
         .mockReturnValueOnce(localDeviceSettingsDummy)
         .mockReturnValue(localDeviceSettingsDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue(emptyDeserializedActivitiesDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
 
       await userSettingsService.clearUserActivities(userDummy.id);
 

@@ -22,7 +22,7 @@ export class TeamManagementService {
 
   async addTeamMember(member_id: string, owner_id: string): Promise<User> {
     const [user, team] = await Promise.all([
-      this.userRepository.orm.findOne(member_id),
+      this.userRepository.orm.findOneBy({ id: member_id }),
       this.teamRepository.findActiveTeamWithMembersByOwnerId(owner_id),
     ]);
     this.validateTeamMembershipe(user, team, { member_id, owner_id });
@@ -65,7 +65,7 @@ export class TeamManagementService {
   }
 
   async disassociateSelf(member_id: string): Promise<User> {
-    const user = await this.userRepository.orm.findOne(member_id);
+    const user = await this.userRepository.orm.findOneBy({ id: member_id });
     const [updatedUser] = await this.disassociateMemberFromTheTeam(user);
     return updatedUser;
   }
@@ -89,7 +89,7 @@ export class TeamManagementService {
   }
 
   async acceptInvitation(token: string, user_id: string) {
-    const userPromise = this.userRepository.orm.findOne(user_id);
+    const userPromise = this.userRepository.orm.findOneBy({ id: user_id });
     const payloadPromise = this.jwtService.asyncVerify(token);
     const [user, { owner_id, email }] = await Promise.all([userPromise, payloadPromise]);
     const hasInvitationEmail = user.email === email;

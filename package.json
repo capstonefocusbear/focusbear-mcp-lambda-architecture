@@ -59,7 +59,7 @@
     "rxjs": "^7.2.0",
     "stripe": "^10.2.0",
     "typeorm": "^0.3.10",
-    "typeorm-encrypted": "^0.7.0"
+    "typeorm-encrypted": "^0.8.0"
   },
   "devDependencies": {
     "@commitlint/config-angular": "^13.1.0",

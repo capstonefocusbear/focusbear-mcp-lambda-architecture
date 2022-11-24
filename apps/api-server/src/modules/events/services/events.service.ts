@@ -8,7 +8,7 @@ export class EventsService {
   constructor(private readonly sendinblueService: SendinblueService, private readonly userRepository: UserRepository) {}
 
   async registerEvent(trackEventDto: TrackEventDto, user_id: string) {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     await this.sendinblueService.registerSendinblueEvent(user.email, trackEventDto);
   }

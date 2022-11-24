@@ -1,3 +1,4 @@
+import { DataSource } from 'typeorm';
 import { typeormConfig } from './src/config';
 
-export default typeormConfig();
+export const AppDataSource = new DataSource(typeormConfig());

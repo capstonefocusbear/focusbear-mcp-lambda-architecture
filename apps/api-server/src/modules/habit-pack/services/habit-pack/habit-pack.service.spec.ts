@@ -90,7 +90,7 @@ describe('HabitPackService', () => {
     });
 
     it('Positive: should return a habit pack', async () => {
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
       const result = await habitPackService.getHabitPack(standaloneHabitPackDBResponseDummy.id);
@@ -101,7 +101,7 @@ describe('HabitPackService', () => {
 
   describe('getMultipleHabitPacks', () => {
     it('Negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -115,7 +115,7 @@ describe('HabitPackService', () => {
     });
 
     it('positive: should fetch habit packs', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.fetchPacksByFilter.mockResolvedValueOnce(marketplaceApprovedPacksDummy);
       ActivityTemplateParserServiceMock.serialize
         .mockReturnValueOnce(standaloneHabitPackDummy)
@@ -151,8 +151,8 @@ describe('HabitPackService', () => {
   describe('deleteHabitPack', () => {
     it('Negative: if user is not pack author, throw Unauthorized exception', async () => {
       const wrongUserId = randomUUID();
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       const errorMessage = `User with ID: ${wrongUserId} is not authorized to delete habit pack with ID: ${routineHabitPackDBResponseDummy.id}!`;
       let exception: any;
 
@@ -168,7 +168,7 @@ describe('HabitPackService', () => {
 
     it('Negative: if habit pack does not exist in DB, throw NotFoundException', async () => {
       const pack_id = randomUUID();
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `Habit pack with id: ${pack_id} does not exist!`;
       let exception: any;
 
@@ -184,8 +184,8 @@ describe('HabitPackService', () => {
 
     it('Positive: habit pack should be deleted and successful response message should be returned', async () => {
       const responseMessage = `Habit pack with ID: ${standaloneHabitPackDBResponseDummy.id} successfully deleted!`;
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
       const result = await habitPackService.deleteHabitPack(userDummy.id, standaloneHabitPackDBResponseDummy.id);
 
@@ -196,8 +196,8 @@ describe('HabitPackService', () => {
 
     it('Positive: should return successful response message when deleting pack as admin user', async () => {
       const responseMessage = `Habit pack with ID: ${standaloneHabitPackDBResponseDummy.id} successfully deleted!`;
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(adminUserDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
 
       const result = await habitPackService.deleteHabitPack(adminUserDummy.id, standaloneHabitPackDBResponseDummy.id);
 
@@ -209,7 +209,7 @@ describe('HabitPackService', () => {
 
   describe('createHabitPack', () => {
     it('Negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -224,11 +224,11 @@ describe('HabitPackService', () => {
 
     it('negative: should throw an unauthorized exception because user is not the pack author', async () => {
       const unauthorizedUserDummy = { ...userDummy, id: randomUUID() };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
         deserializedRoutineActivitiesDummy,
       );
-      HabitPackRepositoryMock.orm.findOne
+      HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -276,11 +276,11 @@ describe('HabitPackService', () => {
         'b8301b80-1286-464a-b0be-5838f52e2ff6',
         '74935284-e936-4247-8afa-e453484865e0',
       ];
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateParserServiceMock.deserializeStandaloneActivities.mockResolvedValueOnce(
         deserializedStandaloneActivitiesDummy,
       );
-      HabitPackRepositoryMock.orm.findOne
+      HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
@@ -327,11 +327,11 @@ describe('HabitPackService', () => {
         '630c921d-dc9c-4107-acd2-023d7930d9bf',
         'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
       ];
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
         deserializedRoutineActivitiesDummy,
       );
-      HabitPackRepositoryMock.orm.findOne
+      HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);

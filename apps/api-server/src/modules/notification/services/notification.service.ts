@@ -12,7 +12,7 @@ export class NotificationService {
   ) {}
 
   async updateOrCreateCalendarEvent(event: UpdateCalendarEventDto, user_id: string): Promise<UpdateCalendarEventDto> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     // eslint-disable-next-line prettier/prettier
     const { id, summary, description, event_begins, event_ends, external_id, is_dismissed, dismiss_reason, received } = event;

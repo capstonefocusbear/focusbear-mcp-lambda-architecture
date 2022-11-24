@@ -27,7 +27,7 @@ describe('EventService', () => {
 
   describe('registerEvent', () => {
     it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -41,7 +41,7 @@ describe('EventService', () => {
     });
 
     it('positive: sendinblueService.registerSendinblueEvent should be called', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
       await eventsService.registerEvent(sendinblueEventDummy, userDummy.id);
 

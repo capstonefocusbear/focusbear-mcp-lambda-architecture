@@ -28,6 +28,7 @@
   "dependencies": {
     "@fastify/cors": "^8.2.0",
     "@fastify/helmet": "^10.1.0",
+    "@fastify/static": "^6.5.1",
     "@fastify/swagger": "^6.0.1",
     "@nestjs/common": "^9.2.0",
     "@nestjs/config": "^2.2.0",
@@ -99,7 +100,7 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
-      "fastify": "^4.10.2"
+    "fastify": "^4.10.2"
   },
   "husky": {
     "hooks": {

@@ -27,7 +27,7 @@ describe('PusherBeamsAuthService', () => {
 
   describe('getBeamsToken', () => {
     it('positive: should return a beams token', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       PusherBeamsServiceMock.generateToken.mockResolvedValueOnce('someJwtString');
       const result = await pusherBeamsAuthService.getPusherBeamsToken(userDummy.id);
 
@@ -37,7 +37,7 @@ describe('PusherBeamsAuthService', () => {
 
   describe('unsubscribeFromBeams', () => {
     it('positive: deleteUser from PusherBeamsService should be called', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       await pusherBeamsAuthService.unsubscribeFromBeams(userDummy.id);
 
       expect(PusherBeamsServiceMock.deleteUser).toBeCalledWith(userDummy.id);

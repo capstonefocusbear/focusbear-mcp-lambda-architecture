@@ -6,6 +6,7 @@ export const BaseRepositoryMock = {
     save: jest.fn(),
     delete: jest.fn(),
     softDelete: jest.fn(),
+    findOneBy: jest.fn(),
     // ... rest methods can be added on demand
   },
   create: jest.fn(),

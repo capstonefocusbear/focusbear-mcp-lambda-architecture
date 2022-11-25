@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, EntityManager, In, Not, Transaction, TransactionManager } from 'typeorm';
+import { Connection, In, Not } from 'typeorm';
+import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
@@ -14,36 +15,66 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     super(connection, HabitPack);
   }
 
-  @Transaction({ isolation: 'SERIALIZABLE' })
+  // @Transaction({ isolation: 'SERIALIZABLE' })
+  // async consistentlyUpdateHabitPack(
+  //   { ...updateData }: HabitPack,
+  //   activityIds: string[],
+  //   activitiesData?: ActivityTemplate[][],
+  //   @TransactionManager() manager?: EntityManager,
+  // ) {
+  //   await manager.upsert(HabitPack, updateData, ['id']);
+  //   await manager.delete(ActivityTemplate, { pack_id: updateData.id, id: Not(In(activityIds)) });
+  //   await Promise.all(
+  //     activitiesData.map(async (type) => {
+  //       const parents = type.filter(({ parent_id }) => !parent_id);
+  //       const choices = type.filter(({ parent_id }) => !!parent_id);
+  //       await manager.upsert(ActivityTemplate, parents, ['id']);
+  //       await manager.upsert(ActivityTemplate, choices, ['id']);
+  //     }),
+  //   );
+  // }
+
   async consistentlyUpdateHabitPack(
     { ...updateData }: HabitPack,
     activityIds: string[],
     activitiesData?: ActivityTemplate[][],
-    @TransactionManager() manager?: EntityManager,
   ) {
-    await manager.upsert(HabitPack, updateData, ['id']);
-    await manager.delete(ActivityTemplate, { pack_id: updateData.id, id: Not(In(activityIds)) });
-    await Promise.all(
-      activitiesData.map(async (type) => {
-        const parents = type.filter(({ parent_id }) => !parent_id);
-        const choices = type.filter(({ parent_id }) => !!parent_id);
-        await manager.upsert(ActivityTemplate, parents, ['id']);
-        await manager.upsert(ActivityTemplate, choices, ['id']);
-      }),
-    );
+    await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
+      await transactionalEntityManager.upsert(HabitPack, updateData, ['id']);
+      await transactionalEntityManager.delete(ActivityTemplate, { pack_id: updateData.id, id: Not(In(activityIds)) });
+      await Promise.all(
+        activitiesData.map(async (type) => {
+          const parents = type.filter(({ parent_id }) => !parent_id);
+          const choices = type.filter(({ parent_id }) => !!parent_id);
+          await transactionalEntityManager.upsert(ActivityTemplate, parents, ['id']);
+          await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
+        }),
+      );
+    });
   }
 
-  @Transaction({ isolation: 'SERIALIZABLE' })
-  async consistentlyInstallStandaloneHabitPack(
-    activitiesData: DeserializedActivity,
-    @TransactionManager() manager?: EntityManager,
-  ) {
-    const { sequence, activities } = activitiesData;
-    await manager.upsert(ActivitySequence, sequence, ['id']);
-    const parents = activities.filter(({ parent_id }) => !parent_id);
-    const choices = activities.filter(({ parent_id }) => !!parent_id);
-    await manager.upsert(Activity, parents, ['id']);
-    await manager.upsert(Activity, choices, ['id']);
+  // @Transaction({ isolation: 'SERIALIZABLE' })
+  // async consistentlyInstallStandaloneHabitPack(
+  //   activitiesData: DeserializedActivity,
+  //   @TransactionManager() manager?: EntityManager,
+  // ) {
+  //   const { sequence, activities } = activitiesData;
+  //   await manager.upsert(ActivitySequence, sequence, ['id']);
+  //   const parents = activities.filter(({ parent_id }) => !parent_id);
+  //   const choices = activities.filter(({ parent_id }) => !!parent_id);
+  //   await manager.upsert(Activity, parents, ['id']);
+  //   await manager.upsert(Activity, choices, ['id']);
+  // }
+
+  async consistentlyInstallStandaloneHabitPack(activitiesData: DeserializedActivity) {
+    await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
+      const { sequence, activities } = activitiesData;
+      await transactionalEntityManager.upsert(ActivitySequence, sequence, ['id']);
+      const parents = activities.filter(({ parent_id }) => !parent_id);
+      const choices = activities.filter(({ parent_id }) => !!parent_id);
+      await transactionalEntityManager.upsert(Activity, parents, ['id']);
+      await transactionalEntityManager.upsert(Activity, choices, ['id']);
+    });
   }
 
   async getHabitPack(pack_id: string): Promise<HabitPack> {

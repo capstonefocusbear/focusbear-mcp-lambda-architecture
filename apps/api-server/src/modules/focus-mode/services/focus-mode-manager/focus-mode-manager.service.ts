@@ -58,7 +58,7 @@ export class FocusModeManagerService {
   private async fetchFocusModeAndUser(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> {
     return Promise.all([
       this.focusModeRepository.findOneByIdForUser(focus_mode_id, user_id),
-      this.userRepository.orm.findOne(user_id),
+      this.userRepository.orm.findOneBy({ id: user_id }),
     ]);
   }
 

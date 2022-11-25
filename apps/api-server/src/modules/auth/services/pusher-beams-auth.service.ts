@@ -11,7 +11,7 @@ export class PusherBeamsAuthService {
   ) {}
 
   async getPusherBeamsToken(user_id: string): Promise<PusherBeamsAuthResponse> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
     const token = this.pusherBeamsService.generateToken(user_id);
     if (!token) throw new ServiceUnavailableException(`Couldn't generate token for user with id: ${user_id}`);
@@ -19,7 +19,7 @@ export class PusherBeamsAuthService {
   }
 
   async unsubscribeFromBeams(user_id: string): Promise<void> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
     return this.pusherBeamsService.deleteUser(user_id);
   }

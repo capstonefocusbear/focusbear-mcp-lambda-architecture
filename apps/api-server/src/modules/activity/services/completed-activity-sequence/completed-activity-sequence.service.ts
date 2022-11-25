@@ -86,8 +86,8 @@ export class CompletedActivitySequenceService {
   }
 
   async forceCompleteCurrentSequence(activity_sequence_id: string, user_id: string): Promise<any> {
-    const getUserOptions = { relations: ['current_activity', 'current_activity_sequence', 'completing_sequence_log'] };
-    const user = await this.userRepository.orm.findOne(user_id, getUserOptions);
+    const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
     const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
     hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
     const nullifiedCurrentSequence = {

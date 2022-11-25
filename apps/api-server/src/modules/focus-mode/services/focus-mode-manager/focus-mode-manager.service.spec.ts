@@ -88,7 +88,7 @@ describe('FocusModeManagerService', () => {
       const current_focus_mode_id = randomUUID();
       const userWithUnfinishedFocusMode: User = { ...userDummy, current_focus_mode_id };
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithUnfinishedFocusMode);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithUnfinishedFocusMode);
       const errorMessage = `User already has unfinished current focus mode with id: ${current_focus_mode_id}!`;
       let exception: any;
 
@@ -105,7 +105,7 @@ describe('FocusModeManagerService', () => {
 
     it('positive: new completed focus block item should be created', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
@@ -123,7 +123,7 @@ describe('FocusModeManagerService', () => {
 
     it('positive: started focus mode should be made current in the User entity', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
@@ -140,7 +140,7 @@ describe('FocusModeManagerService', () => {
 
     it('positive: push notification should be sent via "focus_mode" channel', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
@@ -183,7 +183,7 @@ describe('FocusModeManagerService', () => {
       const current_focus_mode_id = randomUUID();
       const userWithAnotherCurrentFocusMode: User = { ...userDummy, current_focus_mode_id };
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithAnotherCurrentFocusMode);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithAnotherCurrentFocusMode);
       const errorMessage = `Focus mode with id: ${focus_mode_id} is not current, the current one is ${current_focus_mode_id}!`;
       let exception: any;
 
@@ -203,7 +203,7 @@ describe('FocusModeManagerService', () => {
       const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
       const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentFocusMode);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
@@ -215,7 +215,7 @@ describe('FocusModeManagerService', () => {
       const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
       const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentFocusMode);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
@@ -232,7 +232,7 @@ describe('FocusModeManagerService', () => {
       const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
       const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentFocusMode);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.update.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, Not, In, Transaction, TransactionManager, EntityManager } from 'typeorm';
+import { Connection, In, Not } from 'typeorm';
+import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
@@ -13,28 +14,25 @@ export class UserRepository extends BaseRepository<User> {
     super(connection, User);
   }
 
-  @Transaction({ isolation: 'SERIALIZABLE' })
-  async consistentlyUpdateUserSettings(
-    { id, ...updateData }: User,
-    activitiesData?: DeserializedActivity[],
-    @TransactionManager() manager?: EntityManager,
-  ) {
-    await manager.update(User, { id }, { ...updateData });
-    await Promise.all(
-      activitiesData.map(async ({ sequence, activities }) => {
-        await manager.upsert(ActivitySequence, sequence, ['id']);
-        const activityIdsToKeep = activities.map((activity) => activity.id);
-        await manager.delete(Activity, {
-          user_id: id,
-          id: Not(In(activityIdsToKeep)),
-          type: sequence.type,
-        });
-        const parents = activities.filter(({ parent_id }) => !parent_id);
-        const choices = activities.filter(({ parent_id }) => !!parent_id);
-        await manager.upsert(Activity, parents, ['id']);
-        await manager.upsert(Activity, choices, ['id']);
-      }),
-    );
+  async consistentlyUpdateUserSettings({ id, ...updateData }: User, activitiesData?: DeserializedActivity[]) {
+    await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
+      await transactionalEntityManager.update(User, { id }, { ...updateData });
+      await Promise.all(
+        activitiesData.map(async ({ sequence, activities }) => {
+          await transactionalEntityManager.upsert(ActivitySequence, sequence, ['id']);
+          const activityIdsToKeep = activities.map((activity) => activity.id);
+          await transactionalEntityManager.delete(Activity, {
+            user_id: id,
+            id: Not(In(activityIdsToKeep)),
+            type: sequence.type,
+          });
+          const parents = activities.filter(({ parent_id }) => !parent_id);
+          const choices = activities.filter(({ parent_id }) => !!parent_id);
+          await transactionalEntityManager.upsert(Activity, parents, ['id']);
+          await transactionalEntityManager.upsert(Activity, choices, ['id']);
+        }),
+      );
+    });
   }
 
   async getUserSettings(id: string): Promise<User> {

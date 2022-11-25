@@ -49,7 +49,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
   async findInSequenceAfterTime(activity_sequence_id: string, timestamp: Date): Promise<CompletedActivity[]> {
     const where = { activity_sequence_id };
     if (timestamp) Object.assign(where, { finish_time: MoreThan(timestamp) });
-    return this.orm.find(where);
+    return this.orm.find({ where });
   }
 
   async getLogsByActivityInTimeRange(
@@ -118,7 +118,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       select: ['finish_time', 'quantity_logged'],
       where: {
         user_id,
-        created_at: Between(start_date, end_date),
+        created_at: Between(start_date.toISO(), end_date.toISO()),
         activity: {
           log_quantity: true,
         },

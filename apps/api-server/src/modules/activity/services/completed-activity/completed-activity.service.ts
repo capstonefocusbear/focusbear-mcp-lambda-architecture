@@ -149,10 +149,10 @@ export class CompletedActivityService {
     choice_id?: string,
   ): Promise<[ActivitySequence, Activity, User, Activity | null]> | never {
     const [sequence, activity, user, choice] = await Promise.all([
-      this.activitySequenceRepository.orm.findOne(activity_sequence_id),
-      this.activityRepository.orm.findOne(activity_id),
-      this.userRepository.orm.findOne(user_id, { relations: ['completing_sequence_log'] }),
-      choice_id ? this.activityRepository.orm.findOne(choice_id) : null,
+      this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id }),
+      this.activityRepository.orm.findOneBy({ id: activity_id }),
+      this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
+      choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
     ]);
     if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
@@ -254,7 +254,7 @@ export class CompletedActivityService {
     { activity_id }: GetCompletedActivityStatsParamsDto,
     { days_number, timezone }: GetCompletedActivityStatsQueryDto,
   ): Promise<CompletedActivityStats> {
-    const activity = await this.activityRepository.orm.findOne(activity_id);
+    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
     const { log_summary_type, log_quantity } = activity;
     const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
@@ -279,7 +279,7 @@ export class CompletedActivityService {
   }
 
   async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {
-    const log = await this.completedActivityRepository.orm.findOne(id);
+    const log = await this.completedActivityRepository.orm.findOneBy({ id });
     if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
     log.quantity_logged = quantity_logged;
     return this.completedActivityRepository.orm.save(log);
@@ -302,13 +302,13 @@ export class CompletedActivityService {
   }
 
   async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     return this.completedActivityRepository.getWeekSummary(user_id);
   }
 
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const { startup_time } = user;
     if (!startup_time) throw new BadRequestException('The user has no startup_time setting specified!');

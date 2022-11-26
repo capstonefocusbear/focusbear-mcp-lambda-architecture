@@ -3,12 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'fastify-helmet';
-import cors from 'fastify-cors';
-import fastifyRawBody from 'fastify-raw-body';
 import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
+import { AppDataSource } from '../ormconfig';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder()
@@ -23,7 +21,7 @@ function bootstrapApiDocumentation(app: NestFastifyApplication): void {
 async function bootstrap(): Promise<void> {
   const fastifyAdapter: FastifyAdapter = new FastifyAdapter();
 
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter);
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, { rawBody: true });
 
   const configService: ConfigService = app.get(ConfigService);
   const PORT: string = configService.get('server.port');
@@ -34,10 +32,19 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
-  app.register(helmet, HELMET);
-  app.register(cors);
-  app.register(fastifyRawBody, { global: true }); // turn off global and set route spesific // routes: ['/subscription/webhooks/stripe']
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  await app.register(require('@fastify/helmet'), HELMET);
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  app.register(require('@fastify/cors'));
   app.useLogger(app.get(Pino));
+
+  AppDataSource.initialize()
+    .then(() => {
+      console.log('Connected to Data Source');
+    })
+    .catch((err) => {
+      console.error('Error during Data Source initialization', err);
+    });
 
   const logger: Logger = new Logger('main.ts');
 

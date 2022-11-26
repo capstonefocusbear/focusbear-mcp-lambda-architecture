@@ -81,7 +81,7 @@ export class UserService {
     user_id: string,
     local_device_settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
     const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
     await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
@@ -89,7 +89,7 @@ export class UserService {
   }
 
   async getUserLocalDeviceSettings(user_id: string): Promise<UpdateLocalDeviceSettingsDto> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
     if (!user.local_device_settings) {
       return { iOS: null, Windows: null, MacOS: null, Android: null, Web: { hasEditedSettings: false } };
@@ -111,7 +111,7 @@ export class UserService {
   }
 
   async markUserSettingsAsEdited(user_id: string) {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
     const updatedWebSettings = { Web: { hasEditedSettings: true } };
     const updatedSettings = this.mergeLocalSettings(user.local_device_settings, updatedWebSettings);

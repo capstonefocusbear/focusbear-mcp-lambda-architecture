@@ -1,8 +1,8 @@
-import { BadRequestException, Body, Controller, HttpCode, Logger, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, Logger, Post, RawBodyRequest, Req } from '@nestjs/common';
+import { FastifyRequest } from 'fastify';
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 import { Headers } from '../../../../shared/decorators/headers.decorator';
-import { RawBody } from '../../../../shared/decorators/raw-body.decorator';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { SubscriptionProvider } from '../../domain/subscription-provider.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -27,7 +27,8 @@ export class WebhooksController {
 
   @Post('stripe')
   @HttpCode(200)
-  async handleStripeWebhooks(@RawBody() body, @Headers() headers: unknown) {
+  async handleStripeWebhooks(@Req() req: RawBodyRequest<FastifyRequest>, @Headers() headers: unknown) {
+    const body = req.rawBody;
     const event = await this.stripeService.decodeWebhookEvent(body, headers);
     if (event.type !== 'customer.subscription.created') return null;
     this.rcLogger.warn(event.type);

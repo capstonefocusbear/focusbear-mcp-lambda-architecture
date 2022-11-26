@@ -24,7 +24,7 @@ export class HabitPackService {
   ) {}
 
   async checkIfPackExists(pack_id: string) {
-    const habitPack = await this.habitPackRepository.orm.findOne(pack_id);
+    const habitPack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
     if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
   }
 
@@ -35,7 +35,7 @@ export class HabitPackService {
   }
 
   async getMultipleHabitPacks(getPacksQuery: GetMultiplePacksQueryDto, user_id: string): Promise<HabitPack[]> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const fetchedPacks = await this.habitPackRepository.fetchPacksByFilter(getPacksQuery);
     const serializedApprovedPacks = fetchedPacks.map((pack) => this.serializeHabitPack(pack));
@@ -49,10 +49,10 @@ export class HabitPackService {
   }
 
   async upsertHabitPack(user_id: string, upsertHabitPackDto: UpsertHabitPackDto): Promise<HabitPack> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     const userIsAdmin = user.user_type === UserTypes.ADMIN;
-    const habitPack = await this.habitPackRepository.orm.findOne(upsertHabitPackDto.id);
+    const habitPack = await this.habitPackRepository.orm.findOneBy({ id: upsertHabitPackDto.id });
     if (habitPack && habitPack.user_id !== user_id && !userIsAdmin) {
       throw new UnauthorizedException(
         `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${upsertHabitPackDto.id}!`,
@@ -135,9 +135,9 @@ export class HabitPackService {
   }
 
   async deleteHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
-    const pack = await this.habitPackRepository.orm.findOne({ id: pack_id });
+    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
     if (!pack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (pack.user_id === user_id || user.user_type === UserTypes.ADMIN) {
       await this.activityTemplateService.bulkDeleteActivityTemplates(pack_id);
       await this.habitPackRepository.orm.softDelete({ id: pack_id, user_id });

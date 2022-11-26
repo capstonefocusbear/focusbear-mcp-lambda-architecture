@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Connection } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { ActivityType } from '../domain/activity-type.enum';
 import { ActivitySequence } from '../entities/activity-sequence.entity';
 
 @Injectable()
@@ -9,7 +10,7 @@ export class ActivitySequenceRepository extends BaseRepository<ActivitySequence>
     super(connection, ActivitySequence);
   }
 
-  async findOneByTypeForUser(type: string, user_id: string): Promise<ActivitySequence> {
+  async findOneByTypeForUser(type: ActivityType, user_id: string): Promise<ActivitySequence> {
     return this.orm.findOne({ where: { type, user_id } });
   }
 

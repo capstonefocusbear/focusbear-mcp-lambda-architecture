@@ -1,4 +1,4 @@
-import { Connection, EntityTarget, Repository, UpdateResult } from 'typeorm';
+import { Connection, EntityTarget, Repository, UpdateResult, FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 export class BaseRepository<T> {
@@ -19,7 +19,7 @@ export class BaseRepository<T> {
       .values([item])
       .returning('*')
       .execute()
-      .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOne(id));
+      .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOneBy({ id } as FindOptionsWhere<T>));
   }
 
   async update(id: string, values: QueryDeepPartialEntity<T>): Promise<T> {
@@ -30,7 +30,7 @@ export class BaseRepository<T> {
       .where('id = :id', { id })
       .returning('*')
       .execute()
-      .then(({ raw: [{ id: item_id }] }: UpdateResult) => this.orm.findOne(item_id));
+      .then(({ raw: [{ id: item_id }] }: UpdateResult) => this.orm.findOneBy({ id: item_id } as FindOptionsWhere<T>));
   }
 
   async upsert(item: T, conflictTarget: string[]): Promise<T> {
@@ -44,6 +44,6 @@ export class BaseRepository<T> {
       .orUpdate({ conflict_target: conflictTarget, overwrite: keysForUpdate })
       .returning('*')
       .execute()
-      .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOne(id));
+      .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOneBy({ id } as FindOptionsWhere<T>));
   }
 }

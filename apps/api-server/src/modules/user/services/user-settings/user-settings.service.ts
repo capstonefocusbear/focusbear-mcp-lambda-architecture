@@ -40,7 +40,7 @@ export class UserSettingsService {
     updateSettingsData: UpdateUserSettingsDto,
     shouldInitialSettingsUpdateBeChecked: boolean,
   ): Promise<UpdateUserSettingsDto> {
-    const user = await this.userRepository.orm.findOne(user_id);
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
     const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
     const updatedUser = new User({ startup_time, shutdown_time, break_after_minutes, id: user_id });

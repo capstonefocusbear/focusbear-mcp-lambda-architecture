@@ -88,7 +88,7 @@ describe('HabitPackManagerService', () => {
 
   describe('installRoutineHabitPack', () => {
     it('Positive: should return a successfull response message', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
       HabitPackServiceMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
@@ -138,7 +138,7 @@ describe('HabitPackManagerService', () => {
 
   describe('installHabitPack', () => {
     it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
       try {
@@ -152,8 +152,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('negative: should return that the user already has the pack installed', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(installedPackRecordDummy);
 
       const errorMessage = `User with ID: ${userDummy.id} already has habit pack with ID: ${routineHabitPackDummy.id} installed!`;
@@ -169,7 +169,7 @@ describe('HabitPackManagerService', () => {
     });
 
     it('negative: should return that habit pack does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `Habit pack with ID: ${routineHabitPackDummy.id} does not exist!`;
       let exception: any;
@@ -185,8 +185,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('positive: should return that the routine pack was installed for user', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
       HabitPackServiceMock.getHabitPack.mockResolvedValue(routineHabitPackDummy);
@@ -203,8 +203,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('positive: should return that the standalone pack was installed for user', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       HabitPackServiceMock.getHabitPack.mockResolvedValue(standaloneHabitPackDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValueOnce(deserializedActivitiesDummy);
@@ -224,7 +224,7 @@ describe('HabitPackManagerService', () => {
 
   describe('uninstallHabitPack', () => {
     it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -238,8 +238,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('negative: should return that pack does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `Habit pack with ID: ${standaloneHabitPackDummy.id} does not exist!`;
 
       let response;
@@ -253,8 +253,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('negative: should return response message that pack is already installed', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} doesn't have pack with ID: ${routineHabitPackDummy.id} installed!`;
 
@@ -269,8 +269,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('positive: should return a successful uninstall response for routine habit pack', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(installedPackRecordDummy);
       ActivityTemplateRepositoryMock.getActivityTemplateIds.mockResolvedValueOnce(activityTemplateIdsDummy);
       UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
@@ -284,8 +284,8 @@ describe('HabitPackManagerService', () => {
     });
 
     it('positive: should return a successful uninstall response for standalone habit pack', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValue(installedPackRecordDummy);
       const responseMessage = `Habit pack with ID: ${standaloneHabitPackDummy.id} successfully uninstalled for user with ID: ${userDummy.id}!`;
 
@@ -302,7 +302,7 @@ describe('HabitPackManagerService', () => {
 
   describe('installPackAsDefaultSettings', () => {
     it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -314,48 +314,49 @@ describe('HabitPackManagerService', () => {
 
       expect(response.message).toMatch(responseMessage);
     });
-  });
 
-  it('negative: should return that pack does not exist', async () => {
-    UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-    HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-    const responseMessage = `Habit pack with ID: ${routineHabitPackDummy.id} does not exist!`;
+    it('negative: should return that pack does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const responseMessage = `Habit pack with ID: ${routineHabitPackDummy.id} does not exist!`;
 
-    let response;
-    try {
-      response = await habitPackManagerService.installPackAsDefaultSettings(userDummy.id, routineHabitPackDummy.id);
-    } catch (error) {
-      response = error;
-    }
+      let response;
+      try {
+        response = await habitPackManagerService.installPackAsDefaultSettings(userDummy.id, routineHabitPackDummy.id);
+      } catch (error) {
+        response = error;
+      }
 
-    expect(response.message).toMatch(responseMessage);
-  });
+      expect(response.message).toMatch(responseMessage);
+    });
 
-  it('positive: should install habit pack for user as default settings', async () => {
-    UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
-    HabitPackRepositoryMock.orm.findOne
-      .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
-      .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
-    InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-    UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
-    HabitPackServiceMock.getHabitPack.mockResolvedValue(routineHabitPackDummy);
-    UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
-    const user_id = userDummy.id;
+    it('positive: should install habit pack for user as default settings', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValue(routineHabitPackDBResponseDummy);
+      InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
+      HabitPackServiceMock.getHabitPack.mockResolvedValue(routineHabitPackDummy);
+      UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
+      const user_id = userDummy.id;
 
-    const response = await habitPackManagerService.installPackAsDefaultSettings(userDummy.id, routineHabitPackDummy.id);
+      const response = await habitPackManagerService.installPackAsDefaultSettings(
+        userDummy.id,
+        routineHabitPackDummy.id,
+      );
 
-    expect(UserSettingsServiceMock.clearUserActivities).toBeCalledWith(userDummy.id);
-    expect(response).toBe(userSettingsDummy);
-    expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
-    expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
-    expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
-    expect(UserSettingsServiceMock.updateSettings).toBeCalled();
-    expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id: userDummy.id });
+      expect(UserSettingsServiceMock.clearUserActivities).toBeCalledWith(userDummy.id);
+      expect(response).toBe(userSettingsDummy);
+      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
+      expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
+      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
+      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
+      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id: userDummy.id });
+    });
   });
 
   describe('getUserInstalledPacks', () => {
     it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       let response;
@@ -370,7 +371,7 @@ describe('HabitPackManagerService', () => {
 
     it("positive: should return the user's installed packs", async () => {
       const packId = randomUUID();
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       InstalledPackRepositoryMock.fetchUserInstalledPackIds.mockResolvedValueOnce([packId]);
       HabitPackRepositoryMock.orm.find.mockResolvedValueOnce([routineHabitPackDBResponseDummy]);
       HabitPackServiceMock.serializeHabitPack.mockReturnValue(routineHabitPackDummy);

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -38,6 +38,19 @@ export class FocusModeController {
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
   ): Promise<FocusMode> {
     return this.focusModeService.update(focus_mode_id, { name, allowed_apps, allowed_urls, metadata });
+  }
+
+  @Put()
+  async updateFocusModes(
+    @Body() focusModes: CreateFocusModeDto[],
+    @AuthContext() { user }: Passport,
+  ): Promise<FocusMode[]> {
+    return this.focusModeService.updateFocusModes(user.id, focusModes);
+  }
+
+  @Get()
+  async fetchFocusModes(@AuthContext() { user }: Passport): Promise<FocusMode[]> {
+    return this.focusModeService.fetchUserFocusModes(user.id);
   }
 
   @Delete()

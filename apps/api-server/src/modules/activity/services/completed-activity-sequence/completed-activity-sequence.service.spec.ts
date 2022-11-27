@@ -272,6 +272,48 @@ describe('CompletedActivitySequenceService', () => {
         current_completing_sequence_log_id: null,
       });
     });
+
+    it('positive: should nullify current sequence for user if sequence started on current date and "cancel_habits_for_today" is true', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_sequence_started_at: new Date() });
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+        true,
+      );
+
+      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: testUser.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      });
+    });
+
+    it('positive: should return from function if cancel_habits_for_today is false and the current sequence started on current date', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_sequence_started_at: new Date() });
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+      const responseMessage = `Sequence with ID: ${testUser.current_activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
+
+      const result = await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+        false,
+      );
+
+      expect(responseMessage).toBe(result);
+    });
   });
 
   describe('nullifyCurrentSequenceSkippedActivities', () => {

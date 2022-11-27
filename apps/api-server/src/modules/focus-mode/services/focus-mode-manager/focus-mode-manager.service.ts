@@ -91,7 +91,11 @@ export class FocusModeManagerService {
   }
 
   private async nullifyCurrentFocusModeForUser(user_id: string): Promise<void> {
-    const userDataToUpdate = new CurrentFocusModeData();
+    const userDataToUpdate = new CurrentFocusModeData({
+      finish_time: null,
+      focus_mode_id: null,
+      completed_mode_id: null,
+    });
     await this.userRepository.orm.update(user_id, userDataToUpdate);
   }
 }

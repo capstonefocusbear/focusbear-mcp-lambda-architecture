@@ -207,7 +207,14 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, new CurrentFocusModeData());
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+        user_id,
+        new CurrentFocusModeData({
+          finish_time: null,
+          focus_mode_id: null,
+          completed_mode_id: null,
+        }),
+      );
     });
 
     it('positive: completed focus block item should be updated with finishFocusModeDto data', async () => {

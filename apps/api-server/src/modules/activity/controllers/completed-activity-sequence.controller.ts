@@ -4,6 +4,7 @@ import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CompletedActivitySequenceStats } from '../domain/completed-activity-sequence-stats.model';
+import { ForceCompleteActivitySequenceQueryDto } from '../dto/force-complete-sequence-param.dto';
 import { GetCompletedActivitySequenceStatsParamsDto } from '../dto/get-completed-activity-sequence-stats.dto';
 import { GetCompletedActivityStatsQueryDto } from '../dto/get-completed-activity-stats.dto';
 import { CompletedActivitySequenceService } from '../services/completed-activity-sequence/completed-activity-sequence.service';
@@ -31,8 +32,13 @@ export class CompletedActivitySequenceController {
   @Post(':activity_sequence_id/force-complete-current-sequence')
   async forceCompleteCurrentSequence(
     @Param() { activity_sequence_id }: GetCompletedActivitySequenceStatsParamsDto,
+    @Query() { cancel_habits_for_today }: ForceCompleteActivitySequenceQueryDto,
     @AuthContext() { user: { id: user_id } }: Passport,
   ) {
-    return this.completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, user_id);
+    return this.completedActivitySequenceService.forceCompleteCurrentSequence(
+      activity_sequence_id,
+      user_id,
+      cancel_habits_for_today,
+    );
   }
 }

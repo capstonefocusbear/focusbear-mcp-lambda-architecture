@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
@@ -85,10 +86,20 @@ export class CompletedActivitySequenceService {
     return completionPercent;
   }
 
-  async forceCompleteCurrentSequence(activity_sequence_id: string, user_id: string): Promise<any> {
+  async forceCompleteCurrentSequence(
+    activity_sequence_id: string,
+    user_id: string,
+    cancel_habits_for_today?: boolean,
+  ): Promise<any> {
     const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
     const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
     const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
+    const sequenceStartTime = user.current_sequence_started_at;
+    const sequenceDate = sequenceStartTime && DateTime.fromJSDate(sequenceStartTime);
+    const sequenceWasStartedToday = sequenceDate && sequenceDate.hasSame(DateTime.local(), 'day');
+    if (!cancel_habits_for_today && sequenceWasStartedToday) {
+      return `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
+    }
     hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
     const nullifiedCurrentSequence = {
       current_activity_sequence_id: null,

@@ -74,7 +74,7 @@ export class CompletedActivityService {
       sequence,
       activity,
       choice,
-      true,
+      false,
     );
     const createdItem = await this.saveCompletedLog(
       completedActivity,

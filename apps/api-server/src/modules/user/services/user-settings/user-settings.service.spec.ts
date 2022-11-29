@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -154,6 +154,33 @@ describe('UserSettingsService', () => {
         updatedUser,
         emptyDeserializedActivitiesDummy,
       );
+    });
+  });
+
+  describe('updateUserTimezone', () => {
+    it('negative: should throw error for invalid timezone', async () => {
+      const responseMessage = 'the zone "America/New_Yor" is not supported';
+      let exception: any;
+      try {
+        await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_Yor');
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toMatch(responseMessage);
+    });
+
+    it('positive: should user timezone in UTC offset format receiving IANA timezone format', async () => {
+      await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_York');
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-05:00' });
+    });
+
+    it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {
+      await userSettingsService.updateUserTimezone(userDummy.id, 'UTC-2');
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
     });
   });
 });

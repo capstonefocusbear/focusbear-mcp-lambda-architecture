@@ -10,6 +10,7 @@ import {
   DeviceServiceMock,
   PusherServiceMock,
   UserRepositoryMock,
+  UserSettingsServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivityDummy,
@@ -40,6 +41,7 @@ import { ActivityCompletedPush } from '../../domain/activity-completed-push.mode
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { DaySummary } from '../../domain/day-summary.mode';
+import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 
 describe('CompletedActivityService', () => {
   let completedactivityService: CompletedActivityService;
@@ -56,6 +58,7 @@ describe('CompletedActivityService', () => {
         CompletedActivitySequenceService,
         PusherService,
         CompletedFocusBlockRepository,
+        UserSettingsService,
       ],
     })
       .overrideProvider(CompletedActivityRepository)
@@ -74,6 +77,8 @@ describe('CompletedActivityService', () => {
       .useValue(PusherServiceMock)
       .overrideProvider(CompletedFocusBlockRepository)
       .useValue(CompletedFocusBlockRepositoryMock)
+      .overrideProvider(UserSettingsService)
+      .useValue(UserSettingsServiceMock)
       .compile();
 
     completedactivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);

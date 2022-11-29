@@ -1,5 +1,6 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as _ from 'lodash';
+import { DateTime } from 'luxon';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -42,7 +43,10 @@ export class UserSettingsService {
   ): Promise<UpdateUserSettingsDto> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-    const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
+    const { startup_time, shutdown_time, break_after_minutes, timezone } = updateSettingsData;
+    if (timezone) {
+      this.updateUserTimezone(user_id, timezone);
+    }
     const updatedUser = new User({ startup_time, shutdown_time, break_after_minutes, id: user_id });
     const { morning_activities, evening_activities, break_activities } = updateSettingsData;
     const serializedActivities = { morning_activities, evening_activities, break_activities };
@@ -62,5 +66,24 @@ export class UserSettingsService {
     newSettings.break_activities = [];
     newSettings.evening_activities = [];
     await this.updateSettings({ user_id }, newSettings, false);
+  }
+
+  async updateUserTimezone(user_id: string, timezone: string) {
+    const currentTime = DateTime.local({ zone: timezone });
+    if (currentTime.invalidReason) {
+      throw new BadRequestException(currentTime.invalidExplanation);
+    }
+    const currentTimeISO = currentTime.toISO();
+    const positiveTime = currentTimeISO.split('+')[1];
+    const negavtiveTime = currentTimeISO.split('-')[3];
+    if (positiveTime) {
+      const userZone = `UTC+${positiveTime}`;
+      await this.userRepository.update(user_id, { timezone: userZone });
+      return;
+    }
+    if (negavtiveTime) {
+      const userZone = `UTC-${negavtiveTime}`;
+      await this.userRepository.update(user_id, { timezone: userZone });
+    }
   }
 }

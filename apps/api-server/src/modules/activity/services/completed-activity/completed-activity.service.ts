@@ -32,6 +32,7 @@ import { ActivityDurationDaySummaryItem } from '../../domain/activity-duration-d
 import { ActivityQuantityDaySummaryItem } from '../../domain/activity-quantity-day-summary-item.mode';
 import { DaySummary } from '../../domain/day-summary.mode';
 import { SkipActivityDto } from '../../dto/skip-activity.dto';
+import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 
 @Injectable()
 export class CompletedActivityService {
@@ -44,6 +45,7 @@ export class CompletedActivityService {
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly pusher: PusherService,
     private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
+    private readonly userSettingsService: UserSettingsService,
   ) {}
 
   async completeActivity(
@@ -256,6 +258,7 @@ export class CompletedActivityService {
   ): Promise<CompletedActivityStats> {
     const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
     const { log_summary_type, log_quantity } = activity;
     const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
     const params = { days_number, log_summary_type, stat_type, timezone };
@@ -287,6 +290,7 @@ export class CompletedActivityService {
 
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
     const timerange = await this.defineStartupTimestamp(user_id, timezone);
+    await this.userSettingsService.updateUserTimezone(user_id, timezone);
     const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
       this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange }),
       this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),

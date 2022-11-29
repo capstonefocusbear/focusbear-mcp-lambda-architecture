@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   ActivitySequenceRepositoryMock,
@@ -305,14 +305,19 @@ describe('CompletedActivitySequenceService', () => {
         .spyOn(completedActivitySequenceService, 'completeActivitySequence')
         .mockResolvedValue(UncompletedSequenceLogDummy);
       const responseMessage = `Sequence with ID: ${testUser.current_activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
+      let exception: any;
+      try {
+        await completedActivitySequenceService.forceCompleteCurrentSequence(
+          testUser.current_activity_sequence_id,
+          testUser.id,
+          false,
+        );
+      } catch (error) {
+        exception = error;
+      }
 
-      const result = await completedActivitySequenceService.forceCompleteCurrentSequence(
-        testUser.current_activity_sequence_id,
-        testUser.id,
-        false,
-      );
-
-      expect(responseMessage).toBe(result);
+      expect(exception).toBeInstanceOf(NotAcceptableException);
+      expect(exception.message).toMatch(responseMessage);
     });
   });
 

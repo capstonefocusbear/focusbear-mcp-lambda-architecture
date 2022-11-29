@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -98,7 +98,9 @@ export class CompletedActivitySequenceService {
     const sequenceDate = sequenceStartTime && DateTime.fromJSDate(sequenceStartTime);
     const sequenceWasStartedToday = sequenceDate && sequenceDate.hasSame(DateTime.local(), 'day');
     if (!cancel_habits_for_today && sequenceWasStartedToday) {
-      return `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
+      throw new NotAcceptableException(
+        `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
+      );
     }
     hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
     const nullifiedCurrentSequence = {

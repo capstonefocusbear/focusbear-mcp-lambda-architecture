@@ -171,6 +171,12 @@ export class User extends BaseEntity {
   })
   current_sequence_skipped_activities?: string[];
 
+  @Column({
+    type: 'varchar',
+    default: 'UTC',
+  })
+  timezone?: string;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 

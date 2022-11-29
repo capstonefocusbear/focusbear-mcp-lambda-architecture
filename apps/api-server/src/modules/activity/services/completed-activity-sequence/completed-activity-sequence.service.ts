@@ -94,10 +94,12 @@ export class CompletedActivitySequenceService {
     const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
     const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
     const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
-    const sequenceStartTime = user.current_sequence_started_at;
-    const sequenceDate = sequenceStartTime && DateTime.fromJSDate(sequenceStartTime);
-    const sequenceWasStartedToday = sequenceDate && sequenceDate.hasSame(DateTime.local(), 'day');
-    if (!cancel_habits_for_today && sequenceWasStartedToday) {
+    const shouldAllowForceCompletion = await this.checkIfForceCompletionShouldBeAllowed(
+      user,
+      cancel_habits_for_today,
+      activity_sequence_id,
+    );
+    if (!shouldAllowForceCompletion) {
       throw new NotAcceptableException(
         `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
       );
@@ -115,6 +117,36 @@ export class CompletedActivitySequenceService {
     };
     const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
     return updatedUser;
+  }
+
+  async checkIfForceCompletionShouldBeAllowed(
+    user: User,
+    cancel_habits_for_today: boolean,
+    activity_sequence_id: string,
+  ): Promise<boolean> {
+    const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
+    const { type } = sequence;
+    const { startup_time, shutdown_time, timezone, current_sequence_started_at } = user;
+    const [startupHours, startupMins] = startup_time.split(':');
+    const [shutdownHours, shutdownMins] = shutdown_time.split(':');
+    const userTimeZone = timezone ?? 'UTC';
+    const userCurrentTime = DateTime.local({ zone: userTimeZone });
+    const userStartupTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(startupHours),
+      minute: Number(startupMins),
+    });
+    const userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(shutdownHours),
+      minute: Number(shutdownMins),
+    });
+    const sequenceDate = DateTime.fromJSDate(current_sequence_started_at, { zone: userTimeZone });
+    const sequenceWasStartedToday = sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
+    const canForceCompleteMorningRoutine = type === ActivityType.morning && userCurrentTime >= userShutdownTime;
+    const canForceCompleteEveningRoutine = type === ActivityType.evening && userCurrentTime >= userStartupTime;
+    const canForceCompleteSequence = canForceCompleteMorningRoutine || canForceCompleteEveningRoutine;
+    if (!sequenceWasStartedToday || cancel_habits_for_today) return true;
+    if (sequenceWasStartedToday && canForceCompleteSequence) return true;
+    return false;
   }
 
   private validateCurrentActivitySequence(

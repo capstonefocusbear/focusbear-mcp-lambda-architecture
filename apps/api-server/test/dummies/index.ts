@@ -38,6 +38,7 @@ export const userDummy = new User(
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.STANDARD,
     name: 'User Dummy',
+    timezone: 'UTC',
   },
   { generateId: false },
 );

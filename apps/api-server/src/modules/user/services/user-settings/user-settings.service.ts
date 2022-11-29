@@ -40,10 +40,11 @@ export class UserSettingsService {
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
     shouldInitialSettingsUpdateBeChecked: boolean,
+    timezone?: string,
   ): Promise<UpdateUserSettingsDto> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-    const { startup_time, shutdown_time, break_after_minutes, timezone } = updateSettingsData;
+    const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
     if (timezone) {
       this.updateUserTimezone(user_id, timezone);
     }

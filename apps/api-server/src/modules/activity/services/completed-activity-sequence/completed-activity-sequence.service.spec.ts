@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { Settings } from 'luxon';
 import {
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
@@ -243,6 +244,36 @@ describe('CompletedActivitySequenceService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
+    it("negative: should throw error if cancel_habits_for_today is false, current sequence started on current date, and it's not time for next sequence yet", async () => {
+      Settings.now = () => new Date('2022-10-06T12:00:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...testUser,
+        startup_time: '08:00',
+        shutdown_time: '18:00',
+        current_sequence_started_at: new Date('2022-10-06T08:00:00.000Z'),
+      });
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+      const responseMessage = `Sequence with ID: ${testUser.current_activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
+      let exception: any;
+      try {
+        await completedActivitySequenceService.forceCompleteCurrentSequence(
+          testUser.current_activity_sequence_id,
+          testUser.id,
+          false,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotAcceptableException);
+      expect(exception.message).toMatch(responseMessage);
+      Settings.now = () => new Date().valueOf();
+    });
+
     it('positive: if user has consistent current sequence, this sequence should be completed', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValue(testUser);
       UncompletedSequenceLogDummy.finalizeUncompletedLog();
@@ -356,6 +387,70 @@ describe('CompletedActivitySequenceService', () => {
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
       });
+    });
+
+    it('positive: should nullify current sequence for user if existing sequence is morning and evening sequence has started with "cancel_habits_for_today" as false', async () => {
+      Settings.now = () => new Date('2022-10-06T18:05:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...testUser,
+        startup_time: '08:00',
+        shutdown_time: '18:00',
+        current_sequence_started_at: new Date('2022-10-06T08:30:00.000+00:00'),
+      });
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+        false,
+      );
+
+      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: testUser.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      });
+      Settings.now = () => new Date().valueOf();
+    });
+
+    it('positive: should nullify current sequence for user if existing sequence is evening and morning sequence has started with "cancel_habits_for_today" as false(evening sequence is after 12PM)', async () => {
+      Settings.now = () => new Date('2022-10-06T08:05:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...testUser,
+        startup_time: '08:00',
+        shutdown_time: '02:00',
+        current_sequence_started_at: new Date('2022-10-06T02:05:00.000+00:00'),
+      });
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
+      await completedActivitySequenceService.forceCompleteCurrentSequence(
+        testUser.current_activity_sequence_id,
+        testUser.id,
+        false,
+      );
+
+      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: testUser.current_activity_sequence_id,
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      });
+      Settings.now = () => new Date().valueOf();
     });
   });
 

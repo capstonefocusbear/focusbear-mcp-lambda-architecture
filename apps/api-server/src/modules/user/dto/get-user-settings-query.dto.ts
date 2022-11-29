@@ -1,6 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateUserSettingsQueryDto {
+export class GetUserSettingsQueryDto {
   @IsOptional()
   @IsString()
   timezone?: string;

@@ -18,9 +18,12 @@ export class UserSettingsService {
     private readonly userService: UserService,
   ) {}
 
-  async getSettings({ user_id }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
+  async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
     const userSettings = await this.userRepository.getUserSettings(user_id);
     if (!userSettings) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
+    if (timezone) {
+      await this.updateUserTimezone(user_id, timezone);
+    }
     return this.serializeSettings(userSettings);
   }
 
@@ -40,14 +43,10 @@ export class UserSettingsService {
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
     shouldInitialSettingsUpdateBeChecked: boolean,
-    timezone?: string,
   ): Promise<UpdateUserSettingsDto> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
     const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
-    if (timezone) {
-      this.updateUserTimezone(user_id, timezone);
-    }
     const updatedUser = new User({ startup_time, shutdown_time, break_after_minutes, id: user_id });
     const { morning_activities, evening_activities, break_activities } = updateSettingsData;
     const serializedActivities = { morning_activities, evening_activities, break_activities };

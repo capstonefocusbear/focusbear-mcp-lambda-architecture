@@ -1,7 +1,8 @@
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { userDummy } from '../../../../test/dummies';
 import { PusherBeamsAuthService } from './pusher-beams-auth.service';
-import { PusherBeamsServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
+import { PusherBeamsServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { PusherBeamsService } from '../../../../../../libs/pusher-beams/src';
 
@@ -10,7 +11,15 @@ describe('PusherBeamsAuthService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [PusherBeamsAuthService, PusherBeamsService, UserRepository],
+      providers: [
+        PusherBeamsAuthService,
+        PusherBeamsService,
+        UserRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)

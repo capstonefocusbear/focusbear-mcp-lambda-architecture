@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { configsArray } from '../../../../config/index';
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import { auth0UserDummy, userDummy } from '../../../../../test/dummies';
@@ -9,6 +10,7 @@ import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,
   RevenueCatServiceMock,
+  SentryServiceMock,
   StripeServiceMock,
   UserRepositoryMock,
   UserSettingsServiceMock,
@@ -33,6 +35,10 @@ describe('UserService', () => {
         RevenueCatService,
         StripeService,
         ConfigService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
       ],
     })
       .overrideProvider(UserRepository)

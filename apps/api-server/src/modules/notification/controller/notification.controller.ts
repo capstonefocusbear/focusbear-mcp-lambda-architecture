@@ -7,7 +7,7 @@ import { UpdateCalendarEventDto } from '../dto/updateCalendarEvent.dto';
 import { NotificationService } from '../services/notification.service';
 
 @Controller('notifications')
-@ApiTags('events')
+@ApiTags('notifications')
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class NotificationController {

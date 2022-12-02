@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { DateTime } from 'luxon';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -46,62 +47,100 @@ export class CompletedActivityService {
     private readonly pusher: PusherService,
     private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
     private readonly userSettingsService: UserSettingsService,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   async completeActivity(
     completedActivity: CreateCompletedActivityDto,
     { user_id }: GetUserSettingsDto,
   ): Promise<CompletedActivityResponse> {
-    const { device_id, activity_sequence_id, activity_id, choice_id } = completedActivity;
-    const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-      activity_sequence_id,
-      activity_id,
-      user_id,
-      choice_id,
-    );
-    if (activity.type === ActivityType.break) {
-      const isThereIncompletedCurrentSequence = user.current_activity_sequence_id;
-      const incompletSequenceMsg = 'There is incomplete current sequence for the user, finish it before doing break!';
-      if (isThereIncompletedCurrentSequence) throw new BadRequestException(incompletSequenceMsg);
-      this.validateChoice(activity, choice);
-      await this.deviceService.markAsLeader(device_id, user_id);
-      const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Completing activity',
+        data: {
+          user_id,
+          completedActivity,
+        },
+      });
+      const { device_id, activity_sequence_id, activity_id, choice_id } = completedActivity;
+      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
+        activity_sequence_id,
+        activity_id,
+        user_id,
+        choice_id,
+      );
+      if (activity.type === ActivityType.break) {
+        const isThereIncompletedCurrentSequence = user.current_activity_sequence_id;
+        const incompletSequenceMsg = 'There is incomplete current sequence for the user, finish it before doing break!';
+        if (isThereIncompletedCurrentSequence) throw new BadRequestException(incompletSequenceMsg);
+        this.validateChoice(activity, choice);
+        await this.deviceService.markAsLeader(device_id, user_id);
+        const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
+        await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
+        return createdItem;
+      }
+      const completingSequenceLog = await this.updateUserAndSequence(
+        completedActivity,
+        { user_id },
+        user,
+        sequence,
+        activity,
+        choice,
+        false,
+      );
+      const createdItem = await this.saveCompletedLog(
+        completedActivity,
+        activity,
+        choice,
+        user_id,
+        completingSequenceLog,
+      );
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       return createdItem;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    const completingSequenceLog = await this.updateUserAndSequence(
-      completedActivity,
-      { user_id },
-      user,
-      sequence,
-      activity,
-      choice,
-      false,
-    );
-    const createdItem = await this.saveCompletedLog(
-      completedActivity,
-      activity,
-      choice,
-      user_id,
-      completingSequenceLog,
-    );
-    await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
-    return createdItem;
   }
 
   async skipActivity(activityData: SkipActivityDto, { user_id }: GetUserSettingsDto) {
-    const { activity_sequence_id, activity_id, choice_id } = activityData;
-    const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-      activity_sequence_id,
-      activity_id,
-      user_id,
-      choice_id,
-    );
-    await this.saveActivityAsSkipped(user, activity_id);
-    await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Skipping activity',
+        data: {
+          user_id,
+          activityData,
+        },
+      });
+      const { activity_sequence_id, activity_id, choice_id } = activityData;
+      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
+        activity_sequence_id,
+        activity_id,
+        user_id,
+        choice_id,
+      );
+      await this.saveActivityAsSkipped(user, activity_id);
+      await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async saveActivityAsSkipped(user: User, activity_id: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Saving activity as skipped',
+      data: {
+        user_id: user.id,
+        activity_id,
+      },
+    });
     const skippedActivities = user.current_sequence_skipped_activities ?? [];
     skippedActivities.push(activity_id);
     await this.userRepository.update(user.id, { current_sequence_skipped_activities: skippedActivities });
@@ -116,6 +155,14 @@ export class CompletedActivityService {
     choice: Activity,
     is_skipped: boolean,
   ) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Updating user and sequence',
+      data: {
+        user_id,
+      },
+    });
     this.validateCompletingActivity(user, sequence, activity, choice);
     const { device_id, activity_sequence_id, activity_id } = activityData;
     const start_time = activityData?.start_time ?? new Date();
@@ -150,6 +197,17 @@ export class CompletedActivityService {
     user_id: string,
     choice_id?: string,
   ): Promise<[ActivitySequence, Activity, User, Activity | null]> | never {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching preparatory data',
+      data: {
+        user_id,
+        activity_id,
+        activity_sequence_id,
+        choice_id,
+      },
+    });
     const [sequence, activity, user, choice] = await Promise.all([
       this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id }),
       this.activityRepository.orm.findOneBy({ id: activity_id }),
@@ -170,6 +228,14 @@ export class CompletedActivityService {
     activity: Activity,
     choice?: Activity,
   ): void | never {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating completing activity',
+      data: {
+        user_id: user.id,
+      },
+    });
     const { current_activity_sequence_id } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
@@ -180,6 +246,15 @@ export class CompletedActivityService {
   }
 
   private validateChoice(activity: Activity, choice?: Activity): void | never {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating activity choice',
+      data: {
+        activity_id: activity.id,
+        choice_id: choice?.id,
+      },
+    });
     if (!activity.has_choices) return;
     const isRequiredChoiceMissed = activity.has_choices && !choice;
     const choiceRequiredMessage = `Activity with id: ${activity.id} cannot be completed without choice_id provided`;
@@ -198,6 +273,16 @@ export class CompletedActivityService {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
   } {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Defining next current activity',
+      data: {
+        user_id: user.id,
+        activity_id,
+        completed_activity_id: completedActivity?.activity_id,
+      },
+    });
     const { sequenceActivityIds, id } = sequence;
     const completedActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === activity_id);
     const noActivityInTheSequense = completedActivityIndexInTheSequence === -1;
@@ -224,6 +309,17 @@ export class CompletedActivityService {
     user_id: string,
     sequenceLog?: CompletedActivitySequence,
   ): Promise<CompletedActivityResponse> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Saving completed log',
+      data: {
+        user_id,
+        activity_id: activity.id,
+        choice_id: choice?.id,
+        completed_activity_id: completedActivity.activity_id,
+      },
+    });
     const { choice_id, ...data } = completedActivity;
     const { has_choices } = activity;
     const completedItem = new CompletedActivity(
@@ -248,6 +344,15 @@ export class CompletedActivityService {
     completed_activity_id: string,
     completedActivity: CreateCompletedActivityDto,
   ): Promise<void> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Broadcasting completion event to Pusher',
+      data: {
+        user_id,
+        completed_activity_id,
+      },
+    });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
   }
@@ -256,32 +361,65 @@ export class CompletedActivityService {
     { activity_id }: GetCompletedActivityStatsParamsDto,
     { days_number, timezone }: GetCompletedActivityStatsQueryDto,
   ): Promise<CompletedActivityStats> {
-    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
-    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
-    await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
-    const { log_summary_type, log_quantity } = activity;
-    const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
-    const params = { days_number, log_summary_type, stat_type, timezone };
-    const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, params);
-    const stats = new CompletedActivityStats({
-      activity_id,
-      days_number,
-      items,
-      log_summary_type,
-      stat_type,
-      timezone,
-    });
-    return stats;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting stats by activity per day',
+        data: {
+          activity_id,
+          days_number,
+          timezone,
+        },
+      });
+      const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+      if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+      await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
+      const { log_summary_type, log_quantity } = activity;
+      const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
+      const params = { days_number, log_summary_type, stat_type, timezone };
+      const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, params);
+      const stats = new CompletedActivityStats({
+        activity_id,
+        days_number,
+        items,
+        log_summary_type,
+        stat_type,
+        timezone,
+      });
+      return stats;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async getCompletedLogsByActivityInTimeRange(
     { activity_id }: GetCompletedActivityStatsParamsDto,
     { from_time, to_time },
   ): Promise<CompletedActivity[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting completed logs by activity in timerange',
+      data: {
+        activity_id,
+        from_time,
+        to_time,
+      },
+    });
     return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
   }
 
   async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Revising completed log',
+      data: {
+        id,
+      },
+    });
     const log = await this.completedActivityRepository.orm.findOneBy({ id });
     if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
     log.quantity_logged = quantity_logged;
@@ -289,29 +427,65 @@ export class CompletedActivityService {
   }
 
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
-    const timerange = await this.defineStartupTimestamp(user_id, timezone);
-    await this.userSettingsService.updateUserTimezone(user_id, timezone);
-    const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
-      this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange }),
-      this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),
-      this.completedActivityRepository.getDaySummarySUM(user_id, { ...timerange }),
-      this.completedActivityRepository.getDaySummaryDuration(user_id, { ...timerange }),
-    ]);
-    return new DaySummary({
-      focusSummary: this.countFocusModeSummary(focusSummaryItems),
-      daySummaryAVG: this.countSummaryAVG(daySummaryAVGItems),
-      daySummarySUM: this.countSummarySUM(daySummarySUMItems),
-      daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
-    });
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting day summary',
+        data: {
+          user_id,
+          timezone,
+        },
+      });
+      const timerange = await this.defineStartupTimestamp(user_id, timezone);
+      await this.userSettingsService.updateUserTimezone(user_id, timezone);
+      const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
+        this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange }),
+        this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),
+        this.completedActivityRepository.getDaySummarySUM(user_id, { ...timerange }),
+        this.completedActivityRepository.getDaySummaryDuration(user_id, { ...timerange }),
+      ]);
+      return new DaySummary({
+        focusSummary: this.countFocusModeSummary(focusSummaryItems),
+        daySummaryAVG: this.countSummaryAVG(daySummaryAVGItems),
+        daySummarySUM: this.countSummarySUM(daySummarySUMItems),
+        daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
+      });
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    return this.completedActivityRepository.getWeekSummary(user_id);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting week summary',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      return await this.completedActivityRepository.getWeekSummary(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Defining startup timestamp',
+      data: {
+        user_id,
+        timezone,
+      },
+    });
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const { startup_time } = user;
@@ -321,6 +495,15 @@ export class CompletedActivityService {
   }
 
   private buildTimestamp(startup_time: string, timeZone: string): { from_time: string; to_time: string } {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Building timestamp',
+      data: {
+        startup_time,
+        time_zone: timeZone,
+      },
+    });
     let to_time;
     let startupTime;
     let from_time;
@@ -349,6 +532,11 @@ export class CompletedActivityService {
   }
 
   private groupByName(items: CompletedActivity[]) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Grouping by name',
+    });
     const result = new Map();
     for (const item of items) {
       const existingValue = result.get(item.activity.activity_data.name) ?? [];
@@ -359,6 +547,11 @@ export class CompletedActivityService {
   }
 
   private countSummaryAVG(logs: CompletedActivity[]): ActivityQuantityDaySummaryItem[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Counting summary AVG',
+    });
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -368,6 +561,11 @@ export class CompletedActivityService {
   }
 
   private countSummarySUM(logs: CompletedActivity[]): ActivityQuantityDaySummaryItem[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Counting summary SUM',
+    });
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -377,6 +575,11 @@ export class CompletedActivityService {
   }
 
   private countSummaryDuration(logs: CompletedActivity[]): ActivityDurationDaySummaryItem[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting summary duration',
+    });
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => ({
@@ -386,6 +589,11 @@ export class CompletedActivityService {
   }
 
   private countFocusModeSummary(items: CompletedFocusBlock[]): FocusModeDaySummaryItem[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Counting focus mode summary',
+    });
     return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '' }) => ({
       name: focus_mode.name,
       start_time,

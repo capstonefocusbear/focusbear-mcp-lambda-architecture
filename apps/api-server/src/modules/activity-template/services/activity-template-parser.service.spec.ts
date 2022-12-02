@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   routineHabitPackDBResponseDummy,
   serializedRoutineActivityDummy,
@@ -9,7 +10,12 @@ import {
   activityTemplateArrayDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import { userDummy } from '../../../../test/dummies';
-import { ActivityTemplateRepositoryMock, HabitPackRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
+import {
+  ActivityTemplateRepositoryMock,
+  HabitPackRepositoryMock,
+  SentryServiceMock,
+  UserRepositoryMock,
+} from '../../../../test/mocks';
 import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { HabitPackRepository } from '../../habit-pack/repositories/habit-pack.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -22,7 +28,16 @@ describe('ActivityTemplateParserService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [ActivityTemplateParserService, ActivityTemplateRepository, UserRepository, HabitPackRepository],
+      providers: [
+        ActivityTemplateParserService,
+        ActivityTemplateRepository,
+        UserRepository,
+        HabitPackRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(ActivityTemplateRepository)
       .useValue(ActivityTemplateRepositoryMock)

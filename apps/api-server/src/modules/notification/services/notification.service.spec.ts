@@ -1,12 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   createCalendarEventDummy,
   notificationDBResponseDummy,
   updateCalendarEventDummy,
   userDummy,
 } from '../../../../test/dummies';
-import { NotificationRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
+import { NotificationRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { NotificationRepository } from '../repository/notification.repository';
 import { NotificationService } from './notification.service';
@@ -17,7 +18,15 @@ describe('NotificationService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [NotificationService, NotificationRepository, UserRepository],
+      providers: [
+        NotificationService,
+        NotificationRepository,
+        UserRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(NotificationRepository)
       .useValue(NotificationRepositoryMock)

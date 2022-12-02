@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { User } from '../../../user/entities/user.entity';
@@ -20,6 +21,7 @@ export class FocusModeManagerService {
     private readonly userRepository: UserRepository,
     private readonly pusher: PusherService,
     private readonly pusherBeamsService: PusherBeamsService,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   async startCurrentFocusMode(
@@ -27,25 +29,49 @@ export class FocusModeManagerService {
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
-    await this.validateStartingFocusMode(focus_mode_id, user_id);
-    const scheduled_finish_time = finish_time;
-    const completedFocusBlock = new CompletedFocusBlock({
-      start_time,
-      scheduled_finish_time,
-      intention,
-      user_id,
-      focus_mode_id,
-    });
-    const completedMode = await this.completedFocusBlockRepository.create(completedFocusBlock);
-    const completed_mode_id = completedMode.id;
-    const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
-    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
-    await this.userRepository.orm.update(user_id, userDataToUpdate);
-    await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
-    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Starting focus mode',
+        data: {
+          finish_time,
+          start_time,
+          focus_mode_id,
+        },
+      });
+      await this.validateStartingFocusMode(focus_mode_id, user_id);
+      const scheduled_finish_time = finish_time;
+      const completedFocusBlock = new CompletedFocusBlock({
+        start_time,
+        scheduled_finish_time,
+        intention,
+        user_id,
+        focus_mode_id,
+      });
+      const completedMode = await this.completedFocusBlockRepository.create(completedFocusBlock);
+      const completed_mode_id = completedMode.id;
+      const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
+      await this.userRepository.orm.update(user_id, userDataToUpdate);
+      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
+      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private async validateStartingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating starting focus mode',
+      data: {
+        user_id,
+        focus_mode_id,
+      },
+    });
     const [focusMode, user] = await this.fetchFocusModeAndUser(focus_mode_id, user_id);
     const notFoundModeMsg = `Focus Mode with id: ${focus_mode_id} does not exist for User with id: ${user_id}!`;
     if (!focusMode) throw new NotFoundException(notFoundModeMsg);
@@ -56,6 +82,15 @@ export class FocusModeManagerService {
   }
 
   private async fetchFocusModeAndUser(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching focus mode and user',
+      data: {
+        user_id,
+        focus_mode_id,
+      },
+    });
     return Promise.all([
       this.focusModeRepository.findOneByIdForUser(focus_mode_id, user_id),
       this.userRepository.orm.findOneBy({ id: user_id }),
@@ -67,19 +102,43 @@ export class FocusModeManagerService {
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
-    const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
-    const updateCriteria = user.current_completing_focus_block_id;
-    const completedBlockDataToUpdate = { distractions, achievements, finish_time };
-    const [, completedMode] = await Promise.all([
-      this.nullifyCurrentFocusModeForUser(user_id),
-      this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
-    ]);
-    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
-    await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
-    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Finishing current focus mode',
+        data: {
+          finish_time,
+          focus_mode_id,
+          user_id,
+        },
+      });
+      const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
+      const updateCriteria = user.current_completing_focus_block_id;
+      const completedBlockDataToUpdate = { distractions, achievements, finish_time };
+      const [, completedMode] = await Promise.all([
+        this.nullifyCurrentFocusModeForUser(user_id),
+        this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
+      ]);
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
+      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
+      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validate finishing focus mode',
+      data: {
+        user_id,
+        focus_mode_id,
+      },
+    });
     const [focusMode, user] = await this.fetchFocusModeAndUser(focus_mode_id, user_id);
     const notFoundModeMsg = `Focus Mode with id: ${focus_mode_id} does not exist for User with id: ${user_id}!`;
     if (!focusMode) throw new NotFoundException(notFoundModeMsg);
@@ -91,6 +150,14 @@ export class FocusModeManagerService {
   }
 
   private async nullifyCurrentFocusModeForUser(user_id: string): Promise<void> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Nullifying current focus mode for user',
+      data: {
+        user_id,
+      },
+    });
     const userDataToUpdate = new CurrentFocusModeData({
       finish_time: null,
       focus_mode_id: null,

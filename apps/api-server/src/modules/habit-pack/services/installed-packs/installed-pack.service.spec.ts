@@ -1,7 +1,8 @@
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { installedPackRecordDummy, routineHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { userDummy } from '../../../../../test/dummies';
-import { InstalledPackRepositoryMock } from '../../../../../test/mocks';
+import { InstalledPackRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { InstalledPackService } from './installed-pack.service';
 import { InstalledPackRepository } from '../../repositories/installed-pack.repository';
 import { InstalledPack } from '../../entity/installed-pack.entity';
@@ -11,7 +12,14 @@ describe('HabitPackManagerService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [InstalledPackRepository, InstalledPackService],
+      providers: [
+        InstalledPackRepository,
+        InstalledPackService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
 
       .overrideProvider(InstalledPackRepository)

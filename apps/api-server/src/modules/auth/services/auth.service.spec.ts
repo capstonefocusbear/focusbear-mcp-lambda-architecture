@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { Auth0AuthenticationService } from '@app/auth0';
-import { Auth0AuthenticationServiceMock } from '../../../../test/mocks/index';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { Auth0AuthenticationServiceMock, SentryServiceMock } from '../../../../test/mocks/index';
 import { AuthService } from './auth.service';
 import { Passport } from '../domain/passport.model';
 
@@ -9,7 +10,14 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [AuthService, Auth0AuthenticationService],
+      providers: [
+        AuthService,
+        Auth0AuthenticationService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(Auth0AuthenticationService)
       .useValue(Auth0AuthenticationServiceMock)

@@ -1,7 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { userDummy } from '../../../../../test/dummies';
-import { FocusModeRepositoryMock } from '../../../../../test/mocks';
+import { FocusModeRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
@@ -12,7 +13,14 @@ describe('FocusModeService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [FocusModeService, FocusModeRepository],
+      providers: [
+        FocusModeService,
+        FocusModeRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(FocusModeRepository)
       .useValue(FocusModeRepositoryMock)

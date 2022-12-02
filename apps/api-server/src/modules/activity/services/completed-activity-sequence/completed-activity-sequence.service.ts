@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -17,31 +18,70 @@ export class CompletedActivitySequenceService {
     private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   async getOrCreateCompletingSequenceLog(user: User, activity_sequence_id: string, start_time: Date): Promise<any> {
-    const { current_activity_sequence_id, completing_sequence_log } = user;
-    const hasCurrentSequence = user?.current_activity_sequence_id;
-    const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;
-    if (hasCurrentSequence && hasConsistentSequence) return completing_sequence_log;
-    const newCompletingSequenceLog = new CompletedActivitySequence({
-      activity_sequence_id,
-      user_id: user.id,
-      start_time,
-      is_completed: false,
-    });
-    return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'fetching or creating completing sequence log',
+        data: {
+          user_id: user.id,
+          activity_sequence_id,
+          start_time,
+        },
+      });
+      const { current_activity_sequence_id, completing_sequence_log } = user;
+      const hasCurrentSequence = user?.current_activity_sequence_id;
+      const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;
+      if (hasCurrentSequence && hasConsistentSequence) return completing_sequence_log;
+      const newCompletingSequenceLog = new CompletedActivitySequence({
+        activity_sequence_id,
+        user_id: user.id,
+        start_time,
+        is_completed: false,
+      });
+      return await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async completeActivitySequence(log_id: string, user_id: string): Promise<CompletedActivitySequence> {
-    const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
-    if (!uncompletedSequenceLog) throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
-    uncompletedSequenceLog.finalizeUncompletedLog();
-    await this.nullifyCurrentSequenceSkippedActivities(user_id);
-    return this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Completing activity sequence',
+        data: {
+          user_id,
+        },
+      });
+      const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
+      if (!uncompletedSequenceLog) {
+        throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
+      }
+      uncompletedSequenceLog.finalizeUncompletedLog();
+      await this.nullifyCurrentSequenceSkippedActivities(user_id);
+      return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async nullifyCurrentSequenceSkippedActivities(user_id: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Nullifying current_sequence_skipped_activities for user',
+      data: {
+        user_id,
+      },
+    });
     await this.userRepository.update(user_id, { current_sequence_skipped_activities: null });
   }
 
@@ -50,24 +90,50 @@ export class CompletedActivitySequenceService {
     { days_number, timezone }: GetCompletedActivityStatsQueryDto,
     user_id: string,
   ): Promise<CompletedActivitySequenceStats> {
-    const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
-    const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
-    if (!sequence) throw new NotFoundException(notFoundMessage);
-    const isBreak = sequence.type === ActivityType.break;
-    if (isBreak) throw new BadRequestException('Unable to create stats! The provided sequence is a break type.');
-    const dailyStats = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
-      activity_sequence_id,
-      { days_number, timezone },
-    );
-    const daily_durations_minutes = dailyStats.map((e) => new CompletedActivityStatItem(e));
-    const average_completion_percent = this.calculateCompletionPercent(dailyStats);
-    return new CompletedActivitySequenceStats({
-      days_number,
-      daily_durations_minutes,
-      activity_sequence_id,
-      average_completion_percent,
-      timezone,
-    });
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting stats by sequence per day',
+        data: {
+          user_id,
+          activity_sequence_id,
+          days_number,
+          timezone,
+        },
+      });
+      const sequence = await this.activitySequenceRepository.findOneByIdForUser(activity_sequence_id, user_id);
+      const notFoundMessage = `Activity Sequence with id: ${activity_sequence_id} does not exist for User with id: ${user_id}!`;
+      if (!sequence) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Activity sequence not found (as part of getStatsByActivitySequencePerDay)',
+          data: {
+            activity_sequence_id,
+          },
+        });
+        throw new NotFoundException(notFoundMessage);
+      }
+      const isBreak = sequence.type === ActivityType.break;
+      if (isBreak) throw new BadRequestException('Unable to create stats! The provided sequence is a break type.');
+      const dailyStats = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
+        activity_sequence_id,
+        { days_number, timezone },
+      );
+      const daily_durations_minutes = dailyStats.map((e) => new CompletedActivityStatItem(e));
+      const average_completion_percent = this.calculateCompletionPercent(dailyStats);
+      return new CompletedActivitySequenceStats({
+        days_number,
+        daily_durations_minutes,
+        activity_sequence_id,
+        average_completion_percent,
+        timezone,
+      });
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private calculateCompletionPercent(
@@ -75,6 +141,11 @@ export class CompletedActivitySequenceService {
       average_duration_percent_deviation: string;
     } & CompletedActivityStatItem)[],
   ): number {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Calculating completion percentage',
+    });
     const acceptableDeviation = 20; // based on business requirements, move that value to the config
     const getDailyCompletionPercentDeviation = (e) => Number(e.average_duration_percent_deviation);
     const dailyCompetionPercentDeviations = dailyStats.map(getDailyCompletionPercentDeviation);
@@ -91,32 +162,47 @@ export class CompletedActivitySequenceService {
     user_id: string,
     cancel_habits_for_today?: boolean,
   ): Promise<any> {
-    const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
-    const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
-    const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
-    const shouldAllowForceCompletion = await this.checkIfForceCompletionShouldBeAllowed(
-      user,
-      cancel_habits_for_today,
-      activity_sequence_id,
-    );
-    if (!shouldAllowForceCompletion) {
-      throw new NotAcceptableException(
-        `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Force completing current sequence',
+        data: {
+          activity_sequence_id,
+          user_id,
+          cancel_habits_for_today,
+        },
+      });
+      const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
+      const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
+      const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
+      const shouldAllowForceCompletion = await this.checkIfForceCompletionShouldBeAllowed(
+        user,
+        cancel_habits_for_today,
+        activity_sequence_id,
       );
+      if (!shouldAllowForceCompletion) {
+        throw new NotAcceptableException(
+          `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
+        );
+      }
+      hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
+      const nullifiedCurrentSequence = {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: activity_sequence_id,
+        last_completed_sequence_at: new Date(),
+        last_completed_sequence_started_at: user.current_sequence_started_at ?? new Date(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      };
+      const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
+      return updatedUser;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
-    const nullifiedCurrentSequence = {
-      current_activity_sequence_id: null,
-      current_activity_id: null,
-      current_activity_assigned_at: null,
-      last_completed_sequence_id: activity_sequence_id,
-      last_completed_sequence_at: new Date(),
-      last_completed_sequence_started_at: user.current_sequence_started_at ?? new Date(),
-      current_sequence_started_at: null,
-      current_completing_sequence_log_id: null,
-    };
-    const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
-    return updatedUser;
   }
 
   async checkIfForceCompletionShouldBeAllowed(
@@ -124,6 +210,16 @@ export class CompletedActivitySequenceService {
     cancel_habits_for_today: boolean,
     activity_sequence_id: string,
   ): Promise<boolean> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Checking if force completion should be allowed',
+      data: {
+        user_id: user.id,
+        cancel_habits_for_today,
+        activity_sequence_id,
+      },
+    });
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
     const { startup_time, shutdown_time, timezone, current_sequence_started_at } = user;
@@ -153,13 +249,24 @@ export class CompletedActivitySequenceService {
     user: User,
     activity_sequence_id: string,
   ): never | { hasConsistentCurrentSet: boolean } {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating current activity sequence',
+      data: {
+        user_id: user.id,
+        activity_sequence_id,
+      },
+    });
     const userHasCurrentSequence = Boolean(user?.current_activity_sequence_id);
     const userHasCompletingLog = Boolean(user?.completing_sequence_log);
     const hasConsistentCurrentSet = userHasCompletingLog && userHasCurrentSequence;
     const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
     const hasWrongCurrentSequence = userHasCurrentSequence && givenSequenceIsNotCurrent;
     const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
-    if (hasWrongCurrentSequence) throw new BadRequestException(givenSequenceIsNotCurrentMessage);
+    if (hasWrongCurrentSequence) {
+      throw new BadRequestException(givenSequenceIsNotCurrentMessage);
+    }
     return { hasConsistentCurrentSet };
   }
 }

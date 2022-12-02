@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ActivityChoiceData } from '../../activity/domain/activity-choice-data.model';
 import { ActivityData } from '../../activity/domain/activity-data.model';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
-import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 
 export interface SerializedActivityTemplates {
   morning_activities?: UpdateActivityTemplateDto[];
@@ -16,7 +16,7 @@ export interface SerializedActivityTemplates {
 
 @Injectable()
 export class ActivityTemplateParserService {
-  constructor(private readonly activityTemplateRepository: ActivityTemplateRepository) {}
+  constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
   /*
   Returns an array that has an array of standalone activities. nested array format needed for consistentlyUpdateHabitPack function
@@ -28,6 +28,11 @@ export class ActivityTemplateParserService {
     user_id: string,
     pack_id: string,
   ): Promise<ActivityTemplate[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Deserializing standalone activities',
+    });
     const entries = Object.entries(serialized);
     return entries.map(([activityType, deserializedActivities]) => {
       const [activity_type] = activityType.split('_');
@@ -46,6 +51,11 @@ export class ActivityTemplateParserService {
     user_id: string,
     pack_id: string,
   ): Promise<ActivityTemplate[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Deserializing routine activities',
+    });
     const entries = Object.entries(serialized);
     return entries.map(([activityType, deserializedActivities]) => {
       let [activity_type] = activityType.split('_');
@@ -60,6 +70,11 @@ export class ActivityTemplateParserService {
     { id, duration_seconds, log_quantity, log_summary_type, choices, ...activityDataValues }: UpdateActivityTemplateDto,
     { activity_type, user_id, pack_id },
   ): ActivityTemplate[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Creating activity template',
+    });
     const has_choices = choices?.length > 0;
     const activity_data = new ActivityData(activityDataValues);
     const activity = new ActivityTemplate({
@@ -82,6 +97,11 @@ export class ActivityTemplateParserService {
     choices: ActivityChoiceData[],
     parent: ActivityTemplate,
   ): ActivityTemplate[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Deserializing activity template choices',
+    });
     return choices.map(
       ({ id, log_quantity, log_summary_type, ...rest }) =>
         new ActivityTemplate({
@@ -100,6 +120,11 @@ export class ActivityTemplateParserService {
   }
 
   serialize(pack_type: string, activity_templates: ActivityTemplate[]): SerializedActivityTemplates {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Serializing habit pack activities',
+    });
     const fetchedActivities = activity_templates.filter((activity) => !activity.parent_id);
     let serializedActivityTemplates: SerializedActivityTemplates = {};
     const getType = (activity_type: string) => (activity_type === ActivityType.break ? 'break' : activity_type);
@@ -124,6 +149,11 @@ export class ActivityTemplateParserService {
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Formatting activity templates',
+      });
       const activitiesOfType = fetchedTemplateArray.filter(
         (activityTemplate) => activityTemplate.activity_type === activityType,
       );

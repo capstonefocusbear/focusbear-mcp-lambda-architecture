@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { SendinblueServiceMock, UserRepositoryMock } from '../../../../test/mocks';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SendinblueServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -10,7 +11,15 @@ describe('EventService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [EventsService, SendinblueService, UserRepository],
+      providers: [
+        EventsService,
+        SendinblueService,
+        UserRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(SendinblueService)
       .useValue(SendinblueServiceMock)

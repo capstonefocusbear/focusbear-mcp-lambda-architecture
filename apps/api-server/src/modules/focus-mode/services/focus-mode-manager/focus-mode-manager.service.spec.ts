@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -13,6 +14,7 @@ import {
   PusherServiceMock,
   UserRepositoryMock,
   PusherBeamsServiceMock,
+  SentryServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -38,6 +40,10 @@ describe('FocusModeManagerService', () => {
         UserRepository,
         PusherService,
         PusherBeamsService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
       ],
     })
       .overrideProvider(FocusModeRepository)

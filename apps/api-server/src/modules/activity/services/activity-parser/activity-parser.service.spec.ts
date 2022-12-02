@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { ActivitySequenceRepositoryMock } from '../../../../../test/mocks';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { ActivitySequenceRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
@@ -12,7 +13,14 @@ describe('ActivityParserService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [ActivityParserService, ActivitySequenceRepository],
+      providers: [
+        ActivityParserService,
+        ActivitySequenceRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(ActivitySequenceRepository)
       .useValue(ActivitySequenceRepositoryMock)

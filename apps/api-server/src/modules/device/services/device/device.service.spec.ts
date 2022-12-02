@@ -1,8 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { DeviceDummy } from '../../../../../test/dummies';
-import { DeviceRepositoryMock } from '../../../../../test/mocks';
+import { DeviceRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
@@ -14,7 +15,14 @@ describe('DeviceService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [DeviceService, DeviceRepository],
+      providers: [
+        DeviceService,
+        DeviceRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+      ],
     })
       .overrideProvider(DeviceRepository)
       .useValue(DeviceRepositoryMock)

@@ -1,21 +1,46 @@
 import { Injectable } from '@nestjs/common';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService } from '../../../../../../libs/auth0/src';
 import { Passport } from '../domain/passport.model';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly auth0AuthService: Auth0AuthenticationService) {}
+  constructor(
+    private readonly auth0AuthService: Auth0AuthenticationService,
+    @InjectSentry() private readonly sentryService: SentryService,
+  ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
-    const token: string = this.extractBearerToken(authorization);
-    const [isAuth, { payload, declineReason }] = await this.auth0AuthService.validateAccessToken(token);
-    if (!isAuth) return new Passport({ declineReason });
-    const { user } = this.extractCustomTokenClaim(payload);
-    const passport = new Passport({ isAuth, user });
-    return passport;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Authenticating user',
+        data: {
+          authorization,
+        },
+      });
+      const token: string = this.extractBearerToken(authorization);
+      const [isAuth, { payload, declineReason }] = await this.auth0AuthService.validateAccessToken(token);
+      if (!isAuth) return new Passport({ declineReason });
+      const { user } = this.extractCustomTokenClaim(payload);
+      const passport = new Passport({ isAuth, user });
+      return passport;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private extractBearerToken(authHeader: string): string | undefined {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Extracting bearer token',
+      data: {
+        authHeader,
+      },
+    });
     if (!authHeader) return undefined;
     const [, token] = authHeader.split(' ');
     return token;
@@ -28,6 +53,14 @@ export class AuthService {
    * Converts URL-like keys into usual object keys and return them.
    */
   private extractCustomTokenClaim(payload: string): any {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Extracting custom token claim',
+      data: {
+        payload,
+      },
+    });
     const payloadEntries = Object.entries(payload);
     const isCustomClaim = ([key, ,]) => key.startsWith('http://') || key.startsWith('https://');
     const customClaims = payloadEntries.filter(isCustomClaim);

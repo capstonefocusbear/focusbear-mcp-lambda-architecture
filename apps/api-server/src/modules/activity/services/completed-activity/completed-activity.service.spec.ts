@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
@@ -9,6 +10,7 @@ import {
   CompletedFocusBlockRepositoryMock,
   DeviceServiceMock,
   PusherServiceMock,
+  SentryServiceMock,
   UserRepositoryMock,
   UserSettingsServiceMock,
 } from '../../../../../test/mocks';
@@ -59,6 +61,10 @@ describe('CompletedActivityService', () => {
         PusherService,
         CompletedFocusBlockRepository,
         UserSettingsService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
       ],
     })
       .overrideProvider(CompletedActivityRepository)

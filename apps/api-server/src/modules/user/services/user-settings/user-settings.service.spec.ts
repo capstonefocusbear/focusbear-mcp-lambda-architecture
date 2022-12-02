@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   deserializedActivitiesDummy,
   emptyDeserializedActivitiesDummy,
@@ -18,6 +19,7 @@ import {
   RevenueCatServiceMock,
   StripeServiceMock,
   UserServiceMock,
+  SentryServiceMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -42,6 +44,10 @@ describe('UserSettingsService', () => {
         RevenueCatService,
         StripeService,
         ConfigService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
       ],
     })
       .overrideProvider(UserRepository)

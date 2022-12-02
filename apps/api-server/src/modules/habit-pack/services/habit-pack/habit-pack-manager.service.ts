@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { randomUUID } from 'crypto';
 import * as _ from 'lodash';
 import { In } from 'typeorm';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
@@ -34,31 +35,55 @@ export class HabitPackManagerService {
     private readonly habitPackRepository: HabitPackRepository,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   async installHabitPack(user_id: string, pack_id: string) {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
-    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
-    const { pack_type } = pack;
-    const installedPack = await this.installedPackRepository.orm.findOne({
-      where: { user_id, pack_id, installation_status: true },
-    });
-    if (installedPack) {
-      throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
-    }
-    if (pack_type === HabitPackType.routine) {
-      const response = await this.installRoutineHabitPack(user_id, pack_id);
-      return response;
-    }
-    if (pack_type === HabitPackType.standalone) {
-      const response = await this.installStandaloneHabitPack(user_id, pack_id);
-      return response;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Trying to install habit pack',
+        data: {
+          user_id,
+          pack_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
+      if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+      const { pack_type } = pack;
+      const installedPack = await this.installedPackRepository.orm.findOne({
+        where: { user_id, pack_id, installation_status: true },
+      });
+      if (installedPack) {
+        throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
+      }
+      if (pack_type === HabitPackType.routine) {
+        const response = await this.installRoutineHabitPack(user_id, pack_id);
+        return response;
+      }
+      if (pack_type === HabitPackType.standalone) {
+        const response = await this.installStandaloneHabitPack(user_id, pack_id);
+        return response;
+      }
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
   }
 
   async installRoutineHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Installing routine habit pack',
+      data: {
+        user_id,
+        pack_id,
+      },
+    });
     const userSettings = await this.userSettingsService.getSettings({ user_id });
     const newSettings = _.cloneDeep(userSettings);
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
@@ -86,6 +111,15 @@ export class HabitPackManagerService {
   }
 
   async installStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Installing standalone habit pack',
+      data: {
+        user_id,
+        pack_id,
+      },
+    });
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const { standalone_activities } = habitPack;
     const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities);
@@ -99,6 +133,11 @@ export class HabitPackManagerService {
   convertActivityTemplatesToUpdateActivityDtos(
     activityTemplatesOfType: UpdateActivityTemplateDto[],
   ): UpdateActivityDto[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Converting activity templates to normal activities',
+    });
     const activities: UpdateActivityDto[] = [];
     activityTemplatesOfType.map(
       ({
@@ -138,29 +177,54 @@ export class HabitPackManagerService {
   }
 
   async uninstallHabitPack(user_id: string, pack_id: string) {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
-    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
-    const { pack_type } = pack;
-    const installedPack = await this.installedPackRepository.orm.findOne({
-      where: { user_id, pack_id, installation_status: true },
-    });
-    if (!installedPack) {
-      throw new BadRequestException(`User with ID: ${user_id} doesn't have pack with ID: ${pack_id} installed!`);
-    }
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Trying to uninstall habit pack',
+        data: {
+          user_id,
+          pack_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
+      if (!pack) {
+        throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+      }
+      const { pack_type } = pack;
+      const installedPack = await this.installedPackRepository.orm.findOne({
+        where: { user_id, pack_id, installation_status: true },
+      });
+      if (!installedPack) {
+        throw new BadRequestException(`User with ID: ${user_id} doesn't have pack with ID: ${pack_id} installed!`);
+      }
 
-    if (pack_type === HabitPackType.routine) {
-      const response = await this.uninstallRoutineHabitPack(user_id, pack_id);
-      return response;
-    }
-    if (pack_type === HabitPackType.standalone) {
-      const response = await this.uninstallStandaloneHabitPack(user_id, pack_id);
-      return response;
+      if (pack_type === HabitPackType.routine) {
+        const response = await this.uninstallRoutineHabitPack(user_id, pack_id);
+        return response;
+      }
+      if (pack_type === HabitPackType.standalone) {
+        const response = await this.uninstallStandaloneHabitPack(user_id, pack_id);
+        return response;
+      }
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
   }
 
   async uninstallRoutineHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Uninstalling routine habit pack',
+      data: {
+        user_id,
+        pack_id,
+      },
+    });
     const activityTemplateIds = await this.activityTemplateRepository.getActivityTemplateIds(pack_id);
     const userSettings = await this.userSettingsService.getSettings({ user_id });
     const { morning_activities, break_activities, evening_activities } = userSettings;
@@ -177,6 +241,15 @@ export class HabitPackManagerService {
   }
 
   async uninstallStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Uninstalling standalone habit pack',
+      data: {
+        user_id,
+        pack_id,
+      },
+    });
     const installedRecord = await this.installedPackRepository.orm.findOne({ where: { user_id, pack_id } });
     const { activity_sequence_id } = installedRecord;
     await this.activitySequenceRepository.orm.delete(activity_sequence_id);
@@ -185,27 +258,54 @@ export class HabitPackManagerService {
   }
 
   async installPackAsDefaultSettings(user_id: string, pack_id: string): Promise<UserSettingsResponseDto> {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
-    if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
-    await this.userSettingsService.clearUserActivities(user_id);
-    await this.installHabitPack(user_id, pack_id);
-    const updatedSettings = await this.userSettingsService.getSettings({ user_id });
-    return updatedSettings;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Installing habit pack as default settings',
+        data: {
+          user_id,
+          pack_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
+      if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+      await this.userSettingsService.clearUserActivities(user_id);
+      await this.installHabitPack(user_id, pack_id);
+      const updatedSettings = await this.userSettingsService.getSettings({ user_id });
+      return updatedSettings;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async getUserInstalledPacks(user_id: string): Promise<HabitPack[]> {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const installedPackIds = await this.installedPackRepository.fetchUserInstalledPackIds(user_id);
-    const deserializedInstalledPacks = await this.habitPackRepository.orm.find({
-      where: { id: In(installedPackIds) },
-      relations: ['activity_templates', 'activity_templates.choices'],
-    });
-    const serializedInstalledPacks = deserializedInstalledPacks.map((habitPack) => {
-      return this.habitPackService.serializeHabitPack(habitPack);
-    });
-    return serializedInstalledPacks;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting user installed packs',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const installedPackIds = await this.installedPackRepository.fetchUserInstalledPackIds(user_id);
+      const deserializedInstalledPacks = await this.habitPackRepository.orm.find({
+        where: { id: In(installedPackIds) },
+        relations: ['activity_templates', 'activity_templates.choices'],
+      });
+      const serializedInstalledPacks = deserializedInstalledPacks.map((habitPack) => {
+        return this.habitPackService.serializeHabitPack(habitPack);
+      });
+      return serializedInstalledPacks;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 }

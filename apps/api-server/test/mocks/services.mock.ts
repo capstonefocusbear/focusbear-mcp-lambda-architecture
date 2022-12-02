@@ -116,3 +116,12 @@ export const InstalledPackServiceMock = {
 export const SendinblueServiceMock = {
   registerSendinblueEvent: jest.fn(),
 };
+
+const mockSentryInstance = {
+  addBreadcrumb: jest.fn(),
+  captureMessage: jest.fn(),
+};
+
+export const SentryServiceMock = {
+  instance: () => mockSentryInstance,
+};

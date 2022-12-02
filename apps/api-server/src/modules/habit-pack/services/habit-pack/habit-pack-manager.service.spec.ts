@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   activityTemplateIdsDummy,
   deserializedActivitiesDummy,
@@ -22,6 +23,7 @@ import {
   HabitPackServiceMock,
   InstalledPackRepositoryMock,
   InstalledPackServiceMock,
+  SentryServiceMock,
   UserRepositoryMock,
   UserSettingsServiceMock,
 } from '../../../../../test/mocks';
@@ -51,6 +53,10 @@ describe('HabitPackManagerService', () => {
         ActivitySequenceRepository,
         HabitPackRepository,
         UserRepository,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
       ],
     })
       .overrideProvider(HabitPackRepository)

@@ -177,6 +177,12 @@ export class User extends BaseEntity {
   })
   timezone?: string;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  has_edited_settings?: boolean;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 

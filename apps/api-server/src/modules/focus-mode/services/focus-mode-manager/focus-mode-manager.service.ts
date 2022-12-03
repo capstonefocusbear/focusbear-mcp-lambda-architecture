@@ -40,7 +40,9 @@ export class FocusModeManagerService {
           focus_mode_id,
         },
       });
-      await this.validateStartingFocusMode(focus_mode_id, user_id);
+      // using incoming focus mode's starting time for possible incomplete mode's finish time
+      // by passing start_time here for finish_time argument of validateStartingFocusMode
+      await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
       const scheduled_finish_time = finish_time;
       const completedFocusBlock = new CompletedFocusBlock({
         start_time,
@@ -62,7 +64,11 @@ export class FocusModeManagerService {
     }
   }
 
-  private async validateStartingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
+  private async validateStartingFocusMode(
+    focus_mode_id: string,
+    user_id: string,
+    finish_time: Date,
+  ): Promise<[FocusMode, User]> | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -76,8 +82,9 @@ export class FocusModeManagerService {
     const notFoundModeMsg = `Focus Mode with id: ${focus_mode_id} does not exist for User with id: ${user_id}!`;
     if (!focusMode) throw new NotFoundException(notFoundModeMsg);
     const hasUserCurrentMode = Boolean(user.current_focus_mode_id);
-    const hasCurrentModeMsg = `User already has unfinished current focus mode with id: ${user.current_focus_mode_id}!`;
-    if (hasUserCurrentMode) throw new BadRequestException(hasCurrentModeMsg);
+    if (hasUserCurrentMode) {
+      await this.finishCurrentFocusMode({ finish_time }, { focus_mode_id: user.current_focus_mode_id }, user.id);
+    }
     return [focusMode, user];
   }
 

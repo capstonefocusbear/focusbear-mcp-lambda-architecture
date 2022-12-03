@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { randomUUID } from 'crypto';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -90,25 +90,6 @@ describe('FocusModeManagerService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: should throw BadRequestException if User already has unfinished current focus mode', async () => {
-      const current_focus_mode_id = randomUUID();
-      const userWithUnfinishedFocusMode: User = { ...userDummy, current_focus_mode_id };
-      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithUnfinishedFocusMode);
-      const errorMessage = `User already has unfinished current focus mode with id: ${current_focus_mode_id}!`;
-      let exception: any;
-
-      try {
-        await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
     it('positive: new completed focus block item should be created', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
@@ -158,6 +139,59 @@ describe('FocusModeManagerService', () => {
         CompletedFocusBlockDummy,
       );
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
+    });
+
+    it('positive: should finish the current focus mode if exists - before staring new focus mode', async () => {
+      const userWithCurrentFocusMode = new User({
+        ...userDummy,
+        current_focus_mode_id: randomUUID(),
+      });
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValue(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
+
+      await focusModeManagerService.startCurrentFocusMode(
+        startFocusModeDto,
+        { focus_mode_id },
+        userWithCurrentFocusMode.id,
+      );
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+        userWithCurrentFocusMode.id,
+        new CurrentFocusModeData({
+          finish_time: null,
+          focus_mode_id: null,
+          completed_mode_id: null,
+        }),
+      );
+    });
+
+    it('positive: should create record for incoming focus mode after marking current as finished', async () => {
+      const userWithCurrentFocusMode = new User({
+        ...userDummy,
+        current_focus_mode_id: randomUUID(),
+      });
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValue(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
+
+      await focusModeManagerService.startCurrentFocusMode(
+        startFocusModeDto,
+        { focus_mode_id },
+        userWithCurrentFocusMode.id,
+      );
+
+      expect(CompletedFocusBlockRepositoryMock.create).toBeCalledWith(
+        new CompletedFocusBlock({
+          start_time: startFocusModeDto.start_time,
+          scheduled_finish_time: startFocusModeDto.finish_time,
+          intention: startFocusModeDto.intention,
+          user_id,
+          focus_mode_id,
+        }),
+      );
     });
   });
 

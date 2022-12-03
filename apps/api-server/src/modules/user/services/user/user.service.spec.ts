@@ -258,24 +258,6 @@ describe('UserService', () => {
     });
   });
 
-  describe('markUserSettingsAsEdited', () => {
-    it('positive: UserRepositoryMock.orm.update should be called with updated local device settings', async () => {
-      const updatedSettings = {
-        MacOS: '...',
-        Windows: '...',
-        Android: '...',
-        iOS: '...',
-        Web: { hasEditedSettings: true },
-      };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      await userService.markUserSettingsAsEdited(userDummy.id);
-
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
-        local_device_settings: updatedSettings,
-      });
-    });
-  });
-
   describe('getUsers', () => {
     it('positive: getList query should be called', async () => {
       const search = 'edclkedc';

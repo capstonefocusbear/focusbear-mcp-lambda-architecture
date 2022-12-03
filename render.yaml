@@ -48,6 +48,7 @@ services:
     sync: false
   - key: AUTH0_MANAGEMENT_CLIENT_SECRET
     sync: false
+  - fromGroup: backend-env-group
 
 databases:
 - name: eyst-postgres

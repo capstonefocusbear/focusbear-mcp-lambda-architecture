@@ -77,6 +77,12 @@ export class Activity extends BaseEntity {
   })
   activity_data?: ActivityData;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  is_default?: boolean;
+
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;

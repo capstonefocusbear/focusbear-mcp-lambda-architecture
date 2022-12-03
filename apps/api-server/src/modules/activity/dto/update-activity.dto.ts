@@ -80,4 +80,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsUUID('4')
   @IsOptional()
   activity_template_id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_default?: boolean;
 }

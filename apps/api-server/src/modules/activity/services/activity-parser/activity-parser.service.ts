@@ -47,6 +47,7 @@ export class ActivityParserService {
         log_summary_type,
         activity_data,
         choices,
+        is_default,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -55,6 +56,7 @@ export class ActivityParserService {
         activity_template_id,
         log_quantity,
         log_summary_type,
+        is_default,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -88,7 +90,16 @@ export class ActivityParserService {
   }
 
   private createActivity(
-    { id, duration_seconds, log_quantity, log_summary_type, activity_template_id, choices, ...rest }: UpdateActivityDto,
+    {
+      id,
+      duration_seconds,
+      log_quantity,
+      log_summary_type,
+      activity_template_id,
+      choices,
+      is_default,
+      ...rest
+    }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
   ): Activity[] {
     this.sentryService.instance().addBreadcrumb({
@@ -112,6 +123,7 @@ export class ActivityParserService {
       log_summary_type: has_choices ? 'SUM' : log_summary_type,
       has_choices,
       activity_template_id,
+      is_default,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));

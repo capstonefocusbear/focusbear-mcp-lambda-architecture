@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as _ from 'lodash';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -8,15 +8,12 @@ import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsResponseDto } from '../../dto/user-settings-response.dto';
 import { User } from '../../entities/user.entity';
 import { UserRepository } from '../../repositories/user.repository';
-import { UserService } from '../user/user.service';
 
 @Injectable()
 export class UserSettingsService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly activityParserService: ActivityParserService,
-    @Inject(forwardRef(() => UserService))
-    private readonly userService: UserService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -52,10 +49,7 @@ export class UserSettingsService {
       message: 'Serializing user settings',
     });
     const serializedActivities = this.activityParserService.serialize(activity_sequences);
-    const localDeviceSettings = await this.userService.getUserLocalDeviceSettings(user.id);
-    const { hasEditedSettings } = localDeviceSettings.Web;
     const settings: UserSettingsResponseDto = {
-      has_edited_settings: hasEditedSettings,
       ...user,
       ...serializedActivities,
     };
@@ -65,7 +59,7 @@ export class UserSettingsService {
   async updateSettings(
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
-    shouldInitialSettingsUpdateBeChecked: boolean,
+    should_update_has_edited_settings: boolean,
   ): Promise<UpdateUserSettingsDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -76,14 +70,18 @@ export class UserSettingsService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
-      const updatedUser = new User({ startup_time, shutdown_time, break_after_minutes, id: user_id });
+      const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
+      const updatedUser = new User({
+        startup_time,
+        shutdown_time,
+        break_after_minutes,
+        id: user_id,
+        has_edited_settings: userHasEditedSettings,
+      });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };
       const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id);
       await this.userRepository.consistentlyUpdateUserSettings(updatedUser, deserializedActivities);
-      if (shouldInitialSettingsUpdateBeChecked) {
-        await this.userService.markUserSettingsAsEdited(user_id);
-      }
       return await this.getSettings({ user_id });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -103,9 +101,9 @@ export class UserSettingsService {
     const userSettings = await this.getSettings({ user_id });
     const newSettings: UpdateUserSettingsDto = _.cloneDeep(userSettings);
     newSettings.break_after_minutes = 20;
-    newSettings.morning_activities = [];
-    newSettings.break_activities = [];
-    newSettings.evening_activities = [];
+    newSettings.morning_activities = userSettings.morning_activities.filter((activity) => !activity.is_default);
+    newSettings.break_activities = userSettings.break_activities.filter((activity) => !activity.is_default);
+    newSettings.evening_activities = userSettings.evening_activities.filter((activity) => !activity.is_default);
     await this.updateSettings({ user_id }, newSettings, false);
   }
 

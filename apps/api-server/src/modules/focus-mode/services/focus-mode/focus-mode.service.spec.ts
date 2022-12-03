@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { userDummy } from '../../../../../test/dummies';
+import { FocusModeDummy, userDummy } from '../../../../../test/dummies';
 import { FocusModeRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
@@ -70,6 +70,27 @@ describe('FocusModeService', () => {
       await focusModeService.delete(id);
 
       expect(FocusModeRepositoryMock.orm.delete).toBeCalledWith(id);
+    });
+  });
+
+  describe('fetchUserFocusModes', () => {
+    it('positive: should fetch array of user focus modes', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
+
+      const result = await focusModeService.fetchUserFocusModes(userDummy.id);
+
+      expect(FocusModeRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userDummy.id } });
+      expect(result).toEqual([FocusModeDummy]);
+    });
+  });
+
+  describe('updateFocusModes', () => {
+    it('positive: should call update on supplied user focus modes', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
+
+      await focusModeService.updateFocusModes(userDummy.id, [FocusModeDummy]);
+
+      expect(FocusModeRepositoryMock.update).toBeCalledWith(FocusModeDummy.id, { ...FocusModeDummy });
     });
   });
 });

@@ -24,12 +24,14 @@ export const constants = registerAs('constants', () => ({
           duration_seconds: 300,
           log_quantity: false,
           video_urls: ['https://www.youtube.com/watch?v=nz5MCv0sFDA', 'https://www.youtube.com/watch?v=oexYiIy75V8'],
+          is_default: true,
         },
         {
           id: randomUUID(),
           name: 'Journaling',
           video_urls: [],
           duration_seconds: 300,
+          is_default: true,
         },
         {
           id: randomUUID(),
@@ -41,6 +43,7 @@ export const constants = registerAs('constants', () => ({
           log_quantity_question: '',
           allowed_apps: [],
           allowed_urls: [],
+          is_default: true,
         },
       ],
       break_after_minutes: 15,
@@ -150,6 +153,7 @@ export const constants = registerAs('constants', () => ({
           allowed_apps: [],
           allowed_urls: [],
           is_office_friendly: false,
+          is_default: true,
         },
         {
           id: randomUUID(),
@@ -165,6 +169,7 @@ export const constants = registerAs('constants', () => ({
           allowed_urls: [],
           choice_type: ActivityChoiceType.random,
           choices: [],
+          is_default: true,
         },
         {
           id: randomUUID(),
@@ -179,6 +184,7 @@ export const constants = registerAs('constants', () => ({
           include_in_every_break: false,
           is_office_friendly: true,
           choice_type: ActivityChoiceType.random,
+          is_default: true,
           choices: [
             {
               id: randomUUID(),
@@ -232,6 +238,7 @@ export const constants = registerAs('constants', () => ({
           duration_seconds: 180,
           video_urls: [],
           log_quantity: false,
+          is_default: true,
         },
         {
           id: randomUUID(),
@@ -239,6 +246,7 @@ export const constants = registerAs('constants', () => ({
           duration_seconds: 300,
           video_urls: [],
           log_quantity: false,
+          is_default: true,
         },
         {
           id: randomUUID(),
@@ -246,6 +254,7 @@ export const constants = registerAs('constants', () => ({
           duration_seconds: 420,
           video_urls: [],
           log_quantity: false,
+          is_default: true,
         },
       ],
     }),

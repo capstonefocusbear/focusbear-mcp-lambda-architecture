@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
@@ -19,7 +19,6 @@ export class UserService {
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
-    @Inject(forwardRef(() => UserSettingsService))
     private readonly userSettingsService: UserSettingsService,
     private readonly stripeService: StripeService,
     private readonly config: ConfigService,
@@ -214,22 +213,6 @@ export class UserService {
     const hasWrongSchema = !update || typeof update !== 'object' || Array.isArray(update);
     if (hasWrongSchema) return baseVersion;
     return Object.assign(baseVersion, update);
-  }
-
-  async markUserSettingsAsEdited(user_id: string) {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Marking user settings as edited',
-      data: {
-        user_id,
-      },
-    });
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
-    const updatedWebSettings = { Web: { hasEditedSettings: true } };
-    const updatedSettings = this.mergeLocalSettings(user.local_device_settings, updatedWebSettings);
-    await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
   }
 
   async getUsers({ search }: GetUsersQueryDto) {

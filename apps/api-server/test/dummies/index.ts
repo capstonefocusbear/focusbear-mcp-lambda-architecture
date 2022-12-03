@@ -137,39 +137,6 @@ export const deserializedActivitiesDummy = [
   },
 ];
 
-export const emptyDeserializedActivitiesDummy = [
-  {
-    sequence: {
-      id: '1293da0c-2055-4b30-9664-4736973e1dcf',
-      type: 'morning',
-      activity_ids: [],
-      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
-      total_duration_seconds: 480,
-    },
-    activities: [],
-  },
-  {
-    sequence: {
-      id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
-      type: 'evening',
-      activity_ids: [],
-      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
-      total_duration_seconds: 720,
-    },
-    activities: [],
-  },
-  {
-    sequence: {
-      id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
-      type: 'breaking',
-      activity_ids: [],
-      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
-      total_duration_seconds: 60,
-    },
-    activities: [],
-  },
-];
-
 export const serializedActivityDummy: SerializedActivity = {
   morning_activities: [
     {
@@ -178,12 +145,14 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: [],
       name: 'Yoga',
       log_quantity: false,
+      is_default: true,
     },
     {
       id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
       name: 'Journalling',
       video_urls: [],
       duration_seconds: 300,
+      is_default: true,
     },
     {
       id: '3b57f802-23b0-47e2-a188-b07001db8e1f',
@@ -191,6 +160,7 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
       name: 'Deep breathing',
       log_quantity: false,
+      is_default: true,
     },
   ],
   evening_activities: [
@@ -200,6 +170,7 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: [],
       name: 'Tidy up desk',
       log_quantity: false,
+      is_default: true,
     },
     {
       id: '0b57f802-23b0-47e2-a188-b07001db8e1f',
@@ -207,12 +178,14 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: [],
       name: 'Journal about day',
       log_quantity: false,
+      is_default: true,
     },
     {
       id: '1b57f802-23b0-47e2-a188-b07001db8e1f',
       name: 'Plan to-do list and schedule for tomorrow',
       duration_seconds: 420,
       video_urls: [],
+      is_default: true,
     },
   ],
   break_activities: [
@@ -222,6 +195,7 @@ export const serializedActivityDummy: SerializedActivity = {
       duration_seconds: 60,
       allowed_urls: [],
       include_in_every_break: false,
+      is_default: true,
       choices: [
         {
           id: randomUUID(),
@@ -272,6 +246,7 @@ export const serializedActivityDummy: SerializedActivity = {
       include_in_every_break: true,
       video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
       name: 'Deep breathing',
+      is_default: true,
     },
     {
       id: '6b57f802-23b0-47e2-a188-b07001db8e1f',
@@ -279,6 +254,7 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: [],
       name: "Dance like no-one's watching",
       log_quantity: false,
+      is_default: true,
     },
     {
       id: '5b57f802-23b0-47e2-a188-b07001db8e1f',
@@ -305,6 +281,55 @@ export const serializedActivityDummy: SerializedActivity = {
       log_quantity: true,
       name: 'test ',
       log_quantity_question: 'Log quantity data?',
+      is_default: true,
+    },
+  ],
+};
+
+export const serializedActivityDummyWithDefaultActivities: SerializedActivity = {
+  morning_activities: [
+    {
+      id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+      duration_seconds: 300,
+      video_urls: [],
+      name: 'Yoga',
+      log_quantity: false,
+      is_default: true,
+    },
+    {
+      id: '3b57f802-23b0-47e2-a188-b07001db8e1f',
+      duration_seconds: 180,
+      video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+      name: 'Deep breathing',
+      log_quantity: false,
+      is_default: false,
+    },
+  ],
+  evening_activities: [
+    {
+      id: '1b57f802-23b0-47e2-a188-b07001db8e1f',
+      name: 'Plan to-do list and schedule for tomorrow',
+      duration_seconds: 420,
+      video_urls: [],
+      is_default: true,
+    },
+  ],
+  break_activities: [
+    {
+      id: '7b57f802-23b0-47e2-a188-b07001db8e1f',
+      duration_seconds: 20,
+      include_in_every_break: true,
+      video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+      name: 'Deep breathing',
+      is_default: true,
+    },
+    {
+      id: '6b57f802-23b0-47e2-a188-b07001db8e1f',
+      duration_seconds: 40,
+      video_urls: [],
+      name: "Dance like no-one's watching",
+      log_quantity: false,
+      is_default: false,
     },
   ],
 };

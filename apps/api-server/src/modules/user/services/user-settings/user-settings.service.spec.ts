@@ -5,9 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   deserializedActivitiesDummy,
-  emptyDeserializedActivitiesDummy,
-  localDeviceSettingsDummy,
   serializedActivityDummy,
+  serializedActivityDummyWithDefaultActivities,
   userDummy,
   userSettingsDBResponseDummy,
   userSettingsDummy,
@@ -18,12 +17,10 @@ import {
   Auth0ManagementServiceMock,
   RevenueCatServiceMock,
   StripeServiceMock,
-  UserServiceMock,
   SentryServiceMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
-import { UserService } from '../user/user.service';
 import { UserSettingsService } from './user-settings.service';
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
@@ -39,7 +36,6 @@ describe('UserSettingsService', () => {
         UserRepository,
         UserSettingsService,
         ActivityParserService,
-        UserService,
         Auth0ManagementService,
         RevenueCatService,
         StripeService,
@@ -60,8 +56,6 @@ describe('UserSettingsService', () => {
       .useValue(Auth0ManagementServiceMock)
       .overrideProvider(StripeService)
       .useValue(StripeServiceMock)
-      .overrideProvider(UserService)
-      .useValue(UserServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
@@ -97,7 +91,6 @@ describe('UserSettingsService', () => {
 
     it('positive: should return serialized user settings data', async () => {
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce(userSettingsDBResponseDummy);
-      UserServiceMock.getUserLocalDeviceSettings.mockResolvedValueOnce(localDeviceSettingsDummy);
       ActivityParserServiceMock.serialize.mockResolvedValueOnce(serializedActivityDummy);
 
       const result = await userSettingsService.getSettings({ user_id });
@@ -126,11 +119,16 @@ describe('UserSettingsService', () => {
 
     it('positive: consistentlyUpdateUserSettings should be called', async () => {
       const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
-      const updatedUser = new User({ id: userDummy.id, startup_time, shutdown_time, break_after_minutes });
+      const updatedUser = new User({
+        id: userDummy.id,
+        startup_time,
+        shutdown_time,
+        break_after_minutes,
+        has_edited_settings: true,
+      });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
-      UserServiceMock.getUserLocalDeviceSettings.mockResolvedValue(localDeviceSettingsDummy);
 
       await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
 
@@ -138,28 +136,52 @@ describe('UserSettingsService', () => {
         updatedUser,
         deserializedActivitiesDummy,
       );
-      expect(UserServiceMock.markUserSettingsAsEdited).toBeCalledWith(userDummy.id);
     });
   });
 
   describe('clearUserActivities', () => {
-    it('positive: should update settings with empty activity arrays for ROUTINE_AND_BREAK format', async () => {
-      const { startup_time, shutdown_time } = userSettingsDummy;
-      const updatedUser = new User({ id: userDummy.id, startup_time, shutdown_time, break_after_minutes: 20 });
-      UserRepositoryMock.getUserSettings.mockResolvedValue({ ...userSettingsDBResponseDummy, break_after_minutes: 20 });
-      ActivityParserServiceMock.serialize.mockResolvedValue(serializedActivityDummy);
-      UserServiceMock.getUserLocalDeviceSettings
-        .mockReturnValueOnce(localDeviceSettingsDummy)
-        .mockReturnValue(localDeviceSettingsDummy);
-      ActivityParserServiceMock.deserialize.mockResolvedValue(emptyDeserializedActivitiesDummy);
+    it('positive: should remove all default activities for user and call activityParserService.deserialize only with non-default activities (case where user only has default activities)', async () => {
+      const serializedActivities = { morning_activities: [], break_activities: [], evening_activities: [] };
+      UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
+      ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
 
       await userSettingsService.clearUserActivities(userDummy.id);
 
-      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
-        updatedUser,
-        emptyDeserializedActivitiesDummy,
-      );
+      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(serializedActivities, userDummy.id);
+    });
+
+    it('positive: should remove default activities for user and call activityParserService.deserialize only with non-default activities (case where user has default and non-default activities)', async () => {
+      const serializedActivities = {
+        morning_activities: [
+          {
+            id: '3b57f802-23b0-47e2-a188-b07001db8e1f',
+            duration_seconds: 180,
+            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
+            name: 'Deep breathing',
+            log_quantity: false,
+            is_default: false,
+          },
+        ],
+        break_activities: [
+          {
+            duration_seconds: 40,
+            id: '6b57f802-23b0-47e2-a188-b07001db8e1f',
+            log_quantity: false,
+            name: "Dance like no-one's watching",
+            video_urls: [],
+            is_default: false,
+          },
+        ],
+        evening_activities: [],
+      };
+      UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
+      ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummyWithDefaultActivities);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+
+      await userSettingsService.clearUserActivities(userDummy.id);
+
+      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(serializedActivities, userDummy.id);
     });
   });
 

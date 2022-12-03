@@ -106,7 +106,7 @@ export class HabitPackManagerService {
       habitPack.evening_activities,
     );
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
+    await this.userSettingsService.updateSettings({ user_id }, newSettings, true);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 
@@ -272,6 +272,12 @@ export class HabitPackManagerService {
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const pack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
       if (!pack) throw new NotFoundException(`Habit pack with ID: ${pack_id} does not exist!`);
+      const installedPack = await this.installedPackRepository.orm.findOne({
+        where: { user_id, pack_id, installation_status: true },
+      });
+      if (installedPack) {
+        throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
+      }
       await this.userSettingsService.clearUserActivities(user_id);
       await this.installHabitPack(user_id, pack_id);
       const updatedSettings = await this.userSettingsService.getSettings({ user_id });

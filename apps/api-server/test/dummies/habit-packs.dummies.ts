@@ -110,6 +110,63 @@ export const routineHabitPackDummy = {
   ],
 };
 
+export const testUserRoutineHabitPack = {
+  pack_type: HabitPackType.routine,
+  id: 'a7aed926-a420-4a7e-91b2-5826aaf47567',
+  pack_name: 'Best routine pack',
+  description: 'Test 12/10/22 12:27.',
+  description_video_url: 'www.google.com',
+  welcome_message: 'Welcome to Focus Bear!',
+  welcome_video_url: 'www.youtube.com',
+  marketplace_approval_status: false,
+  marketplace_request: MarketplaceRequestType.requested,
+  morning_activities: [
+    {
+      id: '3a26ccf6-9718-4281-9081-e47e384e897f',
+      name: 'Yoga',
+      video_urls: ['https://www.youtube.com/watch?v=nz5MCv0sFDA', 'https://www.youtube.com/watch?v=oexYiIy75V8'],
+      activity_type: 'morning_activity',
+      duration_seconds: 300,
+      pack_id: 'a7aed926-a420-4a7e-91b2-5826aaf47567',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      choices: [],
+    },
+  ],
+  break_activities: [
+    {
+      id: '98084720-2ba9-411d-9f61-ad41d0a7c8f9',
+      name: 'Micro-workout',
+      is_office_friendly: false,
+      video_urls: [],
+      allowed_apps: [],
+      include_in_every_break: true,
+      log_quantity_question: '',
+      choice_type: ActivityChoiceType.random,
+      allowed_urls: [],
+      activity_type: 'break_activity',
+      duration_seconds: 30,
+      pack_id: 'a7aed926-a420-4a7e-91b2-5826aaf47567',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      choices: [],
+    },
+  ],
+  evening_activities: [
+    {
+      id: '6de7523b-9fb5-4511-a217-831aaeafe423',
+      name: 'Mess up desk',
+      video_urls: [],
+      activity_type: 'evening_activity',
+      duration_seconds: 150,
+      pack_id: 'a7aed926-a420-4a7e-91b2-5826aaf47567',
+      log_quantity: false,
+      log_summary_type: LogSummaryType.SUM,
+      choices: [],
+    },
+  ],
+};
+
 export const standaloneHabitPackDBResponseDummy = {
   id: 'bc55568b-59bb-4842-8a83-e92843356978',
   user_id: '3a4f0bb1-5313-49da-9ae6-cc28e864763f',

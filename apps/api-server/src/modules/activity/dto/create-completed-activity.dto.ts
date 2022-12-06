@@ -10,6 +10,7 @@ import {
   ValidationArguments,
   ValidationOptions,
 } from 'class-validator';
+import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 export function IsTimestampGreaterThan(property: string, validationOptions?: ValidationOptions) {
   return function (object: any, propertyName: string) {
@@ -86,4 +87,8 @@ export class CreateCompletedActivityDto {
   @IsDate({ message: 'finish_time should be a valid ISO string in UTC zone' })
   @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than start_time' })
   finish_time?: Date;
+
+  @IsOptional()
+  @Type(() => CompletedActivityMetadata)
+  metadata?: CompletedActivityMetadata;
 }

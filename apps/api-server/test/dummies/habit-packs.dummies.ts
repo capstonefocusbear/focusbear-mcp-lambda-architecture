@@ -371,6 +371,7 @@ export const createActivityTemplateContextDummy = {
   activity_type: ActivityType.standalone,
   user_id: userDummy.id,
   pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+  index: 0,
 };
 
 export const activityTemplateArrayDummy = [

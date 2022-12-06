@@ -36,8 +36,8 @@ export class ActivityTemplateParserService {
     const entries = Object.entries(serialized);
     return entries.map(([activityType, deserializedActivities]) => {
       const [activity_type] = activityType.split('_');
-      return deserializedActivities.flatMap((deserializedActivity) => {
-        return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id });
+      return deserializedActivities.flatMap((deserializedActivity, index) => {
+        return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id, index });
       });
     });
   }
@@ -60,15 +60,15 @@ export class ActivityTemplateParserService {
     return entries.map(([activityType, deserializedActivities]) => {
       let [activity_type] = activityType.split('_');
       activity_type = activity_type === 'break' ? ActivityType.break : activity_type;
-      return deserializedActivities.flatMap((deserializedActivity) => {
-        return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id });
+      return deserializedActivities.flatMap((deserializedActivity, index) => {
+        return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id, index });
       });
     });
   }
 
   createActivityTemplate(
     { id, duration_seconds, log_quantity, log_summary_type, choices, ...activityDataValues }: UpdateActivityTemplateDto,
-    { activity_type, user_id, pack_id },
+    { activity_type, user_id, pack_id, index },
   ): ActivityTemplate[] {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -87,6 +87,7 @@ export class ActivityTemplateParserService {
       log_quantity: has_choices ? false : log_quantity,
       log_summary_type: has_choices ? 'SUM' : log_summary_type,
       has_choices,
+      sequence_index: index,
     });
     const newActivityTemplateAndChoices = [activity];
     if (has_choices) newActivityTemplateAndChoices.push(...this.deserializeActivityTemplateChoices(choices, activity));

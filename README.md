@@ -79,6 +79,16 @@ $ STRIPE_SECRET_KEY =
 $ STRIPE_CHECKOUT_SUCCESS_URL =
 $ STRIPE_CHECKOUT_CANCEL_URL =
 $ STRIPE_WEBHOOK_SECRET =
+
+# Get this from the Sendinblue account
+SENDINBLUE_MA_KEY = 
+
+# Get these from Sentry
+SENTRY_DSN = 
+SENTRY_DEBUG = 
+SENTRY_ENV = 
+SENTRY_RELEASE = 
+SENTRY_LOG_LEVELS = 
 ```
 
 3. Update .env file with actual values for PostgreSQL

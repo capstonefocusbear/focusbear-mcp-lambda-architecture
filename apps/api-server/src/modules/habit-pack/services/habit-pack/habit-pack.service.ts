@@ -115,7 +115,7 @@ export class HabitPackService {
       const habitPack = await this.habitPackRepository.orm.findOneBy({ id: upsertHabitPackDto.id });
       if (habitPack && habitPack.user_id !== user_id && !userIsAdmin) {
         throw new UnauthorizedException(
-          `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${upsertHabitPackDto.id}!`,
+          `User with ID: ${user_id} is not authorized to edit habit pack with ID: ${upsertHabitPackDto.id}!`,
         );
       }
       const {

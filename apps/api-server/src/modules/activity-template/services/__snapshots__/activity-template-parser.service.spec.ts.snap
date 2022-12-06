@@ -25,6 +25,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 0,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
     ActivityTemplate {
@@ -48,6 +49,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 1,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
   ],
@@ -74,6 +76,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 0,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
     ActivityTemplate {
@@ -97,6 +100,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 1,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
   ],
@@ -123,6 +127,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 0,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
     ActivityTemplate {
@@ -146,6 +151,7 @@ Array [
       "log_quantity": false,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "sequence_index": 1,
       "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     },
   ],

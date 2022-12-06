@@ -4,6 +4,7 @@ import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivitySequence } from './completed-activity-sequence.entity';
+import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 @Entity('completed_activities')
 export class CompletedActivity extends BaseEntity {
@@ -61,6 +62,12 @@ export class CompletedActivity extends BaseEntity {
     transformer: BaseEntity.encryptField('activity_note'),
   })
   activity_note?: string;
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+  })
+  metadata?: CompletedActivityMetadata;
 
   @ManyToOne(() => User, (user) => user.completed_activities)
   @JoinColumn({ name: 'user_id' })

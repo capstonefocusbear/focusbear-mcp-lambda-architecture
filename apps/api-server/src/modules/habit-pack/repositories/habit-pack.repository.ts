@@ -49,6 +49,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     const fetchedPack = await this.orm
       .createQueryBuilder('habit_packs')
       .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
+      .orderBy('activity_templates.sequence_index', 'ASC')
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .select([
         'habit_packs.id',
@@ -96,6 +97,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     const query = this.orm
       .createQueryBuilder('habit_packs')
       .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
+      .orderBy('activity_templates.sequence_index', 'ASC')
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .select([
         'habit_packs.id',

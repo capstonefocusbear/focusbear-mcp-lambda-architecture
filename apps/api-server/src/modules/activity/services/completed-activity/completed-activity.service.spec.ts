@@ -104,6 +104,7 @@ describe('CompletedActivityService', () => {
       activity_sequence_id: ActivityDummy.activity_sequence_id,
       start_time: new Date(Date.now() - 60),
       finish_time: new Date(Date.now() - 1),
+      metadata: { is_skipped: false },
     };
 
     const user_id = userDummy.id;

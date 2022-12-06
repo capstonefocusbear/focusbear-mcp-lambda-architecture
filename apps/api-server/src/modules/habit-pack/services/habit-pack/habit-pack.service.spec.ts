@@ -239,7 +239,7 @@ describe('HabitPackService', () => {
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
       ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
-      const responseMessage = `User with ID: ${unauthorizedUserDummy.id} is not authorized to delete habit pack with ID: ${routineHabitPackDummy.id}!`;
+      const responseMessage = `User with ID: ${unauthorizedUserDummy.id} is not authorized to edit habit pack with ID: ${routineHabitPackDummy.id}!`;
 
       let response;
       try {

@@ -68,6 +68,13 @@ export class ActivityTemplate extends BaseEntity {
   })
   parent_id?: string;
 
+  @Column({
+    type: 'numeric',
+    nullable: false,
+    default: 0,
+  })
+  sequence_index?: number;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

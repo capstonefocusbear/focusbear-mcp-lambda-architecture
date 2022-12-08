@@ -457,25 +457,6 @@ export class CompletedActivityService {
     }
   }
 
-  async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
-    try {
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Getting week summary',
-        data: {
-          user_id,
-        },
-      });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-      return await this.completedActivityRepository.getWeekSummary(user_id);
-    } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      throw error;
-    }
-  }
-
   private async defineStartupTimestamp(user_id: string, timezone: string): Promise<any> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -524,9 +505,18 @@ export class CompletedActivityService {
         .toISO();
       return { from_time, to_time };
     } catch (e) {
-      console.error(
-        `Error in buildtimeStamp. to_time: ${to_time}, startupTime: ${startupTime}, from_time: ${from_time}, timezone: ${timeZone}`,
-      );
+      this.sentryService.instance().captureMessage(JSON.stringify(e), 'error');
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'error',
+        message: `Error in buildtimeStamp. to_time: ${to_time}, startupTime: ${startupTime}, from_time: ${from_time}, timezone: ${timeZone}`,
+        data: {
+          to_time,
+          startupTime,
+          from_time,
+          timeZone,
+        },
+      });
       throw e;
     }
   }

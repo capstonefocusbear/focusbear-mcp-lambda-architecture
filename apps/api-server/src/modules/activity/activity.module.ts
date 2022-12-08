@@ -26,7 +26,12 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
     CompletedActivitySequenceService,
     CompletedFocusBlockRepository,
   ],
-  exports: [ActivityParserService, ActivitySequenceRepository],
+  exports: [
+    ActivityParserService,
+    ActivitySequenceRepository,
+    CompletedFocusBlockRepository,
+    CompletedActivityRepository,
+  ],
   controllers: [CompletedActivityController, CompletedActivitySequenceController],
   imports: [
     DeviceModule,

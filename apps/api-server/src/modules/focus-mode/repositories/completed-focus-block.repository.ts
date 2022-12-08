@@ -14,6 +14,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
     { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
   ): Promise<CompletedFocusBlock[]> {
     return this.orm.find({
+      select: ['finish_time', 'start_time'],
       where: {
         user_id,
         finish_time: Between(from_time, to_time),

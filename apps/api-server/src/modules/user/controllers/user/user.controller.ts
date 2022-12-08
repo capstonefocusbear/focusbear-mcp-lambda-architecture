@@ -2,10 +2,12 @@ import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
+import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
 import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
+import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import {
   HasSubscription,
@@ -50,5 +52,19 @@ export class UserController {
   @RequireEntitlements([Entitlement.team_owner])
   async getUsersList(@Query() { search }: GetUsersQueryDto): Promise<User[]> {
     return this.userService.getUsers({ search });
+  }
+
+  @Get('/weekly-focus-block-summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserFocusBlockSummary(@AuthContext() { user }: Passport): Promise<CompletedFocusBlock[]> {
+    return this.userService.getFocusBlockSummary(user.id);
+  }
+
+  @Get('/weekly-completed-activity-summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserCompletedActivitySummary(@AuthContext() { user }: Passport): Promise<CompletedActivity[]> {
+    return this.userService.getCompletedActivitySummary(user.id);
   }
 }

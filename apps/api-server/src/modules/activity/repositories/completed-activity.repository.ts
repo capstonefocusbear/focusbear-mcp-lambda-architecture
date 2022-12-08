@@ -109,23 +109,6 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     });
   }
 
-  async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
-    const currentTime = DateTime.local();
-    const end_date = currentTime;
-    const start_date = currentTime.minus({ days: 6 });
-    return this.orm.find({
-      relations: ['activity'],
-      select: ['finish_time', 'quantity_logged'],
-      where: {
-        user_id,
-        created_at: Between(start_date.toISO(), end_date.toISO()),
-        activity: {
-          log_quantity: true,
-        },
-      },
-    });
-  }
-
   async getDaySummaryDuration(
     user_id: string,
     { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
@@ -143,6 +126,22 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       relations: ['activity'],
       order: {
         start_time: 'DESC',
+      },
+    });
+  }
+
+  async getWeekSummary(user_id: string): Promise<CompletedActivity[]> {
+    const currentTime = DateTime.local();
+    const end_date = currentTime;
+    const start_date = currentTime.minus({ days: 6 });
+    return this.orm.find({
+      select: ['finish_time', 'quantity_logged'],
+      where: {
+        user_id,
+        created_at: Between(start_date.toISO(), end_date.toISO()),
+        activity: {
+          log_quantity: true,
+        },
       },
     });
   }

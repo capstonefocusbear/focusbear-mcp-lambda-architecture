@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { DateTime } from 'luxon';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -12,10 +13,14 @@ import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-sett
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
+import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 
 @Injectable()
 export class UserService {
   constructor(
+    private readonly completedFocusBlock: CompletedFocusBlockRepository,
+    private readonly completedActivityRepository: CompletedActivityRepository,
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
@@ -226,6 +231,50 @@ export class UserService {
         },
       });
       return await this.userRepository.getUsersList({ search });
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async getFocusBlockSummary(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Focus blocks weekly summary',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      const currentTime = DateTime.local();
+      const end_date = currentTime.toJSDate();
+      const start_date = currentTime.minus({ days: 6 }).toJSDate();
+      return await this.completedFocusBlock.getLogsByUserInTimeRange(user_id, {
+        from_time: start_date,
+        to_time: end_date,
+      });
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async getCompletedActivitySummary(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting completed activity week summary',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      return await this.completedActivityRepository.getWeekSummary(user_id);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

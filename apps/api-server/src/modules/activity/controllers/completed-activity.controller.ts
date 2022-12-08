@@ -66,9 +66,4 @@ export class CompletedActivityController {
   getdaySummary(@AuthContext() { user }: Passport, @Query() { timezone }: GetDaySummaryQueryDto): Promise<DaySummary> {
     return this.completedActivityService.getDaySummary(user.id, timezone);
   }
-
-  @Get('/week-summary')
-  getWeekSummary(@AuthContext() { user }: Passport) {
-    return this.completedActivityService.getWeekSummary(user.id);
-  }
 }

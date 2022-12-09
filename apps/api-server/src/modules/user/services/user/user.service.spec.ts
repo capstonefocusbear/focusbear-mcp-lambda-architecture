@@ -9,6 +9,8 @@ import { auth0UserDummy, userDummy } from '../../../../../test/dummies';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,
+  CompletedActivityRepositoryMock,
+  CompletedFocusBlockRepositoryMock,
   RevenueCatServiceMock,
   SentryServiceMock,
   StripeServiceMock,
@@ -21,6 +23,8 @@ import { UserService } from './user.service';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
+import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -28,6 +32,8 @@ describe('UserService', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ load: configsArray })],
       providers: [
+        CompletedFocusBlockRepository,
+        CompletedActivityRepository,
         UserRepository,
         UserService,
         UserSettingsService,
@@ -51,6 +57,10 @@ describe('UserService', () => {
       .useValue(UserSettingsServiceMock)
       .overrideProvider(StripeService)
       .useValue(StripeServiceMock)
+      .overrideProvider(CompletedFocusBlockRepository)
+      .useValue(CompletedFocusBlockRepositoryMock)
+      .overrideProvider(CompletedActivityRepository)
+      .useValue(CompletedActivityRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });

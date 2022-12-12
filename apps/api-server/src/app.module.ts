@@ -18,6 +18,7 @@ import { HabitPackModule } from './modules/habit-pack/habit-pack.module';
 import { ActivityTemplateModule } from './modules/activity-template/activty-template.module';
 import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { VideoMetadataModule } from './modules/video-metadata/video-metadata.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { NotificationModule } from './modules/notification/notification.module';
     ActivityTemplateModule,
     EventsModule,
     NotificationModule,
+    VideoMetadataModule,
   ],
   controllers: [AppController],
 })

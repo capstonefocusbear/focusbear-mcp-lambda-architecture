@@ -1,7 +1,7 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { Activity } from 'apps/api-server/src/modules/activity/entities/activity.entity';
 import * as request from 'supertest';
+import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { AppModule } from '../../src/app.module';
 import { testUserRoutineHabitPack } from '../dummies/habit-packs.dummies';
 import { auth0LoginUser } from '../utils/auth0-login';
@@ -168,6 +168,23 @@ describe('endpoints', () => {
       const response = await request(baseURL)
         .post(`/completed-activity-sequence/${userFirstActivity.activity_sequence_id}/force-complete-current-sequence`)
         .query({ cancel_habits_for_today: true })
+        .set({ Authorization: `Bearer ${token}` });
+
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('POST /video-metadata', () => {
+    it('positive: should return a 201 status code for newly created video metadata records', async () => {
+      const response = await request(baseURL)
+        .post('/video-metadata')
+        .send({
+          video_urls: [
+            'https://www.youtube.com/watch?v=EL1wNBsEHiY',
+            'https://www.youtube.com/watch?v=R0Ut6nldt9g',
+            'https://youtu.be/KLKn9kA5t58',
+          ],
+        })
         .set({ Authorization: `Bearer ${token}` });
 
       expect(response.status).toBe(201);

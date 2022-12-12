@@ -89,6 +89,9 @@ SENTRY_DEBUG =
 SENTRY_ENV = 
 SENTRY_RELEASE = 
 SENTRY_LOG_LEVELS = 
+
+# Get this from the Google Developers dashboard
+YOUTUBE_API_KEY = 
 ```
 
 3. Update .env file with actual values for PostgreSQL

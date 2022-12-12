@@ -94,3 +94,8 @@ export const InstalledPackRepositoryMock = {
 export const NotificationRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const VideoMetadataRepositoryMock = {
+  ...BaseRepositoryMock,
+  fetchVideoIds: jest.fn(),
+};

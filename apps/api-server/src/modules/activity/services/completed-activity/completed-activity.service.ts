@@ -544,10 +544,13 @@ export class CompletedActivityService {
     });
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
-    return entries.map(([name, items]) => ({
-      name,
-      quantity: items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0) / items.length,
-    }));
+    return entries.map(([name, items]) => {
+      const average = items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0) / items.length;
+      return {
+        name,
+        quantity: Number(average.toFixed(1)),
+      };
+    });
   }
 
   private countSummarySUM(logs: CompletedActivity[]): ActivityQuantityDaySummaryItem[] {

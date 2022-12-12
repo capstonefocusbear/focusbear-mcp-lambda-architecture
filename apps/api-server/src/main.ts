@@ -7,6 +7,7 @@ import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
+import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder()
@@ -32,6 +33,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
+  app.useGlobalInterceptors(new TimeoutInterceptor());
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
   await app.register(require('@fastify/helmet'), HELMET);
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires

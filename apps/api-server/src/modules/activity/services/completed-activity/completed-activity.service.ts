@@ -32,8 +32,8 @@ import { FocusModeDaySummaryItem } from '../../../focus-mode/domain/focus-mode-d
 import { ActivityDurationDaySummaryItem } from '../../domain/activity-duration-day-summary-item.mode';
 import { ActivityQuantityDaySummaryItem } from '../../domain/activity-quantity-day-summary-item.mode';
 import { DaySummary } from '../../domain/day-summary.mode';
-import { SkipActivityDto } from '../../dto/skip-activity.dto';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
+import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -88,7 +88,6 @@ export class CompletedActivityService {
         sequence,
         activity,
         choice,
-        false,
       );
       const createdItem = await this.saveCompletedLog(
         completedActivity,
@@ -105,7 +104,72 @@ export class CompletedActivityService {
     }
   }
 
-  async skipActivity(activityData: SkipActivityDto, { user_id }: GetUserSettingsDto) {
+  async completeMultipleActivities(
+    completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
+    { user_id }: GetUserSettingsDto,
+  ) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const createdLogs: CompletedActivityResponse[] = [];
+    const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
+    const activitySequenceCache = {};
+    const activitiesCache = {};
+    await Promise.all(
+      groupedActivities.map(async (group) => {
+        const activitiesGroupedByDateAndSequence = Object.entries(group);
+        for await (const [sequenceId, activities] of activitiesGroupedByDateAndSequence) {
+          let sequence: ActivitySequence;
+          let allActivitiesFromSequence: Activity[];
+          if (!Object.keys(activitySequenceCache).includes(sequenceId)) {
+            sequence = await this.activitySequenceRepository.orm.findOneBy({ id: sequenceId });
+            activitySequenceCache[sequenceId] = sequence;
+            allActivitiesFromSequence = await this.activityRepository.orm.find({
+              where: { activity_sequence_id: sequenceId, user_id },
+            });
+            activitiesCache[sequenceId] = allActivitiesFromSequence;
+          } else {
+            sequence = activitySequenceCache[sequenceId];
+            allActivitiesFromSequence = activitiesCache[sequenceId];
+          }
+          for await (const completedActivity of activities) {
+            const startTime = completedActivity.start_time;
+            // eslint-disable-next-line operator-linebreak
+            const completingSequenceLog =
+              await this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+                user,
+                sequenceId,
+                startTime,
+              );
+            const { choice_id, activity_id } = completedActivity;
+            const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
+            if (activity) {
+              const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
+              const createdItem = await this.saveCompletedLog(
+                completedActivity,
+                activity,
+                choice,
+                user_id,
+                completingSequenceLog,
+              );
+              const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
+              const { is_completed } = completingSequenceLog;
+              if (!nextActivity && !is_completed) {
+                await this.completedActivitySequenceService.completeActivitySequenceByDate(
+                  completingSequenceLog.id,
+                  user_id,
+                  startTime,
+                );
+              }
+              createdLogs.push(createdItem);
+            }
+          }
+        }
+      }),
+    );
+    return createdLogs;
+  }
+
+  async skipActivity(skippedActivity: CreateSkippedActivityDto, { user_id }: GetUserSettingsDto) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -113,47 +177,45 @@ export class CompletedActivityService {
         message: 'Skipping activity',
         data: {
           user_id,
-          activityData,
+          skippedActivity,
         },
       });
-      const { activity_sequence_id, activity_id, choice_id } = activityData;
+      const { activity_sequence_id, activity_id, choice_id } = skippedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
         activity_id,
         user_id,
         choice_id,
       );
-      await this.saveActivityAsSkipped(user, activity_id);
-      await this.updateUserAndSequence(activityData, { user_id }, user, sequence, activity, choice, true);
+      const completingSequenceLog = await this.updateUserAndSequence(
+        skippedActivity,
+        { user_id },
+        user,
+        sequence,
+        activity,
+        choice,
+      );
+      const createdItem = await this.saveCompletedLog(
+        skippedActivity,
+        activity,
+        choice,
+        user_id,
+        completingSequenceLog,
+      );
+      return createdItem;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  async saveActivityAsSkipped(user: User, activity_id: string) {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Saving activity as skipped',
-      data: {
-        user_id: user.id,
-        activity_id,
-      },
-    });
-    const skippedActivities = user.current_sequence_skipped_activities ?? [];
-    skippedActivities.push(activity_id);
-    await this.userRepository.update(user.id, { current_sequence_skipped_activities: skippedActivities });
-  }
-
   async updateUserAndSequence(
-    activityData: CreateCompletedActivityDto | SkipActivityDto,
+    activityData: CreateCompletedActivityDto | CreateSkippedActivityDto,
     { user_id }: GetUserSettingsDto,
     user: User,
     sequence: ActivitySequence,
     activity: Activity,
     choice: Activity,
-    is_skipped: boolean,
   ) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -163,29 +225,27 @@ export class CompletedActivityService {
         user_id,
       },
     });
-    this.validateCompletingActivity(user, sequence, activity, choice);
-    const { device_id, activity_sequence_id, activity_id } = activityData;
+    await this.validateCompletingActivity(user, sequence, activity, choice);
+    const { device_id, activity_sequence_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       user,
       activity_sequence_id,
       start_time,
     );
-    let current_state: CurrentActivityState;
-    let next_activity: string;
-    if (is_skipped) {
-      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user);
-      current_state = currentState;
-      next_activity = nextActivity;
-    } else {
-      const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user, activityData);
-      current_state = currentState;
-      next_activity = nextActivity;
-    }
-    const current_completing_sequence_log_id = next_activity ? completingSequenceLog.id : null;
+    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user, activityData);
+    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
-    await this.userRepository.orm.update(user_id, { ...current_state, current_completing_sequence_log_id });
-    if (!next_activity) {
+    const skippedActivityIds = user.current_sequence_skipped_activities ?? [];
+    if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
+      skippedActivityIds.push(activity_id);
+    }
+    await this.userRepository.orm.update(user_id, {
+      ...currentState,
+      current_completing_sequence_log_id,
+      current_sequence_skipped_activities: skippedActivityIds.length !== 0 ? skippedActivityIds : null,
+    });
+    if (!nextActivity) {
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
     return completingSequenceLog;
@@ -222,12 +282,12 @@ export class CompletedActivityService {
     return [sequence, activity, user, choice];
   }
 
-  private validateCompletingActivity(
+  private async validateCompletingActivity(
     user: User,
     sequence: ActivitySequence,
     activity: Activity,
     choice?: Activity,
-  ): void | never {
+  ): Promise<void | never> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -241,8 +301,13 @@ export class CompletedActivityService {
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
     const isCompletingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    const notCurrentSequenceMessage = `activity_sequence_id: ${sequence.id} is not a current sequence: ${current_activity_sequence_id}`;
-    if (!isCompletingActivitySequenceTheCurrent) throw new BadRequestException(notCurrentSequenceMessage);
+    if (!isCompletingActivitySequenceTheCurrent) {
+      await this.completedActivitySequenceService.forceCompleteCurrentSequence(
+        current_activity_sequence_id,
+        user.id,
+        true,
+      );
+    }
   }
 
   private validateChoice(activity: Activity, choice?: Activity): void | never {
@@ -268,7 +333,7 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     activity_id: string,
     user: User,
-    completedActivity?: CreateCompletedActivityDto | SkipActivityDto,
+    completedActivity?: CreateCompletedActivityDto | CreateSkippedActivityDto,
   ): {
     currentState: CurrentActivityState;
     nextActivity: string | null | undefined;
@@ -303,7 +368,7 @@ export class CompletedActivityService {
   }
 
   private async saveCompletedLog(
-    completedActivity: CreateCompletedActivityDto,
+    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto,
     activity: Activity,
     choice: Activity,
     user_id: string,
@@ -320,7 +385,7 @@ export class CompletedActivityService {
         completed_activity_id: completedActivity.activity_id,
       },
     });
-    const { choice_id, ...data } = completedActivity;
+    const { choice_id, device_id, ...data } = completedActivity;
     const { has_choices } = activity;
     const completedItem = new CompletedActivity(
       { ...data, user_id, completed_sequence_id: sequenceLog?.id },
@@ -333,8 +398,10 @@ export class CompletedActivityService {
     const nullifiedParent = { quantity_logged: null };
     if (has_choices) Object.assign(completedItem, nullifiedParent);
     const [completed_activity_log, completed_choice_log] = await Promise.all([
-      this.completedActivityRepository.create(completedItem),
-      has_choices ? this.completedActivityRepository.create(completedChoice) : null,
+      this.completedActivityRepository.upsert(completedItem, ['activity_id', 'completed_sequence_id']),
+      has_choices
+        ? this.completedActivityRepository.upsert(completedChoice, ['activity_id', 'completed_sequence_id'])
+        : null,
     ]);
     return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });
   }
@@ -594,5 +661,38 @@ export class CompletedActivityService {
       achievements,
       distractions,
     }));
+  }
+
+  groupActivitiesByDateAndSequence(completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[]) {
+    const completedActivitiesGroupedByDate = completedActivities.reduce(
+      (group: { [key: string]: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] }, activity) => {
+        const { start_time } = activity;
+        const startOfDate = new Date(new Date(start_time).setUTCHours(0, 0, 0, 0)).toISOString();
+        // eslint-disable-next-line no-param-reassign
+        group[startOfDate] ??= [];
+        group[startOfDate].push(activity);
+        return group;
+      },
+      {},
+    );
+    const completedActivitesGroupedByDateAndSequence = Object.entries(completedActivitiesGroupedByDate).map(
+      ([, activities]) => {
+        return this.groupActivitiesBySequenceId(activities);
+      },
+    );
+    return completedActivitesGroupedByDateAndSequence;
+  }
+
+  groupActivitiesBySequenceId(completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[]): {
+    [key: string]: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
+  } {
+    const completedActivitiesGroupedBySequence = completedActivities.reduce((group, activity) => {
+      const { activity_sequence_id } = activity;
+      // eslint-disable-next-line no-param-reassign
+      group[activity_sequence_id] ??= [];
+      group[activity_sequence_id].push(activity);
+      return group;
+    }, {});
+    return completedActivitiesGroupedBySequence;
   }
 }

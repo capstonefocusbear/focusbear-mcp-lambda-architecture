@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
@@ -7,6 +7,7 @@ import { CompletedActivitySequence } from './completed-activity-sequence.entity'
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 @Entity('completed_activities')
+@Unique('unique_index_activity_id_completed_sequence_id', ['activity_id', 'completed_sequence_id'])
 export class CompletedActivity extends BaseEntity {
   constructor(
     { id, ...sequence }: Partial<CompletedActivity> = {},

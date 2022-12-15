@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Connection } from 'typeorm';
+import { Between, Connection } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { CompletedActivitySequence } from '../entities/completed-activity-sequence.entity';
@@ -22,6 +22,17 @@ export class CompletedActivitySequenceRepository extends BaseRepository<Complete
   async getUncompletedSequenceLog(id: string): Promise<CompletedActivitySequence> {
     return this.orm.findOne({
       where: { id, is_completed: false },
+      relations: ['activity_sequence', 'completed_activity_logs'],
+    });
+  }
+
+  async getUncompletedSequenceLogByDate(
+    id: string,
+    start_of_day: Date,
+    end_of_day: Date,
+  ): Promise<CompletedActivitySequence> {
+    return this.orm.findOne({
+      where: { id, is_completed: false, start_time: Between(start_of_day, end_of_day) },
       relations: ['activity_sequence', 'completed_activity_logs'],
     });
   }

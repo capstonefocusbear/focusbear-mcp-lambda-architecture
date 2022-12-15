@@ -61,6 +61,7 @@ describe('endpoints', () => {
   });
 
   describe('POST /focus-mode/:focus_mode_id/start', () => {
+    jest.setTimeout(10000);
     it('positive: should return successful start message', async () => {
       const startTime = new Date();
       const finishTime = new Date();
@@ -81,6 +82,7 @@ describe('endpoints', () => {
   });
 
   describe('POST /focus-mode/:id/finish', () => {
+    jest.setTimeout(10000);
     it('positive: should return successful completion message', async () => {
       const responseMessage = 'Focus mode has been successfully finished!';
       const response = await request(baseURL)
@@ -142,6 +144,48 @@ describe('endpoints', () => {
           activity_sequence_id: userFirstActivity.activity_sequence_id,
           start_time: startTime,
           finish_time: finishTime,
+        })
+        .set({ Authorization: `Bearer ${token}` });
+
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('POST /completed-activity/sync', () => {
+    it('positive: should return a 201 status code for newly created completed activity logs', async () => {
+      const response = await request(baseURL)
+        .post('/completed-activity/sync')
+        .send({
+          completed_activites: [
+            {
+              activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+              device_id: userDeviceId,
+              activity_sequence_id: '992f79ca-380a-44fa-9166-eba70251712f',
+              duration_logged: 120,
+              start_time: '2022-12-10T12:00:00+0000',
+            },
+            {
+              activity_id: 'dba00bb3-0482-4b63-8675-2781818141b2',
+              device_id: userDeviceId,
+              activity_sequence_id: '992f79ca-380a-44fa-9166-eba70251712f',
+              duration_logged: 120,
+              start_time: '2022-12-10T12:00:00+0000',
+            },
+            {
+              activity_id: '2aec3416-c3c0-47ea-b5d2-45c35ad57043',
+              device_id: userDeviceId,
+              activity_sequence_id: '4cef5086-3d11-4e22-9380-3e50a357bcb9',
+              duration_logged: 120,
+              start_time: '2022-12-12T20:00:00+0000',
+            },
+            {
+              activity_id: 'f93e4ebd-1246-487b-a090-3e10ee6871ad',
+              device_id: userDeviceId,
+              activity_sequence_id: '4cef5086-3d11-4e22-9380-3e50a357bcb9',
+              duration_logged: 120,
+              start_time: '2022-12-13T20:00:00+0000',
+            },
+          ],
         })
         .set({ Authorization: `Bearer ${token}` });
 

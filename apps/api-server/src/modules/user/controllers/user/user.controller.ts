@@ -13,10 +13,12 @@ import {
   HasSubscription,
   RequireEntitlements,
 } from '../../../subscription/guards/has-subscription/has-subscription.guard';
+import { GetUsersListQueryDto } from '../../dto/get-users-list-query.dto';
 import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { User } from '../../entities/user.entity';
 import { UserService } from '../../services/user/user.service';
+import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
 
 @Controller('user')
 @ApiTags('user')
@@ -66,5 +68,21 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserCompletedActivitySummary(@AuthContext() { user }: Passport): Promise<CompletedActivity[]> {
     return this.userService.getCompletedActivitySummary(user.id);
+  }
+
+  @Get('/user-list')
+  @UseGuards(IsAdmin)
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getListOfUsers(@Query() { take, skip }: GetUsersListQueryDto, @AuthContext() { user }: Passport) {
+    return this.userService.getListOfUsers(user.id, take, skip);
+  }
+
+  @Get()
+  @UseGuards(IsAdmin)
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserById(@Query() { id }: { id: string }, @AuthContext() { user }: Passport) {
+    return this.userService.getUserById(user.id, id);
   }
 }

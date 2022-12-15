@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
@@ -15,6 +15,7 @@ import { CurrentActivityProps } from '../../../activity/domain/current-activity-
 import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
+import { UserTypes } from '../../domain/user-types.enum';
 
 @Injectable()
 export class UserService {
@@ -279,5 +280,27 @@ export class UserService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getListOfUsers(user_id: string, take: number, skip: number): Promise<User[]> {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (user.user_type !== UserTypes.ADMIN) {
+      throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
+    }
+    const users = await this.userRepository.orm.find({
+      order: { created_at: 'DESC' },
+      take,
+      skip,
+    });
+    return users;
+  }
+
+  async getUserById(user_id: string, id: string): Promise<User> {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (user.user_type !== UserTypes.ADMIN) {
+      throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
+    }
+    const foundUser = await this.userRepository.orm.findOne({ where: { id }, relations: ['focus_modes'] });
+    return foundUser;
   }
 }

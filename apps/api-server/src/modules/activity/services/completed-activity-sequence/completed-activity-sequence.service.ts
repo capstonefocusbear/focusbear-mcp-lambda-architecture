@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
+import { Between } from 'typeorm';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
@@ -50,6 +51,40 @@ export class CompletedActivitySequenceService {
     }
   }
 
+  async getOrCreateCompletingSequenceLogForSyncing(user: User, activity_sequence_id: string, start_time: Date) {
+    const startOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).startOf('day').toString();
+    const endOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).endOf('day').toString();
+    const incompleteSequence = await this.completedActivitySequenceRepository.orm.findOne({
+      where: {
+        user_id: user.id,
+        is_completed: false,
+        activity_sequence_id,
+        start_time: Between(new Date(startOfDay), new Date(endOfDay)),
+      },
+    });
+    if (incompleteSequence) {
+      return incompleteSequence;
+    }
+    const completedSequenceFromCurrentDate = await this.completedActivitySequenceRepository.orm.findOne({
+      where: {
+        user_id: user.id,
+        is_completed: true,
+        activity_sequence_id,
+        start_time: Between(new Date(startOfDay), new Date(endOfDay)),
+      },
+    });
+    if (completedSequenceFromCurrentDate) {
+      return completedSequenceFromCurrentDate;
+    }
+    const newCompletingSequenceLog = new CompletedActivitySequence({
+      activity_sequence_id,
+      user_id: user.id,
+      start_time,
+      is_completed: false,
+    });
+    return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
+  }
+
   async completeActivitySequence(log_id: string, user_id: string): Promise<CompletedActivitySequence> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -64,6 +99,29 @@ export class CompletedActivitySequenceService {
       if (!uncompletedSequenceLog) {
         throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
       }
+      uncompletedSequenceLog.finalizeUncompletedLog();
+      await this.nullifyCurrentSequenceSkippedActivities(user_id);
+      return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async completeActivitySequenceByDate(
+    log_id: string,
+    user_id: string,
+    start_time: Date,
+  ): Promise<CompletedActivitySequence> {
+    try {
+      const startOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).startOf('day').toString();
+      const endOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).endOf('day').toString();
+      const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLogByDate(
+        log_id,
+        new Date(startOfDay),
+        new Date(endOfDay),
+      );
+      if (!uncompletedSequenceLog) return;
       uncompletedSequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
       return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);

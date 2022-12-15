@@ -7,6 +7,7 @@ import { CompletedActivityResponse } from '../domain/completed-activity-response
 import { CompletedActivityStats } from '../domain/completed-activity-stats.model';
 import { DaySummary } from '../domain/day-summary.mode';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
+import { CreateSkippedActivityDto } from '../dto/create-skipped-activity.dto';
 import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-logs.dto';
 import {
   GetCompletedActivityStatsParamsDto,
@@ -14,7 +15,6 @@ import {
 } from '../dto/get-completed-activity-stats.dto';
 import { GetDaySummaryQueryDto } from '../dto/get-day-summary-query.dto';
 import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
-import { SkipActivityDto } from '../dto/skip-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 
@@ -33,8 +33,16 @@ export class CompletedActivityController {
     return this.completedActivityService.completeActivity(completedActivity, { user_id: user.id });
   }
 
+  @Post('sync')
+  completedMultipleActivities(
+    @Body() { completed_activites }: { completed_activites: CreateCompletedActivityDto[] },
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.completedActivityService.completeMultipleActivities(completed_activites, { user_id: user.id });
+  }
+
   @Post('skip')
-  skipActivity(@Body() skippedActivity: SkipActivityDto, @AuthContext() { user }: Passport) {
+  skipActivity(@Body() skippedActivity: CreateSkippedActivityDto, @AuthContext() { user }: Passport) {
     return this.completedActivityService.skipActivity(skippedActivity, { user_id: user.id });
   }
 

@@ -17,6 +17,7 @@ import { CompletedActivitySequenceService } from './completed-activity-sequence.
 import {
   ActivityDummy,
   ActivitySequenceDummy,
+  CompletedSequenceLogDummy,
   UncompletedSequenceLogDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -121,6 +122,94 @@ describe('CompletedActivitySequenceService', () => {
     });
   });
 
+  describe('getOrCreateCompletingSequenceLogForSyncing', () => {
+    it('positive: should create new sequence if no incomplete or complete sequence is found for activity date', async () => {
+      const user: User = {
+        ...userDummy,
+        current_activity_sequence: ActivitySequenceDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      const completedActivity = {
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: new Date(),
+        activity_id: randomUUID(),
+        duration_logged: Number(),
+        device_id: randomUUID(),
+      };
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+        user,
+        completedActivity.activity_sequence_id,
+        completedActivity.start_time,
+      );
+
+      expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith({
+        id: undefined,
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: completedActivity.start_time,
+        user_id: user.id,
+        is_completed: false,
+      });
+    });
+
+    it('positive: if incomplete sequence from activity date is found it should be returned', async () => {
+      const user: User = {
+        ...userDummy,
+        current_activity_sequence: ActivitySequenceDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      const completedActivity = {
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: new Date(),
+        activity_id: randomUUID(),
+        duration_logged: Number(),
+        device_id: randomUUID(),
+      };
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(UncompletedSequenceLogDummy);
+
+      const result = await completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+        user,
+        completedActivity.activity_sequence_id,
+        completedActivity.start_time,
+      );
+
+      expect(result).toBe(UncompletedSequenceLogDummy);
+    });
+
+    it('positive: if complete sequence from activity date is found it should be returned', async () => {
+      const user: User = {
+        ...userDummy,
+        current_activity_sequence: ActivitySequenceDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      const completedActivity = {
+        activity_sequence_id: ActivitySequenceDummy.id,
+        start_time: new Date(),
+        activity_id: randomUUID(),
+        duration_logged: Number(),
+        device_id: randomUUID(),
+      };
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(CompletedSequenceLogDummy);
+
+      const result = await completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+        user,
+        completedActivity.activity_sequence_id,
+        completedActivity.start_time,
+      );
+
+      expect(result).toBe(CompletedSequenceLogDummy);
+    });
+  });
+
   describe('completeActivitySequence', () => {
     it('negative: should throw NotFoundException if there is no uncompleted sequence log to complete', async () => {
       CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(null);
@@ -144,6 +233,20 @@ describe('CompletedActivitySequenceService', () => {
       CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(log);
 
       await completedActivitySequenceService.completeActivitySequence(log.id, userDummy.id);
+
+      log.finalizeUncompletedLog();
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
+    });
+  });
+
+  describe('completeActivitySequenceByDate', () => {
+    it('positive: seuqence should be completed and saved', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });
+      const startTime = new Date();
+      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLogByDate.mockResolvedValueOnce(log);
+
+      await completedActivitySequenceService.completeActivitySequenceByDate(log.id, userDummy.id, startTime);
 
       log.finalizeUncompletedLog();
       expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);

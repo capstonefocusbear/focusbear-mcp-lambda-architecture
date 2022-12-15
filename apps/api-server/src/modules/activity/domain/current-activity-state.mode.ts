@@ -1,12 +1,12 @@
 import { User } from '../../user/entities/user.entity';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
-import { SkipActivityDto } from '../dto/skip-activity.dto';
+import { CreateSkippedActivityDto } from '../dto/create-skipped-activity.dto';
 
 export class CurrentActivityState {
   constructor(
     { nextActivity, lastSequenceId, currentActivityIndex },
     user: User,
-    completedActivity?: CreateCompletedActivityDto | SkipActivityDto,
+    completedActivity?: CreateCompletedActivityDto | CreateSkippedActivityDto,
   ) {
     this.current_activity_id = nextActivity || null;
     this.current_activity_sequence_id = nextActivity ? lastSequenceId : null;

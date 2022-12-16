@@ -116,15 +116,15 @@ export class CompletedActivitySequenceService {
     try {
       const startOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).startOf('day').toString();
       const endOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).endOf('day').toString();
-      const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLogByDate(
+      const sequenceLog = await this.completedActivitySequenceRepository.getSequenceLogByDate(
         log_id,
         new Date(startOfDay),
         new Date(endOfDay),
       );
-      if (!uncompletedSequenceLog) return;
-      uncompletedSequenceLog.finalizeUncompletedLog();
+      if (!sequenceLog) return;
+      sequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
-      return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+      return await this.completedActivitySequenceRepository.orm.save(sequenceLog);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

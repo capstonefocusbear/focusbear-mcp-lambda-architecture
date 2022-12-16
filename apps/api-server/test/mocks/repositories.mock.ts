@@ -60,7 +60,7 @@ export const CompletedActivitySequenceRepositoryMock = {
   getMostRecentCompletedTime: jest.fn(),
   getAggregatedDurationLogsPerDay: jest.fn(),
   getUncompletedSequenceLog: jest.fn(),
-  getUncompletedSequenceLogByDate: jest.fn(),
+  getSequenceLogByDate: jest.fn(),
 };
 
 export const FocusModeRepositoryMock = {

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 export class CreateSkippedActivityDto {
@@ -10,6 +10,14 @@ export class CreateSkippedActivityDto {
   @IsOptional()
   @IsUUID('4')
   choice_id?: string;
+
+  @IsOptional()
+  @IsNumber()
+  quantity_logged?: number;
+
+  @IsOptional()
+  @IsNumber()
+  duration_logged?: number;
 
   @IsOptional()
   @IsString()
@@ -26,6 +34,10 @@ export class CreateSkippedActivityDto {
   @IsOptional()
   @Type(() => Date)
   start_time?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  finish_time?: Date;
 
   @IsOptional()
   @Type(() => CompletedActivityMetadata)

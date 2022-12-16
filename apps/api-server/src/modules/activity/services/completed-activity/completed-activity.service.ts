@@ -108,65 +108,108 @@ export class CompletedActivityService {
     completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
     { user_id }: GetUserSettingsDto,
   ) {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    const createdLogs: CompletedActivityResponse[] = [];
-    const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
-    const activitySequenceCache = {};
-    const activitiesCache = {};
-    await Promise.all(
-      groupedActivities.map(async (group) => {
-        const activitiesGroupedByDateAndSequence = Object.entries(group);
-        for await (const [sequenceId, activities] of activitiesGroupedByDateAndSequence) {
-          let sequence: ActivitySequence;
-          let allActivitiesFromSequence: Activity[];
-          if (!Object.keys(activitySequenceCache).includes(sequenceId)) {
-            sequence = await this.activitySequenceRepository.orm.findOneBy({ id: sequenceId });
-            activitySequenceCache[sequenceId] = sequence;
-            allActivitiesFromSequence = await this.activityRepository.orm.find({
-              where: { activity_sequence_id: sequenceId, user_id },
-            });
-            activitiesCache[sequenceId] = allActivitiesFromSequence;
-          } else {
-            sequence = activitySequenceCache[sequenceId];
-            allActivitiesFromSequence = activitiesCache[sequenceId];
-          }
-          for await (const completedActivity of activities) {
-            const startTime = completedActivity.start_time;
-            // eslint-disable-next-line operator-linebreak
-            const completingSequenceLog =
-              await this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
-                user,
-                sequenceId,
-                startTime,
-              );
-            const { choice_id, activity_id } = completedActivity;
-            const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
-            if (activity) {
-              const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
-              const createdItem = await this.saveCompletedLog(
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Completing multiple activities',
+        data: { user_id },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      const createdLogs: CompletedActivityResponse[] = [];
+      const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
+      const activitySequenceCache = {};
+      const activitiesCache = {};
+      await Promise.all(
+        groupedActivities.map(async (group) => {
+          const activitiesGroupedByDateAndSequence = Object.entries(group);
+          for await (const [sequenceId, activities] of activitiesGroupedByDateAndSequence) {
+            let sequence: ActivitySequence;
+            let allActivitiesFromSequence: Activity[];
+            if (!Object.keys(activitySequenceCache).includes(sequenceId)) {
+              sequence = await this.activitySequenceRepository.orm.findOneBy({ id: sequenceId });
+              activitySequenceCache[sequenceId] = sequence;
+              allActivitiesFromSequence = await this.activityRepository.orm.find({
+                where: { activity_sequence_id: sequenceId, user_id },
+              });
+              activitiesCache[sequenceId] = allActivitiesFromSequence;
+            } else {
+              sequence = activitySequenceCache[sequenceId];
+              allActivitiesFromSequence = activitiesCache[sequenceId];
+            }
+            for await (const completedActivity of activities) {
+              await this.syncOfflineActivity({
                 completedActivity,
-                activity,
-                choice,
-                user_id,
-                completingSequenceLog,
-              );
-              const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
-              const { is_completed } = completingSequenceLog;
-              if (!nextActivity && !is_completed) {
-                await this.completedActivitySequenceService.completeActivitySequenceByDate(
-                  completingSequenceLog.id,
-                  user_id,
-                  startTime,
-                );
-              }
-              createdLogs.push(createdItem);
+                user,
+                allActivitiesFromSequence,
+                sequence,
+                createdLogs,
+              });
             }
           }
+        }),
+      );
+      return createdLogs;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async syncOfflineActivity({
+    completedActivity,
+    user,
+    allActivitiesFromSequence,
+    sequence,
+    createdLogs,
+  }: {
+    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto;
+    user: User;
+    allActivitiesFromSequence: Activity[];
+    sequence: ActivitySequence;
+    createdLogs: CompletedActivityResponse[];
+  }) {
+    try {
+      const startTime = completedActivity.start_time;
+      // eslint-disable-next-line operator-linebreak
+      const completingSequenceLog =
+        await this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+          user,
+          sequence.id,
+          startTime,
+        );
+      const { choice_id, activity_id } = completedActivity;
+      const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
+      if (activity) {
+        const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
+        // if activity was done without app, save a finish time for it to show up in stats
+        let { finish_time } = completedActivity;
+        if (completedActivity.metadata?.skipped_did_complete) {
+          finish_time = completedActivity.start_time;
         }
-      }),
-    );
-    return createdLogs;
+        const createdItem = await this.saveCompletedLog(
+          { ...completedActivity, finish_time },
+          activity,
+          choice,
+          user.id,
+          completingSequenceLog,
+        );
+        const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
+        const { is_completed } = completingSequenceLog;
+        // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
+        if ((!nextActivity && !is_completed) || is_completed) {
+          await this.completedActivitySequenceService.completeActivitySequenceByDate(
+            completingSequenceLog.id,
+            user.id,
+            startTime,
+          );
+        }
+        createdLogs.push(createdItem);
+      }
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    }
   }
 
   async skipActivity(skippedActivity: CreateSkippedActivityDto, { user_id }: GetUserSettingsDto) {
@@ -664,35 +707,52 @@ export class CompletedActivityService {
   }
 
   groupActivitiesByDateAndSequence(completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[]) {
-    const completedActivitiesGroupedByDate = completedActivities.reduce(
-      (group: { [key: string]: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] }, activity) => {
-        const { start_time } = activity;
-        const startOfDate = new Date(new Date(start_time).setUTCHours(0, 0, 0, 0)).toISOString();
-        // eslint-disable-next-line no-param-reassign
-        group[startOfDate] ??= [];
-        group[startOfDate].push(activity);
-        return group;
-      },
-      {},
-    );
-    const completedActivitesGroupedByDateAndSequence = Object.entries(completedActivitiesGroupedByDate).map(
-      ([, activities]) => {
-        return this.groupActivitiesBySequenceId(activities);
-      },
-    );
-    return completedActivitesGroupedByDateAndSequence;
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Grouping activities by date and sequence',
+      });
+      const completedActivitiesGroupedByDate = completedActivities.reduce(
+        (group: { [key: string]: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] }, activity) => {
+          const { start_time } = activity;
+          const isValidTime = !Number.isNaN(new Date(start_time).getDate());
+          if (!isValidTime) throw new BadRequestException(`Invalid start time: ${start_time}`);
+          const startOfDate = new Date(new Date(start_time).setUTCHours(0, 0, 0, 0)).toISOString();
+          // eslint-disable-next-line no-param-reassign
+          group[startOfDate] ??= [];
+          group[startOfDate].push(activity);
+          return group;
+        },
+        {},
+      );
+      const completedActivitesGroupedByDateAndSequence = Object.entries(completedActivitiesGroupedByDate).map(
+        ([, activities]) => {
+          return this.groupActivitiesBySequenceId(activities);
+        },
+      );
+      return completedActivitesGroupedByDateAndSequence;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   groupActivitiesBySequenceId(completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[]): {
     [key: string]: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
   } {
-    const completedActivitiesGroupedBySequence = completedActivities.reduce((group, activity) => {
-      const { activity_sequence_id } = activity;
-      // eslint-disable-next-line no-param-reassign
-      group[activity_sequence_id] ??= [];
-      group[activity_sequence_id].push(activity);
-      return group;
-    }, {});
-    return completedActivitiesGroupedBySequence;
+    try {
+      const completedActivitiesGroupedBySequence = completedActivities.reduce((group, activity) => {
+        const { activity_sequence_id } = activity;
+        // eslint-disable-next-line no-param-reassign
+        group[activity_sequence_id] ??= [];
+        group[activity_sequence_id].push(activity);
+        return group;
+      }, {});
+      return completedActivitiesGroupedBySequence;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 }

@@ -244,7 +244,7 @@ describe('CompletedActivitySequenceService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });
       const startTime = new Date();
-      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLogByDate.mockResolvedValueOnce(log);
+      CompletedActivitySequenceRepositoryMock.getSequenceLogByDate.mockResolvedValueOnce(log);
 
       await completedActivitySequenceService.completeActivitySequenceByDate(log.id, userDummy.id, startTime);
 

@@ -35,9 +35,9 @@ export class CompletedActivityController {
 
   @Post('sync')
   completedMultipleActivities(
-    @Body() { completed_activites }: { completed_activites: CreateCompletedActivityDto[] },
+    @Body() { completed_activites }: { completed_activites: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] },
     @AuthContext() { user }: Passport,
-  ) {
+  ): Promise<CompletedActivityResponse[]> {
     return this.completedActivityService.completeMultipleActivities(completed_activites, { user_id: user.id });
   }
 

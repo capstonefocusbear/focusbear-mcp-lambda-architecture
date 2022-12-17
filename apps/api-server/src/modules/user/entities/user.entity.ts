@@ -210,6 +210,9 @@ export class User extends BaseEntity {
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.user)
   activity_templates?: ActivityTemplate[];
 
+  @OneToMany(() => Activity, (activities) => activities.user_activities)
+  activities?: Activity[];
+
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })
   owner_of_team?: Team;

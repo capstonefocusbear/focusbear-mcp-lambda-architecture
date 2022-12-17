@@ -74,7 +74,10 @@ export class UserController {
   @UseGuards(IsAdmin)
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async getListOfUsers(@Query() { take, skip }: GetUsersListQueryDto, @AuthContext() { user }: Passport) {
+  async getListOfUsers(
+    @Query() { take, skip }: GetUsersListQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<User[]> {
     return this.userService.getListOfUsers(user.id, take, skip);
   }
 
@@ -82,7 +85,7 @@ export class UserController {
   @UseGuards(IsAdmin)
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async getUserById(@Query() { id }: { id: string }, @AuthContext() { user }: Passport) {
+  async getUserById(@Query() { id }: { id: string }, @AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserById(user.id, id);
   }
 }

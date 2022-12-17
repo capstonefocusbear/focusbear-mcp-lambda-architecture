@@ -101,6 +101,10 @@ export class Activity extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
+  @ManyToOne(() => User, (user) => user.activities)
+  @JoinColumn({ name: 'user_id' })
+  user_activities?: User;
+
   @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.activities)
   @JoinColumn({ name: 'activity_template_id' })
   activity_template?: ActivityTemplate;

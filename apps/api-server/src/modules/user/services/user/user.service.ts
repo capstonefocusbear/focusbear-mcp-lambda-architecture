@@ -300,7 +300,10 @@ export class UserService {
     if (user.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
-    const foundUser = await this.userRepository.orm.findOne({ where: { id }, relations: ['focus_modes'] });
+    const foundUser = await this.userRepository.orm.findOne({
+      where: { id },
+      relations: ['focus_modes', 'activities'],
+    });
     return foundUser;
   }
 }

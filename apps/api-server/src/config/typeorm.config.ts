@@ -15,6 +15,7 @@ import { InstalledPack } from '../modules/habit-pack/entity/installed-pack.entit
 import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
 import { Notification } from '../modules/notification/entities/notification.entity';
 import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata.entity';
+import { Track } from '../modules/tracks/entities/track.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -42,6 +43,7 @@ export const typeormConfig = registerAs(
       ActivityTemplate,
       Notification,
       VideoMetadata,
+      Track,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

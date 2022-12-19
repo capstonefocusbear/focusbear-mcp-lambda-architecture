@@ -152,6 +152,7 @@ export class ActivityParserService {
           log_quantity,
           log_summary_type,
           has_choices: null,
+          is_default: parent.is_default,
         }),
     );
   }

@@ -1179,3 +1179,11 @@ export const videoMetadataRepositoryDBResponseSecondDummy = [
     duration: '06:40',
   },
 ];
+
+export const trackDtoDummy = {
+  id: '0775e6be-61d7-4e63-942f-1131ad4dbf46',
+  name: 'Dummy Track',
+  artist: 'Dummy artist',
+  description: 'Some text description',
+  download_url: 'www.mp3-download-site.io',
+};

@@ -19,6 +19,7 @@ import { ActivityTemplateModule } from './modules/activity-template/activty-temp
 import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { VideoMetadataModule } from './modules/video-metadata/video-metadata.module';
+import { TracksModule } from './modules/tracks/tracks.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { VideoMetadataModule } from './modules/video-metadata/video-metadata.mod
     EventsModule,
     NotificationModule,
     VideoMetadataModule,
+    TracksModule,
   ],
   controllers: [AppController],
 })

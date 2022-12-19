@@ -100,3 +100,7 @@ export const VideoMetadataRepositoryMock = {
   ...BaseRepositoryMock,
   fetchVideoIds: jest.fn(),
 };
+
+export const TracksRepositoryMock = {
+  ...BaseRepositoryMock,
+};

@@ -5,6 +5,7 @@ import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { AppModule } from '../../src/app.module';
 import { testUserRoutineHabitPack } from '../dummies/habit-packs.dummies';
 import { auth0LoginUser } from '../utils/auth0-login';
+import { trackDtoDummy } from '../dummies';
 
 describe('endpoints', () => {
   let app: NestFastifyApplication;
@@ -232,6 +233,17 @@ describe('endpoints', () => {
         .set({ Authorization: `Bearer ${token}` });
 
       expect(response.status).toBe(201);
+    });
+  });
+
+  describe('PUT /tracks', () => {
+    it('positive: should return a 200 status for upserting track', async () => {
+      const response = await request(baseURL)
+        .put('/tracks')
+        .send(trackDtoDummy)
+        .set({ Authorization: `Bearer ${token}` });
+
+      expect(response.status).toBe(200);
     });
   });
 });

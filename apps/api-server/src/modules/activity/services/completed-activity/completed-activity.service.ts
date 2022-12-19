@@ -230,8 +230,9 @@ export class CompletedActivityService {
         user_id,
         choice_id,
       );
+      const skippedActivityMetadata = { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
-        skippedActivity,
+        { ...skippedActivity, metadata: skippedActivityMetadata },
         { user_id },
         user,
         sequence,

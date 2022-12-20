@@ -429,14 +429,14 @@ export class CompletedActivityService {
         completed_activity_id: completedActivity.activity_id,
       },
     });
-    const { choice_id, device_id, ...data } = completedActivity;
+    const { choice_id, device_id, note_logged, ...data } = completedActivity;
     const { has_choices } = activity;
     const completedItem = new CompletedActivity(
-      { ...data, user_id, completed_sequence_id: sequenceLog?.id },
+      { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
       { log_quantity: activity.log_quantity, generateId: false },
     );
     const completedChoice = new CompletedActivity(
-      { ...data, activity_id: choice?.id, user_id, activity_sequence_id: null },
+      { ...data, activity_id: choice?.id, user_id, activity_sequence_id: null, activity_note: note_logged },
       { log_quantity: choice?.log_quantity, generateId: false },
     );
     const nullifiedParent = { quantity_logged: null };

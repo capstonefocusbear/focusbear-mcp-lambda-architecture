@@ -119,7 +119,7 @@ describe('CompletedActivityService', () => {
       activity_id: ActivityDummy.id,
       quantity_logged: randomQuantity,
       duration_logged: 600,
-      note_logged: 'some text',
+      activity_note: 'some text',
       activity_sequence_id: ActivityDummy.activity_sequence_id,
       start_time: new Date(Date.now() - 60),
       finish_time: new Date(Date.now() - 1),

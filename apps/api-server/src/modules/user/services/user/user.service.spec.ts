@@ -11,6 +11,7 @@ import {
   Auth0ManagementServiceMock,
   CompletedActivityRepositoryMock,
   CompletedFocusBlockRepositoryMock,
+  HabitPackRepositoryMock,
   RevenueCatServiceMock,
   SentryServiceMock,
   StripeServiceMock,
@@ -25,6 +26,8 @@ import { UserSettingsService } from '../user-settings/user-settings.service';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
+import { routineHabitPackDBResponseDummy } from '../../../../../test/dummies/habit-packs.dummies';
+import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -41,6 +44,7 @@ describe('UserService', () => {
         RevenueCatService,
         StripeService,
         ConfigService,
+        HabitPackRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -61,6 +65,8 @@ describe('UserService', () => {
       .useValue(CompletedFocusBlockRepositoryMock)
       .overrideProvider(CompletedActivityRepository)
       .useValue(CompletedActivityRepositoryMock)
+      .overrideProvider(HabitPackRepository)
+      .useValue(HabitPackRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });
@@ -275,6 +281,61 @@ describe('UserService', () => {
       await userService.getUsers({ search });
 
       expect(UserRepositoryMock.getUsersList).toBeCalledWith({ search });
+    });
+  });
+
+  describe('updateSignedUpViaHabitPack', () => {
+    afterEach(() => {
+      jest.resetAllMocks();
+    });
+
+    it('negative: if user account does not exist, throw NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if habit pack does not exist, throw NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `Habit pack with id: ${routineHabitPackDBResponseDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: if user already has signed_up_via_habit_pack value, no update should occur', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, signed_up_via_habit_pack: randomUUID() });
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+
+      await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+
+      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+    });
+
+    it("positive: user's signed_up_via_habit_pack property should be updated with incoming pack id", async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+
+      await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        signed_up_via_habit_pack: routineHabitPackDBResponseDummy.id,
+      });
     });
   });
 });

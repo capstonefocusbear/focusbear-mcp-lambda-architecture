@@ -16,6 +16,7 @@ import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { UserTypes } from '../../domain/user-types.enum';
+import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 
 @Injectable()
 export class UserService {
@@ -27,6 +28,7 @@ export class UserService {
     private readonly revenueCatService: RevenueCatService,
     private readonly userSettingsService: UserSettingsService,
     private readonly stripeService: StripeService,
+    private readonly habitPackRepository: HabitPackRepository,
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
@@ -305,5 +307,15 @@ export class UserService {
       relations: ['focus_modes', 'activities'],
     });
     return foundUser;
+  }
+
+  async updateSignedUpViaHabitPack(pack_id: string, user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const habitPack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
+    if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
+    // only allow update if user doesn't already have a sign up pack
+    if (user.signed_up_via_habit_pack) return;
+    await this.userRepository.orm.update(user_id, { signed_up_via_habit_pack: pack_id });
   }
 }

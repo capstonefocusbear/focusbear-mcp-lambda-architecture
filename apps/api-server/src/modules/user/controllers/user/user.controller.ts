@@ -88,4 +88,11 @@ export class UserController {
   async getUserById(@Query() { id }: { id: string }, @AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserById(user.id, id);
   }
+
+  @Put('sign-up-pack')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async updateUserSignUpPack(@Body() { pack_id }: { pack_id: string }, @AuthContext() { user }: Passport) {
+    return this.userService.updateSignedUpViaHabitPack(pack_id, user.id);
+  }
 }

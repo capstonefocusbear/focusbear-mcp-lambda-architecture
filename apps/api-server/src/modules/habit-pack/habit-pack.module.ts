@@ -28,7 +28,7 @@ import { ActivityModule } from '../activity/activity.module';
     ActivityTemplateModule,
     ActivityModule,
   ],
-  exports: [HabitPackService, HabitPackManagerService],
+  exports: [HabitPackService, HabitPackManagerService, HabitPackRepository],
   controllers: [HabitPackController],
 })
 export class HabitPackModule {}

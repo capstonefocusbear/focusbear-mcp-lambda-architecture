@@ -16,6 +16,8 @@ import { ActivityTemplate } from '../modules/activity-template/entity/activity-t
 import { Notification } from '../modules/notification/entities/notification.entity';
 import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata.entity';
 import { Track } from '../modules/tracks/entities/track.entity';
+import { FocusModeTemplate } from '../modules/focus-mode-template/entities/focus-mode-template.entity';
+import { InstalledFocusModeTemplate } from '../modules/focus-mode-template/entities/installed-focus-mode_templates.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -44,6 +46,8 @@ export const typeormConfig = registerAs(
       Notification,
       VideoMetadata,
       Track,
+      FocusModeTemplate,
+      InstalledFocusModeTemplate,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

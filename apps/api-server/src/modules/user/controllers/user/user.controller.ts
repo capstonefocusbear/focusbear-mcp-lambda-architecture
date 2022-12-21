@@ -19,6 +19,7 @@ import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { User } from '../../entities/user.entity';
 import { UserService } from '../../services/user/user.service';
 import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
+import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -89,10 +90,10 @@ export class UserController {
     return this.userService.getUserById(user.id, id);
   }
 
-  @Put('sign-up-pack')
+  @Put('sign-up-template')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async updateUserSignUpPack(@Body() { pack_id }: { pack_id: string }, @AuthContext() { user }: Passport) {
-    return this.userService.updateSignedUpViaHabitPack(pack_id, user.id);
+  async updateUserSignUpTemplate(@Body() ids: UpdateUserSignUpFieldDto, @AuthContext() { user }: Passport) {
+    return this.userService.updateUserSignUpField(ids, user.id);
   }
 }

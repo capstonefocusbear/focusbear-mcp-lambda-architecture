@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
+import { FocusModeTemplate } from '../../src/modules/focus-mode-template/entities/focus-mode-template.entity';
+import { MarketplaceRequestType } from '../../src/modules/habit-pack/domain/marketplace-request.enum';
 import { CompletedActivitySequence } from '../../src/modules/activity/entities/completed-activity-sequence.entity';
 import { ActivityChoiceType } from '../../src/modules/activity/domain/activity-choice-type.enum';
 import { SerializedActivity } from '../../src/modules/activity/services/activity-parser/activity-parser.service';
@@ -1186,4 +1188,17 @@ export const trackDtoDummy = {
   artist: 'Dummy artist',
   description: 'Some text description',
   download_url: 'www.mp3-download-site.io',
+};
+
+export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
+  id: randomUUID(),
+  author_id: userDummy.id,
+  name: 'Test Focus Mode Template',
+  description: 'Text description',
+  description_video_url: 'www.bah.com',
+  welcome_message: 'Welcome message text',
+  welcome_video_url: 'https:blah.io',
+  marketplace_request: MarketplaceRequestType.requested,
+  marketplace_approval_status: false,
+  language: 'en',
 };

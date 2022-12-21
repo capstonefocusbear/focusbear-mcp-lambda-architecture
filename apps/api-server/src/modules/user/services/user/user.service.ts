@@ -17,6 +17,8 @@ import { CompletedActivityRepository } from '../../../activity/repositories/comp
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { UserTypes } from '../../domain/user-types.enum';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
+import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 
 @Injectable()
 export class UserService {
@@ -29,6 +31,7 @@ export class UserService {
     private readonly userSettingsService: UserSettingsService,
     private readonly stripeService: StripeService,
     private readonly habitPackRepository: HabitPackRepository,
+    private readonly focusModeTemplateRepository: FocusModeTemplatesRepository,
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
@@ -309,13 +312,24 @@ export class UserService {
     return foundUser;
   }
 
-  async updateSignedUpViaHabitPack(pack_id: string, user_id: string) {
+  async updateUserSignUpField(ids: UpdateUserSignUpFieldDto, user_id: string) {
+    const { pack_id, focus_mode_template_id } = ids;
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    const habitPack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
-    if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
-    // only allow update if user doesn't already have a sign up pack
-    if (user.signed_up_via_habit_pack) return;
-    await this.userRepository.orm.update(user_id, { signed_up_via_habit_pack: pack_id });
+    // return if user already has a sign up habit pack or focus mode
+    if (user.signed_up_via_habit_pack || user.signed_up_via_focus_mode) return;
+    if (pack_id) {
+      const habitPack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
+      if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
+      this.userRepository.orm.update(user_id, { signed_up_via_habit_pack: pack_id });
+      return;
+    }
+    if (focus_mode_template_id) {
+      const focusModeTemplate = await this.focusModeTemplateRepository.orm.findOneBy({ id: pack_id });
+      if (!focusModeTemplate) {
+        throw new NotFoundException(`Focus mode template with id: ${focus_mode_template_id} does not exist!`);
+      }
+      this.userRepository.orm.update(user_id, { signed_up_via_focus_mode: focus_mode_template_id });
+    }
   }
 }

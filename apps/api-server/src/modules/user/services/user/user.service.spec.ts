@@ -5,12 +5,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { configsArray } from '../../../../config/index';
 import { StripeService } from '../../../../../../../libs/stripe/src';
-import { auth0UserDummy, userDummy } from '../../../../../test/dummies';
+import { auth0UserDummy, focusModeTemplateDBResponseDummy, userDummy } from '../../../../../test/dummies';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,
   CompletedActivityRepositoryMock,
   CompletedFocusBlockRepositoryMock,
+  FocusModeTemplatesRepositoryMock,
   HabitPackRepositoryMock,
   RevenueCatServiceMock,
   SentryServiceMock,
@@ -28,6 +29,7 @@ import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { routineHabitPackDBResponseDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
+import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -45,6 +47,7 @@ describe('UserService', () => {
         StripeService,
         ConfigService,
         HabitPackRepository,
+        FocusModeTemplatesRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -67,6 +70,8 @@ describe('UserService', () => {
       .useValue(CompletedActivityRepositoryMock)
       .overrideProvider(HabitPackRepository)
       .useValue(HabitPackRepositoryMock)
+      .overrideProvider(FocusModeTemplatesRepository)
+      .useValue(FocusModeTemplatesRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });
@@ -294,7 +299,7 @@ describe('UserService', () => {
       const errorMessage = `User with id: ${userDummy.id} does not exist!`;
       let exception: any;
       try {
-        await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+        await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -309,7 +314,25 @@ describe('UserService', () => {
       const errorMessage = `Habit pack with id: ${routineHabitPackDBResponseDummy.id} does not exist!`;
       let exception: any;
       try {
-        await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+        await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if focus mode template does not exist, throw NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeTemplatesRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `Focus mode template with id: ${focusModeTemplateDBResponseDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.updateUserSignUpField(
+          { focus_mode_template_id: focusModeTemplateDBResponseDummy.id },
+          userDummy.id,
+        );
       } catch (error) {
         exception = error;
       }
@@ -322,7 +345,18 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, signed_up_via_habit_pack: randomUUID() });
       HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
 
-      await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+      await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
+
+      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+    });
+
+    it('positive: if user already has signed_up_via_focus_mode value, no update should occur', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, signed_up_via_focus_mode: randomUUID() });
+
+      await userService.updateUserSignUpField(
+        { focus_mode_template_id: focusModeTemplateDBResponseDummy.id },
+        userDummy.id,
+      );
 
       expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
     });
@@ -331,10 +365,24 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
 
-      await userService.updateSignedUpViaHabitPack(routineHabitPackDBResponseDummy.id, userDummy.id);
+      await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
         signed_up_via_habit_pack: routineHabitPackDBResponseDummy.id,
+      });
+    });
+
+    it("positive: user's signed_up_via_focus_mode property should be updated with incoming focus mode template id", async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeTemplatesRepositoryMock.orm.findOneBy.mockResolvedValueOnce(focusModeTemplateDBResponseDummy);
+
+      await userService.updateUserSignUpField(
+        { focus_mode_template_id: focusModeTemplateDBResponseDummy.id },
+        userDummy.id,
+      );
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        signed_up_via_focus_mode: focusModeTemplateDBResponseDummy.id,
       });
     });
   });

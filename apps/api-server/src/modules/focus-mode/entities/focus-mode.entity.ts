@@ -1,5 +1,6 @@
 import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { User } from '../../user/entities/user.entity';
 import { CompletedFocusBlock } from './completed-focus-block.entity';
 
@@ -42,12 +43,21 @@ export class FocusMode extends BaseEntity {
   })
   metadata?: any;
 
+  @Column({
+    type: 'uuid',
+  })
+  focus_mode_template_id?: string;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 
   @ManyToOne(() => User, (user) => user.focus_modes)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.focus_modes)
+  @JoinColumn({ name: 'focus_mode_template_id' })
+  focus_mode_template?: FocusModeTemplate;
 
   @OneToMany(() => CompletedFocusBlock, (log) => log.focus_mode)
   completed_logs?: CompletedFocusBlock[];

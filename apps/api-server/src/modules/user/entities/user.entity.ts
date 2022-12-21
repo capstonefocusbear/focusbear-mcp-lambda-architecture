@@ -13,6 +13,8 @@ import { Team } from '../../team/entities/team.entity';
 import { UpdateLocalDeviceSettingsDto } from '../dto/update-local-device-settings.dto';
 import { UserTypes } from '../domain/user-types.enum';
 import { Notification } from '../../notification/entities/notification.entity';
+import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
+import { InstalledFocusModeTemplate } from '../../focus-mode-template/entities/installed-focus-mode_templates.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -167,6 +169,11 @@ export class User extends BaseEntity {
   signed_up_via_habit_pack?: string;
 
   @Column({
+    type: 'uuid',
+  })
+  signed_up_via_focus_mode?: string;
+
+  @Column({
     type: 'jsonb',
   })
   current_sequence_skipped_activities?: string[];
@@ -201,11 +208,17 @@ export class User extends BaseEntity {
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];
 
+  @OneToMany(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.author)
+  focus_mode_templates?: FocusModeTemplate[];
+
   @OneToMany(() => HabitPack, (habit_pack) => habit_pack.user)
   created_habit_packs?: HabitPack[];
 
   @OneToMany(() => InstalledPack, (installed_packs) => installed_packs.user)
   installed_packs?: InstalledPack[];
+
+  @OneToMany(() => InstalledFocusModeTemplate, (installed_packs) => installed_packs.user)
+  installed_focus_modes?: InstalledFocusModeTemplate[];
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.user)
   activity_templates?: ActivityTemplate[];

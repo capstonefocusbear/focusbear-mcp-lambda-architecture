@@ -20,6 +20,7 @@ import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { VideoMetadataModule } from './modules/video-metadata/video-metadata.module';
 import { TracksModule } from './modules/tracks/tracks.module';
+import { FocusModeTemplatesModule } from './modules/focus-mode-template/focus-mode-templates.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { TracksModule } from './modules/tracks/tracks.module';
     NotificationModule,
     VideoMetadataModule,
     TracksModule,
+    FocusModeTemplatesModule,
   ],
   controllers: [AppController],
 })

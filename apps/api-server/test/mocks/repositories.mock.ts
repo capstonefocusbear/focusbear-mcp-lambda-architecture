@@ -68,6 +68,10 @@ export const FocusModeRepositoryMock = {
   findOneByIdForUser: jest.fn(),
 };
 
+export const InstalledFocusModeTemplatesRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const CompletedFocusBlockRepositoryMock = {
   ...BaseRepositoryMock,
   getLogsByUserInTimeRange: jest.fn(),
@@ -103,4 +107,9 @@ export const VideoMetadataRepositoryMock = {
 
 export const TracksRepositoryMock = {
   ...BaseRepositoryMock,
+};
+
+export const FocusModeTemplatesRepositoryMock = {
+  ...BaseRepositoryMock,
+  fetchTemplatesByFilter: jest.fn(),
 };

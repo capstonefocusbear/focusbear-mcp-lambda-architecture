@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from '../user/user.module';
 import { FocusModeController } from './controllers/focus-mode/focus-mode.controller';
@@ -8,11 +8,13 @@ import { FocusModeManagerService } from './services/focus-mode-manager/focus-mod
 import { FocusModeService } from './services/focus-mode/focus-mode.service';
 import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { IPusherBeamsOptions, PusherBeamsModule } from '../../../../../libs/pusher-beams/src';
+import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
 
 @Module({
   providers: [FocusModeService, FocusModeRepository, CompletedFocusBlockRepository, FocusModeManagerService],
+  exports: [FocusModeRepository],
   imports: [
-    UserModule,
+    forwardRef(() => UserModule),
     PusherModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,6 +25,7 @@ import { IPusherBeamsOptions, PusherBeamsModule } from '../../../../../libs/push
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
+    forwardRef(() => FocusModeTemplatesModule),
   ],
   controllers: [FocusModeController],
 })

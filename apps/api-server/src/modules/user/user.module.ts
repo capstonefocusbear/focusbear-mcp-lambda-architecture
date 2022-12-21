@@ -15,6 +15,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
 import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
 import { HabitPackModule } from '../habit-pack/habit-pack.module';
+import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
 
 @Module({
   providers: [UserSettingsService, UserRepository, UserService],
@@ -41,6 +42,7 @@ import { HabitPackModule } from '../habit-pack/habit-pack.module';
     ConfigModule,
     SubscriptionModule,
     HabitPackModule,
+    FocusModeTemplatesModule,
   ],
   controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController],
 })

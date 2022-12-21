@@ -127,3 +127,7 @@ const mockSentryInstance = {
 export const SentryServiceMock = {
   instance: () => mockSentryInstance,
 };
+
+export const FocusModeServiceMock = {
+  create: jest.fn(),
+};

@@ -55,8 +55,8 @@ export class FocusModeController {
 
   @Delete()
   @HttpCode(204)
-  async bulkDeleteFocusModes(@Query() { id }: BulckDeleteQueryDto): Promise<void> {
-    return this.focusModeService.softDelete(id);
+  async bulkDeleteFocusModes(@Query() { id }: BulckDeleteQueryDto) {
+    return this.focusModeService.deleteFocusMode(id);
   }
 
   @Post(':focus_mode_id/start')

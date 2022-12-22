@@ -42,7 +42,7 @@ export class FocusModeController {
 
   @Put()
   async updateFocusModes(
-    @Body() focusModes: CreateFocusModeDto[],
+    @Body() focusModes: UpdateFocusModeDto[],
     @AuthContext() { user }: Passport,
   ): Promise<FocusMode[]> {
     return this.focusModeService.updateFocusModes(user.id, focusModes);

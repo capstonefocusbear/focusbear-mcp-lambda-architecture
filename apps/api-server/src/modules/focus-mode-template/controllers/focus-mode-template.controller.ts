@@ -52,6 +52,13 @@ export class FocusModeTemplatesController {
     return this.focusModeTemplateService.getMultipleFocusModeTemplates(getTemplatesQuery, user.id);
   }
 
+  @Get('/user-installed')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserInstalledFocusModeTemplates(@AuthContext() { user }: Passport): Promise<FocusModeTemplate[]> {
+    return this.focusModeTemplateService.getUserInstalledTemplates(user.id);
+  }
+
   @Delete(':template_id')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')

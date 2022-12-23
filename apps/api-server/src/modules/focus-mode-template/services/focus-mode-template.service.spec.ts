@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
+import { In } from 'typeorm';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { focusModeTemplateDBResponseDummy, userDummy } from '../../../../test/dummies';
 import {
@@ -356,6 +357,40 @@ describe('FocusModeTemplatesService', () => {
       expect(FocusModeTemplatesRepositoryMock.fetchTemplatesByFilter).toBeCalledWith({
         is_featured: true,
         marketplace_approval_status: true,
+      });
+    });
+  });
+
+  describe('getUserInstalledTemplates', () => {
+    it('Negative: should return not found message if no user is returned from user repository', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+
+      try {
+        await focusModeTemplateService.getUserInstalledTemplates(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('Positive: should fetch user current installed focus mode templates using IDs from install logs', async () => {
+      const installRecordDummyOne = { focus_mode_template_id: randomUUID() };
+      const installRecordDummyTwo = { focus_mode_template_id: randomUUID() };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      InstalledFocusModeTemplatesRepositoryMock.orm.find.mockResolvedValueOnce([
+        installRecordDummyOne,
+        installRecordDummyTwo,
+      ]);
+
+      await focusModeTemplateService.getUserInstalledTemplates(userDummy.id);
+
+      expect(FocusModeTemplatesRepositoryMock.orm.find).toBeCalledWith({
+        where: { id: In([installRecordDummyOne.focus_mode_template_id, installRecordDummyTwo.focus_mode_template_id]) },
       });
     });
   });

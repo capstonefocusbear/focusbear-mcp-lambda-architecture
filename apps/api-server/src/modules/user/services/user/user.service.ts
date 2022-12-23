@@ -134,6 +134,15 @@ export class UserService {
       });
       const userDetails = await this.userRepository.getUserDetails(id);
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      const { focus_modes } = userDetails;
+      // map focus_mode_template_id null values to undefined to exclude property from response
+      const formattedFocusModes = focus_modes?.map((focusMode) => {
+        if (focusMode.focus_mode_template_id === null) {
+          return { ...focusMode, focus_mode_template_id: undefined };
+        }
+        return focusMode;
+      });
+      return { ...userDetails, focus_modes: formattedFocusModes };
       return userDetails;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

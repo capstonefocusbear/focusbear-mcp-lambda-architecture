@@ -1,10 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsObject, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsArray, IsObject, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
 export class UpdateFocusModeDto {
   @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsArray()
   @IsOptional()

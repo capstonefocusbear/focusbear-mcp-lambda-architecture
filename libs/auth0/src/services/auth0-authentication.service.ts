@@ -24,7 +24,7 @@ export class Auth0AuthenticationService extends AuthenticationClient implements 
       const decoded = jwt.decode(token, { complete: true });
       if (!decoded) return [false, { declineReason: 'Token missing or corrupted!' }];
       const { header, payload } = decoded;
-      const isAccessToken = payload?.aud?.includes(this.Auth0Options.identifier);
+      const isAccessToken = (payload as jwt.JwtPayload)?.aud?.includes(this.Auth0Options.identifier);
       if (!isAccessToken) return [false, { declineReason: 'Token is not an access auth0 token type!' }];
       const signingKey = await this.jwksClient.getSigningKey(header?.kid);
       const publicKey = signingKey.getPublicKey();

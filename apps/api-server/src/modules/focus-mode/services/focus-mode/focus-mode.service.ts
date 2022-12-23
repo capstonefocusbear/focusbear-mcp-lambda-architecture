@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
+import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { FocusMode } from '../../entities/focus-mode.entity';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 
@@ -34,7 +35,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async updateFocusModes(user_id: string, focusModes: FocusMode[]): Promise<FocusMode[]> {
+  async updateFocusModes(user_id: string, focusModes: UpdateFocusModeDto[]): Promise<FocusMode[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',

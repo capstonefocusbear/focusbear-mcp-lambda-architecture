@@ -84,4 +84,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @IsBoolean()
   is_default?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  run_micro_breaks?: boolean;
 }

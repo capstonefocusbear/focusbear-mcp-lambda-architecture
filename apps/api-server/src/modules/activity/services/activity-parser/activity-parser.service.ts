@@ -48,6 +48,7 @@ export class ActivityParserService {
         activity_data,
         choices,
         is_default,
+        run_micro_breaks,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -57,6 +58,7 @@ export class ActivityParserService {
         log_quantity,
         log_summary_type,
         is_default,
+        run_micro_breaks,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -98,6 +100,7 @@ export class ActivityParserService {
       activity_template_id,
       choices,
       is_default,
+      run_micro_breaks,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -124,6 +127,7 @@ export class ActivityParserService {
       has_choices,
       activity_template_id,
       is_default,
+      run_micro_breaks,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -153,6 +157,7 @@ export class ActivityParserService {
           log_summary_type,
           has_choices: null,
           is_default: parent.is_default,
+          run_micro_breaks: parent.run_micro_breaks,
         }),
     );
   }

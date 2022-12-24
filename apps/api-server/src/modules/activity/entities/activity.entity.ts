@@ -83,6 +83,12 @@ export class Activity extends BaseEntity {
   })
   is_default?: boolean;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  run_micro_breaks?: boolean;
+
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;

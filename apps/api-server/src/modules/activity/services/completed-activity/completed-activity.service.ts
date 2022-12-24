@@ -72,9 +72,6 @@ export class CompletedActivityService {
         choice_id,
       );
       if (activity.type === ActivityType.break) {
-        const isThereIncompletedCurrentSequence = user.current_activity_sequence_id;
-        const incompletSequenceMsg = 'There is incomplete current sequence for the user, finish it before doing break!';
-        if (isThereIncompletedCurrentSequence) throw new BadRequestException(incompletSequenceMsg);
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);

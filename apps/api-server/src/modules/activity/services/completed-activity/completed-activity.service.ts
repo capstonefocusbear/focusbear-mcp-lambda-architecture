@@ -75,7 +75,6 @@ export class CompletedActivityService {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-        await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
         return createdItem;
       }
       const completingSequenceLog = await this.updateUserAndSequence(

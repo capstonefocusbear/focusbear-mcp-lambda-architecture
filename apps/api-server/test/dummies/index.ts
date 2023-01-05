@@ -1082,7 +1082,6 @@ export const videoMetadataReturnValueDummy = {
       duration: '06:40',
     },
   ],
-  invalid_urls: [],
 };
 
 export const videoMetadataReturnValueWithInvalidURLDummy = {
@@ -1127,15 +1126,6 @@ export const videoMetadataYoutubeAPIResponseDummy = {
   },
 };
 
-export const videoMetadataYoutubeAPIResponseWithoutVideoDummy = {
-  data: {
-    items: [],
-    pageInfo: {
-      totalResults: 0,
-    },
-  },
-};
-
 export const videoMetadataRepositoryDBResponseDummy = [
   {
     id: 'EL1wNBsEHiY',
@@ -1152,33 +1142,6 @@ export const videoMetadataRepositoryDBResponseDummy = [
     video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
     title: 'Microworkout: 30 seconds of squats',
     duration: '0:00:43',
-  },
-];
-
-export const videoMetadataRepositoryDBResponseSecondDummy = [
-  {
-    id: 'EL1wNBsEHiY',
-    created_at: '2022-12-07T07:23:21.893Z',
-    updated_at: '2022-12-07T07:23:21.893Z',
-    video_url: 'https://www.youtube.com/watch?v=EL1wNBsEHiY',
-    title: 'Microworkout: 1 minute of Squats',
-    duration: '0:00:46',
-  },
-  {
-    id: 'R0Ut6nldt9g',
-    created_at: '2022-12-07T07:23:21.896Z',
-    updated_at: '2022-12-07T07:23:21.896Z',
-    video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
-    title: 'Microworkout: 30 seconds of squats',
-    duration: '0:00:43',
-  },
-  {
-    id: 'KLKn9kA5t58',
-    created_at: '2022-12-07T07:23:21.896Z',
-    updated_at: '2022-12-07T07:23:21.896Z',
-    video_url: 'https://youtu.be/KLKn9kA5t58',
-    title: 'Productivity tips: Pomodoro technique with Focus Bear',
-    duration: '06:40',
   },
 ];
 

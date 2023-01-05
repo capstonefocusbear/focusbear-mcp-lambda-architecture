@@ -31,6 +31,7 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
     ActivitySequenceRepository,
     CompletedFocusBlockRepository,
     CompletedActivityRepository,
+    CompletedActivitySequenceService,
   ],
   controllers: [CompletedActivityController, CompletedActivitySequenceController],
   imports: [

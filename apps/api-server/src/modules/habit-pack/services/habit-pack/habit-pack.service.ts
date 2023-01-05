@@ -132,6 +132,7 @@ export class HabitPackService {
         break_activities,
         evening_activities,
         standalone_activities,
+        creator_name,
       } = upsertHabitPackDto;
       let approvalStatus;
       const approvalStatusHasChanged = marketplace_approval_status !== habitPack?.marketplace_approval_status;
@@ -177,7 +178,7 @@ export class HabitPackService {
         });
       });
       const newPack = new HabitPack({
-        creator_name: user.name,
+        creator_name: userIsAdmin ? creator_name : user.name,
         pack_name,
         pack_type,
         description,

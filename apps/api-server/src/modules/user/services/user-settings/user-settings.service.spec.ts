@@ -4,9 +4,11 @@ import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
+  ActivitySequenceDummy,
   deserializedActivitiesDummy,
   serializedActivityDummy,
   serializedActivityDummyWithDefaultActivities,
+  UncompletedSequenceLogDummy,
   userDummy,
   userSettingsDBResponseDummy,
   userSettingsDummy,
@@ -18,6 +20,8 @@ import {
   RevenueCatServiceMock,
   StripeServiceMock,
   SentryServiceMock,
+  CompletedActivitySequenceServiceMock,
+  ActivitySequenceRepositoryMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -26,6 +30,8 @@ import { StripeService } from '../../../../../../../libs/stripe/src';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { User } from '../../entities/user.entity';
+import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -37,6 +43,8 @@ describe('UserSettingsService', () => {
         UserSettingsService,
         ActivityParserService,
         Auth0ManagementService,
+        CompletedActivitySequenceService,
+        ActivitySequenceRepository,
         RevenueCatService,
         StripeService,
         ConfigService,
@@ -56,6 +64,10 @@ describe('UserSettingsService', () => {
       .useValue(Auth0ManagementServiceMock)
       .overrideProvider(StripeService)
       .useValue(StripeServiceMock)
+      .overrideProvider(CompletedActivitySequenceService)
+      .useValue(CompletedActivitySequenceServiceMock)
+      .overrideProvider(ActivitySequenceRepository)
+      .useValue(ActivitySequenceRepositoryMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
@@ -125,6 +137,9 @@ describe('UserSettingsService', () => {
         shutdown_time,
         break_after_minutes,
         has_edited_settings: true,
+        current_activity_id: undefined,
+        current_activity_sequence_id: undefined,
+        current_completing_sequence_log_id: undefined,
       });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);
@@ -209,6 +224,101 @@ describe('UserSettingsService', () => {
       await userSettingsService.updateUserTimezone(userDummy.id, 'UTC-2');
 
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
+    });
+  });
+
+  describe('updateUserIfCurrentActivityDeleted', () => {
+    it('positive: if current activity is deleted, user current activity should be updated (case where current activity is last activity in sequence)', async () => {
+      const deletedActivityId = randomUUID();
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: deletedActivityId,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        sequenceActivityIds: [randomUUID(), deletedActivityId],
+      });
+
+      const res = await userSettingsService.updateUserIfCurrentActivityDeleted(
+        userSettingsDummy,
+        userWithCurrentActivity,
+      );
+
+      expect(res).toStrictEqual({
+        current_completing_sequence_log_id: null,
+        current_activity_id: null,
+        current_activity_sequence_id: null,
+      });
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        userWithCurrentActivity.completing_sequence_log.id,
+        userWithCurrentActivity.id,
+      );
+    });
+
+    it('positive: if current activity is deleted, user current activity should be updated (case where current activity is not last activity in sequence)', async () => {
+      const deletedActivityId = randomUUID();
+      const lastActivityId = randomUUID();
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: deletedActivityId,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+      };
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        sequenceActivityIds: [randomUUID(), deletedActivityId, lastActivityId],
+      });
+
+      const res = await userSettingsService.updateUserIfCurrentActivityDeleted(
+        userSettingsDummy,
+        userWithCurrentActivity,
+      );
+
+      expect(res).toStrictEqual({
+        current_completing_sequence_log_id: userWithCurrentActivity.completing_sequence_log.id,
+        current_activity_id: lastActivityId,
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+      });
+    });
+
+    it('positive: if user does not have current activity, user properties should remain unchanged', async () => {
+      const userWithoutCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: null,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+        current_activity_sequence_id: null,
+      };
+
+      const res = await userSettingsService.updateUserIfCurrentActivityDeleted(
+        userSettingsDummy,
+        userWithoutCurrentActivity,
+      );
+
+      expect(res).toStrictEqual({
+        current_completing_sequence_log_id: userWithoutCurrentActivity.completing_sequence_log.id,
+        current_activity_id: null,
+        current_activity_sequence_id: null,
+      });
+    });
+
+    it('positive: if current activity was not deleted, user properties should remain unchanged', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: userSettingsDummy.morning_activities[0].id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+        current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
+      };
+
+      const res = await userSettingsService.updateUserIfCurrentActivityDeleted(
+        userSettingsDummy,
+        userWithCurrentActivity,
+      );
+
+      expect(res).toStrictEqual({
+        current_completing_sequence_log_id: userWithCurrentActivity.completing_sequence_log.id,
+        current_activity_id: userSettingsDummy.morning_activities[0].id,
+        current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
+      });
     });
   });
 });

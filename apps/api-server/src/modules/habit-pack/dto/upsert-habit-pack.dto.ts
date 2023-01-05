@@ -12,6 +12,10 @@ export class UpsertHabitPackDto {
   @IsString()
   pack_name?: string;
 
+  @IsOptional()
+  @IsString()
+  creator_name?: string;
+
   @IsNotEmpty()
   @IsString()
   pack_type?: HabitPackType;

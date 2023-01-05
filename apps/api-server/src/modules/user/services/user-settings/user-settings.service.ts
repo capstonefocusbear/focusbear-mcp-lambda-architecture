@@ -8,6 +8,8 @@ import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsResponseDto } from '../../dto/user-settings-response.dto';
 import { User } from '../../entities/user.entity';
 import { UserRepository } from '../../repositories/user.repository';
+import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 
 @Injectable()
 export class UserSettingsService {
@@ -15,6 +17,8 @@ export class UserSettingsService {
     private readonly userRepository: UserRepository,
     private readonly activityParserService: ActivityParserService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly completedActivitySequenceService: CompletedActivitySequenceService,
+    private readonly activitySequenceRepository: ActivitySequenceRepository,
   ) {}
 
   async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -69,6 +73,9 @@ export class UserSettingsService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
+      // eslint-disable-next-line operator-linebreak
+      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
+        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
       const { startup_time, shutdown_time, break_after_minutes } = updateSettingsData;
       const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
       const updatedUser = new User({
@@ -77,6 +84,9 @@ export class UserSettingsService {
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
+        current_activity_id,
+        current_activity_sequence_id,
+        current_completing_sequence_log_id,
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };
@@ -133,5 +143,40 @@ export class UserSettingsService {
       const userZone = `UTC-${negavtiveTime}`;
       await this.userRepository.update(user_id, { timezone: userZone });
     }
+  }
+
+  async updateUserIfCurrentActivityDeleted(updateSettingsData: UpdateUserSettingsDto, user: User) {
+    let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;
+    let nextActivityId: string;
+    const { morning_activities, break_activities, evening_activities } = updateSettingsData;
+    const morningActivityIds = morning_activities.map((activity) => activity.id);
+    const breakActivityIds = break_activities.map((activity) => activity.id);
+    const eveningActivityIds = evening_activities.map((activity) => activity.id);
+    const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
+    const { completing_sequence_log } = user;
+    if (current_activity_id && !activityIds.includes(current_activity_id)) {
+      const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: user.current_activity_sequence_id });
+      if (!sequence) return;
+      const { sequenceActivityIds, id: activity_sequence_id } = sequence;
+      const currentActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === current_activity_id);
+      nextActivityId = sequenceActivityIds[currentActivityIndexInTheSequence + 1];
+      current_completing_sequence_log_id = nextActivityId ? completing_sequence_log?.id : null;
+      current_activity_sequence_id = nextActivityId ? activity_sequence_id : null;
+      current_activity_id = nextActivityId ?? null;
+      await this.userRepository.orm.update(user.id, {
+        ...user,
+        current_completing_sequence_log_id,
+        current_activity_id: nextActivityId ?? null,
+        current_activity_sequence_id,
+      });
+      if (!nextActivityId) {
+        await this.completedActivitySequenceService.completeActivitySequence(completing_sequence_log.id, user.id);
+      }
+    }
+    return {
+      current_completing_sequence_log_id,
+      current_activity_id,
+      current_activity_sequence_id,
+    };
   }
 }

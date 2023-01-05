@@ -33,8 +33,6 @@ export class VideoMetadataService {
     const videoIdsToFetchFromYouTube = videoIdsFromClient.filter((id) => !existingVideosIds.includes(id));
     const videosMetadataFromYouTube = await this.getVideosMetadataFromYouTube(videoIdsToFetchFromYouTube, video_urls);
 
-    // extract invalid URLs
-    const invalidURLs = videosMetadataFromYouTube.filter((item) => typeof item === 'string') as string[];
     // save valid new videos' metadata
     await Promise.all(
       videosMetadataFromYouTube.map(
@@ -52,7 +50,6 @@ export class VideoMetadataService {
     );
     return {
       videos_metadata: formattedMetadata,
-      invalid_urls: invalidURLs,
     };
   }
 

@@ -5,11 +5,8 @@ import { NotFoundException } from '@nestjs/common';
 import {
   userDummy,
   videoMetadataRepositoryDBResponseDummy,
-  videoMetadataRepositoryDBResponseSecondDummy,
   videoMetadataReturnValueDummy,
-  videoMetadataReturnValueWithInvalidURLDummy,
   videoMetadataYoutubeAPIResponseDummy,
-  videoMetadataYoutubeAPIResponseWithoutVideoDummy,
   videoUrlsDummy,
 } from '../../../../test/dummies/index';
 import { UserRepositoryMock, VideoMetadataRepositoryMock } from '../../../../test/mocks/repositories.mock';
@@ -67,19 +64,6 @@ describe('VideoMetadataService', () => {
 
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toMatch(errorMessage);
-    });
-
-    it('positive: invalid YouTube URL should be added to response errors array if no video is returned from YouTube', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      mockedAxios.get.mockResolvedValue(videoMetadataYoutubeAPIResponseWithoutVideoDummy);
-      VideoMetadataRepositoryMock.orm.find.mockResolvedValueOnce(videoMetadataRepositoryDBResponseSecondDummy);
-      const result = await videoMetadataService.saveVideosMetadata(
-        [...videoUrlsDummy, 'https://youtu.be/12345n9kA5t13'],
-        userDummy.id,
-      );
-
-      expect(VideoMetadataRepositoryMock.upsert).toBeCalledTimes(0);
-      expect(result).toEqual(videoMetadataReturnValueWithInvalidURLDummy);
     });
 
     it('positive: should return array of VideoMetadataDto objects', async () => {

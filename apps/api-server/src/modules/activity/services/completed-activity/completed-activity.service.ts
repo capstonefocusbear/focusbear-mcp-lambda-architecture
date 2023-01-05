@@ -668,10 +668,13 @@ export class CompletedActivityService {
     });
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
-    return entries.map(([name, items]) => ({
-      name,
-      quantity: items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0),
-    }));
+    return entries.map(([name, items]) => {
+      const sum = items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0);
+      return {
+        name,
+        quantity: Number(sum.toFixed(1)),
+      };
+    });
   }
 
   private countSummaryDuration(logs: CompletedActivity[]): ActivityDurationDaySummaryItem[] {

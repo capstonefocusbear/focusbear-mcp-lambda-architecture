@@ -53,6 +53,7 @@ export class UserService {
       const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email, name }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
       const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
+      if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
       const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
     } catch (error) {
@@ -80,46 +81,56 @@ export class UserService {
     { auth0_id, email, name }: SyncUserAccountDto,
     registeredUser?: User,
   ): Promise<User> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Updating or creating user',
-      data: {
-        auth0_id,
-        email,
-        name,
-      },
-    });
-    const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
-    const hasNameDefined = Boolean(registeredUser?.name);
-    const userProperties = hasNameDefined ? { auth0_id, email } : { auth0_id, email, name };
-    if (hasNoStripeCustomer) {
+    try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Registering new user in Stripe',
+        message: 'Updating or creating user',
+        data: {
+          auth0_id,
+          email,
+          name,
+        },
       });
-      const stripeCustomer = await this.stripeService.registerNewCustomer(email);
-      Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+      const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
+      const hasNameDefined = Boolean(registeredUser?.name);
+      const userProperties = hasNameDefined ? { auth0_id, email } : { auth0_id, email, name };
+      if (hasNoStripeCustomer) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Registering new user in Stripe',
+        });
+        const stripeCustomer = await this.stripeService.registerNewCustomer(email);
+        Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+      }
+      return await this.userRepository.upsert(userProperties, ['auth0_id']);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    return this.userRepository.upsert(userProperties, ['auth0_id']);
   }
 
   private async handleInitialRegistration(id: string): Promise<void> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Handling initial registration',
-      data: {
-        user_id: id,
-      },
-    });
-    const settingsConfig = this.config.get('constants.userSettings');
-    const defaultSettings = settingsConfig.generateDefault();
-    await Promise.all([
-      this.revenueCatService.grantTrialAccess(id),
-      this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
-    ]);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Handling initial registration',
+        data: {
+          user_id: id,
+        },
+      });
+      const settingsConfig = this.config.get('constants.userSettings');
+      const defaultSettings = settingsConfig.generateDefault();
+      await Promise.all([
+        this.revenueCatService.grantTrialAccess(id),
+        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
+      ]);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async getUserDetails(id: string): Promise<User> {
@@ -143,7 +154,6 @@ export class UserService {
         return focusMode;
       });
       return { ...userDetails, focus_modes: formattedFocusModes };
-      return userDetails;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

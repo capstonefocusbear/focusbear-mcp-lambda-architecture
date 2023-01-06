@@ -319,13 +319,13 @@ export class UserService {
     return users;
   }
 
-  async getUserById(user_id: string, id: string): Promise<User> {
+  async getUserById(user_id: string, id: string, stripe_customer_id: string): Promise<User> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (user.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
     const foundUser = await this.userRepository.orm.findOne({
-      where: { id },
+      where: [{ id }, { stripe_customer_id }],
       relations: ['focus_modes', 'activities'],
     });
     return foundUser;

@@ -86,8 +86,11 @@ export class UserController {
   @UseGuards(IsAdmin)
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async getUserById(@Query() { id }: { id: string }, @AuthContext() { user }: Passport): Promise<User> {
-    return this.userService.getUserById(user.id, id);
+  async getUserById(
+    @Query() { id, stripe_customer_id }: { id: string; stripe_customer_id: string },
+    @AuthContext() { user }: Passport,
+  ): Promise<User> {
+    return this.userService.getUserById(user.id, id, stripe_customer_id);
   }
 
   @Put('sign-up-template')

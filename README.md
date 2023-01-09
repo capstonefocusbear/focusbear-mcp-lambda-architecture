@@ -60,6 +60,13 @@ $ AUTH0_ACTION_SECRET =
 $ RENDER_SERVICE_ID=
 $ RENDER_API_KEY=
 
+# Get these from the Redis instance on render.com
+REDIS_HOSTNAME = 
+REDIS_PORT = 
+
+# This should be retrieved from slack dashboard
+SLACK_BACKEND_ALERTS_WEBHOOK = 
+
 # Go to the Pusher Channels account to take those values
 $ PUSHER_APP_ID =
 $ PUSHER_APP_KEY =

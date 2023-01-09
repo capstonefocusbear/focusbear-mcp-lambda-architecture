@@ -1,14 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { SendinblueServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
+import { getQueueToken } from '@nestjs/bull';
+import { userDummy, QueueMock } from '../../../../test/dummies';
+import { SendinblueServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { sendinblueEventDummy, userDummy } from '../../../../test/dummies';
 
 describe('EventService', () => {
   let eventsService: EventsService;
-
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -16,8 +15,8 @@ describe('EventService', () => {
         SendinblueService,
         UserRepository,
         {
-          provide: SENTRY_TOKEN,
-          useValue: SentryServiceMock,
+          provide: getQueueToken('events'),
+          useValue: QueueMock,
         },
       ],
     })
@@ -34,27 +33,14 @@ describe('EventService', () => {
     expect(eventsService).toBeDefined();
   });
 
-  describe('registerEvent', () => {
-    it('negative: should return that the user does not exist', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+  describe('addEventToQueue', () => {
+    it('positive: should add the incoming track event to the events queue', async () => {
+      await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
 
-      let response;
-      try {
-        response = await eventsService.registerEvent({ event_type: 'test-event' }, userDummy.id);
-      } catch (error) {
-        response = error;
-      }
-
-      expect(response.message).toMatch(responseMessage);
-    });
-
-    it('positive: sendinblueService.registerSendinblueEvent should be called', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-
-      await eventsService.registerEvent(sendinblueEventDummy, userDummy.id);
-
-      expect(SendinblueServiceMock.registerSendinblueEvent).toBeCalledWith(userDummy.email, sendinblueEventDummy);
+      expect(QueueMock.add).toBeCalledWith('track-event', {
+        user_id: userDummy.id,
+        trackEventDto: { event_type: 'test-event' },
+      });
     });
   });
 });

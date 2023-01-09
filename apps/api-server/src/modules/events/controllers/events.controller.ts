@@ -16,6 +16,6 @@ export class EventsController {
   @Post()
   @HttpCode(204)
   logEvent(@Body() trackEventDto: TrackEventDto, @AuthContext() { user }: Passport) {
-    return this.eventsService.registerEvent(trackEventDto, user.id);
+    return this.eventsService.addEventToQueue(trackEventDto, user.id);
   }
 }

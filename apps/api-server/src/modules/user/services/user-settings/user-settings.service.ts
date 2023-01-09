@@ -155,6 +155,15 @@ export class UserSettingsService {
     const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
     const { completing_sequence_log } = user;
     if (current_activity_id && !activityIds.includes(current_activity_id)) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Current activity was deleted, updating user',
+        data: {
+          user_id: user.id,
+          current_activity_id,
+        },
+      });
       const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: user.current_activity_sequence_id });
       if (!sequence) return;
       const { sequenceActivityIds, id: activity_sequence_id } = sequence;

@@ -49,11 +49,6 @@ services:
   - key: AUTH0_MANAGEMENT_CLIENT_SECRET
     sync: false
   - fromGroup: backend-env-group
-- type: redis
-  name: focus-bear-redis-prod
-  ipAllowList:
-    - source: 0.0.0.0/0
-      description: everywhere
 
 
 databases:

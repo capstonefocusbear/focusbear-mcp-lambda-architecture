@@ -177,8 +177,11 @@ export class HabitPackService {
           return activityIds.push(activity_template.id);
         });
       });
+      // allow admin user to edit pack creator, if not admin, use existing creator name, if new pack, use user's name
+      const ifExistsUseSetName = habitPack ? habitPack.creator_name : user.name;
+      const creatorNameToUse = userIsAdmin ? creator_name : ifExistsUseSetName;
       const newPack = new HabitPack({
-        creator_name: userIsAdmin ? creator_name : user.name,
+        creator_name: creatorNameToUse,
         pack_name,
         pack_type,
         description,

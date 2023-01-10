@@ -9,7 +9,11 @@ export class UpsertFocusModeTemplateDto {
 
   @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  author_name?: string;
 
   @IsArray()
   @IsOptional()

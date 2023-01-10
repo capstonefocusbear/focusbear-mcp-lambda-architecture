@@ -1165,3 +1165,8 @@ export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
   marketplace_approval_status: false,
   language: 'en',
 };
+
+export const QueueMock = {
+  add: jest.fn(),
+  process: jest.fn(),
+};

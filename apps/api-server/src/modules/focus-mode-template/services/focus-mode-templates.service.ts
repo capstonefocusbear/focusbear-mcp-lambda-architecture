@@ -48,7 +48,7 @@ export class FocusModeTemplatesService {
           `User with ID: ${user_id} is not authorized to edit focus mode template with ID: ${focusModeTemplateDto.id}!`,
         );
       }
-      const { marketplace_approval_status } = focusModeTemplateDto;
+      const { marketplace_approval_status, author_name, id } = focusModeTemplateDto;
       let approvalStatus;
       // eslint-disable-next-line prettier/prettier, operator-linebreak
       const approvalStatusHasChanged =
@@ -61,10 +61,17 @@ export class FocusModeTemplatesService {
       } else {
         approvalStatus = existingFocusModeTemplate?.marketplace_approval_status ?? false;
       }
+      let existingFocusTemplate = null;
+      if (id) {
+        existingFocusTemplate = await this.focusModeTemplateRepository.orm.findOne({ where: { id } });
+      }
+      // allow admin user to edit template author, if not admin, use existing author name, if new template, use user's name
+      const ifExistsUseSetName = existingFocusTemplate ? existingFocusTemplate.author_name : user.name;
+      const authorNameToUse = userIsAdmin ? author_name : ifExistsUseSetName;
       const focusModeTemplate = new FocusModeTemplate({
         ...focusModeTemplateDto,
         author_id: user.id,
-        author_name: user.name,
+        author_name: authorNameToUse,
         marketplace_approval_status: approvalStatus,
       });
       return await this.focusModeTemplateRepository.upsert(focusModeTemplate, ['id']);

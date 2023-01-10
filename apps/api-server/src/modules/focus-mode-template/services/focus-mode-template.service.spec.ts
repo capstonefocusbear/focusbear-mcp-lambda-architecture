@@ -21,6 +21,7 @@ import { FocusModeTemplatesService } from './focus-mode-templates.service';
 import { InstalledFocusModeTemplatesRepository } from '../repositories/installed-focus-mode-templates.reporisoty';
 import { InstalledFocusModeTemplate } from '../entities/installed-focus-mode_templates.entity';
 import { FocusModeRepository } from '../../focus-mode/repositories/focus-mode.repository';
+import { FocusModeTemplate } from '../entities/focus-mode-template.entity';
 
 describe('FocusModeTemplatesService', () => {
   let focusModeTemplateService: FocusModeTemplatesService;
@@ -50,6 +51,8 @@ describe('FocusModeTemplatesService', () => {
       .compile();
 
     focusModeTemplateService = moduleRef.get<FocusModeTemplatesService>(FocusModeTemplatesService);
+
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -116,21 +119,21 @@ describe('FocusModeTemplatesService', () => {
       );
     });
 
-    it('Positive: admin user should be able to change marketplace approval status to true', async () => {
+    it('Positive: admin user should be able to change marketplace approval status to true and update author name', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
 
       await focusModeTemplateService.upsertFocusModeTemplate(
-        { ...focusModeTemplateDtoDummy, marketplace_approval_status: true },
+        { ...focusModeTemplateDtoDummy, marketplace_approval_status: true, author_name: userDummy.name },
         userDummy.id,
       );
 
       expect(FocusModeTemplatesRepositoryMock.upsert).toBeCalledWith(
-        {
+        new FocusModeTemplate({
           ...focusModeTemplateDtoDummy,
           author_id: userDummy.id,
           author_name: userDummy.name,
           marketplace_approval_status: true,
-        },
+        }),
         ['id'],
       );
     });

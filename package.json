@@ -29,8 +29,8 @@
   "dependencies": {
     "@fastify/cors": "^8.2.0",
     "@fastify/helmet": "^10.1.0",
-    "@fastify/static": "^6.5.1",
-    "@fastify/swagger": "^6.0.1",
+    "@fastify/static": "^6.6.0",
+    "@fastify/swagger": "^8.2.1",
     "@nestjs/bull": "^0.6.2",
     "@nestjs/common": "^9.2.0",
     "@nestjs/config": "^2.2.0",
@@ -112,6 +112,22 @@
     },
     "@pusher/push-notifications-server": {
       "jsonwebtoken": "9.0.0"
+    },
+    "@fastify/static": {
+      "send": {
+        "debug": "3.1.0"
+      }
+    },
+    "fastify-swagger": {
+      "fastify-swagger-deprecated": {
+        "fastify-static": {
+          "fastify-static-deprecated": {
+            "send": {
+              "debug": "3.1.0"
+            }
+          }
+        }
+      }
     }
   },
   "husky": {

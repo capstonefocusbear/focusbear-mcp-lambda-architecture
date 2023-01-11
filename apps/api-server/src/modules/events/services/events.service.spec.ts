@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
+import { NotFoundException } from '@nestjs/common';
 import { userDummy, QueueMock } from '../../../../test/dummies';
 import { SendinblueServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
@@ -34,11 +35,30 @@ describe('EventService', () => {
   });
 
   describe('addEventToQueue', () => {
+    it('negative: should return a not found exceptionif user is not found in DB', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+
+      try {
+        await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: should add the incoming track event to the events queue', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
       await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
 
       expect(QueueMock.add).toBeCalledWith('track-event', {
         user_id: userDummy.id,
+        email: userDummy.email,
         trackEventDto: { event_type: 'test-event' },
       });
     });

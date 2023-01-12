@@ -20,4 +20,12 @@ export class UpsertTrackDto {
   @IsNotEmpty()
   @IsString()
   file_name: string;
+
+  @IsOptional()
+  @IsString()
+  thumbnail_file_name?: string;
+
+  @IsOptional()
+  @IsString()
+  duration?: string;
 }

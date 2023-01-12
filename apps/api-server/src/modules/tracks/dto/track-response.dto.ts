@@ -20,4 +20,12 @@ export class TrackResponseDto {
   @IsNotEmpty()
   @IsString()
   download_url: string;
+
+  @IsOptional()
+  @IsString()
+  thumbnail_download_url?: string;
+
+  @IsOptional()
+  @IsString()
+  duration?: string;
 }

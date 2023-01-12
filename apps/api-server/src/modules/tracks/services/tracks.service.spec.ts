@@ -56,11 +56,12 @@ describe('TracksService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('Positive: should fetch tracks from DB and get download URL for each track from R2, then format response to include download URL for each track', async () => {
+    it('Positive: should fetch tracks from DB and get download and thumbnail URLs for each track from R2, then format response to include download URL for each track', async () => {
       const testUrl = 'https://test-url.com';
+      const testThumbnailUrl = 'https://test-thumbnail-url.com';
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       TracksRepositoryMock.orm.find.mockResolvedValueOnce([trackDtoDummy]);
-      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce(testUrl);
+      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce(testUrl).mockResolvedValueOnce(testThumbnailUrl);
 
       const res = await tracksService.getAllTracks(userDummy.id);
 
@@ -71,6 +72,8 @@ describe('TracksService', () => {
           artist: trackDtoDummy.artist,
           description: trackDtoDummy.description,
           download_url: testUrl,
+          thumbnail_download_url: testThumbnailUrl,
+          duration: trackDtoDummy.duration,
         },
       ]);
     });

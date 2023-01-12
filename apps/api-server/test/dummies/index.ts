@@ -1151,6 +1151,8 @@ export const trackDtoDummy = {
   artist: 'Dummy artist',
   description: 'Some text description',
   file_name: 'demo-track.mp3',
+  thumbnail_file_name: 'focus-bear-icon.png',
+  duration: '3:30',
 };
 
 export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {

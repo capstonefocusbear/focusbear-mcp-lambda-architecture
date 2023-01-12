@@ -27,4 +27,14 @@ export class Track extends BaseEntity {
     type: 'varchar',
   })
   file_name: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  duration?: string;
+
+  @Column({
+    type: 'varchar',
+  })
+  thumbnail_file_name?: string;
 }

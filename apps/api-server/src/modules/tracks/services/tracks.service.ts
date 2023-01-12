@@ -28,10 +28,19 @@ export class TracksService {
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const tracks = await this.tracksRepository.orm.find();
       return await Promise.all(
-        tracks.map(async ({ id, name, artist, description, file_name }) => {
+        tracks.map(async ({ id, name, artist, description, file_name, thumbnail_file_name, duration }) => {
           const downloadUrl = await this.r2Service.getPresignedUrl(FOCUS_MUSIC_BUCKET, file_name);
+          const thumbnailDownloadUrl = await this.r2Service.getPresignedUrl('track-thumbnails', thumbnail_file_name);
           if (!downloadUrl) return;
-          const trackData: TrackResponseDto = { id, name, artist, description, download_url: downloadUrl };
+          const trackData: TrackResponseDto = {
+            id,
+            name,
+            artist,
+            description,
+            download_url: downloadUrl,
+            thumbnail_download_url: thumbnailDownloadUrl,
+            duration,
+          };
           return trackData;
         }),
       );

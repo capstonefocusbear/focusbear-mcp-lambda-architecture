@@ -8,5 +8,6 @@ export const validationPipeCongif = registerAs(
     transformOptions: {
       enableImplicitConversion: true,
     },
+    forbidUnknownValues: false,
   }),
 );

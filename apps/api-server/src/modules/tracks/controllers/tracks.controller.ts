@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { AuthContext } from 'apps/api-server/src/shared/decorators/passport.decorator';
+import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAdmin } from '../../auth/guards/is-admin/is-admin.guard';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';

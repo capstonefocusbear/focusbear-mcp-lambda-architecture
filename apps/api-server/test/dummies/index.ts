@@ -1150,7 +1150,7 @@ export const trackDtoDummy = {
   name: 'Dummy Track',
   artist: 'Dummy artist',
   description: 'Some text description',
-  download_url: 'www.mp3-download-site.io',
+  file_name: 'demo-track.mp3',
 };
 
 export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {

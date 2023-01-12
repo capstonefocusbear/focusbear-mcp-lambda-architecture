@@ -13,5 +13,6 @@ export * from './jwt.config';
 export * from './pusher-beams.config';
 export * from './sentry.config';
 export * from './bull.config';
+export * from './r2.config';
 
 export const configsArray: any = Object.values(this).slice(1);

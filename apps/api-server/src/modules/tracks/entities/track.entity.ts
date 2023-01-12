@@ -26,5 +26,5 @@ export class Track extends BaseEntity {
   @Column({
     type: 'varchar',
   })
-  download_url?: string;
+  file_name: string;
 }

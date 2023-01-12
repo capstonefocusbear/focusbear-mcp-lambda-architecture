@@ -131,3 +131,7 @@ export const SentryServiceMock = {
 export const FocusModeServiceMock = {
   create: jest.fn(),
 };
+
+export const R2ServiceMock = {
+  getPresignedUrl: jest.fn(),
+};

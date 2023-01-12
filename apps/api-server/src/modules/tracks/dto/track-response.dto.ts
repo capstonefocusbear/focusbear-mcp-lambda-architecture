@@ -1,9 +1,9 @@
 import { IsNotEmpty, IsString, IsOptional, IsUUID } from 'class-validator';
 
-export class UpsertTrackDto {
+export class TrackResponseDto {
   @IsOptional()
   @IsUUID('4')
-  id?: string;
+  id: string;
 
   @IsNotEmpty()
   @IsString()
@@ -19,5 +19,5 @@ export class UpsertTrackDto {
 
   @IsNotEmpty()
   @IsString()
-  file_name: string;
+  download_url: string;
 }

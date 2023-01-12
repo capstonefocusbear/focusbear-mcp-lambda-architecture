@@ -1,7 +1,10 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { trackDtoDummy } from '../../../../test/dummies';
-import { SentryServiceMock, TracksRepositoryMock } from '../../../../test/mocks';
+import { R2Service } from '../../../../../../libs/r2/src/services/r2.service';
+import { trackDtoDummy, userDummy } from '../../../../test/dummies';
+import { R2ServiceMock, SentryServiceMock, TracksRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { TracksRepository } from '../repositories/tracks.repository';
 import { TracksService } from './tracks.service';
 
@@ -13,6 +16,8 @@ describe('TracksService', () => {
       providers: [
         TracksService,
         TracksRepository,
+        UserRepository,
+        R2Service,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -21,6 +26,10 @@ describe('TracksService', () => {
     })
       .overrideProvider(TracksRepository)
       .useValue(TracksRepositoryMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
+      .overrideProvider(R2Service)
+      .useValue(R2ServiceMock)
       .compile();
 
     tracksService = moduleRef.get<TracksService>(TracksService);
@@ -31,15 +40,44 @@ describe('TracksService', () => {
   });
 
   describe('getAllTracks', () => {
-    it('Poitive: should fetch tracks from tracks repository', async () => {
-      await tracksService.getAllTracks();
+    it('Negative: should throw notfound error if user is not found in DB', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
 
-      expect(TracksRepositoryMock.orm.find).toBeCalled();
+      try {
+        await tracksService.getAllTracks(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('Positive: should fetch tracks from DB and get download URL for each track from R2, then format response to include download URL for each track', async () => {
+      const testUrl = 'https://test-url.com';
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      TracksRepositoryMock.orm.find.mockResolvedValueOnce([trackDtoDummy]);
+      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce(testUrl);
+
+      const res = await tracksService.getAllTracks(userDummy.id);
+
+      expect(res).toStrictEqual([
+        {
+          id: trackDtoDummy.id,
+          name: trackDtoDummy.name,
+          artist: trackDtoDummy.artist,
+          description: trackDtoDummy.description,
+          download_url: testUrl,
+        },
+      ]);
     });
   });
 
   describe('upsertTrack', () => {
-    it('Poitive: should call upsert on tracksRepository with track DTO', async () => {
+    it('Positive: should call upsert on tracksRepository with track DTO', async () => {
       await tracksService.upsertTrack(trackDtoDummy);
 
       expect(TracksRepositoryMock.upsert).toBeCalledWith(trackDtoDummy, ['id']);

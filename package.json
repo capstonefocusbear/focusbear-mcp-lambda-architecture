@@ -27,6 +27,7 @@
     "render:deploy": "node ./.github/workflows/deploy.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.245.0",
     "@fastify/cors": "^8.2.0",
     "@fastify/helmet": "^10.1.0",
     "@fastify/static": "^6.6.0",
@@ -46,9 +47,10 @@
     "@sentry/node": "^7.22.0",
     "api": "^4.5.1",
     "auth0": "^2.40.0",
+    "aws-sdk": "^2.1292.0",
     "bull": "^4.10.2",
     "class-transformer": "^0.4.0",
-    "class-validator": "^0.13.1",
+    "class-validator": "^0.14.0",
     "fastify": "^4.10.2",
     "fastify-cors": "^6.1.0",
     "fastify-helmet": "^7.1.0",
@@ -128,6 +130,9 @@
           }
         }
       }
+    },
+    "@nestjs/mapped-types": {
+      "class-validator": "^0.11.1 || ^0.12.0 || ^0.13.0 || ^0.14.0"
     }
   },
   "husky": {

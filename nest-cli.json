@@ -120,6 +120,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/jwt/tsconfig.lib.json"
       }
+    },
+    "r2": {
+      "type": "library",
+      "root": "libs/r2",
+      "entryFile": "index",
+      "sourceRoot": "libs/r2/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/r2/tsconfig.lib.json"
+      }
     }
   }
 }

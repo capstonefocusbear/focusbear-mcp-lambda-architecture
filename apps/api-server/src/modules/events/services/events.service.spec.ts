@@ -1,8 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { userDummy, QueueMock } from '../../../../test/dummies';
-import { SendinblueServiceMock, UserRepositoryMock } from '../../../../test/mocks';
+import { SendinblueServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -18,6 +19,10 @@ describe('EventService', () => {
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
+        },
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
         },
       ],
     })

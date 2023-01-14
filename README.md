@@ -61,11 +61,12 @@ $ RENDER_SERVICE_ID=
 $ RENDER_API_KEY=
 
 # Get these from the Redis instance on render.com
-REDIS_HOSTNAME = 
-REDIS_PORT = 
+$ REDIS_HOSTNAME = 
+$ REDIS_PORT = 
 
 # This should be retrieved from slack dashboard
-SLACK_BACKEND_ALERTS_WEBHOOK = 
+$ SLACK_BACKEND_ALERTS_WEBHOOK = 
+$ SLACK_WEBHOOKS_CHANNEL =
 
 # Go to the Pusher Channels account to take those values
 $ PUSHER_APP_ID =
@@ -91,14 +92,20 @@ $ STRIPE_WEBHOOK_SECRET =
 SENDINBLUE_MA_KEY = 
 
 # Get these from Sentry
-SENTRY_DSN = 
-SENTRY_DEBUG = 
-SENTRY_ENV = 
-SENTRY_RELEASE = 
-SENTRY_LOG_LEVELS = 
+$ SENTRY_DSN = 
+$ SENTRY_DEBUG = 
+$ SENTRY_ENV = 
+$ SENTRY_RELEASE = 
+$ SENTRY_LOG_LEVELS = 
 
 # Get this from the Google Developers dashboard
-YOUTUBE_API_KEY = 
+$ YOUTUBE_API_KEY = 
+
+# Get these from the Cloudflare R2 dashboard
+$ R2_ENDPOINT = 
+$ R2_ACCESS_KEY_ID = 
+$ R2_SECRET_ACCESS_KEY = 
+$ R2_SIGNATURE_VERSION = 
 ```
 
 3. Update .env file with actual values for PostgreSQL

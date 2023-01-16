@@ -11,6 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { ActivityChoiceType } from './activity-choice-type.enum';
+import { TakeNotesOptions } from './take-notes-options.enum';
 
 export class ActivityData {
   constructor(data: Partial<ActivityData> = {}) {
@@ -23,6 +24,7 @@ export class ActivityData {
     this.log_quantity_question = data?.log_quantity_question;
     this.choice_type = data?.choice_type;
     this.allowed_urls = data?.allowed_urls;
+    this.take_notes = data?.take_notes;
   }
 
   @IsNotEmpty()
@@ -34,6 +36,11 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty()
   is_office_friendly?: boolean;
+
+  @IsEnum(TakeNotesOptions)
+  @IsOptional()
+  @ApiProperty({ enum: TakeNotesOptions })
+  take_notes?: TakeNotesOptions;
 
   @IsUUID('4')
   @IsOptional()

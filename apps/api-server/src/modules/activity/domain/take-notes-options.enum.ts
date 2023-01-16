@@ -1,0 +1,5 @@
+export enum TakeNotesOptions {
+  NO_NOTE = 'NO_NOTE',
+  DURING_ACTIVITY = 'DURING_ACTIVITY',
+  END_OF_ACTIVITY = 'END_OF_ACTIVITY',
+}

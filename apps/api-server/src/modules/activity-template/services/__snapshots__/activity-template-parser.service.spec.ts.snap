@@ -13,6 +13,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -38,6 +39,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],
@@ -64,6 +66,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -89,6 +92,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],
@@ -115,6 +119,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -140,6 +145,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "take_notes": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],

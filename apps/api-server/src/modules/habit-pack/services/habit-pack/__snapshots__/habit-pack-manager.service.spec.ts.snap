@@ -13,6 +13,7 @@ Object {
   "log_quantity_question": undefined,
   "log_summary_type": "SUM",
   "name": "Mess up desk",
+  "take_notes": undefined,
   "video_urls": Array [],
 }
 `;

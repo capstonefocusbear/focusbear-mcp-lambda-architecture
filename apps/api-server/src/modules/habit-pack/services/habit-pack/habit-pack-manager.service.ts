@@ -152,6 +152,7 @@ export class HabitPackManagerService {
         log_quantity_question,
         choices,
         choice_type,
+        take_notes,
       }) => {
         const formattedChoices = choices.map(({ id, ...restOfChoiceData }) => {
           return { id: randomUUID(), ...restOfChoiceData };
@@ -169,6 +170,7 @@ export class HabitPackManagerService {
           choice_type,
           include_in_every_break,
           choices: formattedChoices,
+          take_notes,
         };
         return activities.push(activity);
       },

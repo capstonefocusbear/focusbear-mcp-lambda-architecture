@@ -12,7 +12,6 @@ import {
   marketplaceApprovedPacksDummy,
   routineHabitPackDBResponseDummy,
   serializedRoutineActivityDummy,
-  userSettingsDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
 import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
@@ -385,9 +384,9 @@ describe('HabitPackService', () => {
 
     it('positive: should return the longest sequence duration (both morning & evening sequences are the 180 seconds)', () => {
       const sequenceArray = [
-        userSettingsDummy.morning_activities,
-        userSettingsDummy.break_activities,
-        userSettingsDummy.evening_activities,
+        [{ id: randomUUID(), pack_id: randomUUID(), name: 'test pack', duration_seconds: 180 }],
+        [{ id: randomUUID(), pack_id: randomUUID(), name: 'test pack', duration_seconds: 120 }],
+        [{ id: randomUUID(), pack_id: randomUUID(), name: 'test pack', duration_seconds: 180 }],
       ];
       const result = habitPackService.getHabitPackLongestSequence(sequenceArray);
 

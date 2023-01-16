@@ -11,8 +11,6 @@ import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activi
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { UserTypes } from '../../../user/domain/user-types.enum';
 import { GetMultiplePacksQueryDto } from '../../dto/get-multiple-packs-query.dto';
-import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
-import { Activity } from '../../../activity/entities/activity.entity';
 
 @Injectable()
 export class HabitPackService {
@@ -21,7 +19,6 @@ export class HabitPackService {
     private readonly habitPackRepository: HabitPackRepository,
     private readonly activityTemplateService: ActivityTemplateService,
     private readonly activityTemplateParserService: ActivityTemplateParserService,
-    private readonly activityParserService: ActivityParserService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -230,18 +227,22 @@ export class HabitPackService {
     }
   }
 
-  getHabitPackLongestSequence(sequences: Activity[][]): number {
+  getHabitPackLongestSequence(sequences: UpdateActivityTemplateDto[][]): number {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Getting longest sequence duration from habit pack',
     });
-    const durations = sequences.map((sequence) => {
+    const allSequenceDurations = sequences.map((sequence) => {
       if (sequence) {
-        return this.activityParserService.calculateSequenceDuration(sequence);
+        const sequenceActivityDurations = sequence.map(({ duration_seconds }) => Number(duration_seconds));
+        const addUp = (accumulator: number, item: number): number => accumulator + item;
+        const initialAccumulator = 0;
+        const sequenceDuration = sequenceActivityDurations.reduce(addUp, initialAccumulator);
+        return sequenceDuration;
       }
       return 0;
     });
-    return Math.max(...durations);
+    return Math.max(...allSequenceDurations);
   }
 }

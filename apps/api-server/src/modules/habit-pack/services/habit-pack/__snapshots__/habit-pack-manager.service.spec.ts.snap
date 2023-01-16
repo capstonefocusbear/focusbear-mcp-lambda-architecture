@@ -3,17 +3,14 @@
 exports[`HabitPackManagerService convertActivityTemplatesToUpdateActivityDtos Positive: should return an array of UpdateActivityDtos 1`] = `
 Object {
   "activity_template_id": "f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e",
-  "choice_type": undefined,
+  "activity_type": "evening_activity",
   "choices": Array [],
   "duration_seconds": 150,
   "id": "dynamic",
-  "include_in_every_break": undefined,
-  "is_office_friendly": undefined,
   "log_quantity": false,
-  "log_quantity_question": undefined,
   "log_summary_type": "SUM",
   "name": "Mess up desk",
-  "take_notes": undefined,
+  "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
   "video_urls": Array [],
 }
 `;

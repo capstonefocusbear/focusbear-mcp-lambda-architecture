@@ -11,6 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { ActivityChoiceType } from './activity-choice-type.enum';
+import { ActivityPriority } from './activity-priority.enum';
 import { TakeNotesOptions } from './take-notes-options.enum';
 
 export class ActivityData {
@@ -25,6 +26,10 @@ export class ActivityData {
     this.choice_type = data?.choice_type;
     this.allowed_urls = data?.allowed_urls;
     this.take_notes = data?.take_notes;
+    this.category = data?.category;
+    this.text_instructions = data?.text_instructions;
+    this.image_urls = data?.image_urls;
+    this.activity_priority = data?.activity_priority;
   }
 
   @IsNotEmpty()
@@ -41,6 +46,11 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty({ enum: TakeNotesOptions })
   take_notes?: TakeNotesOptions;
+
+  @IsEnum(ActivityPriority)
+  @IsOptional()
+  @ApiProperty({ enum: ActivityPriority })
+  activity_priority?: ActivityPriority;
 
   @IsUUID('4')
   @IsOptional()
@@ -87,4 +97,16 @@ export class ActivityData {
   // @IsUrl({}, { each: true })
   @ApiProperty()
   allowed_urls?: string[];
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  text_instructions?: string;
+
+  @IsOptional()
+  @IsArray()
+  image_urls?: string[];
 }

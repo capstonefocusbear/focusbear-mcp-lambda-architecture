@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Connection } from 'typeorm';
+import { Connection, In, Not } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityTemplate } from '../entity/activity-template.entity';
+import { AppDataSource } from '../../../../ormconfig';
+import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -18,5 +20,23 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
       .getMany();
 
     return activityIdObjects.map((idObject) => idObject.id);
+  }
+
+  async consistentlyUpdateLibraryActivities(
+    activityIds: string[],
+    activityTemplates: ActivityTemplate[],
+    user_id: string,
+  ) {
+    await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
+      await transactionalEntityManager.delete(ActivityTemplate, {
+        user_id,
+        id: Not(In(activityIds)),
+        activity_type: ActivityType.library,
+      });
+      const parents = activityTemplates.filter(({ parent_id }) => !parent_id);
+      const choices = activityTemplates.filter(({ parent_id }) => !!parent_id);
+      await transactionalEntityManager.upsert(ActivityTemplate, parents, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
+    });
   }
 }

@@ -24,6 +24,11 @@ export class UserSettingsResponseDto {
   @IsMilitaryTime()
   shutdown_time?: string;
 
+  @IsOptional()
+  @IsString()
+  @IsMilitaryTime()
+  cutoff_time_for_standard_priority_activities?: string;
+
   @IsNotEmpty()
   @IsInt()
   @Min(1)

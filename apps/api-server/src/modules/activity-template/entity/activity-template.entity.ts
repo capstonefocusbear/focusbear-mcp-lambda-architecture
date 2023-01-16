@@ -75,6 +75,12 @@ export class ActivityTemplate extends BaseEntity {
   })
   sequence_index?: number;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  is_library_activity?: boolean;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

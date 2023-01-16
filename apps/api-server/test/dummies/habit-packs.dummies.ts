@@ -446,6 +446,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: false,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
     {
       id: 'b8301b80-1286-464a-b0be-5838f52e2ff6',
@@ -457,6 +458,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: undefined,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
     {
       id: '74935284-e936-4247-8afa-e453484865e0',
@@ -468,6 +470,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: false,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
   ],
 ];

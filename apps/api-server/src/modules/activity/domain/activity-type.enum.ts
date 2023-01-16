@@ -3,4 +3,5 @@ export enum ActivityType {
   morning = 'morning',
   evening = 'evening',
   standalone = 'standalone',
+  library = 'library',
 }

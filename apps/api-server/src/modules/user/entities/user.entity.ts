@@ -190,6 +190,11 @@ export class User extends BaseEntity {
   })
   has_edited_settings?: boolean;
 
+  @Column({
+    type: 'varchar',
+  })
+  cutoff_time_for_standard_priority_activities?: string;
+
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];
 

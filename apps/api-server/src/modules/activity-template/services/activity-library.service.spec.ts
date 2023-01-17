@@ -4,7 +4,10 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { userDummy } from '../../../../test/dummies';
 import {
   activityTemplateArrayDummy,
+  activityTemplateFromDBDummy,
+  activityTemplateFromDBForDifferentUserDummy,
   deserializedStandaloneActivitiesDummy,
+  upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import { ActivityTemplateRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -83,7 +86,9 @@ describe('ActivityLibraryService', () => {
 
     it('positive: should format activity DTOs as ActivityTemplates and then upsert activity templates', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
-      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce(activityTemplateArrayDummy);
+      ActivityTemplateRepositoryMock.orm.find
+        .mockResolvedValueOnce([activityTemplateFromDBDummy])
+        .mockResolvedValueOnce([activityTemplateFromDBDummy]);
 
       const response = await activityLibraryService.upsertLibraryActivities(
         deserializedStandaloneActivitiesDummy[0],
@@ -91,6 +96,17 @@ describe('ActivityLibraryService', () => {
       );
 
       expect(response).toMatchSnapshot();
+    });
+
+    it('positive: incoming activities that belong to a different user should be exlcuded from update function call', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.orm.find
+        .mockResolvedValueOnce([activityTemplateFromDBForDifferentUserDummy])
+        .mockResolvedValueOnce([activityTemplateFromDBDummy]);
+
+      await activityLibraryService.upsertLibraryActivities([upsertActiivtyTemplateDummy], userDummy.id);
+
+      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toBeCalledWith([], [], userDummy.id);
     });
   });
 });

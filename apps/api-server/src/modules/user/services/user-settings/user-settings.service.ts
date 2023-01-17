@@ -36,8 +36,8 @@ export class UserSettingsService {
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
-      if (userSettings.cutoff_time_for_standard_priority_activities === null) {
-        delete userSettings.cutoff_time_for_standard_priority_activities;
+      if (userSettings.cutoff_time === null) {
+        delete userSettings.cutoff_time;
       }
       if (timezone) {
         await this.updateUserTimezone(user_id, timezone);
@@ -79,14 +79,12 @@ export class UserSettingsService {
       // eslint-disable-next-line operator-linebreak
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
-      // eslint-disable-next-line operator-linebreak
-      const { startup_time, shutdown_time, cutoff_time_for_standard_priority_activities, break_after_minutes } =
-        updateSettingsData;
+      const { startup_time, shutdown_time, cutoff_time, break_after_minutes } = updateSettingsData;
       const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
       const updatedUser = new User({
         startup_time,
         shutdown_time,
-        cutoff_time_for_standard_priority_activities,
+        cutoff_time,
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,

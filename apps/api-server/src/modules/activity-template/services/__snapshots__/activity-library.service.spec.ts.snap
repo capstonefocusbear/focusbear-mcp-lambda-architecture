@@ -38,40 +38,4 @@ Array [
 ]
 `;
 
-exports[`ActivityLibraryService updateLibraryActivities positive: should format activity DTOs as ActivityTemplates and then upsert activity templates 1`] = `
-Array [
-  Object {
-    "choice_type": "random",
-    "choices": Array [
-      Object {
-        "choices": Array [],
-        "duration_seconds": 300,
-        "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
-        "log_quantity": true,
-        "log_summary_type": "SUM",
-        "name": "Crunches",
-        "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
-      },
-    ],
-    "duration_seconds": 300,
-    "id": "b9501b80-1286-464a-b0be-5838f52e2ff8",
-    "log_quantity": false,
-    "log_summary_type": "SUM",
-    "name": "Journaling",
-    "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "video_urls": Array [],
-  },
-  Object {
-    "choice_type": "random",
-    "choices": Array [],
-    "duration_seconds": 300,
-    "id": "b9501b60-1286-484a-b0be-5838f52e2ff9",
-    "log_quantity": false,
-    "log_summary_type": "SUM",
-    "name": "Swimming",
-    "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "video_urls": Array [],
-  },
-]
-`;
+exports[`ActivityLibraryService updateLibraryActivities positive: should format activity DTOs as ActivityTemplates and then upsert activity templates 1`] = `Array []`;

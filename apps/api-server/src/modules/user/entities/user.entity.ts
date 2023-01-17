@@ -193,7 +193,7 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
   })
-  cutoff_time_for_standard_priority_activities?: string;
+  cutoff_time?: string;
 
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];

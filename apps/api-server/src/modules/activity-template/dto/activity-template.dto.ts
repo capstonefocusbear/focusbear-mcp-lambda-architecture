@@ -5,5 +5,5 @@ export class UpdateActivityTemplateDto extends UpdateActivityDto {
   @IsOptional()
   @IsUUID()
   @IsString()
-  pack_id: string;
+  pack_id?: string;
 }

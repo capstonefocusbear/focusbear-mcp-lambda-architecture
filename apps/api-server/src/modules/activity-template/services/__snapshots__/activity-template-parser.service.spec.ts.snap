@@ -4,7 +4,6 @@ exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Sh
 Array [
   ActivityTemplate {
     "activity_data": ActivityData {
-      "activity_priority": undefined,
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
       "allowed_urls": undefined,
@@ -15,6 +14,7 @@ Array [
       "is_office_friendly": undefined,
       "log_quantity_question": undefined,
       "name": "Yoga",
+      "priority": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [
@@ -34,7 +34,6 @@ Array [
   },
   ActivityTemplate {
     "activity_data": ActivityData {
-      "activity_priority": undefined,
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
       "allowed_urls": undefined,
@@ -45,6 +44,7 @@ Array [
       "is_office_friendly": undefined,
       "log_quantity_question": undefined,
       "name": "Journaling",
+      "priority": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [],
@@ -61,7 +61,6 @@ Array [
   },
   ActivityTemplate {
     "activity_data": ActivityData {
-      "activity_priority": undefined,
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
       "allowed_urls": undefined,
@@ -72,6 +71,7 @@ Array [
       "is_office_friendly": undefined,
       "log_quantity_question": undefined,
       "name": "Deep breathing",
+      "priority": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [
@@ -96,7 +96,6 @@ Array [
   Array [
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -107,6 +106,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [
@@ -126,7 +126,6 @@ Array [
     },
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -137,6 +136,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [
@@ -157,7 +157,6 @@ Array [
   Array [
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -168,6 +167,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [
@@ -187,7 +187,6 @@ Array [
     },
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -198,6 +197,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [
@@ -218,7 +218,6 @@ Array [
   Array [
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -229,6 +228,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [
@@ -248,7 +248,6 @@ Array [
     },
     ActivityTemplate {
       "activity_data": ActivityData {
-        "activity_priority": undefined,
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
@@ -259,6 +258,7 @@ Array [
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
         "text_instructions": undefined,
         "video_urls": Array [

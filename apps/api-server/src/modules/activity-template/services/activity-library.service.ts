@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { In } from 'typeorm';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
@@ -46,8 +47,9 @@ export class ActivityLibraryService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const activitesToUpsert = await this.removeActivitiesNotBelongingToUser(updateActivities, user_id);
       const activityTemplates = await this.activityTemplateParserService.deserializeLibraryActivities(
-        updateActivities,
+        activitesToUpsert,
         user_id,
       );
       const activityIds = activityTemplates.map((activityTemplate) => activityTemplate.id);
@@ -61,5 +63,16 @@ export class ActivityLibraryService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async removeActivitiesNotBelongingToUser(updateActivities: UpdateActivityTemplateDto[], user_id: string) {
+    const incomingActivityIds = updateActivities.map((activity) => activity.id);
+    const existingActivities = await this.activityTemplateRepository.orm.find({
+      where: { id: In(incomingActivityIds) },
+    });
+    const activitiesNotBelongingToUser = existingActivities
+      .filter((activity) => activity.user_id !== user_id)
+      .map((activity) => activity.id);
+    return updateActivities.filter(({ id }) => !activitiesNotBelongingToUser.includes(id));
   }
 }

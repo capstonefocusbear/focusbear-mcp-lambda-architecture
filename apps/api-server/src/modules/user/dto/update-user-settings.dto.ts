@@ -17,7 +17,7 @@ export class UpdateUserSettingsDto {
   @IsOptional()
   @IsString()
   @IsMilitaryTime()
-  cutoff_time_for_standard_priority_activities?: string;
+  cutoff_time?: string;
 
   @IsNotEmpty()
   @IsInt()

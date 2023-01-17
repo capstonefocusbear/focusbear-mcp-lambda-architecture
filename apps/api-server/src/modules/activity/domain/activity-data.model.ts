@@ -29,7 +29,7 @@ export class ActivityData {
     this.category = data?.category;
     this.text_instructions = data?.text_instructions;
     this.image_urls = data?.image_urls;
-    this.activity_priority = data?.activity_priority;
+    this.priority = data?.priority;
   }
 
   @IsNotEmpty()
@@ -50,7 +50,7 @@ export class ActivityData {
   @IsEnum(ActivityPriority)
   @IsOptional()
   @ApiProperty({ enum: ActivityPriority })
-  activity_priority?: ActivityPriority;
+  priority?: ActivityPriority;
 
   @IsUUID('4')
   @IsOptional()

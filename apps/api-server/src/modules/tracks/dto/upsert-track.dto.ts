@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber } from 'class-validator';
 
 export class UpsertTrackDto {
   @IsOptional()
@@ -26,6 +26,6 @@ export class UpsertTrackDto {
   thumbnail_file_name?: string;
 
   @IsOptional()
-  @IsString()
-  duration?: string;
+  @IsNumber()
+  duration?: number;
 }

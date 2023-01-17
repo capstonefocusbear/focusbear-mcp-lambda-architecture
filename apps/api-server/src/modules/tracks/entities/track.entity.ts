@@ -29,9 +29,9 @@ export class Track extends BaseEntity {
   file_name: string;
 
   @Column({
-    type: 'varchar',
+    type: 'numeric',
   })
-  duration?: string;
+  duration?: number;
 
   @Column({
     type: 'varchar',

@@ -28,8 +28,6 @@ describe('ActivityLibraryService', () => {
         },
       ],
     })
-      // .overrideProvider(ActivityTemplateParserService)
-      // .useValue(ActivityTemplateParserServiceMock)
       .overrideProvider(ActivityTemplateRepository)
       .useValue(ActivityTemplateRepositoryMock)
       .overrideProvider(UserRepository)

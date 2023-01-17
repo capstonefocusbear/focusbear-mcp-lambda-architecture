@@ -83,8 +83,21 @@ export class VideoMetadataService {
   }
 
   getIdFromYouTubeURL = (url: string) => {
-    const regex = /(youtu.*be.*)\/(watch\?v=|embed\/|v|shorts|)(.*?((?=[&#?])|$))/gm;
-    return regex.exec(url)[3];
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Extracting ID from YouTube URL',
+        data: {
+          url,
+        },
+      });
+      const regex = /(youtu.*be.*)\/(watch\?v=|embed\/|v|shorts|)(.*?((?=[&#?])|$))/gm;
+      const regexArray = regex.exec(url)[3];
+      return regexArray;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    }
   };
 
   parseDuration(duration: string) {

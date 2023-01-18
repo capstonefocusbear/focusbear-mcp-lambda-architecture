@@ -110,16 +110,16 @@ describe('UserSettingsService', () => {
       expect(result).toMatchSnapshot();
     });
 
-    it("positive: if cutoff_time is not null it should be returned along with rest of user's settings", async () => {
+    it("positive: if cutoff_time_for_non_high_priority_activities is not null it should be returned along with rest of user's settings", async () => {
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce({
         ...userSettingsDBResponseDummy,
-        cutoff_time: '20:30',
+        cutoff_time_for_non_high_priority_activities: '20:30',
       });
       ActivityParserServiceMock.serialize.mockResolvedValueOnce(serializedActivityDummy);
 
       const result = await userSettingsService.getSettings({ user_id });
 
-      expect(result).toHaveProperty('cutoff_time');
+      expect(result).toHaveProperty('cutoff_time_for_non_high_priority_activities');
     });
   });
 

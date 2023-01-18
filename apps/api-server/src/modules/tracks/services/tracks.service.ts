@@ -27,7 +27,7 @@ export class TracksService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const tracks = await this.tracksRepository.orm.find();
-      const tracksWithDOwnloadUrls = await Promise.all(
+      const tracksWithDownloadUrls = await Promise.all(
         tracks.map(async ({ id, name, artist, description, file_name, thumbnail_file_name, duration }) => {
           if (!file_name) return null;
           const downloadUrl = await this.r2Service.getPresignedUrl(FOCUS_MUSIC_BUCKET, file_name);
@@ -47,7 +47,7 @@ export class TracksService {
           return trackData;
         }),
       );
-      return tracksWithDOwnloadUrls.filter((track) => track !== null);
+      return tracksWithDownloadUrls.filter((track) => track !== null);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

@@ -27,7 +27,7 @@ export class UserSettingsResponseDto {
   @IsOptional()
   @IsString()
   @IsMilitaryTime()
-  cutoff_time?: string;
+  cutoff_time_for_non_high_priority_activities?: string;
 
   @IsNotEmpty()
   @IsInt()

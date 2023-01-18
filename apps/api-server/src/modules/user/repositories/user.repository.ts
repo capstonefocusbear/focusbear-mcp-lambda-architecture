@@ -48,6 +48,7 @@ export class UserRepository extends BaseRepository<User> {
       .select([
         'users.startup_time',
         'users.shutdown_time',
+        'users.cutoff_time_for_non_high_priority_activities',
         'users.break_after_minutes',
         'users.has_edited_settings',
         'activities.id',

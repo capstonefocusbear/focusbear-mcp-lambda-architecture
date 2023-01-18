@@ -1,6 +1,97 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Should return an array containing deserialized routine activities 1`] = `
+exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Should convert UpdateActivityDto type activities to ActivityTemplate class and return them in an array 1`] = `
+Array [
+  ActivityTemplate {
+    "activity_data": ActivityData {
+      "allowed_apps": undefined,
+      "allowed_focus_mode_id": undefined,
+      "allowed_urls": undefined,
+      "category": undefined,
+      "choice_type": undefined,
+      "image_urls": undefined,
+      "include_in_every_break": undefined,
+      "is_office_friendly": undefined,
+      "log_quantity_question": undefined,
+      "name": "Yoga",
+      "priority": undefined,
+      "take_notes": undefined,
+      "text_instructions": undefined,
+      "video_urls": Array [
+        "https://www.youtube.com/watch?v=nz5MCv0sFDA",
+        "https://www.youtube.com/watch?v=oexYiIy75V8",
+      ],
+    },
+    "activity_type": "library",
+    "duration_seconds": 300,
+    "has_choices": false,
+    "id": "116af843-818a-4e09-aaa2-53da041896de",
+    "log_quantity": false,
+    "log_summary_type": undefined,
+    "pack_id": undefined,
+    "sequence_index": 0,
+    "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
+  },
+  ActivityTemplate {
+    "activity_data": ActivityData {
+      "allowed_apps": undefined,
+      "allowed_focus_mode_id": undefined,
+      "allowed_urls": undefined,
+      "category": undefined,
+      "choice_type": undefined,
+      "image_urls": undefined,
+      "include_in_every_break": undefined,
+      "is_office_friendly": undefined,
+      "log_quantity_question": undefined,
+      "name": "Journaling",
+      "priority": undefined,
+      "take_notes": undefined,
+      "text_instructions": undefined,
+      "video_urls": Array [],
+    },
+    "activity_type": "library",
+    "duration_seconds": 300,
+    "has_choices": false,
+    "id": "b8301b80-1286-464a-b0be-5838f52e2ff6",
+    "log_quantity": undefined,
+    "log_summary_type": undefined,
+    "pack_id": undefined,
+    "sequence_index": 1,
+    "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
+  },
+  ActivityTemplate {
+    "activity_data": ActivityData {
+      "allowed_apps": undefined,
+      "allowed_focus_mode_id": undefined,
+      "allowed_urls": undefined,
+      "category": undefined,
+      "choice_type": undefined,
+      "image_urls": undefined,
+      "include_in_every_break": undefined,
+      "is_office_friendly": undefined,
+      "log_quantity_question": undefined,
+      "name": "Deep breathing",
+      "priority": undefined,
+      "take_notes": undefined,
+      "text_instructions": undefined,
+      "video_urls": Array [
+        "https://www.youtube.com/watch?v=36mnXAQGRzc",
+      ],
+    },
+    "activity_type": "library",
+    "duration_seconds": 180,
+    "has_choices": false,
+    "id": "74935284-e936-4247-8afa-e453484865e0",
+    "log_quantity": false,
+    "log_summary_type": undefined,
+    "pack_id": undefined,
+    "sequence_index": 2,
+    "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
+  },
+]
+`;
+
+exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Should return an array containing deserialized routine activities(formats activity DTOs to ActivityTemplates) 1`] = `
 Array [
   Array [
     ActivityTemplate {
@@ -8,12 +99,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -34,12 +129,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],
@@ -61,12 +160,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -87,12 +190,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],
@@ -114,12 +221,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Yoga",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
@@ -140,12 +251,16 @@ Array [
         "allowed_apps": undefined,
         "allowed_focus_mode_id": undefined,
         "allowed_urls": undefined,
+        "category": undefined,
         "choice_type": undefined,
+        "image_urls": undefined,
         "include_in_every_break": undefined,
         "is_office_friendly": undefined,
         "log_quantity_question": undefined,
         "name": "Deep breathing",
+        "priority": undefined,
         "take_notes": undefined,
+        "text_instructions": undefined,
         "video_urls": Array [
           "https://www.youtube.com/watch?v=36mnXAQGRzc",
         ],
@@ -164,7 +279,7 @@ Array [
 ]
 `;
 
-exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive: Should return an object containing deserialized standalone activities 1`] = `Promise {}`;
+exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive: Should return an object containing deserialized standalone activities(formats activity DTOs to ActivityTemplates) 1`] = `Promise {}`;
 
 exports[`ActivityTemplateParserService serialize Positive: should return serialized activity templates 1`] = `
 Object {
@@ -197,5 +312,30 @@ Object {
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
     },
   ],
+}
+`;
+
+exports[`ActivityTemplateParserService serializeLibraryActivities Positive: Should format ActivityTemplates to UpdateActivityDto type to send as response 1`] = `
+Object {
+  "choice_type": "random",
+  "choices": Array [
+    Object {
+      "choices": Array [],
+      "duration_seconds": 300,
+      "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
+      "log_quantity": true,
+      "log_summary_type": "SUM",
+      "name": "Crunches",
+      "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+      "video_urls": Array [],
+    },
+  ],
+  "duration_seconds": 300,
+  "id": "b9501b80-1286-464a-b0be-5838f52e2ff8",
+  "log_quantity": false,
+  "log_summary_type": "SUM",
+  "name": "Journaling",
+  "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+  "video_urls": Array [],
 }
 `;

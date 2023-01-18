@@ -3,6 +3,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ActivityChoiceData } from '../../activity/domain/activity-choice-data.model';
 import { ActivityData } from '../../activity/domain/activity-data.model';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
@@ -66,9 +67,28 @@ export class ActivityTemplateParserService {
     });
   }
 
+  async deserializeLibraryActivities(
+    serialized: UpdateActivityTemplateDto[],
+    user_id: string,
+  ): Promise<ActivityTemplate[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Deserializing library activities',
+    });
+    return serialized.flatMap((deserializedActivity, index) => {
+      return this.createActivityTemplate(deserializedActivity, { activity_type: ActivityType.library, user_id, index });
+    });
+  }
+
   createActivityTemplate(
     { id, duration_seconds, log_quantity, log_summary_type, choices, ...activityDataValues }: UpdateActivityTemplateDto,
-    { activity_type, user_id, pack_id, index },
+    {
+      activity_type,
+      user_id,
+      pack_id,
+      index,
+    }: { activity_type: string | null; user_id: string; pack_id?: string; index: number },
   ): ActivityTemplate[] {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -173,5 +193,34 @@ export class ActivityTemplateParserService {
       ...formatActivityTemplates(fetchedActivities, ActivityType.break),
       ...formatActivityTemplates(fetchedActivities, ActivityType.evening),
     };
+  }
+
+  serializeLibraryActivities(activity_templates: ActivityTemplate[]): UpdateActivityDto[] {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Serializing library activities',
+    });
+    const fetchedActivities = activity_templates.filter((activity) => !activity.parent_id);
+    const mapActivity = ({
+      id,
+      duration_seconds,
+      pack_id,
+      log_quantity,
+      log_summary_type,
+      activity_data,
+      choices,
+    }: ActivityTemplate) => {
+      return {
+        id,
+        ...activity_data,
+        duration_seconds: Number(duration_seconds),
+        pack_id,
+        log_quantity,
+        log_summary_type,
+        choices: choices?.map(mapActivity),
+      };
+    };
+    return fetchedActivities.map(mapActivity);
   }
 }

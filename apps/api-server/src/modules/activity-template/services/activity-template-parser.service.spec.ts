@@ -64,7 +64,7 @@ describe('ActivityTemplateParserService', () => {
   });
 
   describe('deserializeStandaloneActivities', () => {
-    it('Positive: Should return an object containing deserialized standalone activities', () => {
+    it('Positive: Should return an object containing deserialized standalone activities(formats activity DTOs to ActivityTemplates)', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.orm.findOne(standaloneHabitPackDBResponseDummy.id);
       const result = activityTemplateParserService.deserializeStandaloneActivities(
@@ -78,7 +78,7 @@ describe('ActivityTemplateParserService', () => {
   });
 
   describe('deserializeRoutineActivities', () => {
-    it('Positive: Should return an array containing deserialized routine activities', async () => {
+    it('Positive: Should return an array containing deserialized routine activities(formats activity DTOs to ActivityTemplates)', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       HabitPackRepositoryMock.orm.findOne(routineHabitPackDBResponseDummy.id);
       const result = await activityTemplateParserService.deserializeRoutineActivities(
@@ -87,6 +87,20 @@ describe('ActivityTemplateParserService', () => {
         standaloneHabitPackDBResponseDummy.id,
       );
 
+      expect(result).toMatchSnapshot();
+    });
+  });
+
+  describe('deserializeLibraryActivities', () => {
+    it('Positive: Should convert UpdateActivityDto type activities to ActivityTemplate class and return them in an array', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const result = await activityTemplateParserService.deserializeLibraryActivities(
+        serializedStandaloneActivityDummy.standalone_activities,
+        userDummy.id,
+      );
+
+      expect(result).toBeArray();
+      expect(result[0]).toBeInstanceOf(ActivityTemplate);
       expect(result).toMatchSnapshot();
     });
   });
@@ -110,6 +124,15 @@ describe('ActivityTemplateParserService', () => {
 
       expect(result).toHaveProperty('standalone_activities');
       expect(result.standalone_activities).toBeArray();
+    });
+  });
+
+  describe('serializeLibraryActivities', () => {
+    it('Positive: Should format ActivityTemplates to UpdateActivityDto type to send as response', () => {
+      const result = activityTemplateParserService.serializeLibraryActivities(activityTemplateArrayDummy);
+
+      expect(result).toBeArray();
+      expect(result[0]).toMatchSnapshot();
     });
   });
 });

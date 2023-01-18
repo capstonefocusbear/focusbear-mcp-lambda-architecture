@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber } from 'class-validator';
 
 export class TrackResponseDto {
   @IsOptional()
@@ -26,6 +26,6 @@ export class TrackResponseDto {
   thumbnail_download_url?: string;
 
   @IsOptional()
-  @IsString()
-  duration?: string;
+  @IsNumber()
+  duration?: number;
 }

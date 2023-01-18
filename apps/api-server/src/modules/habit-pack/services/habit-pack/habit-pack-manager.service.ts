@@ -139,42 +139,18 @@ export class HabitPackManagerService {
       message: 'Converting activity templates to normal activities',
     });
     const activities: UpdateActivityDto[] = [];
-    activityTemplatesOfType.map(
-      ({
-        name,
-        id: activityId,
-        include_in_every_break,
-        is_office_friendly,
-        video_urls,
-        duration_seconds,
-        log_quantity,
-        log_summary_type,
-        log_quantity_question,
-        choices,
-        choice_type,
-        take_notes,
-      }) => {
-        const formattedChoices = choices.map(({ id, ...restOfChoiceData }) => {
-          return { id: randomUUID(), ...restOfChoiceData };
-        });
-        const activity: UpdateActivityDto = {
-          id: randomUUID(),
-          name,
-          activity_template_id: activityId,
-          duration_seconds,
-          log_quantity,
-          log_quantity_question,
-          log_summary_type,
-          video_urls,
-          is_office_friendly,
-          choice_type,
-          include_in_every_break,
-          choices: formattedChoices,
-          take_notes,
-        };
-        return activities.push(activity);
-      },
-    );
+    activityTemplatesOfType.map(({ id: activityId, choices, ...restOfTemplateData }) => {
+      const formattedChoices = choices.map(({ id, ...restOfChoiceData }) => {
+        return { id: randomUUID(), ...restOfChoiceData };
+      });
+      const activity: UpdateActivityDto = {
+        id: randomUUID(),
+        activity_template_id: activityId,
+        choices: formattedChoices,
+        ...restOfTemplateData,
+      };
+      return activities.push(activity);
+    });
     return activities;
   }
 

@@ -1,3 +1,5 @@
+import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
+
 export const AuthServiceMock = {
   authenticate: jest.fn(),
 };
@@ -90,9 +92,11 @@ export const ActivityTemplateServiceMock = {
 export const ActivityTemplateParserServiceMock = {
   deserializeStandaloneActivities: jest.fn(),
   deserializeRoutineActivities: jest.fn(),
+  deserializeLibraryActivities: jest.fn(() => deserializedStandaloneActivitiesDummy[0]),
   createActivityTemplate: jest.fn(),
   deserializeActivityTemplateChoices: jest.fn(),
   serialize: jest.fn(),
+  serializeLibraryActivities: jest.fn(),
 };
 
 export const HabitPackServiceMock = {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ActivityChoiceType } from '../../src/modules/activity/domain/activity-choice-type.enum';
 import { ActivityType } from '../../src/modules/activity/domain/activity-type.enum';
 import { LogSummaryType } from '../../src/modules/activity/domain/log-summary-type.enum';
@@ -425,6 +426,31 @@ export const activityTemplateArrayDummy = [
 export const activityTemplateFromDBDummy = {
   id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
   pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+  user_id: userDummy.id,
+  activity_type: ActivityType.standalone,
+  log_summary_type: LogSummaryType.SUM,
+  log_quantity: true,
+  activity_data: { name: 'Crunches', video_urls: [] },
+  duration_seconds: 300,
+  parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+  choices: [],
+};
+
+export const upsertActiivtyTemplateDummy = {
+  id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
+  user_id: randomUUID(),
+  activity_type: ActivityType.standalone,
+  log_summary_type: LogSummaryType.SUM,
+  log_quantity: true,
+  name: 'Test Name',
+  duration_seconds: 300,
+  choices: [],
+};
+
+export const activityTemplateFromDBForDifferentUserDummy = {
+  id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
+  pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+  user_id: randomUUID(),
   activity_type: ActivityType.standalone,
   log_summary_type: LogSummaryType.SUM,
   log_quantity: true,
@@ -446,6 +472,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: false,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
     {
       id: 'b8301b80-1286-464a-b0be-5838f52e2ff6',
@@ -457,6 +484,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: undefined,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
     {
       id: '74935284-e936-4247-8afa-e453484865e0',
@@ -468,6 +496,7 @@ export const deserializedStandaloneActivitiesDummy = [
       log_quantity: false,
       log_summary_type: undefined,
       has_choices: false,
+      name: 'Test Name',
     },
   ],
 ];

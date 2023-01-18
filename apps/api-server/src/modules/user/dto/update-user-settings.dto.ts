@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
 export class UpdateUserSettingsDto {
@@ -13,6 +13,11 @@ export class UpdateUserSettingsDto {
   @IsString()
   @IsMilitaryTime()
   shutdown_time?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsMilitaryTime()
+  cutoff_time_for_non_high_priority_activities?: string;
 
   @IsNotEmpty()
   @IsInt()

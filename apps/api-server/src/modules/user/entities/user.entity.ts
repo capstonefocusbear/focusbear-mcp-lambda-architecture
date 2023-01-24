@@ -15,6 +15,7 @@ import { UserTypes } from '../domain/user-types.enum';
 import { Notification } from '../../notification/entities/notification.entity';
 import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { InstalledFocusModeTemplate } from '../../focus-mode-template/entities/installed-focus-mode_templates.entity';
+import { UserMetadata } from '../domain/user-metadata.model';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -194,6 +195,12 @@ export class User extends BaseEntity {
     type: 'varchar',
   })
   cutoff_time_for_non_high_priority_activities?: string;
+
+  @Column({
+    type: 'jsonb',
+    transformer: BaseEntity.encryptJSONField('metadata'),
+  })
+  metadata?: UserMetadata;
 
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];

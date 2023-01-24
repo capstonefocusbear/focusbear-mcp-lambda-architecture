@@ -20,6 +20,7 @@ import { User } from '../../entities/user.entity';
 import { UserService } from '../../services/user/user.service';
 import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
+import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -98,5 +99,15 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async updateUserSignUpTemplate(@Body() ids: UpdateUserSignUpFieldDto, @AuthContext() { user }: Passport) {
     return this.userService.updateUserSignUpField(ids, user.id);
+  }
+
+  @Put('metadata')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async updateUserMetadata(
+    @Body() { profile_image, description }: UpdateUserMetadataDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<void> {
+    return this.userService.updateMetadata({ profile_image, description }, user.id);
   }
 }

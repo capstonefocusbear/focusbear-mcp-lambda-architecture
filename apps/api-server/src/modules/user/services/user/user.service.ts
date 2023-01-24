@@ -19,6 +19,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
+import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 
 @Injectable()
 export class UserService {
@@ -350,5 +351,11 @@ export class UserService {
       }
       this.userRepository.orm.update(user_id, { signed_up_via_focus_mode: focus_mode_template_id });
     }
+  }
+
+  async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    await this.userRepository.orm.update(user_id, { metadata: { profile_image, description } });
   }
 }

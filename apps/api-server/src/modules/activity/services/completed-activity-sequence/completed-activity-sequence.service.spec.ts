@@ -58,6 +58,7 @@ describe('CompletedActivitySequenceService', () => {
     );
 
     jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {

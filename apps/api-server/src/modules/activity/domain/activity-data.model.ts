@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -12,6 +13,7 @@ import {
 } from 'class-validator';
 import { ActivityChoiceType } from './activity-choice-type.enum';
 import { ActivityPriority } from './activity-priority.enum';
+import { ActivityImageData } from './ActivityImageData.model';
 import { TakeNotesOptions } from './take-notes-options.enum';
 
 export class ActivityData {
@@ -108,5 +110,6 @@ export class ActivityData {
 
   @IsOptional()
   @IsArray()
-  image_urls?: string[];
+  @Type(() => ActivityImageData)
+  image_urls?: ActivityImageData[];
 }

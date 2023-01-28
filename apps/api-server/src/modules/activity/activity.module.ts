@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
@@ -14,6 +15,9 @@ import { CompletedActivitySequenceService } from './services/completed-activity-
 import { CompletedActivityService } from './services/completed-activity/completed-activity.service';
 import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { CompletedFocusBlockRepository } from '../focus-mode/repositories/completed-focus-block.repository';
+import { ActivityService } from './services/activity-service/activity.service';
+import { ActivityController } from './controllers/activity.controller';
+import { ActivityImageConsumer } from './consumers/activity-image.consumer';
 
 @Module({
   providers: [
@@ -25,6 +29,8 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
     CompletedActivitySequenceRepository,
     CompletedActivitySequenceService,
     CompletedFocusBlockRepository,
+    ActivityService,
+    ActivityImageConsumer,
   ],
   exports: [
     ActivityParserService,
@@ -33,7 +39,7 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
     CompletedActivityRepository,
     CompletedActivitySequenceService,
   ],
-  controllers: [CompletedActivityController, CompletedActivitySequenceController],
+  controllers: [CompletedActivityController, CompletedActivitySequenceController, ActivityController],
   imports: [
     DeviceModule,
     forwardRef(() => UserModule),
@@ -42,6 +48,14 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherOptions => configService.get('pusher'),
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => config.get('bull'),
+    }),
+    BullModule.registerQueue({
+      name: 'activity-image',
     }),
   ],
 })

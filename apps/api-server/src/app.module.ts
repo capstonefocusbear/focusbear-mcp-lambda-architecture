@@ -21,6 +21,8 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { VideoMetadataModule } from './modules/video-metadata/video-metadata.module';
 import { TracksModule } from './modules/tracks/tracks.module';
 import { FocusModeTemplatesModule } from './modules/focus-mode-template/focus-mode-templates.module';
+import { CoursesModule } from './modules/course/courses.module';
+import { LessonModule } from './modules/lesson/lesson.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { FocusModeTemplatesModule } from './modules/focus-mode-template/focus-mo
     VideoMetadataModule,
     TracksModule,
     FocusModeTemplatesModule,
+    CoursesModule,
+    LessonModule,
   ],
   controllers: [AppController],
 })

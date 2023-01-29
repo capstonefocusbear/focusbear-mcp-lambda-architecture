@@ -114,3 +114,31 @@ export const FocusModeTemplatesRepositoryMock = {
   ...BaseRepositoryMock,
   fetchTemplatesByFilter: jest.fn(),
 };
+
+export const CoursesRepositoryMock = {
+  getAllAuthoredCourses: jest.fn(),
+  getAllEnrolledCourses: jest.fn(),
+  getRatings: jest.fn(),
+  createCourseContent: jest.fn(),
+  createRatingContent: jest.fn(),
+  createEnrolmentContent: jest.fn(),
+  updateCourseContent: jest.fn(),
+  updateCourseDeleted: jest.fn(),
+  updateCourseHidden: jest.fn(),
+  updateEnrolmentStatus: jest.fn(),
+  checkForeignKeyUserIdExist: jest.fn(),
+  checkForeignKeyCourseIdExist: jest.fn(),
+  checkUserCourseEnrolment: jest.fn(),
+};
+
+export const LessonsRepositoryMock = {
+  getCourseLessons: jest.fn(),
+  getLessonRatings: jest.fn(),
+  createCourseLessons: jest.fn(),
+  createLessonRating: jest.fn(),
+  createLessonCompletion: jest.fn(),
+  updateCourseLessons: jest.fn(),
+  checkForeignKeyCourseIdExist: jest.fn(),
+  checkForeignKeyLessonIdExist: jest.fn(),
+  checkUserCourseEnrolment: jest.fn(),
+};

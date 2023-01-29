@@ -30,6 +30,10 @@ export const unthtorizedPassportDummy = new Passport({
   declineReason: 'The Token expired!',
 });
 
+export const nonExistUserDummy = new User({
+  id: '3a4f0bb1-5313-49da-9ae6-cc28e864763fh',
+});
+
 export const userDummy = new User(
   {
     id: '3a4f0bb1-5313-49da-9ae6-cc28e864763f',

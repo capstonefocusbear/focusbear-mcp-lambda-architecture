@@ -10,10 +10,11 @@ import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { PusherAuthController } from './controllers/pusher-auth.controller';
 import { PusherBeamsAuthService } from './services/pusher-beams-auth.service';
 import { UserRepository } from '../user/repositories/user.repository';
+import { IsAdmin } from './guards/is-admin/is-admin.guard';
 
 @Module({
-  providers: [AuthService, IsAuth, HasAuth0ActionSecret, PusherBeamsAuthService, UserRepository],
-  exports: [IsAuth, AuthService, HasAuth0ActionSecret],
+  providers: [AuthService, IsAuth, HasAuth0ActionSecret, PusherBeamsAuthService, UserRepository, IsAdmin],
+  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret],
   controllers: [PusherAuthController],
   imports: [
     Auth0Module.registerAsync({

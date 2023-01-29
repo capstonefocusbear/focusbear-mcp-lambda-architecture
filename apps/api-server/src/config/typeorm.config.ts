@@ -18,6 +18,11 @@ import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata
 import { Track } from '../modules/tracks/entities/track.entity';
 import { FocusModeTemplate } from '../modules/focus-mode-template/entities/focus-mode-template.entity';
 import { InstalledFocusModeTemplate } from '../modules/focus-mode-template/entities/installed-focus-mode_templates.entity';
+import { Course } from '../modules/course/entities/course.entity';
+import { CourseEnrolment } from '../modules/course/entities/course-enrolment.enitiy';
+import { CourseRating } from '../modules/course/entities/course-rating.entity';
+import { Lesson } from '../modules/lesson/entities/lesson.entity';
+import { LessonCompletion } from '../modules/lesson/entities/lesson-completion.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -48,6 +53,11 @@ export const typeormConfig = registerAs(
       Track,
       FocusModeTemplate,
       InstalledFocusModeTemplate,
+      Course,
+      CourseEnrolment,
+      CourseRating,
+      Lesson,
+      LessonCompletion,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

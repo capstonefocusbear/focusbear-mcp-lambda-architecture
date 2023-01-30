@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, IsArray, IsUUID, IsNotEmpty, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsArray, IsUUID, IsNotEmpty, IsBoolean, ValidateIf } from 'class-validator';
 import { UpdateActivityTemplateDto } from '../../activity-template/dto/activity-template.dto';
 import { HabitPackType } from '../domain/habit-pack-type.enum';
 import { MarketplaceRequestType } from '../domain/marketplace-request.enum';
@@ -29,13 +29,13 @@ export class UpsertHabitPackDto {
   @IsUrl()
   description_video_url?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   welcome_message?: string;
 
   @IsOptional()
-  @IsString()
   @IsUrl()
+  @ValidateIf((e) => e.welcome_video_url !== '')
   welcome_video_url?: string;
 
   @IsOptional()

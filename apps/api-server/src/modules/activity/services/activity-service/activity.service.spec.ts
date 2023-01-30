@@ -2,10 +2,12 @@ import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { randomUUID } from 'crypto';
 import { QueueMock, userDummy } from '../../../../../test/dummies';
 import { ActivityService } from './activity.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
-import { SentryServiceMock, UserRepositoryMock } from '../../../../../test/mocks/index';
+import { ActivityRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../../test/mocks/index';
+import { ActivityRepository } from '../../repositories/activity.repository';
 
 describe('ActivityService', () => {
   let activityService: ActivityService;
@@ -13,6 +15,7 @@ describe('ActivityService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityService,
+        ActivityRepository,
         UserRepository,
         {
           provide: getQueueToken('activity-image'),
@@ -26,6 +29,8 @@ describe('ActivityService', () => {
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ActivityRepository)
+      .useValue(ActivityRepositoryMock)
       .compile();
 
     activityService = moduleRef.get<ActivityService>(ActivityService);
@@ -52,13 +57,18 @@ describe('ActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: should return a not found exception if user is not found in DB', async () => {
+    it('negative: should return an unauthorized exception if user is not creator of activity incoming image is from', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const errorMessage = `User with ID: ${userDummy.id} is not authorized to delete this image`;
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ user_id: randomUUID() });
+      const wrongActivityId = '3c07fd91-adf4-4ec1-bcef-3818842e9a7a';
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to delete this image from activity with ID: ${wrongActivityId}`;
       let exception: any;
 
       try {
-        await activityService.deleteActivityImageFromUploadIO(userDummy.id, '/dummy/file/path/file-name.png');
+        await activityService.deleteActivityImageFromUploadIO(
+          userDummy.id,
+          `/uploads/activity_images/${wrongActivityId}/quantum_awareness_icon.png`,
+        );
       } catch (error) {
         exception = error;
       }
@@ -70,12 +80,17 @@ describe('ActivityService', () => {
 
     it('positive: should add the incoming image path to the queue to delete the image on upload.io', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ user_id: userDummy.id });
+      const activityId = '3c07fd91-adf4-4ec1-bcef-3818842e9a7a';
 
-      await activityService.deleteActivityImageFromUploadIO(userDummy.id, `/dummy/file/path/${userDummy.id}`);
+      await activityService.deleteActivityImageFromUploadIO(
+        userDummy.id,
+        `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
+      );
 
       expect(QueueMock.add).toBeCalledWith('delete-activity-image', {
         user_id: userDummy.id,
-        filePath: `/dummy/file/path/${userDummy.id}`,
+        filePath: `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       });
     });
   });

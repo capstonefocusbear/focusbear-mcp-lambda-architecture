@@ -7,7 +7,7 @@ import { CreateLessonRatingDto } from '../dto/create-lesson-rating.dto';
 import { UserAuthContext } from '../../auth/domain/user-auth-context.model';
 import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
-import { GetUserRoles } from 'apps/api-server/src/shared/decorators/get-user-roles.decorator';
+import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
 
 @Controller('lesson')
 @UseGuards(IsAuth)

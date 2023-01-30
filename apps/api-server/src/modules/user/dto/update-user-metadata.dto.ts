@@ -1,9 +1,11 @@
+import { Type } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
+import { ProfileImageDto } from './ProfileImage.model';
 
 export class UpdateUserMetadataDto {
   @IsOptional()
-  @IsString()
-  profile_image?: string;
+  @Type(() => ProfileImageDto)
+  profile_image?: ProfileImageDto;
 
   @IsOptional()
   @IsString()

@@ -34,6 +34,7 @@ import { ActivityQuantityDaySummaryItem } from '../../domain/activity-quantity-d
 import { DaySummary } from '../../domain/day-summary.mode';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
+import { ActivityPriority } from '../../domain/activity-priority.enum';
 
 @Injectable()
 export class CompletedActivityService {
@@ -309,7 +310,7 @@ export class CompletedActivityService {
       },
     });
     const [sequence, activity, user, choice] = await Promise.all([
-      this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id }),
+      this.activitySequenceRepository.orm.findOne({ where: { id: activity_sequence_id }, relations: ['activities'] }),
       this.activityRepository.orm.findOneBy({ id: activity_id }),
       this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
@@ -393,7 +394,30 @@ export class CompletedActivityService {
     const noActivityInTheSequense = completedActivityIndexInTheSequence === -1;
     const noActivityInTheSequenseMessage = `Activity with id: ${activity_id} does not exist in the Secuense with id: ${id}!`;
     if (noActivityInTheSequense) throw new ConflictException(noActivityInTheSequenseMessage);
-    const nextActivity = sequenceActivityIds[completedActivityIndexInTheSequence + 1];
+    const userHasCutoffTime = Boolean(user.cutoff_time_for_non_high_priority_activities);
+    const userCurrentTime = DateTime.local({ zone: user.timezone });
+    // eslint-disable-next-line operator-linebreak
+    const userCutOffTime =
+      // eslint-disable-next-line operator-linebreak
+      userHasCutoffTime &&
+      DateTime.fromFormat(user.cutoff_time_for_non_high_priority_activities, 'hh:mm', {
+        zone: user.timezone,
+      });
+    const hasCutoffTimeBeenReached = userCutOffTime && userCurrentTime >= userCutOffTime;
+    let nextActivity;
+    if (hasCutoffTimeBeenReached) {
+      const activitiesSortedInSequence = sequence.activities.sort(
+        (precedingActivity, followingActivity) =>
+          sequence.activity_ids.indexOf(precedingActivity.id) - sequence.activity_ids.indexOf(followingActivity.id),
+      );
+      const remainingActivities = activitiesSortedInSequence.slice(completedActivityIndexInTheSequence + 1);
+      const nextHighPriorityActivity = remainingActivities.find(
+        (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+      );
+      nextActivity = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
+    } else {
+      nextActivity = sequenceActivityIds[completedActivityIndexInTheSequence + 1];
+    }
     const currentActivityIndex = completedActivityIndexInTheSequence;
     const currentState = new CurrentActivityState(
       {

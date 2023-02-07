@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
+import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
 import { FocusModeTemplate } from '../../src/modules/focus-mode-template/entities/focus-mode-template.entity';
 import { MarketplaceRequestType } from '../../src/modules/habit-pack/domain/marketplace-request.enum';
 import { CompletedActivitySequence } from '../../src/modules/activity/entities/completed-activity-sequence.entity';
@@ -555,6 +556,82 @@ export const ActivitySequenceDummy = new ActivitySequence(
   { generateId: true },
 );
 
+export const ActivityDummy: Activity = new Activity(
+  {
+    user_id: userDummy.id,
+    type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    duration_seconds: 600,
+    activity_data: new ActivityData(),
+    activity_sequence_id: ActivitySequenceDummy.id,
+  },
+  { generateId: true },
+);
+
+const sequenceId = randomUUID();
+const firstActivityId = randomUUID();
+const secondActivityId = randomUUID();
+const thridActivityId = randomUUID();
+
+export const ActivitySequenceWithHighPriorityActivitiesDummy = {
+  id: sequenceId,
+  type: ActivityType.morning,
+  activity_ids: [firstActivityId, secondActivityId, thridActivityId],
+  sequenceActivityIds: [firstActivityId, secondActivityId, thridActivityId],
+  user_id: userDummy.id,
+  total_duration_seconds: 360,
+  activities: [
+    {
+      ...ActivityDummy,
+      id: firstActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.STANDARD },
+    },
+    {
+      ...ActivityDummy,
+      id: secondActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.STANDARD },
+    },
+    {
+      ...ActivityDummy,
+      id: thridActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.HIGH },
+    },
+  ],
+};
+
+export const ActivitySequenceWithoutHighPriorityActivitiesDummy = {
+  id: sequenceId,
+  type: ActivityType.morning,
+  activity_ids: [firstActivityId, secondActivityId, thridActivityId],
+  sequenceActivityIds: [firstActivityId, secondActivityId, thridActivityId],
+  user_id: userDummy.id,
+  total_duration_seconds: 360,
+  activities: [
+    {
+      ...ActivityDummy,
+      id: firstActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.STANDARD },
+    },
+    {
+      ...ActivityDummy,
+      id: secondActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.STANDARD },
+    },
+    {
+      ...ActivityDummy,
+      id: thridActivityId,
+      activity_sequence_id: sequenceId,
+      activity_data: { priority: ActivityPriority.STANDARD },
+    },
+  ],
+};
+
 export const CompletedActivitiesForSequenceDummy = (sequence: ActivitySequence): CompletedActivity[] => {
   const duration_logged = 600;
   return sequence.sequenceActivityIds.map(
@@ -575,19 +652,6 @@ export const CompletedActivitiesForSequenceDummy = (sequence: ActivitySequence):
       ),
   );
 };
-
-export const ActivityDummy: Activity = new Activity(
-  {
-    user_id: userDummy.id,
-    type: ActivityType.evening,
-    log_summary_type: LogSummaryType.SUM,
-    log_quantity: true,
-    duration_seconds: 600,
-    activity_data: new ActivityData(),
-    activity_sequence_id: ActivitySequenceDummy.id,
-  },
-  { generateId: true },
-);
 
 export const CompletedActivityDummy = new CompletedActivity(
   {

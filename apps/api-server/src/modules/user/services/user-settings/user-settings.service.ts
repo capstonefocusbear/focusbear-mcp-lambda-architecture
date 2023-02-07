@@ -79,13 +79,17 @@ export class UserSettingsService {
       // eslint-disable-next-line operator-linebreak
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
-      // eslint-disable-next-line prettier/prettier
-      const { startup_time, shutdown_time, cutoff_time_for_non_high_priority_activities, break_after_minutes } = updateSettingsData;
+      const {
+        startup_time,
+        shutdown_time,
+        cutoff_time_for_non_high_priority_activities: cutoffTime,
+        break_after_minutes,
+      } = updateSettingsData;
       const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
       const updatedUser = new User({
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities,
+        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(cutoffTime) ? cutoffTime : null,
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
@@ -192,5 +196,13 @@ export class UserSettingsService {
       current_activity_id,
       current_activity_sequence_id,
     };
+  }
+
+  validateCutoffTime(time: string) {
+    if (!time) {
+      return false;
+    }
+    const cutoffTimeForToday = DateTime.fromFormat(time, 'hh:mm');
+    return cutoffTimeForToday.isValid;
   }
 }

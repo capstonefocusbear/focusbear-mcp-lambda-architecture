@@ -152,6 +152,7 @@ describe('UserSettingsService', () => {
         current_activity_id: undefined,
         current_activity_sequence_id: undefined,
         current_completing_sequence_log_id: undefined,
+        cutoff_time_for_non_high_priority_activities: null,
       });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);

@@ -15,8 +15,6 @@ export class UpdateUserSettingsDto {
   shutdown_time?: string;
 
   @IsOptional()
-  @IsString()
-  @IsMilitaryTime()
   cutoff_time_for_non_high_priority_activities?: string;
 
   @IsNotEmpty()

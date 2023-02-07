@@ -147,7 +147,7 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: user with team assosiation should be saved in the DB and the membershipe entitlement need to be granted via RevenueCat', async () => {
+    it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID(), member_of_team_id: null, member_of_team: null };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMember);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
@@ -156,7 +156,7 @@ describe('TeamManagementService', () => {
 
       newMember.member_of_team_id = TeamWithMembersDummy.id;
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...newMember, member_of_team_id: TeamWithMembersDummy.id });
-      expect(RevenueCatServiceMock.grantTeamMembershipe).toBeCalledWith(newMember.id);
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(newMember.id);
     });
   });
 
@@ -179,25 +179,25 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: user should be disassosiated from the team in the DB and the membershipe entitlement needs to be revoked via RevenueCat', async () => {
+    it('positive: user should be disassosiated from the team in the DB and the membership entitlement needs to be revoked via RevenueCat', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValueOnce(TeamWithMembersDummy);
 
       await teamManagementService.bulkDeleteTeamMembers([TeamMemberDummy.id], TeamWithMembersDummy.owner_id);
 
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...TeamMemberDummy, member_of_team_id: null });
-      expect(RevenueCatServiceMock.revokeTeamMembershipe).toBeCalledWith(TeamMemberDummy.id);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(TeamMemberDummy.id);
     });
   });
 
   describe('disassociateSelf', () => {
-    it('positive: user should be disassosiated from the team in the DB and the membershipe entitlement needs to be revoked via RevenueCat', async () => {
+    it('positive: user should be disassosiated from the team in the DB and the membership entitlement needs to be revoked via RevenueCat', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
 
       await teamManagementService.disassociateSelf(TeamMemberDummy.id);
 
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...TeamMemberDummy, member_of_team_id: null });
-      expect(RevenueCatServiceMock.revokeTeamMembershipe).toBeCalledWith(TeamMemberDummy.id);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(TeamMemberDummy.id);
     });
   });
 
@@ -242,7 +242,7 @@ describe('TeamManagementService', () => {
         to: email,
         from: 'marketing@focusbear.io',
         text: expect.toInclude(`?token=${singedJwt}`),
-        subject: 'You where invited to join team in Focus Bear app.',
+        subject: 'You were invited to a join team in Focus Bear.',
       });
     });
   });

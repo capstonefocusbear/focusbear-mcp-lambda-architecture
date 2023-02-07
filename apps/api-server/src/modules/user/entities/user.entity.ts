@@ -16,6 +16,7 @@ import { Notification } from '../../notification/entities/notification.entity';
 import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { InstalledFocusModeTemplate } from '../../focus-mode-template/entities/installed-focus-mode_templates.entity';
 import { UserMetadata } from '../domain/user-metadata.model';
+import { UserConsent } from './user-consent.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -201,6 +202,9 @@ export class User extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('metadata'),
   })
   metadata?: UserMetadata;
+
+  @OneToMany(() => UserConsent, (consent) => consent.user)
+  consents?: UserConsent[];
 
   @OneToMany(() => ActivitySequence, (sequence) => sequence.user)
   activity_sequences?: ActivitySequence[];

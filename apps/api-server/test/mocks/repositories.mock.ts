@@ -24,6 +24,10 @@ export const UserRepositoryMock = {
   consistentlyUpdateUserSettings: jest.fn(),
 };
 
+export const UserConsentRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),

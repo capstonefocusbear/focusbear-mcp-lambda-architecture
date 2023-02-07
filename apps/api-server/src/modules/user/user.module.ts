@@ -16,9 +16,11 @@ import { UserLocalDeviceSettingsController } from './controllers/user-local-devi
 import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
 import { HabitPackModule } from '../habit-pack/habit-pack.module';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
+import { UserConsentService } from './services/user-consent/user-consent.service';
+import { UserConsentRepository } from './repositories/user-consent.repository';
 
 @Module({
-  providers: [UserSettingsService, UserRepository, UserService],
+  providers: [UserSettingsService, UserRepository, UserService, UserConsentService, UserConsentRepository],
   exports: [UserRepository, UserService, UserSettingsService],
   imports: [
     TypeOrmModule.forFeature([User]),

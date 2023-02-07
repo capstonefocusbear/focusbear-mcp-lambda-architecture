@@ -12,7 +12,7 @@ import {
   standaloneHabitPackDummy,
   userSettingsDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
-import { userDummy } from '../../../../../test/dummies';
+import { ActivitySequenceDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {
@@ -386,6 +386,49 @@ describe('HabitPackManagerService', () => {
 
       expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toBeCalledWith(userDummy.id);
       expect(result).toMatchSnapshot();
+    });
+  });
+
+  describe('getUserInstalledStandalonePacks', () => {
+    it('negative: if the user does not exist in DB, not found error should be thrown', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
+
+      let response;
+      try {
+        response = await habitPackManagerService.getUserInstalledStandalonePacks(userDummy.id);
+      } catch (error) {
+        response = error;
+      }
+
+      expect(response.message).toMatch(responseMessage);
+    });
+
+    it('postive: should format installed standalone pack activities from DB format to format usable by frontend', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          ...ActivitySequenceDummy,
+          pack_id: standaloneHabitPackDBResponseDummy.id,
+          habit_pack: standaloneHabitPackDBResponseDummy,
+          activities: standaloneHabitPackDBResponseDummy.activity_templates,
+          type: 'standalone',
+        },
+      ]);
+      ActivityParserServiceMock.serialize.mockReturnValueOnce({
+        standalone_activities: standaloneHabitPackDummy.standalone_activities,
+      });
+
+      const res = await habitPackManagerService.getUserInstalledStandalonePacks(userDummy.id);
+
+      expect(res).toStrictEqual([
+        {
+          id: ActivitySequenceDummy.id,
+          pack_name: standaloneHabitPackDummy.pack_name,
+          pack_id: standaloneHabitPackDummy.id,
+          standalone_activities: standaloneHabitPackDummy.standalone_activities,
+        },
+      ]);
     });
   });
 });

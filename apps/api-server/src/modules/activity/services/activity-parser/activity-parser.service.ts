@@ -67,7 +67,11 @@ export class ActivityParserService {
     return serializedActivities;
   }
 
-  async deserialize(serialized: SerializedActivity, user_id: string): Promise<DeserializedActivity[]> {
+  async deserialize(
+    serialized: SerializedActivity,
+    user_id: string,
+    pack_id?: string,
+  ): Promise<DeserializedActivity[]> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -81,7 +85,7 @@ export class ActivityParserService {
       entries.map(async ([name, serializedActivities]) => {
         let [type] = name.split('_');
         if (type === 'break') type = ActivityType.break;
-        const sequence = await this.createActivitySequence(serializedActivities, { type, user_id });
+        const sequence = await this.createActivitySequence(serializedActivities, { type, user_id, pack_id });
         const activity_sequence_id = sequence.id;
         const context = { type, user_id, activity_sequence_id };
         const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
@@ -162,7 +166,10 @@ export class ActivityParserService {
     );
   }
 
-  private async createActivitySequence(serializedActivities: Activity[], { type, user_id }): Promise<ActivitySequence> {
+  private async createActivitySequence(
+    serializedActivities: Activity[],
+    { type, user_id, pack_id },
+  ): Promise<ActivitySequence> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -184,7 +191,7 @@ export class ActivityParserService {
       sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
     }
     const sequence = new ActivitySequence(
-      { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id },
+      { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id, pack_id },
       { generateId: !sequenceItem?.id },
     );
     return sequence;

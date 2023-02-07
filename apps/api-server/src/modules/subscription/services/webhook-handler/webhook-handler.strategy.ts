@@ -49,7 +49,7 @@ export class WebhookHandlerStrategy {
     team.is_active = true;
     team.expires_date = new Date(event.expiration_at_ms);
     const membersIds = this.extractMemberIds(team);
-    const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembershipe(id);
+    const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembership(id);
     const bulkGrantMembersAccess = Promise.all(membersIds.map(grantMemberAccess));
     const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkGrantMembersAccess]);
     return updatedTeam;
@@ -63,7 +63,7 @@ export class WebhookHandlerStrategy {
       const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
       team.is_active = false;
       const membersIds = this.extractMemberIds(team);
-      const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembershipe(id);
+      const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembership(id);
       const bulkRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
       const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkRevokeMembersAccess]);
       return updatedTeam;

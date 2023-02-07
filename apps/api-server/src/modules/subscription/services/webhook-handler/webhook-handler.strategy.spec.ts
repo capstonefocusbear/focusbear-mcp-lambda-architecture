@@ -45,7 +45,7 @@ describe('WebhookHandlerStrategy', () => {
       expect(result).toBeNull();
     });
 
-    it('positive: team item should be created (or updated if exists), user item should be saved with team assosiation', async () => {
+    it('positive: team item should be created (or updated if exists), user item should be saved with team association', async () => {
       TeamRepositoryMock.upsert.mockResolvedValue(TeamWithMembersDummy);
 
       await webhookHandlerStrategy.INITIAL_PURCHASE(testEventWithTeamEntitlement);
@@ -84,7 +84,7 @@ describe('WebhookHandlerStrategy', () => {
         is_active: true,
         expires_date: new Date(testEventWithTeamEntitlement.expiration_at_ms),
       });
-      expect(RevenueCatServiceMock.grantTeamMembershipe).toBeCalledWith(id);
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(id);
     });
   });
 
@@ -103,7 +103,7 @@ describe('WebhookHandlerStrategy', () => {
       await webhookHandlerStrategy.EXPIRATION(testEventWithTeamEntitlement);
 
       expect(TeamRepositoryMock.orm.save).toBeCalledWith({ ...TeamWithMembersDummy, is_active: false });
-      expect(RevenueCatServiceMock.revokeTeamMembershipe).toBeCalledWith(id);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(id);
     });
   });
 

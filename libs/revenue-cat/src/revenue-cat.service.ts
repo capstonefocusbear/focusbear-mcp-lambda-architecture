@@ -31,7 +31,7 @@ export class RevenueCatService {
       .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
   }
 
-  async grantTeamMembershipe(app_user_id: string) {
+  async grantTeamMembership(app_user_id: string) {
     await this.getOrCreateSubscriber(app_user_id);
     const access = Entitlement.team_member;
     const duration = 'lifetime';
@@ -67,7 +67,7 @@ export class RevenueCatService {
     return isEntitlementValid;
   }
 
-  async revokeTeamMembershipe(app_user_id: string) {
+  async revokeTeamMembership(app_user_id: string) {
     const access = Entitlement.team_member;
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/revoke_promotionals`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;

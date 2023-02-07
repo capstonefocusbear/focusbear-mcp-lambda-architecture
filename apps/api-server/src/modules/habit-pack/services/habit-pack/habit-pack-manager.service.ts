@@ -22,6 +22,8 @@ import { HabitPackType } from '../../domain/habit-pack-type.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { HabitPack } from '../../entity/habit-pack.entity';
 import { UserSettingsResponseDto } from '../../../user/dto/user-settings-response.dto';
+import { ActivityType } from '../../../activity/domain/activity-type.enum';
+import { InstalledStandalonePackResponse } from '../../domain/installed-standalone-pack-response.model';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -124,7 +126,7 @@ export class HabitPackManagerService {
     const { standalone_activities } = habitPack;
     const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities);
     const serializedActivities: SerializedActivity = { standalone_activities: newActivities };
-    const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id);
+    const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id, pack_id);
     await this.habitPackRepository.consistentlyInstallStandaloneHabitPack(deserializedActivities[0]);
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id, deserializedActivities[0].sequence.id);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
@@ -291,5 +293,23 @@ export class HabitPackManagerService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getUserInstalledStandalonePacks(user_id: string): Promise<InstalledStandalonePackResponse[]> {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    const sequences = await this.activitySequenceRepository.orm.find({
+      where: { user_id, type: ActivityType.standalone },
+      relations: ['activities', 'activities.choices'],
+    });
+    return sequences.map((sequence) => {
+      const serializedStandaloneActivities = this.activityParserService.serialize([sequence]).standalone_activities;
+      return {
+        id: sequence.id,
+        pack_name: sequence.habit_pack.pack_name,
+        pack_id: sequence.pack_id,
+        standalone_activities: serializedStandaloneActivities,
+      };
+    });
   }
 }

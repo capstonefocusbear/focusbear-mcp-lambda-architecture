@@ -37,11 +37,11 @@ export class TeamManagementService {
         this.userRepository.orm.findOneBy({ id: member_id }),
         this.teamRepository.findActiveTeamWithMembersByOwnerId(owner_id),
       ]);
-      this.validateTeamMembershipe(user, team, { member_id, owner_id });
+      this.validateTeamMembership(user, team, { member_id, owner_id });
       user.member_of_team_id = team.id;
       const [member] = await Promise.all([
         this.userRepository.orm.save(user),
-        this.revenueCatService.grantTeamMembershipe(user.id),
+        this.revenueCatService.grantTeamMembership(user.id),
       ]);
       return member;
     } catch (error) {
@@ -50,7 +50,7 @@ export class TeamManagementService {
     }
   }
 
-  private validateTeamMembershipe(user: User, team: Team, { member_id, owner_id }): void | never {
+  private validateTeamMembership(user: User, team: Team, { member_id, owner_id }): void | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -118,8 +118,8 @@ export class TeamManagementService {
     });
     member.nullifyTeamMembership();
     const savedUserPromise = this.userRepository.orm.save(member);
-    const revokedMembershipeEntitlementPromise = this.revenueCatService.revokeTeamMembershipe(member.id);
-    return Promise.all([savedUserPromise, revokedMembershipeEntitlementPromise]);
+    const revokedMembershipEntitlementPromise = this.revenueCatService.revokeTeamMembership(member.id);
+    return Promise.all([savedUserPromise, revokedMembershipEntitlementPromise]);
   }
 
   async disassociateSelf(member_id: string): Promise<User> {
@@ -164,7 +164,7 @@ export class TeamManagementService {
         to: email,
         from: 'marketing@focusbear.io',
         text: inviteUrl,
-        subject: 'You where invited to join team in Focus Bear app.',
+        subject: 'You were invited to a join team in Focus Bear.',
       });
       return inviteUrl;
     } catch (error) {

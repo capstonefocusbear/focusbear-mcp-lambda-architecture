@@ -5,6 +5,7 @@ import { InstalledPack } from './installed-pack.entity';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 import { HabitPackType } from '../domain/habit-pack-type.enum';
 import { MarketplaceRequestType } from '../domain/marketplace-request.enum';
+import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 
 @Entity('habit_packs')
 export class HabitPack extends BaseEntity {
@@ -93,6 +94,9 @@ export class HabitPack extends BaseEntity {
 
   @OneToMany(() => InstalledPack, (installed_pack) => installed_pack.habit_pack)
   installs?: InstalledPack[];
+
+  @OneToMany(() => ActivitySequence, (activity_sequence) => activity_sequence.habit_pack)
+  activity_sequences?: ActivitySequence[];
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.habit_pack)
   activity_templates?: ActivityTemplate[];

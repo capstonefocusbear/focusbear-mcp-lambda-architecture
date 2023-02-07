@@ -12,6 +12,7 @@ import { HabitPackManagerService } from '../services/habit-pack/habit-pack-manag
 import { InstallPackAsDefaultSettingsDto } from '../dto/install-pack-as-default-settings.dto';
 import { UserSettingsResponseDto } from '../../user/dto/user-settings-response.dto';
 import { GetMultiplePacksQueryDto } from '../dto/get-multiple-packs-query.dto';
+import { InstalledStandalonePackResponse } from '../domain/installed-standalone-pack-response.model';
 
 @Controller('habit-packs')
 @ApiTags('habit-packs')
@@ -86,5 +87,12 @@ export class HabitPackController {
   @ApiSecurity('Auth0AccessToken')
   getUserInstalledPacks(@AuthContext() { user }: Passport): Promise<HabitPack[]> {
     return this.habitPackManagerService.getUserInstalledPacks(user.id);
+  }
+
+  @Get('/installed-standalone-packs')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserInstalledStandalonePacks(@AuthContext() { user }: Passport): Promise<InstalledStandalonePackResponse[]> {
+    return this.habitPackManagerService.getUserInstalledStandalonePacks(user.id);
   }
 }

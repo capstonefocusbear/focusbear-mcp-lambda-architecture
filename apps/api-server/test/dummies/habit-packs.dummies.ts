@@ -10,7 +10,7 @@ import { userDummy } from '.';
 export const standaloneHabitPackDummy = {
   pack_type: HabitPackType.standalone,
   id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
-  pack_name: 'Second Standalone Pack',
+  pack_name: "Standalone Pack's Name",
   description: 'Sweeter pack!',
   description_video_url: 'www.google.com',
   welcome_message: "Welcome to Focus Bear ya'll",
@@ -169,7 +169,7 @@ export const testUserRoutineHabitPack = {
 };
 
 export const standaloneHabitPackDBResponseDummy = {
-  id: 'bc55568b-59bb-4842-8a83-e92843356978',
+  id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
   user_id: '3a4f0bb1-5313-49da-9ae6-cc28e864763f',
   pack_name: "Standalone Pack's Name",
   pack_type: HabitPackType.standalone,

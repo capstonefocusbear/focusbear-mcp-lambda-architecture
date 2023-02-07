@@ -23,6 +23,7 @@ import { CourseEnrolment } from '../modules/course/entities/course-enrolment.eni
 import { CourseRating } from '../modules/course/entities/course-rating.entity';
 import { Lesson } from '../modules/lesson/entities/lesson.entity';
 import { LessonCompletion } from '../modules/lesson/entities/lesson-completion.entity';
+import { UserConsent } from '../modules/user/entities/user-consent.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -58,6 +59,7 @@ export const typeormConfig = registerAs(
       CourseRating,
       Lesson,
       LessonCompletion,
+      UserConsent,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

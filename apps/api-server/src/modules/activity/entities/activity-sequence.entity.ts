@@ -5,6 +5,7 @@ import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
 import { CompletedActivity } from './completed-activity.entity';
 import { CompletedActivitySequence } from './completed-activity-sequence.entity';
+import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
 
 @Entity('activity_sequences')
 export class ActivitySequence extends BaseEntity {
@@ -51,9 +52,19 @@ export class ActivitySequence extends BaseEntity {
   })
   generated_total_duration_seconds?: number;
 
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  pack_id?: string;
+
   @ManyToOne(() => User, (user) => user.activity_sequences)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_sequences, { eager: true })
+  @JoinColumn({ name: 'pack_id' })
+  habit_pack?: HabitPack;
 
   @OneToMany(() => Activity, (activity) => activity.activity_sequence)
   activities?: Activity[];

@@ -21,11 +21,13 @@ import { UserService } from '../../services/user/user.service';
 import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
+import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
+import { UserConsentService } from '../../services/user-consent/user-consent.service';
 
 @Controller('user')
 @ApiTags('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService, private readonly userConsentService: UserConsentService) {}
 
   @Put('/account-sync')
   @ApiSecurity('Auth0ActionSecret')
@@ -109,5 +111,11 @@ export class UserController {
     @AuthContext() { user }: Passport,
   ): Promise<void> {
     return this.userService.updateMetadata({ profile_image, description }, user.id);
+  }
+
+  @Put('consent')
+  @UseGuards(IsAuth)
+  async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
+    return this.userConsentService.upsertUserConsent(userConsent, user.id);
   }
 }

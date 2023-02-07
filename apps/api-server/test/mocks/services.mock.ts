@@ -58,8 +58,8 @@ export const PusherServiceMock = {
 
 export const RevenueCatServiceMock = {
   getOrCreateSubscriber: jest.fn(),
-  grantTeamMembershipe: jest.fn(),
-  revokeTeamMembershipe: jest.fn(),
+  grantTeamMembership: jest.fn(),
+  revokeTeamMembership: jest.fn(),
   grantTrialAccess: jest.fn(),
   checkSubscriptionStatus: jest.fn(),
 };

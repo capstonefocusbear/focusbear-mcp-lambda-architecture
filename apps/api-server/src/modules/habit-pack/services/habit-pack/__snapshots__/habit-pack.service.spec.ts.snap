@@ -7,7 +7,7 @@ Object {
   "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
   "marketplace_approval_status": true,
   "marketplace_request": "requested",
-  "pack_name": "Second Standalone Pack",
+  "pack_name": "Standalone Pack's Name",
   "pack_type": "standalone",
   "standalone_activities": Array [
     Object {
@@ -60,7 +60,7 @@ Array [
     "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
     "marketplace_approval_status": true,
     "marketplace_request": "requested",
-    "pack_name": "Second Standalone Pack",
+    "pack_name": "Standalone Pack's Name",
     "pack_type": "standalone",
     "standalone_activities": Array [
       Object {
@@ -170,7 +170,7 @@ exports[`HabitPackService serializeHabitPack Positive: should return serialized 
 Object {
   "description": "This is a great pack",
   "description_video_url": "www.youtube.com",
-  "id": "bc55568b-59bb-4842-8a83-e92843356978",
+  "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
   "marketplace_approval_status": true,
   "marketplace_request": "unrequested",
   "pack_name": "Standalone Pack's Name",

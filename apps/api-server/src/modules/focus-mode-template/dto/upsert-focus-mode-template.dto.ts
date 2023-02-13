@@ -3,9 +3,9 @@ import { IsOptional, IsString, IsUrl, IsUUID, IsNotEmpty, IsBoolean, IsArray, Va
 import { MarketplaceRequestType } from '../../habit-pack/domain/marketplace-request.enum';
 
 export class UpsertFocusModeTemplateDto {
-  @IsOptional()
+  @IsNotEmpty()
   @IsUUID('4')
-  id?: string;
+  id: string;
 
   @IsOptional()
   @IsString()

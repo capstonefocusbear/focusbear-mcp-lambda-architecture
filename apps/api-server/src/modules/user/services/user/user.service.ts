@@ -20,6 +20,12 @@ import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
+import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
+import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
+import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
+import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
+import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
+import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 
 @Injectable()
 export class UserService {
@@ -35,6 +41,10 @@ export class UserService {
     private readonly focusModeTemplateRepository: FocusModeTemplatesRepository,
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
+    private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
+    private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
   ) {}
 
   async syncUserAccount({ auth0_id, email, name }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -199,6 +209,12 @@ export class UserService {
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
       const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
       await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
+      if (local_device_settings.MacOS.has_edited_blocked_urls) {
+        await this.userDailyStatsService.updateUserOnboardingProgress(
+          user_id,
+          UserProgressUpdateTypes.EDIT_BLOCKED_URLS,
+        );
+      }
       return updatedSettings;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -307,17 +323,28 @@ export class UserService {
     }
   }
 
-  async getListOfUsers(user_id: string, take: number, skip: number): Promise<User[]> {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (user.user_type !== UserTypes.ADMIN) {
-      throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
+  async getListOfUsers(
+    adminUserId: string,
+    take: number,
+    skip: number,
+    order_by?: UsersOrderByOptions,
+  ): Promise<User[]> {
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminUserId });
+    if (adminUser.user_type !== UserTypes.ADMIN) {
+      throw new UnauthorizedException(`User with ID: ${adminUserId} is not authorized to access this endpoint!`);
     }
-    const users = await this.userRepository.orm.find({
-      order: { created_at: 'DESC' },
+    if (order_by) {
+      return this.userRepository.orm.find({
+        order: { [order_by]: { direction: 'DESC', nulls: 'LAST' } },
+        take,
+        skip,
+      });
+    }
+    return this.userRepository.orm.find({
+      order: { created_at: { direction: 'DESC' } },
       take,
       skip,
     });
-    return users;
   }
 
   async getUserById(user_id: string, id: string, stripe_customer_id: string): Promise<User> {
@@ -325,11 +352,17 @@ export class UserService {
     if (user.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
-    const foundUser = await this.userRepository.orm.findOne({
-      where: [{ id }, { stripe_customer_id }],
-      relations: ['focus_modes', 'activities'],
-    });
-    return foundUser;
+
+    return this.userRepository.getUserForAdmin(id, stripe_customer_id);
+  }
+
+  async saveAdminAccessRequest(user_id: string, accessReason: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (user.user_type !== UserTypes.ADMIN) {
+      throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
+    }
+    const accessRequest = new AdminAccessRequest({ admin_user_id: user_id, access_reason: accessReason });
+    await this.adminAccessRequestRepository.create(accessRequest);
   }
 
   async updateUserSignUpField(ids: UpdateUserSignUpFieldDto, user_id: string) {

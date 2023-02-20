@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -23,11 +23,16 @@ import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dt
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
+import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
 
 @Controller('user')
 @ApiTags('user')
 export class UserController {
-  constructor(private readonly userService: UserService, private readonly userConsentService: UserConsentService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userConsentService: UserConsentService,
+    private readonly userDailyStatsService: UserDailyStatsService,
+  ) {}
 
   @Put('/account-sync')
   @ApiSecurity('Auth0ActionSecret')
@@ -55,6 +60,7 @@ export class UserController {
 
   @Get('/list')
   @UseGuards(IsAuth, HasSubscription)
+  @ApiSecurity('Auth0AccessToken')
   @RequireEntitlements([Entitlement.team_owner])
   async getUsersList(@Query() { search }: GetUsersQueryDto): Promise<User[]> {
     return this.userService.getUsers({ search });
@@ -79,10 +85,10 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   async getListOfUsers(
-    @Query() { take, skip }: GetUsersListQueryDto,
+    @Query() { take, skip, order_by }: GetUsersListQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<User[]> {
-    return this.userService.getListOfUsers(user.id, take, skip);
+    return this.userService.getListOfUsers(user.id, take, skip, order_by);
   }
 
   @Get()
@@ -117,5 +123,21 @@ export class UserController {
   @UseGuards(IsAuth)
   async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
     return this.userConsentService.upsertUserConsent(userConsent, user.id);
+  }
+
+  @Get('stats/onboarding')
+  @UseGuards(IsAuth)
+  async getUserStats(@AuthContext() { user }: Passport) {
+    return this.userDailyStatsService.CalculateUserStatsResponse(user.id);
+  }
+
+  @Post('access-request')
+  @UseGuards(IsAdmin)
+  @UseGuards(IsAuth)
+  async saveAdminAccessRequest(
+    @Body() { access_reason }: { access_reason: string },
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userService.saveAdminAccessRequest(user.id, access_reason);
   }
 }

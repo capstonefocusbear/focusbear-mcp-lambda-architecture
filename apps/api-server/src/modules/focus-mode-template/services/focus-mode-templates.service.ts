@@ -50,9 +50,8 @@ export class FocusModeTemplatesService {
       }
       const { marketplace_approval_status, author_name, id } = focusModeTemplateDto;
       let approvalStatus;
-      // eslint-disable-next-line prettier/prettier, operator-linebreak
-      const approvalStatusHasChanged =
-        marketplace_approval_status !== existingFocusModeTemplate?.marketplace_approval_status;
+      const marketplaceApprovalStatus = existingFocusModeTemplate?.marketplace_approval_status;
+      const approvalStatusHasChanged = marketplace_approval_status !== marketplaceApprovalStatus;
       const approvalStatusIsFalse = typeof marketplace_approval_status !== 'undefined' && !marketplace_approval_status;
       if (userIsAdmin) {
         approvalStatus = marketplace_approval_status;

@@ -24,6 +24,8 @@ import { CourseRating } from '../modules/course/entities/course-rating.entity';
 import { Lesson } from '../modules/lesson/entities/lesson.entity';
 import { LessonCompletion } from '../modules/lesson/entities/lesson-completion.entity';
 import { UserConsent } from '../modules/user/entities/user-consent.entity';
+import { DailyStats } from '../modules/user/entities/user-daily-stats.entity';
+import { AdminAccessRequest } from '../modules/user/entities/admin-access-requests.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -60,6 +62,8 @@ export const typeormConfig = registerAs(
       Lesson,
       LessonCompletion,
       UserConsent,
+      DailyStats,
+      AdminAccessRequest,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -18,6 +18,9 @@ import {
   StripeServiceMock,
   UserRepositoryMock,
   UserSettingsServiceMock,
+  UserDailyStatsServiceMock,
+  CompletedActivitySequenceRepositoryMock,
+  AdminAccessRequestRepositoryMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -30,6 +33,11 @@ import { CompletedActivityRepository } from '../../../activity/repositories/comp
 import { routineHabitPackDBResponseDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
+import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
+import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
+import { UserTypes } from '../../domain/user-types.enum';
+import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -48,6 +56,9 @@ describe('UserService', () => {
         ConfigService,
         HabitPackRepository,
         FocusModeTemplatesRepository,
+        UserDailyStatsService,
+        CompletedActivitySequenceRepository,
+        AdminAccessRequestRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -72,6 +83,12 @@ describe('UserService', () => {
       .useValue(HabitPackRepositoryMock)
       .overrideProvider(FocusModeTemplatesRepository)
       .useValue(FocusModeTemplatesRepositoryMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(CompletedActivitySequenceRepository)
+      .useValue(CompletedActivitySequenceRepositoryMock)
+      .overrideProvider(AdminAccessRequestRepository)
+      .useValue(AdminAccessRequestRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });
@@ -383,6 +400,46 @@ describe('UserService', () => {
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
         signed_up_via_focus_mode: focusModeTemplateDBResponseDummy.id,
+      });
+    });
+  });
+
+  describe('getListOfUsers', () => {
+    it('negative: if user is not admin type unauthorized exception should be thrown for trying to access user records', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.STANDARD });
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access this endpoint!`;
+      let exception: any;
+      try {
+        await userService.getListOfUsers(userDummy.id, 100, 0);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: if no field to order by is passed, users should be fetched in  descending order by date they joined', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+
+      await userService.getListOfUsers(userDummy.id, 100, 0);
+
+      expect(UserRepositoryMock.orm.find).toBeCalledWith({
+        order: { created_at: { direction: 'DESC' } },
+        take: 100,
+        skip: 0,
+      });
+    });
+
+    it('positive: if field to order by is passed to function, users should be fetched in descending order ordered by field passed as argument', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+
+      await userService.getListOfUsers(userDummy.id, 100, 0, UsersOrderByOptions.LAST_COMPLETED_ROUTINE);
+
+      expect(UserRepositoryMock.orm.find).toBeCalledWith({
+        order: { last_completed_sequence_started_at: { direction: 'DESC', nulls: 'LAST' } },
+        take: 100,
+        skip: 0,
       });
     });
   });

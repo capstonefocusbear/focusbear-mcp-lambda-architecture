@@ -10,6 +10,8 @@ import { User } from '../../entities/user.entity';
 import { UserRepository } from '../../repositories/user.repository';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
+import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
+import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 
 @Injectable()
 export class UserSettingsService {
@@ -19,6 +21,7 @@ export class UserSettingsService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {}
 
   async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -76,7 +79,6 @@ export class UserSettingsService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-      // eslint-disable-next-line operator-linebreak
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
       const {
@@ -101,6 +103,9 @@ export class UserSettingsService {
       const serializedActivities = { morning_activities, evening_activities, break_activities };
       const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id);
       await this.userRepository.consistentlyUpdateUserSettings(updatedUser, deserializedActivities);
+      if (should_update_has_edited_settings) {
+        await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS);
+      }
       return await this.getSettings({ user_id });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

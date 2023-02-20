@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
+import { DateTime } from 'luxon';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
 import { FocusModeTemplate } from '../../src/modules/focus-mode-template/entities/focus-mode-template.entity';
 import { MarketplaceRequestType } from '../../src/modules/habit-pack/domain/marketplace-request.enum';
@@ -633,7 +634,7 @@ export const ActivitySequenceWithoutHighPriorityActivitiesDummy = {
 };
 
 export const CompletedActivitiesForSequenceDummy = (sequence: ActivitySequence): CompletedActivity[] => {
-  const duration_logged = 600;
+  const duration_logged = 60000;
   return sequence.sequenceActivityIds.map(
     (e, i) =>
       new CompletedActivity(
@@ -876,6 +877,7 @@ export const CompletedFocusBlockDummy = new CompletedFocusBlock(
 
 export const UncompletedSequenceLogDummy = new CompletedActivitySequence({
   activity_sequence_id: ActivitySequenceDummy.id,
+  activity_sequence: ActivitySequenceDummy,
   user_id: userDummy.id,
   start_time: new Date(),
   is_completed: false,
@@ -1235,6 +1237,134 @@ export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
   marketplace_approval_status: false,
   language: 'en',
 };
+
+const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).startOf('day');
+
+export const dailyStatsArrayDummy = [
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 7,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  // this stat is mocked to fall over a weekend and has no completed focus modes
+  // to test streak not being reset if FM not done over weekend
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 1 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 0,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 2 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 3,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 3 }).toJSDate(),
+    morning_routine_completion_percentage: 30,
+    evening_routine_completion_percentage: 30,
+    focus_modes_completed: 4,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 4 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 3,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 5 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 7,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 6 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 4,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 7 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 3,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 8 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 7,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 9 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 4,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 10 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 3,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+];
 
 export const QueueMock = {
   add: jest.fn(),

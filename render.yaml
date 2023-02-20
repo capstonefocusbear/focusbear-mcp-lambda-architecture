@@ -1,5 +1,5 @@
 previewsEnabled: true
-previewsExpireAfterDays: 1
+previewsExpireAfterDays: 5
 
 services:
 - type: web

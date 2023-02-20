@@ -22,6 +22,7 @@ import {
   SentryServiceMock,
   CompletedActivitySequenceServiceMock,
   ActivitySequenceRepositoryMock,
+  UserDailyStatsServiceMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -32,6 +33,7 @@ import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { User } from '../../entities/user.entity';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
+import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -48,6 +50,7 @@ describe('UserSettingsService', () => {
         RevenueCatService,
         StripeService,
         ConfigService,
+        UserDailyStatsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -68,6 +71,8 @@ describe('UserSettingsService', () => {
       .useValue(CompletedActivitySequenceServiceMock)
       .overrideProvider(ActivitySequenceRepository)
       .useValue(ActivitySequenceRepositoryMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);

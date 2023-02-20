@@ -42,6 +42,7 @@ export const UserServiceMock = {
 
 export const DeviceServiceMock = {
   markAsLeader: jest.fn(),
+  getUserInstalledDevices: jest.fn(),
 };
 
 export const CompletedActivitySequenceServiceMock = {
@@ -138,4 +139,10 @@ export const FocusModeServiceMock = {
 
 export const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
+};
+
+export const UserDailyStatsServiceMock = {
+  updateUserOnboardingProgress: jest.fn(),
+  updateDailyStatsFocusModesCompleted: jest.fn(),
+  updateDailyStatsRoutineCompletion: jest.fn(),
 };

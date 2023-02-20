@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bull';
 import { ActivityModule } from '../activity/activity.module';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { AuthModule } from '../auth/auth.module';
@@ -18,10 +19,25 @@ import { HabitPackModule } from '../habit-pack/habit-pack.module';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
 import { UserConsentService } from './services/user-consent/user-consent.service';
 import { UserConsentRepository } from './repositories/user-consent.repository';
+import { UserDailyStatsService } from './services/user-daily-stats/user-daily-stats.service';
+import { DailyStatsRepository } from './repositories/user-daily-stats.repository';
+import { DailyStatsConsumer } from './consumers/daily-stats.consumer';
+import { DeviceModule } from '../device/device.module';
+import { AdminAccessRequestRepository } from './repositories/admin-access-requests.repository';
 
 @Module({
-  providers: [UserSettingsService, UserRepository, UserService, UserConsentService, UserConsentRepository],
-  exports: [UserRepository, UserService, UserSettingsService],
+  providers: [
+    UserSettingsService,
+    UserRepository,
+    UserService,
+    UserConsentService,
+    UserConsentRepository,
+    UserDailyStatsService,
+    DailyStatsRepository,
+    DailyStatsConsumer,
+    AdminAccessRequestRepository,
+  ],
+  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
   imports: [
     TypeOrmModule.forFeature([User]),
     Auth0Module.registerAsync({
@@ -39,12 +55,21 @@ import { UserConsentRepository } from './repositories/user-consent.repository';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => config.get('bull'),
+    }),
+    BullModule.registerQueue({
+      name: 'stats',
+    }),
     ActivityModule,
     AuthModule,
     ConfigModule,
     SubscriptionModule,
     HabitPackModule,
     FocusModeTemplatesModule,
+    DeviceModule,
   ],
   controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController],
 })

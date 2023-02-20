@@ -15,10 +15,10 @@ const fetchNotifications = async () => {
   const pool = new Pool({ connectionString });
   await pool.connect();
   const currentTime = DateTime.now().toISO();
-  const timeInFifiteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
+  const timeInFifteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
   const res = await pool.query({
     text: 'SELECT * FROM notifications WHERE event_begins >= $1 AND event_begins <= $2 AND received IS NOT TRUE;',
-    values: [currentTime, timeInFifiteenMinutes],
+    values: [currentTime, timeInFifteenMinutes],
   });
   return res.rows;
 };

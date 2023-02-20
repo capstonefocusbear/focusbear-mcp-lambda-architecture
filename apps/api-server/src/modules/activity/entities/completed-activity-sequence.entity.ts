@@ -1,5 +1,6 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { DailyStats } from '../../user/entities/user-daily-stats.entity';
 import { User } from '../../user/entities/user.entity';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivity } from './completed-activity.entity';
@@ -56,12 +57,18 @@ export class CompletedActivitySequence extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activity_sequences)
+  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activity_sequences, { eager: true })
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
 
   @OneToMany(() => CompletedActivity, (activity_log) => activity_log.completed_sequence_log)
   completed_activity_logs?: CompletedActivity[];
+
+  @OneToOne(() => DailyStats, (daily_stat) => daily_stat.morning_sequence_log)
+  completed_morning_sequence?: DailyStats;
+
+  @OneToOne(() => DailyStats, (daily_stat) => daily_stat.evening_sequence_log)
+  completed_evening_sequence?: DailyStats;
 
   finalizeUncompletedLog() {
     this.setMetrics();

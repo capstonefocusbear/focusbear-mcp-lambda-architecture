@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
+import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
@@ -52,5 +53,26 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getUserInstalledDevices(user_id: string) {
+    const userDevices = await this.deviceRepository.orm.find({
+      where: {
+        user_id,
+      },
+    });
+    const desktopDevices = userDevices.filter((device) => {
+      const isMacApp = device.operating_system === OperatingSystem.MacOS;
+      const isWindowsApp = device.operating_system === OperatingSystem.Windows;
+      return isMacApp || isWindowsApp;
+    });
+    const mobileDevices = userDevices.filter((device) => {
+      const isIOSApp = device.operating_system === OperatingSystem.iOS;
+      const isAndroidApp = device.operating_system === OperatingSystem.Android;
+      return isIOSApp || isAndroidApp;
+    });
+    const hasInstalledDesktopApp = desktopDevices.length > 0;
+    const hasInstalledMobileApp = mobileDevices.length > 0;
+    return { hasInstalledDesktopApp, hasInstalledMobileApp };
   }
 }

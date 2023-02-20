@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { DateTime } from 'luxon';
 import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { CurrentFocusModeData } from '../../domain/current-focus-mode-data.model';
 import { FinishFocusModeDto } from '../../dto/finish-focus-mode.dto';
 import { GetFocusModeParamsDto } from '../../dto/get-focus-mode-params.dto';
@@ -22,6 +24,7 @@ export class FocusModeManagerService {
     private readonly pusher: PusherService,
     private readonly pusherBeamsService: PusherBeamsService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {}
 
   async startCurrentFocusMode(
@@ -130,6 +133,10 @@ export class FocusModeManagerService {
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+      await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(user_id, finish_time, user.timezone);
+      await this.userRepository.update(user.id, {
+        last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
+      });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

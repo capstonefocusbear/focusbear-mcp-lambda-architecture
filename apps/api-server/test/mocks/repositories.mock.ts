@@ -68,6 +68,10 @@ export const CompletedActivitySequenceRepositoryMock = {
   getSequenceLogByDate: jest.fn(),
 };
 
+export const AdminAccessRequestRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const FocusModeRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByIdForUser: jest.fn(),
@@ -145,4 +149,9 @@ export const LessonsRepositoryMock = {
   checkForeignKeyCourseIdExist: jest.fn(),
   checkForeignKeyLessonIdExist: jest.fn(),
   checkUserCourseEnrolment: jest.fn(),
+};
+
+export const DailyStatsRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserDailyStats: jest.fn(),
 };

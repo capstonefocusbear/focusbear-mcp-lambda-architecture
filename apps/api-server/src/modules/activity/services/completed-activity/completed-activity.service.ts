@@ -35,6 +35,7 @@ import { DaySummary } from '../../domain/day-summary.mode';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 
 @Injectable()
 export class CompletedActivityService {
@@ -49,6 +50,7 @@ export class CompletedActivityService {
     private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
     private readonly userSettingsService: UserSettingsService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {}
 
   async completeActivity(
@@ -94,6 +96,15 @@ export class CompletedActivityService {
         completingSequenceLog,
       );
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
+      if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
+        await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
+          user,
+          activity.type,
+          createdItem.completed_activity_log.completed_sequence_id,
+          completedActivity.start_time,
+          user.timezone,
+        );
+      }
       return createdItem;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -169,7 +180,6 @@ export class CompletedActivityService {
   }) {
     try {
       const startTime = completedActivity.start_time;
-      // eslint-disable-next-line operator-linebreak
       const completingSequenceLog =
         await this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
           user,
@@ -203,6 +213,16 @@ export class CompletedActivityService {
           );
         }
         createdLogs.push(createdItem);
+        if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
+          await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
+            user,
+            activity.type,
+            createdItem.completed_activity_log.completed_sequence_id,
+            startTime,
+            user.timezone,
+            true,
+          );
+        }
       }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -391,15 +411,13 @@ export class CompletedActivityService {
     });
     const { sequenceActivityIds, id } = sequence;
     const completedActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === activity_id);
-    const noActivityInTheSequense = completedActivityIndexInTheSequence === -1;
-    const noActivityInTheSequenseMessage = `Activity with id: ${activity_id} does not exist in the Secuense with id: ${id}!`;
-    if (noActivityInTheSequense) throw new ConflictException(noActivityInTheSequenseMessage);
-    const userHasCutoffTime = Boolean(user.cutoff_time_for_non_high_priority_activities);
+    const isInvalidActivityIdForThisSequence = completedActivityIndexInTheSequence === -1;
+    const isInvalidActivityIdForThisSequenceMessage = `Activity with id: ${activity_id} does not exist in the sequence with id: ${id}!`;
+    if (isInvalidActivityIdForThisSequence) throw new ConflictException(isInvalidActivityIdForThisSequenceMessage);
+    const hasUserGotCutOffTime = Boolean(user.cutoff_time_for_non_high_priority_activities);
     const userCurrentTime = DateTime.local({ zone: user.timezone });
-    // eslint-disable-next-line operator-linebreak
     const userCutOffTime =
-      // eslint-disable-next-line operator-linebreak
-      userHasCutoffTime &&
+      hasUserGotCutOffTime &&
       DateTime.fromFormat(user.cutoff_time_for_non_high_priority_activities, 'hh:mm', {
         zone: user.timezone,
       });

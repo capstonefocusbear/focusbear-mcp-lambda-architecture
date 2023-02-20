@@ -38,6 +38,7 @@ import { ActivityImageConsumer } from './consumers/activity-image.consumer';
     CompletedFocusBlockRepository,
     CompletedActivityRepository,
     CompletedActivitySequenceService,
+    CompletedActivitySequenceRepository,
   ],
   controllers: [CompletedActivityController, CompletedActivitySequenceController, ActivityController],
   imports: [

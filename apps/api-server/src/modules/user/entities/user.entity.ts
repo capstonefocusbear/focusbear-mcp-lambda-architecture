@@ -17,6 +17,9 @@ import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode
 import { InstalledFocusModeTemplate } from '../../focus-mode-template/entities/installed-focus-mode_templates.entity';
 import { UserMetadata } from '../domain/user-metadata.model';
 import { UserConsent } from './user-consent.entity';
+import { UserOnboardingProgress } from '../domain/user-onboarding-progress.model';
+import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
+import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -203,6 +206,45 @@ export class User extends BaseEntity {
   })
   metadata?: UserMetadata;
 
+  @Column({
+    type: 'jsonb',
+  })
+  onboarding_progress?: UserOnboardingProgress;
+
+  @Column({
+    type: 'timestamptz',
+  })
+  last_time_stats_updated?: Date;
+
+  @Column({
+    type: 'timestamptz',
+  })
+  last_completed_focus_mode_at?: Date;
+
+  @Column({
+    type: 'numeric',
+    precision: 2,
+    scale: 2,
+    transformer: new ColumnNumericTransformer(),
+  })
+  morning_routines_streak?: number;
+
+  @Column({
+    type: 'numeric',
+    precision: 2,
+    scale: 2,
+    transformer: new ColumnNumericTransformer(),
+  })
+  evening_routines_streak?: number;
+
+  @Column({
+    type: 'numeric',
+    precision: 2,
+    scale: 2,
+    transformer: new ColumnNumericTransformer(),
+  })
+  focus_modes_streak?: number;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 
@@ -214,6 +256,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.user)
   completed_activity_sequences?: CompletedActivitySequence[];
+
+  @OneToMany(() => CompletedFocusBlock, (completed_focus_block) => completed_focus_block.user)
+  completed_focus_blocks?: CompletedFocusBlock[];
 
   @OneToMany(() => Device, (device) => device.user)
   devices?: Device[];

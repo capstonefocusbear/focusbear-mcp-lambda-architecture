@@ -14,6 +14,7 @@ import {
   SentryServiceMock,
   UserRepositoryMock,
   UserSettingsServiceMock,
+  UserDailyStatsServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -54,6 +55,7 @@ import { ActivityType } from '../../domain/activity-type.enum';
 import { DaySummary } from '../../domain/day-summary.mode';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -71,6 +73,7 @@ describe('CompletedActivityService', () => {
         PusherService,
         CompletedFocusBlockRepository,
         UserSettingsService,
+        UserDailyStatsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -95,6 +98,8 @@ describe('CompletedActivityService', () => {
       .useValue(CompletedFocusBlockRepositoryMock)
       .overrideProvider(UserSettingsService)
       .useValue(UserSettingsServiceMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -460,7 +465,7 @@ describe('CompletedActivityService', () => {
       Settings.now = () => new Date().valueOf();
     });
 
-    it('positive: if user cutofff time has been reached and no high priorities remain, sequence should be completed', async () => {
+    it('positive: if user cutoff time has been reached and no high priorities remain, sequence should be completed', async () => {
       Settings.now = () => 1665081000000;
       const activity: CreateCompletedActivityDto = {
         activity_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0].id,

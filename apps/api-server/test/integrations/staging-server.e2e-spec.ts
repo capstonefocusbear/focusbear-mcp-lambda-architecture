@@ -164,6 +164,7 @@ describe('endpoints', () => {
               activity_sequence_id: '992f79ca-380a-44fa-9166-eba70251712f',
               duration_logged: 120,
               start_time: '2022-12-10T12:00:00+0000',
+              finish_time: '2022-12-10T12:02:00+0000',
             },
             {
               activity_id: 'dba00bb3-0482-4b63-8675-2781818141b2',
@@ -171,6 +172,7 @@ describe('endpoints', () => {
               activity_sequence_id: '992f79ca-380a-44fa-9166-eba70251712f',
               duration_logged: 120,
               start_time: '2022-12-10T12:00:00+0000',
+              finish_time: '2022-12-10T12:02:00+0000',
             },
             {
               activity_id: '2aec3416-c3c0-47ea-b5d2-45c35ad57043',
@@ -178,6 +180,7 @@ describe('endpoints', () => {
               activity_sequence_id: '4cef5086-3d11-4e22-9380-3e50a357bcb9',
               duration_logged: 120,
               start_time: '2022-12-12T20:00:00+0000',
+              finish_time: '2022-12-12T20:05:00+0000',
             },
             {
               activity_id: 'f93e4ebd-1246-487b-a090-3e10ee6871ad',
@@ -185,6 +188,7 @@ describe('endpoints', () => {
               activity_sequence_id: '4cef5086-3d11-4e22-9380-3e50a357bcb9',
               duration_logged: 120,
               start_time: '2022-12-13T20:00:00+0000',
+              finish_time: '2022-12-13T20:07:00+0000',
             },
           ],
         })

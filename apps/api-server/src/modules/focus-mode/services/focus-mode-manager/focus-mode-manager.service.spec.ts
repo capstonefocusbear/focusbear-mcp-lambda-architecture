@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
+import { DateTime, Settings } from 'luxon';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -15,6 +16,7 @@ import {
   UserRepositoryMock,
   PusherBeamsServiceMock,
   SentryServiceMock,
+  UserDailyStatsServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -27,6 +29,7 @@ import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeManagerService } from './focus-mode-manager.service';
 import { PusherService } from '../../../../../../../libs/pusher/src';
 import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -40,6 +43,7 @@ describe('FocusModeManagerService', () => {
         UserRepository,
         PusherService,
         PusherBeamsService,
+        UserDailyStatsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -56,6 +60,8 @@ describe('FocusModeManagerService', () => {
       .useValue(PusherServiceMock)
       .overrideProvider(PusherBeamsService)
       .useValue(PusherBeamsServiceMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);
@@ -196,6 +202,10 @@ describe('FocusModeManagerService', () => {
   });
 
   describe('finishCurrentFocusMode', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      jest.resetAllMocks();
+    });
     const focus_mode_id = FocusModeDummy.id;
     const user_id = userDummy.id;
     const finishFocusModeDto: FinishFocusModeDto = {
@@ -291,6 +301,21 @@ describe('FocusModeManagerService', () => {
         CompletedFocusBlockDummy,
       );
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
+    });
+
+    it('positive: user last_completed_focus_mode_at field should be updated', async () => {
+      Settings.now = () => new Date('2023-02-07T05:42:39.221Z').valueOf();
+      const current_focus_mode_id = FocusModeDummy.id;
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+      const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
+
+      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+
+      expect(UserRepositoryMock.update).toBeCalledWith(user_id, {
+        last_completed_focus_mode_at: DateTime.fromISO('2023-02-07T05:42:39.221Z').toJSDate(),
+      });
     });
   });
 });

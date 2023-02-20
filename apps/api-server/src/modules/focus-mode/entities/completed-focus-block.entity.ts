@@ -58,7 +58,7 @@ export class CompletedFocusBlock extends BaseEntity {
   })
   distractions?: string;
 
-  @ManyToOne(() => User, (user) => user.activity_sequences)
+  @ManyToOne(() => User, (user) => user.completed_focus_blocks)
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

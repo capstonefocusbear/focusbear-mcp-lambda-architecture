@@ -22,8 +22,8 @@ export class UserLocalDeviceSettingsController {
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   updateLocalDeviceSettings(
     @AuthContext() { user }: Passport,
-    @Body() setings: UpdateLocalDeviceSettingsDto,
+    @Body() settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
-    return this.userService.updateUserLocalDeviceSettings(user.id, setings);
+    return this.userService.updateUserLocalDeviceSettings(user.id, settings);
   }
 }

@@ -36,6 +36,7 @@ module.exports = {
     'consistent-return': 'off',
     "@typescript-eslint/no-unused-expressions": 'off',
     'max-len': [0, 120, 2, { ignoreUrls: true }],
-    "arrow-body-style": "off"
+    "arrow-body-style": "off",
+    'operator-linebreak': 'off'
   },
 };

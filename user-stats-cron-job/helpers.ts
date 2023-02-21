@@ -2,8 +2,9 @@ import { DateTime } from 'luxon';
 import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
 import { TasksStreaksResponse } from '../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
 import { UserOnboardingProgress } from '../apps/api-server/src/modules/user/domain/user-onboarding-progress.model';
-import { BASE_ONBOARDING_PROGRESS, LUXON_WEEK_DAYS, LEVEL_THRESHOLDS } from './constants';
+import { BASE_ONBOARDING_PROGRESS, LUXON_WEEK_DAYS, LEVEL_THRESHOLDS, DAYS_OF_WEEK } from './constants';
 import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
+import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
 
 export function findDifferenceInSeconds(startTime: Date, finishTime: Date) {
   const start = DateTime.fromJSDate(startTime);
@@ -64,7 +65,11 @@ function getLatestStatAndStartOfPrevDay(userDailyStats: DailyStats[], timeZone: 
   return { latestStatStartTime, startOfPreviousDay };
 }
 
-export function calculateStreakForRoutine(userDailyStats: DailyStats[], timeZone: string) {
+export function calculateStreakForRoutine(
+  userDailyStats: DailyStats[],
+  timeZone: string,
+  dailySequenceDurations: DailySequenceDurations,
+) {
   if (userDailyStats.length === 0) {
     return 0;
   }
@@ -79,11 +84,22 @@ export function calculateStreakForRoutine(userDailyStats: DailyStats[], timeZone
   let index = 0;
   let currentStat = userDailyStats[index];
   let nextExpectedDate = currentStat.date_completed.valueOf();
-  while (currentStat && currentStat.date_completed.valueOf() === nextExpectedDate) {
-    streak += 1;
+  // gets day number ranging from 1 for Mon to 7 for Sun
+  let dayBeingCheckedNumber = DateTime.fromMillis(nextExpectedDate).setZone(timeZone).weekday;
+  let prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
+  let doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
+  // for this loop we loop backwards chronologically over the daily stat records to count the user's streak
+  // if a day is encountered where the user has no activities we don't reset the streak, but simply hold the count
+  while (currentStat && (currentStat.date_completed.valueOf() === nextExpectedDate || !doesDayHaveActivities)) {
+    if (currentStat.date_completed.valueOf() === nextExpectedDate) {
+      streak += 1;
+      currentStat = userDailyStats[index + 1];
+      index += 1;
+    }
     nextExpectedDate -= ONE_DAY_AS_MILLIS;
-    currentStat = userDailyStats[index + 1];
-    index += 1;
+    dayBeingCheckedNumber = DateTime.fromMillis(nextExpectedDate).weekday;
+    prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
+    doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
   }
   return streak;
 }
@@ -131,7 +147,17 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   return streak;
 }
 
-export function calculateStreaks(userDailyStats: DailyStats[], timeZone: string): TasksStreaksResponse {
+export function calculateStreaks(
+  userDailyStats: DailyStats[],
+  timeZone: string,
+  {
+    morningRoutineDailyDurations,
+    eveningRoutineDailyDurations,
+  }: {
+    morningRoutineDailyDurations: DailySequenceDurations;
+    eveningRoutineDailyDurations: DailySequenceDurations;
+  },
+): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= 50,
@@ -141,8 +167,16 @@ export function calculateStreaks(userDailyStats: DailyStats[], timeZone: string)
   );
   return {
     focus_modes_streak: calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone),
-    morning_routines_streak: calculateStreakForRoutine(daysWhereMorningRoutinesWereCompleted, timeZone),
-    evening_routines_streak: calculateStreakForRoutine(daysWhereEveningRoutinesWereCompleted, timeZone),
+    morning_routines_streak: calculateStreakForRoutine(
+      daysWhereMorningRoutinesWereCompleted,
+      timeZone,
+      morningRoutineDailyDurations,
+    ),
+    evening_routines_streak: calculateStreakForRoutine(
+      daysWhereEveningRoutinesWereCompleted,
+      timeZone,
+      eveningRoutineDailyDurations,
+    ),
   };
 }
 

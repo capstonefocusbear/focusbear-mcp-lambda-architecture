@@ -49,6 +49,7 @@ export class ActivityParserService {
         choices,
         is_default,
         run_micro_breaks,
+        days_of_week,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -59,6 +60,7 @@ export class ActivityParserService {
         log_summary_type,
         is_default,
         run_micro_breaks,
+        days_of_week,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -105,6 +107,7 @@ export class ActivityParserService {
       choices,
       is_default,
       run_micro_breaks,
+      days_of_week,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -132,6 +135,7 @@ export class ActivityParserService {
       activity_template_id,
       is_default,
       run_micro_breaks,
+      days_of_week,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -162,6 +166,7 @@ export class ActivityParserService {
           has_choices: null,
           is_default: parent.is_default,
           run_micro_breaks: parent.run_micro_breaks,
+          days_of_week: parent.days_of_week,
         }),
     );
   }

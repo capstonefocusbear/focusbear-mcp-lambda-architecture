@@ -1,14 +1,9 @@
-/* eslint-disable no-plusplus */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { UserRepository } from '../../user/repositories/user.repository';
 
 @Injectable()
 export class TabKeywordsService {
-  constructor(
-    private readonly userRepository: UserRepository,
-    @InjectSentry() private readonly sentryService: SentryService,
-  ) {}
+  constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
   async getTabTitlesKeywords(user_id: string, titles: string[]): Promise<string[]> {
     try {
@@ -20,8 +15,6 @@ export class TabKeywordsService {
           user_id,
         },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const phraseFrequency = {};
       const IGNORE_WORDS = ['a', 'an', 'the', 'and', 'or', 'in', 'on', 'at', 'for', 'to', 'with', 'of', 'from'];
       titles.forEach((title) => {
@@ -45,7 +38,7 @@ export class TabKeywordsService {
       });
       // Convert the frequency object to an array of [phrase, frequency] pairs
       const phraseFrequencyArray: [string, number][] = Object.entries(phraseFrequency);
-      phraseFrequencyArray.sort((a, b) => b[1] - a[1]);
+      phraseFrequencyArray.sort((precedingPhrase, followingPhrase) => followingPhrase[1] - precedingPhrase[1]);
       const topPhrasesAndFrequencies = phraseFrequencyArray.slice(0, 5);
       const topPhrases = topPhrasesAndFrequencies.map(([phrase]) => phrase);
       return topPhrases;

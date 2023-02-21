@@ -21,6 +21,7 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
+    'no-plusplus': 'off',
     'import/prefer-default-export': 'off',
     'class-methods-use-this': 'off',
     'object-curly-newline': 'off',

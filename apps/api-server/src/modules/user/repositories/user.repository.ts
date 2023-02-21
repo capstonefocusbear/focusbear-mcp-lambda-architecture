@@ -61,6 +61,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.activity_template_id',
         'activities.is_default',
         'activities.run_micro_breaks',
+        'activities.days_of_week',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',

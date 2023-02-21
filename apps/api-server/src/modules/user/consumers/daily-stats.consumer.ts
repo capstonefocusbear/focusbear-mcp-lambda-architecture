@@ -10,6 +10,7 @@ import { DailyStatsRepository } from '../repositories/user-daily-stats.repositor
 import { UserDailyStatsService } from '../services/user-daily-stats/user-daily-stats.service';
 import { UserRepository } from '../repositories/user.repository';
 import { User } from '../entities/user.entity';
+import { ActivitySequenceService } from '../../activity/services/activity-sequence/activity-sequence.service';
 
 @Processor('stats')
 export class DailyStatsConsumer {
@@ -18,6 +19,7 @@ export class DailyStatsConsumer {
     private readonly dailyStatsRepository: DailyStatsRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userRepository: UserRepository,
+    private readonly activitySequenceService: ActivitySequenceService,
   ) {}
 
   @Process('daily-stats-activity-completed')
@@ -48,6 +50,8 @@ export class DailyStatsConsumer {
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
         where: { user_id: user.id, date_completed: Equal(startOfDate) },
       });
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+        await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
       let routineCompletionPercentage = 0;
       if (!isOffLineActivity) {
         // only calculate routine completion % for activities done online
@@ -97,6 +101,7 @@ export class DailyStatsConsumer {
       const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
         userDailyStats,
         user.timezone,
+        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
       );
       const updatedLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,

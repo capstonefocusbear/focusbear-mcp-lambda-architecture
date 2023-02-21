@@ -6,6 +6,7 @@ import { DateTime, Settings } from 'luxon';
 import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../user-stats-cron-job/constants';
 import { UserDailyStatsService } from './user-daily-stats.service';
 import {
+  ActivitySequenceServiceMock,
   CompletedActivityRepositoryMock,
   CompletedActivitySequenceRepositoryMock,
   DailyStatsRepositoryMock,
@@ -16,11 +17,19 @@ import {
 import { UserRepository } from '../../repositories/user.repository';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
-import { userDummy, QueueMock, UncompletedSequenceLogDummy, dailyStatsArrayDummy } from '../../../../../test/dummies';
+import {
+  userDummy,
+  QueueMock,
+  UncompletedSequenceLogDummy,
+  dailyStatsArrayDummy,
+  routineDurationsDummy,
+  dailyStatsArrayDummyWithSkippedDay,
+} from '../../../../../test/dummies';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { DailyStatsRepository } from '../../repositories/user-daily-stats.repository';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { DeviceService } from '../../../device/services/device/device.service';
+import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 
 describe('UserDailyStatsService', () => {
   let service: UserDailyStatsService;
@@ -34,6 +43,7 @@ describe('UserDailyStatsService', () => {
         CompletedActivityRepository,
         CompletedActivitySequenceRepository,
         DeviceService,
+        ActivitySequenceService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -54,6 +64,8 @@ describe('UserDailyStatsService', () => {
       .useValue(DailyStatsRepositoryMock)
       .overrideProvider(DeviceService)
       .useValue(DeviceServiceMock)
+      .overrideProvider(ActivitySequenceService)
+      .useValue(ActivitySequenceServiceMock)
       .compile();
 
     service = module.get<UserDailyStatsService>(UserDailyStatsService);
@@ -206,6 +218,10 @@ describe('UserDailyStatsService', () => {
         hasInstalledDesktopApp: false,
         hasInstalledMobileApp: false,
       });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
 
@@ -230,6 +246,10 @@ describe('UserDailyStatsService', () => {
         hasInstalledDesktopApp: false,
         hasInstalledMobileApp: false,
       });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
 
@@ -251,6 +271,10 @@ describe('UserDailyStatsService', () => {
       DeviceServiceMock.getUserInstalledDevices.mockResolvedValueOnce({
         hasInstalledDesktopApp: false,
         hasInstalledMobileApp: true,
+      });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
       });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
@@ -274,6 +298,10 @@ describe('UserDailyStatsService', () => {
         hasInstalledDesktopApp: true,
         hasInstalledMobileApp: true,
       });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
 
@@ -290,6 +318,10 @@ describe('UserDailyStatsService', () => {
         hasInstalledDesktopApp: false,
         hasInstalledMobileApp: false,
       });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
 
       await service.CalculateUserStatsResponse(userDummy.id);
 
@@ -298,6 +330,28 @@ describe('UserDailyStatsService', () => {
         evening_routines_streak: 3,
         focus_modes_streak: 10,
       });
+    });
+
+    it("positive: user streak should not be reset if they didn't do a routine because they don't have activities for that day", async () => {
+      // in this test the user has no activities in their morning routine for Sundays and there are stats for Sat and Mon
+      // current date is Mocked to be the Mon, so streak should be 2 for Sat and Mon
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...userDummy,
+        onboarding_progress: null,
+      });
+      DailyStatsRepositoryMock.getUserDailyStats.mockResolvedValueOnce(dailyStatsArrayDummyWithSkippedDay);
+      DeviceServiceMock.getUserInstalledDevices.mockResolvedValueOnce({
+        hasInstalledDesktopApp: false,
+        hasInstalledMobileApp: false,
+      });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 300, SUN: 0 },
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
+
+      const response = await service.CalculateUserStatsResponse(userDummy.id);
+
+      expect(response.morning_routine_completion_streak_days).toBe(2);
     });
   });
 

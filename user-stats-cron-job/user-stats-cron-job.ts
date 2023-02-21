@@ -6,6 +6,9 @@ import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
 import { CronJobDataSource } from './data-source';
 import { calculateStreaks, determineUserLevel, findDifferenceInSeconds } from './helpers';
 import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
+import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
+import { Activity } from '../apps/api-server/src/modules/activity/entities/activity.entity';
 
 async function calculateRoutineCompletionPercentage(
   user_id: string,
@@ -33,6 +36,21 @@ async function calculateRoutineCompletionPercentage(
   const totalSequenceDuration = Number(existingRoutineLog.activity_sequence.sequenceDurationSeconds);
   const completionPercentage = (totalDurationOfCompletedActivities / totalSequenceDuration) * 100;
   return Math.round(completionPercentage);
+}
+
+async function getUserRoutineDailyDurations(user_id: string): Promise<{
+  morningRoutineDailyDurations: DailySequenceDurations;
+  eveningRoutineDailyDurations: DailySequenceDurations;
+}> {
+  const morningActivities = await CronJobDataSource.manager.find(Activity, {
+    where: { user_id, type: ActivityType.morning },
+  });
+  const eveningActivities = await CronJobDataSource.manager.find(Activity, {
+    where: { user_id, type: ActivityType.evening },
+  });
+  const morningRoutineDailyDurations = this.calculateSequenceDurationForWeek(morningActivities);
+  const eveningRoutineDailyDurations = this.calculateSequenceDurationForWeek(eveningActivities);
+  return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
 }
 
 async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {
@@ -74,9 +92,13 @@ async function calculateOfflineActivitiesCompletionPercentage() {
         },
         order: { date_completed: 'DESC' },
       });
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(
+        user.id,
+      );
       const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
         userDailyStats,
         user.timezone,
+        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
       );
       const userLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,

@@ -45,6 +45,10 @@ export const DeviceServiceMock = {
   getUserInstalledDevices: jest.fn(),
 };
 
+export const ActivitySequenceServiceMock = {
+  getUserRoutineDailyDurations: jest.fn(),
+};
+
 export const CompletedActivitySequenceServiceMock = {
   completeActivitySequence: jest.fn(),
   getOrCreateCompletingSequenceLog: jest.fn(),

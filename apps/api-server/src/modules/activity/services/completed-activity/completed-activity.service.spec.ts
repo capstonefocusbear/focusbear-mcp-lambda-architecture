@@ -31,6 +31,7 @@ import {
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
   MorningActivitySequenceDummy,
+  sequenceWithActivitiesForDifferentDays,
   UncompletedSequenceLogDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -56,6 +57,9 @@ import { DaySummary } from '../../domain/day-summary.mode';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
+import { DaysOfWeek } from '../../domain/days-of-week.enum';
+import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -74,6 +78,8 @@ describe('CompletedActivityService', () => {
         CompletedFocusBlockRepository,
         UserSettingsService,
         UserDailyStatsService,
+        HelperCommonService,
+        ActivitySequenceService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -147,11 +153,24 @@ describe('CompletedActivityService', () => {
     const sequenceWhenThereIsNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [completedActivity.activity_id, ...ActivitySequenceDummy.activity_ids],
+      activities: [
+        new Activity({
+          id: completedActivity.activity_id,
+          activity_sequence_id: ActivitySequenceDummy.id,
+          days_of_week: [DaysOfWeek.ALL],
+        }),
+        new Activity({
+          id: ActivitySequenceDummy.activity_ids[0],
+          activity_sequence_id: ActivitySequenceDummy.id,
+          days_of_week: [DaysOfWeek.ALL],
+        }),
+      ],
     });
 
     const sequenceWhenThereIsNoNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
+      activities: [],
     });
 
     it('negative: should throw NotFoundException if activity sequence does not exist', async () => {
@@ -359,6 +378,7 @@ describe('CompletedActivityService', () => {
         userWithCurrentActivity.id,
       );
     });
+
     it('positive: if activity requires choice, completed activity record should be created for parent activity and for choice activity', async () => {
       const activityWithChoices: Activity = {
         ...ActivityDummy,
@@ -423,7 +443,7 @@ describe('CompletedActivityService', () => {
       );
     });
 
-    it('positive: if user cutofff time has been reached, set the next activity to be the next high priority activity in sequence when marking activity as completed', async () => {
+    it('positive: if user cut off time has been reached, set the next activity to be the next high priority activity in sequence when marking activity as completed', async () => {
       Settings.now = () => 1665081000000;
       const activity: CreateCompletedActivityDto = {
         activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[0].id,
@@ -512,6 +532,85 @@ describe('CompletedActivityService', () => {
       });
       Settings.now = () => new Date().valueOf();
     });
+
+    it('positive: if next activity in sequence is not for current day it should be skipped and following activity should be set as current', async () => {
+      // mock date to be a Monday because dummy sequence has activities that should only be done on Mondays
+      Settings.now = () => 1676874600000;
+      const activity: CreateCompletedActivityDto = {
+        activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        device_id: DeviceDummy.id,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      const completingSequenceLogId = randomUUID();
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
+        ...UncompletedSequenceLogDummy,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        id: completingSequenceLogId,
+      });
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.completeActivity(activity, { user_id });
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+        current_activity_id: sequenceWithActivitiesForDifferentDays.activities[2].id,
+        current_activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        current_activity_assigned_at: expect.toBeDateString(),
+        current_sequence_started_at: expect.toBeDateString(),
+        current_completing_sequence_log_id: completingSequenceLogId,
+        current_sequence_skipped_activities: null,
+      });
+      Settings.now = () => new Date().valueOf();
+    });
+
+    it('positive: if last remaining activity in sequence for current day is completed, user current activity should be set to null', async () => {
+      // mock date to be a Tuesday, dummy sequence only has one activity for Tuesday so routine should be completed after
+      Settings.now = () => 1676961000000;
+      const activity: CreateCompletedActivityDto = {
+        activity_id: sequenceWithActivitiesForDifferentDays.activities[1].id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        device_id: DeviceDummy.id,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      const completingSequenceLogId = randomUUID();
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
+        ...UncompletedSequenceLogDummy,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        id: completingSequenceLogId,
+      });
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.completeActivity(activity, { user_id });
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+        current_activity_id: null,
+        current_activity_sequence_id: null,
+        current_activity_assigned_at: null,
+        current_completing_sequence_log_id: null,
+        current_sequence_skipped_activities: null,
+        current_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        last_completed_sequence_started_at: expect.toBeDate(),
+      });
+      Settings.now = () => new Date().valueOf();
+    });
   });
 
   describe('skipActivity', () => {
@@ -531,11 +630,24 @@ describe('CompletedActivityService', () => {
     const sequenceWhenThereIsNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [completedActivity.activity_id, ...ActivitySequenceDummy.activity_ids],
+      activities: [
+        new Activity({
+          id: completedActivity.activity_id,
+          activity_sequence_id: ActivitySequenceDummy.id,
+          days_of_week: [DaysOfWeek.ALL],
+        }),
+        new Activity({
+          id: ActivitySequenceDummy.activity_ids[0],
+          activity_sequence_id: ActivitySequenceDummy.id,
+          days_of_week: [DaysOfWeek.ALL],
+        }),
+      ],
     });
 
     const sequenceWhenThereIsNoNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
+      activities: ActivitiesArrayDummy.morning_activities,
     });
 
     it('positive: the target device should be marked as leader', async () => {

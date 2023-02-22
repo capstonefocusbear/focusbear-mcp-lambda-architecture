@@ -418,6 +418,7 @@ export class CompletedActivityService {
     // check if activity exists in entire sequence
     this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
     const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
+    // sorts the activities for current day in order they should be executed in
     const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
       sequenceActivityIds,
       activitiesForToday,

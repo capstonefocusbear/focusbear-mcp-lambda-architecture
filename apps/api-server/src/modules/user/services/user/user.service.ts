@@ -209,7 +209,7 @@ export class UserService {
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
       const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
       await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
-      if (local_device_settings.MacOS.has_edited_blocked_urls) {
+      if (local_device_settings?.MacOS?.has_edited_blocked_urls) {
         await this.userDailyStatsService.updateUserOnboardingProgress(
           user_id,
           UserProgressUpdateTypes.EDIT_BLOCKED_URLS,

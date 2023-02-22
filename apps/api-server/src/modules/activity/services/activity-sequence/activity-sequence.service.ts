@@ -32,6 +32,7 @@ export class ActivitySequenceService {
     if (isInvalidActivityIdForThisSequence) throw new ConflictException(isInvalidActivityIdForThisSequenceMessage);
   }
 
+  // sorts the activities for current day in order they should be executed in
   sortActivityIdsByExecutionSequence(activityIds: string[], unsortedActivities: Activity[]): string[] {
     const activitiesSortedBySequence = activityIds.map((id) => {
       return unsortedActivities.find((activity) => activity.id === id);

@@ -147,4 +147,28 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       },
     });
   }
+
+  async getNotes(user_id: string, activityId: string, fromDate: Date, toDate: Date) {
+    const query = this.orm
+      .createQueryBuilder('completed_activities')
+      .orderBy('completed_activities.start_time', 'DESC')
+      .leftJoinAndSelect('completed_activities.activity', 'activity')
+      .select([
+        'completed_activities.id',
+        'completed_activities.activity_note',
+        'completed_activities.start_time',
+        'activity.activity_data',
+      ])
+      .where('completed_activities.user_id = :user_id', { user_id })
+      .andWhere('completed_activities.activity_note IS NOT NULL');
+
+    if (activityId) {
+      query.andWhere('completed_activities.activity_id = :activity_id', { activity_id: activityId });
+    }
+    if (fromDate && toDate) {
+      query.andWhere('completed_activities.start_time > :from_date', { from_date: fromDate });
+      query.andWhere('completed_activities.start_time < :to_date', { to_date: toDate });
+    }
+    return query.getMany();
+  }
 }

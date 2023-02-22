@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -8,6 +8,7 @@ import { CompletedActivityStats } from '../domain/completed-activity-stats.model
 import { DaySummary } from '../domain/day-summary.mode';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import { CreateSkippedActivityDto } from '../dto/create-skipped-activity.dto';
+import { FetchNotesParamsDto } from '../dto/fetch-notes-params.dto';
 import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-logs.dto';
 import {
   GetCompletedActivityStatsParamsDto,
@@ -73,5 +74,15 @@ export class CompletedActivityController {
   @Get('/day-summary')
   getdaySummary(@AuthContext() { user }: Passport, @Query() { timezone }: GetDaySummaryQueryDto): Promise<DaySummary> {
     return this.completedActivityService.getDaySummary(user.id, timezone);
+  }
+
+  @Get('/notes')
+  getCompletedActivityNotes(@Query() fetchNotesParamsDto: FetchNotesParamsDto, @AuthContext() { user }: Passport) {
+    return this.completedActivityService.getCompletedActivityNotes(user.id, fetchNotesParamsDto);
+  }
+
+  @Put('/notes/delete')
+  deleteCompletedActivityNotes(@Body() { completed_activity_ids }: { completed_activity_ids: string[] }) {
+    return this.completedActivityService.deleteCompletedActivityNotes(completed_activity_ids);
   }
 }

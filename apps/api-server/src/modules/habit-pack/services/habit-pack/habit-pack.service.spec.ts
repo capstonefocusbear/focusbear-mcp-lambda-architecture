@@ -365,7 +365,7 @@ describe('HabitPackService', () => {
       );
     });
 
-    it('Positive: admin fields should remain false if non admin user tries changing them to true (marketplace_approval_status_is_featured, featured_for_onboarding)', async () => {
+    it('Positive: admin fields should remain false if non admin user tries changing them to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
       const {
         pack_name,
         pack_type,
@@ -425,7 +425,7 @@ describe('HabitPackService', () => {
       );
     });
 
-    it('Positive: admin user should be able to change pack admin fields to true (marketplace_approval_status_is_featured, featured_for_onboarding)', async () => {
+    it('Positive: admin user should be able to change pack admin fields to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
       const {
         pack_name,
         pack_type,

@@ -1,4 +1,4 @@
-import { IsDate, IsOptional, IsUUID } from 'class-validator';
+import { IsDate, IsNumber, IsOptional, IsUUID } from 'class-validator';
 import { IsTimestampGreaterThan } from './create-completed-activity.dto';
 
 export class FetchNotesParamsDto {
@@ -14,4 +14,12 @@ export class FetchNotesParamsDto {
   @IsDate({ message: 'to_date should be a valid ISO string in UTC zone' })
   @IsTimestampGreaterThan('from_date', { message: 'to_date should be greater than from_date' })
   to_date?: Date;
+
+  @IsOptional()
+  @IsNumber()
+  take?: number;
+
+  @IsOptional()
+  @IsNumber()
+  skip?: number;
 }

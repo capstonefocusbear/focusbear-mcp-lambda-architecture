@@ -111,7 +111,13 @@ describe('HabitPackService', () => {
 
       let response;
       try {
-        response = await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
+        response = await habitPackService.getMultipleHabitPacks(
+          {
+            is_featured: false,
+            marketplace_approval_status: true,
+          },
+          userDummy.id,
+        );
       } catch (error) {
         response = error;
       }
@@ -212,7 +218,7 @@ describe('HabitPackService', () => {
     });
   });
 
-  describe('createHabitPack', () => {
+  describe('upsertHabitPack', () => {
     it('Negative: should return that the user does not exist', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
@@ -260,6 +266,8 @@ describe('HabitPackService', () => {
         welcome_message,
         welcome_video_url,
         marketplace_request,
+        featured_for_onboarding,
+        is_featured,
         id,
       } = standaloneHabitPackDummy;
       const newPack = new HabitPack({
@@ -271,6 +279,8 @@ describe('HabitPackService', () => {
         welcome_video_url,
         marketplace_request,
         marketplace_approval_status: false,
+        featured_for_onboarding,
+        is_featured,
         user_id,
         id,
         duration: 600,
@@ -311,6 +321,8 @@ describe('HabitPackService', () => {
         welcome_video_url,
         marketplace_request,
         marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
         id,
       } = routineHabitPackDummy;
       const newPack = new HabitPack({
@@ -322,6 +334,8 @@ describe('HabitPackService', () => {
         welcome_video_url,
         marketplace_request,
         marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
         user_id,
         id,
         duration: 300,
@@ -346,6 +360,126 @@ describe('HabitPackService', () => {
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
         newPack,
+        activityIds,
+        deserializedRoutineActivitiesDummy,
+      );
+    });
+
+    it('Positive: admin fields should remain false if non admin user tries changing them to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
+      const {
+        pack_name,
+        pack_type,
+        description,
+        description_video_url,
+        welcome_message,
+        welcome_video_url,
+        marketplace_request,
+        marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
+        id,
+      } = routineHabitPackDummy;
+      const newPack = new HabitPack({
+        pack_name,
+        pack_type,
+        description,
+        description_video_url,
+        welcome_message,
+        welcome_video_url,
+        marketplace_request,
+        marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
+        user_id: userDummy.id,
+        id,
+        duration: 300,
+        creator_name: 'User Dummy',
+      });
+      const activityIds = [
+        'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
+        '630c921d-dc9c-4107-acd2-023d7930d9bf',
+        'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
+      ];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
+        deserializedRoutineActivitiesDummy,
+      );
+      HabitPackRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
+
+      await habitPackService.upsertHabitPack(userDummy.id, {
+        ...routineHabitPackDummy,
+        marketplace_approval_status: true,
+        is_featured: true,
+        featured_for_onboarding: true,
+        creator_name: userDummy.name,
+      });
+
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+        { ...newPack, marketplace_approval_status: false, is_featured: false, featured_for_onboarding: false },
+        activityIds,
+        deserializedRoutineActivitiesDummy,
+      );
+    });
+
+    it('Positive: admin user should be able to change pack admin fields to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
+      const {
+        pack_name,
+        pack_type,
+        description,
+        description_video_url,
+        welcome_message,
+        welcome_video_url,
+        marketplace_request,
+        marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
+        id,
+      } = routineHabitPackDummy;
+      const newPack = new HabitPack({
+        pack_name,
+        pack_type,
+        description,
+        description_video_url,
+        welcome_message,
+        welcome_video_url,
+        marketplace_request,
+        marketplace_approval_status,
+        featured_for_onboarding,
+        is_featured,
+        user_id: adminUserDummy.id,
+        id,
+        duration: 300,
+        creator_name: 'User Dummy',
+      });
+      const activityIds = [
+        'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
+        '630c921d-dc9c-4107-acd2-023d7930d9bf',
+        'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
+      ];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
+        deserializedRoutineActivitiesDummy,
+      );
+      HabitPackRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(routineHabitPackDummy);
+
+      await habitPackService.upsertHabitPack(adminUserDummy.id, {
+        ...routineHabitPackDummy,
+        marketplace_approval_status: true,
+        is_featured: true,
+        featured_for_onboarding: true,
+        creator_name: adminUserDummy.name,
+      });
+
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+        { ...newPack, marketplace_approval_status: true, is_featured: true, featured_for_onboarding: true },
         activityIds,
         deserializedRoutineActivitiesDummy,
       );

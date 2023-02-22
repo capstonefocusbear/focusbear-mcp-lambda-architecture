@@ -60,6 +60,7 @@ export const adminUserDummy = new User(
     email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.ADMIN,
+    name: 'User Dummy',
   },
   { generateId: false },
 );

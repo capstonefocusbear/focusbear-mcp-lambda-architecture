@@ -25,6 +25,7 @@ import {
   compledtedActivitiesSortedByDateAndIdDummy,
   compledtedActivitiesSortedByIdDummy,
   completedActivitiesArrayDummy,
+  completedActivitiesWithNotesDummyArray,
   CompletedActivityDummy,
   CompletedFocusBlockDummy,
   DeviceDummy,
@@ -1034,6 +1035,66 @@ describe('CompletedActivityService', () => {
             start_time: new Date('2022-12-10T12:21:14.000Z'),
           },
         ],
+      });
+    });
+  });
+
+  describe('getCompletedActivityNotes', () => {
+    it('positive: completed activity records retrieved from database should be formatted to include only completed activity id, activity name, date, and note for response', async () => {
+      const fetchNotesParams = { activity_id: undefined, from_date: undefined, to_date: undefined };
+      CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce(completedActivitiesWithNotesDummyArray);
+
+      const response = await completedActivityService.getCompletedActivityNotes(userDummy.id, fetchNotesParams);
+
+      expect(response).toStrictEqual([
+        {
+          completed_activity_id: completedActivitiesWithNotesDummyArray[0].id,
+          date: completedActivitiesWithNotesDummyArray[0].start_time,
+          activity_name: completedActivitiesWithNotesDummyArray[0].activity.activity_data.name,
+          note: completedActivitiesWithNotesDummyArray[0].activity_note,
+        },
+        {
+          completed_activity_id: completedActivitiesWithNotesDummyArray[1].id,
+          date: completedActivitiesWithNotesDummyArray[1].start_time,
+          activity_name: completedActivitiesWithNotesDummyArray[1].activity.activity_data.name,
+          note: completedActivitiesWithNotesDummyArray[1].activity_note,
+        },
+      ]);
+    });
+
+    it('positive: notes should be queried from database with optional params passed into function', async () => {
+      const dummyActivityId = randomUUID();
+      const dummyFromDate = new Date('2022-12-10T12:21:14+0000');
+      const dummyToDate = new Date('2022-12-15T12:21:14+0000');
+      const fetchNotesParams = { activity_id: dummyActivityId, from_date: dummyFromDate, to_date: dummyToDate };
+      CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce([]);
+
+      await completedActivityService.getCompletedActivityNotes(userDummy.id, fetchNotesParams);
+
+      expect(CompletedActivityRepositoryMock.getNotes).toBeCalledWith(
+        userDummy.id,
+        dummyActivityId,
+        dummyFromDate,
+        dummyToDate,
+      );
+    });
+  });
+
+  describe('deleteCompletedActivityNotes', () => {
+    it('positive: should update completed activity records with activity_note field set to null for each ID passed to function in ID array', async () => {
+      const firstCompletedActivityId = completedActivitiesWithNotesDummyArray[0].id;
+      const secondCompletedActivityId = completedActivitiesWithNotesDummyArray[1].id;
+      await completedActivityService.deleteCompletedActivityNotes([
+        firstCompletedActivityId,
+        secondCompletedActivityId,
+      ]);
+
+      expect(CompletedActivityRepositoryMock.update).toBeCalledTimes(2);
+      expect(CompletedActivityRepositoryMock.update).toBeCalledWith(firstCompletedActivityId, {
+        activity_note: null,
+      });
+      expect(CompletedActivityRepositoryMock.update).toBeCalledWith(secondCompletedActivityId, {
+        activity_note: null,
       });
     });
   });

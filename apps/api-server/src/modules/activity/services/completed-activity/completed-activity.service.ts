@@ -36,6 +36,7 @@ import { UserSettingsService } from '../../../user/services/user-settings/user-s
 import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -792,6 +793,57 @@ export class CompletedActivityService {
         return group;
       }, {});
       return completedActivitiesGroupedBySequence;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async getCompletedActivityNotes(user_id: string, fetchNotesParams: FetchNotesParamsDto) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Fetching completed activity notes for user',
+        data: {
+          user_id,
+          fetchNotesParams,
+        },
+      });
+      const { activity_id, from_date, to_date } = fetchNotesParams;
+      const completedActivitiesWithNotes = await this.completedActivityRepository.getNotes(
+        user_id,
+        activity_id,
+        from_date,
+        to_date,
+      );
+      return this.formatNotesResponse(completedActivitiesWithNotes);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  formatNotesResponse(completedActivities: CompletedActivity[]) {
+    return completedActivities.map(({ id, start_time, activity_note, activity: { activity_data } }) => {
+      return { completed_activity_id: id, date: start_time, activity_name: activity_data.name, note: activity_note };
+    });
+  }
+
+  async deleteCompletedActivityNotes(completed_activity_ids: string[]) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Deleting completed activity notes',
+        data: {
+          completed_activity_ids,
+        },
+      });
+      const notesToNullify = completed_activity_ids.map((id) => {
+        return this.completedActivityRepository.update(id, { activity_note: null });
+      });
+      await Promise.all(notesToNullify);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

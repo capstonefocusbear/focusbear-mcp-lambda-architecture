@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
@@ -1040,6 +1040,25 @@ describe('CompletedActivityService', () => {
   });
 
   describe('getCompletedActivityNotes', () => {
+    it("negative: if user tries to fetch notes for activity that doesn't belong to them exception should be thrown", async () => {
+      const dummyFromDate = new Date('2022-12-10T12:21:14+0000');
+      const dummyToDate = new Date('2022-12-15T12:21:14+0000');
+      const fetchNotesParams = { activity_id: ActivityDummy.id, from_date: dummyFromDate, to_date: dummyToDate };
+      CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce([]);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...ActivityDummy, user_id: randomUUID() });
+      let exception: any;
+      const errorMessage = `User with ID: ${userDummy.id} is not is not authorized to access activity with ID: ${ActivityDummy.id}`;
+
+      try {
+        await completedActivityService.getCompletedActivityNotes(userDummy.id, fetchNotesParams);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: completed activity records retrieved from database should be formatted to include only completed activity id, activity name, date, and note for response', async () => {
       const fetchNotesParams = { activity_id: undefined, from_date: undefined, to_date: undefined };
       CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce(completedActivitiesWithNotesDummyArray);
@@ -1063,37 +1082,74 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: notes should be queried from database with optional params passed into function', async () => {
-      const dummyActivityId = randomUUID();
       const dummyFromDate = new Date('2022-12-10T12:21:14+0000');
       const dummyToDate = new Date('2022-12-15T12:21:14+0000');
-      const fetchNotesParams = { activity_id: dummyActivityId, from_date: dummyFromDate, to_date: dummyToDate };
+      const fetchNotesParams = {
+        activity_id: ActivityDummy.id,
+        from_date: dummyFromDate,
+        to_date: dummyToDate,
+        take: 100,
+        skip: 0,
+      };
       CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce([]);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
 
       await completedActivityService.getCompletedActivityNotes(userDummy.id, fetchNotesParams);
 
       expect(CompletedActivityRepositoryMock.getNotes).toBeCalledWith(
         userDummy.id,
-        dummyActivityId,
+        ActivityDummy.id,
         dummyFromDate,
         dummyToDate,
+        100,
+        0,
       );
     });
   });
 
   describe('deleteCompletedActivityNotes', () => {
+    it('negative: should throw unauthorized exception if user tries to delete note belonging to another user', async () => {
+      const firstCompletedActivityId = completedActivitiesWithNotesDummyArray[0].id;
+      const secondCompletedActivityId = completedActivitiesWithNotesDummyArray[1].id;
+      CompletedActivityRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(completedActivitiesWithNotesDummyArray[0])
+        .mockResolvedValueOnce(completedActivitiesWithNotesDummyArray[1]);
+      let exception: any;
+      const wrongUserId = randomUUID();
+      const errorMessage = `User with ID: ${wrongUserId} is not authorized to delete note belonging to completed activity with ID: ${firstCompletedActivityId}`;
+
+      try {
+        await completedActivityService.deleteCompletedActivityNotes(wrongUserId, [
+          firstCompletedActivityId,
+          secondCompletedActivityId,
+        ]);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: should update completed activity records with activity_note field set to null for each ID passed to function in ID array', async () => {
       const firstCompletedActivityId = completedActivitiesWithNotesDummyArray[0].id;
       const secondCompletedActivityId = completedActivitiesWithNotesDummyArray[1].id;
-      await completedActivityService.deleteCompletedActivityNotes([
+      CompletedActivityRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(completedActivitiesWithNotesDummyArray[0])
+        .mockResolvedValueOnce(completedActivitiesWithNotesDummyArray[1]);
+
+      await completedActivityService.deleteCompletedActivityNotes(userDummy.id, [
         firstCompletedActivityId,
         secondCompletedActivityId,
       ]);
 
-      expect(CompletedActivityRepositoryMock.update).toBeCalledTimes(2);
-      expect(CompletedActivityRepositoryMock.update).toBeCalledWith(firstCompletedActivityId, {
+      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledTimes(2);
+      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith({
+        ...completedActivitiesWithNotesDummyArray[0],
         activity_note: null,
       });
-      expect(CompletedActivityRepositoryMock.update).toBeCalledWith(secondCompletedActivityId, {
+      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith({
+        ...completedActivitiesWithNotesDummyArray[1],
         activity_note: null,
       });
     });

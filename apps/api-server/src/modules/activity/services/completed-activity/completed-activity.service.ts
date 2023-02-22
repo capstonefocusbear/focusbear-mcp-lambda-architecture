@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -810,12 +816,22 @@ export class CompletedActivityService {
           fetchNotesParams,
         },
       });
-      const { activity_id, from_date, to_date } = fetchNotesParams;
+      const { activity_id, from_date, to_date, take, skip } = fetchNotesParams;
+      if (activity_id) {
+        const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+        if (activity.user_id !== user_id) {
+          throw new UnauthorizedException(
+            `User with ID: ${user_id} is not is not authorized to access activity with ID: ${activity_id}`,
+          );
+        }
+      }
       const completedActivitiesWithNotes = await this.completedActivityRepository.getNotes(
         user_id,
         activity_id,
         from_date,
         to_date,
+        take,
+        skip,
       );
       return this.formatNotesResponse(completedActivitiesWithNotes);
     } catch (error) {
@@ -830,7 +846,7 @@ export class CompletedActivityService {
     });
   }
 
-  async deleteCompletedActivityNotes(completed_activity_ids: string[]) {
+  async deleteCompletedActivityNotes(user_id: string, completed_activity_ids: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -840,10 +856,16 @@ export class CompletedActivityService {
           completed_activity_ids,
         },
       });
-      const notesToNullify = completed_activity_ids.map((id) => {
-        return this.completedActivityRepository.update(id, { activity_note: null });
-      });
-      await Promise.all(notesToNullify);
+      for await (const id of completed_activity_ids) {
+        const completedActivityToUpdate = await this.completedActivityRepository.orm.findOneBy({ id });
+        if (completedActivityToUpdate.user_id !== user_id) {
+          throw new UnauthorizedException(
+            `User with ID: ${user_id} is not authorized to delete note belonging to completed activity with ID: ${id}`,
+          );
+        }
+        completedActivityToUpdate.activity_note = null;
+        await this.completedActivityRepository.orm.save(completedActivityToUpdate);
+      }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

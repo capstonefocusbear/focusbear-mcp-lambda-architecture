@@ -82,7 +82,10 @@ export class CompletedActivityController {
   }
 
   @Put('/notes/delete')
-  deleteCompletedActivityNotes(@Body() { completed_activity_ids }: { completed_activity_ids: string[] }) {
-    return this.completedActivityService.deleteCompletedActivityNotes(completed_activity_ids);
+  deleteCompletedActivityNotes(
+    @Body() { completed_activity_ids }: { completed_activity_ids: string[] },
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.completedActivityService.deleteCompletedActivityNotes(user.id, completed_activity_ids);
   }
 }

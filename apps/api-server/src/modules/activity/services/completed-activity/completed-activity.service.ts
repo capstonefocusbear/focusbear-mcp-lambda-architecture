@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -42,6 +36,8 @@ import { UserSettingsService } from '../../../user/services/user-settings/user-s
 import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
+import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
 
 @Injectable()
@@ -58,6 +54,8 @@ export class CompletedActivityService {
     private readonly userSettingsService: UserSettingsService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly helperCommonService: HelperCommonService,
+    private readonly activitySequenceService: ActivitySequenceService,
   ) {}
 
   async completeActivity(
@@ -416,11 +414,19 @@ export class CompletedActivityService {
         completed_activity_id: completedActivity?.activity_id,
       },
     });
-    const { sequenceActivityIds, id } = sequence;
-    const completedActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === activity_id);
-    const isInvalidActivityIdForThisSequence = completedActivityIndexInTheSequence === -1;
-    const isInvalidActivityIdForThisSequenceMessage = `Activity with id: ${activity_id} does not exist in the sequence with id: ${id}!`;
-    if (isInvalidActivityIdForThisSequence) throw new ConflictException(isInvalidActivityIdForThisSequenceMessage);
+    const currentDay = this.helperCommonService.getDayOfWeek(user.timezone);
+    const { sequenceActivityIds, id, activities } = sequence;
+    // check if activity exists in entire sequence
+    this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
+    const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
+    // sorts the activities for current day in order they should be executed in
+    const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
+      sequenceActivityIds,
+      activitiesForToday,
+    );
+    const completedActivityIndexInCurrentDaySequence = sortedIdsForCurrentDayActivities.findIndex(
+      (e) => e === activity_id,
+    );
     const hasUserGotCutOffTime = Boolean(user.cutoff_time_for_non_high_priority_activities);
     const userCurrentTime = DateTime.local({ zone: user.timezone });
     const userCutOffTime =
@@ -431,19 +437,19 @@ export class CompletedActivityService {
     const hasCutoffTimeBeenReached = userCutOffTime && userCurrentTime >= userCutOffTime;
     let nextActivity;
     if (hasCutoffTimeBeenReached) {
-      const activitiesSortedInSequence = sequence.activities.sort(
+      const activitiesSortedInSequence = activitiesForToday.sort(
         (precedingActivity, followingActivity) =>
           sequence.activity_ids.indexOf(precedingActivity.id) - sequence.activity_ids.indexOf(followingActivity.id),
       );
-      const remainingActivities = activitiesSortedInSequence.slice(completedActivityIndexInTheSequence + 1);
+      const remainingActivities = activitiesSortedInSequence.slice(completedActivityIndexInCurrentDaySequence + 1);
       const nextHighPriorityActivity = remainingActivities.find(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
       );
       nextActivity = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
     } else {
-      nextActivity = sequenceActivityIds[completedActivityIndexInTheSequence + 1];
+      nextActivity = sortedIdsForCurrentDayActivities[completedActivityIndexInCurrentDaySequence + 1];
     }
-    const currentActivityIndex = completedActivityIndexInTheSequence;
+    const currentActivityIndex = completedActivityIndexInCurrentDaySequence;
     const currentState = new CurrentActivityState(
       {
         nextActivity,

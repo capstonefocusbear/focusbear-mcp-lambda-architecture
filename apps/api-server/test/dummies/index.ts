@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
+import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
 import { FocusModeTemplate } from '../../src/modules/focus-mode-template/entities/focus-mode-template.entity';
 import { MarketplaceRequestType } from '../../src/modules/habit-pack/domain/marketplace-request.enum';
@@ -567,6 +568,7 @@ export const ActivityDummy: Activity = new Activity(
     duration_seconds: 600,
     activity_data: new ActivityData(),
     activity_sequence_id: ActivitySequenceDummy.id,
+    days_of_week: [DaysOfWeek.ALL],
   },
   { generateId: true },
 );
@@ -574,13 +576,13 @@ export const ActivityDummy: Activity = new Activity(
 const sequenceId = randomUUID();
 const firstActivityId = randomUUID();
 const secondActivityId = randomUUID();
-const thridActivityId = randomUUID();
+const thirdActivityId = randomUUID();
 
 export const ActivitySequenceWithHighPriorityActivitiesDummy = {
   id: sequenceId,
   type: ActivityType.morning,
-  activity_ids: [firstActivityId, secondActivityId, thridActivityId],
-  sequenceActivityIds: [firstActivityId, secondActivityId, thridActivityId],
+  activity_ids: [firstActivityId, secondActivityId, thirdActivityId],
+  sequenceActivityIds: [firstActivityId, secondActivityId, thirdActivityId],
   user_id: userDummy.id,
   total_duration_seconds: 360,
   activities: [
@@ -589,18 +591,21 @@ export const ActivitySequenceWithHighPriorityActivitiesDummy = {
       id: firstActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.STANDARD },
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
       id: secondActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.STANDARD },
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
-      id: thridActivityId,
+      id: thirdActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.HIGH },
+      days_of_week: [DaysOfWeek.ALL],
     },
   ],
 };
@@ -608,8 +613,8 @@ export const ActivitySequenceWithHighPriorityActivitiesDummy = {
 export const ActivitySequenceWithoutHighPriorityActivitiesDummy = {
   id: sequenceId,
   type: ActivityType.morning,
-  activity_ids: [firstActivityId, secondActivityId, thridActivityId],
-  sequenceActivityIds: [firstActivityId, secondActivityId, thridActivityId],
+  activity_ids: [firstActivityId, secondActivityId, thirdActivityId],
+  sequenceActivityIds: [firstActivityId, secondActivityId, thirdActivityId],
   user_id: userDummy.id,
   total_duration_seconds: 360,
   activities: [
@@ -618,18 +623,21 @@ export const ActivitySequenceWithoutHighPriorityActivitiesDummy = {
       id: firstActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.STANDARD },
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
       id: secondActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.STANDARD },
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
-      id: thridActivityId,
+      id: thirdActivityId,
       activity_sequence_id: sequenceId,
       activity_data: { priority: ActivityPriority.STANDARD },
+      days_of_week: [DaysOfWeek.ALL],
     },
   ],
 };
@@ -680,6 +688,7 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       name: 'Yoga',
       log_quantity: false,
       is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
@@ -687,6 +696,7 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       video_urls: [],
       duration_seconds: 300,
       is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
     },
   ],
   evening_activities: [
@@ -697,6 +707,7 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       name: 'Tidy up desk',
       log_quantity: false,
       is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
     },
     {
       id: '2c4af789-4563-4e74-a15d-9e17e3d15d06',
@@ -705,17 +716,53 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       name: 'Journal about day',
       log_quantity: false,
       is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
     },
   ],
 };
+
+const morningSequenceId = 'cfaf3dbf-b555-430e-810d-d7643d97c0f4';
 
 export const MorningActivitySequenceDummy = new ActivitySequence(
   {
     type: ActivityType.morning,
     activity_ids: ['856eb9fb-8c12-418d-b12c-fec0f2dae49d', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
+    activities: ActivitiesArrayDummy.morning_activities,
     user_id: userDummy.id,
     total_duration_seconds: 360,
-    id: 'cfaf3dbf-b555-430e-810d-d7643d97c0f4',
+    id: morningSequenceId,
+  },
+  { generateId: false },
+);
+
+export const sequenceWithActivitiesForDifferentDays = new ActivitySequence(
+  {
+    type: ActivityType.morning,
+    activity_ids: [
+      '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+      'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+      '5c51f789-4563-4e74-a15d-9e17e3d15d06',
+    ],
+    activities: [
+      new Activity({
+        id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+        activity_sequence_id: morningSequenceId,
+        days_of_week: [DaysOfWeek.MON],
+      }),
+      new Activity({
+        id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+        activity_sequence_id: morningSequenceId,
+        days_of_week: [DaysOfWeek.TUE],
+      }),
+      new Activity({
+        id: '5c51f789-4563-4e74-a15d-9e17e3d15d06',
+        activity_sequence_id: morningSequenceId,
+        days_of_week: [DaysOfWeek.MON],
+      }),
+    ],
+    user_id: userDummy.id,
+    total_duration_seconds: 360,
+    id: morningSequenceId,
   },
   { generateId: false },
 );
@@ -1394,7 +1441,42 @@ export const dailyStatsArrayDummy = [
   },
 ];
 
+export const dailyStatsArrayDummyWithSkippedDay = [
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 7,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    user_id: userDummy.id,
+    date_completed: latestDateInStatsStreak.minus({ days: 2 }).toJSDate(),
+    morning_routine_completion_percentage: 60,
+    evening_routine_completion_percentage: 70,
+    focus_modes_completed: 3,
+    should_recalculate: false,
+    morning_sequence_log_id: null,
+    evening_sequence_log_id: randomUUID(),
+  },
+];
+
 export const QueueMock = {
   add: jest.fn(),
   process: jest.fn(),
+};
+
+export const routineDurationsDummy = {
+  MON: 300,
+  TUE: 300,
+  WED: 300,
+  THU: 300,
+  FRI: 300,
+  SAT: 300,
+  SUN: 300,
 };

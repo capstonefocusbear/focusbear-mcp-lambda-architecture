@@ -1,3 +1,5 @@
+import { DaysOfWeek } from '../apps/api-server/src/modules/activity/domain/days-of-week.enum';
+
 export const BASE_ONBOARDING_PROGRESS = {
   level: 1,
   has_edited_focus_mode: false,
@@ -25,4 +27,14 @@ export const LEVEL_THRESHOLDS = [
     routines: 21,
     focus_modes: 30,
   },
+];
+
+export const DAYS_OF_WEEK = [
+  DaysOfWeek.MON,
+  DaysOfWeek.TUE,
+  DaysOfWeek.WED,
+  DaysOfWeek.THU,
+  DaysOfWeek.FRI,
+  DaysOfWeek.SAT,
+  DaysOfWeek.SUN,
 ];

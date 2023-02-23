@@ -7,6 +7,7 @@ import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivity } from './completed-activity.entity';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
+import { DaysOfWeek } from '../domain/days-of-week.enum';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -88,6 +89,11 @@ export class Activity extends BaseEntity {
     default: false,
   })
   run_micro_breaks?: boolean;
+
+  @Column({
+    type: 'jsonb',
+  })
+  days_of_week?: DaysOfWeek[];
 
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
   @JoinColumn({ name: 'activity_sequence_id' })

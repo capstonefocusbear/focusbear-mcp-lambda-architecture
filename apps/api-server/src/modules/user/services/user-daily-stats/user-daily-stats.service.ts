@@ -20,6 +20,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { User } from '../../entities/user.entity';
 import { DeviceService } from '../../../device/services/device/device.service';
+import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 
 @Injectable()
@@ -32,6 +33,7 @@ export class UserDailyStatsService {
     private readonly dailyStatsRepository: DailyStatsRepository,
     @InjectQueue('stats') private statsQueue: Queue,
     private readonly deviceService: DeviceService,
+    private readonly activitySequenceService: ActivitySequenceService,
   ) {}
 
   async updateUserOnboardingProgress(user_id: string, update_type: UserProgressUpdateTypes) {
@@ -121,9 +123,12 @@ export class UserDailyStatsService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user_id);
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+        await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
       const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
         userDailyStats,
         user.timezone,
+        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
       );
       const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage } =
         getRoutinesAndFocusModesAverages(userDailyStats);

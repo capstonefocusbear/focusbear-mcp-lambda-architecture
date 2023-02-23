@@ -18,6 +18,8 @@ import { CompletedFocusBlockRepository } from '../focus-mode/repositories/comple
 import { ActivityService } from './services/activity-service/activity.service';
 import { ActivityController } from './controllers/activity.controller';
 import { ActivityImageConsumer } from './consumers/activity-image.consumer';
+import { HelperModule } from '../helper/helper.module';
+import { ActivitySequenceService } from './services/activity-sequence/activity-sequence.service';
 
 @Module({
   providers: [
@@ -31,6 +33,7 @@ import { ActivityImageConsumer } from './consumers/activity-image.consumer';
     CompletedFocusBlockRepository,
     ActivityService,
     ActivityImageConsumer,
+    ActivitySequenceService,
   ],
   exports: [
     ActivityParserService,
@@ -39,6 +42,8 @@ import { ActivityImageConsumer } from './consumers/activity-image.consumer';
     CompletedActivityRepository,
     CompletedActivitySequenceService,
     CompletedActivitySequenceRepository,
+    ActivitySequenceService,
+    ActivityRepository,
   ],
   controllers: [CompletedActivityController, CompletedActivitySequenceController, ActivityController],
   imports: [
@@ -58,6 +63,7 @@ import { ActivityImageConsumer } from './consumers/activity-image.consumer';
     BullModule.registerQueue({
       name: 'activity-image',
     }),
+    HelperModule,
   ],
 })
 export class ActivityModule {}

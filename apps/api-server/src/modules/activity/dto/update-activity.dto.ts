@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 import { ActivityChoiceData } from '../domain/activity-choice-data.model';
 import { ActivityData } from '../domain/activity-data.model';
+import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
@@ -88,4 +89,9 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @IsBoolean()
   run_micro_breaks?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  @ArrayMinSize(1)
+  days_of_week?: DaysOfWeek[];
 }

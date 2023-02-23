@@ -61,6 +61,7 @@ export const adminUserDummy = new User(
     email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.ADMIN,
+    name: 'User Dummy',
   },
   { generateId: false },
 );
@@ -895,6 +896,33 @@ export const compledtedActivitiesSortedByDateAndIdDummy = [
         start_time: new Date('2022-12-13T12:21:14+0000'),
       },
     ],
+  },
+];
+
+export const completedActivitiesWithNotesDummyArray = [
+  {
+    id: '1026fb59-f854-42de-8f53-a4c9c750bebd',
+    user_id: userDummy.id,
+    activity_id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+    device_id: DeviceDummy.id,
+    activity_sequence_id: MorningActivitySequenceDummy.id,
+    quantity_logged: 15,
+    duration_logged: 120,
+    start_time: new Date('2022-12-10T12:21:14+0000'),
+    activity_note: 'Test Note One',
+    activity: { ...ActivityDummy, activity_data: new ActivityData({ name: 'Dummy One' }) },
+  },
+  {
+    id: '2036fb59-o054-12de-8f22-a4c9c9908oae',
+    user_id: userDummy.id,
+    activity_id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
+    device_id: DeviceDummy.id,
+    activity_sequence_id: MorningActivitySequenceDummy.id,
+    quantity_logged: 15,
+    duration_logged: 120,
+    start_time: new Date('2022-12-10T12:21:14+0000'),
+    activity_note: 'Test Note Two',
+    activity: { ...ActivityDummy, activity_data: new ActivityData({ name: 'Dummy Two' }) },
   },
 ];
 

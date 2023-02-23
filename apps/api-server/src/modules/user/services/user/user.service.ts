@@ -22,7 +22,6 @@ import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dt
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
@@ -42,8 +41,6 @@ export class UserService {
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
-    private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
-    private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
   ) {}
 

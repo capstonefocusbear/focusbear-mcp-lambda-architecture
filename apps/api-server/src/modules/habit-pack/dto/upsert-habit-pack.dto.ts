@@ -25,8 +25,8 @@ export class UpsertHabitPackDto {
   description?: string;
 
   @IsOptional()
-  @IsString()
   @IsUrl()
+  @ValidateIf((e) => e.description_video_url !== '')
   description_video_url?: string;
 
   @IsOptional()
@@ -45,6 +45,14 @@ export class UpsertHabitPackDto {
   @IsOptional()
   @IsBoolean()
   marketplace_approval_status?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  is_featured?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  featured_for_onboarding?: boolean;
 
   @IsOptional()
   @IsArray()

@@ -24,6 +24,7 @@ import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
+import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -127,7 +128,7 @@ export class UserController {
 
   @Get('stats/onboarding')
   @UseGuards(IsAuth)
-  async getUserStats(@AuthContext() { user }: Passport) {
+  async getUserStats(@AuthContext() { user }: Passport): Promise<OnboardingStatsResponseDto> {
     return this.userDailyStatsService.CalculateUserStatsResponse(user.id);
   }
 

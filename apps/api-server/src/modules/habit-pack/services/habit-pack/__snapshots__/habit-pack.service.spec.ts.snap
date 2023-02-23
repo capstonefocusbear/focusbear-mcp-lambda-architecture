@@ -4,7 +4,9 @@ exports[`HabitPackService getHabitPack Positive: should return a habit pack 1`] 
 Object {
   "description": "Sweeter pack!",
   "description_video_url": "www.google.com",
+  "featured_for_onboarding": false,
   "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+  "is_featured": false,
   "marketplace_approval_status": true,
   "marketplace_request": "requested",
   "pack_name": "Standalone Pack's Name",
@@ -57,7 +59,9 @@ Array [
   Object {
     "description": "Sweeter pack!",
     "description_video_url": "www.google.com",
+    "featured_for_onboarding": false,
     "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+    "is_featured": false,
     "marketplace_approval_status": true,
     "marketplace_request": "requested",
     "pack_name": "Standalone Pack's Name",
@@ -123,6 +127,7 @@ Array [
         "video_urls": Array [],
       },
     ],
+    "creator_name": "User Dummy",
     "description": "Test 12/10/22 12:27.",
     "description_video_url": "www.google.com",
     "evening_activities": Array [
@@ -138,7 +143,9 @@ Array [
         "video_urls": Array [],
       },
     ],
+    "featured_for_onboarding": false,
     "id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+    "is_featured": false,
     "marketplace_approval_status": false,
     "marketplace_request": "requested",
     "morning_activities": Array [

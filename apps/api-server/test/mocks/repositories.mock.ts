@@ -50,6 +50,7 @@ export const CompletedActivityRepositoryMock = {
   getDaySummarySUM: jest.fn(),
   getDaySummaryDuration: jest.fn(),
   getWeekSummary: jest.fn(),
+  getNotes: jest.fn(),
 };
 
 export const DeviceRepositoryMock = {

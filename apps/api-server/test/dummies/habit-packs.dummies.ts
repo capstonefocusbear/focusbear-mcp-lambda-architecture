@@ -16,6 +16,8 @@ export const standaloneHabitPackDummy = {
   welcome_message: "Welcome to Focus Bear ya'll",
   welcome_video_url: 'www.youtube.com',
   marketplace_approval_status: true,
+  featured_for_onboarding: false,
+  is_featured: false,
   marketplace_request: MarketplaceRequestType.requested,
   standalone_activities: [
     {
@@ -63,6 +65,8 @@ export const routineHabitPackDummy = {
   welcome_message: 'Welcome to Focus Bear!',
   welcome_video_url: 'www.youtube.com',
   marketplace_approval_status: false,
+  featured_for_onboarding: false,
+  is_featured: false,
   marketplace_request: MarketplaceRequestType.requested,
   morning_activities: [
     {
@@ -211,6 +215,7 @@ export const standaloneHabitPackDBResponseDummy = {
 
 export const routineHabitPackDBResponseDummy = {
   id: 'bc55568b-59bb-4842-8a83-e92843356978',
+  creator_name: userDummy.name,
   user_id: userDummy.id,
   pack_name: 'Nice routine pack',
   pack_type: HabitPackType.routine,

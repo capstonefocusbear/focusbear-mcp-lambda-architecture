@@ -1088,8 +1088,8 @@ describe('CompletedActivityService', () => {
         activity_id: ActivityDummy.id,
         from_date: dummyFromDate,
         to_date: dummyToDate,
-        take: 100,
-        skip: 0,
+        page_num: 1,
+        per_page: 10,
       };
       CompletedActivityRepositoryMock.getNotes.mockResolvedValueOnce([]);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
@@ -1101,8 +1101,8 @@ describe('CompletedActivityService', () => {
         ActivityDummy.id,
         dummyFromDate,
         dummyToDate,
-        100,
-        0,
+        1,
+        10,
       );
     });
   });

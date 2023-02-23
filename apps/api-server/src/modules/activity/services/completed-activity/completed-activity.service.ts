@@ -816,7 +816,7 @@ export class CompletedActivityService {
           fetchNotesParams,
         },
       });
-      const { activity_id, from_date, to_date, take, skip } = fetchNotesParams;
+      const { activity_id, from_date, to_date, page_num, per_page } = fetchNotesParams;
       if (activity_id) {
         const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
         if (activity.user_id !== user_id) {
@@ -830,8 +830,8 @@ export class CompletedActivityService {
         activity_id,
         from_date,
         to_date,
-        take,
-        skip,
+        page_num,
+        per_page,
       );
       return this.formatNotesResponse(completedActivitiesWithNotes);
     } catch (error) {

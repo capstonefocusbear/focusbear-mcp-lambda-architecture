@@ -11,6 +11,7 @@ import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activi
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { UserTypes } from '../../../user/domain/user-types.enum';
 import { GetMultiplePacksQueryDto } from '../../dto/get-multiple-packs-query.dto';
+import { User } from '../../../user/entities/user.entity';
 
 @Injectable()
 export class HabitPackService {
@@ -123,7 +124,6 @@ export class HabitPackService {
         welcome_message,
         welcome_video_url,
         marketplace_request,
-        marketplace_approval_status,
         id,
         morning_activities,
         break_activities,
@@ -131,20 +131,11 @@ export class HabitPackService {
         standalone_activities,
         creator_name,
       } = upsertHabitPackDto;
-      let approvalStatus;
-      const approvalStatusHasChanged = marketplace_approval_status !== habitPack?.marketplace_approval_status;
-      const approvalStatusIsFalse = typeof marketplace_approval_status !== 'undefined' && !marketplace_approval_status;
-      if (userIsAdmin) {
-        approvalStatus = marketplace_approval_status;
-      } else if (approvalStatusHasChanged && approvalStatusIsFalse) {
-        // only allows normal users to revoke marketplace approval, admin will review and approve
-        // habit packs for the marketplace
-        approvalStatus = false;
-      } else {
-        // if "marketplace_approval_status" is not sent with the request body the packs current status will be used,
-        // if pack doesn't exist yet it will be "false" by default
-        approvalStatus = habitPack?.marketplace_approval_status ?? false;
-      }
+      const { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding } = this.determineAdminProperties(
+        userIsAdmin,
+        upsertHabitPackDto,
+        habitPack,
+      );
       const longestSequenceDuration = this.getHabitPackLongestSequence([
         morning_activities,
         break_activities,
@@ -174,11 +165,9 @@ export class HabitPackService {
           return activityIds.push(activity_template.id);
         });
       });
-      // allow admin user to edit pack creator, if not admin, use existing creator name, if new pack, use user's name
-      const ifExistsUseSetName = habitPack ? habitPack.creator_name : user.name;
-      const creatorNameToUse = userIsAdmin ? creator_name : ifExistsUseSetName;
+      const creatorName = this.determinePackCreatorName(habitPack, user, creator_name, userIsAdmin);
       const newPack = new HabitPack({
-        creator_name: creatorNameToUse,
+        creator_name: creatorName,
         pack_name,
         pack_type,
         description,
@@ -186,7 +175,9 @@ export class HabitPackService {
         welcome_message,
         welcome_video_url,
         marketplace_request,
-        marketplace_approval_status: approvalStatus,
+        marketplace_approval_status: marketplaceApprovalStatus,
+        is_featured: isFeatured,
+        featured_for_onboarding: isFeaturedForOnboarding,
         user_id,
         id,
         duration: longestSequenceDuration,
@@ -244,5 +235,35 @@ export class HabitPackService {
       return 0;
     });
     return Math.max(...allSequenceDurations);
+  }
+
+  determineAdminProperties(userIsAdmin: boolean, upsertHabitPack: UpsertHabitPackDto, existingHabitPack: HabitPack) {
+    const { marketplace_approval_status, is_featured, featured_for_onboarding } = upsertHabitPack;
+    let marketplaceApprovalStatus;
+    let isFeatured;
+    let isFeaturedForOnboarding;
+    const isExistingMarketplaceStatus = typeof existingHabitPack?.marketplace_approval_status === 'boolean';
+    const existingMarketplaceStatus = existingHabitPack?.marketplace_approval_status;
+    const isExistingIsFeaturedStatus = typeof existingHabitPack?.is_featured === 'boolean';
+    const existingIsFeaturedStatus = existingHabitPack?.is_featured;
+    const isExistingIsFeaturedForOnboardingStatus = typeof existingHabitPack?.featured_for_onboarding === 'boolean';
+    const existingIsFeaturedForOnboardingStatus = existingHabitPack?.featured_for_onboarding;
+    if (userIsAdmin) {
+      marketplaceApprovalStatus = marketplace_approval_status;
+      isFeatured = is_featured;
+      isFeaturedForOnboarding = featured_for_onboarding;
+    } else {
+      marketplaceApprovalStatus = isExistingMarketplaceStatus ? existingMarketplaceStatus : false;
+      isFeatured = isExistingIsFeaturedStatus ? existingIsFeaturedStatus : false;
+      isFeaturedForOnboarding = isExistingIsFeaturedForOnboardingStatus ? existingIsFeaturedForOnboardingStatus : false;
+    }
+    return { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding };
+  }
+
+  determinePackCreatorName(habitPack: HabitPack, user: User, upsertName: string, userIsAdmin: boolean) {
+    // allow admin user to edit pack creator name, if not admin, use existing creator name, if new pack, use user's name
+    const ifExistingPackUseSetName = habitPack ? habitPack.creator_name : user.name;
+    const creatorNameToUse = userIsAdmin ? upsertName : ifExistingPackUseSetName;
+    return creatorNameToUse;
   }
 }

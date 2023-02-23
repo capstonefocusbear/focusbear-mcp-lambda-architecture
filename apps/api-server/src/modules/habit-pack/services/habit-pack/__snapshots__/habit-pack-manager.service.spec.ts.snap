@@ -52,7 +52,9 @@ Array [
         "video_urls": Array [],
       },
     ],
+    "featured_for_onboarding": false,
     "id": "34dd7441-16f9-4772-be6c-416f9af5689b",
+    "is_featured": false,
     "marketplace_approval_status": false,
     "marketplace_request": "requested",
     "morning_activities": Array [

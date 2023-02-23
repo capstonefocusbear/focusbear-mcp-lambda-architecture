@@ -47,6 +47,14 @@ export class UpsertHabitPackDto {
   marketplace_approval_status?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  is_featured?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  featured_for_onboarding?: boolean;
+
+  @IsOptional()
   @IsArray()
   morning_activities?: UpdateActivityTemplateDto[];
 

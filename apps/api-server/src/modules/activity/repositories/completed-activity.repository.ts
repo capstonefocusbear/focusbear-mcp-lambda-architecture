@@ -148,7 +148,8 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     });
   }
 
-  async getNotes(user_id: string, activityId: string, fromDate: Date, toDate: Date, take = 50, skip = 0) {
+  async getNotes(user_id: string, activityId: string, fromDate: Date, toDate: Date, page_num = 1, per_page = 50) {
+    const recordsToSkip = page_num * per_page - per_page;
     const query = this.orm
       .createQueryBuilder('completed_activities')
       .orderBy('completed_activities.start_time', 'DESC')
@@ -169,6 +170,6 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       query.andWhere('completed_activities.start_time > :from_date', { from_date: fromDate });
       query.andWhere('completed_activities.start_time < :to_date', { to_date: toDate });
     }
-    return query.take(take).skip(skip).getMany();
+    return query.take(per_page).skip(recordsToSkip).getMany();
   }
 }

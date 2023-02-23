@@ -17,9 +17,9 @@ export class FetchNotesParamsDto {
 
   @IsOptional()
   @IsNumber()
-  take?: number;
+  page_num?: number;
 
   @IsOptional()
   @IsNumber()
-  skip?: number;
+  per_page?: number;
 }

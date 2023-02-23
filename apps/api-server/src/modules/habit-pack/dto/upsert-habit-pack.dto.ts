@@ -25,8 +25,8 @@ export class UpsertHabitPackDto {
   description?: string;
 
   @IsOptional()
-  @IsString()
   @IsUrl()
+  @ValidateIf((e) => e.description_video_url !== '')
   description_video_url?: string;
 
   @IsOptional()

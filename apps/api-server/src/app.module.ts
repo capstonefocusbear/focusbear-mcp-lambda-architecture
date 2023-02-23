@@ -23,6 +23,7 @@ import { TracksModule } from './modules/tracks/tracks.module';
 import { FocusModeTemplatesModule } from './modules/focus-mode-template/focus-mode-templates.module';
 import { CoursesModule } from './modules/course/courses.module';
 import { LessonModule } from './modules/lesson/lesson.module';
+import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { LessonModule } from './modules/lesson/lesson.module';
     FocusModeTemplatesModule,
     CoursesModule,
     LessonModule,
+    TabKeywordsModule,
   ],
   controllers: [AppController],
 })

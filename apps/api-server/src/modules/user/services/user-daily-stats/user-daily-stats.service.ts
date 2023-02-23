@@ -20,6 +20,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { User } from '../../entities/user.entity';
 import { DeviceService } from '../../../device/services/device/device.service';
+import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -108,7 +109,7 @@ export class UserDailyStatsService {
     }
   }
 
-  async CalculateUserStatsResponse(user_id: string) {
+  async CalculateUserStatsResponse(user_id: string): Promise<OnboardingStatsResponseDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',

@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -36,6 +42,7 @@ import { UserSettingsService } from '../../../user/services/user-settings/user-s
 import { CreateSkippedActivityDto } from '../../dto/create-skipped-activity.dto';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -792,6 +799,73 @@ export class CompletedActivityService {
         return group;
       }, {});
       return completedActivitiesGroupedBySequence;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async getCompletedActivityNotes(user_id: string, fetchNotesParams: FetchNotesParamsDto) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Fetching completed activity notes for user',
+        data: {
+          user_id,
+          fetchNotesParams,
+        },
+      });
+      const { activity_id, from_date, to_date, page_num, per_page } = fetchNotesParams;
+      if (activity_id) {
+        const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+        if (activity.user_id !== user_id) {
+          throw new UnauthorizedException(
+            `User with ID: ${user_id} is not is not authorized to access activity with ID: ${activity_id}`,
+          );
+        }
+      }
+      const completedActivitiesWithNotes = await this.completedActivityRepository.getNotes(
+        user_id,
+        activity_id,
+        from_date,
+        to_date,
+        page_num,
+        per_page,
+      );
+      return this.formatNotesResponse(completedActivitiesWithNotes);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  formatNotesResponse(completedActivities: CompletedActivity[]) {
+    return completedActivities.map(({ id, start_time, activity_note, activity: { activity_data } }) => {
+      return { completed_activity_id: id, date: start_time, activity_name: activity_data.name, note: activity_note };
+    });
+  }
+
+  async deleteCompletedActivityNotes(user_id: string, completed_activity_ids: string[]) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Deleting completed activity notes',
+        data: {
+          completed_activity_ids,
+        },
+      });
+      for await (const id of completed_activity_ids) {
+        const completedActivityToUpdate = await this.completedActivityRepository.orm.findOneBy({ id });
+        if (completedActivityToUpdate.user_id !== user_id) {
+          throw new UnauthorizedException(
+            `User with ID: ${user_id} is not authorized to delete note belonging to completed activity with ID: ${id}`,
+          );
+        }
+        completedActivityToUpdate.activity_note = null;
+        await this.completedActivityRepository.orm.save(completedActivityToUpdate);
+      }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

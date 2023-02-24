@@ -4,7 +4,7 @@ import { IsTimestampGreaterThan } from './create-completed-activity.dto';
 export class FetchNotesParamsDto {
   @IsOptional()
   @IsUUID()
-  activity_id: string;
+  activity_id?: string;
 
   @IsOptional()
   @IsDate({ message: 'from_date should be a valid ISO string in UTC zone' })

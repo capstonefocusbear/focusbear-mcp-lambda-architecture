@@ -8,6 +8,7 @@ import { CompletedActivityStats } from '../domain/completed-activity-stats.model
 import { DaySummary } from '../domain/day-summary.mode';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import { CreateSkippedActivityDto } from '../dto/create-skipped-activity.dto';
+import { DeleteCompletedActivityNotesDto } from '../dto/delete-completed-activity-notes.dto';
 import { FetchNotesParamsDto } from '../dto/fetch-notes-params.dto';
 import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-logs.dto';
 import {
@@ -83,7 +84,7 @@ export class CompletedActivityController {
 
   @Put('/notes/delete')
   deleteCompletedActivityNotes(
-    @Body() { completed_activity_ids }: { completed_activity_ids: string[] },
+    @Body() { completed_activity_ids }: DeleteCompletedActivityNotesDto,
     @AuthContext() { user }: Passport,
   ) {
     return this.completedActivityService.deleteCompletedActivityNotes(user.id, completed_activity_ids);

@@ -622,21 +622,21 @@ export const ActivitySequenceWithoutHighPriorityActivitiesDummy = {
       ...ActivityDummy,
       id: firstActivityId,
       activity_sequence_id: sequenceId,
-      activity_data: { priority: ActivityPriority.STANDARD },
+      activity_data: { priority: ActivityPriority.STANDARD, name: 'Test Name' },
       days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
       id: secondActivityId,
       activity_sequence_id: sequenceId,
-      activity_data: { priority: ActivityPriority.STANDARD },
+      activity_data: { priority: ActivityPriority.STANDARD, name: 'Test Name' },
       days_of_week: [DaysOfWeek.ALL],
     },
     {
       ...ActivityDummy,
       id: thirdActivityId,
       activity_sequence_id: sequenceId,
-      activity_data: { priority: ActivityPriority.STANDARD },
+      activity_data: { priority: ActivityPriority.STANDARD, name: 'Test Name' },
       days_of_week: [DaysOfWeek.ALL],
     },
   ],
@@ -708,6 +708,7 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       log_quantity: false,
       is_default: true,
       days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.STANDARD,
     },
     {
       id: '2c4af789-4563-4e74-a15d-9e17e3d15d06',
@@ -717,9 +718,37 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       log_quantity: false,
       is_default: true,
       days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.HIGH,
     },
   ],
 };
+
+export const eveningActivitiesDBResponseDummy = [
+  {
+    id: '5c51f789-4563-4e74-a15d-9e17e3d15d06',
+    duration_seconds: 180,
+    is_default: true,
+    days_of_week: [DaysOfWeek.ALL],
+    activity_data: {
+      priority: ActivityPriority.STANDARD,
+      video_urls: [],
+      name: 'Tidy up desk',
+      log_quantity: false,
+    },
+  },
+  {
+    id: '2c4af789-4563-4e74-a15d-9e17e3d15d06',
+    duration_seconds: 300,
+    log_quantity: false,
+    is_default: true,
+    days_of_week: [DaysOfWeek.ALL],
+    activity_data: {
+      priority: ActivityPriority.HIGH,
+      video_urls: [],
+      name: 'Journal about day',
+    },
+  },
+];
 
 const morningSequenceId = 'cfaf3dbf-b555-430e-810d-d7643d97c0f4';
 
@@ -771,6 +800,7 @@ export const EveningActivitySequenceDummy = new ActivitySequence(
   {
     type: ActivityType.evening,
     activity_ids: ['5c51f789-4563-4e74-a15d-9e17e3d15d06', '2c4af789-4563-4e74-a15d-9e17e3d15d06'],
+    activities: eveningActivitiesDBResponseDummy,
     user_id: userDummy.id,
     total_duration_seconds: 360,
     id: 'aevf3dbf-c777-271e-912e-d7643d97a6ce',

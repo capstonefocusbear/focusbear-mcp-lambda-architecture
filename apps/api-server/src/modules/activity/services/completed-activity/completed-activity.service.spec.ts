@@ -29,6 +29,7 @@ import {
   CompletedActivityDummy,
   CompletedFocusBlockDummy,
   DeviceDummy,
+  eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
   MorningActivitySequenceDummy,
@@ -1264,6 +1265,86 @@ describe('CompletedActivityService', () => {
         ...completedActivitiesWithNotesDummyArray[1],
         activity_note: null,
       });
+    });
+  });
+
+  describe('recalculateCurrentActivity', () => {
+    it('positive: if user cut off time has been reached and current activity is standard priority, current activity should be updated to next high priority activity', async () => {
+      // mock current time to be later than user cut off time
+      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: eveningActivitiesDBResponseDummy[0],
+        current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_completing_sequence_log_id: randomUUID(),
+        timezone: 'UTC',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(eveningActivitiesDBResponseDummy[1]);
+    });
+
+    it('positive: if user cut off time has not been reached yet, current activity should remain the same', async () => {
+      // mock current time to be earlier than user cut off time
+      Settings.now = () => new Date('2022-12-10T18:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: eveningActivitiesDBResponseDummy[0],
+        current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_completing_sequence_log_id: randomUUID(),
+        timezone: 'UTC',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(eveningActivitiesDBResponseDummy[0]);
+    });
+
+    it('positive: if user cut off time has been reached and current activity is high priority activity, current activity should not change', async () => {
+      // mock current time to be later than user cut off time
+      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: eveningActivitiesDBResponseDummy[1],
+        current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_completing_sequence_log_id: randomUUID(),
+        timezone: 'UTC',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(eveningActivitiesDBResponseDummy[1]);
+    });
+
+    it("positive: if user cut off time has been reached but the user doesn't have any remaining high priority activities, current activity should be null and current sequence should be marked as completed", async () => {
+      // mock current time to be later than user cut off time
+      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0],
+        current_activity_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
+        current_completing_sequence_log_id: randomUUID(),
+        timezone: 'UTC',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        ActivitySequenceWithoutHighPriorityActivitiesDummy,
+      );
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(null);
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        partialUserDummy.current_completing_sequence_log_id,
+        partialUserDummy.id,
+      );
     });
   });
 });

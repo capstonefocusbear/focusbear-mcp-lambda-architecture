@@ -44,6 +44,7 @@ import { ActivitySequenceService } from './services/activity-sequence/activity-s
     CompletedActivitySequenceRepository,
     ActivitySequenceService,
     ActivityRepository,
+    CompletedActivityService,
   ],
   controllers: [CompletedActivityController, CompletedActivitySequenceController, ActivityController],
   imports: [

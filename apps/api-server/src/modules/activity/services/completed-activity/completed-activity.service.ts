@@ -415,7 +415,8 @@ export class CompletedActivityService {
       },
     });
     const currentDay = this.helperCommonService.getDayOfWeek(user.timezone);
-    const { sequenceActivityIds, id, activities } = sequence;
+    const { sequenceActivityIds, id, activities, activity_ids } = sequence;
+    const { timezone, cutoff_time_for_non_high_priority_activities: cutOffTime } = user;
     // check if activity exists in entire sequence
     this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
     const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
@@ -427,20 +428,10 @@ export class CompletedActivityService {
     const completedActivityIndexInCurrentDaySequence = sortedIdsForCurrentDayActivities.findIndex(
       (e) => e === activity_id,
     );
-    const hasUserGotCutOffTime = Boolean(user.cutoff_time_for_non_high_priority_activities);
-    const userCurrentTime = DateTime.local({ zone: user.timezone });
-    const userCutOffTime =
-      hasUserGotCutOffTime &&
-      DateTime.fromFormat(user.cutoff_time_for_non_high_priority_activities, 'hh:mm', {
-        zone: user.timezone,
-      });
-    const hasCutoffTimeBeenReached = userCutOffTime && userCurrentTime >= userCutOffTime;
+    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
     let nextActivity;
     if (hasCutoffTimeBeenReached) {
-      const activitiesSortedInSequence = activitiesForToday.sort(
-        (precedingActivity, followingActivity) =>
-          sequence.activity_ids.indexOf(precedingActivity.id) - sequence.activity_ids.indexOf(followingActivity.id),
-      );
+      const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, activity_ids);
       const remainingActivities = activitiesSortedInSequence.slice(completedActivityIndexInCurrentDaySequence + 1);
       const nextHighPriorityActivity = remainingActivities.find(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
@@ -460,6 +451,72 @@ export class CompletedActivityService {
       completedActivity,
     );
     return { nextActivity, currentState };
+  }
+
+  async recalculateCurrentActivity(partialUser: Partial<User>) {
+    const {
+      timezone,
+      cutoff_time_for_non_high_priority_activities: cutOffTime,
+      current_activity,
+      current_activity_sequence_id,
+      id,
+      current_completing_sequence_log_id,
+    } = partialUser;
+    let currentActivity = current_activity;
+    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    if (hasCutoffTimeBeenReached) {
+      const sequence = await this.activitySequenceRepository.orm.findOne({
+        where: { id: current_activity_sequence_id },
+        relations: ['activities'],
+      });
+      const currentDay = this.helperCommonService.getDayOfWeek(timezone);
+      const { activities, sequenceActivityIds } = sequence;
+      const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
+      const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
+        sequenceActivityIds,
+        activitiesForToday,
+      );
+      const currentActivityIndexInCurrentDaySequence = sortedIdsForCurrentDayActivities.findIndex(
+        (activityId) => activityId === current_activity.id,
+      );
+      const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, sequenceActivityIds);
+      const remainingActivities = activitiesSortedInSequence.slice(currentActivityIndexInCurrentDaySequence);
+      const nextHighPriorityActivity = remainingActivities.find(
+        (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+      );
+      currentActivity = nextHighPriorityActivity ?? null;
+      if (!currentActivity) {
+        await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
+      } else {
+        // update user current_activity_id if current activity has changed
+        const shouldUpdateUser = current_activity.id !== currentActivity.id;
+        if (shouldUpdateUser) {
+          await this.userRepository.update(partialUser.id, { current_activity_id: currentActivity?.id ?? null });
+        }
+      }
+    }
+    // if sequence was completed, tell activity service to refetch user because multiple fields changed,
+    // if not - it's only the activity that's changed and no refetch is needed
+    const shouldRefetchUser = current_activity && !currentActivity;
+    return { activity: currentActivity, shouldRefetchUser };
+  }
+
+  private hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
+    const hasUserGotCutOffTime = Boolean(cutoffTime);
+    const userCurrentTime = DateTime.local({ zone: timezone });
+    const userCutOffTime =
+      hasUserGotCutOffTime &&
+      DateTime.fromFormat(cutoffTime, 'hh:mm', {
+        zone: timezone,
+      });
+    return userCutOffTime && userCurrentTime >= userCutOffTime;
+  }
+
+  private sortActivitiesInSequence(activities: Activity[], orderedIds: string[]) {
+    return activities.sort(
+      (precedingActivity, followingActivity) =>
+        orderedIds.indexOf(precedingActivity.id) - orderedIds.indexOf(followingActivity.id),
+    );
   }
 
   private async saveCompletedLog(

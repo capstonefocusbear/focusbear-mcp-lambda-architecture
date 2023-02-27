@@ -25,12 +25,14 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
+import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
+    private readonly completedActivityService: CompletedActivityService,
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly revenueCatService: RevenueCatService,
@@ -178,14 +180,27 @@ export class UserService {
           user_id: id,
         },
       });
-      const partialUser = await this.userRepository.getUserCurrentActivityProps(id);
+      let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      if (partialUser.current_activity) {
+        const updatedPartialUser = await this.recalculateActivityProps(partialUser);
+        partialUser = updatedPartialUser;
+      }
       const currentActivityProps = new CurrentActivityProps(partialUser);
       return currentActivityProps;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  private async recalculateActivityProps(partialUser: User) {
+    const { activity, shouldRefetchUser } = await this.completedActivityService.recalculateCurrentActivity(partialUser);
+    let updatedUser = partialUser;
+    if (shouldRefetchUser) {
+      updatedUser = await this.userRepository.getUserCurrentActivityProps(partialUser.id);
+    }
+    return { ...updatedUser, current_activity: activity };
   }
 
   async updateUserLocalDeviceSettings(

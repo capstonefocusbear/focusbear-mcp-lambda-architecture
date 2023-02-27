@@ -55,6 +55,7 @@ export const CompletedActivitySequenceServiceMock = {
   forceCompleteCurrentSequence: jest.fn(),
   getOrCreateCompletingSequenceLogForSyncing: jest.fn(),
   completeActivitySequenceByDate: jest.fn(),
+  recalculateCurrentActivity: jest.fn(),
 };
 
 export const PusherServiceMock = {

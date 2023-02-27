@@ -5,7 +5,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { configsArray } from '../../../../config/index';
 import { StripeService } from '../../../../../../../libs/stripe/src';
-import { auth0UserDummy, focusModeTemplateDBResponseDummy, userDummy } from '../../../../../test/dummies';
+import {
+  ActivityDummy,
+  auth0UserDummy,
+  focusModeTemplateDBResponseDummy,
+  userDummy,
+} from '../../../../../test/dummies';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,
@@ -21,6 +26,7 @@ import {
   UserDailyStatsServiceMock,
   CompletedActivitySequenceRepositoryMock,
   AdminAccessRequestRepositoryMock,
+  CompletedActivitySequenceServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -38,6 +44,7 @@ import { CompletedActivitySequenceRepository } from '../../../activity/repositor
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
 import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
+import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -59,6 +66,7 @@ describe('UserService', () => {
         UserDailyStatsService,
         CompletedActivitySequenceRepository,
         AdminAccessRequestRepository,
+        CompletedActivityService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -89,8 +97,12 @@ describe('UserService', () => {
       .useValue(CompletedActivitySequenceRepositoryMock)
       .overrideProvider(AdminAccessRequestRepository)
       .useValue(AdminAccessRequestRepositoryMock)
+      .overrideProvider(CompletedActivityService)
+      .useValue(CompletedActivitySequenceServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
+
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -203,6 +215,36 @@ describe('UserService', () => {
       const result = await userService.getUserCurrentActivityProps(userDummy.id);
 
       expect(result).toBeInstanceOf(CurrentActivityProps);
+    });
+
+    it('positive: if current activity is null after being recalculated, user data should be fetched again', async () => {
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        ...userDummy,
+        current_activity: ActivityDummy,
+      });
+      CompletedActivitySequenceServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
+        activity: null,
+        shouldRefetchUser: true,
+      });
+
+      await userService.getUserCurrentActivityProps(userDummy.id);
+
+      expect(UserRepositoryMock.getUserCurrentActivityProps).toBeCalledTimes(2);
+    });
+
+    it('positive: if new activity is returned after recalculating current activity, it should be included in response as current_activity', async () => {
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        ...userDummy,
+        current_activity: ActivityDummy,
+      });
+      CompletedActivitySequenceServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
+        activity: ActivityDummy,
+        shouldRefetchUser: false,
+      });
+
+      const response = await userService.getUserCurrentActivityProps(userDummy.id);
+
+      expect(response.current_activity).toBe(ActivityDummy);
     });
   });
 

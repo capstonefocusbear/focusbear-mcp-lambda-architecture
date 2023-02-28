@@ -56,6 +56,14 @@ export class UpsertFocusModeTemplateDto {
   marketplace_approval_status?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  is_featured?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  featured_for_onboarding?: boolean;
+
+  @IsOptional()
   @IsString()
   language?: string;
 }

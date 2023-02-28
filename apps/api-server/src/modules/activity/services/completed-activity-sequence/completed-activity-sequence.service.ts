@@ -296,7 +296,8 @@ export class CompletedActivitySequenceService {
     const sequenceDate = DateTime.fromJSDate(current_sequence_started_at, { zone: userTimeZone });
     const sequenceWasStartedToday = sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
     const canForceCompleteMorningRoutine = type === ActivityType.morning && userCurrentTime >= userShutdownTime;
-    const canForceCompleteEveningRoutine = type === ActivityType.evening && userCurrentTime >= userStartupTime;
+    const canForceCompleteEveningRoutine =
+      type === ActivityType.evening && userCurrentTime >= userStartupTime && userCurrentTime < userShutdownTime;
     const canForceCompleteSequence = canForceCompleteMorningRoutine || canForceCompleteEveningRoutine;
     if (!sequenceWasStartedToday || cancel_habits_for_today) return true;
     if (sequenceWasStartedToday && canForceCompleteSequence) return true;

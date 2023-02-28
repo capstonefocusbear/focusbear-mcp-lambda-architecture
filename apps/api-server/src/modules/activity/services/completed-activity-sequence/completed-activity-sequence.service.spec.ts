@@ -241,7 +241,7 @@ describe('CompletedActivitySequenceService', () => {
   });
 
   describe('completeActivitySequenceByDate', () => {
-    it('positive: seuqence should be completed and saved', async () => {
+    it('positive: sequence should be completed and saved', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });
       const startTime = new Date();
@@ -312,7 +312,7 @@ describe('CompletedActivitySequenceService', () => {
       completing_sequence_log: UncompletedSequenceLogDummy,
     };
 
-    it('negative: if user has another current sequence thorw BadRequestExcaption', async () => {
+    it('negative: if user has another current sequence throw BadRequestException', async () => {
       const activity_sequence_id = randomUUID();
       const userWithWrongCurrentSequence: User = { ...userDummy, current_activity_sequence_id: randomUUID() };
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithWrongCurrentSequence);
@@ -400,7 +400,7 @@ describe('CompletedActivitySequenceService', () => {
       expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id, testUser.id);
     });
 
-    it('positive: if user has inconsistent current sequence or null values, skip conplete operation and set given id as last completed', async () => {
+    it('positive: if user has inconsistent current sequence or null values, skip complete operation and set given id as last completed', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_activity_sequence_id: null });
       UncompletedSequenceLogDummy.finalizeUncompletedLog();
       ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);

@@ -5,6 +5,7 @@ import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { FocusModeRepository } from '../../focus-mode/repositories/focus-mode.repository';
 import { UserTypes } from '../../user/domain/user-types.enum';
+import { User } from '../../user/entities/user.entity';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { GetMultipleFocusModeTemplatesQueryDto } from '../dto/get-multiple-focus-mode-templates-query.dto';
 import { UpsertFocusModeTemplateDto } from '../dto/upsert-focus-mode-template.dto';
@@ -48,36 +49,73 @@ export class FocusModeTemplatesService {
           `User with ID: ${user_id} is not authorized to edit focus mode template with ID: ${focusModeTemplateDto.id}!`,
         );
       }
-      const { marketplace_approval_status, author_name, id } = focusModeTemplateDto;
-      let approvalStatus;
-      const marketplaceApprovalStatus = existingFocusModeTemplate?.marketplace_approval_status;
-      const approvalStatusHasChanged = marketplace_approval_status !== marketplaceApprovalStatus;
-      const approvalStatusIsFalse = typeof marketplace_approval_status !== 'undefined' && !marketplace_approval_status;
-      if (userIsAdmin) {
-        approvalStatus = marketplace_approval_status;
-      } else if (approvalStatusHasChanged && approvalStatusIsFalse) {
-        approvalStatus = false;
-      } else {
-        approvalStatus = existingFocusModeTemplate?.marketplace_approval_status ?? false;
-      }
-      let existingFocusTemplate = null;
-      if (id) {
-        existingFocusTemplate = await this.focusModeTemplateRepository.orm.findOne({ where: { id } });
-      }
-      // allow admin user to edit template author, if not admin, use existing author name, if new template, use user's name
-      const ifExistsUseSetName = existingFocusTemplate ? existingFocusTemplate.author_name : user.name;
-      const authorNameToUse = userIsAdmin ? author_name : ifExistsUseSetName;
+      const { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding } = this.determineAdminProperties(
+        userIsAdmin,
+        focusModeTemplateDto,
+        existingFocusModeTemplate,
+      );
+      const { author_name } = focusModeTemplateDto;
+      const authorName = this.determineFocusTemplateAuthorName(
+        existingFocusModeTemplate,
+        user,
+        author_name,
+        userIsAdmin,
+      );
       const focusModeTemplate = new FocusModeTemplate({
         ...focusModeTemplateDto,
         author_id: user.id,
-        author_name: authorNameToUse,
-        marketplace_approval_status: approvalStatus,
+        author_name: authorName,
+        marketplace_approval_status: marketplaceApprovalStatus,
+        is_featured: isFeatured,
+        featured_for_onboarding: isFeaturedForOnboarding,
       });
       return await this.focusModeTemplateRepository.upsert(focusModeTemplate, ['id']);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  determineFocusTemplateAuthorName(
+    focusTemplate: FocusModeTemplate,
+    user: User,
+    upsertName: string,
+    userIsAdmin: boolean,
+  ) {
+    // allow admin user to edit author name, if not admin, use existing creator name, if new pack, use user's name
+    const ifExistingFocusTemplateUseSetName = focusTemplate ? focusTemplate.author_name : user.name;
+    const creatorNameToUse = userIsAdmin ? upsertName : ifExistingFocusTemplateUseSetName;
+    return creatorNameToUse;
+  }
+
+  determineAdminProperties(
+    userIsAdmin: boolean,
+    upsertFocusMode: UpsertFocusModeTemplateDto,
+    existingFocusTemplate: FocusModeTemplate,
+  ) {
+    const { marketplace_approval_status, is_featured, featured_for_onboarding } = upsertFocusMode;
+    let marketplaceApprovalStatus;
+    let isFeatured;
+    let isFeaturedForOnboarding;
+    const hasExistingMarketplaceStatus = typeof existingFocusTemplate?.marketplace_approval_status === 'boolean';
+    const existingMarketplaceStatus = existingFocusTemplate?.marketplace_approval_status;
+    const hasExistingIsFeaturedStatus = typeof existingFocusTemplate?.is_featured === 'boolean';
+    const existingIsFeaturedStatus = existingFocusTemplate?.is_featured;
+    const hasExistingIsFeaturedForOnboardingStatus =
+      typeof existingFocusTemplate?.featured_for_onboarding === 'boolean';
+    const existingIsFeaturedForOnboardingStatus = existingFocusTemplate?.featured_for_onboarding;
+    if (userIsAdmin) {
+      marketplaceApprovalStatus = marketplace_approval_status;
+      isFeatured = is_featured;
+      isFeaturedForOnboarding = featured_for_onboarding;
+    } else {
+      marketplaceApprovalStatus = hasExistingMarketplaceStatus ? existingMarketplaceStatus : false;
+      isFeatured = hasExistingIsFeaturedStatus ? existingIsFeaturedStatus : false;
+      isFeaturedForOnboarding = hasExistingIsFeaturedForOnboardingStatus
+        ? existingIsFeaturedForOnboardingStatus
+        : false;
+    }
+    return { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding };
   }
 
   async deleteFocusModeTemplate(template_id: string, user_id: string) {

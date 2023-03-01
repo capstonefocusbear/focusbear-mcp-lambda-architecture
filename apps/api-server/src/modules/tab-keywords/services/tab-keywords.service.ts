@@ -16,7 +16,28 @@ export class TabKeywordsService {
         },
       });
       const phraseFrequency = {};
-      const IGNORE_WORDS = ['a', 'an', 'the', 'and', 'or', 'in', 'on', 'at', 'for', 'to', 'with', 'of', 'from'];
+      const IGNORE_WORDS = [
+        'a',
+        'an',
+        'the',
+        'and',
+        'or',
+        'in',
+        'on',
+        'at',
+        'for',
+        'to',
+        'with',
+        'of',
+        'from',
+        'how',
+        '-',
+        'how to',
+        'how to use',
+        'what',
+        'what is',
+        'is',
+      ];
       titles.forEach((title) => {
         const words = title.split(' ');
         for (let j = 0; j < words.length; j++) {

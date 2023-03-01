@@ -69,6 +69,8 @@ describe('FocusModeTemplatesService', () => {
       welcome_video_url: 'https:blah.io',
       marketplace_request: MarketplaceRequestType.requested,
       marketplace_approval_status: false,
+      featured_for_onboarding: false,
+      is_featured: false,
       language: 'en',
     };
 
@@ -119,11 +121,17 @@ describe('FocusModeTemplatesService', () => {
       );
     });
 
-    it('Positive: admin user should be able to change marketplace approval status to true and update author name', async () => {
+    it('Positive: admin user should be able to change admin properties to true', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
 
       await focusModeTemplateService.upsertFocusModeTemplate(
-        { ...focusModeTemplateDtoDummy, marketplace_approval_status: true, author_name: userDummy.name },
+        {
+          ...focusModeTemplateDtoDummy,
+          marketplace_approval_status: true,
+          is_featured: true,
+          featured_for_onboarding: true,
+          author_name: userDummy.name,
+        },
         userDummy.id,
       );
 
@@ -133,16 +141,23 @@ describe('FocusModeTemplatesService', () => {
           author_id: userDummy.id,
           author_name: userDummy.name,
           marketplace_approval_status: true,
+          is_featured: true,
+          featured_for_onboarding: true,
         }),
         ['id'],
       );
     });
 
-    it('Positive: standard user should not be able to change marketplace approval status to true', async () => {
+    it('Positive: standard user should not be able to change admin properties, they should be saved as false if standard user tries changing them to true', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy });
 
       await focusModeTemplateService.upsertFocusModeTemplate(
-        { ...focusModeTemplateDtoDummy, marketplace_approval_status: true },
+        {
+          ...focusModeTemplateDtoDummy,
+          marketplace_approval_status: true,
+          is_featured: true,
+          featured_for_onboarding: true,
+        },
         userDummy.id,
       );
 

@@ -15,6 +15,7 @@ export class StripeService extends Stripe {
       .create({
         success_url,
         cancel_url,
+        allow_promotion_codes: true,
         customer,
         line_items: [{ price, quantity: 1 }],
         mode: 'subscription',

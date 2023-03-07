@@ -59,8 +59,11 @@ export class TabKeywordsService {
       });
       // Convert the frequency object to an array of [phrase, frequency] pairs
       const phraseFrequencyArray: [string, number][] = Object.entries(phraseFrequency);
+
       phraseFrequencyArray.sort((precedingPhrase, followingPhrase) => followingPhrase[1] - precedingPhrase[1]);
-      const topPhrasesAndFrequencies = phraseFrequencyArray.slice(0, 5);
+
+      // only include phrases that are used multiple times
+      const topPhrasesAndFrequencies = phraseFrequencyArray.slice(0, 5).filter(([, frequency]) => frequency > 1);
       const topPhrases = topPhrasesAndFrequencies.map(([phrase]) => phrase);
       return topPhrases;
     } catch (error) {

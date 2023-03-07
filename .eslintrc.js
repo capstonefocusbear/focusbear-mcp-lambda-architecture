@@ -25,6 +25,7 @@ module.exports = {
     'import/prefer-default-export': 'off',
     'class-methods-use-this': 'off',
     'object-curly-newline': 'off',
+    "no-console": ["error", { "allow": ["error"] }],
     '@typescript-eslint/indent': 'off',
     'implicit-arrow-linebreak': 'off',
     'import/no-extraneous-dependencies': 'off',

@@ -21,14 +21,14 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
-  return function (object: any, propertyName: string) {
+  return (object: any, propertyName: string) => {
     registerDecorator({
       target: object.constructor,
       propertyName,
       constraints: [property],
       options: validationOptions,
       validator: {
-        validate(value: any, args: ValidationArguments) {
+        validate(_value: any, args: ValidationArguments) {
           const fieldValue = (args.object as any)[propertyName];
           // eslint-disable-next-line @typescript-eslint/dot-notation
           const choices = args.object?.['choices'];

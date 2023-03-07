@@ -12,12 +12,15 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 @Injectable()
 export class CoursesRepository {
   private readonly ormCourse = AppDataSource.getRepository(Course);
+
   private readonly ormCourseEnrolment = AppDataSource.getRepository(CourseEnrolment);
+
   private readonly ormCourseRating = AppDataSource.getRepository(CourseRating);
+
   private readonly ormUser = AppDataSource.getRepository(User);
 
   async getAllAuthoredCourses(user_id: string): Promise<Course[]> {
-    return await this.ormCourse.find({
+    return this.ormCourse.find({
       where: {
         author: {
           id: user_id,
@@ -35,7 +38,7 @@ export class CoursesRepository {
       },
     });
 
-    return await Promise.all(
+    return Promise.all(
       courseEnrolments.map(async (enrolment: CourseEnrolment) => {
         const courseFound = await this.ormCourse.findOne({
           where: {
@@ -48,7 +51,7 @@ export class CoursesRepository {
   }
 
   async getRatings(course_id: string): Promise<CourseRating[]> {
-    return await this.ormCourseRating.find({
+    return this.ormCourseRating.find({
       where: {
         course_id,
       },
@@ -146,7 +149,7 @@ export class CoursesRepository {
   }
 
   async checkForeignKeyUserIdExist(user_id: string) {
-    return await this.ormUser.findOne({
+    return this.ormUser.findOne({
       where: {
         id: user_id,
       },
@@ -154,7 +157,7 @@ export class CoursesRepository {
   }
 
   async checkForeignKeyCourseIdExist(course_id: string, user_id?: string) {
-    return await this.ormCourse.findOne({
+    return this.ormCourse.findOne({
       where: {
         id: course_id,
         author_id: user_id,
@@ -163,7 +166,7 @@ export class CoursesRepository {
   }
 
   async checkUserCourseEnrolment(user_id: string, course_id: string) {
-    return await this.ormCourseEnrolment.findOne({
+    return this.ormCourseEnrolment.findOne({
       where: {
         course_id,
         user_id,

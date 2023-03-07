@@ -13,7 +13,7 @@ import {
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 export function IsTimestampGreaterThan(property: string, validationOptions?: ValidationOptions) {
-  return function (object: any, propertyName: string) {
+  return (object: any, propertyName: string) => {
     registerDecorator({
       target: object.constructor,
       propertyName,
@@ -28,23 +28,6 @@ export function IsTimestampGreaterThan(property: string, validationOptions?: Val
     });
   };
 }
-
-// export function IsTimestampLesserThanNow(property: string, validationOptions?: ValidationOptions) {
-//   return function (object: any, propertyName: string) {
-//     registerDecorator({
-//       target: object.constructor,
-//       propertyName,
-//       constraints: [property],
-//       options: validationOptions,
-//       validator: {
-//         validate(value: any) {
-//           const now = new Date();
-//           return value <= now;
-//         },
-//       },
-//     });
-//   };
-// }
 
 export class CreateCompletedActivityDto {
   @IsNotEmpty()

@@ -13,13 +13,17 @@ import { Lesson } from '../entities/lesson.entity';
 @Injectable()
 export class LessonsRepository {
   private readonly ormLesson = AppDataSource.getRepository(Lesson);
+
   private readonly ormLessonCompletion = AppDataSource.getRepository(LessonCompletion);
+
   private readonly ormCourseRating = AppDataSource.getRepository(CourseRating);
+
   private readonly ormCourse = AppDataSource.getRepository(Course);
+
   private readonly ormCourseEnrolment = AppDataSource.getRepository(CourseEnrolment);
 
   async getCourseLessons(course_id: string) {
-    return await this.ormLesson.find({
+    return this.ormLesson.find({
       where: {
         course_id,
       },
@@ -27,7 +31,7 @@ export class LessonsRepository {
   }
 
   async getLessonRatings(course_id: string, lesson_id: string) {
-    return await this.ormCourseRating.find({
+    return this.ormCourseRating.find({
       where: {
         course_id,
         lesson_id,
@@ -102,7 +106,7 @@ export class LessonsRepository {
   }
 
   async checkForeignKeyCourseIdExist(course_id: string) {
-    return await this.ormCourse.findOne({
+    return this.ormCourse.findOne({
       where: {
         id: course_id,
       },
@@ -110,7 +114,7 @@ export class LessonsRepository {
   }
 
   async checkForeignKeyLessonIdExist(lesson_id: string, course_id?: string) {
-    return await this.ormLesson.findOne({
+    return this.ormLesson.findOne({
       where: {
         id: lesson_id,
         course_id,
@@ -119,7 +123,7 @@ export class LessonsRepository {
   }
 
   async checkUserCourseEnrolment(user_id: string, course_id: string) {
-    return await this.ormCourseEnrolment.findOne({
+    return this.ormCourseEnrolment.findOne({
       where: {
         course_id,
         user_id,

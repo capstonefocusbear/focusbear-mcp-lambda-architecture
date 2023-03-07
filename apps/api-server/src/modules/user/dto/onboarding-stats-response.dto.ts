@@ -30,4 +30,8 @@ export class OnboardingStatsResponseDto {
   average_evening_routines_completion_percentage: number;
 
   average_num_focus_modes_completed_per_day: number;
+
+  routines_threshold: number;
+
+  focus_modes_threshold: number;
 }

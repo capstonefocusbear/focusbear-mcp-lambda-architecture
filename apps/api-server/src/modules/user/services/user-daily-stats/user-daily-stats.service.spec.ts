@@ -81,7 +81,7 @@ describe('UserDailyStatsService', () => {
   describe('updateUserOnboardingProgress', () => {
     it("positive: if called with EDIT_SETTINGS event type, user's onboarding progress has_edited_settings property should change to true", async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -102,7 +102,7 @@ describe('UserDailyStatsService', () => {
 
     it("positive: if called with EDIT_BLOCKED_URLS event type, user's onboarding progress has_edited_always_blocked_urls property should change to true", async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -123,7 +123,7 @@ describe('UserDailyStatsService', () => {
 
     it("positive: if called with EDIT_FOCUS_MODE event type, user's onboarding progress has_edited_always_blocked_urls property should change to true", async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -159,7 +159,7 @@ describe('UserDailyStatsService', () => {
   describe('calculateRoutineCompletionPercentage', () => {
     it('positive: If the user has not completed any activities for the routine, completion percentage of 0 should be returned', async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -179,7 +179,7 @@ describe('UserDailyStatsService', () => {
 
     it('positive: already completed activities total duration should be returned as percentage of entire sequence duration', async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -204,7 +204,7 @@ describe('UserDailyStatsService', () => {
     Settings.now = () => 1676254469000;
     it('positive: user streaks of routines in continuous days should be returned', async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -232,7 +232,7 @@ describe('UserDailyStatsService', () => {
     it('positive: user streak of focus modes in continuous days should be returned without being reset if focus modes not done on weekends', async () => {
       // in mock there is a weekend stat where no focus mode has been completed for that day, this should not reset the streak
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,
@@ -258,7 +258,7 @@ describe('UserDailyStatsService', () => {
 
     it('positive: if user has mobile device installed, has_installed_mobile_app value should be true', async () => {
       const mockOnboardingProgress = {
-        level: 0,
+        level: 1,
         has_edited_focus_mode: false,
         has_edited_settings: false,
         has_edited_always_blocked_urls: false,

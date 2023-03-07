@@ -165,6 +165,8 @@ export class UserDailyStatsService {
         average_morning_routines_completion_percentage: morningRoutineAverage,
         average_evening_routines_completion_percentage: eveningRoutineAverage,
         average_num_focus_modes_completed_per_day: focusModesAverage,
+        routines_threshold: LEVEL_THRESHOLDS[level - 1].routines,
+        focus_modes_threshold: LEVEL_THRESHOLDS[level - 1].focus_modes,
       };
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

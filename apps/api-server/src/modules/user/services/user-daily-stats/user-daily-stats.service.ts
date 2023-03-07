@@ -143,13 +143,15 @@ export class UserDailyStatsService {
       } = this.calculateCompletionPercentages(morning_routines_streak, evening_routines_streak, focus_modes_streak);
       const { level, has_edited_focus_mode, has_edited_always_blocked_urls, has_edited_settings } =
         this.getOnboardingStats(user);
+      // replace level 0 with leve 1 for existing users
+      const levelToUse = level === 0 ? 1 : level;
       await this.userRepository.update(user_id, {
         morning_routines_streak,
         evening_routines_streak,
         focus_modes_streak,
       });
       return {
-        level,
+        level: levelToUse,
         total_percent,
         has_edited_settings,
         has_edited_always_blocked_urls,
@@ -165,8 +167,8 @@ export class UserDailyStatsService {
         average_morning_routines_completion_percentage: morningRoutineAverage,
         average_evening_routines_completion_percentage: eveningRoutineAverage,
         average_num_focus_modes_completed_per_day: focusModesAverage,
-        routines_threshold: LEVEL_THRESHOLDS[level - 1].routines,
-        focus_modes_threshold: LEVEL_THRESHOLDS[level - 1].focus_modes,
+        routines_threshold: LEVEL_THRESHOLDS[levelToUse - 1].routines,
+        focus_modes_threshold: LEVEL_THRESHOLDS[levelToUse - 1].focus_modes,
       };
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

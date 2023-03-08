@@ -26,6 +26,7 @@ import { AdminAccessRequestRepository } from '../../repositories/admin-access-re
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
+import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 
 @Injectable()
 export class UserService {
@@ -364,8 +365,13 @@ export class UserService {
     if (user.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
+    const fetchedUser = await this.userRepository.getUserForAdmin(id, stripe_customer_id);
+    const completedSequences = this.removeUserIncompleteSequences(fetchedUser.completed_activity_sequences);
+    return { ...fetchedUser, completed_activity_sequences: completedSequences };
+  }
 
-    return this.userRepository.getUserForAdmin(id, stripe_customer_id);
+  removeUserIncompleteSequences(activitySequenceRecords: CompletedActivitySequence[]) {
+    return activitySequenceRecords.filter((sequence) => sequence.is_completed);
   }
 
   async saveAdminAccessRequest(user_id: string, accessReason: string) {

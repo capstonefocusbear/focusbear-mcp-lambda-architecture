@@ -131,7 +131,7 @@ export class UserRepository extends BaseRepository<User> {
 
   async getUserForAdmin(id: string, stripe_customer_id: string) {
     return this.orm.findOne({
-      where: [{ id, completed_activity_sequences: { is_completed: true } }, { stripe_customer_id }],
+      where: [{ id }, { stripe_customer_id }],
       relations: ['focus_modes', 'activities', 'completed_focus_blocks', 'completed_activity_sequences'],
       order: { completed_focus_blocks: { start_time: 'DESC' }, completed_activity_sequences: { start_time: 'DESC' } },
     });

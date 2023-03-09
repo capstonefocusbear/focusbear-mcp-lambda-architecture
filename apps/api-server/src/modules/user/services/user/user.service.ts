@@ -366,7 +366,10 @@ export class UserService {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
     const fetchedUser = await this.userRepository.getUserForAdmin(id, stripe_customer_id);
-    const completedSequences = this.removeUserIncompleteSequences(fetchedUser.completed_activity_sequences);
+    if (!fetchedUser) {
+      return null;
+    }
+    const completedSequences = this.removeUserIncompleteSequences(fetchedUser?.completed_activity_sequences);
     return { ...fetchedUser, completed_activity_sequences: completedSequences };
   }
 

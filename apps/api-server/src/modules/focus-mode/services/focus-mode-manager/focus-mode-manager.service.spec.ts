@@ -206,11 +206,13 @@ describe('FocusModeManagerService', () => {
       jest.clearAllMocks();
       jest.resetAllMocks();
     });
+    const thirtyMinutesInSeconds = 1800;
     const focus_mode_id = FocusModeDummy.id;
     const user_id = userDummy.id;
     const finishFocusModeDto: FinishFocusModeDto = {
       achievements: CompletedFocusBlockDummy.achievements,
       finish_time: CompletedFocusBlockDummy.finish_time,
+      focus_duration_seconds: thirtyMinutesInSeconds,
     };
 
     it('negative: should throw NotFoundException if focus mode does not exist', async () => {

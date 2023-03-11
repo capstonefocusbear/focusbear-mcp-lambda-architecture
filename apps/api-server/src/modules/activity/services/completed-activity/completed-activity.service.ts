@@ -107,9 +107,9 @@ export class CompletedActivityService {
         completingSequenceLog,
       );
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
-      const currentActivityIsMorningOrEveningType =
+      const isCurrentActivityIsMorningOrEveningType =
         activity.type === ActivityType.morning || activity.type === ActivityType.evening;
-      const shouldUpdateDailyStats = !should_not_update_current_activity && currentActivityIsMorningOrEveningType;
+      const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityIsMorningOrEveningType;
       if (shouldUpdateDailyStats) {
         await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
           user,

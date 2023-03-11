@@ -375,6 +375,7 @@ describe('CompletedActivityService', () => {
         { user_id },
       );
 
+      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
       expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toBeCalledTimes(0);
     });
 

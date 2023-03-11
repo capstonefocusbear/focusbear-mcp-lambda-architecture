@@ -358,6 +358,26 @@ describe('CompletedActivityService', () => {
       );
     });
 
+    it('positive: if should_not_update_current_activity value is passed as true, user current activity properties should not be updated', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      const completedActivityId = randomUUID();
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedActivityService.completeActivity(
+        { ...completedActivity, should_not_update_current_activity: true },
+        { user_id },
+      );
+
+      expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toBeCalledTimes(0);
+    });
+
     it('positive: if there is no next activity in the sequence, this sequence should be completed', async () => {
       const userWithCurrentActivity: User = {
         ...userDummy,

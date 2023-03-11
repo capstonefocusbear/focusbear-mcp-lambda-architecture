@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 
 export class CreateSkippedActivityDto {
@@ -42,4 +42,8 @@ export class CreateSkippedActivityDto {
   @IsOptional()
   @Type(() => CompletedActivityMetadata)
   metadata?: CompletedActivityMetadata;
+
+  @IsOptional()
+  @IsBoolean()
+  should_not_update_current_activity?: boolean;
 }

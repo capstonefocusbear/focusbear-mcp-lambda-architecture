@@ -62,7 +62,8 @@ export class ActivityParserService {
         is_default,
         run_micro_breaks,
         days_of_week,
-        completion_requirements,
+        // return as undefined if null to exclude from response - causes issue in Mac app otherwise
+        completion_requirements: completion_requirements ?? undefined,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);

@@ -174,7 +174,7 @@ export class ActivityTemplateParserService {
       ...activity_data,
       activity_type: `${getType(activity_type)}_activity`,
       duration_seconds: Number(duration_seconds),
-      completion_requirements,
+      completion_requirements: completion_requirements ?? undefined,
       pack_id,
       log_quantity,
       log_summary_type,

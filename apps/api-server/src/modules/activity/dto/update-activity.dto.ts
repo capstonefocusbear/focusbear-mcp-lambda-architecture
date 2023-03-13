@@ -8,6 +8,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  IsString,
   IsUUID,
   registerDecorator,
   ValidateIf,
@@ -55,10 +56,15 @@ export class UpdateActivityDto extends ActivityData {
   @ApiProperty()
   log_quantity?: boolean;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
   @ApiProperty()
   duration_seconds?: number;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty()
+  completion_requirements?: string;
 
   // @IsEnum(LogSummaryType)
   @IsIn([...Object.values(LogSummaryType), ''])

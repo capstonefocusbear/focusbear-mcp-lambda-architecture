@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsIn,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -32,6 +33,8 @@ export class ActivityData {
     this.text_instructions = data?.text_instructions;
     this.image_urls = data?.image_urls;
     this.priority = data?.priority;
+    this.current_competency_level = data?.current_competency_level;
+    this.competency_level = data?.competency_level;
   }
 
   @IsNotEmpty()
@@ -112,4 +115,13 @@ export class ActivityData {
   @IsArray()
   @Type(() => ActivityImageData)
   image_urls?: ActivityImageData[];
+
+  @IsOptional()
+  @IsNumber()
+  current_competency_level?: number;
+
+  // only used in activity choices
+  @IsOptional()
+  @IsNumber()
+  competency_level?: number;
 }

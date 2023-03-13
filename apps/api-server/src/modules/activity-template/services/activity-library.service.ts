@@ -47,9 +47,9 @@ export class ActivityLibraryService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      const activitesToUpsert = await this.removeActivitiesNotBelongingToUser(updateActivities, user_id);
+      const activitiesToUpsert = await this.removeActivitiesNotBelongingToUser(updateActivities, user_id);
       const activityTemplates = await this.activityTemplateParserService.deserializeLibraryActivities(
-        activitesToUpsert,
+        activitiesToUpsert,
         user_id,
       );
       const activityIds = activityTemplates.map((activityTemplate) => activityTemplate.id);

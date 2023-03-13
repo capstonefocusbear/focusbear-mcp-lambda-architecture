@@ -82,7 +82,15 @@ export class ActivityTemplateParserService {
   }
 
   createActivityTemplate(
-    { id, duration_seconds, log_quantity, log_summary_type, choices, ...activityDataValues }: UpdateActivityTemplateDto,
+    {
+      id,
+      duration_seconds,
+      completion_requirements,
+      log_quantity,
+      log_summary_type,
+      choices,
+      ...activityDataValues
+    }: UpdateActivityTemplateDto,
     {
       activity_type,
       user_id,
@@ -104,6 +112,7 @@ export class ActivityTemplateParserService {
       activity_type,
       user_id,
       duration_seconds,
+      completion_requirements,
       log_quantity: has_choices ? false : log_quantity,
       log_summary_type: has_choices ? 'SUM' : log_summary_type,
       has_choices,
@@ -124,7 +133,7 @@ export class ActivityTemplateParserService {
       message: 'Deserializing activity template choices',
     });
     return choices.map(
-      ({ id, log_quantity, log_summary_type, ...rest }) =>
+      ({ id, log_quantity, log_summary_type, completion_requirements, ...rest }) =>
         new ActivityTemplate({
           id,
           pack_id: parent.pack_id,
@@ -133,6 +142,7 @@ export class ActivityTemplateParserService {
           activity_type: parent.activity_type,
           user_id: parent.user_id,
           duration_seconds: parent.duration_seconds,
+          completion_requirements,
           log_quantity,
           log_summary_type,
           has_choices: null,
@@ -152,6 +162,7 @@ export class ActivityTemplateParserService {
     const mapActivity = ({
       id,
       duration_seconds,
+      completion_requirements,
       pack_id,
       log_quantity,
       log_summary_type,
@@ -163,6 +174,7 @@ export class ActivityTemplateParserService {
       ...activity_data,
       activity_type: `${getType(activity_type)}_activity`,
       duration_seconds: Number(duration_seconds),
+      completion_requirements,
       pack_id,
       log_quantity,
       log_summary_type,
@@ -205,6 +217,7 @@ export class ActivityTemplateParserService {
     const mapActivity = ({
       id,
       duration_seconds,
+      completion_requirements,
       pack_id,
       log_quantity,
       log_summary_type,
@@ -215,6 +228,7 @@ export class ActivityTemplateParserService {
         id,
         ...activity_data,
         duration_seconds: Number(duration_seconds),
+        completion_requirements,
         pack_id,
         log_quantity,
         log_summary_type,

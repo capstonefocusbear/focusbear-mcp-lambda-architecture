@@ -64,6 +64,12 @@ export class ActivityTemplate extends BaseEntity {
   duration_seconds?: number;
 
   @Column({
+    type: 'varchar',
+    default: null,
+  })
+  completion_requirements?: string;
+
+  @Column({
     type: 'uuid',
   })
   parent_id?: string;

@@ -232,10 +232,11 @@ describe('UserSettingsService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
-    it('positive: should user timezone in UTC offset format receiving IANA timezone format', async () => {
+    it('positive: should update user timezone in UTC offset format when receiving IANA timezone format', async () => {
       await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_York');
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-05:00' });
+      //  NY alternates between -4 and -5 hours UTC depending on daylight savings time
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
     });
 
     it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {

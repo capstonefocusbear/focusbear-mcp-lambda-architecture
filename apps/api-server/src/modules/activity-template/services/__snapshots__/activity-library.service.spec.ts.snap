@@ -7,6 +7,7 @@ Array [
     "choices": Array [
       Object {
         "choices": Array [],
+        "completion_requirements": undefined,
         "duration_seconds": 300,
         "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
         "log_quantity": true,
@@ -16,6 +17,7 @@ Array [
         "video_urls": Array [],
       },
     ],
+    "completion_requirements": undefined,
     "duration_seconds": 300,
     "id": "b9501b80-1286-464a-b0be-5838f52e2ff8",
     "log_quantity": false,
@@ -27,6 +29,7 @@ Array [
   Object {
     "choice_type": "random",
     "choices": Array [],
+    "completion_requirements": undefined,
     "duration_seconds": 300,
     "id": "b9501b60-1286-484a-b0be-5838f52e2ff9",
     "log_quantity": false,

@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateIf,
+} from 'class-validator';
 import { LogSummaryType } from './log-summary-type.enum';
 
 export class ActivityChoiceData {
@@ -12,6 +22,11 @@ export class ActivityChoiceData {
   @IsString()
   @ApiProperty()
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty()
+  completion_requirements?: string;
 
   @IsBoolean()
   @IsOptional()
@@ -50,4 +65,8 @@ export class ActivityChoiceData {
   @IsString({ each: true })
   @ApiProperty()
   allowed_urls?: string[];
+
+  @IsOptional()
+  @IsNumber()
+  competency_level?: number;
 }

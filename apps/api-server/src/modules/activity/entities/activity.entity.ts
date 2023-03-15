@@ -72,6 +72,12 @@ export class Activity extends BaseEntity {
   duration_seconds?: number;
 
   @Column({
+    type: 'varchar',
+    default: null,
+  })
+  completion_requirements?: string;
+
+  @Column({
     type: 'jsonb',
     nullable: false,
     transformer: BaseEntity.encryptJSONField('activity_data'),

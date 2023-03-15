@@ -37,7 +37,7 @@ Array [
         "video_urls": Array [],
       },
     ],
-    "description": "Test 12/10/22 12:27.",
+    "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
     "evening_activities": Array [
       Object {
@@ -75,7 +75,7 @@ Array [
     ],
     "pack_name": "Best routine pack",
     "pack_type": "routine",
-    "welcome_message": "Welcome to Focus Bear!",
+    "welcome_message": "<p>test welcome message</p>",
     "welcome_video_url": "www.youtube.com",
   },
 ]

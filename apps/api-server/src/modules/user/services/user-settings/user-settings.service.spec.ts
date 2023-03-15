@@ -235,7 +235,8 @@ describe('UserSettingsService', () => {
     it('positive: should user timezone in UTC offset format receiving IANA timezone format', async () => {
       await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_York');
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-05:00' });
+      // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
     });
 
     it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {

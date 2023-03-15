@@ -2,7 +2,7 @@
 
 exports[`HabitPackService getHabitPack Positive: should return a habit pack 1`] = `
 Object {
-  "description": "Sweeter pack!",
+  "description": "<p>test desc</p>",
   "description_video_url": "www.google.com",
   "featured_for_onboarding": false,
   "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
@@ -49,7 +49,7 @@ Object {
     },
   ],
   "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
-  "welcome_message": "Welcome to Focus Bear ya'll",
+  "welcome_message": "<p>test welcome message</p>",
   "welcome_video_url": "www.youtube.com",
 }
 `;
@@ -57,7 +57,7 @@ Object {
 exports[`HabitPackService getMultipleHabitPacks positive: should fetch habit packs 1`] = `
 Array [
   Object {
-    "description": "Sweeter pack!",
+    "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
     "featured_for_onboarding": false,
     "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
@@ -104,7 +104,7 @@ Array [
       },
     ],
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
-    "welcome_message": "Welcome to Focus Bear ya'll",
+    "welcome_message": "<p>test welcome message</p>",
     "welcome_video_url": "www.youtube.com",
   },
   Object {
@@ -128,7 +128,7 @@ Array [
       },
     ],
     "creator_name": "User Dummy",
-    "description": "Test 12/10/22 12:27.",
+    "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
     "evening_activities": Array [
       Object {
@@ -167,7 +167,7 @@ Array [
     "pack_name": "Best routine pack",
     "pack_type": "routine",
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
-    "welcome_message": "Welcome to Focus Bear!",
+    "welcome_message": "<p>test welcome message</p>",
     "welcome_video_url": "www.youtube.com",
   },
 ]

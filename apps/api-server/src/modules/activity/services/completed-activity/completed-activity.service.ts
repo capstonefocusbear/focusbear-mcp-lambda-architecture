@@ -39,6 +39,7 @@ import { UserDailyStatsService } from '../../../user/services/user-daily-stats/u
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
+import { SyncOfflineActivityArgs } from '../../dto/sync-offline-activity.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -72,7 +73,8 @@ export class CompletedActivityService {
           completedActivity,
         },
       });
-      const { device_id, activity_sequence_id, activity_id, choice_id } = completedActivity;
+      const { device_id, activity_sequence_id, activity_id, choice_id, should_not_update_current_activity } =
+        completedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
         activity_id,
@@ -85,23 +87,30 @@ export class CompletedActivityService {
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
         return createdItem;
       }
-      const completingSequenceLog = await this.updateUserAndSequence(
-        completedActivity,
-        { user_id },
-        user,
-        sequence,
-        activity,
-        choice,
-      );
+      let completingSequenceLog = null;
+      if (!should_not_update_current_activity) {
+        completingSequenceLog = await this.updateUserAndSequence(
+          completedActivity,
+          { user_id },
+          user,
+          sequence,
+          activity,
+          choice,
+        );
+      }
       const createdItem = await this.saveCompletedLog(
         completedActivity,
         activity,
         choice,
         user_id,
+        should_not_update_current_activity,
         completingSequenceLog,
       );
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
-      if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
+      const isCurrentActivityIsMorningOrEveningType =
+        activity.type === ActivityType.morning || activity.type === ActivityType.evening;
+      const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityIsMorningOrEveningType;
+      if (shouldUpdateDailyStats) {
         await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
           user,
           activity.type,
@@ -176,13 +185,7 @@ export class CompletedActivityService {
     allActivitiesFromSequence,
     sequence,
     createdLogs,
-  }: {
-    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto;
-    user: User;
-    allActivitiesFromSequence: Activity[];
-    sequence: ActivitySequence;
-    createdLogs: CompletedActivityResponse[];
-  }) {
+  }: SyncOfflineActivityArgs) {
     try {
       const startTime = completedActivity.start_time;
       const completingSequenceLog =
@@ -205,6 +208,7 @@ export class CompletedActivityService {
           activity,
           choice,
           user.id,
+          false,
           completingSequenceLog,
         );
         const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
@@ -524,6 +528,7 @@ export class CompletedActivityService {
     activity: Activity,
     choice: Activity,
     user_id: string,
+    should_not_update_current_activity = false,
     sequenceLog?: CompletedActivitySequence,
   ): Promise<CompletedActivityResponse> {
     this.sentryService.instance().addBreadcrumb({
@@ -539,6 +544,8 @@ export class CompletedActivityService {
     });
     const { choice_id, device_id, note_logged, ...data } = completedActivity;
     const { has_choices } = activity;
+    // remove should_not_update_current_activity from completed activity because it doesn't exist in database
+    delete data.should_not_update_current_activity;
     const completedItem = new CompletedActivity(
       { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
       { log_quantity: activity.log_quantity, generateId: false },
@@ -549,12 +556,24 @@ export class CompletedActivityService {
     );
     const nullifiedParent = { quantity_logged: null };
     if (has_choices) Object.assign(completedItem, nullifiedParent);
-    const [completed_activity_log, completed_choice_log] = await Promise.all([
-      this.completedActivityRepository.upsert(completedItem, ['activity_id', 'completed_sequence_id']),
-      has_choices
-        ? this.completedActivityRepository.upsert(completedChoice, ['activity_id', 'completed_sequence_id'])
-        : null,
-    ]);
+    let completed_activity_log;
+    let completed_choice_log;
+    if (should_not_update_current_activity) {
+      // create new records if activity is not done as part of sequence
+      [completed_activity_log, completed_choice_log] = await Promise.all([
+        this.completedActivityRepository.create(completedItem),
+        has_choices ? this.completedActivityRepository.create(completedChoice) : null,
+      ]);
+    } else {
+      // upsert completed activity records if activity is part morning or evening routine
+      // in case activity gets done for second time one same date
+      [completed_activity_log, completed_choice_log] = await Promise.all([
+        this.completedActivityRepository.upsert(completedItem, ['activity_id', 'completed_sequence_id']),
+        has_choices
+          ? this.completedActivityRepository.upsert(completedChoice, ['activity_id', 'completed_sequence_id'])
+          : null,
+      ]);
+    }
     return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });
   }
 

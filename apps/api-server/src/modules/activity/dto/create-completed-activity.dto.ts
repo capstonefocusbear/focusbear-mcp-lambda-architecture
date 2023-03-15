@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDate,
   IsNotEmpty,
   IsNumber,
@@ -74,4 +75,8 @@ export class CreateCompletedActivityDto {
   @IsOptional()
   @Type(() => CompletedActivityMetadata)
   metadata?: CompletedActivityMetadata;
+
+  @IsOptional()
+  @IsBoolean()
+  should_not_update_current_activity?: boolean;
 }

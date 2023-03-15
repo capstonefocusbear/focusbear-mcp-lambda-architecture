@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 // import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
 
 export class FinishFocusModeDto {
@@ -16,4 +16,8 @@ export class FinishFocusModeDto {
   @Type(() => Date)
   @IsDate({ message: 'finish_time  should be a valid ISO string in UTC zone' })
   finish_time: Date;
+
+  @IsOptional()
+  @IsNumber()
+  focus_duration_seconds?: number;
 }

@@ -108,7 +108,7 @@ export class FocusModeManagerService {
   }
 
   async finishCurrentFocusMode(
-    { distractions, achievements, finish_time }: FinishFocusModeDto,
+    { distractions, achievements, finish_time, focus_duration_seconds }: FinishFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
@@ -121,11 +121,12 @@ export class FocusModeManagerService {
           finish_time,
           focus_mode_id,
           user_id,
+          focus_duration_seconds,
         },
       });
       const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const updateCriteria = user.current_completing_focus_block_id;
-      const completedBlockDataToUpdate = { distractions, achievements, finish_time };
+      const completedBlockDataToUpdate = { distractions, achievements, finish_time, focus_duration_seconds };
       const [, completedMode] = await Promise.all([
         this.nullifyCurrentFocusModeForUser(user_id),
         this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),

@@ -75,12 +75,12 @@ export class FocusModeController {
 
   @Post(':focus_mode_id/finish')
   async finishCurrentFocusMode(
-    @Body() { achievements, distractions, finish_time }: FinishFocusModeDto,
+    @Body() { achievements, distractions, finish_time, focus_duration_seconds }: FinishFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
     await this.focusModeManagerService.finishCurrentFocusMode(
-      { achievements, distractions, finish_time },
+      { achievements, distractions, finish_time, focus_duration_seconds },
       { focus_mode_id },
       user.id,
     );

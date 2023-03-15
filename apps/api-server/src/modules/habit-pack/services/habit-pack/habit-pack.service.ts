@@ -167,6 +167,12 @@ export class HabitPackService {
         });
       });
       const creatorName = this.determinePackCreatorName(habitPack, user, creator_name, userIsAdmin);
+      const hasOnlyBreakActivities = this.checkIfPackOnlyHasBreakActivities({
+        morning_activities,
+        evening_activities,
+        break_activities,
+      });
+      const isBreaksOnlyPack = pack_type === HabitPackType.routine && hasOnlyBreakActivities;
       const newPack = new HabitPack({
         creator_name: creatorName,
         pack_name,
@@ -186,6 +192,7 @@ export class HabitPackService {
         duration: longestSequenceDuration,
         morning_routine_duration_seconds: this.calculateSequenceDuration(morning_activities, pack_type),
         evening_routine_duration_seconds: this.calculateSequenceDuration(evening_activities, pack_type),
+        breaks_only: isBreaksOnlyPack,
       });
       await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
       return await this.getHabitPack(id);
@@ -193,6 +200,21 @@ export class HabitPackService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  checkIfPackOnlyHasBreakActivities({
+    morning_activities,
+    evening_activities,
+    break_activities,
+  }: {
+    morning_activities: UpdateActivityTemplateDto[];
+    evening_activities: UpdateActivityTemplateDto[];
+    break_activities: UpdateActivityTemplateDto[];
+  }): boolean {
+    const hasMorningActivities = morning_activities?.length !== 0;
+    const hasEveningActivities = evening_activities?.length !== 0;
+    const hasBreakActivities = break_activities?.length !== 0;
+    return !hasMorningActivities && !hasEveningActivities && hasBreakActivities;
   }
 
   async deleteHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {

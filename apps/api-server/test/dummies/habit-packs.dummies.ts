@@ -548,6 +548,24 @@ export const deserializedRoutineActivitiesDummy = [
   ],
 ];
 
+export const breaksOnlyDeserializedRoutineActivitiesDummy = [
+  [],
+  [
+    {
+      id: '630c921d-dc9c-4107-acd2-023d7930d9bf',
+      pack_id: '34dd7441-16f9-4772-be6c-416f9af5689b',
+      activity_data: { name: 'Take a stretch', video_urls: [] },
+      activity_type: ActivityType.break,
+      user_id: '3f6b5a5a-a45d-4806-b4ae-2bfac3e38f14',
+      duration_seconds: 30,
+      log_quantity: false,
+      log_summary_type: 'SUM',
+      has_choices: false,
+    },
+  ],
+  [],
+];
+
 export const deserializedActivitiesDummy = [
   {
     sequence: {

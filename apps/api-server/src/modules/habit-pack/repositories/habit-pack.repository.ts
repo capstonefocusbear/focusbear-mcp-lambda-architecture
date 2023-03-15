@@ -70,6 +70,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'habit_packs.duration',
         'habit_packs.morning_routine_duration_seconds',
         'habit_packs.evening_routine_duration_seconds',
+        'habit_packs.breaks_only',
         'activity_templates.id',
         'activity_templates.log_quantity',
         'activity_templates.duration_seconds',
@@ -100,6 +101,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     featured_for_onboarding,
     language,
     user_id,
+    breaks_only,
   }: GetMultiplePacksQueryDto): Promise<HabitPack[]> {
     const query = this.orm
       .createQueryBuilder('habit_packs')
@@ -125,6 +127,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'habit_packs.duration',
         'habit_packs.morning_routine_duration_seconds',
         'habit_packs.evening_routine_duration_seconds',
+        'habit_packs.breaks_only',
         'activity_templates.id',
         'activity_templates.log_quantity',
         'activity_templates.duration_seconds',
@@ -162,6 +165,11 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     }
     if (user_id) {
       query.andWhere('habit_packs.user_id = :user_id', { user_id });
+    }
+    if (typeof breaks_only === 'boolean') {
+      query.andWhere('habit_packs.breaks_only = :breaks_only', {
+        breaks_only,
+      });
     }
     const fetchedPacks = await query.getMany();
     return fetchedPacks;

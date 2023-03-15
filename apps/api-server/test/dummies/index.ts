@@ -976,6 +976,7 @@ export const CompletedFocusBlockDummy = new CompletedFocusBlock(
     start_time: new Date(),
     intention: 'Some string',
     achievements: 'Some string',
+    focus_duration_seconds: 3200,
   },
   { generateId: true },
 );

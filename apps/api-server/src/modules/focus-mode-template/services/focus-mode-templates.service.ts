@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
+import { convert as htmlToPlainText } from 'html-to-text';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { FocusModeRepository } from '../../focus-mode/repositories/focus-mode.repository';
@@ -63,6 +64,8 @@ export class FocusModeTemplatesService {
       );
       const focusModeTemplate = new FocusModeTemplate({
         ...focusModeTemplateDto,
+        description_plain_text: htmlToPlainText(focusModeTemplateDto.description),
+        welcome_message_plain_text: htmlToPlainText(focusModeTemplateDto.welcome_message),
         author_id: user.id,
         author_name: authorName,
         marketplace_approval_status: marketplaceApprovalStatus,

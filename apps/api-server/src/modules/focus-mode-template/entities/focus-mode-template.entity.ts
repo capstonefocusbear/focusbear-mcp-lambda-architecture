@@ -67,6 +67,18 @@ export class FocusModeTemplate extends BaseEntity {
   welcome_video_url?: string;
 
   @Column({
+    type: 'varchar',
+    default: null,
+  })
+  description_plain_text?: string;
+
+  @Column({
+    type: 'varchar',
+    default: null,
+  })
+  welcome_message_plain_text?: string;
+
+  @Column({
     type: 'boolean',
     default: false,
   })

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { convert as htmlToPlainText } from 'html-to-text';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UpsertHabitPackDto } from '../../dto/upsert-habit-pack.dto';
 import { HabitPack } from '../../entity/habit-pack.entity';
@@ -171,8 +172,10 @@ export class HabitPackService {
         pack_name,
         pack_type,
         description,
+        description_plain_text: htmlToPlainText(description),
         description_video_url,
         welcome_message,
+        welcome_message_plain_text: htmlToPlainText(welcome_message),
         welcome_video_url,
         marketplace_request,
         marketplace_approval_status: marketplaceApprovalStatus,
@@ -181,6 +184,8 @@ export class HabitPackService {
         user_id,
         id,
         duration: longestSequenceDuration,
+        morning_routine_duration_seconds: this.calculateSequenceDuration(morning_activities, pack_type),
+        evening_routine_duration_seconds: this.calculateSequenceDuration(evening_activities, pack_type),
       });
       await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
       return await this.getHabitPack(id);
@@ -216,6 +221,14 @@ export class HabitPackService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  calculateSequenceDuration(sequence: UpdateActivityTemplateDto[], packType: HabitPackType): number {
+    if (packType === HabitPackType.standalone) {
+      return 0;
+    }
+    const duration = sequence.reduce((total, activity) => total + activity.duration_seconds, 0);
+    return duration;
   }
 
   getHabitPackLongestSequence(sequences: UpdateActivityTemplateDto[][]): number {

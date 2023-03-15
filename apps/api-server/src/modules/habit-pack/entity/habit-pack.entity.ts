@@ -1,4 +1,5 @@
 import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { InstalledPack } from './installed-pack.entity';
@@ -56,6 +57,18 @@ export class HabitPack extends BaseEntity {
   welcome_video_url?: string;
 
   @Column({
+    type: 'varchar',
+    default: null,
+  })
+  description_plain_text?: string;
+
+  @Column({
+    type: 'varchar',
+    default: null,
+  })
+  welcome_message_plain_text?: string;
+
+  @Column({
     type: 'boolean',
     default: false,
   })
@@ -86,6 +99,21 @@ export class HabitPack extends BaseEntity {
 
   @Column({
     type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  morning_routine_duration_seconds?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  evening_routine_duration_seconds?: number;
+
+  @Column({
+    type: 'numeric',
+    transformer: new ColumnNumericTransformer(),
   })
   duration?: number;
 

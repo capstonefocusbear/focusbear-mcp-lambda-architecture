@@ -63,9 +63,9 @@ describe('FocusModeTemplatesService', () => {
     const focusModeTemplateDtoDummy: UpsertFocusModeTemplateDto = {
       id: randomUUID(),
       name: 'Test Focus Mode Template',
-      description: 'Text description',
+      description: '<p>Text description</p>',
       description_video_url: 'www.bah.com',
-      welcome_message: 'Welcome message text',
+      welcome_message: '<p>Welcome message text</p>',
       welcome_video_url: 'https:blah.io',
       marketplace_request: MarketplaceRequestType.requested,
       marketplace_approval_status: false,
@@ -116,7 +116,13 @@ describe('FocusModeTemplatesService', () => {
       await focusModeTemplateService.upsertFocusModeTemplate(focusModeTemplateDtoDummy, userDummy.id);
 
       expect(FocusModeTemplatesRepositoryMock.upsert).toBeCalledWith(
-        { ...focusModeTemplateDtoDummy, author_id: userDummy.id, author_name: userDummy.name },
+        {
+          ...focusModeTemplateDtoDummy,
+          author_id: userDummy.id,
+          author_name: userDummy.name,
+          welcome_message_plain_text: 'Welcome message text',
+          description_plain_text: 'Text description',
+        },
         ['id'],
       );
     });
@@ -143,6 +149,8 @@ describe('FocusModeTemplatesService', () => {
           marketplace_approval_status: true,
           is_featured: true,
           featured_for_onboarding: true,
+          welcome_message_plain_text: 'Welcome message text',
+          description_plain_text: 'Text description',
         }),
         ['id'],
       );
@@ -166,6 +174,8 @@ describe('FocusModeTemplatesService', () => {
           ...focusModeTemplateDtoDummy,
           author_id: userDummy.id,
           author_name: userDummy.name,
+          welcome_message_plain_text: 'Welcome message text',
+          description_plain_text: 'Text description',
         },
         ['id'],
       );

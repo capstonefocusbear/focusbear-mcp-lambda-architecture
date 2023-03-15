@@ -283,6 +283,10 @@ describe('HabitPackService', () => {
         is_featured,
         user_id,
         id,
+        description_plain_text: 'test desc',
+        welcome_message_plain_text: 'test welcome message',
+        morning_routine_duration_seconds: 0,
+        evening_routine_duration_seconds: 0,
         duration: 600,
         creator_name: 'User Dummy',
       });
@@ -340,6 +344,10 @@ describe('HabitPackService', () => {
         id,
         duration: 300,
         creator_name: 'User Dummy',
+        description_plain_text: 'test desc',
+        welcome_message_plain_text: 'test welcome message',
+        morning_routine_duration_seconds: 300,
+        evening_routine_duration_seconds: 150,
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -419,7 +427,16 @@ describe('HabitPackService', () => {
       });
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
-        { ...newPack, marketplace_approval_status: false, is_featured: false, featured_for_onboarding: false },
+        {
+          ...newPack,
+          marketplace_approval_status: false,
+          is_featured: false,
+          featured_for_onboarding: false,
+          description_plain_text: 'test desc',
+          welcome_message_plain_text: 'test welcome message',
+          morning_routine_duration_seconds: 300,
+          evening_routine_duration_seconds: 150,
+        },
         activityIds,
         deserializedRoutineActivitiesDummy,
       );
@@ -479,7 +496,16 @@ describe('HabitPackService', () => {
       });
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
-        { ...newPack, marketplace_approval_status: true, is_featured: true, featured_for_onboarding: true },
+        {
+          ...newPack,
+          marketplace_approval_status: true,
+          is_featured: true,
+          featured_for_onboarding: true,
+          description_plain_text: 'test desc',
+          welcome_message_plain_text: 'test welcome message',
+          morning_routine_duration_seconds: 300,
+          evening_routine_duration_seconds: 150,
+        },
         activityIds,
         deserializedRoutineActivitiesDummy,
       );

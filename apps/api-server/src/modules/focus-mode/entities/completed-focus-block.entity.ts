@@ -58,6 +58,13 @@ export class CompletedFocusBlock extends BaseEntity {
   })
   distractions?: string;
 
+  @Column({
+    type: 'numeric',
+    default: 0,
+    nullable: false,
+  })
+  focus_duration_seconds?: number;
+
   @ManyToOne(() => User, (user) => user.completed_focus_blocks)
   @JoinColumn({ name: 'user_id' })
   user?: User;

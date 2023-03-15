@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { Settings } from 'luxon';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
@@ -232,11 +233,14 @@ describe('UserSettingsService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
-    it('positive: should update user timezone in UTC offset format when receiving IANA timezone format', async () => {
+    it('positive: should user timezone in UTC offset format receiving IANA timezone format', async () => {
+      // mock date to be 2023-01-15
+      Settings.now = () => 1678813200000;
       await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_York');
 
-      //  NY alternates between -4 and -5 hours UTC depending on daylight savings time
+      // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
+      Settings.now = () => new Date().valueOf();
     });
 
     it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {

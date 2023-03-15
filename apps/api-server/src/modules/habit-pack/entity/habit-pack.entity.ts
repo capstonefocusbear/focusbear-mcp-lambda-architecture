@@ -117,6 +117,12 @@ export class HabitPack extends BaseEntity {
   })
   duration?: number;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  breaks_only?: boolean;
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

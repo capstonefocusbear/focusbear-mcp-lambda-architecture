@@ -44,4 +44,15 @@ export class GetMultiplePacksQueryDto {
   @IsOptional()
   @IsUUID('4')
   user_id?: string;
+
+  @IsOptional()
+  @Transform(({ obj, key }) => {
+    const value = obj[key];
+    if (typeof value === 'string') {
+      return obj[key] === 'true';
+    }
+
+    return value;
+  })
+  breaks_only?: boolean;
 }

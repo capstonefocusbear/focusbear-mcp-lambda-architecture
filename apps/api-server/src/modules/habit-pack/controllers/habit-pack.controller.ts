@@ -28,14 +28,11 @@ export class HabitPackController {
   }
 
   @Get()
-  @UseGuards(IsAuth)
-  @ApiSecurity('Auth0AccessToken')
   getHabitPacks(
     @Query()
     getPacksQuery: GetMultiplePacksQueryDto,
-    @AuthContext() { user }: Passport,
   ): Promise<HabitPack[]> {
-    return this.habitPackService.getMultipleHabitPacks(getPacksQuery, user.id);
+    return this.habitPackService.getMultipleHabitPacks(getPacksQuery);
   }
 
   @Put()

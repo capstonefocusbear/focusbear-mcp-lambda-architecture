@@ -61,7 +61,7 @@ export class HabitPackService {
     }
   }
 
-  async getMultipleHabitPacks(getPacksQuery: GetMultiplePacksQueryDto, user_id: string): Promise<HabitPack[]> {
+  async getMultipleHabitPacks(getPacksQuery: GetMultiplePacksQueryDto): Promise<HabitPack[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -69,11 +69,8 @@ export class HabitPackService {
         message: 'Fetching multiple habit packs',
         data: {
           getPacksQuery,
-          user_id,
         },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const fetchedPacks = await this.habitPackRepository.fetchPacksByFilter(getPacksQuery);
       const serializedApprovedPacks = fetchedPacks.map((pack) => this.serializeHabitPack(pack));
       return serializedApprovedPacks;

@@ -12,6 +12,7 @@ import {
   marketplaceApprovedPacksDummy,
   routineHabitPackDBResponseDummy,
   serializedRoutineActivityDummy,
+  breaksOnlyDeserializedRoutineActivitiesDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
 import { adminUserDummy, userDummy } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
@@ -219,6 +220,8 @@ describe('HabitPackService', () => {
   });
 
   describe('upsertHabitPack', () => {
+    const { morning_activities, break_activities, evening_activities, ...restOfRoutinePackDummy } =
+      routineHabitPackDummy;
     it('Negative: should return that the user does not exist', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const responseMessage = `User with ID: ${userDummy.id} does not exist!`;
@@ -258,37 +261,18 @@ describe('HabitPackService', () => {
 
     it('Positive: should call habitPackRepository.consistentlyUpdateHabitPack to create standalone habit pack', async () => {
       const user_id = userDummy.id;
-      const {
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        featured_for_onboarding,
-        is_featured,
-        id,
-      } = standaloneHabitPackDummy;
+      const { standalone_activities, ...restOfStandalonePackDummy } = standaloneHabitPackDummy;
       const newPack = new HabitPack({
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
+        ...restOfStandalonePackDummy,
         marketplace_approval_status: false,
-        featured_for_onboarding,
-        is_featured,
         user_id,
-        id,
         description_plain_text: 'test desc',
         welcome_message_plain_text: 'test welcome message',
         morning_routine_duration_seconds: 0,
         evening_routine_duration_seconds: 0,
         duration: 600,
         creator_name: 'User Dummy',
+        breaks_only: false,
       });
       const activityIds = [
         '116af843-818a-4e09-aaa2-53da041896de',
@@ -316,38 +300,16 @@ describe('HabitPackService', () => {
 
     it('Positive: should call habitPackRepository.consistentlyUpdateHabitPack to create routine habit pack', async () => {
       const user_id = userDummy.id;
-      const {
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
-        id,
-      } = routineHabitPackDummy;
       const newPack = new HabitPack({
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
+        ...restOfRoutinePackDummy,
         user_id,
-        id,
         duration: 300,
         creator_name: 'User Dummy',
         description_plain_text: 'test desc',
         welcome_message_plain_text: 'test welcome message',
         morning_routine_duration_seconds: 300,
         evening_routine_duration_seconds: 150,
+        breaks_only: false,
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -374,32 +336,9 @@ describe('HabitPackService', () => {
     });
 
     it('Positive: admin fields should remain false if non admin user tries changing them to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
-      const {
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
-        id,
-      } = routineHabitPackDummy;
       const newPack = new HabitPack({
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
+        ...restOfRoutinePackDummy,
         user_id: userDummy.id,
-        id,
         duration: 300,
         creator_name: 'User Dummy',
       });
@@ -436,6 +375,7 @@ describe('HabitPackService', () => {
           welcome_message_plain_text: 'test welcome message',
           morning_routine_duration_seconds: 300,
           evening_routine_duration_seconds: 150,
+          breaks_only: false,
         },
         activityIds,
         deserializedRoutineActivitiesDummy,
@@ -443,32 +383,9 @@ describe('HabitPackService', () => {
     });
 
     it('Positive: admin user should be able to change pack admin fields to true (marketplace_approval_status, is_featured, featured_for_onboarding)', async () => {
-      const {
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
-        id,
-      } = routineHabitPackDummy;
       const newPack = new HabitPack({
-        pack_name,
-        pack_type,
-        description,
-        description_video_url,
-        welcome_message,
-        welcome_video_url,
-        marketplace_request,
-        marketplace_approval_status,
-        featured_for_onboarding,
-        is_featured,
+        ...restOfRoutinePackDummy,
         user_id: adminUserDummy.id,
-        id,
         duration: 300,
         creator_name: 'User Dummy',
       });
@@ -505,9 +422,51 @@ describe('HabitPackService', () => {
           welcome_message_plain_text: 'test welcome message',
           morning_routine_duration_seconds: 300,
           evening_routine_duration_seconds: 150,
+          breaks_only: false,
         },
         activityIds,
         deserializedRoutineActivitiesDummy,
+      );
+    });
+
+    it('Positive: pack should be saved with breaks_only value as true if it is routine type and has only break activities', async () => {
+      const user_id = userDummy.id;
+      const newPack = new HabitPack({
+        ...restOfRoutinePackDummy,
+        user_id,
+        duration: 30,
+        creator_name: 'User Dummy',
+        description_plain_text: 'test desc',
+        welcome_message_plain_text: 'test welcome message',
+        morning_routine_duration_seconds: 0,
+        evening_routine_duration_seconds: 0,
+        breaks_only: true,
+      });
+      const activityIds = ['630c921d-dc9c-4107-acd2-023d7930d9bf'];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
+        breaksOnlyDeserializedRoutineActivitiesDummy,
+      );
+      HabitPackRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDBResponseDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce({
+        ...routineHabitPackDummy,
+        morning_activities: [],
+        evening_activities: [],
+      });
+
+      await habitPackService.upsertHabitPack(userDummy.id, {
+        ...routineHabitPackDummy,
+        morning_activities: [],
+        evening_activities: [],
+      });
+
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+        newPack,
+        activityIds,
+        breaksOnlyDeserializedRoutineActivitiesDummy,
       );
     });
   });

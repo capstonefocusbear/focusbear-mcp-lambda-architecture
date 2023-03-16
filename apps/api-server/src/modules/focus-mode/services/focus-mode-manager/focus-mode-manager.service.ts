@@ -126,7 +126,19 @@ export class FocusModeManagerService {
       });
       const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const updateCriteria = user.current_completing_focus_block_id;
-      const completedBlockDataToUpdate = { distractions, achievements, finish_time, focus_duration_seconds };
+      const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
+        id: user.current_completing_focus_block_id,
+      });
+      const isDurationPassedAsParam = typeof focus_duration_seconds === 'number';
+      const durationToUse = isDurationPassedAsParam
+        ? focus_duration_seconds
+        : this.calculateFocusDurationSeconds(completingFocusBlock.start_time, finish_time);
+      const completedBlockDataToUpdate = {
+        distractions,
+        achievements,
+        finish_time,
+        focus_duration_seconds: durationToUse,
+      };
       const [, completedMode] = await Promise.all([
         this.nullifyCurrentFocusModeForUser(user_id),
         this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
@@ -142,6 +154,12 @@ export class FocusModeManagerService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  calculateFocusDurationSeconds(fromTime: Date, toTime: Date): number {
+    const start = DateTime.fromJSDate(fromTime);
+    const end = DateTime.fromJSDate(toTime);
+    return end.diff(start, 'seconds').toObject().seconds;
   }
 
   private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {

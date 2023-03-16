@@ -319,5 +319,29 @@ describe('FocusModeManagerService', () => {
         last_completed_focus_mode_at: DateTime.fromISO('2023-02-07T05:42:39.221Z').toJSDate(),
       });
     });
+
+    it('positive: if no focus_duration_seconds argument is passed the focus duration should be calculated using the start and finish time', async () => {
+      const current_focus_mode_id = FocusModeDummy.id;
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+      const finishedFocusModeData: FinishFocusModeDto = {
+        achievements: CompletedFocusBlockDummy.achievements,
+        finish_time: new Date('2023-02-07T05:10:00.000Z'),
+      };
+      const completedFocusBlock = { ...CompletedFocusBlockDummy, start_time: new Date('2023-02-07T05:00:00.000Z') };
+      const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completedFocusBlock);
+
+      await focusModeManagerService.finishCurrentFocusMode(finishedFocusModeData, { focus_mode_id }, user_id);
+
+      expect(CompletedFocusBlockRepositoryMock.update).toBeCalledWith(
+        userWithCurrentFocusMode.current_completing_focus_block_id,
+        {
+          ...finishedFocusModeData,
+          focus_duration_seconds: 600,
+        },
+      );
+    });
   });
 });

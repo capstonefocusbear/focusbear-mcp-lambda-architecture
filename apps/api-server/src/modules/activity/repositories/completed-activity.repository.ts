@@ -141,9 +141,6 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       where: {
         user_id,
         finish_time: Between(start_date.toJSDate(), end_date.toJSDate()),
-        activity: {
-          log_quantity: true,
-        },
       },
     });
   }

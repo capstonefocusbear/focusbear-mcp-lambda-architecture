@@ -16,41 +16,49 @@ export class VideoMetadataService {
   ) {}
 
   async saveVideosMetadata(video_urls: string[], user_id: string): Promise<VideoMetadataResponseDto> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Upserting activity videos metadata',
-    });
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Upserting activity videos metadata',
+        data: {
+          video_urls,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
 
-    // fetch data from YouTube for videos that aren't stored in DB
-    const videoIdsFromClient = video_urls.map((url) => this.getIdFromYouTubeURL(url));
-    const existingVideosMetadata = await this.videoMetadataRepository.orm.find({
-      where: { id: In(videoIdsFromClient) },
-    });
-    const existingVideosIds = existingVideosMetadata.map((video) => video.id);
-    const videoIdsToFetchFromYouTube = videoIdsFromClient.filter((id) => !existingVideosIds.includes(id));
-    const videosMetadataFromYouTube = await this.getVideosMetadataFromYouTube(videoIdsToFetchFromYouTube, video_urls);
+      // fetch data from YouTube for videos that aren't stored in DB
+      const videoIdsFromClient = video_urls.map((url) => this.getIdFromYouTubeURL(url));
+      const existingVideosMetadata = await this.videoMetadataRepository.orm.find({
+        where: { id: In(videoIdsFromClient) },
+      });
+      const existingVideosIds = existingVideosMetadata.map((video) => video.id);
+      const videoIdsToFetchFromYouTube = videoIdsFromClient.filter((id) => !existingVideosIds.includes(id));
+      const videosMetadataFromYouTube = await this.getVideosMetadataFromYouTube(videoIdsToFetchFromYouTube, video_urls);
 
-    // save valid new videos' metadata
-    await Promise.all(
-      videosMetadataFromYouTube.map(
-        (video) => video instanceof VideoMetadata && this.videoMetadataRepository.upsert(video, ['id']),
-      ),
-    );
-    // format response
-    const newVideosMetadata = videosMetadataFromYouTube.filter(
-      (video) => video instanceof VideoMetadata,
-    ) as VideoMetadata[];
-    const formattedMetadata = [...existingVideosMetadata, ...newVideosMetadata].map(
-      ({ id, video_url, title, duration }) => {
-        return { id, video_url, title, duration };
-      },
-    );
-    return {
-      videos_metadata: formattedMetadata,
-    };
+      // save valid new videos' metadata
+      await Promise.all(
+        videosMetadataFromYouTube.map(
+          (video) => video instanceof VideoMetadata && this.videoMetadataRepository.upsert(video, ['id']),
+        ),
+      );
+      // format response
+      const newVideosMetadata = videosMetadataFromYouTube.filter(
+        (video) => video instanceof VideoMetadata,
+      ) as VideoMetadata[];
+      const formattedMetadata = [...existingVideosMetadata, ...newVideosMetadata].map(
+        ({ id, video_url, title, duration }) => {
+          return { id, video_url, title, duration };
+        },
+      );
+      return {
+        videos_metadata: formattedMetadata,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   private async getVideosMetadataFromYouTube(videoIdsToFetchFromYouTube: string[], video_urls: string[]) {
@@ -58,6 +66,9 @@ export class VideoMetadataService {
       category: 'Service',
       level: 'debug',
       message: 'Fetching videos metadata from YouTube API',
+      data: {
+        videoIdsToFetchFromYouTube,
+      },
     });
     const videoUrlsAndIds = videoIdsToFetchFromYouTube.map((id) => {
       const videoURL = video_urls.filter((url) => url.includes(id))[0];

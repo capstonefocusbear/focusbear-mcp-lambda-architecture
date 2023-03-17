@@ -180,7 +180,7 @@ export function calculateStreaks(
   };
 }
 
-export function calculateRoutineCompletionAverage(dailyStats: DailyStats[], routineType: ActivityType) {
+export function calculateRoutineCompletionPercentageAverage(dailyStats: DailyStats[], routineType: ActivityType) {
   let routineToCount;
   if (routineType === ActivityType.morning) {
     routineToCount = 'morning_routine_completion_percentage';
@@ -189,7 +189,8 @@ export function calculateRoutineCompletionAverage(dailyStats: DailyStats[], rout
   }
   const totalCompletion = dailyStats.reduce((total, stat) => total + stat[routineToCount], 0);
   const averageCompletion = totalCompletion / dailyStats.length;
-  return Math.round(averageCompletion);
+  const percentage = Math.round(averageCompletion);
+  return percentage > 100 ? 100 : percentage;
 }
 
 export function calculateAverageFocusModesCompleted(dailyStats: DailyStats[]) {
@@ -201,8 +202,8 @@ export function calculateAverageFocusModesCompleted(dailyStats: DailyStats[]) {
 }
 
 export function getRoutinesAndFocusModesAverages(dailyStats: DailyStats[]) {
-  const morningRoutineAverage = calculateRoutineCompletionAverage(dailyStats, ActivityType.morning);
-  const eveningRoutineAverage = calculateRoutineCompletionAverage(dailyStats, ActivityType.evening);
+  const morningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.morning);
+  const eveningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.evening);
   const focusModesAverage = calculateAverageFocusModesCompleted(dailyStats);
   return {
     morningRoutineAverage,

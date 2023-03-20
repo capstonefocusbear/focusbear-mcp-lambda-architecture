@@ -36,6 +36,7 @@ export class UpsertFocusModeTemplateDto {
   @IsOptional()
   @IsString()
   @IsUrl()
+  @ValidateIf((e) => e.description_video_url !== '')
   description_video_url?: string;
 
   @IsNotEmpty()
@@ -45,6 +46,7 @@ export class UpsertFocusModeTemplateDto {
   @IsOptional()
   @IsString()
   @IsUrl()
+  @ValidateIf((e) => e.welcome_video_url !== '')
   welcome_video_url?: string;
 
   @IsOptional()

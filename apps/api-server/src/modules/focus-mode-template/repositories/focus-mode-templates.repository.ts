@@ -34,6 +34,8 @@ export class FocusModeTemplatesRepository extends BaseRepository<FocusModeTempla
     }
     if (language) {
       query.andWhere('focus_mode_templates.language = :language', { language });
+    } else {
+      query.andWhere('focus_mode_templates.language = :default_language', { default_language: 'en' });
     }
     if (author_id) {
       query.andWhere('focus_mode_templates.author = :author_id', { author_id });

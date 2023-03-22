@@ -71,6 +71,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'habit_packs.morning_routine_duration_seconds',
         'habit_packs.evening_routine_duration_seconds',
         'habit_packs.breaks_only',
+        'habit_packs.language',
         'activity_templates.id',
         'activity_templates.log_quantity',
         'activity_templates.duration_seconds',
@@ -128,6 +129,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'habit_packs.morning_routine_duration_seconds',
         'habit_packs.evening_routine_duration_seconds',
         'habit_packs.breaks_only',
+        'habit_packs.language',
         'activity_templates.id',
         'activity_templates.log_quantity',
         'activity_templates.duration_seconds',
@@ -162,6 +164,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     }
     if (language) {
       query.andWhere('habit_packs.language = :language', { language });
+    } else {
+      query.andWhere('habit_packs.language = :default_language', { default_language: 'en' });
     }
     if (user_id) {
       query.andWhere('habit_packs.user_id = :user_id', { user_id });

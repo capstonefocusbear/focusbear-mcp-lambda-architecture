@@ -743,6 +743,45 @@ describe('CompletedActivityService', () => {
         current_sequence_skipped_activities: [previousSkippedId, completedActivity.activity_id],
       });
     });
+
+    it('positive: completed activity log should be saved with metadata field indicating that the activity was skipped', async () => {
+      const previousSkippedId = randomUUID();
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+        current_sequence_started_at: new Date(),
+        current_sequence_skipped_activities: [previousSkippedId],
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      const updatedCompletedActivity = {
+        id: undefined,
+        activity_id: completedActivity.activity_id,
+        quantity_logged: completedActivity.quantity_logged,
+        duration_logged: completedActivity.duration_logged,
+        activity_sequence_id: completedActivity.activity_sequence_id,
+        start_time: completedActivity.start_time,
+        finish_time: completedActivity.finish_time,
+        metadata: { skipped_did_not_complete: true },
+        user_id: userDummy.id,
+        completed_sequence_id: undefined,
+        activity_note: completedActivity.note_logged,
+      };
+
+      await completedActivityService.skipActivity(completedActivity, { user_id });
+
+      expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(updatedCompletedActivity, [
+        'activity_id',
+        'completed_sequence_id',
+      ]);
+    });
   });
 
   describe('getStatsByActivityPerDay', () => {

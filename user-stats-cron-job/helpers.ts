@@ -187,7 +187,10 @@ export function calculateRoutineCompletionPercentageAverage(dailyStats: DailySta
   } else if (routineType === ActivityType.evening) {
     routineToCount = 'evening_routine_completion_percentage';
   }
-  const totalCompletion = dailyStats.reduce((total, stat) => total + stat[routineToCount], 0);
+  const totalCompletion = dailyStats.reduce(
+    (total, stat) => total + (!Number.isNaN(stat[routineToCount]) ? stat[routineToCount] : 0),
+    0,
+  );
   const averageCompletion = totalCompletion / dailyStats.length;
   const percentage = Math.round(averageCompletion);
   return percentage > 100 ? 100 : percentage;

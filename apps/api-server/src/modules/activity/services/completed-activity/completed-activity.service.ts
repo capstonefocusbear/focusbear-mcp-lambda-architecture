@@ -266,10 +266,11 @@ export class CompletedActivityService {
         choice,
       );
       const createdItem = await this.saveCompletedLog(
-        skippedActivity,
+        { ...skippedActivity, metadata: skippedActivityMetadata },
         activity,
         choice,
         user_id,
+        false,
         completingSequenceLog,
       );
       return createdItem;

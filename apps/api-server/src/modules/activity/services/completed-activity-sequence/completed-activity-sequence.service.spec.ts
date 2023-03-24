@@ -331,6 +331,25 @@ describe('CompletedActivitySequenceService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: if user has no current sequence throw BadRequestException', async () => {
+      const activity_sequence_id = randomUUID();
+      const userWithWrongCurrentSequence: User = { ...userDummy, current_activity_sequence_id: null };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithWrongCurrentSequence);
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      let exception: any;
+
+      try {
+        await completedActivitySequenceService.forceCompleteCurrentSequence(activity_sequence_id, testUser.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('negative: should throw error if cancel_habits_for_today is false and the current sequence started on current date', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_sequence_started_at: new Date() });
       ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
@@ -416,27 +435,6 @@ describe('CompletedActivitySequenceService', () => {
       );
 
       expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id, testUser.id);
-    });
-
-    it('positive: if user has inconsistent current sequence or null values, skip complete operation and set given id as last completed', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValue({
-        ...testUser,
-        current_activity_sequence_id: null,
-        current_sequence_started_at: new Date(),
-      });
-      UncompletedSequenceLogDummy.finalizeUncompletedLog();
-      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
-      const spyMethod = jest
-        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
-        .mockResolvedValue(UncompletedSequenceLogDummy);
-
-      await completedActivitySequenceService.forceCompleteCurrentSequence(
-        testUser.current_activity_sequence_id,
-        testUser.id,
-        true,
-      );
-
-      expect(spyMethod).not.toBeCalled();
     });
 
     it('positive: nullified current sequence should be saved for given user', async () => {

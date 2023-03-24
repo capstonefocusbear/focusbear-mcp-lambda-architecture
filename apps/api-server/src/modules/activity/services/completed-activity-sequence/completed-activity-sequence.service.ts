@@ -323,9 +323,8 @@ export class CompletedActivitySequenceService {
     const userHasCompletingLog = Boolean(user?.completing_sequence_log);
     const hasConsistentCurrentSet = userHasCompletingLog && userHasCurrentSequence;
     const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
-    const hasWrongCurrentSequence = userHasCurrentSequence && givenSequenceIsNotCurrent;
     const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
-    if (hasWrongCurrentSequence) {
+    if (givenSequenceIsNotCurrent) {
       throw new BadRequestException(givenSequenceIsNotCurrentMessage);
     }
     return { hasConsistentCurrentSet };

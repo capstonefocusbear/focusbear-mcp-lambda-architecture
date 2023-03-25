@@ -55,6 +55,10 @@ export class UpsertHabitPackDto {
   featured_for_onboarding?: boolean;
 
   @IsOptional()
+  @IsString()
+  language?: string;
+
+  @IsOptional()
   @IsArray()
   morning_activities?: UpdateActivityTemplateDto[];
 

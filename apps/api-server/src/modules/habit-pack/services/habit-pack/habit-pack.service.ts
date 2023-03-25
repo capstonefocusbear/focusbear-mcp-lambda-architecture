@@ -128,6 +128,7 @@ export class HabitPackService {
         evening_activities,
         standalone_activities,
         creator_name,
+        language,
       } = upsertHabitPackDto;
       const { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding } = this.determineAdminProperties(
         userIsAdmin,
@@ -190,6 +191,7 @@ export class HabitPackService {
         morning_routine_duration_seconds: this.calculateSequenceDuration(morning_activities, pack_type),
         evening_routine_duration_seconds: this.calculateSequenceDuration(evening_activities, pack_type),
         breaks_only: isBreaksOnlyPack,
+        language,
       });
       await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
       return await this.getHabitPack(id);

@@ -351,9 +351,16 @@ describe('CompletedActivitySequenceService', () => {
     });
 
     it('negative: should throw error if cancel_habits_for_today is false and the current sequence started on current date', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValue({ ...testUser, current_sequence_started_at: new Date() });
+      Settings.now = () => new Date('2022-10-06T12:00:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...testUser,
+        current_sequence_started_at: new Date('2022-10-06T12:00:00.000Z'),
+      });
       ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
       UncompletedSequenceLogDummy.finalizeUncompletedLog();
+      jest
+        .spyOn(completedActivitySequenceService, 'completeActivitySequence')
+        .mockResolvedValue(UncompletedSequenceLogDummy);
       const responseMessage = `Sequence with ID: ${testUser.current_activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`;
       let exception: any;
       try {
@@ -368,6 +375,7 @@ describe('CompletedActivitySequenceService', () => {
 
       expect(exception).toBeInstanceOf(NotAcceptableException);
       expect(exception.message).toMatch(responseMessage);
+      Settings.now = () => new Date().valueOf();
     });
 
     it('negative: should throw error if cancel_habits_for_today is false and the user does not have a current sequence', async () => {

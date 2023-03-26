@@ -64,7 +64,7 @@ export class CompletedActivityController {
     return this.completedActivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, { from_time, to_time });
   }
 
-  @Patch('revise/:completed_activity_log_id')
+  @Patch('/revise/:completed_activity_id')
   reviseCompletedActivity(
     @Param() { completed_activity_id },
     @Body() { quantity_logged }: ReviseCompletedActivityDto,

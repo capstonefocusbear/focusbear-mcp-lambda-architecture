@@ -14,6 +14,8 @@ import { CompletedActivitySequence } from '../../entities/completed-activity-seq
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+
 @Injectable()
 export class CompletedActivitySequenceService {
   constructor(
@@ -240,6 +242,26 @@ export class CompletedActivitySequenceService {
         cancel_habits_for_today,
         activity_sequence_id,
       );
+      if (user.id === JEREMYS_USER_ID) {
+        // temp logs for debugging force completion when it shouldn't be allowed
+        console.log('User properties for debugging:');
+        console.log({
+          user_id: user.id,
+          current_activity_id: user.current_activity_id,
+          current_activity_started_at: user.current_activity_assigned_at,
+          current_sequence_id: user.current_activity_sequence_id,
+          current_sequence_started_at: user.current_sequence_started_at,
+          last_completed_sequence_id: user.last_completed_sequence_id,
+          last_completed_sequence_at: user.last_completed_sequence_at,
+          current_completing_sequence_log_id: user.current_completing_sequence_log_id,
+        });
+        console.log('Function values for debugging:');
+        console.log({
+          should_allow_force_completion: shouldAllowForceCompletion,
+          cancel_habits_for_today,
+          activity_sequence_id,
+        });
+      }
       if (!shouldAllowForceCompletion) {
         throw new NotAcceptableException(
           `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
@@ -301,6 +323,20 @@ export class CompletedActivitySequenceService {
     const canForceCompleteEveningRoutine =
       type === ActivityType.evening && userCurrentTime >= userStartupTime && userCurrentTime < userShutdownTime;
     const canForceCompleteSequence = canForceCompleteMorningRoutine || canForceCompleteEveningRoutine;
+    if (user.id === JEREMYS_USER_ID) {
+      console.log('Values in checkIfForceCompletionShouldBeAllowed function: ');
+      console.log({
+        activity_type: type,
+        userStartupTime,
+        userShutdownTime,
+        userCurrentTime,
+        sequenceDate,
+        sequenceWasStartedToday,
+        canForceCompleteMorningRoutine,
+        canForceCompleteEveningRoutine,
+        canForceCompleteSequence,
+      });
+    }
     if (!sequenceWasStartedToday || cancel_habits_for_today) return true;
     if (sequenceWasStartedToday && canForceCompleteSequence) return true;
     return false;

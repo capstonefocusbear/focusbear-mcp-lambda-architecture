@@ -412,4 +412,12 @@ export class UserService {
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     await this.userRepository.orm.update(user_id, { metadata: { profile_image, description } });
   }
+
+  async getSubscription(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
+    if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
+    return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+  }
 }

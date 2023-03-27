@@ -141,4 +141,10 @@ export class UserController {
   ) {
     return this.userService.saveAdminAccessRequest(user.id, access_reason);
   }
+
+  @Get('subscription')
+  @UseGuards(IsAuth)
+  async getUserSubscription(@AuthContext() { user }: Passport) {
+    return this.userService.getSubscription(user.id);
+  }
 }

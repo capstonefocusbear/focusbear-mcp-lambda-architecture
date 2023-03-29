@@ -3,7 +3,6 @@ import { BadRequestException, Injectable, NotAcceptableException, NotFoundExcept
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { Between } from 'typeorm';
-import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
@@ -362,10 +361,7 @@ export class CompletedActivitySequenceService {
     const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
     const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
     if (givenSequenceIsNotCurrent) {
-      // throw new BadRequestException(givenSequenceIsNotCurrentMessage);
-      // const responseMessage = new ResponseMessage(givenSequenceIsNotCurrentMessage, false, 400);
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
-      throw new ResponseMessage(givenSequenceIsNotCurrentMessage, false, 400);
+      throw new BadRequestException({ message: givenSequenceIsNotCurrentMessage, donotloginslack: true });
     }
     return { hasConsistentCurrentSet };
   }

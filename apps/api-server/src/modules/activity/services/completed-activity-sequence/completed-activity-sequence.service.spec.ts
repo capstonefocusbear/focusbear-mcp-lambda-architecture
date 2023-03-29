@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { NotAcceptableException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Settings } from 'luxon';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
@@ -25,7 +25,6 @@ import { CompletedActivitySequence } from '../../entities/completed-activity-seq
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedActivitySequenceStats } from '../../domain/completed-activity-sequence-stats.model';
 import { User } from '../../../user/entities/user.entity';
-import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 
 describe('CompletedActivitySequenceService', () => {
   let completedActivitySequenceService: CompletedActivitySequenceService;
@@ -328,7 +327,7 @@ describe('CompletedActivitySequenceService', () => {
 
       const errorMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
       expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(ResponseMessage);
+      expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual(errorMessage);
     });
 
@@ -347,7 +346,7 @@ describe('CompletedActivitySequenceService', () => {
 
       const errorMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
       expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(ResponseMessage);
+      expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual(errorMessage);
     });
 

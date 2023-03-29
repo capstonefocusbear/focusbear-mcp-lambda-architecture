@@ -60,7 +60,10 @@ export class HabitPackManagerService {
         where: { user_id, pack_id, installation_status: true },
       });
       if (installedPack) {
-        throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
+        throw new BadRequestException({
+          message: `User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`,
+          donotloginslack: true,
+        });
       }
       if (pack_type === HabitPackType.routine) {
         const response = await this.installRoutineHabitPack(user_id, pack_id);
@@ -256,7 +259,10 @@ export class HabitPackManagerService {
         where: { user_id, pack_id, installation_status: true },
       });
       if (installedPack) {
-        throw new BadRequestException(`User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`);
+        throw new BadRequestException({
+          message: `User with ID: ${user_id} already has habit pack with ID: ${pack_id} installed!`,
+          donotloginslack: true,
+        });
       }
       await this.userSettingsService.clearUserActivities(user_id);
       await this.installHabitPack(user_id, pack_id);

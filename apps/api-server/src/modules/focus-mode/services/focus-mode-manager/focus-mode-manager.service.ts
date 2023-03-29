@@ -178,7 +178,7 @@ export class FocusModeManagerService {
     const { current_focus_mode_id } = user;
     const isCurrentMode = focus_mode_id === current_focus_mode_id;
     const isNotCurrentMsg = `Focus mode with id: ${focus_mode_id} is not current, the current one is ${current_focus_mode_id}!`;
-    if (!isCurrentMode) throw new BadRequestException(isNotCurrentMsg);
+    if (!isCurrentMode) throw new BadRequestException({ message: isNotCurrentMsg, donotloginslack: true });
     return [focusMode, user];
   }
 

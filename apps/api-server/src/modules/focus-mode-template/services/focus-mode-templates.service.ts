@@ -172,9 +172,10 @@ export class FocusModeTemplatesService {
         where: { user_id, focus_mode_template_id: template_id },
       });
       if (installedFocusModeTemplate?.installation_status) {
-        throw new BadRequestException(
-          `User with ID: ${user_id} already has focus mode template with ID: ${template_id} installed!`,
-        );
+        throw new BadRequestException({
+          message: `User with ID: ${user_id} already has focus mode template with ID: ${template_id} installed!`,
+          donotloginslack: true,
+        });
       }
       if (installedFocusModeTemplate) {
         // if installation record already exists but focus mode is not currently installed, update existing record as installed

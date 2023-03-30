@@ -84,14 +84,20 @@ export class ActivityTemplate extends BaseEntity {
   @DeleteDateColumn()
   deleted_at?: Date;
 
-  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.choices)
+  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.choices, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'parent_id' })
   parent_activity?: ActivitySequence;
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.parent_activity)
   choices?: ActivityTemplate[];
 
-  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_templates)
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_templates, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  })
   @JoinColumn({ name: 'pack_id' })
   habit_pack?: HabitPack;
 

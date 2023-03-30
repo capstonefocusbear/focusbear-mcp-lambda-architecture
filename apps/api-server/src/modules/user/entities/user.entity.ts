@@ -291,15 +291,15 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'owner_of_team_id' })
   owner_of_team?: Team;
 
-  @ManyToOne(() => Team, (team) => team.members)
+  @ManyToOne(() => Team, (team) => team.members, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'member_of_team_id' })
   member_of_team?: Team;
 
-  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id)
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'signed_up_via_habit_pack' })
   sign_up_habit_pack?: User;
 
-  @OneToOne(() => Activity, (activity) => activity.user)
+  @OneToOne(() => Activity, (activity) => activity.id)
   @JoinColumn({ name: 'current_activity_id' })
   current_activity?: Activity;
 

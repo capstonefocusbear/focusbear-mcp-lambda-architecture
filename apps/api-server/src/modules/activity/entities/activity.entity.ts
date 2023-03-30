@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { ActivityData } from '../domain/activity-data.model';
@@ -101,29 +101,37 @@ export class Activity extends BaseEntity {
   })
   days_of_week?: DaysOfWeek[];
 
-  @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities)
+  @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
 
-  @OneToMany(() => CompletedActivity, (completed_activity) => completed_activity.activity)
+  @OneToMany(() => CompletedActivity, (completed_activity) => completed_activity.activity, {
+    onDelete: 'CASCADE',
+    onUpdate: 'NO ACTION',
+  })
   completed_activities?: CompletedActivity[];
 
-  @ManyToOne(() => Activity, (activity) => activity.choices)
+  @ManyToOne(() => Activity, (activity) => activity.choices, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'parent_id' })
   parent_activity?: ActivitySequence;
 
   @OneToMany(() => Activity, (activity) => activity.parent_activity)
   choices?: Activity[];
 
-  @ManyToOne(() => User, (user) => user.current_activity)
-  @JoinColumn({ name: 'user_id' })
+  @OneToOne(() => User, (user) => user.current_activity)
   user?: User;
 
-  @ManyToOne(() => User, (user) => user.activities)
+  @ManyToOne(() => User, (user) => user.activities, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user_activities?: User;
 
-  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.activities)
+  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.activities, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'activity_template_id' })
   activity_template?: ActivityTemplate;
 }

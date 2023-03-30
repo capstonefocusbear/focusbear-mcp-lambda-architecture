@@ -70,19 +70,25 @@ export class CompletedActivity extends BaseEntity {
   })
   metadata?: CompletedActivityMetadata;
 
-  @ManyToOne(() => User, (user) => user.completed_activities)
+  @ManyToOne(() => User, (user) => user.completed_activities, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => Activity, (activity) => activity.completed_activities)
+  @ManyToOne(() => Activity, (activity) => activity.completed_activities, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'activity_id' })
   activity?: Activity;
 
-  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activities)
+  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activities, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
 
-  @ManyToOne(() => CompletedActivitySequence, (sequence_log) => sequence_log.completed_activity_logs)
+  @ManyToOne(() => CompletedActivitySequence, (sequence_log) => sequence_log.completed_activity_logs, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'completed_sequence_id' })
   completed_sequence_log?: CompletedActivitySequence;
 }

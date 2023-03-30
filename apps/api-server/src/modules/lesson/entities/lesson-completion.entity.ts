@@ -20,15 +20,15 @@ export class LessonCompletion extends BaseEntity {
   @Column({ type: 'varchar' })
   user_id: string;
 
-  @ManyToOne(() => Lesson, (lesson) => lesson.id)
+  @ManyToOne(() => Lesson, (lesson) => lesson.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'lesson_id' })
   lesson?: Lesson;
 
-  @ManyToOne(() => Course, (course) => course.id)
+  @ManyToOne(() => Course, (course) => course.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course?: Course;
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

@@ -65,11 +65,11 @@ export class CompletedFocusBlock extends BaseEntity {
   })
   focus_duration_seconds?: number;
 
-  @ManyToOne(() => User, (user) => user.completed_focus_blocks)
+  @ManyToOne(() => User, (user) => user.completed_focus_blocks, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => FocusMode, (mode) => mode.completed_logs)
+  @ManyToOne(() => FocusMode, (mode) => mode.completed_logs, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'focus_mode_id' })
   focus_mode?: FocusMode;
 }

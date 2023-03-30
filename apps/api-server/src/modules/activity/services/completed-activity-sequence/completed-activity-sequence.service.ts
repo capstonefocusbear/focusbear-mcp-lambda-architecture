@@ -100,7 +100,10 @@ export class CompletedActivitySequenceService {
       });
       const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
       if (!uncompletedSequenceLog) {
-        throw new NotFoundException(`There is no uncompleted sequence log with id: ${log_id}`);
+        throw new NotFoundException({
+          message: `There is no uncompleted sequence log with id: ${log_id}`,
+          donotloginslack: true,
+        });
       }
       uncompletedSequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
@@ -177,7 +180,12 @@ export class CompletedActivitySequenceService {
         throw new NotFoundException(notFoundMessage);
       }
       const isBreak = sequence.type === ActivityType.break;
-      if (isBreak) throw new BadRequestException('Unable to create stats! The provided sequence is a break type.');
+      if (isBreak) {
+        throw new BadRequestException({
+          message: 'Unable to create stats! The provided sequence is a break type.',
+          donotloginslack: true,
+        });
+      }
       const dailyStats = await this.completedActivitySequenceRepository.getAggregatedDurationLogsPerDay(
         activity_sequence_id,
         { days_number, timezone },
@@ -263,9 +271,10 @@ export class CompletedActivitySequenceService {
         });
       }
       if (!shouldAllowForceCompletion) {
-        throw new NotAcceptableException(
-          `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
-        );
+        throw new NotAcceptableException({
+          message: `Sequence with ID: ${activity_sequence_id} was started today. Include query param "cancel_habits_for_today" if you intended to clear today's sequence`,
+          donotloginslack: true,
+        });
       }
       hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
       const nullifiedCurrentSequence = {
@@ -361,7 +370,7 @@ export class CompletedActivitySequenceService {
     const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
     const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
     if (givenSequenceIsNotCurrent) {
-      throw new BadRequestException(givenSequenceIsNotCurrentMessage);
+      throw new BadRequestException({ message: givenSequenceIsNotCurrentMessage, donotloginslack: true });
     }
     return { hasConsistentCurrentSet };
   }

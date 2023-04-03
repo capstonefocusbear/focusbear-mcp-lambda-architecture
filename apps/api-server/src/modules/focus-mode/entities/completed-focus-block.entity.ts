@@ -23,17 +23,17 @@ export class CompletedFocusBlock extends BaseEntity {
   focus_mode_id?: string;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   start_time?: Date;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   finish_time?: Date;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   scheduled_finish_time?: Date;
 

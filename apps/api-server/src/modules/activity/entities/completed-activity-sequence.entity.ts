@@ -23,12 +23,12 @@ export class CompletedActivitySequence extends BaseEntity {
   activity_sequence_id?: string;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   start_time?: Date;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   finish_time?: Date;
 

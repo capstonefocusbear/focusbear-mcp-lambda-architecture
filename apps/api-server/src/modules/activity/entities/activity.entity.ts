@@ -8,6 +8,7 @@ import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivity } from './completed-activity.entity';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 import { DaysOfWeek } from '../domain/days-of-week.enum';
+import { LogQuantityQuestion } from './log-quantity-questions';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -120,6 +121,9 @@ export class Activity extends BaseEntity {
 
   @OneToMany(() => Activity, (activity) => activity.parent_activity)
   choices?: Activity[];
+
+  @OneToMany(() => LogQuantityQuestion, (question) => question.activity)
+  log_quantity_questions?: LogQuantityQuestion[];
 
   @OneToOne(() => User, (user) => user.current_activity)
   user?: User;

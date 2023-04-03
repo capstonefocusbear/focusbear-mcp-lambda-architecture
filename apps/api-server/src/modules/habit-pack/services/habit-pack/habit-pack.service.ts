@@ -141,25 +141,24 @@ export class HabitPackService {
         evening_activities,
         standalone_activities,
       ]);
-      let deserializedActivityTemplates;
+      let deserializedActivities;
+      let questions;
       if (upsertHabitPackDto.pack_type === HabitPackType.standalone) {
         const activities = { standalone_activities };
-        deserializedActivityTemplates = await this.activityTemplateParserService.deserializeStandaloneActivities(
-          activities,
-          user_id,
-          id,
-        );
+        const { deserializedActivityTemplates, logQuantityQuestions } =
+          this.activityTemplateParserService.deserializeStandaloneActivities(activities, user_id, id);
+        deserializedActivities = deserializedActivityTemplates;
+        questions = logQuantityQuestions;
       }
       if (upsertHabitPackDto.pack_type === HabitPackType.routine) {
         const activities = { morning_activities, break_activities, evening_activities };
-        deserializedActivityTemplates = await this.activityTemplateParserService.deserializeRoutineActivities(
-          activities,
-          user_id,
-          id,
-        );
+        const { deserializedActivityTemplates, logQuantityQuestions } =
+          this.activityTemplateParserService.deserializeRoutineActivities(activities, user_id, id);
+        deserializedActivities = deserializedActivityTemplates;
+        questions = logQuantityQuestions;
       }
       const activityIds = [];
-      await deserializedActivityTemplates.map((activityType) => {
+      await deserializedActivities.map((activityType) => {
         return activityType.map((activity_template: UpdateActivityTemplateDto) => {
           return activityIds.push(activity_template.id);
         });
@@ -193,7 +192,12 @@ export class HabitPackService {
         breaks_only: isBreaksOnlyPack,
         language,
       });
-      await this.habitPackRepository.consistentlyUpdateHabitPack(newPack, activityIds, deserializedActivityTemplates);
+      await this.habitPackRepository.consistentlyUpdateHabitPack(
+        newPack,
+        activityIds,
+        deserializedActivities,
+        questions,
+      );
       return await this.getHabitPack(id);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

@@ -15,6 +15,7 @@ import {
   UserRepositoryMock,
   UserSettingsServiceMock,
   UserDailyStatsServiceMock,
+  LogQuantityAnswersRepositoryMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -32,6 +33,7 @@ import {
   eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
+  logQuantityAnswersDtoDummy,
   MorningActivitySequenceDummy,
   sequenceWithActivitiesForDifferentDays,
   UncompletedSequenceLogDummy,
@@ -62,6 +64,7 @@ import { UserDailyStatsService } from '../../../user/services/user-daily-stats/u
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
+import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -82,6 +85,7 @@ describe('CompletedActivityService', () => {
         UserDailyStatsService,
         HelperCommonService,
         ActivitySequenceService,
+        LogQuantityAnswersRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -108,6 +112,8 @@ describe('CompletedActivityService', () => {
       .useValue(UserSettingsServiceMock)
       .overrideProvider(UserDailyStatsService)
       .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(LogQuantityAnswersRepository)
+      .useValue(LogQuantityAnswersRepositoryMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -335,6 +341,42 @@ describe('CompletedActivityService', () => {
         ),
         ['activity_id', 'completed_sequence_id'],
       );
+    });
+
+    it('positive: if activity has log quantity answers they should be saved', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      const createdLogQuantityAnswerDummies = [
+        {
+          activity_id: completedActivity.activity_id,
+          question_id: logQuantityAnswersDtoDummy[0].question_id,
+          logged_value: logQuantityAnswersDtoDummy[0].logged_value,
+          user_id: userDummy.id,
+          date_logged: completedActivity.start_time,
+          completed_activity_log_id: randomUUID(),
+        },
+        {
+          activity_id: completedActivity.activity_id,
+          question_id: logQuantityAnswersDtoDummy[1].question_id,
+          logged_value: logQuantityAnswersDtoDummy[1].logged_value,
+          user_id: userDummy.id,
+          date_logged: completedActivity.start_time,
+          completed_activity_log_id: randomUUID(),
+        },
+      ];
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+
+      await completedActivityService.completeActivity(
+        { ...completedActivity, log_quantity_answers: logQuantityAnswersDtoDummy },
+        { user_id },
+      );
+
+      expect(LogQuantityAnswersRepositoryMock.orm.insert).toBeCalledWith(createdLogQuantityAnswerDummies);
     });
 
     it('positive: push notification should be sent via pusher', async () => {

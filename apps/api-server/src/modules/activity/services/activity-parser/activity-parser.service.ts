@@ -7,6 +7,7 @@ import { UpdateActivityDto } from '../../dto/update-activity.dto';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
+import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
 
 export interface DeserializedActivity {
   sequence: ActivitySequence;
@@ -51,6 +52,7 @@ export class ActivityParserService {
         run_micro_breaks,
         days_of_week,
         completion_requirements,
+        log_quantity_questions,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -64,6 +66,7 @@ export class ActivityParserService {
         days_of_week,
         // return as undefined if null to exclude from response - causes issue in Mac app otherwise
         completion_requirements: completion_requirements ?? undefined,
+        log_quantity_questions,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -76,7 +79,7 @@ export class ActivityParserService {
     serialized: SerializedActivity,
     user_id: string,
     pack_id?: string,
-  ): Promise<DeserializedActivity[]> {
+  ): Promise<{ deserializedActivities: DeserializedActivity[]; logQuantityQuestions: LogQuantityQuestion[] }> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -85,8 +88,9 @@ export class ActivityParserService {
         user_id,
       },
     });
+    const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
     const entries = Object.entries(serialized);
-    return Promise.all(
+    const deserializedActivities = await Promise.all(
       entries.map(async ([name, serializedActivities]) => {
         let [type] = name.split('_');
         if (type === 'break') type = ActivityType.break;
@@ -98,6 +102,29 @@ export class ActivityParserService {
         return { sequence, activities };
       }),
     );
+    return { deserializedActivities, logQuantityQuestions };
+  }
+
+  getLogQuantityQuestions(serializedActivities: SerializedActivity, userId: string) {
+    const activitySequenceArrays = Object.values(serializedActivities);
+    const updateActivities = [].concat(...activitySequenceArrays);
+    const activitiesAndChoices = updateActivities.flatMap((activity) => {
+      const choices = activity?.choices ?? [];
+      return [activity, ...choices];
+    });
+    const questionsArrays = activitiesAndChoices.map((activity: UpdateActivityDto) => {
+      return this.createLogQuantityQuestions(activity, userId);
+    });
+    const questions = questionsArrays.flatMap((array) => array);
+    return questions;
+  }
+
+  createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
+    const { id, log_quantity_questions } = activity;
+    const questionsForActivity = log_quantity_questions?.map(
+      (question) => new LogQuantityQuestion({ ...question, activity_id: id, user_id: userId }),
+    );
+    return questionsForActivity?.length > 0 ? questionsForActivity : [];
   }
 
   private createActivity(

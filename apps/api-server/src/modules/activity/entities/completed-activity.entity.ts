@@ -1,10 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
 import { ActivitySequence } from './activity-sequence.entity';
 import { CompletedActivitySequence } from './completed-activity-sequence.entity';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
+import { LogQuantityAnswer } from './log-quantity-answers';
 
 @Entity('completed_activities')
 @Unique('unique_index_activity_id_completed_sequence_id', ['activity_id', 'completed_sequence_id'])
@@ -34,12 +35,12 @@ export class CompletedActivity extends BaseEntity {
   activity_sequence_id?: string;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   start_time?: Date;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   finish_time?: Date;
 
@@ -91,4 +92,7 @@ export class CompletedActivity extends BaseEntity {
   })
   @JoinColumn({ name: 'completed_sequence_id' })
   completed_sequence_log?: CompletedActivitySequence;
+
+  @OneToMany(() => LogQuantityAnswer, (answer) => answer.completed_activity)
+  answers?: LogQuantityAnswer[];
 }

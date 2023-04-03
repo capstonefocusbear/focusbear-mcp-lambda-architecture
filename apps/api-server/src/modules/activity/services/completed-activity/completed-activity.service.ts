@@ -40,6 +40,9 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
 import { SyncOfflineActivityArgs } from '../../dto/sync-offline-activity.dto';
+import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
+import { LogQuantityAnswerDto } from '../../dto/log-quantity-answers.dto';
+import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 
 @Injectable()
 export class CompletedActivityService {
@@ -57,6 +60,7 @@ export class CompletedActivityService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly helperCommonService: HelperCommonService,
     private readonly activitySequenceService: ActivitySequenceService,
+    private readonly logQuantityAnswerRepository: LogQuantityAnswersRepository,
   ) {}
 
   async completeActivity(
@@ -73,8 +77,14 @@ export class CompletedActivityService {
           completedActivity,
         },
       });
-      const { device_id, activity_sequence_id, activity_id, choice_id, should_not_update_current_activity } =
-        completedActivity;
+      const {
+        device_id,
+        activity_sequence_id,
+        activity_id,
+        choice_id,
+        should_not_update_current_activity,
+        log_quantity_answers,
+      } = completedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
         activity_id,
@@ -106,6 +116,9 @@ export class CompletedActivityService {
         should_not_update_current_activity,
         completingSequenceLog,
       );
+      if (log_quantity_answers?.length > 0) {
+        await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+      }
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       const isCurrentActivityIsMorningOrEveningType =
         activity.type === ActivityType.morning || activity.type === ActivityType.evening;
@@ -194,7 +207,7 @@ export class CompletedActivityService {
           sequence.id,
           startTime,
         );
-      const { choice_id, activity_id } = completedActivity;
+      const { choice_id, activity_id, log_quantity_answers } = completedActivity;
       const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
       if (activity) {
         const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
@@ -211,6 +224,9 @@ export class CompletedActivityService {
           false,
           completingSequenceLog,
         );
+        if (log_quantity_answers?.length > 0) {
+          await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
         const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
         const { is_completed } = completingSequenceLog;
         // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
@@ -547,6 +563,7 @@ export class CompletedActivityService {
     const { has_choices } = activity;
     // remove should_not_update_current_activity from completed activity because it doesn't exist in database
     delete data.should_not_update_current_activity;
+    delete data.log_quantity_answers;
     const completedItem = new CompletedActivity(
       { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
       { log_quantity: activity.log_quantity, generateId: false },
@@ -953,5 +970,25 @@ export class CompletedActivityService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async saveLogQuantityAnswers(
+    completedActivity: CompletedActivityResponse,
+    logQuantityAnswers: LogQuantityAnswerDto[],
+  ) {
+    const {
+      completed_activity_log: { activity_id, user_id, id, start_time },
+    } = completedActivity;
+    const answers = logQuantityAnswers?.map((answer) => {
+      return new LogQuantityAnswer({
+        user_id,
+        completed_activity_log_id: id,
+        activity_id,
+        date_logged: start_time,
+        ...answer,
+      });
+    });
+    const createdAnswers = this.logQuantityAnswerRepository.orm.create(answers);
+    await this.logQuantityAnswerRepository.orm.insert(createdAnswers);
   }
 }

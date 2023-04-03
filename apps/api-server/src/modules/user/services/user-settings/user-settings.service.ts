@@ -101,8 +101,15 @@ export class UserSettingsService {
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };
-      const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id);
-      await this.userRepository.consistentlyUpdateUserSettings(updatedUser, deserializedActivities);
+      const { deserializedActivities, logQuantityQuestions } = await this.activityParserService.deserialize(
+        serializedActivities,
+        user_id,
+      );
+      await this.userRepository.consistentlyUpdateUserSettings(
+        updatedUser,
+        deserializedActivities,
+        logQuantityQuestions,
+      );
       if (should_update_has_edited_settings) {
         await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS);
       }

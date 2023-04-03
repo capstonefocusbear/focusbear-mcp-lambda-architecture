@@ -7,12 +7,14 @@ import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
+import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 
 export interface SerializedActivityTemplates {
   morning_activities?: UpdateActivityTemplateDto[];
   evening_activities?: UpdateActivityTemplateDto[];
   break_activities?: UpdateActivityTemplateDto[];
   standalone_activities?: UpdateActivityTemplateDto[];
+  library_activities?: UpdateActivityTemplateDto[];
 }
 
 @Injectable()
@@ -24,61 +26,67 @@ export class ActivityTemplateParserService {
   in habit-pack.service.ts
   activityType is split from "standalone_activity" to "standalone" and is used to insert the type for activities and their choices
   */
-  async deserializeStandaloneActivities(
+  deserializeStandaloneActivities(
     serialized: SerializedActivityTemplates,
     user_id: string,
     pack_id: string,
-  ): Promise<ActivityTemplate[]> {
+  ): { deserializedActivityTemplates: ActivityTemplate[]; logQuantityQuestions: LogQuantityQuestion[] } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Deserializing standalone activities',
     });
     const entries = Object.entries(serialized);
-    return entries.map(([activityType, deserializedActivities]) => {
+    const deserializedActivityTemplates = entries.map(([activityType, deserializedActivities]) => {
       const [activity_type] = activityType.split('_');
       return deserializedActivities.flatMap((deserializedActivity, index) => {
         return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id, index });
       });
     });
+    const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
+    return { deserializedActivityTemplates, logQuantityQuestions };
   }
 
   /*
   Returns an array that contains three arrays of ActivityTemplate objects, one for each activity type: morning, break, and evening.
   activityType is split and used to insert the type for activities and their choices. Example: "morning_activites" -> "morning"
   */
-  async deserializeRoutineActivities(
+  deserializeRoutineActivities(
     serialized: SerializedActivityTemplates,
     user_id: string,
     pack_id: string,
-  ): Promise<ActivityTemplate[]> {
+  ): { deserializedActivityTemplates: ActivityTemplate[]; logQuantityQuestions: LogQuantityQuestion[] } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Deserializing routine activities',
     });
     const entries = Object.entries(serialized);
-    return entries.map(([activityType, deserializedActivities]) => {
+    const deserializedActivityTemplates = entries.map(([activityType, deserializedActivities]) => {
       let [activity_type] = activityType.split('_');
       activity_type = activity_type === 'break' ? ActivityType.break : activity_type;
       return deserializedActivities.flatMap((deserializedActivity, index) => {
         return this.createActivityTemplate(deserializedActivity, { activity_type, user_id, pack_id, index });
       });
     });
+    const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
+    return { deserializedActivityTemplates, logQuantityQuestions };
   }
 
-  async deserializeLibraryActivities(
+  deserializeLibraryActivities(
     serialized: UpdateActivityTemplateDto[],
     user_id: string,
-  ): Promise<ActivityTemplate[]> {
+  ): { deserializedActivityTemplates: ActivityTemplate[]; logQuantityQuestions: LogQuantityQuestion[] } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Deserializing library activities',
     });
-    return serialized.flatMap((deserializedActivity, index) => {
+    const logQuantityQuestions = this.getLogQuantityQuestions({ library_activities: serialized }, user_id);
+    const deserializedActivityTemplates = serialized.flatMap((deserializedActivity, index) => {
       return this.createActivityTemplate(deserializedActivity, { activity_type: ActivityType.library, user_id, index });
     });
+    return { deserializedActivityTemplates, logQuantityQuestions };
   }
 
   createActivityTemplate(
@@ -121,6 +129,29 @@ export class ActivityTemplateParserService {
     const newActivityTemplateAndChoices = [activity];
     if (has_choices) newActivityTemplateAndChoices.push(...this.deserializeActivityTemplateChoices(choices, activity));
     return newActivityTemplateAndChoices;
+  }
+
+  getLogQuantityQuestions(serializedActivities: SerializedActivityTemplates, userId: string) {
+    const activitySequenceArrays = Object.values(serializedActivities);
+    const updateActivities = [].concat(...activitySequenceArrays);
+    const activitiesAndChoices = updateActivities.flatMap((activity) => {
+      const choices = activity?.choices ?? [];
+      return [activity, ...choices];
+    });
+    const questionsArrays = activitiesAndChoices.map((activity: UpdateActivityDto) => {
+      return this.createLogQuantityQuestions(activity, userId);
+    });
+    const questions = questionsArrays.flatMap((array) => array);
+    return questions;
+  }
+
+  createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
+    const { id, log_quantity_questions } = activity;
+    const questionsForActivity = log_quantity_questions?.map(
+      (question) =>
+        new LogQuantityQuestion({ ...question, activity_template_id: id, activity_id: null, user_id: userId }),
+    );
+    return questionsForActivity?.length > 0 ? questionsForActivity : [];
   }
 
   private deserializeActivityTemplateChoices(
@@ -169,6 +200,7 @@ export class ActivityTemplateParserService {
       activity_data,
       activity_type,
       choices,
+      log_quantity_questions,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -179,6 +211,7 @@ export class ActivityTemplateParserService {
       log_quantity,
       log_summary_type,
       choices: choices?.map(mapActivity),
+      log_quantity_questions,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {
@@ -223,6 +256,7 @@ export class ActivityTemplateParserService {
       log_summary_type,
       activity_data,
       choices,
+      log_quantity_questions,
     }: ActivityTemplate) => {
       return {
         id,
@@ -233,6 +267,7 @@ export class ActivityTemplateParserService {
         log_quantity,
         log_summary_type,
         choices: choices?.map(mapActivity),
+        log_quantity_questions,
       };
     };
     return fetchedActivities.map(mapActivity);

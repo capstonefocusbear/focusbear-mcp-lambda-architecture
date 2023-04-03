@@ -156,6 +156,15 @@ export const serializedActivityDummy: SerializedActivity = {
       name: 'Yoga',
       log_quantity: false,
       is_default: true,
+      log_quantity_questions: [
+        {
+          question: 'Test Question 1',
+          min_value: 0,
+          max_value: 10,
+          min_value_description: 'Test min description',
+          max_value_description: 'Test max description',
+        },
+      ],
     },
     {
       id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
@@ -212,6 +221,15 @@ export const serializedActivityDummy: SerializedActivity = {
           name: 'Pushups',
           video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
           log_quantity: true,
+          log_quantity_questions: [
+            {
+              question: 'Test Question 2',
+              min_value: 0,
+              max_value: 10,
+              min_value_description: 'Test min description',
+              max_value_description: 'Test max description',
+            },
+          ],
         },
         {
           id: randomUUID(),
@@ -572,6 +590,11 @@ export const ActivityDummy: Activity = new Activity(
   },
   { generateId: true },
 );
+
+export const logQuantityAnswersDtoDummy = [
+  { question_id: randomUUID(), logged_value: 5 },
+  { question_id: randomUUID(), logged_value: 8 },
+];
 
 const sequenceId = randomUUID();
 const firstActivityId = randomUUID();
@@ -1511,3 +1534,26 @@ export const routineDurationsDummy = {
   SAT: 300,
   SUN: 300,
 };
+
+export const logQuantityQuestionsDummy = [
+  {
+    id: randomUUID(),
+    question: 'Test Question 1',
+    min_value: 0,
+    max_value: 10,
+    min_value_description: 'Test min description',
+    max_value_description: 'Test max description',
+    activity_id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+    user_id: userDummy.id,
+  },
+  {
+    id: randomUUID(),
+    question: 'Test Question 2',
+    min_value: 0,
+    max_value: 10,
+    min_value_description: 'Test min description',
+    max_value_description: 'Test max description',
+    activity_id: 'a2550a6e-a413-4763-87f8-207b86fcd4cf',
+    user_id: userDummy.id,
+  },
+];

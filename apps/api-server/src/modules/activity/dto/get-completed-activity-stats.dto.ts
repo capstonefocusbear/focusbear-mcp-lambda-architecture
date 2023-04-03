@@ -18,3 +18,9 @@ export class GetCompletedActivityStatsParamsDto {
   @IsUUID('4')
   activity_id: string;
 }
+
+export class GetQuestionStatsParamsDto {
+  @IsNotEmpty()
+  @IsUUID('4')
+  question_id: string;
+}

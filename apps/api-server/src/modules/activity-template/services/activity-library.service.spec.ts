@@ -9,7 +9,12 @@ import {
   deserializedStandaloneActivitiesDummy,
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
-import { ActivityTemplateRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
+import {
+  ActivityTemplateParserServiceMock,
+  ActivityTemplateRepositoryMock,
+  SentryServiceMock,
+  UserRepositoryMock,
+} from '../../../../test/mocks';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityLibraryService } from './activity-library.service';
@@ -98,15 +103,24 @@ describe('ActivityLibraryService', () => {
       expect(response).toMatchSnapshot();
     });
 
-    it('positive: incoming activities that belong to a different user should be exlcuded from update function call', async () => {
+    it('positive: incoming activities that belong to a different user should be excluded from update function call', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
       ActivityTemplateRepositoryMock.orm.find
         .mockResolvedValueOnce([activityTemplateFromDBForDifferentUserDummy])
         .mockResolvedValueOnce([activityTemplateFromDBDummy]);
+      ActivityTemplateParserServiceMock.deserializeActivityTemplateChoices.mockReturnValueOnce({
+        deserializedActivityTemplates: [],
+        logQuantityQuestions: [],
+      });
 
       await activityLibraryService.upsertLibraryActivities([upsertActiivtyTemplateDummy], userDummy.id);
 
-      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toBeCalledWith([], [], userDummy.id);
+      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toBeCalledWith(
+        [],
+        [],
+        userDummy.id,
+        [],
+      );
     });
   });
 });

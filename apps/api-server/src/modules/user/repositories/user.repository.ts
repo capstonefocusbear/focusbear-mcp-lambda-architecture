@@ -7,6 +7,7 @@ import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { GetUsersQueryDto } from '../dto/get-users-query.dto';
 import { User } from '../entities/user.entity';
+import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -14,7 +15,11 @@ export class UserRepository extends BaseRepository<User> {
     super(connection, User);
   }
 
-  async consistentlyUpdateUserSettings({ id, ...updateData }: User, activitiesData?: DeserializedActivity[]) {
+  async consistentlyUpdateUserSettings(
+    { id, ...updateData }: User,
+    activitiesData: DeserializedActivity[],
+    logQuantityQuestions: LogQuantityQuestion[],
+  ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.update(User, { id }, { ...updateData });
       await Promise.all(
@@ -32,6 +37,7 @@ export class UserRepository extends BaseRepository<User> {
           await transactionalEntityManager.upsert(Activity, choices, ['id']);
         }),
       );
+      await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
     });
   }
 
@@ -45,6 +51,8 @@ export class UserRepository extends BaseRepository<User> {
         standalone: 'standalone',
       })
       .leftJoinAndSelect('activities.choices', 'choices')
+      .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
+      .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .select([
         'users.startup_time',
         'users.shutdown_time',
@@ -70,6 +78,20 @@ export class UserRepository extends BaseRepository<User> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'log_quantity_questions.id',
+        'log_quantity_questions.question',
+        'log_quantity_questions.min_value',
+        'log_quantity_questions.max_value',
+        'log_quantity_questions.min_value_description',
+        'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.id',
+        'choices_log_quantity_questions.question',
+        'choices_log_quantity_questions.min_value',
+        'choices_log_quantity_questions.max_value',
+        'choices_log_quantity_questions.min_value_description',
+        'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',

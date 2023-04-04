@@ -9,7 +9,7 @@ import {
   createActivityTemplateActivityDataDummy,
   activityTemplateArrayDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
-import { userDummy } from '../../../../test/dummies';
+import { serializedActivityDummy, userDummy } from '../../../../test/dummies';
 import {
   ActivityTemplateRepositoryMock,
   HabitPackRepositoryMock,
@@ -94,14 +94,14 @@ describe('ActivityTemplateParserService', () => {
   describe('deserializeLibraryActivities', () => {
     it('Positive: Should convert UpdateActivityDto type activities to ActivityTemplate class and return them in an array', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      const result = await activityTemplateParserService.deserializeLibraryActivities(
+      const { deserializedActivityTemplates } = activityTemplateParserService.deserializeLibraryActivities(
         serializedStandaloneActivityDummy.standalone_activities,
         userDummy.id,
       );
 
-      expect(result).toBeArray();
-      expect(result[0]).toBeInstanceOf(ActivityTemplate);
-      expect(result).toMatchSnapshot();
+      expect(deserializedActivityTemplates).toBeArray();
+      expect(deserializedActivityTemplates[0]).toBeInstanceOf(ActivityTemplate);
+      expect(deserializedActivityTemplates).toMatchSnapshot();
     });
   });
 
@@ -133,6 +133,15 @@ describe('ActivityTemplateParserService', () => {
 
       expect(result).toBeArray();
       expect(result[0]).toMatchSnapshot();
+    });
+  });
+
+  describe('getLogQuantityQuestions', () => {
+    it('positive: given activities with log quantity questions, it should extract and create log quantity questions and return them in an array', () => {
+      const result = activityTemplateParserService.getLogQuantityQuestions(serializedActivityDummy, userDummy.id);
+
+      expect(result).toBeArray();
+      expect(result.length).toBe(2);
     });
   });
 });

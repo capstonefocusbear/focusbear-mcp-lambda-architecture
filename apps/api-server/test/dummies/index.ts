@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
+import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
 import { FocusModeTemplate } from '../../src/modules/focus-mode-template/entities/focus-mode-template.entity';
@@ -156,6 +157,16 @@ export const serializedActivityDummy: SerializedActivity = {
       name: 'Yoga',
       log_quantity: false,
       is_default: true,
+      log_quantity_questions: [
+        {
+          question: 'Test Question 1',
+          min_value: 0,
+          max_value: 10,
+          min_value_description: 'Test min description',
+          max_value_description: 'Test max description',
+          log_summary_type: LogSummaryType.AVERAGE,
+        },
+      ],
     },
     {
       id: 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1',
@@ -212,6 +223,16 @@ export const serializedActivityDummy: SerializedActivity = {
           name: 'Pushups',
           video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
           log_quantity: true,
+          log_quantity_questions: [
+            {
+              question: 'Test Question 2',
+              min_value: 0,
+              max_value: 10,
+              min_value_description: 'Test min description',
+              max_value_description: 'Test max description',
+              log_summary_type: LogSummaryType.AVERAGE,
+            },
+          ],
         },
         {
           id: randomUUID(),
@@ -572,6 +593,44 @@ export const ActivityDummy: Activity = new Activity(
   },
   { generateId: true },
 );
+
+export const logQuantityAnswersDtoDummy = [
+  { question_id: randomUUID(), logged_value: 5 },
+  { question_id: randomUUID(), logged_value: 8 },
+];
+
+const completedActivity: CreateCompletedActivityDto = {
+  activity_id: ActivityDummy.id,
+  quantity_logged: 10,
+  duration_logged: 600,
+  note_logged: 'some text',
+  device_id: DeviceDummy.id,
+  activity_sequence_id: ActivityDummy.activity_sequence_id,
+  start_time: new Date(Date.now() - 60),
+  finish_time: new Date(Date.now() - 1),
+  metadata: { is_skipped: false },
+};
+
+export const createdLogQuantityAnswerDummies = [
+  {
+    id: randomUUID(),
+    activity_id: completedActivity.activity_id,
+    question_id: logQuantityAnswersDtoDummy[0].question_id,
+    logged_value: logQuantityAnswersDtoDummy[0].logged_value,
+    user_id: userDummy.id,
+    date_logged: completedActivity.start_time,
+    completed_activity_log_id: randomUUID(),
+  },
+  {
+    id: randomUUID(),
+    activity_id: completedActivity.activity_id,
+    question_id: logQuantityAnswersDtoDummy[1].question_id,
+    logged_value: logQuantityAnswersDtoDummy[1].logged_value,
+    user_id: userDummy.id,
+    date_logged: completedActivity.start_time,
+    completed_activity_log_id: randomUUID(),
+  },
+];
 
 const sequenceId = randomUUID();
 const firstActivityId = randomUUID();
@@ -1511,3 +1570,26 @@ export const routineDurationsDummy = {
   SAT: 300,
   SUN: 300,
 };
+
+export const logQuantityQuestionsDummy = [
+  {
+    id: randomUUID(),
+    question: 'Test Question 1',
+    min_value: 0,
+    max_value: 10,
+    min_value_description: 'Test min description',
+    max_value_description: 'Test max description',
+    activity_id: '856eb9fb-8c12-418d-b12c-fec0f2dae49d',
+    user_id: userDummy.id,
+  },
+  {
+    id: randomUUID(),
+    question: 'Test Question 2',
+    min_value: 0,
+    max_value: 10,
+    min_value_description: 'Test min description',
+    max_value_description: 'Test max description',
+    activity_id: 'a2550a6e-a413-4763-87f8-207b86fcd4cf',
+    user_id: userDummy.id,
+  },
+];

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { In } from 'typeorm';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -40,6 +41,12 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { FetchNotesParamsDto } from '../../dto/fetch-notes-params.dto';
 import { SyncOfflineActivityArgs } from '../../dto/sync-offline-activity.dto';
+import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
+import { LogQuantityAnswerDto } from '../../dto/log-quantity-answers.dto';
+import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
+import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
+import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
+import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -57,6 +64,8 @@ export class CompletedActivityService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly helperCommonService: HelperCommonService,
     private readonly activitySequenceService: ActivitySequenceService,
+    private readonly logQuantityAnswerRepository: LogQuantityAnswersRepository,
+    private readonly logQuantityQuestionRepository: LogQuantityQuestionsRepository,
   ) {}
 
   async completeActivity(
@@ -73,8 +82,14 @@ export class CompletedActivityService {
           completedActivity,
         },
       });
-      const { device_id, activity_sequence_id, activity_id, choice_id, should_not_update_current_activity } =
-        completedActivity;
+      const {
+        device_id,
+        activity_sequence_id,
+        activity_id,
+        choice_id,
+        should_not_update_current_activity,
+        log_quantity_answers,
+      } = completedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
         activity_id,
@@ -106,6 +121,10 @@ export class CompletedActivityService {
         should_not_update_current_activity,
         completingSequenceLog,
       );
+      let logQuantityAnswers: LogQuantityAnswer[] = [];
+      if (log_quantity_answers?.length > 0) {
+        logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+      }
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
       const isCurrentActivityIsMorningOrEveningType =
         activity.type === ActivityType.morning || activity.type === ActivityType.evening;
@@ -119,7 +138,7 @@ export class CompletedActivityService {
           user.timezone,
         );
       }
-      return createdItem;
+      return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -194,7 +213,7 @@ export class CompletedActivityService {
           sequence.id,
           startTime,
         );
-      const { choice_id, activity_id } = completedActivity;
+      const { choice_id, activity_id, log_quantity_answers } = completedActivity;
       const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
       if (activity) {
         const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
@@ -211,6 +230,10 @@ export class CompletedActivityService {
           false,
           completingSequenceLog,
         );
+        let logQuantityAnswers: LogQuantityAnswer[] = [];
+        if (log_quantity_answers?.length > 0) {
+          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
         const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
         const { is_completed } = completingSequenceLog;
         // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
@@ -221,7 +244,9 @@ export class CompletedActivityService {
             startTime,
           );
         }
-        createdLogs.push(createdItem);
+        createdLogs.push(
+          new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers }),
+        );
         if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
           await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
             user,
@@ -547,6 +572,7 @@ export class CompletedActivityService {
     const { has_choices } = activity;
     // remove should_not_update_current_activity from completed activity because it doesn't exist in database
     delete data.should_not_update_current_activity;
+    delete data.log_quantity_answers;
     const completedItem = new CompletedActivity(
       { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
       { log_quantity: activity.log_quantity, generateId: false },
@@ -633,6 +659,16 @@ export class CompletedActivityService {
     }
   }
 
+  async getStatsByQuestionPerDay(question_id: string, { days_number, timezone }: GetCompletedActivityStatsQueryDto) {
+    const question = await this.logQuantityQuestionRepository.orm.findOneBy({ id: question_id });
+    if (!question) throw new NotFoundException(`Log quantity question with ID: ${question_id} does not exist!`);
+    const { log_summary_type } = question;
+    const params = { days_number, log_summary_type, timezone };
+    const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(question_id, params);
+    const stats = new LogQuantityAnswersStats({ question_id, days_number, items, log_summary_type, timezone });
+    return stats;
+  }
+
   async getCompletedLogsByActivityInTimeRange(
     { activity_id }: GetCompletedActivityStatsParamsDto,
     { from_time, to_time },
@@ -663,6 +699,24 @@ export class CompletedActivityService {
     if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
     log.quantity_logged = quantity_logged;
     return this.completedActivityRepository.orm.save(log);
+  }
+
+  async reviseLogQuantityAnswers(logQuantityAnswers: ReviseLogQuantityAnswerDto[], user_id: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Revising log quantity question answers',
+      data: {
+        user_id,
+        logQuantityAnswers,
+      },
+    });
+    const updatedLogs = logQuantityAnswers.map(async ({ logged_value, answer_id }) => {
+      const log = await this.logQuantityAnswerRepository.orm.findOneBy({ id: answer_id, user_id });
+      log.logged_value = logged_value;
+      return this.logQuantityAnswerRepository.orm.save(log);
+    });
+    return Promise.all(updatedLogs);
   }
 
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
@@ -953,5 +1007,35 @@ export class CompletedActivityService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async saveLogQuantityAnswers(
+    completedActivity: CompletedActivityResponse,
+    logQuantityAnswers: LogQuantityAnswerDto[],
+  ) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Saving log quantity question answers',
+      data: {
+        logQuantityAnswers,
+      },
+    });
+    const {
+      completed_activity_log: { activity_id, user_id, id, start_time },
+    } = completedActivity;
+    const answers = logQuantityAnswers?.map((answer) => {
+      return new LogQuantityAnswer({
+        user_id,
+        completed_activity_log_id: id,
+        activity_id,
+        date_logged: start_time,
+        ...answer,
+      });
+    });
+    const createdAnswers = this.logQuantityAnswerRepository.orm.create(answers);
+    const rawSavedAnswers = await this.logQuantityAnswerRepository.orm.insert(createdAnswers);
+    const newRecordIds = rawSavedAnswers.identifiers.map((record: { id: string }) => record.id);
+    return this.logQuantityAnswerRepository.orm.find({ where: { id: In(newRecordIds) } });
   }
 }

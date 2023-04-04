@@ -20,6 +20,8 @@ import { ActivityController } from './controllers/activity.controller';
 import { ActivityImageConsumer } from './consumers/activity-image.consumer';
 import { HelperModule } from '../helper/helper.module';
 import { ActivitySequenceService } from './services/activity-sequence/activity-sequence.service';
+import { LogQuantityAnswersRepository } from './repositories/log-quantity-answers.repository';
+import { LogQuantityQuestionsRepository } from './repositories/log-quantity-questions.repository';
 
 @Module({
   providers: [
@@ -34,6 +36,8 @@ import { ActivitySequenceService } from './services/activity-sequence/activity-s
     ActivityService,
     ActivityImageConsumer,
     ActivitySequenceService,
+    LogQuantityAnswersRepository,
+    LogQuantityQuestionsRepository,
   ],
   exports: [
     ActivityParserService,

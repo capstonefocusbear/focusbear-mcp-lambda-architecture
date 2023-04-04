@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDate,
   IsNotEmpty,
@@ -12,6 +13,7 @@ import {
   ValidationOptions,
 } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
+import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
 
 export function IsTimestampGreaterThan(property: string, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -79,4 +81,8 @@ export class CreateCompletedActivityDto {
   @IsOptional()
   @IsBoolean()
   should_not_update_current_activity?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  log_quantity_answers?: LogQuantityAnswerDto[];
 }

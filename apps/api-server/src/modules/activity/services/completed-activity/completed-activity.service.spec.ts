@@ -15,6 +15,8 @@ import {
   UserRepositoryMock,
   UserSettingsServiceMock,
   UserDailyStatsServiceMock,
+  LogQuantityAnswersRepositoryMock,
+  LogQuantityQuestionsRepositoryMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -28,10 +30,12 @@ import {
   completedActivitiesWithNotesDummyArray,
   CompletedActivityDummy,
   CompletedFocusBlockDummy,
+  createdLogQuantityAnswerDummies,
   DeviceDummy,
   eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
+  logQuantityAnswersDtoDummy,
   MorningActivitySequenceDummy,
   sequenceWithActivitiesForDifferentDays,
   UncompletedSequenceLogDummy,
@@ -62,6 +66,8 @@ import { UserDailyStatsService } from '../../../user/services/user-daily-stats/u
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
+import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
+import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -82,6 +88,8 @@ describe('CompletedActivityService', () => {
         UserDailyStatsService,
         HelperCommonService,
         ActivitySequenceService,
+        LogQuantityAnswersRepository,
+        LogQuantityQuestionsRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -108,6 +116,10 @@ describe('CompletedActivityService', () => {
       .useValue(UserSettingsServiceMock)
       .overrideProvider(UserDailyStatsService)
       .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(LogQuantityAnswersRepository)
+      .useValue(LogQuantityAnswersRepositoryMock)
+      .overrideProvider(LogQuantityQuestionsRepository)
+      .useValue(LogQuantityQuestionsRepositoryMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -335,6 +347,27 @@ describe('CompletedActivityService', () => {
         ),
         ['activity_id', 'completed_sequence_id'],
       );
+    });
+
+    it('positive: if activity has log quantity answers they should be saved', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+
+      await completedActivityService.completeActivity(
+        { ...completedActivity, log_quantity_answers: logQuantityAnswersDtoDummy },
+        { user_id },
+      );
+
+      expect(LogQuantityAnswersRepositoryMock.orm.insert).toBeCalledWith(createdLogQuantityAnswerDummies);
     });
 
     it('positive: push notification should be sent via pusher', async () => {

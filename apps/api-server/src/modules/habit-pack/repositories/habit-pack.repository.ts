@@ -8,6 +8,7 @@ import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { GetMultiplePacksQueryDto } from '../dto/get-multiple-packs-query.dto';
 import { HabitPack } from '../entity/habit-pack.entity';
+import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 
 @Injectable()
 export class HabitPackRepository extends BaseRepository<HabitPack> {
@@ -18,7 +19,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
   async consistentlyUpdateHabitPack(
     { ...updateData }: HabitPack,
     activityIds: string[],
-    activitiesData?: ActivityTemplate[][],
+    activitiesData: ActivityTemplate[][],
+    logQuantityQuestions: LogQuantityQuestion[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.upsert(HabitPack, updateData, ['id']);
@@ -31,6 +33,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
           await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
         }),
       );
+      await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
     });
   }
 
@@ -51,6 +54,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
       .orderBy('activity_templates.sequence_index', 'ASC')
       .leftJoinAndSelect('activity_templates.choices', 'choices')
+      .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
+      .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .select([
         'habit_packs.id',
         'habit_packs.pack_name',
@@ -88,6 +93,20 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'log_quantity_questions.id',
+        'log_quantity_questions.question',
+        'log_quantity_questions.min_value',
+        'log_quantity_questions.max_value',
+        'log_quantity_questions.min_value_description',
+        'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.id',
+        'choices_log_quantity_questions.question',
+        'choices_log_quantity_questions.min_value',
+        'choices_log_quantity_questions.max_value',
+        'choices_log_quantity_questions.min_value_description',
+        'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
       ])
       .where('habit_packs.id = :id', { id: pack_id })
       .getOne();
@@ -109,6 +128,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
       .orderBy('activity_templates.sequence_index', 'ASC')
       .leftJoinAndSelect('activity_templates.choices', 'choices')
+      .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
+      .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .select([
         'habit_packs.id',
         'habit_packs.pack_name',
@@ -146,6 +167,20 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'log_quantity_questions.id',
+        'log_quantity_questions.question',
+        'log_quantity_questions.min_value',
+        'log_quantity_questions.max_value',
+        'log_quantity_questions.min_value_description',
+        'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.id',
+        'choices_log_quantity_questions.question',
+        'choices_log_quantity_questions.min_value',
+        'choices_log_quantity_questions.max_value',
+        'choices_log_quantity_questions.min_value_description',
+        'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
       ]);
 
     if (pack_type) {

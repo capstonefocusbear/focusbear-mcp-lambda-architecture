@@ -23,12 +23,12 @@ export class CompletedActivitySequence extends BaseEntity {
   activity_sequence_id?: string;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   start_time?: Date;
 
   @Column({
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   finish_time?: Date;
 
@@ -57,7 +57,10 @@ export class CompletedActivitySequence extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activity_sequences, { eager: true })
+  @ManyToOne(() => ActivitySequence, (sequence) => sequence.completed_activity_sequences, {
+    eager: true,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'activity_sequence_id' })
   activity_sequence?: ActivitySequence;
 

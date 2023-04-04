@@ -4,6 +4,7 @@ import { BaseRepository } from '../../../shared/repositories/base-repository.rep
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { AppDataSource } from '../../../../ormconfig';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -26,6 +27,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     activityIds: string[],
     activityTemplates: ActivityTemplate[],
     user_id: string,
+    logQuantityQuestions: LogQuantityQuestion[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(ActivityTemplate, {
@@ -37,6 +39,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
       const choices = activityTemplates.filter(({ parent_id }) => !!parent_id);
       await transactionalEntityManager.upsert(ActivityTemplate, parents, ['id']);
       await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
+      await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
     });
   }
 }

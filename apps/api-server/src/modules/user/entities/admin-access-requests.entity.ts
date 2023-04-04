@@ -21,7 +21,7 @@ export class AdminAccessRequest extends BaseEntity {
   })
   access_reason: string;
 
-  @ManyToOne(() => User, (user) => user.consents)
+  @ManyToOne(() => User, (user) => user.consents, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'admin_user_id' })
   user?: User;
 }

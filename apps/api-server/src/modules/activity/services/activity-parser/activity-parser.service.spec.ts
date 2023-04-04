@@ -48,13 +48,13 @@ describe('ActivityParserService', () => {
     it('positive: should return a deserialized activities', async () => {
       ActivitySequenceRepositoryMock.findOneByTypeForUser.mockReturnValue(userDummy);
 
-      const result = await activityParserService.deserialize(serializedActivityDummy, userDummy.id);
+      const { deserializedActivities } = await activityParserService.deserialize(serializedActivityDummy, userDummy.id);
 
-      expect(result).toBeDefined();
-      expect(result).toBeArray();
-      expect(result[0].sequence).toBeInstanceOf(ActivitySequence);
-      expect(result[0].activities).toBeArray();
-      expect(result[0].activities.every((e) => e instanceof Activity)).toBeTrue();
+      expect(deserializedActivities).toBeDefined();
+      expect(deserializedActivities).toBeArray();
+      expect(deserializedActivities[0].sequence).toBeInstanceOf(ActivitySequence);
+      expect(deserializedActivities[0].activities).toBeArray();
+      expect(deserializedActivities[0].activities.every((e) => e instanceof Activity)).toBeTrue();
     });
   });
 
@@ -72,6 +72,15 @@ describe('ActivityParserService', () => {
       const result = activityParserService.calculateSequenceDuration(sequence);
 
       expect(result).toBe(600);
+    });
+  });
+
+  describe('getLogQuantityQuestions', () => {
+    it('positive: given activities with log quantity questions, it should extract and create log quantity questions and return them in an array', () => {
+      const result = activityParserService.getLogQuantityQuestions(serializedActivityDummy, userDummy.id);
+
+      expect(result).toBeArray();
+      expect(result.length).toBe(2);
     });
   });
 });

@@ -55,7 +55,10 @@ export class FocusMode extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.focus_modes)
+  @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.focus_modes, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'focus_mode_template_id' })
   focus_mode_template?: FocusModeTemplate;
 

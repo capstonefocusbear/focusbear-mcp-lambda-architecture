@@ -30,7 +30,7 @@ export class CourseRating extends BaseEntity {
   @JoinColumn({ name: 'course_id' })
   course?: Course;
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

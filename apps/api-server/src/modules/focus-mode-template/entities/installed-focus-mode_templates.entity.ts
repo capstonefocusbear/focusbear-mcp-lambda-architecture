@@ -28,11 +28,14 @@ export class InstalledFocusModeTemplate extends BaseEntity {
   })
   installation_status?: boolean;
 
-  @ManyToOne(() => User, (user) => user.installed_focus_modes)
+  @ManyToOne(() => User, (user) => user.installed_focus_modes, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.installs)
+  @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.installs, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'focus_mode_template_id' })
   focus_mode_template?: FocusModeTemplate;
 }

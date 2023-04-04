@@ -67,6 +67,10 @@ export const LogQuantityAnswersRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
+export const LogQuantityQuestionsRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const CompletedActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   getMostRecentCompletedTime: jest.fn(),

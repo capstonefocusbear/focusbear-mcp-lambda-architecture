@@ -16,6 +16,7 @@ import {
   UserSettingsServiceMock,
   UserDailyStatsServiceMock,
   LogQuantityAnswersRepositoryMock,
+  LogQuantityQuestionsRepositoryMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -29,6 +30,7 @@ import {
   completedActivitiesWithNotesDummyArray,
   CompletedActivityDummy,
   CompletedFocusBlockDummy,
+  createdLogQuantityAnswerDummies,
   DeviceDummy,
   eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
@@ -65,6 +67,7 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
+import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -86,6 +89,7 @@ describe('CompletedActivityService', () => {
         HelperCommonService,
         ActivitySequenceService,
         LogQuantityAnswersRepository,
+        LogQuantityQuestionsRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -114,6 +118,8 @@ describe('CompletedActivityService', () => {
       .useValue(UserDailyStatsServiceMock)
       .overrideProvider(LogQuantityAnswersRepository)
       .useValue(LogQuantityAnswersRepositoryMock)
+      .overrideProvider(LogQuantityQuestionsRepository)
+      .useValue(LogQuantityQuestionsRepositoryMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -351,25 +357,10 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const createdLogQuantityAnswerDummies = [
-        {
-          activity_id: completedActivity.activity_id,
-          question_id: logQuantityAnswersDtoDummy[0].question_id,
-          logged_value: logQuantityAnswersDtoDummy[0].logged_value,
-          user_id: userDummy.id,
-          date_logged: completedActivity.start_time,
-          completed_activity_log_id: randomUUID(),
-        },
-        {
-          activity_id: completedActivity.activity_id,
-          question_id: logQuantityAnswersDtoDummy[1].question_id,
-          logged_value: logQuantityAnswersDtoDummy[1].logged_value,
-          user_id: userDummy.id,
-          date_logged: completedActivity.start_time,
-          completed_activity_log_id: randomUUID(),
-        },
-      ];
       LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
 
       await completedActivityService.completeActivity(
         { ...completedActivity, log_quantity_answers: logQuantityAnswersDtoDummy },

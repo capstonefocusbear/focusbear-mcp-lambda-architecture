@@ -99,12 +99,14 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'log_quantity_questions.max_value',
         'log_quantity_questions.min_value_description',
         'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.id',
         'choices_log_quantity_questions.question',
         'choices_log_quantity_questions.min_value',
         'choices_log_quantity_questions.max_value',
         'choices_log_quantity_questions.min_value_description',
         'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
       ])
       .where('habit_packs.id = :id', { id: pack_id })
       .getOne();
@@ -171,12 +173,14 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'log_quantity_questions.max_value',
         'log_quantity_questions.min_value_description',
         'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.id',
         'choices_log_quantity_questions.question',
         'choices_log_quantity_questions.min_value',
         'choices_log_quantity_questions.max_value',
         'choices_log_quantity_questions.min_value_description',
         'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
       ]);
 
     if (pack_type) {

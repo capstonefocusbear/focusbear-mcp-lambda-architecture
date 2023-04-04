@@ -7,12 +7,14 @@ Array [
       "id": "1b9fa7be-0cef-4554-bac3-1190705ea08b",
     },
     "completed_choice_log": null,
+    "saved_log_quantity_answers": Array [],
   },
   CompletedActivityResponse {
     "completed_activity_log": Object {
       "id": "1d39fa59-3ca2-4252-ab9a-affa41634634",
     },
     "completed_choice_log": null,
+    "saved_log_quantity_answers": Array [],
   },
 ]
 `;

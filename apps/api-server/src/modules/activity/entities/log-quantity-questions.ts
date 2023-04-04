@@ -5,6 +5,7 @@ import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
 import { LogQuantityAnswer } from './log-quantity-answers';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
+import { LogSummaryType } from '../domain/log-summary-type.enum';
 
 @Entity('log_quantity_questions')
 export class LogQuantityQuestion extends BaseEntity {
@@ -55,6 +56,14 @@ export class LogQuantityQuestion extends BaseEntity {
     transformer: new ColumnNumericTransformer(),
   })
   max_value?: number;
+
+  @Column({
+    type: 'enum',
+    enum: LogSummaryType,
+    default: LogSummaryType.SUM,
+    nullable: false,
+  })
+  log_summary_type?: string;
 
   @ManyToOne(() => User, (user) => user.log_quantity_questions, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

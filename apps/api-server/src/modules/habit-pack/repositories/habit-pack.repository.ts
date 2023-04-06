@@ -18,13 +18,16 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
 
   async consistentlyUpdateHabitPack(
     { ...updateData }: HabitPack,
-    activityIds: string[],
+    activityTemplateIds: string[],
     activitiesData: ActivityTemplate[][],
     logQuantityQuestions: LogQuantityQuestion[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.upsert(HabitPack, updateData, ['id']);
-      await transactionalEntityManager.delete(ActivityTemplate, { pack_id: updateData.id, id: Not(In(activityIds)) });
+      await transactionalEntityManager.delete(ActivityTemplate, {
+        pack_id: updateData.id,
+        id: Not(In(activityTemplateIds)),
+      });
       await Promise.all(
         activitiesData.map(async (type) => {
           const parents = type.filter(({ parent_id }) => !parent_id);
@@ -33,6 +36,16 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
           await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
         }),
       );
+      // delete existing log quantity questions that aren't in the update data
+      // but are linked to one of the incoming templates
+      const incomingQuestionIds = logQuantityQuestions
+        .map((question) => question.id)
+        .filter((questionId) => !!questionId);
+      await transactionalEntityManager.delete(LogQuantityQuestion, {
+        user_id: updateData.user_id,
+        id: Not(In(incomingQuestionIds)),
+        activity_template_id: In(activityTemplateIds),
+      });
       await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
     });
   }

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, Not } from 'typeorm';
+import { Connection, In, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
@@ -37,6 +37,16 @@ export class UserRepository extends BaseRepository<User> {
           await transactionalEntityManager.upsert(Activity, choices, ['id']);
         }),
       );
+      // delete existing log quantity questions that aren't in the update data
+      // and are linked to normal activities not activity templates
+      const incomingQuestionIds = logQuantityQuestions
+        .map((question) => question.id)
+        .filter((questionId) => !!questionId);
+      await transactionalEntityManager.delete(LogQuantityQuestion, {
+        user_id: id,
+        id: Not(In(incomingQuestionIds)),
+        activity_id: Not(IsNull()),
+      });
       await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
     });
   }

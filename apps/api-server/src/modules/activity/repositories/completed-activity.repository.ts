@@ -17,7 +17,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     activity_id: string,
     { log_summary_type = 'SUM', days_number = 30, stat_type, timezone = 'UTC' }: any,
   ): Promise<CompletedActivityStatItem[]> {
-    const completedActivites = await this.orm.query(
+    const completedActivities = await this.orm.query(
       `
       SELECT 
         date_trunc('day', timezone($3, finish_time)) as date,
@@ -30,7 +30,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     `,
       [activity_id, days_number, timezone],
     );
-    const completedActivitiesWithoutSkipped = completedActivites.filter((activity) => activity.date);
+    const completedActivitiesWithoutSkipped = completedActivities.filter((activity) => activity.date);
     return completedActivitiesWithoutSkipped;
   }
 

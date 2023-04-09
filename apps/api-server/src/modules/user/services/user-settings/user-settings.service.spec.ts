@@ -7,6 +7,7 @@ import { Settings } from 'luxon';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
+  logQuantityQuestionsDummy,
   serializedActivityDummy,
   serializedActivityDummyWithDefaultActivities,
   UncompletedSequenceLogDummy,
@@ -161,7 +162,10 @@ describe('UserSettingsService', () => {
         cutoff_time_for_non_high_priority_activities: null,
       });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      ActivityParserServiceMock.deserialize.mockResolvedValue(deserializedActivitiesDummy);
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+      });
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
 
       await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
@@ -169,6 +173,7 @@ describe('UserSettingsService', () => {
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
         updatedUser,
         deserializedActivitiesDummy,
+        logQuantityQuestionsDummy,
       );
     });
   });
@@ -179,6 +184,10 @@ describe('UserSettingsService', () => {
       UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
       ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: [],
+      });
 
       await userSettingsService.clearUserActivities(userDummy.id);
 
@@ -212,6 +221,10 @@ describe('UserSettingsService', () => {
       UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
       ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummyWithDefaultActivities);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: [],
+      });
 
       await userSettingsService.clearUserActivities(userDummy.id);
 

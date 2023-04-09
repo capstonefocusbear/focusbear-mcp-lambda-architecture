@@ -71,7 +71,7 @@ export class DailyStats extends BaseEntity {
   @JoinColumn({ name: 'evening_sequence_log_id' })
   evening_sequence_log?: CompletedActivitySequence;
 
-  @ManyToOne(() => User, (user) => user.consents)
+  @ManyToOne(() => User, (user) => user.consents, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

@@ -26,6 +26,8 @@ import { LessonCompletion } from '../modules/lesson/entities/lesson-completion.e
 import { UserConsent } from '../modules/user/entities/user-consent.entity';
 import { DailyStats } from '../modules/user/entities/user-daily-stats.entity';
 import { AdminAccessRequest } from '../modules/user/entities/admin-access-requests.entity';
+import { LogQuantityQuestion } from '../modules/activity/entities/log-quantity-questions';
+import { LogQuantityAnswer } from '../modules/activity/entities/log-quantity-answers';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -64,6 +66,8 @@ export const typeormConfig = registerAs(
       UserConsent,
       DailyStats,
       AdminAccessRequest,
+      LogQuantityQuestion,
+      LogQuantityAnswer,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

@@ -14,11 +14,13 @@ import { GetCompletedActivityLogsQueryDto } from '../dto/get-completed-activity-
 import {
   GetCompletedActivityStatsParamsDto,
   GetCompletedActivityStatsQueryDto,
+  GetQuestionStatsParamsDto,
 } from '../dto/get-completed-activity-stats.dto';
 import { GetDaySummaryQueryDto } from '../dto/get-day-summary-query.dto';
 import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
+import { ReviseLogQuantityAnswersBodyDto } from '../dto/revise-log-quantity-answers-body.dto';
 
 @Controller('completed-activity')
 @UseGuards(IsAuth)
@@ -56,6 +58,14 @@ export class CompletedActivityController {
     return this.completedActivityService.getStatsByActivityPerDay({ activity_id }, { days_number, timezone });
   }
 
+  @Get('/log-question/:question_id/stats')
+  getStatsByQuestionPerDay(
+    @Param() { question_id }: GetQuestionStatsParamsDto,
+    @Query() { days_number, timezone }: GetCompletedActivityStatsQueryDto,
+  ) {
+    return this.completedActivityService.getStatsByQuestionPerDay(question_id, { days_number, timezone });
+  }
+
   @Get(':activity_id')
   getCompletedLogsByActivityInTimeRange(
     @Param() { activity_id }: GetCompletedActivityStatsParamsDto,
@@ -70,6 +80,14 @@ export class CompletedActivityController {
     @Body() { quantity_logged }: ReviseCompletedActivityDto,
   ): Promise<CompletedActivity> {
     return this.completedActivityService.reviseCompletedLog(completed_activity_id, { quantity_logged });
+  }
+
+  @Patch('/revise/log-answers')
+  reviseLogQuantityAnswer(
+    @Body() { log_quantity_answers }: ReviseLogQuantityAnswersBodyDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.completedActivityService.reviseLogQuantityAnswers(log_quantity_answers, user.id);
   }
 
   @Get('/day-summary')

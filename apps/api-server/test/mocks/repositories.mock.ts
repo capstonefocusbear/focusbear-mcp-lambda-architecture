@@ -7,6 +7,8 @@ export const BaseRepositoryMock = {
     delete: jest.fn(),
     softDelete: jest.fn(),
     findOneBy: jest.fn(),
+    insert: jest.fn(),
+    create: jest.fn(),
     // ... rest methods can be added on demand
   },
   create: jest.fn(),
@@ -58,6 +60,14 @@ export const DeviceRepositoryMock = {
 };
 
 export const ActivityRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const LogQuantityAnswersRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const LogQuantityQuestionsRepositoryMock = {
   ...BaseRepositoryMock,
 };
 

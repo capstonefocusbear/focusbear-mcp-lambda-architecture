@@ -6,6 +6,7 @@ import { User } from '../../user/entities/user.entity';
 import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
+import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 
 @Entity('activity_template')
 export class ActivityTemplate extends BaseEntity {
@@ -84,14 +85,23 @@ export class ActivityTemplate extends BaseEntity {
   @DeleteDateColumn()
   deleted_at?: Date;
 
-  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.choices)
+  @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.choices, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'parent_id' })
   parent_activity?: ActivitySequence;
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.parent_activity)
   choices?: ActivityTemplate[];
 
-  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_templates)
+  @OneToMany(() => LogQuantityQuestion, (question) => question.activity_template)
+  log_quantity_questions?: LogQuantityQuestion[];
+
+  @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.activity_templates, {
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  })
   @JoinColumn({ name: 'pack_id' })
   habit_pack?: HabitPack;
 

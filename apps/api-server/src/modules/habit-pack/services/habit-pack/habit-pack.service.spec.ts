@@ -98,7 +98,9 @@ describe('HabitPackService', () => {
     it('Positive: should return a habit pack', async () => {
       HabitPackRepositoryMock.orm.findOneBy.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
-      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce({
+        deserializedActivityTemplates: standaloneHabitPackDummy,
+      });
       const result = await habitPackService.getHabitPack(standaloneHabitPackDBResponseDummy.id);
 
       expect(result).toMatchSnapshot();
@@ -215,9 +217,10 @@ describe('HabitPackService', () => {
     it('negative: should throw an unauthorized exception because user is not the pack author', async () => {
       const unauthorizedUserDummy = { ...userDummy, id: randomUUID() };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
-        deserializedRoutineActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -256,14 +259,17 @@ describe('HabitPackService', () => {
         '74935284-e936-4247-8afa-e453484865e0',
       ];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateParserServiceMock.deserializeStandaloneActivities.mockResolvedValueOnce(
-        deserializedStandaloneActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeStandaloneActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: deserializedStandaloneActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
       HabitPackRepositoryMock.getHabitPack.mockResolvedValueOnce(standaloneHabitPackDBResponseDummy);
-      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce(standaloneHabitPackDummy);
+      ActivityTemplateParserServiceMock.serialize.mockReturnValueOnce({
+        deserializedActivityTemplates: standaloneHabitPackDummy,
+      });
 
       await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
 
@@ -271,6 +277,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         deserializedStandaloneActivitiesDummy,
+        [],
       );
     });
 
@@ -293,9 +300,10 @@ describe('HabitPackService', () => {
         'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
       ];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
-        deserializedRoutineActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -308,6 +316,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         deserializedRoutineActivitiesDummy,
+        [],
       );
     });
 
@@ -324,9 +333,10 @@ describe('HabitPackService', () => {
         'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
       ];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
-        deserializedRoutineActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -355,6 +365,7 @@ describe('HabitPackService', () => {
         },
         activityIds,
         deserializedRoutineActivitiesDummy,
+        [],
       );
     });
 
@@ -371,9 +382,10 @@ describe('HabitPackService', () => {
         'f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e',
       ];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
-      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
-        deserializedRoutineActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -402,6 +414,7 @@ describe('HabitPackService', () => {
         },
         activityIds,
         deserializedRoutineActivitiesDummy,
+        [],
       );
     });
 
@@ -420,9 +433,10 @@ describe('HabitPackService', () => {
       });
       const activityIds = ['630c921d-dc9c-4107-acd2-023d7930d9bf'];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockResolvedValueOnce(
-        breaksOnlyDeserializedRoutineActivitiesDummy,
-      );
+      ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
+        deserializedActivityTemplates: breaksOnlyDeserializedRoutineActivitiesDummy,
+        logQuantityQuestions: [],
+      });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy);
@@ -432,7 +446,6 @@ describe('HabitPackService', () => {
         morning_activities: [],
         evening_activities: [],
       });
-
       await habitPackService.upsertHabitPack(userDummy.id, {
         ...routineHabitPackDummy,
         morning_activities: [],
@@ -443,6 +456,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         breaksOnlyDeserializedRoutineActivitiesDummy,
+        [],
       );
     });
   });

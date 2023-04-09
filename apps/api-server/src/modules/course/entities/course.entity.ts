@@ -26,7 +26,7 @@ export class Course extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   deleted: boolean;
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
   @JoinColumn({ name: 'author_id' })
   author?: User;
 

@@ -110,7 +110,7 @@ export class FocusModeTemplate extends BaseEntity {
   @DeleteDateColumn()
   deleted_at?: Date;
 
-  @ManyToOne(() => User, (user) => user.focus_mode_templates)
+  @ManyToOne(() => User, (user) => user.focus_mode_templates, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'author_id' })
   author?: User;
 

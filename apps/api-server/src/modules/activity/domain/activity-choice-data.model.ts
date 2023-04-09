@@ -11,6 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { LogSummaryType } from './log-summary-type.enum';
+import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 
 export class ActivityChoiceData {
   @IsNotEmpty()
@@ -37,6 +38,11 @@ export class ActivityChoiceData {
   @IsOptional()
   @ApiProperty()
   log_quantity_question?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ApiProperty()
+  log_quantity_questions?: LogQuantityQuestion[];
 
   // @IsEnum(LogSummaryType)
   @IsIn([...Object.values(LogSummaryType), ''])

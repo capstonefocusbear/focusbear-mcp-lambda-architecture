@@ -58,7 +58,7 @@ export class ActivitySequence extends BaseEntity {
   })
   pack_id?: string;
 
-  @ManyToOne(() => User, (user) => user.activity_sequences)
+  @ManyToOne(() => User, (user) => user.activity_sequences, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

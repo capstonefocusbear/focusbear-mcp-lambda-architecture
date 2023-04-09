@@ -37,7 +37,7 @@ export class Device extends BaseEntity {
   })
   metadata?: DeviceMetadata;
 
-  @ManyToOne(() => User, (user) => user.activity_sequences)
+  @ManyToOne(() => User, (user) => user.devices, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

@@ -28,7 +28,7 @@ export class ActivityLibraryService {
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const libraryActivities = await this.activityTemplateRepository.orm.find({
         where: { user_id, activity_type: 'library' },
-        relations: ['choices'],
+        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions'],
       });
       return this.activityTemplateParserService.serializeLibraryActivities(libraryActivities);
     } catch (error) {
@@ -48,15 +48,14 @@ export class ActivityLibraryService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const activitiesToUpsert = await this.removeActivitiesNotBelongingToUser(updateActivities, user_id);
-      const activityTemplates = await this.activityTemplateParserService.deserializeLibraryActivities(
-        activitiesToUpsert,
-        user_id,
-      );
-      const activityIds = activityTemplates.map((activityTemplate) => activityTemplate.id);
+      const { deserializedActivityTemplates, logQuantityQuestions } =
+        this.activityTemplateParserService.deserializeLibraryActivities(activitiesToUpsert, user_id);
+      const activityIds = deserializedActivityTemplates.map((activityTemplate) => activityTemplate.id);
       await this.activityTemplateRepository.consistentlyUpdateLibraryActivities(
         activityIds,
-        activityTemplates,
+        deserializedActivityTemplates,
         user_id,
+        logQuantityQuestions,
       );
       return await this.getLibraryActivities(user_id);
     } catch (error) {

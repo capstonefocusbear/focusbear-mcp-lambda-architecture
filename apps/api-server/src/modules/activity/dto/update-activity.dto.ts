@@ -20,6 +20,7 @@ import { ActivityChoiceData } from '../domain/activity-choice-data.model';
 import { ActivityData } from '../domain/activity-data.model';
 import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
+import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -100,4 +101,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @ArrayMinSize(1)
   days_of_week?: DaysOfWeek[];
+
+  @IsArray()
+  @IsOptional()
+  log_quantity_questions?: LogQuantityQuestion[];
 }

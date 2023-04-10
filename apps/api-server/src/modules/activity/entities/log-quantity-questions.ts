@@ -32,6 +32,13 @@ export class LogQuantityQuestion extends BaseEntity {
   })
   activity_template_id?: string;
 
+  @Column({
+    type: 'uuid',
+    nullable: true,
+    default: null,
+  })
+  linked_question_id?: string;
+
   @Column({ type: 'varchar', nullable: false })
   question?: string;
 
@@ -85,4 +92,14 @@ export class LogQuantityQuestion extends BaseEntity {
 
   @OneToMany(() => LogQuantityAnswer, (answer) => answer.question)
   answers?: LogQuantityAnswer[];
+
+  @ManyToOne(() => LogQuantityQuestion, (question) => question.linked_questions, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'linked_question_id' })
+  linked_question?: LogQuantityQuestion;
+
+  @OneToMany(() => LogQuantityQuestion, (question) => question.linked_question)
+  linked_questions?: Activity[];
 }

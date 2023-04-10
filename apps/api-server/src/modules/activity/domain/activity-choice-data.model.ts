@@ -75,4 +75,16 @@ export class ActivityChoiceData {
   @IsOptional()
   @IsNumber()
   competency_level?: number;
+
+  @IsOptional()
+  @IsUUID('4')
+  activity_template_id?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  linked_activity_id?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  linked_activity_template_id?: string;
 }

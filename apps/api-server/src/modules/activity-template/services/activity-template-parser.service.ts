@@ -97,6 +97,7 @@ export class ActivityTemplateParserService {
       log_quantity,
       log_summary_type,
       choices,
+      linked_activity_template_id,
       ...activityDataValues
     }: UpdateActivityTemplateDto,
     {
@@ -125,6 +126,7 @@ export class ActivityTemplateParserService {
       log_summary_type: has_choices ? 'SUM' : log_summary_type,
       has_choices,
       sequence_index: index,
+      linked_activity_template_id,
     });
     const newActivityTemplateAndChoices = [activity];
     if (has_choices) newActivityTemplateAndChoices.push(...this.deserializeActivityTemplateChoices(choices, activity));
@@ -164,7 +166,7 @@ export class ActivityTemplateParserService {
       message: 'Deserializing activity template choices',
     });
     return choices.map(
-      ({ id, log_quantity, log_summary_type, completion_requirements, ...rest }) =>
+      ({ id, log_quantity, log_summary_type, completion_requirements, linked_activity_template_id, ...rest }) =>
         new ActivityTemplate({
           id,
           pack_id: parent.pack_id,
@@ -177,6 +179,7 @@ export class ActivityTemplateParserService {
           log_quantity,
           log_summary_type,
           has_choices: null,
+          linked_activity_template_id,
         }),
     );
   }
@@ -201,6 +204,7 @@ export class ActivityTemplateParserService {
       activity_type,
       choices,
       log_quantity_questions,
+      linked_activity_template_id,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -212,6 +216,7 @@ export class ActivityTemplateParserService {
       log_summary_type,
       choices: choices?.map(mapActivity),
       log_quantity_questions,
+      linked_activity_template_id,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {

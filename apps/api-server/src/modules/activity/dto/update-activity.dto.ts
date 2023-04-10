@@ -105,4 +105,12 @@ export class UpdateActivityDto extends ActivityData {
   @IsArray()
   @IsOptional()
   log_quantity_questions?: LogQuantityQuestion[];
+
+  @IsOptional()
+  @IsUUID('4')
+  linked_activity_id?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  linked_activity_template_id?: string;
 }

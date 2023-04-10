@@ -30,6 +30,13 @@ export class Activity extends BaseEntity {
 
   @Column({
     type: 'uuid',
+    nullable: true,
+    default: null,
+  })
+  linked_activity_id?: string;
+
+  @Column({
+    type: 'uuid',
   })
   activity_template_id?: string;
 
@@ -118,6 +125,13 @@ export class Activity extends BaseEntity {
   @ManyToOne(() => Activity, (activity) => activity.choices, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'parent_id' })
   parent_activity?: ActivitySequence;
+
+  @ManyToOne(() => Activity, (activity) => activity.linked_activities, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'linked_activity_id' })
+  linked_activity?: ActivitySequence;
+
+  @OneToMany(() => Activity, (activity) => activity.linked_activity)
+  linked_activities?: Activity[];
 
   @OneToMany(() => Activity, (activity) => activity.parent_activity)
   choices?: Activity[];

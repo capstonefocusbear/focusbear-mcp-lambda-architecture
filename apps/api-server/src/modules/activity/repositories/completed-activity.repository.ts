@@ -14,24 +14,21 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
   }
 
   async getAggregatedQuantityLogsPerDay(
-    activity_id: string,
+    activityIds: string[],
     { log_summary_type = 'SUM', days_number = 30, stat_type, timezone = 'UTC' }: any,
   ): Promise<CompletedActivityStatItem[]> {
-    const completedActivities = await this.orm.query(
-      `
-      SELECT 
-        date_trunc('day', timezone($3, finish_time)) as date,
-        ${log_summary_type}(${stat_type}_logged) as summary
-      FROM completed_activities
-      WHERE activity_id = $1
-      GROUP BY date_trunc('day', timezone($3, finish_time))
-      ORDER BY date DESC
-      LIMIT $2
-    `,
-      [activity_id, days_number, timezone],
-    );
-    const completedActivitiesWithoutSkipped = completedActivities.filter((activity) => activity.date);
-    return completedActivitiesWithoutSkipped;
+    const query = this.orm
+      .createQueryBuilder('completed_activities')
+      .select("date_trunc('day', timezone(:timezone, completed_activities.finish_time))", 'date')
+      .addSelect(`${log_summary_type}(completed_activities.${stat_type}_logged)`, 'summary')
+      .where('completed_activities.activity_id IN (:...activityIds)')
+      .groupBy('date')
+      .orderBy('date', 'DESC')
+      .limit(days_number)
+      .setParameters({ activityIds, days_number, timezone });
+
+    const completedActivities: { date: string; summary: string }[] = await query.getRawMany();
+    return completedActivities.filter((activity) => activity.date);
   }
 
   async getItemsByIds(activity_ids: string[]): Promise<CompletedActivity[]> {

@@ -24,6 +24,9 @@ import { HabitPack } from '../../entity/habit-pack.entity';
 import { UserSettingsResponseDto } from '../../../user/dto/user-settings-response.dto';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { InstalledStandalonePackResponse } from '../../domain/installed-standalone-pack-response.model';
+import { LogQuantityQuestion } from '../../../activity/entities/log-quantity-questions';
+import { UpdateUserSettingsDto } from '../../../user/dto/update-user-settings.dto';
+import { ConvertedTemplatesNewIdsMaps } from '../../domain/converted-templates-new-ids-maps.model';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -90,30 +93,88 @@ export class HabitPackManagerService {
       },
     });
     const userSettings = await this.userSettingsService.getSettings({ user_id });
-    const newSettings = _.cloneDeep(userSettings);
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
-    const formatAndMergeTemplatesWithActivities = (
-      activities: UpdateActivityDto[],
-      templates: UpdateActivityTemplateDto[],
-    ) => {
-      return [...activities, ...this.convertActivityTemplatesToUpdateActivityDtos(templates)];
-    };
-    newSettings.morning_activities = formatAndMergeTemplatesWithActivities(
-      userSettings.morning_activities,
-      habitPack.morning_activities,
-    );
-    newSettings.break_activities = formatAndMergeTemplatesWithActivities(
-      userSettings.break_activities,
-      habitPack.break_activities,
-    );
-    newSettings.evening_activities = formatAndMergeTemplatesWithActivities(
-      userSettings.evening_activities,
-      habitPack.evening_activities,
-    );
+    const templatesNewIdsMap = new Map<string, string>([]);
+    const templatesChoicesNewIdsMap = new Map<string, string>([]);
+    const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+    // convert templates to normal activities and merge them with user's current settings
+    const newSettings = this.addTemplatesToUserSettings(userSettings, habitPack, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
+    // link converted activities and questions to their canonical versions
+    const linkedSettings = this.linkInstalledActivitiesAndLogQuestions(newSettings, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, newSettings, true);
+    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, true);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
+
+  addTemplatesToUserSettings(
+    userSettings: UpdateUserSettingsDto,
+    habitPack: UpsertHabitPackDto,
+    { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
+  ) {
+    const newSettings = _.cloneDeep(userSettings);
+    newSettings.morning_activities = this.formatAndMergeTemplatesWithActivities(
+      userSettings.morning_activities,
+      habitPack.morning_activities,
+      { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
+    );
+    newSettings.break_activities = this.formatAndMergeTemplatesWithActivities(
+      userSettings.break_activities,
+      habitPack.break_activities,
+      { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
+    );
+    newSettings.evening_activities = this.formatAndMergeTemplatesWithActivities(
+      userSettings.evening_activities,
+      habitPack.evening_activities,
+      { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
+    );
+    return newSettings;
+  }
+
+  linkInstalledActivitiesAndLogQuestions(
+    userSettings: UpdateUserSettingsDto,
+    { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
+  ) {
+    const linkedSettings = _.cloneDeep(userSettings);
+    linkedSettings.morning_activities = this.linkNewlyCreatedActivities(linkedSettings.morning_activities, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
+    linkedSettings.break_activities = this.linkNewlyCreatedActivities(linkedSettings.break_activities, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
+    linkedSettings.evening_activities = this.linkNewlyCreatedActivities(linkedSettings.evening_activities, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
+    return linkedSettings;
+  }
+
+  formatAndMergeTemplatesWithActivities = (
+    activities: UpdateActivityDto[],
+    templates: UpdateActivityTemplateDto[],
+    { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
+  ) => {
+    return [
+      ...activities,
+      ...this.convertActivityTemplatesToUpdateActivityDtos(templates, {
+        templatesNewIdsMap,
+        templatesChoicesNewIdsMap,
+        logQuantityQuestionsNewIdsMap,
+      }),
+    ];
+  };
 
   async installStandaloneHabitPack(user_id: string, pack_id: string): Promise<ResponseMessage> {
     this.sentryService.instance().addBreadcrumb({
@@ -125,9 +186,16 @@ export class HabitPackManagerService {
         pack_id,
       },
     });
+    const templatesNewIdsMap = new Map<string, string>([]);
+    const templatesChoicesNewIdsMap = new Map<string, string>([]);
+    const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const { standalone_activities } = habitPack;
-    const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities);
+    const newActivities = this.convertActivityTemplatesToUpdateActivityDtos(standalone_activities, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
     const serializedActivities: SerializedActivity = { standalone_activities: newActivities };
     const deserializedActivities = await this.activityParserService.deserialize(serializedActivities, user_id, pack_id);
     await this.habitPackRepository.consistentlyInstallStandaloneHabitPack(deserializedActivities[0]);
@@ -137,6 +205,7 @@ export class HabitPackManagerService {
 
   convertActivityTemplatesToUpdateActivityDtos(
     activityTemplatesOfType: UpdateActivityTemplateDto[],
+    { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
   ): UpdateActivityDto[] {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -144,23 +213,121 @@ export class HabitPackManagerService {
       message: 'Converting activity templates to normal activities',
     });
     const activities: UpdateActivityDto[] = [];
-    activityTemplatesOfType.map(({ id: activityId, choices, log_quantity_questions, ...restOfTemplateData }) => {
-      const formattedChoices = choices.map(({ id, ...restOfChoiceData }) => {
-        return { id: randomUUID(), ...restOfChoiceData };
+    activityTemplatesOfType.map(({ id: templateId, choices, log_quantity_questions, ...restOfTemplateData }) => {
+      // convert template choices to normal choices
+      const convertedChoices = choices.map(
+        ({ id, log_quantity_questions: choiceLogQuantityQuestions, ...restOfChoiceData }) => {
+          const choiceNewId = randomUUID();
+          templatesChoicesNewIdsMap.set(id, choiceNewId);
+          // convert template choices' log quantity questions to normal questions
+          const convertedChoiceLogQuantityQuestions = choiceLogQuantityQuestions?.map(
+            ({ id: choiceQuestionId, ...restOfQuestionData }) => {
+              const newChoiceQuestionId = randomUUID();
+              logQuantityQuestionsNewIdsMap.set(choiceQuestionId, newChoiceQuestionId);
+              return { id: newChoiceQuestionId, ...restOfQuestionData };
+            },
+          );
+          return {
+            id: choiceNewId,
+            activity_template_id: id,
+            log_quantity_questions: convertedChoiceLogQuantityQuestions,
+            ...restOfChoiceData,
+          };
+        },
+      );
+      // convert activity's log quantity questions to new questions for installable activity
+      const convertedLogQuantityQuestions = log_quantity_questions?.map(({ id: questionId, ...restOfQuestionData }) => {
+        const newQuestionId = randomUUID();
+        logQuantityQuestionsNewIdsMap.set(questionId, newQuestionId);
+        return { id: newQuestionId, ...restOfQuestionData };
       });
-      const formattedLogQuantityQuestions = log_quantity_questions?.map(({ id, ...restOfQuestionData }) => {
-        return { id: randomUUID(), ...restOfQuestionData };
-      });
-      const activity: UpdateActivityDto = {
-        id: randomUUID(),
-        activity_template_id: activityId,
-        choices: formattedChoices,
-        log_quantity_questions: formattedLogQuantityQuestions,
+      // create installable activity from activity template
+      const activityNewId = randomUUID();
+      const activityCreatedFromTemplate: UpdateActivityDto = {
+        id: activityNewId,
+        activity_template_id: templateId,
+        choices: convertedChoices,
+        log_quantity_questions: convertedLogQuantityQuestions,
         ...restOfTemplateData,
       };
-      return activities.push(activity);
+      templatesNewIdsMap.set(templateId, activityNewId);
+      return activities.push(activityCreatedFromTemplate);
     });
     return activities;
+  }
+
+  linkNewlyCreatedActivities(
+    updateActivities: UpdateActivityDto[],
+    { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
+  ): UpdateActivityDto[] {
+    const linkedActivities = updateActivities.map((activity) => {
+      const updatedActivity = { ...activity };
+      let updatedActivityLogQuantityQuestions = updatedActivity?.log_quantity_questions ?? [];
+      // check if activity is from template and linked to a canonical activity
+      if (activity?.activity_template_id && activity?.linked_activity_template_id) {
+        // get canonical activity new ID
+        const linkedActivityId = templatesNewIdsMap.get(activity.linked_activity_template_id);
+        // connect activity to canonical activity
+        updatedActivity.linked_activity_id = linkedActivityId;
+        // assign log question from template a new linked question id to link with question created from template
+        if (activity?.log_quantity_questions?.length > 0) {
+          updatedActivityLogQuantityQuestions = updatedActivityLogQuantityQuestions.map((question) => {
+            const updatedQuestion = { ...question };
+            // check if question is linked to a canonical question
+            if (question.linked_question_id) {
+              // get canonical question new ID
+              const newLinkedQuestionId = logQuantityQuestionsNewIdsMap.get(question.linked_question_id);
+              // connect question to canonical question
+              updatedQuestion.linked_question_id = newLinkedQuestionId;
+            }
+            return updatedQuestion;
+          });
+        }
+      }
+      // remove redundant property from activity
+      delete updatedActivity?.linked_activity_template_id;
+      // return activity, choices, and questions that are now linked to possible canonical versions
+      return {
+        ...updatedActivity,
+        choices: this.linkNewlyCreatedChoices(activity, { templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }),
+        log_quantity_questions: updatedActivityLogQuantityQuestions,
+      };
+    });
+    return linkedActivities;
+  }
+
+  linkNewlyCreatedChoices(
+    activity: UpdateActivityDto,
+    { templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap }: ConvertedTemplatesNewIdsMaps,
+  ) {
+    // link choices to the newly created choices they were linked to as templates
+    return activity?.choices?.map((choice) => {
+      const updatedChoice = { ...choice };
+      let updatedChoiceLogQuantityQuestions: LogQuantityQuestion[] = [];
+      // check if choice is linked to another choice
+      if (updatedChoice?.linked_activity_template_id) {
+        // get ID of canonical choice
+        const linkedChoiceId = templatesChoicesNewIdsMap.get(updatedChoice.linked_activity_template_id);
+        // connect this choice to its canonical choice
+        updatedChoice.linked_activity_id = linkedChoiceId;
+        if (updatedChoice?.log_quantity_questions?.length > 0) {
+          updatedChoiceLogQuantityQuestions = updatedChoice.log_quantity_questions.map((question) => {
+            const updatedQuestion = { ...question };
+            // check if question is linked to a canonical question
+            if (updatedQuestion?.linked_question_id) {
+              // get canonical question new ID
+              const newLinkedQuestionId = logQuantityQuestionsNewIdsMap.get(updatedQuestion.linked_question_id);
+              // connect question to canonical question
+              updatedQuestion.linked_question_id = newLinkedQuestionId;
+            }
+            return updatedQuestion;
+          });
+        }
+      }
+      // remove redundant property from choice
+      delete updatedChoice.linked_activity_template_id;
+      return { ...updatedChoice, log_quantity_questions: updatedChoiceLogQuantityQuestions };
+    });
   }
 
   async uninstallHabitPack(user_id: string, pack_id: string) {

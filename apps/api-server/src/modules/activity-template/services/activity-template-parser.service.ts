@@ -97,7 +97,7 @@ export class ActivityTemplateParserService {
       log_quantity,
       log_summary_type,
       choices,
-      linked_activity_template_id,
+      linked_activity_template_id, // see docs/linked-activity-template-id.md
       ...activityDataValues
     }: UpdateActivityTemplateDto,
     {
@@ -179,7 +179,7 @@ export class ActivityTemplateParserService {
           log_quantity,
           log_summary_type,
           has_choices: null,
-          linked_activity_template_id,
+          linked_activity_template_id, // see docs/linked-activity-template-id.md
         }),
     );
   }
@@ -204,7 +204,7 @@ export class ActivityTemplateParserService {
       activity_type,
       choices,
       log_quantity_questions,
-      linked_activity_template_id,
+      linked_activity_template_id, // see docs/linked-activity-template-id.md
     }: ActivityTemplate) => ({
       id,
       ...activity_data,

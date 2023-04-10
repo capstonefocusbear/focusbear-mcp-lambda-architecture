@@ -266,7 +266,7 @@ export class HabitPackManagerService {
       // check if activity is from template and linked to a canonical activity
       if (activity?.activity_template_id && activity?.linked_activity_template_id) {
         // get canonical activity new ID
-        const linkedActivityId = templatesNewIdsMap.get(activity.linked_activity_template_id);
+        const linkedActivityId = templatesNewIdsMap.get(activity.linked_activity_template_id); // see docs/linked-activity-template-id.md
         // connect activity to canonical activity
         updatedActivity.linked_activity_id = linkedActivityId;
         // assign log question from template a new linked question id to link with question created from template

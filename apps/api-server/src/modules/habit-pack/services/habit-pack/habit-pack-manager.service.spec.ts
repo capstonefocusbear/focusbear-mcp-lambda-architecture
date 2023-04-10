@@ -454,7 +454,7 @@ describe('HabitPackManagerService', () => {
           log_quantity: true,
           video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
           activity_template_id: templateId,
-          linked_activity_template_id: linkedTemplateId,
+          linked_activity_template_id: linkedTemplateId, // see docs/linked-activity-template-id.md
         },
       ];
       const linkedMorningRoutineActivities = habitPackManagerService.linkNewlyCreatedActivities(morningRoutine, {

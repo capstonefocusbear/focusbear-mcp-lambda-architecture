@@ -32,6 +32,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         (accumulator, currentValue) => accumulator.concat(currentValue),
         [],
       );
+      // see docs/linked-activity-template-id.md
       const parentsWithoutLinks = allActivityTemplatesFromPack.filter(
         ({ parent_id, linked_activity_template_id }) => !parent_id && !linked_activity_template_id,
       );

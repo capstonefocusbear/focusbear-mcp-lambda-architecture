@@ -76,6 +76,13 @@ export class ActivityTemplate extends BaseEntity {
   parent_id?: string;
 
   @Column({
+    type: 'uuid',
+    nullable: true,
+    default: null,
+  })
+  linked_activity_template_id?: string;
+
+  @Column({
     type: 'numeric',
     nullable: false,
     default: 0,
@@ -94,6 +101,16 @@ export class ActivityTemplate extends BaseEntity {
 
   @OneToMany(() => ActivityTemplate, (activity_template) => activity_template.parent_activity)
   choices?: ActivityTemplate[];
+
+  @ManyToOne(() => ActivityTemplate, (activityTemplate) => activityTemplate.linked_activity_templates, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'linked_activity_template_id' })
+  linked_activity_template?: ActivitySequence;
+
+  @OneToMany(() => ActivityTemplate, (activityTemplate) => activityTemplate.linked_activity_template)
+  linked_activity_templates?: Activity[];
 
   @OneToMany(() => LogQuantityQuestion, (question) => question.activity_template)
   log_quantity_questions?: LogQuantityQuestion[];

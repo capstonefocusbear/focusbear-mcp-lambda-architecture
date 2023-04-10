@@ -28,14 +28,26 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         pack_id: updateData.id,
         id: Not(In(activityTemplateIds)),
       });
-      await Promise.all(
-        activitiesData.map(async (type) => {
-          const parents = type.filter(({ parent_id }) => !parent_id);
-          const choices = type.filter(({ parent_id }) => !!parent_id);
-          await transactionalEntityManager.upsert(ActivityTemplate, parents, ['id']);
-          await transactionalEntityManager.upsert(ActivityTemplate, choices, ['id']);
-        }),
+      const allActivityTemplatesFromPack = activitiesData.reduce(
+        (accumulator, currentValue) => accumulator.concat(currentValue),
+        [],
       );
+      const parentsWithoutLinks = allActivityTemplatesFromPack.filter(
+        ({ parent_id, linked_activity_template_id }) => !parent_id && !linked_activity_template_id,
+      );
+      const parentsWithLinks = allActivityTemplatesFromPack.filter(
+        ({ parent_id, linked_activity_template_id }) => !parent_id && linked_activity_template_id,
+      );
+      const choicesWithoutLinks = allActivityTemplatesFromPack.filter(
+        ({ parent_id, linked_activity_template_id }) => !!parent_id && !linked_activity_template_id,
+      );
+      const choicesWithLinks = allActivityTemplatesFromPack.filter(
+        ({ parent_id, linked_activity_template_id }) => !!parent_id && !!linked_activity_template_id,
+      );
+      await transactionalEntityManager.upsert(ActivityTemplate, parentsWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplate, parentsWithLinks, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplate, choicesWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplate, choicesWithLinks, ['id']);
       // delete existing log quantity questions that aren't in the update data
       // but are linked to one of the incoming templates
       const incomingQuestionIds = logQuantityQuestions
@@ -46,7 +58,10 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         id: Not(In(incomingQuestionIds)),
         activity_template_id: In(activityTemplateIds),
       });
-      await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
+      const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
+      const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
+      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
     });
   }
 
@@ -99,6 +114,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'activity_templates.activity_data',
         'activity_templates.parent_id',
         'activity_templates.pack_id',
+        'activity_templates.linked_activity_template_id',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',
@@ -106,6 +122,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'choices.linked_activity_template_id',
         'log_quantity_questions.id',
         'log_quantity_questions.question',
         'log_quantity_questions.min_value',
@@ -113,6 +130,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'log_quantity_questions.min_value_description',
         'log_quantity_questions.max_value_description',
         'log_quantity_questions.log_summary_type',
+        'log_quantity_questions.linked_question_id',
         'choices_log_quantity_questions.id',
         'choices_log_quantity_questions.question',
         'choices_log_quantity_questions.min_value',
@@ -120,6 +138,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.min_value_description',
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.linked_question_id',
       ])
       .where('habit_packs.id = :id', { id: pack_id })
       .getOne();
@@ -173,6 +192,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'activity_templates.activity_data',
         'activity_templates.parent_id',
         'activity_templates.pack_id',
+        'activity_templates.linked_activity_template_id',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',
@@ -180,6 +200,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'choices.linked_activity_template_id',
         'log_quantity_questions.id',
         'log_quantity_questions.question',
         'log_quantity_questions.min_value',
@@ -187,6 +208,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'log_quantity_questions.min_value_description',
         'log_quantity_questions.max_value_description',
         'log_quantity_questions.log_summary_type',
+        'log_quantity_questions.linked_question_id',
         'choices_log_quantity_questions.id',
         'choices_log_quantity_questions.question',
         'choices_log_quantity_questions.min_value',
@@ -194,6 +216,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.min_value_description',
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.linked_question_id',
       ]);
 
     if (pack_type) {

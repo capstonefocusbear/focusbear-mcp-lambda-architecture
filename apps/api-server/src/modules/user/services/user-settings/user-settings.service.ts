@@ -167,47 +167,60 @@ export class UserSettingsService {
   }
 
   async updateUserIfCurrentActivityDeleted(updateSettingsData: UpdateUserSettingsDto, user: User) {
-    let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;
-    let nextActivityId: string;
-    const { morning_activities, break_activities, evening_activities } = updateSettingsData;
-    const morningActivityIds = morning_activities.map((activity) => activity.id);
-    const breakActivityIds = break_activities.map((activity) => activity.id);
-    const eveningActivityIds = evening_activities.map((activity) => activity.id);
-    const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
-    const { completing_sequence_log } = user;
-    if (current_activity_id && !activityIds.includes(current_activity_id)) {
+    try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Current activity was deleted, updating user',
+        message: 'Checking if user current activity was deleted and updating user accordingly',
         data: {
-          user_id: user.id,
-          current_activity_id,
+          user,
         },
       });
-      const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: user.current_activity_sequence_id });
-      if (!sequence) return;
-      const { sequenceActivityIds, id: activity_sequence_id } = sequence;
-      const currentActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === current_activity_id);
-      nextActivityId = sequenceActivityIds[currentActivityIndexInTheSequence + 1];
-      current_completing_sequence_log_id = nextActivityId ? completing_sequence_log?.id : null;
-      current_activity_sequence_id = nextActivityId ? activity_sequence_id : null;
-      current_activity_id = nextActivityId ?? null;
-      await this.userRepository.orm.update(user.id, {
-        ...user,
-        current_completing_sequence_log_id,
-        current_activity_id: nextActivityId ?? null,
-        current_activity_sequence_id,
-      });
-      if (!nextActivityId) {
-        await this.completedActivitySequenceService.completeActivitySequence(completing_sequence_log.id, user.id);
+      let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;
+      let nextActivityId: string;
+      const { morning_activities, break_activities, evening_activities } = updateSettingsData;
+      const morningActivityIds = morning_activities.map((activity) => activity.id);
+      const breakActivityIds = break_activities.map((activity) => activity.id);
+      const eveningActivityIds = evening_activities.map((activity) => activity.id);
+      const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
+      const { completing_sequence_log } = user;
+      if (current_activity_id && !activityIds.includes(current_activity_id)) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Current activity was deleted, updating user',
+          data: {
+            user_id: user.id,
+            current_activity_id,
+          },
+        });
+        const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: user.current_activity_sequence_id });
+        if (!sequence) return;
+        const { sequenceActivityIds, id: activity_sequence_id } = sequence;
+        const currentActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === current_activity_id);
+        nextActivityId = sequenceActivityIds[currentActivityIndexInTheSequence + 1];
+        current_completing_sequence_log_id = nextActivityId ? completing_sequence_log?.id : null;
+        current_activity_sequence_id = nextActivityId ? activity_sequence_id : null;
+        current_activity_id = nextActivityId ?? null;
+        await this.userRepository.orm.update(user.id, {
+          ...user,
+          current_completing_sequence_log_id,
+          current_activity_id: nextActivityId ?? null,
+          current_activity_sequence_id,
+        });
+        if (!nextActivityId) {
+          await this.completedActivitySequenceService.completeActivitySequence(completing_sequence_log.id, user.id);
+        }
       }
+      return {
+        current_completing_sequence_log_id,
+        current_activity_id,
+        current_activity_sequence_id,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    return {
-      current_completing_sequence_log_id,
-      current_activity_id,
-      current_activity_sequence_id,
-    };
   }
 
   validateCutoffTime(time: string) {

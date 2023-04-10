@@ -93,7 +93,7 @@ describe('HabitPackManagerService', () => {
   });
 
   describe('installRoutineHabitPack', () => {
-    it('Positive: should return a successfull response message', async () => {
+    it('Positive: should return a successful response message', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserSettingsServiceMock.getSettings.mockResolvedValueOnce(userSettingsDummy);
       HabitPackServiceMock.getHabitPack.mockResolvedValueOnce(routineHabitPackDummy);
@@ -132,8 +132,12 @@ describe('HabitPackManagerService', () => {
 
   describe('convertActivityTemplatesToUpdateActivityDtos', () => {
     it('Positive: should return an array of UpdateActivityDtos', () => {
+      const templatesNewIdsMap = new Map<string, string>([]);
+      const templatesChoicesNewIdsMap = new Map<string, string>([]);
+      const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
       const result = habitPackManagerService.convertActivityTemplatesToUpdateActivityDtos(
         routineHabitPackDummy.evening_activities,
+        { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
       );
       result[0].id = 'dynamic';
 
@@ -429,6 +433,162 @@ describe('HabitPackManagerService', () => {
           standalone_activities: standaloneHabitPackDummy.standalone_activities,
         },
       ]);
+    });
+  });
+
+  describe('linkNewlyCreatedActivities', () => {
+    it("positive: adds the correct new ID of the canonical activity to this activity's linked_activity_id field", () => {
+      const templatesChoicesNewIdsMap = new Map<string, string>([]);
+      const templatesNewIdsMap = new Map<string, string>([]);
+      const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+      const templateId = randomUUID();
+      const linkedTemplateId = randomUUID();
+      const linkedTemplatesNewId = randomUUID();
+      const activityId = randomUUID();
+      templatesNewIdsMap.set(linkedTemplateId, linkedTemplatesNewId);
+      const morningRoutine = [
+        {
+          id: activityId,
+          name: 'Deep breathing',
+          duration_seconds: 180,
+          log_quantity: true,
+          video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+          activity_template_id: templateId,
+          linked_activity_template_id: linkedTemplateId,
+        },
+      ];
+      const linkedMorningRoutineActivities = habitPackManagerService.linkNewlyCreatedActivities(morningRoutine, {
+        templatesNewIdsMap,
+        templatesChoicesNewIdsMap,
+        logQuantityQuestionsNewIdsMap,
+      });
+      expect(linkedMorningRoutineActivities).toBeArray();
+      expect(linkedMorningRoutineActivities[0].linked_activity_id).toBe(linkedTemplatesNewId);
+      expect(linkedMorningRoutineActivities[0].linked_activity_template_id).toBe(undefined);
+    });
+  });
+
+  it('positive: if converted activity has log quantity questions that are linked they should be updated with correct new IDs', () => {
+    const templatesChoicesNewIdsMap = new Map<string, string>([]);
+    const templatesNewIdsMap = new Map<string, string>([]);
+    const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+    const templateId = randomUUID();
+    const linkedTemplateId = randomUUID();
+    const linkedTemplatesNewId = randomUUID();
+    const activityId = randomUUID();
+    const templateQuestionId = randomUUID();
+    const newQuestionId = randomUUID();
+    templatesNewIdsMap.set(linkedTemplateId, linkedTemplatesNewId);
+    logQuantityQuestionsNewIdsMap.set(templateQuestionId, newQuestionId);
+    const morningRoutine = [
+      {
+        id: activityId,
+        name: 'Deep breathing',
+        duration_seconds: 180,
+        log_quantity: true,
+        video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+        activity_template_id: templateId,
+        linked_activity_template_id: linkedTemplateId,
+        log_quantity_questions: [
+          {
+            question: 'test question',
+            min_value: 0,
+            max_value: 10,
+            min_value_description: 'test',
+            max_value_description: 'test',
+            linked_question_id: templateQuestionId,
+          },
+        ],
+      },
+    ];
+    const linkedMorningRoutineActivities = habitPackManagerService.linkNewlyCreatedActivities(morningRoutine, {
+      templatesNewIdsMap,
+      templatesChoicesNewIdsMap,
+      logQuantityQuestionsNewIdsMap,
+    });
+
+    expect(linkedMorningRoutineActivities[0].log_quantity_questions[0].linked_question_id).toBe(newQuestionId);
+  });
+
+  describe('linkNewlyCreatedChoices', () => {
+    it('positive: if choice has linked_activity_template it should be removed and the choice should be updated with linked_activity_id of linked activity', () => {
+      const templatesChoicesNewIdsMap = new Map<string, string>([]);
+      const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+      const choiceLinkedIdAsTemplate = randomUUID();
+      const choiceNewId = randomUUID();
+      templatesChoicesNewIdsMap.set(choiceLinkedIdAsTemplate, choiceNewId);
+      const morningActivityWithLinkedChoice = {
+        id: randomUUID(),
+        name: 'Deep breathing',
+        duration_seconds: 180,
+        log_quantity: true,
+        video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+        activity_template_id: randomUUID(),
+        linked_activity_template_id: randomUUID(),
+        log_quantity_questions: [],
+        choices: [
+          {
+            id: randomUUID(),
+            name: 'Situps',
+            video_urls: [],
+            log_quantity: true,
+            linked_activity_template_id: choiceLinkedIdAsTemplate,
+          },
+        ],
+      };
+      const updatedChoices = habitPackManagerService.linkNewlyCreatedChoices(morningActivityWithLinkedChoice, {
+        templatesChoicesNewIdsMap,
+        logQuantityQuestionsNewIdsMap,
+      });
+
+      expect(updatedChoices[0].linked_activity_id).toBe(choiceNewId);
+      expect(updatedChoices[0].linked_activity_template_id).toBe(undefined);
+    });
+
+    it('positive: if choice has is linked to canonical choice and has log quantity questions that are linked to other questions their linked ID should be updated to link the newly created question to its canonical question', () => {
+      const templatesChoicesNewIdsMap = new Map<string, string>([]);
+      const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+      const choiceLinkedIdAsTemplate = randomUUID();
+      const choiceNewId = randomUUID();
+      const templateQuestionId = randomUUID();
+      const newQuestionId = randomUUID();
+      templatesChoicesNewIdsMap.set(choiceLinkedIdAsTemplate, choiceNewId);
+      logQuantityQuestionsNewIdsMap.set(templateQuestionId, newQuestionId);
+      const morningActivityWithLinkedChoice = {
+        id: randomUUID(),
+        name: 'Deep breathing',
+        duration_seconds: 180,
+        log_quantity: true,
+        video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+        activity_template_id: randomUUID(),
+        linked_activity_template_id: randomUUID(),
+        log_quantity_questions: [],
+        choices: [
+          {
+            id: randomUUID(),
+            name: 'Situps',
+            video_urls: [],
+            log_quantity: true,
+            linked_activity_template_id: choiceLinkedIdAsTemplate,
+            log_quantity_questions: [
+              {
+                question: 'test question',
+                min_value: 0,
+                max_value: 10,
+                min_value_description: 'test',
+                max_value_description: 'test',
+                linked_question_id: templateQuestionId,
+              },
+            ],
+          },
+        ],
+      };
+      const updatedChoices = habitPackManagerService.linkNewlyCreatedChoices(morningActivityWithLinkedChoice, {
+        templatesChoicesNewIdsMap,
+        logQuantityQuestionsNewIdsMap,
+      });
+
+      expect(updatedChoices[0].log_quantity_questions[0].linked_question_id).toBe(newQuestionId);
     });
   });
 });

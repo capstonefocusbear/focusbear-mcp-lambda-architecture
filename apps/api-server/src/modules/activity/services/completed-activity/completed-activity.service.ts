@@ -639,11 +639,19 @@ export class CompletedActivityService {
       });
       const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
       if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+      const { log_summary_type, log_quantity, linked_activity_id } = activity;
+      const isActivityCanonicalActivity = !linked_activity_id;
+      // if activity is canonical activity, find all copied/linked activities,
+      // if activity is linked, find all others that are linked to the same canonical activity
+      const linkedActivities = await this.activityRepository.orm.find({
+        where: { linked_activity_id: isActivityCanonicalActivity ? activity_id : linked_activity_id },
+      });
+      const linkedActivitiesIds = linkedActivities.map((linkedActivity) => linkedActivity?.id);
+      const idsToFetchStatsFor = [activity_id, linked_activity_id, ...linkedActivitiesIds];
       await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
-      const { log_summary_type, log_quantity } = activity;
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
       const params = { days_number, log_summary_type, stat_type, timezone };
-      const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(activity_id, params);
+      const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
       const stats = new CompletedActivityStats({
         activity_id,
         days_number,
@@ -662,9 +670,17 @@ export class CompletedActivityService {
   async getStatsByQuestionPerDay(question_id: string, { days_number, timezone }: GetCompletedActivityStatsQueryDto) {
     const question = await this.logQuantityQuestionRepository.orm.findOneBy({ id: question_id });
     if (!question) throw new NotFoundException(`Log quantity question with ID: ${question_id} does not exist!`);
-    const { log_summary_type } = question;
+    const { log_summary_type, linked_question_id } = question;
+    const isActivityCanonicalActivity = !linked_question_id;
+    // if question is canonical question, find all copied/linked questions,
+    // if question is linked, find all others that are linked to the same canonical question
+    const linkedActivities = await this.logQuantityQuestionRepository.orm.find({
+      where: { linked_question_id: isActivityCanonicalActivity ? question_id : linked_question_id },
+    });
+    const linkedActivitiesIds = linkedActivities.map((linkedActivity) => linkedActivity?.id);
+    const idsToFetchStatsFor = [question_id, linked_question_id, ...linkedActivitiesIds];
     const params = { days_number, log_summary_type, timezone };
-    const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(question_id, params);
+    const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
     const stats = new LogQuantityAnswersStats({ question_id, days_number, items, log_summary_type, timezone });
     return stats;
   }

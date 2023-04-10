@@ -356,5 +356,25 @@ describe('UserSettingsService', () => {
         current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
       });
     });
+
+    it('positive: if one of user sequences is empty, no error should occur', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: userSettingsDummy.morning_activities[0].id,
+        completing_sequence_log: UncompletedSequenceLogDummy,
+        current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
+      };
+
+      const res = await userSettingsService.updateUserIfCurrentActivityDeleted(
+        { ...userSettingsDummy, break_activities: [] },
+        userWithCurrentActivity,
+      );
+
+      expect(res).toStrictEqual({
+        current_completing_sequence_log_id: userWithCurrentActivity.completing_sequence_log.id,
+        current_activity_id: userSettingsDummy.morning_activities[0].id,
+        current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
+      });
+    });
   });
 });

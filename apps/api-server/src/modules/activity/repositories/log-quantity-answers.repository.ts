@@ -11,21 +11,19 @@ export class LogQuantityAnswersRepository extends BaseRepository<LogQuantityAnsw
   }
 
   async getAggregatedQuantityLogsPerDay(
-    question_id: string,
+    questionIds: string[],
     { log_summary_type = 'SUM', days_number = 30, timezone = 'UTC' }: any,
   ): Promise<CompletedActivityStatItem[]> {
-    return this.orm.query(
-      `
-      SELECT 
-        date_trunc('day', timezone($3, date_logged)) as date,
-        ROUND(${log_summary_type}(logged_value), 2) as summary
-      FROM log_quantity_answers
-      WHERE question_id = $1
-      GROUP BY date_trunc('day', timezone($3, date_logged))
-      ORDER BY date DESC
-      LIMIT $2
-    `,
-      [question_id, days_number, timezone],
-    );
+    const query = this.orm
+      .createQueryBuilder('log_quantity_answers')
+      .select("date_trunc('day', timezone(:timezone, log_quantity_answers.date_logged))", 'date')
+      .addSelect(`${log_summary_type}(log_quantity_answers.logged_value)`, 'summary')
+      .where('log_quantity_answers.question_id IN (:...questionIds)')
+      .groupBy('date')
+      .orderBy('date', 'DESC')
+      .limit(days_number)
+      .setParameters({ questionIds, days_number, timezone });
+
+    return query.getRawMany();
   }
 }

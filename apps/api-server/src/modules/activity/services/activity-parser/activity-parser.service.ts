@@ -53,6 +53,7 @@ export class ActivityParserService {
         days_of_week,
         completion_requirements,
         log_quantity_questions,
+        linked_activity_id,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -67,6 +68,7 @@ export class ActivityParserService {
         // return as undefined if null to exclude from response - causes issue in Mac app otherwise
         completion_requirements: completion_requirements ?? undefined,
         log_quantity_questions,
+        linked_activity_id,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -139,6 +141,7 @@ export class ActivityParserService {
       run_micro_breaks,
       days_of_week,
       completion_requirements,
+      linked_activity_id,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -168,6 +171,7 @@ export class ActivityParserService {
       run_micro_breaks,
       days_of_week,
       completion_requirements,
+      linked_activity_id,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -184,7 +188,15 @@ export class ActivityParserService {
       },
     });
     return choices.map(
-      ({ id, log_quantity, log_summary_type, completion_requirements, ...rest }) =>
+      ({
+        id,
+        log_quantity,
+        log_summary_type,
+        completion_requirements,
+        linked_activity_id,
+        activity_template_id,
+        ...rest
+      }) =>
         new Activity({
           id,
           activity_data: new ActivityData(rest),
@@ -200,6 +212,8 @@ export class ActivityParserService {
           run_micro_breaks: parent.run_micro_breaks,
           days_of_week: parent.days_of_week,
           completion_requirements,
+          linked_activity_id,
+          activity_template_id,
         }),
     );
   }

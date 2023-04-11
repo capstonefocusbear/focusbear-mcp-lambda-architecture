@@ -844,35 +844,52 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: if log_quantity set to false, stat_type value should be "duration"', async () => {
-      const activityWithFalsyQuantityLogs: Activity = { ...ActivityDummy, log_quantity: false };
+      const activityWithFalsyQuantityLogs: Activity = {
+        ...ActivityDummy,
+        log_quantity: false,
+        linked_activity_id: null,
+      };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
-      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
-        ...query,
-        log_summary_type: activityWithFalsyQuantityLogs.log_summary_type,
-        stat_type: ActivityStatType.duration,
-      });
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+        [params.activity_id, null],
+        {
+          ...query,
+          log_summary_type: activityWithFalsyQuantityLogs.log_summary_type,
+          stat_type: ActivityStatType.duration,
+        },
+      );
     });
 
     it('positive: if log_quantity set to true, stat_type value should be "quantity"', async () => {
-      const activityWithTruthyQuantityLogs: Activity = { ...ActivityDummy, log_quantity: true };
+      const activityWithTruthyQuantityLogs: Activity = {
+        ...ActivityDummy,
+        log_quantity: true,
+        linked_activity_id: null,
+      };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithTruthyQuantityLogs);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
-      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(params.activity_id, {
-        ...query,
-        log_summary_type: activityWithTruthyQuantityLogs.log_summary_type,
-        stat_type: ActivityStatType.quantity,
-      });
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+        [params.activity_id, null],
+        {
+          ...query,
+          log_summary_type: activityWithTruthyQuantityLogs.log_summary_type,
+          stat_type: ActivityStatType.quantity,
+        },
+      );
     });
 
     it('positive: should return instance of CompletedActivityStats', async () => {
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       const statItemsDummy = [{ date: new Date(Date.now()), summary: '30' }];
       CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce(statItemsDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const result = await completedActivityService.getStatsByActivityPerDay(params, query);
 

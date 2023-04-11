@@ -31,12 +31,25 @@ export class UserRepository extends BaseRepository<User> {
             id: Not(In(activityIdsToKeep)),
             type: sequence.type,
           });
-          const parents = activities.filter(({ parent_id }) => !parent_id);
-          const choices = activities.filter(({ parent_id }) => !!parent_id);
-          await transactionalEntityManager.upsert(Activity, parents, ['id']);
-          await transactionalEntityManager.upsert(Activity, choices, ['id']);
         }),
       );
+      const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
+      const parentsWithoutLinks = activitiesArray.filter(
+        ({ parent_id, linked_activity_id }) => !parent_id && !linked_activity_id,
+      );
+      const parentsWithLinks = activitiesArray.filter(
+        ({ parent_id, linked_activity_id }) => !parent_id && linked_activity_id,
+      );
+      const choicesWithoutLinks = activitiesArray.filter(
+        ({ parent_id, linked_activity_id }) => !!parent_id && !linked_activity_id,
+      );
+      const choicesWithLinks = activitiesArray.filter(
+        ({ parent_id, linked_activity_id }) => !!parent_id && !!linked_activity_id,
+      );
+      await transactionalEntityManager.upsert(Activity, parentsWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(Activity, parentsWithLinks, ['id']);
+      await transactionalEntityManager.upsert(Activity, choicesWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(Activity, choicesWithLinks, ['id']);
       // delete existing log quantity questions that aren't in the update data
       // and are linked to normal activities not activity templates
       const incomingQuestionIds = logQuantityQuestions
@@ -47,7 +60,10 @@ export class UserRepository extends BaseRepository<User> {
         id: Not(In(incomingQuestionIds)),
         activity_id: Not(IsNull()),
       });
-      await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
+      const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
+      const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
+      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
+      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
     });
   }
 
@@ -81,6 +97,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.is_default',
         'activities.run_micro_breaks',
         'activities.days_of_week',
+        'activities.linked_activity_id',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',
@@ -88,6 +105,7 @@ export class UserRepository extends BaseRepository<User> {
         'choices.log_summary_type',
         'choices.activity_type',
         'choices.activity_data',
+        'choices.linked_activity_id',
         'log_quantity_questions.id',
         'log_quantity_questions.question',
         'log_quantity_questions.min_value',
@@ -95,6 +113,7 @@ export class UserRepository extends BaseRepository<User> {
         'log_quantity_questions.min_value_description',
         'log_quantity_questions.max_value_description',
         'log_quantity_questions.log_summary_type',
+        'log_quantity_questions.linked_question_id',
         'choices_log_quantity_questions.id',
         'choices_log_quantity_questions.question',
         'choices_log_quantity_questions.min_value',

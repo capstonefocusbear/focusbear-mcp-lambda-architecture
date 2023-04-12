@@ -89,7 +89,7 @@ $ STRIPE_CHECKOUT_CANCEL_URL =
 $ STRIPE_WEBHOOK_SECRET =
 
 # Get this from the Sendinblue account
-SENDINBLUE_MA_KEY = 
+$ SENDINBLUE_MA_KEY = 
 
 # Get these from Sentry
 $ SENTRY_DSN = 
@@ -106,6 +106,8 @@ $ R2_ENDPOINT =
 $ R2_ACCESS_KEY_ID = 
 $ R2_SECRET_ACCESS_KEY = 
 $ R2_SIGNATURE_VERSION = 
+
+$ OPENAI_API_KEY =
 ```
 
 3. Update .env file with actual values for PostgreSQL

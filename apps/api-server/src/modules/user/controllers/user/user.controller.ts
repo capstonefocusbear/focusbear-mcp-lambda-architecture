@@ -25,6 +25,7 @@ import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
+import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -146,5 +147,17 @@ export class UserController {
   @UseGuards(IsAuth)
   async getUserSubscription(@AuthContext() { user }: Passport) {
     return this.userService.getSubscription(user.id);
+  }
+
+  @Get('/motivational-summary')
+  @UseGuards(IsAuth)
+  async getMotivationalSummary(@Query() { language }: { language?: string }, @AuthContext() { user }: Passport) {
+    return this.userService.getMotivationalMessage(user.id, language);
+  }
+
+  @Post('/chat')
+  @UseGuards(IsAuth)
+  async generateReply(@Body() { chat, language }: GenerateChatBotResponseDto, @AuthContext() { user }: Passport) {
+    return this.userService.generateChatReply(user.id, chat, language);
   }
 }

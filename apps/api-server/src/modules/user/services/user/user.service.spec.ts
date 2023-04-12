@@ -27,6 +27,7 @@ import {
   CompletedActivitySequenceRepositoryMock,
   AdminAccessRequestRepositoryMock,
   CompletedActivitySequenceServiceMock,
+  OpenAIServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -45,6 +46,7 @@ import { AdminAccessRequestRepository } from '../../repositories/admin-access-re
 import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
+import { OpenAIService } from '../../../../../../../libs/openai/src';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -67,6 +69,7 @@ describe('UserService', () => {
         CompletedActivitySequenceRepository,
         AdminAccessRequestRepository,
         CompletedActivityService,
+        OpenAIService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -99,6 +102,8 @@ describe('UserService', () => {
       .useValue(AdminAccessRequestRepositoryMock)
       .overrideProvider(CompletedActivityService)
       .useValue(CompletedActivitySequenceServiceMock)
+      .overrideProvider(OpenAIService)
+      .useValue(OpenAIServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
 

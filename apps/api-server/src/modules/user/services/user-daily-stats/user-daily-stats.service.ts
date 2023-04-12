@@ -111,6 +111,18 @@ export class UserDailyStatsService {
     }
   }
 
+  async getUserStreaks(user: User) {
+    const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+      await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
+    const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
+      userDailyStats,
+      user.timezone,
+      { morningRoutineDailyDurations, eveningRoutineDailyDurations },
+    );
+    return { focus_modes_streak, morning_routines_streak, evening_routines_streak };
+  }
+
   async CalculateUserStatsResponse(user_id: string): Promise<OnboardingStatsResponseDto> {
     try {
       this.sentryService.instance().addBreadcrumb({

@@ -67,7 +67,13 @@
       ],
       "@app/r2/*": [
         "libs/r2/src/*"
-      ]
+      ],
+      "@app/openai": [
+        "libs/openai/src"
+      ],
+      "@app/openai/*": [
+        "libs/openai/src/*"
+      ],
     }
   }
 }

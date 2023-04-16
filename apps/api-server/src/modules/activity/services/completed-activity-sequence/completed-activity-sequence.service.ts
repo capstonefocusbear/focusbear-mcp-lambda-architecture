@@ -312,8 +312,8 @@ export class CompletedActivitySequenceService {
     });
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
-    const { startup_time, shutdown_time, timezone, current_sequence_started_at } = user;
-    if (!current_sequence_started_at) {
+    const { startup_time, shutdown_time, timezone, current_sequence_started_at, current_activity_assigned_at } = user;
+    if (!current_sequence_started_at && !current_activity_assigned_at) {
       // ?? Not sure why we return false here by default.
       // hack to fix Jeremy's morning routine
       return (user.id === JEREMYS_USER_ID);
@@ -330,7 +330,7 @@ export class CompletedActivitySequenceService {
       hour: Number(shutdownHours),
       minute: Number(shutdownMins),
     });
-    const sequenceDate = DateTime.fromJSDate(current_sequence_started_at, { zone: userTimeZone });
+    const sequenceDate = DateTime.fromJSDate(current_sequence_started_at || current_activity_assigned_at, { zone: userTimeZone });
     const sequenceWasStartedToday = sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
     const canForceCompleteMorningRoutine = type === ActivityType.morning && userCurrentTime >= userShutdownTime;
     const canForceCompleteEveningRoutine =

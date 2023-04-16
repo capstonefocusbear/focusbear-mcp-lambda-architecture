@@ -313,7 +313,11 @@ export class CompletedActivitySequenceService {
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
     const { startup_time, shutdown_time, timezone, current_sequence_started_at } = user;
-    if (!current_sequence_started_at) return false;
+    if (!current_sequence_started_at) {
+      // ?? Not sure why we return false here by default.
+      // hack to fix Jeremy's morning routine
+      return (user.id === JEREMYS_USER_ID);
+    }
     const [startupHours, startupMins] = startup_time.split(':');
     const [shutdownHours, shutdownMins] = shutdown_time.split(':');
     const userTimeZone = timezone ?? 'UTC';

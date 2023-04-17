@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
+import { ChatCompletionRequestMessage } from 'openai';
+import { FastifyReply } from 'fastify';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -27,6 +29,7 @@ import { AdminAccessRequest } from '../../entities/admin-access-requests.entity'
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
+import { OpenAIService } from '../../../../../../../libs/openai/src';
 
 @Injectable()
 export class UserService {
@@ -45,6 +48,7 @@ export class UserService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, name }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -419,5 +423,43 @@ export class UserService {
     const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
     if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+  }
+
+  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english') {
+    try {
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      const { morning_routines_streak, evening_routines_streak, focus_modes_streak } =
+        await this.userDailyStatsService.getUserStreaks(user);
+      const input = [
+        {
+          name: 'Morning routine',
+          streak_days: morning_routines_streak,
+        },
+        {
+          name: 'Evening routine',
+          streak_days: evening_routines_streak,
+        },
+        {
+          name: 'Focus blocks',
+          streak_days: focus_modes_streak,
+        },
+      ];
+      return await this.openAIService.createMotivationalSummary(response, input, language);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async generateChatReply(
+    response: FastifyReply,
+    user_id: string,
+    messages: ChatCompletionRequestMessage[],
+    language: string,
+  ) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    await this.openAIService.streamChatReply(response, messages, language);
   }
 }

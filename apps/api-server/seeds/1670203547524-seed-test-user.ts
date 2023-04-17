@@ -13,10 +13,10 @@ export class seedTestUser1670203547524 implements MigrationInterface {
             "last_completed_sequence_started_at", "current_completing_sequence_log_id", "user_type", "signed_up_via_habit_pack", 
             "current_sequence_skipped_activities", "timezone", "has_edited_settings") 
         VALUES
-            ('05809552-fbff-4dea-aca0-93f5d707ac22', 'auth0|638c19e5d03755c383530596', 
-            '49qzlco/Iy5YhUPB13dcPB5W2kanX1CxmihQpQjGTvQYQWGWM4XNm4xbk6yHa8UI', 
-            '1VY9uMc1rhYhUf8itnxZPWhdcFLePwWm9j9ynTshZXvFmvHlAJi9boRCx848s8ih', '05:15', '20:30', 15, NULL, NULL, NULL, '2022-12-04 03:54:15.672475+00', 
-            '2022-12-04 03:54:15.672475+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'cus_MuzF2z8jRTLrTw', NULL, '2022-12-04 04:35:34.415+00', NULL, NULL, 
+            ('2636a216-f363-493e-aeb8-d275a0a9016d', 'auth0|643ca25c983376898fcd5028', 
+            'zEwDMbs+fKA556CEaQjS8ZcSu/VG7wdkRQrAWc0e12Gwv++qSiiPA/64Je08JbmO', 
+            'pbQ4esI/wr+1PwhixDe1xyxqQp3XIaeG6znG4057cymHYcSazrAQF0k/DrGWVUwT', '05:15', '20:30', 15, NULL, NULL, NULL, '2022-12-04 03:54:15.672475+00', 
+            '2022-12-04 03:54:15.672475+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'cus_Nj9H342KvxDgbj', NULL, '2022-12-04 04:35:34.415+00', NULL, NULL, 
             '2022-12-04 04:35:31.042+00', NULL, 'STANDARD', NULL, NULL, 'UTC', '0')
         ON CONFLICT ("id") DO NOTHING;
     `);
@@ -24,7 +24,7 @@ export class seedTestUser1670203547524 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-        DELETE FROM "users" WHERE id = '05809552-fbff-4dea-aca0-93f5d707ac22';
+        DELETE FROM "users" WHERE id = '2636a216-f363-493e-aeb8-d275a0a9016d';
     `);
   }
 }

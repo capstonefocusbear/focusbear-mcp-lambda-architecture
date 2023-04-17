@@ -155,20 +155,14 @@ export class OpenAIService {
     const openai = new OpenAIApi(config);
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `Please advise whether the following website is safe to visit given the user's current focus and intention. Bear in mind that the user may have ADHD (highly confidential) and can get distracted by sites that are unrelated to their current intention even if the site is generically productive. Don't mention that the user has ADHD.
-
+      content: `Please provide a JSON response indicating whether the following website is safe for the user to visit:
       - URL: ${isUrlSafeDto.url}
       - Tab Title: ${isUrlSafeDto.tab_title}
       - Meta Description: ${isUrlSafeDto.meta_description}
       - Focus Mode: ${isUrlSafeDto.focus_mode}
       - Intention: ${isUrlSafeDto.intention}
-      
-      Respond in JSON format with the following properties (allowed_probability should be between 0 and 1) the response should include only the JSON output and no additional explanation and the "reason" value should be in ${isUrlSafeDto.language}:
-      
-      {
-        "allowed_probability": number,
-        "reason": "Short explanation (15 words max) in second person on why the website should be blocked/allowed. Don't give them advice"
-      }`,
+      The user may have ADHD and could get distracted by unrelated content, so please provide an "allowed_probability" value between 0 and 1 and a short explanation (15 words max) in second person on why the website should be allowed or blocked. The "reason" value should be in ${isUrlSafeDto.language} and there should be no other values in the JSON response other then reason and allowed_probability. 
+      Please do not mention the user's ADHD in your response.`,
     };
     let retryCount = 0;
     while (retryCount < 3) {

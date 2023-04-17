@@ -14,11 +14,11 @@ export class CurrentActivityState {
     if (!nextActivity) {
       this.last_completed_sequence_id = lastSequenceId;
       this.last_completed_sequence_at = new Date();
-      this.last_completed_sequence_started_at = user.current_sequence_started_at ?? new Date();
+      this.last_completed_sequence_started_at = user.current_sequence_started_at || new Date();
       this.current_sequence_started_at = null;
     }
     if (currentActivityIndex === 0) {
-      this.current_sequence_started_at = completedActivity?.start_time ?? new Date();
+      this.current_sequence_started_at = completedActivity?.start_time || new Date();
     }
   }
 

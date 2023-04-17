@@ -5,7 +5,7 @@ export class IsUrlSafeDto {
   @IsNotEmpty()
   url: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   tab_title: string;
 

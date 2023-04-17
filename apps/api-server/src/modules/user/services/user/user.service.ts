@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { ChatCompletionRequestMessage } from 'openai';
+import { FastifyReply } from 'fastify';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -424,7 +425,7 @@ export class UserService {
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
   }
 
-  async getMotivationalMessage(user_id: string, language = 'english') {
+  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english') {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
@@ -444,21 +445,21 @@ export class UserService {
           streak_days: focus_modes_streak,
         },
       ];
-      return await this.openAIService.createMotivationalSummary(input, language);
+      return await this.openAIService.createMotivationalSummary(response, input, language);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  async generateChatReply(user_id: string, chat: ChatCompletionRequestMessage[], language: string) {
-    try {
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-      return await this.openAIService.createChatReply(chat, language);
-    } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      throw error;
-    }
+  async generateChatReply(
+    response: FastifyReply,
+    user_id: string,
+    messages: ChatCompletionRequestMessage[],
+    language: string,
+  ) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    await this.openAIService.streamChatReply(response, messages, language);
   }
 }

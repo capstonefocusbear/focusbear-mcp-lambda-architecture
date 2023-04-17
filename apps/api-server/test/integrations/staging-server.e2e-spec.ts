@@ -9,10 +9,10 @@ import { trackDtoDummy } from '../dummies';
 
 describe('endpoints', () => {
   let app: NestFastifyApplication;
-  // Test user ID - 05809552-fbff-4dea-aca0-93f5d707ac22
+  // Test user ID - 2636a216-f363-493e-aeb8-d275a0a9016d
   // Point base URL to staging server URL and run: npm run test:e2e
   const testUser = {
-    email: 'testdummy@mail.com',
+    email: 'backendtestuser@mail.com',
     password: 'Passw0rd!',
   };
   const userDeviceId = '092d701d-26f4-4e3b-9da0-bde03f950982';

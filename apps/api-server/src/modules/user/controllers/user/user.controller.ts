@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { FastifyReply } from 'fastify';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
@@ -26,6 +27,8 @@ import { UserConsentService } from '../../services/user-consent/user-consent.ser
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
+import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
+import { OpenAIService } from '../../../../../../../libs/openai/src';
 
 @Controller('user')
 @ApiTags('user')
@@ -34,6 +37,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   @Put('/account-sync')
@@ -150,14 +154,28 @@ export class UserController {
   }
 
   @Get('/motivational-summary')
+  @Sse()
   @UseGuards(IsAuth)
-  async getMotivationalSummary(@Query() { language }: { language?: string }, @AuthContext() { user }: Passport) {
-    return this.userService.getMotivationalMessage(user.id, language);
+  async getMotivationalSummary(
+    @Res() response: FastifyReply,
+    @Query() { language }: { language?: string },
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userService.getMotivationalMessage(response, user.id, language);
   }
 
   @Post('/chat')
-  @UseGuards(IsAuth)
-  async generateReply(@Body() { chat, language }: GenerateChatBotResponseDto, @AuthContext() { user }: Passport) {
-    return this.userService.generateChatReply(user.id, chat, language);
+  @Sse()
+  getCompletion(
+    @Res() response: FastifyReply,
+    @Body() { chat, language }: GenerateChatBotResponseDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userService.generateChatReply(response, user.id, chat, language);
+  }
+
+  @Post('/is-url-safe-to-use')
+  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
+    return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
   }
 }

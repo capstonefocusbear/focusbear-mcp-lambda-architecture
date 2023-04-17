@@ -163,31 +163,27 @@ export class OpenAIService {
       - Focus Mode: ${isUrlSafeDto.focus_mode}
       - Intention: ${isUrlSafeDto.intention}
       
-      Respond in JSON format with the following properties (allowed_probability should be between 0 and 1) the explanation should be in ${isUrlSafeDto.language}:
+      Respond in JSON format with the following properties (allowed_probability should be between 0 and 1) the response should include only the JSON output and no additional explanation and the "reason" value should be in ${isUrlSafeDto.language}:
       
       {
         "allowed_probability": number,
         "reason": "Short explanation (15 words max) in second person on why the website should be blocked/allowed. Don't give them advice"
       }`,
     };
-    const fetchChatCompletion = async () => {
-      let retryCount = 0;
-      while (retryCount < 3) {
-        try {
-          const completions = await openai.createChatCompletion({
-            model: 'gpt-3.5-turbo',
-            messages: [defaultChat],
-            temperature: 0.7,
-            n: 1,
-          });
-          const newMessage = completions.data.choices[0].message;
-          return newMessage;
-        } catch (error) {
-          retryCount++;
-        }
+    let retryCount = 0;
+    while (retryCount < 3) {
+      try {
+        const completions = await openai.createChatCompletion({
+          model: 'gpt-3.5-turbo',
+          messages: [defaultChat],
+          temperature: 0.7,
+          n: 1,
+        });
+        const newMessage = completions.data.choices[0].message;
+        return JSON.parse(newMessage.content);
+      } catch (error) {
+        retryCount++;
       }
-    };
-    const newMessage = await fetchChatCompletion();
-    return JSON.parse(newMessage.content);
+    }
   }
 }

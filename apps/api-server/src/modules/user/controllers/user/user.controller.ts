@@ -166,6 +166,7 @@ export class UserController {
 
   @Post('/chat')
   @Sse()
+  @UseGuards(IsAuth)
   getCompletion(
     @Res() response: FastifyReply,
     @Body() { chat, language }: GenerateChatBotResponseDto,
@@ -175,6 +176,7 @@ export class UserController {
   }
 
   @Post('/is-url-safe-to-use')
+  @UseGuards(IsAuth)
   async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
     return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
   }

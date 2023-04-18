@@ -20,7 +20,7 @@ export class OpenAIService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
-  private cacheDir = join(__dirname, '../../../tmp', 'url-metadata-cache');
+  private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
 
   async createMotivationalSummary(response: FastifyReply, input: HabitOption[], language: string) {
     try {
@@ -163,8 +163,8 @@ export class OpenAIService {
     let titleToUse = isUrlSafeDto.tab_title;
     if (!metaDescriptionToUse || !titleToUse) {
       const { title, description } = await this.getMetadata(isUrlSafeDto.url);
-      metaDescriptionToUse = metaDescriptionToUse ?? description;
-      titleToUse = titleToUse ?? title;
+      metaDescriptionToUse = description;
+      titleToUse = title;
     }
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
@@ -187,7 +187,12 @@ export class OpenAIService {
           n: 1,
         });
         const newMessage = completions.data.choices[0].message;
-        return JSON.parse(newMessage.content);
+        const { content } = newMessage;
+        // extract JSON string from generated content to avoid having extra text
+        const openingBracketIndex = content.indexOf('{');
+        const closingBracketIndex = content.indexOf('}');
+        const jsonString = content.substring(openingBracketIndex, closingBracketIndex + 1);
+        return JSON.parse(jsonString);
       } catch (error) {
         retryCount++;
       }
@@ -226,7 +231,7 @@ export class OpenAIService {
 
       return metadata;
     } catch (error) {
-      return null;
+      return { title: null, description: null };
     }
   }
 }

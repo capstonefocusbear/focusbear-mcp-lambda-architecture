@@ -5,6 +5,10 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Observable } from 'rxjs';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
+import cheerio from 'cheerio';
+import { join } from 'path';
+import { promises as fs } from 'fs';
+import * as axios from 'axios';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS } from './openai.constants';
@@ -15,6 +19,8 @@ export class OpenAIService {
     @Inject(OPENAI_MODULE_OPTIONS) private options: IOpenAIOptions,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
+
+  private cacheDir = join(__dirname, '../../../tmp', 'url-metadata-cache');
 
   async createMotivationalSummary(response: FastifyReply, input: HabitOption[], language: string) {
     try {
@@ -153,16 +159,23 @@ export class OpenAIService {
   async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
     const config = new Configuration({ ...this.options });
     const openai = new OpenAIApi(config);
+    let metaDescriptionToUse = isUrlSafeDto.meta_description;
+    let titleToUse = isUrlSafeDto.tab_title;
+    if (!metaDescriptionToUse || !titleToUse) {
+      const { title, description } = await this.getMetadata(isUrlSafeDto.url);
+      metaDescriptionToUse = metaDescriptionToUse ?? description;
+      titleToUse = titleToUse ?? title;
+    }
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
       content: `Please provide a JSON response indicating whether the following website is safe for the user to visit:
       - URL: ${isUrlSafeDto.url}
-      - Tab Title: ${isUrlSafeDto.tab_title}
-      - Meta Description: ${isUrlSafeDto.meta_description}
+      - Tab Title: ${titleToUse}
+      - Meta Description: ${metaDescriptionToUse}
       - Focus Mode: ${isUrlSafeDto.focus_mode}
       - Intention: ${isUrlSafeDto.intention}
       The user may have ADHD and could get distracted by unrelated content, so please provide an "allowed_probability" value between 0 and 1 and a short explanation (15 words max) in second person on why the website should be allowed or blocked. The "reason" value should be in ${isUrlSafeDto.language} and there should be no other values in the JSON response other then reason and allowed_probability. 
-      Please do not mention the user's ADHD in your response.`,
+      Please do not mention the user's ADHD in your response. The response should include the JSON output and no additional explanation!`,
     };
     let retryCount = 0;
     while (retryCount < 3) {
@@ -178,6 +191,42 @@ export class OpenAIService {
       } catch (error) {
         retryCount++;
       }
+    }
+  }
+
+  async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
+    try {
+      const cacheFile = join(this.cacheDir, `${encodeURIComponent(url)}.json`);
+      try {
+        const cachedMetadata = await fs.readFile(cacheFile, 'utf-8');
+        return JSON.parse(cachedMetadata);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+      const response = await axios.default.get(url);
+      const html = response.data;
+      const $ = cheerio.load(html);
+
+      const title = $('head title').text().trim() || null;
+
+      let description = $('meta[name="description"]').attr('content');
+      if (!description) {
+        const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+        description = textContent.slice(0, 180) || null;
+      }
+
+      const metadata = { title, description };
+
+      if (metadata.title || metadata.description) {
+        await fs.mkdir(this.cacheDir, { recursive: true });
+        await fs.writeFile(cacheFile, JSON.stringify(metadata), 'utf-8');
+      }
+
+      return metadata;
+    } catch (error) {
+      return null;
     }
   }
 }

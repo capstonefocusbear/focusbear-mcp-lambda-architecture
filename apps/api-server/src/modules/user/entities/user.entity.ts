@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
@@ -95,21 +95,25 @@ export class User extends BaseEntity {
   })
   is_office_mode_activated?: boolean;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   current_activity_sequence_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   current_focus_mode_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   current_completing_focus_block_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -121,11 +125,13 @@ export class User extends BaseEntity {
   })
   current_activity_assigned_at?: Date;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   last_completed_sequence_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
@@ -146,11 +152,13 @@ export class User extends BaseEntity {
   })
   current_sequence_started_at?: Date;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   member_of_team_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
@@ -170,11 +178,13 @@ export class User extends BaseEntity {
   })
   user_type?: UserTypes;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   signed_up_via_habit_pack?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })

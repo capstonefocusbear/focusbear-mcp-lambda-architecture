@@ -1,4 +1,4 @@
-import { Column, ManyToOne, OneToMany, OneToOne, JoinColumn, Entity } from 'typeorm';
+import { Column, ManyToOne, OneToMany, OneToOne, JoinColumn, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Lesson } from '../../lesson/entities/lesson.entity';
 import { CourseRating } from './course-rating.entity';
@@ -11,6 +11,7 @@ export class Course extends BaseEntity {
     Object.assign(this, { ...data });
   }
 
+  @Index()
   @Column({ type: 'varchar' })
   author_id: string;
 

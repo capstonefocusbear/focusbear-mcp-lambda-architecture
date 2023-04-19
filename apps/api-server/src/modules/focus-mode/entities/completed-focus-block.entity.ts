@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { FocusMode } from './focus-mode.entity';
@@ -10,12 +10,14 @@ export class CompletedFocusBlock extends BaseEntity {
     Object.assign(this, { ...data, is_finished: !!data.finish_time });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

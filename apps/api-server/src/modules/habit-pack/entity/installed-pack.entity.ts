@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { HabitPack } from './habit-pack.entity';
@@ -10,12 +10,14 @@ export class InstalledPack extends BaseEntity {
     Object.assign(this, { ...installData });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -28,6 +30,7 @@ export class InstalledPack extends BaseEntity {
   })
   installation_status?: boolean;
 
+  @Index()
   @Column({
     type: 'uuid',
   })

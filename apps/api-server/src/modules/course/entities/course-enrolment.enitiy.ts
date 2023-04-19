@@ -1,4 +1,4 @@
-import { Entity, JoinColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, JoinColumn, Column, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from './course.entity';
 import { User } from '../../user/entities/user.entity';
@@ -13,9 +13,11 @@ export class CourseEnrolment extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   finished: boolean;
 
+  @Index()
   @Column({ type: 'varchar' })
   user_id: string;
 
+  @Index()
   @Column({ type: 'varchar' })
   course_id: string;
 

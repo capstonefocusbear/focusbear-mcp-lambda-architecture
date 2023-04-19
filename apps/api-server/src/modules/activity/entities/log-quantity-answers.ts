@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -13,24 +13,28 @@ export class LogQuantityAnswer extends BaseEntity {
     Object.assign(this, { ...questionData });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   activity_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   question_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

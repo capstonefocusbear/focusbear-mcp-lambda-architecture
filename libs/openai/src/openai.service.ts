@@ -185,8 +185,8 @@ export class OpenAIService {
 
       Example of case where the website is NOT safe for the user to visit (should have a score of 0.1):
       - URL: https://www.airbnb.com/
-      - Tab Title: Stack Overflow
-      - Meta Description: Stack Overflow is the largest, most trusted online community for developers to learn, share their programming knowledge, and build their careers.
+      - Tab Title: Vacation Homes & Condo Rentals - Airbnb - Airbnb
+      - Meta Description: Find the perfect place to stay at an amazing price in 191 countries. Belong anywhere with Airbnb.
       - Focus Mode: Programming Work
       - Intention: Finish dashboard website
 

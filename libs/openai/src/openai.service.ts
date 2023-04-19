@@ -168,12 +168,28 @@ export class OpenAIService {
     }
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `Please provide a JSON response indicating whether the following website is safe for the user to visit:
+      content: `Please provide a JSON response indicating whether the following website is safe for the user to visit.:
       - URL: ${isUrlSafeDto.url}
       - Tab Title: ${titleToUse}
       - Meta Description: ${metaDescriptionToUse}
       - Focus Mode: ${isUrlSafeDto.focus_mode}
       - Intention: ${isUrlSafeDto.intention}
+       
+      If the website not directly related to the focus mode and intention, the website should be considered as unsafe to visit and have a low score (below 0.8)
+      Example of case where the website is safe for the user to visit (should have a score of 1):
+      - URL: https://stackoverflow.com/
+      - Tab Title: Stack Overflow
+      - Meta Description: Stack Overflow is the largest, most trusted online community for developers to learn, share their programming knowledge, and build their careers.
+      - Focus Mode: Programming Work
+      - Intention: Finish dashboard website
+
+      Example of case where the website is NOT safe for the user to visit (should have a score of 0.1):
+      - URL: https://www.airbnb.com/
+      - Tab Title: Vacation Homes & Condo Rentals - Airbnb - Airbnb
+      - Meta Description: Find the perfect place to stay at an amazing price in 191 countries. Belong anywhere with Airbnb.
+      - Focus Mode: Programming Work
+      - Intention: Finish dashboard website
+
       The user may have ADHD and could get distracted by unrelated content, so please provide an "allowed_probability" value between 0 and 1 and a short explanation (15 words max) in second person on why the website should be allowed or blocked. The "reason" value should be in ${isUrlSafeDto.language} and there should be no other values in the JSON response other then reason and allowed_probability. 
       Please do not mention the user's ADHD in your response. The response should include the JSON output and no additional explanation!`,
     };
@@ -183,7 +199,7 @@ export class OpenAIService {
         const completions = await openai.createChatCompletion({
           model: 'gpt-3.5-turbo',
           messages: [defaultChat],
-          temperature: 0.7,
+          temperature: 0.3,
           n: 1,
         });
         const newMessage = completions.data.choices[0].message;

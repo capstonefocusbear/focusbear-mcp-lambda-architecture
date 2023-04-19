@@ -136,9 +136,6 @@ export class AddMissingMigrationCommands1681898257758 implements MigrationInterf
     await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "updated_at" DROP DEFAULT');
     await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "user_id" SET NOT NULL');
     await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "date_completed" SET NOT NULL');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "focus_modes_completed" TYPE numeric(2,2)');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "focus_modes_completed" SET NOT NULL');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "focus_modes_completed" DROP DEFAULT');
     await queryRunner.query(
       'ALTER TABLE "daily_stats" ADD CONSTRAINT "UQ_9e4701008510bb5b9d35d19b931" UNIQUE ("morning_sequence_log_id")',
     );
@@ -713,9 +710,6 @@ export class AddMissingMigrationCommands1681898257758 implements MigrationInterf
     await queryRunner.query(
       'ALTER TABLE "daily_stats" ADD CONSTRAINT "FK_7c09b7133924634d328ea96398e" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE',
     );
-    await queryRunner.query('DROP INDEX "public"."IDX_1fc9a8f84304a421c1b0aa2d15"');
-    await queryRunner.query('DROP INDEX "public"."IDX_7279c663d01a1d66de47e80af4"');
-    await queryRunner.query('DROP INDEX "public"."IDX_bdcedea316987f7483035423e9"');
     await queryRunner.query(
       'CREATE INDEX "admin_access_requests_admin_user_id_idx" ON "admin_access_requests" ("admin_user_id") ',
     );

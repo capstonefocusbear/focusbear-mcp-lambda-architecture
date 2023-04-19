@@ -235,24 +235,21 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   morning_routines_streak?: number;
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   evening_routines_streak?: number;
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   focus_modes_streak?: number;

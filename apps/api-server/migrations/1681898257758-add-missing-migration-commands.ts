@@ -132,10 +132,6 @@ export class AddMissingMigrationCommands1681898257758 implements MigrationInterf
     await queryRunner.query('ALTER TABLE "daily_stats" DROP CONSTRAINT "FK_7c09b7133924634d328ea96398e"');
     await queryRunner.query('ALTER TABLE "daily_stats" DROP CONSTRAINT "FK_9e4701008510bb5b9d35d19b931"');
     await queryRunner.query('ALTER TABLE "daily_stats" DROP CONSTRAINT "FK_6460247f9f8fb4af1fed3249008"');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "created_at" DROP DEFAULT');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "updated_at" DROP DEFAULT');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "user_id" SET NOT NULL');
-    await queryRunner.query('ALTER TABLE "daily_stats" ALTER COLUMN "date_completed" SET NOT NULL');
     await queryRunner.query(
       'ALTER TABLE "daily_stats" ADD CONSTRAINT "UQ_9e4701008510bb5b9d35d19b931" UNIQUE ("morning_sequence_log_id")',
     );

@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -15,6 +15,7 @@ export class HabitPack extends BaseEntity {
     Object.assign(this, { ...pack });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

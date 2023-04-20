@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityData } from '../../activity/domain/activity-data.model';
 import { LogSummaryType } from '../../activity/domain/log-summary-type.enum';
@@ -15,12 +15,14 @@ export class ActivityTemplate extends BaseEntity {
     Object.assign(this, { ...activity });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   pack_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -70,6 +72,7 @@ export class ActivityTemplate extends BaseEntity {
   })
   completion_requirements?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })

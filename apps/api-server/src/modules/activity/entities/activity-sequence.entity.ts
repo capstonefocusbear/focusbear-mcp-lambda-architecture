@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityType } from '../domain/activity-type.enum';
 import { User } from '../../user/entities/user.entity';
@@ -14,6 +14,7 @@ export class ActivitySequence extends BaseEntity {
     Object.assign(this, { ...sequence });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -52,6 +53,7 @@ export class ActivitySequence extends BaseEntity {
   })
   generated_total_duration_seconds?: number;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: true,

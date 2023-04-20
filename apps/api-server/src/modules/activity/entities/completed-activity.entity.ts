@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Unique, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { Activity } from './activity.entity';
@@ -19,26 +19,31 @@ export class CompletedActivity extends BaseEntity {
     Object.assign(this, { ...sequence, quantity_logged });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   activity_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
   activity_sequence_id?: string;
 
+  @Index()
   @Column({
     type: 'timestamptz',
   })
   start_time?: Date;
 
+  @Index()
   @Column({
     type: 'timestamptz',
   })

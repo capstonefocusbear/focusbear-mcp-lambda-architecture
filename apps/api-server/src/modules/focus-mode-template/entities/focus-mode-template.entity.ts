@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { MarketplaceRequestType } from '../../habit-pack/domain/marketplace-request.enum';
@@ -12,6 +12,7 @@ export class FocusModeTemplate extends BaseEntity {
     Object.assign(this, { ...data });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

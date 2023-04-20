@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from './user.entity';
 
@@ -9,6 +9,7 @@ export class AdminAccessRequest extends BaseEntity {
     Object.assign(this, { ...user });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

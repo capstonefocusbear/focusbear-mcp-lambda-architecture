@@ -119,7 +119,7 @@ export class AddMissingMigrationCommands1681898257758 implements MigrationInterf
     await queryRunner.query('DROP INDEX "public"."users_signed_up_via_habit_pack_idx"');
     await queryRunner.query('DROP INDEX "public"."users_signed_up_via_focus_mode_idx"');
     await queryRunner.query('DROP INDEX IF EXISTS "public"."activity_sequences_user_id_idx"');
-    await queryRunner.query('DROP INDEX "public"."activity_sequences_type_user_id_idx"');
+    await queryRunner.query('DROP INDEX IF EXISTS "public"."activity_sequences_type_user_id_idx"');
     await queryRunner.query('DROP INDEX "public"."activity_sequences_pack_id_idx"');
     await queryRunner.query('DROP INDEX "public"."course_ratings_course_id_idx"');
     await queryRunner.query('DROP INDEX "public"."course_ratings_user_id_idx"');

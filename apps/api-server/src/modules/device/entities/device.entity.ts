@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { DeviceMetadata } from '../domain/device-metadata.model';
@@ -11,6 +11,7 @@ export class Device extends BaseEntity {
     Object.assign(this, { ...device, is_leader: !!device.is_leader });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

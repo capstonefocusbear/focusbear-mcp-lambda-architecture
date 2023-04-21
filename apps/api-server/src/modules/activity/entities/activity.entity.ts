@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { ActivityData } from '../domain/activity-data.model';
@@ -17,12 +17,14 @@ export class Activity extends BaseEntity {
     Object.assign(this, { ...activity, log_summary_type: log_summary_type || LogSummaryType.SUM });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
@@ -35,6 +37,7 @@ export class Activity extends BaseEntity {
   })
   linked_activity_id?: string;
 
+  @Index()
   @Column({
     type: 'uuid',
   })
@@ -46,6 +49,7 @@ export class Activity extends BaseEntity {
   })
   has_choices?: boolean;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

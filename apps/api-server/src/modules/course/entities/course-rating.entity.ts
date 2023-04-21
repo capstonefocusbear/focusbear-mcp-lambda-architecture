@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from './course.entity';
 import { User } from '../../user/entities/user.entity';
@@ -11,12 +11,15 @@ export class CourseRating extends BaseEntity {
     Object.assign(this, { ...data });
   }
 
+  @Index()
   @Column({ type: 'varchar' })
   user_id: string;
 
+  @Index()
   @Column({ type: 'varchar' })
   course_id: string;
 
+  @Index()
   @Column({ type: 'varchar' })
   lesson_id?: string;
 

@@ -42,3 +42,6 @@ todo.txt
 /storage 
 
 .history
+
+# url metadata cache
+/tmp

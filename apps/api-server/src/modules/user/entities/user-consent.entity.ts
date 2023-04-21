@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { UserConsentMetadata } from '../domain/user-consent-metadate.model';
 import { UserConsentTypes } from '../domain/user-consent.enum';
@@ -11,6 +11,7 @@ export class UserConsent extends BaseEntity {
     Object.assign(this, { ...user });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,

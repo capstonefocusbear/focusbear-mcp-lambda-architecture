@@ -1,0 +1,1 @@
+export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');

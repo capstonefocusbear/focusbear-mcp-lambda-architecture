@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { OpenAIModule } from '../../../../../libs/openai/src';
 import { ActivityModule } from '../activity/activity.module';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { AuthModule } from '../auth/auth.module';
@@ -62,6 +63,11 @@ import { AdminAccessRequestRepository } from './repositories/admin-access-reques
     }),
     BullModule.registerQueue({
       name: 'stats',
+    }),
+    OpenAIModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('openai'),
     }),
     ActivityModule,
     AuthModule,

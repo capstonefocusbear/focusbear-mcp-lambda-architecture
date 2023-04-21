@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { User } from '../../user/entities/user.entity';
@@ -11,6 +11,7 @@ export class FocusMode extends BaseEntity {
     Object.assign(this, { ...data });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -43,6 +44,7 @@ export class FocusMode extends BaseEntity {
   })
   metadata?: any;
 
+  @Index()
   @Column({
     type: 'uuid',
   })

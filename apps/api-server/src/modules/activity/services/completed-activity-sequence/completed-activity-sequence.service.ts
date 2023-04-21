@@ -313,7 +313,6 @@ export class CompletedActivitySequenceService {
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
     const { startup_time, shutdown_time, timezone, current_sequence_started_at, current_activity_assigned_at } = user;
-
     const [startupHours, startupMins] = startup_time.split(':');
     const [shutdownHours, shutdownMins] = shutdown_time.split(':');
     const userTimeZone = timezone ?? 'UTC';
@@ -327,8 +326,11 @@ export class CompletedActivitySequenceService {
       minute: Number(shutdownMins),
     });
     const hasSequenceStartDate = !!(current_sequence_started_at || current_activity_assigned_at);
-    const sequenceDate = hasSequenceStartDate ? DateTime.fromJSDate(current_sequence_started_at || current_activity_assigned_at, { zone: userTimeZone }) : null;
-    const sequenceWasStartedToday = hasSequenceStartDate && sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
+    const sequenceDate = hasSequenceStartDate
+      ? DateTime.fromJSDate(current_sequence_started_at || current_activity_assigned_at, { zone: userTimeZone })
+      : null;
+    const sequenceWasStartedToday =
+      hasSequenceStartDate && sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
     const canForceCompleteMorningRoutine = type === ActivityType.morning && userCurrentTime >= userShutdownTime;
     const canForceCompleteEveningRoutine =
       type === ActivityType.evening && userCurrentTime >= userStartupTime && userCurrentTime < userShutdownTime;

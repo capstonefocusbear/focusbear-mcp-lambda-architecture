@@ -151,3 +151,8 @@ export const UserDailyStatsServiceMock = {
   updateDailyStatsFocusModesCompleted: jest.fn(),
   updateDailyStatsRoutineCompletion: jest.fn(),
 };
+
+export const OpenAIServiceMock = {
+  createChatReply: jest.fn(),
+  createMotivationalSummary: jest.fn(),
+};

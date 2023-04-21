@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne, Index } from 'typeorm';
 import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { CompletedActivitySequence } from '../../activity/entities/completed-activity-sequence.entity';
@@ -11,6 +11,7 @@ export class DailyStats extends BaseEntity {
     Object.assign(this, { ...user });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -24,24 +25,21 @@ export class DailyStats extends BaseEntity {
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   focus_modes_completed?: number;
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   morning_routine_completion_percentage?: number;
 
   @Column({
     type: 'numeric',
-    precision: 2,
-    scale: 2,
+    default: 0,
     transformer: new ColumnNumericTransformer(),
   })
   evening_routine_completion_percentage?: number;

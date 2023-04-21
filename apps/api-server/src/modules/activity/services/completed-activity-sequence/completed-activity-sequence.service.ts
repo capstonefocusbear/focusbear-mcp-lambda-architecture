@@ -312,7 +312,19 @@ export class CompletedActivitySequenceService {
     });
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
-    const { startup_time, shutdown_time, timezone, current_sequence_started_at, current_activity_assigned_at } = user;
+    const {
+      startup_time,
+      shutdown_time,
+      timezone,
+      current_sequence_started_at,
+      current_activity_assigned_at,
+      current_activity_sequence_id,
+    } = user;
+    let currentSequenceType = null;
+    if (current_activity_sequence_id) {
+      const currentSequence = await this.activitySequenceRepository.orm.findOneBy({ id: current_activity_sequence_id });
+      currentSequenceType = currentSequence?.type;
+    }
     const [startupHours, startupMins] = startup_time.split(':');
     const [shutdownHours, shutdownMins] = shutdown_time.split(':');
     const userTimeZone = timezone ?? 'UTC';
@@ -349,6 +361,7 @@ export class CompletedActivitySequenceService {
         canForceCompleteSequence,
       });
     }
+    if (!hasSequenceStartDate && type === currentSequenceType) return false;
     if (!sequenceWasStartedToday || cancel_habits_for_today) return true;
     if (sequenceWasStartedToday && canForceCompleteSequence) return true;
     return false;

@@ -1388,6 +1388,8 @@ describe('CompletedActivityService', () => {
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
         cutoff_time_for_non_high_priority_activities: '20:00',
       });
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
@@ -1406,6 +1408,8 @@ describe('CompletedActivityService', () => {
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
         cutoff_time_for_non_high_priority_activities: '20:00',
       });
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
@@ -1424,6 +1428,8 @@ describe('CompletedActivityService', () => {
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
         cutoff_time_for_non_high_priority_activities: '20:00',
       });
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
@@ -1442,6 +1448,8 @@ describe('CompletedActivityService', () => {
         current_activity_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
         cutoff_time_for_non_high_priority_activities: '20:00',
       });
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
@@ -1454,6 +1462,72 @@ describe('CompletedActivityService', () => {
       expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
         partialUserDummy.current_completing_sequence_log_id,
         partialUserDummy.id,
+      );
+    });
+
+    it("positive: if user current routine is evening routine, but it's time for morning routine, evening routine should be marked as completed and user current activity props should be cleared", async () => {
+      // mock current time to be after user morning routine should start
+      Settings.now = () => new Date('2022-12-10T05:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: ActivityDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        current_completing_sequence_log_id: randomUUID(),
+        current_sequence_started_at: new Date(),
+        timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        type: ActivityType.evening,
+      });
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(null);
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        partialUserDummy.current_completing_sequence_log_id,
+        partialUserDummy.id,
+      );
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+        partialUserDummy.id,
+        partialUserDummy.current_activity_sequence_id,
+        partialUserDummy.current_sequence_started_at,
+      );
+    });
+
+    it("positive: if user current routine is morning routine, but it's time for evening routine, morning routine should be marked as completed and user current activity props should be cleared", async () => {
+      // mock current time to be after user evening routine should start
+      Settings.now = () => new Date('2022-12-10T19:00:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: ActivityDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        current_completing_sequence_log_id: randomUUID(),
+        current_sequence_started_at: new Date(),
+        timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        type: ActivityType.morning,
+      });
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(null);
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        partialUserDummy.current_completing_sequence_log_id,
+        partialUserDummy.id,
+      );
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+        partialUserDummy.id,
+        partialUserDummy.current_activity_sequence_id,
+        partialUserDummy.current_sequence_started_at,
       );
     });
   });

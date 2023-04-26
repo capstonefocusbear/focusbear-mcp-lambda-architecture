@@ -483,6 +483,22 @@ export class CompletedActivityService {
     return { nextActivity, currentState };
   }
 
+  getUserTimes(timezone: string, startUp: string, shutDown: string) {
+    const userTimeZone = timezone ?? 'UTC';
+    const [startupHours, startupMins] = startUp.split(':');
+    const [shutdownHours, shutdownMins] = shutDown.split(':');
+    const userCurrentTime = DateTime.local({ zone: userTimeZone });
+    const userStartupTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(startupHours),
+      minute: Number(startupMins),
+    });
+    const userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(shutdownHours),
+      minute: Number(shutdownMins),
+    });
+    return { userTimeZone, userCurrentTime, userStartupTime, userShutdownTime };
+  }
+
   async recalculateCurrentActivity(partialUser: Partial<User>) {
     const {
       timezone,
@@ -491,14 +507,38 @@ export class CompletedActivityService {
       current_activity_sequence_id,
       id,
       current_completing_sequence_log_id,
+      current_sequence_started_at,
+      startup_time,
+      shutdown_time,
     } = partialUser;
+    const sequence = await this.activitySequenceRepository.orm.findOne({
+      where: { id: current_activity_sequence_id },
+      relations: ['activities'],
+    });
     let currentActivity = current_activity;
+    const { userCurrentTime, userStartupTime, userShutdownTime } = this.getUserTimes(
+      timezone,
+      startup_time,
+      shutdown_time,
+    );
+    const morningRoutineShouldBeCompleted =
+      sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime;
+    const eveningRoutineShouldBeCompleted =
+      sequence.type === ActivityType.evening &&
+      userCurrentTime >= userStartupTime &&
+      userCurrentTime < userShutdownTime;
+
+    if (morningRoutineShouldBeCompleted || eveningRoutineShouldBeCompleted) {
+      await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
+      await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
+        partialUser.id,
+        current_activity_sequence_id,
+        current_sequence_started_at,
+      );
+      return { activity: null, shouldRefetchUser: true };
+    }
     const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
     if (hasCutoffTimeBeenReached) {
-      const sequence = await this.activitySequenceRepository.orm.findOne({
-        where: { id: current_activity_sequence_id },
-        relations: ['activities'],
-      });
       const currentDay = this.helperCommonService.getDayOfWeek(timezone);
       const { activities, sequenceActivityIds } = sequence;
       const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
@@ -517,6 +557,11 @@ export class CompletedActivityService {
       currentActivity = nextHighPriorityActivity ?? null;
       if (!currentActivity) {
         await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
+        await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
+          partialUser.id,
+          current_activity_sequence_id,
+          current_sequence_started_at,
+        );
       } else {
         // update user current_activity_id if current activity has changed
         const shouldUpdateUser = current_activity.id !== currentActivity.id;

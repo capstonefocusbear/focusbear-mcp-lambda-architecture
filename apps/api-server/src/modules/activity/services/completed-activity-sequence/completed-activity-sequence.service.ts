@@ -277,22 +277,31 @@ export class CompletedActivitySequenceService {
         });
       }
       hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
-      const nullifiedCurrentSequence = {
-        current_activity_sequence_id: null,
-        current_activity_id: null,
-        current_activity_assigned_at: null,
-        last_completed_sequence_id: activity_sequence_id,
-        last_completed_sequence_at: new Date(),
-        last_completed_sequence_started_at: user.current_sequence_started_at ?? new Date(),
-        current_sequence_started_at: null,
-        current_completing_sequence_log_id: null,
-      };
-      const updatedUser = await this.userRepository.update(user_id, nullifiedCurrentSequence);
-      return updatedUser;
+      return await this.nullifyUserCurrentActivityProps(
+        user_id,
+        activity_sequence_id,
+        user.current_sequence_started_at,
+      );
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  getUserTimes(timezone: string, startUp: string, shutDown: string) {
+    const userTimeZone = timezone ?? 'UTC';
+    const [startupHours, startupMins] = startUp.split(':');
+    const [shutdownHours, shutdownMins] = shutDown.split(':');
+    const userCurrentTime = DateTime.local({ zone: userTimeZone });
+    const userStartupTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(startupHours),
+      minute: Number(startupMins),
+    });
+    const userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
+      hour: Number(shutdownHours),
+      minute: Number(shutdownMins),
+    });
+    return { userTimeZone, userCurrentTime, userStartupTime, userShutdownTime };
   }
 
   async checkIfForceCompletionShouldBeAllowed(
@@ -312,26 +321,30 @@ export class CompletedActivitySequenceService {
     });
     const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: activity_sequence_id });
     const { type } = sequence;
-    const { startup_time, shutdown_time, timezone, current_sequence_started_at } = user;
-    if (!current_sequence_started_at) {
-      // ?? Not sure why we return false here by default.
-      // hack to fix Jeremy's morning routine
-      return (user.id === JEREMYS_USER_ID);
+    const {
+      startup_time,
+      shutdown_time,
+      timezone,
+      current_sequence_started_at,
+      current_activity_assigned_at,
+      current_activity_sequence_id,
+    } = user;
+    const { userTimeZone, userCurrentTime, userStartupTime, userShutdownTime } = this.getUserTimes(
+      timezone,
+      startup_time,
+      shutdown_time,
+    );
+    let currentSequenceType = null;
+    if (current_activity_sequence_id) {
+      const currentSequence = await this.activitySequenceRepository.orm.findOneBy({ id: current_activity_sequence_id });
+      currentSequenceType = currentSequence?.type;
     }
-    const [startupHours, startupMins] = startup_time.split(':');
-    const [shutdownHours, shutdownMins] = shutdown_time.split(':');
-    const userTimeZone = timezone ?? 'UTC';
-    const userCurrentTime = DateTime.local({ zone: userTimeZone });
-    const userStartupTime = DateTime.local({ zone: userTimeZone }).set({
-      hour: Number(startupHours),
-      minute: Number(startupMins),
-    });
-    const userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
-      hour: Number(shutdownHours),
-      minute: Number(shutdownMins),
-    });
-    const sequenceDate = DateTime.fromJSDate(current_sequence_started_at, { zone: userTimeZone });
-    const sequenceWasStartedToday = sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
+    const hasSequenceStartDate = !!(current_sequence_started_at || current_activity_assigned_at);
+    const sequenceDate = hasSequenceStartDate
+      ? DateTime.fromJSDate(current_sequence_started_at || current_activity_assigned_at, { zone: userTimeZone })
+      : null;
+    const sequenceWasStartedToday =
+      hasSequenceStartDate && sequenceDate.hasSame(DateTime.local({ zone: userTimeZone }), 'day');
     const canForceCompleteMorningRoutine = type === ActivityType.morning && userCurrentTime >= userShutdownTime;
     const canForceCompleteEveningRoutine =
       type === ActivityType.evening && userCurrentTime >= userStartupTime && userCurrentTime < userShutdownTime;
@@ -350,9 +363,24 @@ export class CompletedActivitySequenceService {
         canForceCompleteSequence,
       });
     }
+    if (!hasSequenceStartDate && type === currentSequenceType) return false;
     if (!sequenceWasStartedToday || cancel_habits_for_today) return true;
     if (sequenceWasStartedToday && canForceCompleteSequence) return true;
     return false;
+  }
+
+  async nullifyUserCurrentActivityProps(user_id, current_activity_sequence_id, current_sequence_started_at) {
+    const nullifiedCurrentSequence = {
+      current_activity_sequence_id: null,
+      current_activity_id: null,
+      current_activity_assigned_at: null,
+      last_completed_sequence_id: current_activity_sequence_id,
+      last_completed_sequence_at: new Date(),
+      last_completed_sequence_started_at: current_sequence_started_at ?? new Date(),
+      current_sequence_started_at: null,
+      current_completing_sequence_log_id: null,
+    };
+    return this.userRepository.update(user_id, nullifiedCurrentSequence);
   }
 
   private validateCurrentActivitySequence(

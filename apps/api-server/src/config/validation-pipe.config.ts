@@ -1,4 +1,4 @@
-import { ValidationPipeOptions } from '@nestjs/common';
+import { BadRequestException, ValidationError, ValidationPipeOptions } from '@nestjs/common';
 import { registerAs } from '@nestjs/config';
 
 export const validationPipeCongif = registerAs(
@@ -9,5 +9,8 @@ export const validationPipeCongif = registerAs(
       enableImplicitConversion: true,
     },
     forbidUnknownValues: false,
+    exceptionFactory(errors: ValidationError[]) {
+      return new BadRequestException(errors);
+    },
   }),
 );

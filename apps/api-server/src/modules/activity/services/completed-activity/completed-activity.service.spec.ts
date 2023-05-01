@@ -21,6 +21,7 @@ import {
 import {
   ActivitiesArrayDummy,
   ActivityDummy,
+  ActivityDummyWithCompetencyChoices,
   ActivitySequenceDummy,
   ActivitySequenceWithHighPriorityActivitiesDummy,
   ActivitySequenceWithoutHighPriorityActivitiesDummy,
@@ -666,6 +667,83 @@ describe('CompletedActivityService', () => {
         last_completed_sequence_started_at: expect.toBeDate(),
       });
       Settings.now = () => new Date().valueOf();
+    });
+
+    it('positive: activity current_competency_level should be incremented if log quantity answers average is 9 or higher', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+      const completedActivityWithLogQAnswers: CreateCompletedActivityDto = {
+        activity_id: ActivityDummy.id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        note_logged: 'some text',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivityDummy.activity_sequence_id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+        metadata: { is_skipped: false },
+        log_quantity_answers: [
+          { question_id: ActivityDummyWithCompetencyChoices.choices[0].id, logged_value: 9 },
+          { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 10 },
+        ],
+      };
+
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, { user_id });
+
+      expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 2 },
+      });
+    });
+
+    it('positive: activity current_competency_level should be decremented if log quantity answers average is 4 or lower', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 2 },
+      });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+      const completedActivityWithLogQAnswers: CreateCompletedActivityDto = {
+        activity_id: ActivityDummy.id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        note_logged: 'some text',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivityDummy.activity_sequence_id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+        metadata: { is_skipped: false },
+        log_quantity_answers: [
+          { question_id: ActivityDummyWithCompetencyChoices.choices[0].id, logged_value: 4 },
+          { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 3 },
+        ],
+      };
+
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, { user_id });
+
+      expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 1 },
+      });
     });
   });
 

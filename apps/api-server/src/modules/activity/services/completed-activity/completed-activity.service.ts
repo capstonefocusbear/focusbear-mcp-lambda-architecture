@@ -47,6 +47,7 @@ import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-an
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
+import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 
 @Injectable()
 export class CompletedActivityService {
@@ -96,6 +97,12 @@ export class CompletedActivityService {
         user_id,
         choice_id,
       );
+      if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
+        await this.updateCompetencyLevel(
+          activity,
+          log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
+        );
+      }
       if (activity.type === ActivityType.break) {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
@@ -233,6 +240,12 @@ export class CompletedActivityService {
         let logQuantityAnswers: LogQuantityAnswer[] = [];
         if (log_quantity_answers?.length > 0) {
           logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
+        if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
+          await this.updateCompetencyLevel(
+            activity,
+            log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
+          );
         }
         const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
         const { is_completed } = completingSequenceLog;
@@ -1098,5 +1111,34 @@ export class CompletedActivityService {
     const rawSavedAnswers = await this.logQuantityAnswerRepository.orm.insert(createdAnswers);
     const newRecordIds = rawSavedAnswers.identifiers.map((record: { id: string }) => record.id);
     return this.logQuantityAnswerRepository.orm.find({ where: { id: In(newRecordIds) } });
+  }
+
+  async updateCompetencyLevel(activity: Activity, log_quantity_value: number | LogQuantityAnswerDto[]) {
+    const choices = await this.activityRepository.orm.find({ where: { parent_id: activity.id } });
+    let logQuantityAnswersAvg = 0;
+    if (typeof log_quantity_value !== 'number') {
+      const totalOfValues = log_quantity_value.reduce(
+        (totalLoggedValue, nextLogAnswer) => totalLoggedValue + nextLogAnswer.logged_value,
+        0,
+      );
+      logQuantityAnswersAvg = totalOfValues / log_quantity_value?.length;
+    }
+    // if old version of log quantity is used, use only single value, else use average of log quantity answers
+    const value = typeof log_quantity_value === 'number' ? log_quantity_value : logQuantityAnswersAvg;
+    const maxCompetencyLevel = choices?.length;
+    const minCurrentLevel = 1;
+    let currentCompetencyLevel = activity?.activity_data.current_competency_level ?? 1;
+    if (value >= 9) {
+      currentCompetencyLevel = Math.min(currentCompetencyLevel + 1, maxCompetencyLevel);
+    }
+    if (value <= 4) {
+      currentCompetencyLevel = Math.max(currentCompetencyLevel - 1, minCurrentLevel);
+    }
+    // only update current_competency_level if there was a change
+    if (activity?.activity_data?.current_competency_level !== currentCompetencyLevel) {
+      const updateActivity = { ...activity };
+      updateActivity.activity_data.current_competency_level = currentCompetencyLevel;
+      await this.activityRepository.orm.save(updateActivity);
+    }
   }
 }

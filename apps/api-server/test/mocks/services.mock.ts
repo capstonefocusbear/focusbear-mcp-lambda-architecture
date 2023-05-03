@@ -142,6 +142,7 @@ export const SentryServiceMock = {
 
 export const FocusModeServiceMock = {
   create: jest.fn(),
+  saveFocusModeTags: jest.fn(),
 };
 
 export const R2ServiceMock = {

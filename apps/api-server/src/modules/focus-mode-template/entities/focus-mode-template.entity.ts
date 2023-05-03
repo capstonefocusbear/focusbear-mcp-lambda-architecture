@@ -1,9 +1,20 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
+import {
+  Column,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  Index,
+  JoinTable,
+  ManyToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { MarketplaceRequestType } from '../../habit-pack/domain/marketplace-request.enum';
 import { User } from '../../user/entities/user.entity';
 import { InstalledFocusModeTemplate } from './installed-focus-mode_templates.entity';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 
 @Entity('focus_mode_templates')
 export class FocusModeTemplate extends BaseEntity {
@@ -120,4 +131,8 @@ export class FocusModeTemplate extends BaseEntity {
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.focus_mode_template)
   focus_modes?: FocusMode[];
+
+  @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
+  @JoinTable()
+  tags?: FocusModeTag[];
 }

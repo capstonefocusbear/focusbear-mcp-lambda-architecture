@@ -1,8 +1,19 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
+import {
+  Column,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  Index,
+  JoinTable,
+  ManyToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { User } from '../../user/entities/user.entity';
 import { CompletedFocusBlock } from './completed-focus-block.entity';
+import { FocusModeTag } from './focus-mode-tags';
 
 @Entity('focus_modes')
 export class FocusMode extends BaseEntity {
@@ -53,12 +64,12 @@ export class FocusMode extends BaseEntity {
   @DeleteDateColumn()
   deleted_at?: Date;
 
-  @ManyToOne(() => User, (user) => user.focus_modes)
+  @ManyToOne(() => User, (user) => user.focus_modes, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
   @ManyToOne(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.focus_modes, {
-    onDelete: 'NO ACTION',
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'focus_mode_template_id' })
@@ -66,4 +77,8 @@ export class FocusMode extends BaseEntity {
 
   @OneToMany(() => CompletedFocusBlock, (log) => log.focus_mode)
   completed_logs?: CompletedFocusBlock[];
+
+  @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
+  @JoinTable()
+  tags?: FocusModeTag[];
 }

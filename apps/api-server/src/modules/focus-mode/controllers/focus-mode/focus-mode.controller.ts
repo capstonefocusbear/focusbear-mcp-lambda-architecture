@@ -83,4 +83,9 @@ export class FocusModeController {
     await this.focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user.id);
     return new ResponseMessage('Focus mode has been successfully finished!');
   }
+
+  @Get('tags')
+  async getUserFocusTags(@AuthContext() { user }: Passport) {
+    return this.focusModeService.getUserFocusTags(user.id);
+  }
 }

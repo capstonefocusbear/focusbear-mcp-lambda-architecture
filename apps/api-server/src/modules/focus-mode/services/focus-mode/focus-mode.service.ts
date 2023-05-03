@@ -91,7 +91,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async createFocusMode(user_id: string, focusModeDto: CreateFocusModeDto) {
+  async createFocusMode(user_id: string, focusModeDto: CreateFocusModeDto): Promise<FocusMode> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -113,7 +113,11 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async updateFocusMode(user_id: string, focus_mode_id: string, updateFocusModeDto: UpdateFocusModeDto) {
+  async updateFocusMode(
+    user_id: string,
+    focus_mode_id: string,
+    updateFocusModeDto: UpdateFocusModeDto,
+  ): Promise<FocusMode> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -195,5 +199,9 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getUserFocusTags(user_id: string): Promise<Partial<FocusModeTag>[]> {
+    return this.focusModeTagRepository.orm.find({ where: { user_id }, select: ['id', 'text'] });
   }
 }

@@ -139,7 +139,7 @@ export class HabitPack extends BaseEntity {
   @OneToMany(() => User, (user) => user.sign_up_habit_pack)
   signed_up_users?: User[];
 
-  @ManyToOne(() => User, (user) => user.created_habit_packs, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
+  @ManyToOne(() => User, (user) => user.created_habit_packs, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

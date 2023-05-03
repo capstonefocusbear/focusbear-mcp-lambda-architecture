@@ -53,7 +53,7 @@ export class FocusMode extends BaseEntity {
   @DeleteDateColumn()
   deleted_at?: Date;
 
-  @ManyToOne(() => User, (user) => user.focus_modes)
+  @ManyToOne(() => User, (user) => user.focus_modes, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

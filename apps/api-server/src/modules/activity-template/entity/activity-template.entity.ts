@@ -125,7 +125,7 @@ export class ActivityTemplate extends BaseEntity {
   @JoinColumn({ name: 'pack_id' })
   habit_pack?: HabitPack;
 
-  @ManyToOne(() => User, (user) => user.activity_templates)
+  @ManyToOne(() => User, (user) => user.activity_templates, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

@@ -21,7 +21,7 @@ export class CourseEnrolment extends BaseEntity {
   @Column({ type: 'varchar' })
   course_id: string;
 
-  @ManyToOne(() => User, (user) => user.id, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
+  @ManyToOne(() => User, (user) => user.id, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

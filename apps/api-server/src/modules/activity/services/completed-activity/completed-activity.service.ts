@@ -944,12 +944,13 @@ export class CompletedActivityService {
       level: 'debug',
       message: 'Counting focus mode summary',
     });
-    return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '' }) => ({
+    return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '', tags }) => ({
       name: focus_mode.name,
       start_time,
       duration: (new Date(finish_time).getTime() - new Date(start_time).getTime()) / 1000,
       achievements,
       distractions,
+      tags: tags?.map((tag) => tag.text),
     }));
   }
 

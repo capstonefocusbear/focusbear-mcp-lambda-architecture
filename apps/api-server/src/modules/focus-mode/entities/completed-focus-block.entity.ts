@@ -1,7 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index, JoinTable, ManyToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { FocusMode } from './focus-mode.entity';
+import { FocusModeTag } from './focus-mode-tags';
 
 @Entity('completed_focus_blocks')
 export class CompletedFocusBlock extends BaseEntity {
@@ -74,4 +75,8 @@ export class CompletedFocusBlock extends BaseEntity {
   @ManyToOne(() => FocusMode, (mode) => mode.completed_logs, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'focus_mode_id' })
   focus_mode?: FocusMode;
+
+  @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
+  @JoinTable()
+  tags?: FocusModeTag[];
 }

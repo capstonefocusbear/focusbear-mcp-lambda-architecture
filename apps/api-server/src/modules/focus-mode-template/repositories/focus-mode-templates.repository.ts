@@ -17,7 +17,9 @@ export class FocusModeTemplatesRepository extends BaseRepository<FocusModeTempla
     language,
     featured_for_onboarding,
   }: GetMultipleFocusModeTemplatesQueryDto): Promise<FocusModeTemplate[]> {
-    const query = this.orm.createQueryBuilder('focus_mode_templates');
+    const query = this.orm
+      .createQueryBuilder('focus_mode_templates')
+      .leftJoinAndSelect('focus_mode_templates.tags', 'tags');
 
     if (typeof marketplace_approval_status === 'boolean') {
       query.andWhere('focus_mode_templates.marketplace_approval_status = :marketplace_approval_status', {

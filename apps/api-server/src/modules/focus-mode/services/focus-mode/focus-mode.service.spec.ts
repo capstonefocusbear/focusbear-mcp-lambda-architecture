@@ -1,18 +1,26 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { FocusModeDummy, focusModeTemplateDBResponseDummy, userDummy } from '../../../../../test/dummies';
+import {
+  FocusModeDummy,
+  UpsertFocusModeDummy,
+  focusModeTemplateDBResponseDummy,
+  userDummy,
+} from '../../../../../test/dummies';
 import {
   FocusModeRepositoryMock,
+  FocusModeTagRepositoryMock,
   InstalledFocusModeTemplatesRepositoryMock,
   SentryServiceMock,
 } from '../../../../../test/mocks';
-import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeService } from './focus-mode.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
 import { InstalledFocusModeTemplate } from '../../../focus-mode-template/entities/installed-focus-mode_templates.entity';
+import { FocusModeTagRepository } from '../../repositories/focus-mode-tags.repository';
+import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
+import { FocusMode } from '../../entities/focus-mode.entity';
 
 describe('FocusModeService', () => {
   let focusModeService: FocusModeService;
@@ -23,6 +31,7 @@ describe('FocusModeService', () => {
         FocusModeService,
         FocusModeRepository,
         InstalledFocusModeTemplatesRepository,
+        FocusModeTagRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -33,6 +42,8 @@ describe('FocusModeService', () => {
       .useValue(FocusModeRepositoryMock)
       .overrideProvider(InstalledFocusModeTemplatesRepository)
       .useValue(InstalledFocusModeTemplatesRepositoryMock)
+      .overrideProvider(FocusModeTagRepository)
+      .useValue(FocusModeTagRepositoryMock)
       .compile();
 
     focusModeService = moduleRef.get<FocusModeService>(FocusModeService);
@@ -42,33 +53,42 @@ describe('FocusModeService', () => {
     expect(focusModeService).toBeDefined();
   });
 
-  describe('create', () => {
+  describe('createFocusMode', () => {
     const createFocusModeDto: CreateFocusModeDto = {
       id: randomUUID(),
       name: 'some string',
+      allowed_apps: ['chrome.exe'],
+      allowed_urls: ['https://focusbear.io'],
+      tags: [{ id: randomUUID(), text: 'Test Tag' }],
     };
     const user_id = userDummy.id;
 
     it('positive: repository create should be called', async () => {
-      await focusModeService.create({ ...createFocusModeDto, user_id });
+      await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
-      expect(FocusModeRepositoryMock.create).toBeCalledWith({
-        user_id,
-        ...createFocusModeDto,
-      });
+      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray() }),
+      );
     });
   });
 
-  describe('update', () => {
+  describe('updateFocusMode', () => {
     const updateFocusModeDto: UpdateFocusModeDto = {
       name: 'some string',
+      id: FocusModeDummy.id,
+      allowed_apps: ['chrome.exe'],
+      allowed_urls: ['https://focusbear.io'],
+      tags: [{ id: randomUUID(), text: 'Test Tag' }],
     };
-    const id = randomUUID();
+    const user_id = randomUUID();
+    FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
 
     it('positive: repository update should be called', async () => {
-      await focusModeService.update(id, updateFocusModeDto);
+      await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
 
-      expect(FocusModeRepositoryMock.update).toBeCalledWith(id, updateFocusModeDto);
+      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+        new FocusMode({ ...FocusModeDummy, ...updateFocusModeDto, user_id, tags: expect.toBeArray() }),
+      );
     });
   });
 
@@ -97,9 +117,9 @@ describe('FocusModeService', () => {
     it('positive: should call update on supplied user focus modes', async () => {
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
 
-      await focusModeService.updateFocusModes(userDummy.id, [FocusModeDummy]);
+      await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
-      expect(FocusModeRepositoryMock.update).toBeCalledWith(FocusModeDummy.id, { ...FocusModeDummy });
+      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith({ ...FocusModeDummy });
     });
   });
 

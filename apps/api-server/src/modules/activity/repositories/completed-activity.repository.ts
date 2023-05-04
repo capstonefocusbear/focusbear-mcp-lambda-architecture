@@ -6,6 +6,7 @@ import { ActivityType } from '../domain/activity-type.enum';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { CompletedActivity } from '../entities/completed-activity.entity';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
 
 @Injectable()
 export class CompletedActivityRepository extends BaseRepository<CompletedActivity> {
@@ -53,7 +54,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
 
   async getLogsByActivityInTimeRange(
     activity_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<CompletedActivity[]> {
     return this.orm.find({
       where: {
@@ -66,10 +67,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     });
   }
 
-  async getDaySummarySUM(
-    user_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
-  ): Promise<any> {
+  async getDaySummarySUM(user_id: string, { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME }): Promise<any> {
     return this.orm.find({
       where: {
         user_id,
@@ -89,7 +87,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
 
   async getDaySummaryAVG(
     user_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<any[]> {
     return this.orm.find({
       where: {
@@ -110,7 +108,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
 
   async getDaySummaryDuration(
     user_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<any> {
     return this.orm.find({
       where: {

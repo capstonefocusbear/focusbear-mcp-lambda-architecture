@@ -4,9 +4,16 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { In } from 'typeorm';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
-import { focusModeTemplateDBResponseDummy, userDummy } from '../../../../test/dummies';
+import {
+  FocusModeTagsDtoDummy,
+  FocusModeTagsDummy,
+  focusModeTemplateDBResponseDummy,
+  userDummy,
+} from '../../../../test/dummies';
 import {
   FocusModeRepositoryMock,
+  FocusModeServiceMock,
+  FocusModeTagRepositoryMock,
   FocusModeTemplatesRepositoryMock,
   InstalledFocusModeTemplatesRepositoryMock,
   SentryServiceMock,
@@ -22,6 +29,11 @@ import { InstalledFocusModeTemplatesRepository } from '../repositories/installed
 import { InstalledFocusModeTemplate } from '../entities/installed-focus-mode_templates.entity';
 import { FocusModeRepository } from '../../focus-mode/repositories/focus-mode.repository';
 import { FocusModeTemplate } from '../entities/focus-mode-template.entity';
+import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
+import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
+import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
+import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 
 describe('FocusModeTemplatesService', () => {
   let focusModeTemplateService: FocusModeTemplatesService;
@@ -34,6 +46,8 @@ describe('FocusModeTemplatesService', () => {
         UserRepository,
         FocusModeRepository,
         InstalledFocusModeTemplatesRepository,
+        FocusModeService,
+        FocusModeTagRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -48,6 +62,10 @@ describe('FocusModeTemplatesService', () => {
       .useValue(FocusModeRepositoryMock)
       .overrideProvider(InstalledFocusModeTemplatesRepository)
       .useValue(InstalledFocusModeTemplatesRepositoryMock)
+      .overrideProvider(FocusModeService)
+      .useValue(FocusModeServiceMock)
+      .overrideProvider(FocusModeTagRepository)
+      .useValue(FocusModeTagRepositoryMock)
       .compile();
 
     focusModeTemplateService = moduleRef.get<FocusModeTemplatesService>(FocusModeTemplatesService);
@@ -72,6 +90,7 @@ describe('FocusModeTemplatesService', () => {
       featured_for_onboarding: false,
       is_featured: false,
       language: 'en',
+      tags: FocusModeTagsDtoDummy,
     };
 
     it('Negative: should return not found message for invalid user', async () => {
@@ -110,25 +129,28 @@ describe('FocusModeTemplatesService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('Positive: should call focusModeTemplateRepository.upsert with upsert dto and added properties', async () => {
+    it('Positive: should call focusModeTemplateRepository.orm.save with upsert dto and added properties', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeServiceMock.saveFocusModeTags.mockResolvedValueOnce([
+        new FocusModeTag({ ...focusModeTemplateDtoDummy.tags[0] }),
+      ]);
 
       await focusModeTemplateService.upsertFocusModeTemplate(focusModeTemplateDtoDummy, userDummy.id);
 
-      expect(FocusModeTemplatesRepositoryMock.upsert).toBeCalledWith(
-        {
-          ...focusModeTemplateDtoDummy,
-          author_id: userDummy.id,
-          author_name: userDummy.name,
-          welcome_message_plain_text: 'Welcome message text',
-          description_plain_text: 'Text description',
-        },
-        ['id'],
-      );
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
+        ...focusModeTemplateDtoDummy,
+        author_id: userDummy.id,
+        author_name: userDummy.name,
+        welcome_message_plain_text: 'Welcome message text',
+        description_plain_text: 'Text description',
+      });
     });
 
     it('Positive: admin user should be able to change admin properties to true', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      FocusModeServiceMock.saveFocusModeTags.mockResolvedValueOnce([
+        new FocusModeTag({ ...focusModeTemplateDtoDummy.tags[0] }),
+      ]);
 
       await focusModeTemplateService.upsertFocusModeTemplate(
         {
@@ -141,7 +163,7 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTemplatesRepositoryMock.upsert).toBeCalledWith(
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith(
         new FocusModeTemplate({
           ...focusModeTemplateDtoDummy,
           author_id: userDummy.id,
@@ -151,13 +173,17 @@ describe('FocusModeTemplatesService', () => {
           featured_for_onboarding: true,
           welcome_message_plain_text: 'Welcome message text',
           description_plain_text: 'Text description',
+          tags: FocusModeTagsDummy,
         }),
-        ['id'],
       );
     });
 
     it('Positive: standard user should not be able to change admin properties, they should be saved as false if standard user tries changing them to true', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy });
+      FocusModeTemplatesRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      FocusModeServiceMock.saveFocusModeTags.mockResolvedValueOnce([
+        new FocusModeTag({ ...focusModeTemplateDtoDummy.tags[0] }),
+      ]);
 
       await focusModeTemplateService.upsertFocusModeTemplate(
         {
@@ -169,16 +195,31 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTemplatesRepositoryMock.upsert).toBeCalledWith(
-        {
-          ...focusModeTemplateDtoDummy,
-          author_id: userDummy.id,
-          author_name: userDummy.name,
-          welcome_message_plain_text: 'Welcome message text',
-          description_plain_text: 'Text description',
-        },
-        ['id'],
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
+        ...focusModeTemplateDtoDummy,
+        author_id: userDummy.id,
+        author_name: userDummy.name,
+        welcome_message_plain_text: 'Welcome message text',
+        description_plain_text: 'Text description',
+      });
+    });
+
+    it("Positive: should delete existing focus mode tags for template that aren't part of incoming tags", async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeTemplatesRepositoryMock.orm.findOneBy.mockResolvedValueOnce(focusModeTemplateDBResponseDummy);
+      FocusModeServiceMock.saveFocusModeTags.mockResolvedValueOnce([
+        new FocusModeTag({ ...focusModeTemplateDtoDummy.tags[0] }),
+      ]);
+
+      await focusModeTemplateService.upsertFocusModeTemplate(
+        { ...focusModeTemplateDtoDummy, tags: [focusModeTemplateDBResponseDummy.tags[0] as CreateFocusModeTagDto] },
+        userDummy.id,
       );
+
+      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({
+        id: focusModeTemplateDBResponseDummy.tags[1].id,
+        user_id: userDummy.id,
+      });
     });
   });
 
@@ -316,13 +357,16 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.installFocusModeForUser(focusModeTemplateDBResponseDummy.id, userDummy.id);
 
-      expect(FocusModeRepositoryMock.create).toBeCalledWith({
-        user_id: userDummy.id,
-        name: focusModeTemplateDBResponseDummy.name,
-        allowed_apps: focusModeTemplateDBResponseDummy.allowed_apps,
-        allowed_urls: focusModeTemplateDBResponseDummy.allowed_urls,
-        focus_mode_template_id: focusModeTemplateDBResponseDummy.id,
-      });
+      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+        new FocusMode({
+          allowed_apps: [],
+          allowed_urls: [],
+          name: focusModeTemplateDBResponseDummy.name,
+          focus_mode_template_id: focusModeTemplateDBResponseDummy.id,
+          user_id: userDummy.id,
+          tags: expect.toBeArray(),
+        }),
+      );
     });
 
     it('Positive: if focus mode was installed before, update install record as currently installed', async () => {

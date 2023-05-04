@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { FocusMode } from '../../entities/focus-mode.entity';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
+import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
+import { FocusModeTag } from '../../entities/focus-mode-tags';
+import { FocusModeTagRepository } from '../../repositories/focus-mode-tags.repository';
+import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
 
 @Injectable()
 export class FocusModeService extends BaseCRUDService<FocusModeRepository, FocusMode> {
@@ -12,7 +16,8 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     private readonly repo: FocusModeRepository,
     private readonly focusModeRepository: FocusModeRepository,
     @InjectSentry() private readonly sentryService: SentryService,
-    private readonly installedFocusModeTeplatesRepository: InstalledFocusModeTemplatesRepository,
+    private readonly installedFocusModeTemplatesRepository: InstalledFocusModeTemplatesRepository,
+    private readonly focusModeTagRepository: FocusModeTagRepository,
   ) {
     super(repo);
   }
@@ -47,7 +52,10 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       });
       await Promise.all(
         focusModes.map(async (focusMode) => {
-          await this.focusModeRepository.update(focusMode.id, { ...focusMode });
+          const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id });
+          const focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
+          const updatedFocusMode = { ...fetchedFocusMode, ...focusMode, tags: focusModeTags };
+          await this.focusModeRepository.orm.save(updatedFocusMode);
         }),
       );
       return await this.fetchUserFocusModes(user_id);
@@ -58,15 +66,142 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
   }
 
   async deleteFocusMode(id: string) {
-    const focusMode = await this.focusModeRepository.orm.findOneBy({ id });
-    // if focus mode is from an installed focus mode template, mark as uninstalled
-    if (focusMode?.focus_mode_template_id) {
-      const { user_id, focus_mode_template_id } = focusMode;
-      const installedRecord = await this.installedFocusModeTeplatesRepository.orm.findOne({
-        where: { user_id, focus_mode_template_id, installation_status: true },
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Deleting focus mode',
+        data: {
+          id,
+        },
       });
-      this.installedFocusModeTeplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+      const focusMode = await this.focusModeRepository.orm.findOneBy({ id });
+      // if focus mode is from an installed focus mode template, mark as uninstalled
+      if (focusMode?.focus_mode_template_id) {
+        const { user_id, focus_mode_template_id } = focusMode;
+        const installedRecord = await this.installedFocusModeTemplatesRepository.orm.findOne({
+          where: { user_id, focus_mode_template_id, installation_status: true },
+        });
+        this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+      }
+      this.focusModeRepository.orm.softDelete(id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    this.focusModeRepository.orm.softDelete(id);
+  }
+
+  async createFocusMode(user_id: string, focusModeDto: CreateFocusModeDto): Promise<FocusMode> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Creating focus mode',
+        data: {
+          user_id,
+          focusModeDto,
+        },
+      });
+      const { tags } = focusModeDto;
+      const focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
+      const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
+      return savedFocusMode;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async updateFocusMode(
+    user_id: string,
+    focus_mode_id: string,
+    updateFocusModeDto: UpdateFocusModeDto,
+  ): Promise<FocusMode> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating focus mode',
+        data: {
+          user_id,
+          updateFocusModeDto,
+        },
+      });
+      const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focus_mode_id } });
+      if (!focusMode) {
+        throw new BadRequestException(`Focus mode with ID: ${focus_mode_id} does not exist`);
+      }
+      const { tags } = updateFocusModeDto;
+      await this.deleteRemovedFocusModeTags(user_id, focusMode?.tags, tags);
+      const focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      const updateFocusMode = new FocusMode({
+        ...focusMode,
+        ...updateFocusModeDto,
+        user_id,
+        id: focus_mode_id,
+        tags: focusModeTags,
+      });
+      return await this.focusModeRepository.orm.save(updateFocusMode);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async saveFocusModeTags(user_id: string, tags: CreateFocusModeTagDto[]): Promise<FocusModeTag[]> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Saving focus mode tags',
+        data: {
+          user_id,
+          tags,
+        },
+      });
+      const newlyCreatedTags = tags?.map((tag) => new FocusModeTag({ ...tag, user_id }));
+      await Promise.all(newlyCreatedTags?.map((newTag) => this.focusModeTagRepository.upsert(newTag, ['id'])));
+      return newlyCreatedTags;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async deleteRemovedFocusModeTags(
+    user_id: string,
+    existingTags: FocusModeTag[],
+    incomingTags: CreateFocusModeTagDto[],
+  ) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Deleting focus mode tags',
+        data: {
+          user_id,
+          existingTags,
+          incomingTags,
+        },
+      });
+      const existingTagsIds = existingTags?.map((tag) => tag.id);
+      const incomingTagsId = incomingTags?.map((tag) => tag?.id && tag.id);
+      await Promise.all(
+        existingTagsIds.map((id) => {
+          if (!incomingTagsId.includes(id)) {
+            return this.focusModeTagRepository.orm.delete({ id, user_id });
+          }
+          return null;
+        }),
+      );
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async getUserFocusTags(user_id: string): Promise<Partial<FocusModeTag>[]> {
+    return this.focusModeTagRepository.orm.find({ where: { user_id }, select: ['id', 'text'] });
   }
 }

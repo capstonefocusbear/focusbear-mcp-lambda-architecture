@@ -15,4 +15,7 @@ export class FocusModeDaySummaryItem {
 
   @ApiProperty()
   distractions: string;
+
+  @ApiProperty()
+  tags: string[];
 }

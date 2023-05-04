@@ -95,6 +95,7 @@ export const InstalledFocusModeTemplatesRepositoryMock = {
 export const CompletedFocusBlockRepositoryMock = {
   ...BaseRepositoryMock,
   getLogsByUserInTimeRange: jest.fn(),
+  getFocusBlockLogsForTimeRange: jest.fn(),
 };
 
 export const TeamRepositoryMock = {
@@ -165,4 +166,8 @@ export const LessonsRepositoryMock = {
 export const DailyStatsRepositoryMock = {
   ...BaseRepositoryMock,
   getUserDailyStats: jest.fn(),
+};
+
+export const FocusModeTagRepositoryMock = {
+  ...BaseRepositoryMock,
 };

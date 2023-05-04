@@ -3,6 +3,7 @@ import { Between, Connection } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedFocusBlock } from '../entities/completed-focus-block.entity';
 import { GetFocusStatsQueryDto } from '../dto/get-focus-stats-query.dto';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
 
 @Injectable()
 export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocusBlock> {
@@ -12,7 +13,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
 
   async getLogsByUserInTimeRange(
     user_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<CompletedFocusBlock[]> {
     return this.orm.find({
       select: ['finish_time', 'start_time', 'focus_duration_seconds'],
@@ -29,7 +30,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
 
   async getLogsByFocusModeTagInTimeRange(
     tag_id: string,
-    { from_time = new Date(Date.now() - 24 * 60 * 60 * 1000), to_time = new Date() },
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<CompletedFocusBlock[]> {
     return this.orm.find({
       select: ['finish_time', 'start_time', 'focus_duration_seconds'],

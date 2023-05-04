@@ -98,6 +98,7 @@ export class ActivityTemplateParserService {
       log_summary_type,
       choices,
       linked_activity_template_id, // see docs/linked-activity-template-id.md
+      todo_list,
       ...activityDataValues
     }: UpdateActivityTemplateDto,
     {
@@ -127,6 +128,7 @@ export class ActivityTemplateParserService {
       has_choices,
       sequence_index: index,
       linked_activity_template_id,
+      todo_list,
     });
     const newActivityTemplateAndChoices = [activity];
     if (has_choices) newActivityTemplateAndChoices.push(...this.deserializeActivityTemplateChoices(choices, activity));
@@ -205,6 +207,7 @@ export class ActivityTemplateParserService {
       choices,
       log_quantity_questions,
       linked_activity_template_id, // see docs/linked-activity-template-id.md
+      todo_list,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -217,6 +220,7 @@ export class ActivityTemplateParserService {
       choices: choices?.map(mapActivity),
       log_quantity_questions,
       linked_activity_template_id,
+      todo_list,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {
@@ -262,6 +266,7 @@ export class ActivityTemplateParserService {
       activity_data,
       choices,
       log_quantity_questions,
+      todo_list,
     }: ActivityTemplate) => {
       return {
         id,
@@ -273,6 +278,7 @@ export class ActivityTemplateParserService {
         log_summary_type,
         choices: choices?.map(mapActivity),
         log_quantity_questions,
+        todo_list,
       };
     };
     return fetchedActivities.map(mapActivity);

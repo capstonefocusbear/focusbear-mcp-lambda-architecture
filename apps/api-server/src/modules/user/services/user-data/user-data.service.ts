@@ -63,7 +63,7 @@ export class UserDataService {
         where: { id: user_id },
       });
       const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
-      const revenueCatPromise = this.revenueCatService.deleteUserFromRevueCat(user_id);
+      const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const stripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
       const backendAlertPromise = axios.default.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {

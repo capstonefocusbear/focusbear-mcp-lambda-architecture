@@ -89,7 +89,7 @@ export class RevenueCatService {
       });
   }
 
-  async deleteUserFromRevueCat(app_user_id: string) {
+  async deleteUserFromRevenueCat(app_user_id: string) {
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };

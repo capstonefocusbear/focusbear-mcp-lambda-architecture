@@ -285,6 +285,7 @@ describe('FocusModeManagerService', () => {
 
       expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith({
         ...finishFocusModeDto,
+        tags: [],
       });
     });
 
@@ -341,6 +342,7 @@ describe('FocusModeManagerService', () => {
         ...completedFocusBlock,
         ...finishedFocusModeData,
         focus_duration_seconds: 600,
+        tags: [],
       });
     });
   });

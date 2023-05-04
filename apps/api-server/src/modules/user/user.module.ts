@@ -25,6 +25,8 @@ import { DailyStatsRepository } from './repositories/user-daily-stats.repository
 import { DailyStatsConsumer } from './consumers/daily-stats.consumer';
 import { DeviceModule } from '../device/device.module';
 import { AdminAccessRequestRepository } from './repositories/admin-access-requests.repository';
+import { UserDataService } from './services/user-data/user-data.service';
+import { UserDataController } from './controllers/user-data/user-data.controller';
 
 @Module({
   providers: [
@@ -37,6 +39,7 @@ import { AdminAccessRequestRepository } from './repositories/admin-access-reques
     DailyStatsRepository,
     DailyStatsConsumer,
     AdminAccessRequestRepository,
+    UserDataService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
   imports: [
@@ -77,6 +80,6 @@ import { AdminAccessRequestRepository } from './repositories/admin-access-reques
     FocusModeTemplatesModule,
     DeviceModule,
   ],
-  controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController],
+  controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController, UserDataController],
 })
 export class UserModule {}

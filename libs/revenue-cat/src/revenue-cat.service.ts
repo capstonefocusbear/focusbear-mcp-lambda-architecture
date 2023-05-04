@@ -88,4 +88,11 @@ export class RevenueCatService {
         throw new BadRequestException(err);
       });
   }
+
+  async deleteUserFromRevenueCat(app_user_id: string) {
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}`;
+    const Authorization = `Bearer ${this.options.secretApiKey}`;
+    const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
+    await this.httpService.delete(callUrl, { headers });
+  }
 }

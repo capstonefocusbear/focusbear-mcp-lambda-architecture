@@ -57,7 +57,7 @@ export class CompletedActivitySequence extends BaseEntity {
   })
   duration_percent_deviation?: number;
 
-  @ManyToOne(() => User, (user) => user.completed_activity_sequences)
+  @ManyToOne(() => User, (user) => user.completed_activity_sequences, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

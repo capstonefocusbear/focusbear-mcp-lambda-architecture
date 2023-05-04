@@ -39,7 +39,7 @@ export class UserConsent extends BaseEntity {
   })
   metadata?: UserConsentMetadata;
 
-  @ManyToOne(() => User, (user) => user.consents, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.consents, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

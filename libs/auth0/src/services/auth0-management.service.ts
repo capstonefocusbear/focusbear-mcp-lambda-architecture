@@ -11,4 +11,12 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     super({ domain: options.domain, ...options.management });
     this.logger = new Logger('Auth0ManagementService');
   }
+
+  async getAuth0User(auth0Id: string) {
+    return this.getUser({ id: auth0Id });
+  }
+
+  async deleteAuth0User(auth0Id: string) {
+    await this.deleteUser({ id: auth0Id });
+  }
 }

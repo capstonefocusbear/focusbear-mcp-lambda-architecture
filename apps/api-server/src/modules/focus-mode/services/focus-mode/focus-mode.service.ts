@@ -53,7 +53,10 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await Promise.all(
         focusModes.map(async (focusMode) => {
           const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id });
-          const focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
+          let focusModeTags = [];
+          if (focusMode?.tags && focusMode?.tags?.length) {
+            focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
+          }
           const updatedFocusMode = { ...fetchedFocusMode, ...focusMode, tags: focusModeTags };
           await this.focusModeRepository.orm.save(updatedFocusMode);
         }),
@@ -103,7 +106,10 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         },
       });
       const { tags } = focusModeDto;
-      const focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      let focusModeTags = [];
+      if (tags && tags?.length) {
+        focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      }
       const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
       return savedFocusMode;
@@ -134,7 +140,10 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       const { tags } = updateFocusModeDto;
       await this.deleteRemovedFocusModeTags(user_id, focusMode?.tags, tags);
-      const focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      let focusModeTags = [];
+      if (tags && tags?.length) {
+        focusModeTags = await this.saveFocusModeTags(user_id, tags);
+      }
       const updateFocusMode = new FocusMode({
         ...focusMode,
         ...updateFocusModeDto,

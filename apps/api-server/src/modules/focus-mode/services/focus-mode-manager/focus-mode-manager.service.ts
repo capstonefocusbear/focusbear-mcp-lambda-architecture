@@ -133,7 +133,10 @@ export class FocusModeManagerService {
       const durationToUse = isDurationPassedAsParam
         ? focus_duration_seconds
         : this.calculateFocusDurationSeconds(completingFocusBlock.start_time, finish_time);
-      const focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
+      let focusModeTags = [];
+      if (tags && tags?.length) {
+        focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
+      }
       const updateCompletingFocusBlock = {
         ...completingFocusBlock,
         ...finishFocusBlockDto,

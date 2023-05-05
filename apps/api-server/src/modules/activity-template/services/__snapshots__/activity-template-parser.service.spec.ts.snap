@@ -34,6 +34,7 @@ Array [
     "log_summary_type": undefined,
     "pack_id": undefined,
     "sequence_index": 0,
+    "todo_list": undefined,
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
   },
   ActivityTemplate {
@@ -65,6 +66,7 @@ Array [
     "log_summary_type": undefined,
     "pack_id": undefined,
     "sequence_index": 1,
+    "todo_list": undefined,
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
   },
   ActivityTemplate {
@@ -98,6 +100,7 @@ Array [
     "log_summary_type": undefined,
     "pack_id": undefined,
     "sequence_index": 2,
+    "todo_list": undefined,
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
   },
 ]
@@ -139,6 +142,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 0,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
       ActivityTemplate {
@@ -172,6 +176,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 1,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
@@ -208,6 +213,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 0,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
       ActivityTemplate {
@@ -241,6 +247,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 1,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
@@ -277,6 +284,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 0,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
       ActivityTemplate {
@@ -310,6 +318,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 1,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
@@ -354,6 +363,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 0,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
       ActivityTemplate {
@@ -385,6 +395,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 1,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
       ActivityTemplate {
@@ -418,6 +429,7 @@ Object {
         "log_summary_type": undefined,
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "sequence_index": 2,
+        "todo_list": undefined,
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
@@ -440,6 +452,7 @@ Object {
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "todo_list": undefined,
     },
     Object {
       "activity_type": "standalone_activity",
@@ -452,6 +465,7 @@ Object {
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "todo_list": undefined,
     },
     Object {
       "activity_type": "standalone_activity",
@@ -464,6 +478,7 @@ Object {
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "todo_list": undefined,
     },
   ],
 }
@@ -483,6 +498,7 @@ Object {
       "log_summary_type": "SUM",
       "name": "Crunches",
       "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+      "todo_list": undefined,
       "video_urls": Array [],
     },
   ],
@@ -494,6 +510,7 @@ Object {
   "log_summary_type": "SUM",
   "name": "Journaling",
   "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+  "todo_list": undefined,
   "video_urls": Array [],
 }
 `;

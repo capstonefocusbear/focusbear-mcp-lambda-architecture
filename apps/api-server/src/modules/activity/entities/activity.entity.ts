@@ -113,6 +113,13 @@ export class Activity extends BaseEntity {
   })
   days_of_week?: DaysOfWeek[];
 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('todo_list'),
+  })
+  todo_list?: string[];
+
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',

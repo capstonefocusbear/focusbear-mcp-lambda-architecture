@@ -92,6 +92,13 @@ export class ActivityTemplate extends BaseEntity {
   })
   sequence_index?: number;
 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('todo_list'),
+  })
+  todo_list?: string[];
+
   @DeleteDateColumn()
   deleted_at?: Date;
 

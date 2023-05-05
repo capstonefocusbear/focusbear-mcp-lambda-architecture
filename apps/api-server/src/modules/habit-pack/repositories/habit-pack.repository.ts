@@ -220,7 +220,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.linked_question_id',
-      ]);
+      ])
+      .orderBy('habit_packs.pack_name', 'ASC');
 
     if (pack_type) {
       query.andWhere('habit_packs.pack_type = :pack_type', { pack_type });

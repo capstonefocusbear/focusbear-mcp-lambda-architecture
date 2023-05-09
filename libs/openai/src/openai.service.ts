@@ -157,6 +157,9 @@ export class OpenAIService {
   }
 
   async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
+    if (!isUrlSafeDto?.url) {
+      return null;
+    }
     const config = new Configuration({ ...this.options });
     const openai = new OpenAIApi(config);
     let metaDescriptionToUse = isUrlSafeDto.meta_description;

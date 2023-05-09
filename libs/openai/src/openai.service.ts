@@ -176,9 +176,11 @@ export class OpenAIService {
       - Tab Title: ${titleToUse}
       - Meta Description: ${metaDescriptionToUse}
       - Focus Mode: ${isUrlSafeDto.focus_mode}
-      - Intention: ${isUrlSafeDto.intention}
+      - Intention (what the user wants to focus on): ${isUrlSafeDto.intention}
 
       The Meta Description and Tab Title are more important than the URL. The URL will be generic but the tab title and meta description are more specific.
+
+      If the meta description/tab title are related to the Intention, allow it. 
        
       If the website not directly related to the focus mode and intention, the website should be considered as unsafe to visit and have a low score (below 0.8)
       Example of case where the website is safe for the user to visit (should have a score of 1):
@@ -187,6 +189,13 @@ export class OpenAIService {
       - Meta Description: Stack Overflow is the largest, most trusted online community for developers to learn, share their programming knowledge, and build their careers.
       - Focus Mode: Programming Work
       - Intention: Finish dashboard website
+
+      Another example of case where the website is safe for the user to visit (should have a score of 0.8):
+      - URL: https://www.turing.com/blog/what-is-nest-js-why-use-it/
+      - Tab Title: What Is Nest.JS? Why Should You Use It? | Turing
+      - Meta Description: Nest.JS is a framework that helps build efficient and scalable server-side applications. The Nest framework supports databases like MongoDB and PostgreSQL
+      - Focus Mode: Programming Work
+      - Intention: Work on Nest JS backend
 
       Example of case where the website is NOT safe for the user to visit (should have a score of 0.1):
       - URL: https://www.airbnb.com/

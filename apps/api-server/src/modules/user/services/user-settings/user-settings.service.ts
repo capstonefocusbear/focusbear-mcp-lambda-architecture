@@ -12,6 +12,9 @@ import { CompletedActivitySequenceService } from '../../../activity/services/com
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
+import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
+import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
+import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 
 @Injectable()
 export class UserSettingsService {
@@ -22,6 +25,8 @@ export class UserSettingsService {
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly helperCommonService: HelperCommonService,
+    private readonly activitySequenceService: ActivitySequenceService,
   ) {}
 
   async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -177,13 +182,14 @@ export class UserSettingsService {
         },
       });
       let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;
-      let nextActivityId: string;
+      const { cutoff_time_for_non_high_priority_activities: cutOffTime, timezone } = user;
       const { morning_activities, break_activities, evening_activities } = updateSettingsData;
       const morningActivityIds = morning_activities.map((activity) => activity.id);
       const breakActivityIds = break_activities.map((activity) => activity.id);
       const eveningActivityIds = evening_activities.map((activity) => activity.id);
       const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
-      const { completing_sequence_log } = user;
+      // check if user current activity is not included in incoming activities
+      // if so - recalculate current activity
       if (current_activity_id && !activityIds.includes(current_activity_id)) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
@@ -194,22 +200,53 @@ export class UserSettingsService {
             current_activity_id,
           },
         });
-        const sequence = await this.activitySequenceRepository.orm.findOneBy({ id: user.current_activity_sequence_id });
-        if (!sequence) return;
-        const { sequenceActivityIds, id: activity_sequence_id } = sequence;
-        const currentActivityIndexInTheSequence = sequenceActivityIds.findIndex((e) => e === current_activity_id);
-        nextActivityId = sequenceActivityIds[currentActivityIndexInTheSequence + 1];
-        current_completing_sequence_log_id = nextActivityId ? completing_sequence_log?.id : null;
-        current_activity_sequence_id = nextActivityId ? activity_sequence_id : null;
-        current_activity_id = nextActivityId ?? null;
-        await this.userRepository.orm.update(user.id, {
-          ...user,
-          current_completing_sequence_log_id,
-          current_activity_id: nextActivityId ?? null,
-          current_activity_sequence_id,
+        const sequence = await this.activitySequenceRepository.orm.findOne({
+          where: { id: user?.current_activity_sequence_id },
+          relations: ['activities'],
         });
-        if (!nextActivityId) {
-          await this.completedActivitySequenceService.completeActivitySequence(completing_sequence_log.id, user.id);
+        if (sequence) {
+          const { sequenceActivityIds, id: activity_sequence_id, activities } = sequence;
+          const currentActivityIndex = sequenceActivityIds.indexOf(current_activity_id);
+          // find eligible next activities
+          const activitiesAfterCurrentActivity = sequenceActivityIds.slice(currentActivityIndex + 1);
+          // remove following activities in sequence that were also deleted
+          let possibleNextActivities = activities.filter(
+            (activity) => activityIds.includes(activity.id) && activitiesAfterCurrentActivity.includes(activity.id),
+          );
+          // remove standard priority activities if cut off time has been reached
+          const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+          if (hasCutoffTimeBeenReached) {
+            possibleNextActivities = possibleNextActivities.filter(
+              (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+            );
+          }
+          // get activities for current day of week
+          const currentDay = this.helperCommonService.getDayOfWeek(timezone);
+          const possibleActivitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(
+            currentDay,
+            possibleNextActivities,
+          );
+          // sort IDs of leftover activities in execution order
+          const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
+            sequenceActivityIds,
+            possibleActivitiesForToday,
+          );
+          const [nextId] = sortedIdsForCurrentDayActivities;
+          if (!nextId) {
+            await this.completedActivitySequenceService.completeActivitySequence(
+              current_completing_sequence_log_id,
+              user.id,
+            );
+          }
+          current_completing_sequence_log_id = nextId ? current_completing_sequence_log_id : null;
+          current_activity_sequence_id = nextId ? activity_sequence_id : null;
+          current_activity_id = nextId ?? null;
+          await this.userRepository.orm.update(user.id, {
+            ...user,
+            current_completing_sequence_log_id,
+            current_activity_id: nextId ?? null,
+            current_activity_sequence_id,
+          });
         }
       }
       return {
@@ -229,5 +266,16 @@ export class UserSettingsService {
     }
     const cutoffTimeForToday = DateTime.fromFormat(time, 'hh:mm');
     return cutoffTimeForToday.isValid;
+  }
+
+  hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
+    const hasUserGotCutOffTime = Boolean(cutoffTime);
+    const userCurrentTime = DateTime.local({ zone: timezone });
+    const userCutOffTime =
+      hasUserGotCutOffTime &&
+      DateTime.fromFormat(cutoffTime, 'hh:mm', {
+        zone: timezone,
+      });
+    return userCutOffTime && userCurrentTime >= userCutOffTime;
   }
 }

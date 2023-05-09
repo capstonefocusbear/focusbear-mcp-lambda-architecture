@@ -47,6 +47,8 @@ export const DeviceServiceMock = {
 
 export const ActivitySequenceServiceMock = {
   getUserRoutineDailyDurations: jest.fn(),
+  sortActivityIdsByExecutionSequence: jest.fn(),
+  filterActivitiesForCurrentDay: jest.fn(),
 };
 
 export const CompletedActivitySequenceServiceMock = {

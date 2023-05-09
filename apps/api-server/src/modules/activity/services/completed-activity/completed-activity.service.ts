@@ -576,7 +576,7 @@ export class CompletedActivityService {
     return { activity: currentActivity, shouldRefetchUser };
   }
 
-  private hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
+  hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
     const hasUserGotCutOffTime = Boolean(cutoffTime);
     const userCurrentTime = DateTime.local({ zone: timezone });
     const userCutOffTime =
@@ -587,7 +587,7 @@ export class CompletedActivityService {
     return userCutOffTime && userCurrentTime >= userCutOffTime;
   }
 
-  private sortActivitiesInSequence(activities: Activity[], orderedIds: string[]) {
+  sortActivitiesInSequence(activities: Activity[], orderedIds: string[]) {
     return activities.sort(
       (precedingActivity, followingActivity) =>
         orderedIds.indexOf(precedingActivity.id) - orderedIds.indexOf(followingActivity.id),

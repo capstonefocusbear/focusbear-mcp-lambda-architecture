@@ -27,6 +27,7 @@ import { DeviceModule } from '../device/device.module';
 import { AdminAccessRequestRepository } from './repositories/admin-access-requests.repository';
 import { UserDataService } from './services/user-data/user-data.service';
 import { UserDataController } from './controllers/user-data/user-data.controller';
+import { HelperModule } from '../helper/helper.module';
 
 @Module({
   providers: [
@@ -79,6 +80,7 @@ import { UserDataController } from './controllers/user-data/user-data.controller
     HabitPackModule,
     FocusModeTemplatesModule,
     DeviceModule,
+    HelperModule,
   ],
   controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController, UserDataController],
 })

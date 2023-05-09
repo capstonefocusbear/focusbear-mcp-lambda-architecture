@@ -373,8 +373,8 @@ export class UserService {
     if (!fetchedUser) {
       return null;
     }
-    const completedSequences = this.removeUserIncompleteSequences(fetchedUser?.completed_activity_sequences);
-    return { ...fetchedUser, completed_activity_sequences: completedSequences };
+    // returning empty activities array here temporarily until dashboard has implemented new endpoint to get activities
+    return { ...fetchedUser, activities: [] };
   }
 
   removeUserIncompleteSequences(activitySequenceRecords: CompletedActivitySequence[]) {

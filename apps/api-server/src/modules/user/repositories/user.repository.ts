@@ -20,13 +20,16 @@ export class UserRepository extends BaseRepository<User> {
     activitiesData: DeserializedActivity[],
     logQuantityQuestions: LogQuantityQuestion[],
   ) {
-    await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
-      await transactionalEntityManager.update(User, { id }, { ...updateData });
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.manager.update(User, { id }, { ...updateData });
       await Promise.all(
         activitiesData.map(async ({ sequence, activities }) => {
-          await transactionalEntityManager.upsert(ActivitySequence, sequence, ['id']);
+          await queryRunner.manager.upsert(ActivitySequence, sequence, ['id']);
           const activityIdsToKeep = activities.map((activity) => activity.id);
-          await transactionalEntityManager.delete(Activity, {
+          await queryRunner.manager.delete(Activity, {
             user_id: id,
             id: Not(In(activityIdsToKeep)),
             type: sequence.type,
@@ -46,25 +49,31 @@ export class UserRepository extends BaseRepository<User> {
       const choicesWithLinks = activitiesArray.filter(
         ({ parent_id, linked_activity_id }) => !!parent_id && !!linked_activity_id,
       );
-      await transactionalEntityManager.upsert(Activity, parentsWithoutLinks, ['id']);
-      await transactionalEntityManager.upsert(Activity, parentsWithLinks, ['id']);
-      await transactionalEntityManager.upsert(Activity, choicesWithoutLinks, ['id']);
-      await transactionalEntityManager.upsert(Activity, choicesWithLinks, ['id']);
+      await queryRunner.manager.upsert(Activity, parentsWithoutLinks, ['id']);
+      await queryRunner.manager.upsert(Activity, parentsWithLinks, ['id']);
+      await queryRunner.manager.upsert(Activity, choicesWithoutLinks, ['id']);
+      await queryRunner.manager.upsert(Activity, choicesWithLinks, ['id']);
       // delete existing log quantity questions that aren't in the update data
       // and are linked to normal activities not activity templates
       const incomingQuestionIds = logQuantityQuestions
         .map((question) => question.id)
         .filter((questionId) => !!questionId);
-      await transactionalEntityManager.delete(LogQuantityQuestion, {
+      await queryRunner.manager.delete(LogQuantityQuestion, {
         user_id: id,
         id: Not(In(incomingQuestionIds)),
         activity_id: Not(IsNull()),
       });
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
-      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
-      await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
-    });
+      await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
+      await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async getUserSettings(id: string): Promise<User> {
@@ -187,10 +196,29 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async getUserForAdmin(id: string, stripe_customer_id: string) {
-    return this.orm.findOne({
-      where: [{ id }, { stripe_customer_id }],
-      relations: ['focus_modes', 'activities', 'completed_focus_blocks', 'completed_activity_sequences'],
-      order: { completed_focus_blocks: { start_time: 'DESC' }, completed_activity_sequences: { start_time: 'DESC' } },
-    });
+    const currentDate = new Date();
+    const sevenDaysAgo = new Date(currentDate.setDate(currentDate.getDate() - 1));
+    const query = this.orm
+      .createQueryBuilder('users')
+      .leftJoinAndSelect('users.focus_modes', 'focus_modes')
+      .leftJoinAndSelect(
+        'users.completed_activity_sequences',
+        'completed_activity_sequences',
+        'completed_activity_sequences.start_time >= :sevenDaysAgo AND completed_activity_sequences.is_completed = :is_completed',
+      )
+      .leftJoinAndSelect(
+        'users.completed_focus_blocks',
+        'completed_focus_blocks',
+        'completed_focus_blocks.start_time >= :sevenDaysAgo',
+      )
+      .setParameters({ sevenDaysAgo, is_completed: true });
+
+    if (id) {
+      query.andWhere('users.id = :id', { id });
+    }
+    if (stripe_customer_id) {
+      query.andWhere('users.stripe_customer_id = :stripe_customer_id', { stripe_customer_id });
+    }
+    return query.getOne();
   }
 }

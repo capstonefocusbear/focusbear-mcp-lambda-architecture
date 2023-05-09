@@ -177,6 +177,8 @@ export class OpenAIService {
       - Meta Description: ${metaDescriptionToUse}
       - Focus Mode: ${isUrlSafeDto.focus_mode}
       - Intention: ${isUrlSafeDto.intention}
+
+      The Meta Description and Tab Title are more important than the URL. The URL will be generic but the tab title and meta description are more specific.
        
       If the website not directly related to the focus mode and intention, the website should be considered as unsafe to visit and have a low score (below 0.8)
       Example of case where the website is safe for the user to visit (should have a score of 1):

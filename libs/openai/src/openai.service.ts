@@ -157,7 +157,7 @@ export class OpenAIService {
   }
 
   async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
-    if (!isUrlSafeDto?.url) {
+    if (!isUrlSafeDto?.url || !this.isValidURL(isUrlSafeDto?.url)) {
       return null;
     }
     const config = new Configuration({ ...this.options });
@@ -263,5 +263,15 @@ export class OpenAIService {
     } catch (error) {
       return { title: null, description: null };
     }
+  }
+
+  isValidURL(string: string) {
+    let url;
+    try {
+      url = new URL(string);
+    } catch (_) {
+      return false;
+    }
+    return url.protocol === 'http:' || url.protocol === 'https:';
   }
 }

@@ -1,9 +1,8 @@
-import { IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class IsUrlSafeDto {
-  @IsUrl()
   @IsOptional()
-  @ValidateIf((dto) => dto.url !== '')
+  @IsString()
   url: string;
 
   @IsOptional()

@@ -95,9 +95,9 @@ export class ActivityTemplate extends BaseEntity {
   @Column({
     type: 'jsonb',
     nullable: true,
-    transformer: BaseEntity.encryptJSONField('checklist'),
+    transformer: BaseEntity.encryptJSONField('check_list'),
   })
-  checklist?: string[];
+  check_list?: string[];
 
   @DeleteDateColumn()
   deleted_at?: Date;

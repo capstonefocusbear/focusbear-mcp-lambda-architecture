@@ -697,6 +697,17 @@ export class CompletedActivityService {
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
       const params = { days_number, log_summary_type, stat_type, timezone };
       const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
+      const logQuantityQuestions = await this.logQuantityQuestionRepository.orm.find({
+        where: { activity_id },
+        select: ['id'],
+      });
+      const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
+      const logQuantityStats = await Promise.all(
+        loqQuantityQuestionIds.map(
+          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone }),
+          // eslint-disable-next-line function-paren-newline
+        ),
+      );
       const stats = new CompletedActivityStats({
         activity_id,
         days_number,
@@ -704,6 +715,7 @@ export class CompletedActivityService {
         log_summary_type,
         stat_type,
         timezone,
+        log_quantity_answers_stats: logQuantityStats,
       });
       return stats;
     } catch (error) {

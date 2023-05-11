@@ -68,6 +68,7 @@ import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
+import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -851,6 +852,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -872,6 +874,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithTruthyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -890,11 +893,36 @@ describe('CompletedActivityService', () => {
       const statItemsDummy = [{ date: new Date(Date.now()), summary: '30' }];
       CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce(statItemsDummy);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const result = await completedActivityService.getStatsByActivityPerDay(params, query);
 
       expect(result).toBeDefined();
       expect(result).toBeInstanceOf(CompletedActivityStats);
+    });
+
+    it('positive: if activity has log quantity questions, stats for them should be retrieved and included in response', async () => {
+      const activityWithFalsyQuantityLogs: Activity = {
+        ...ActivityDummy,
+        log_quantity: false,
+        linked_activity_id: null,
+      };
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      const questionOneId = randomUUID();
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([{ id: questionOneId }]);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ id: questionOneId });
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityAnswersRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce({
+        date: new Date(),
+        summary: 5,
+      });
+
+      const result = await completedActivityService.getStatsByActivityPerDay(params, query);
+
+      expect(result).toBeInstanceOf(CompletedActivityStats);
+      expect(result.log_quantity_answers_stats.length).toBe(1);
+      expect(result.log_quantity_answers_stats[0]).toBeInstanceOf(LogQuantityAnswersStats);
     });
   });
 

@@ -65,6 +65,7 @@ export const ActivityRepositoryMock = {
 
 export const LogQuantityAnswersRepositoryMock = {
   ...BaseRepositoryMock,
+  getAggregatedQuantityLogsPerDay: jest.fn(),
 };
 
 export const LogQuantityQuestionsRepositoryMock = {

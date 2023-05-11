@@ -12,6 +12,7 @@ import * as axios from 'axios';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS } from './openai.constants';
+import { AiToneOptions } from './domain/ai-tones.enum';
 
 @Injectable()
 export class OpenAIService {
@@ -22,7 +23,12 @@ export class OpenAIService {
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
 
-  async createMotivationalSummary(response: FastifyReply, input: HabitOption[], language: string) {
+  async createMotivationalSummary(
+    response: FastifyReply,
+    input: HabitOption[],
+    language: string,
+    tone = AiToneOptions.HUMOROUS,
+  ) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -37,7 +43,7 @@ export class OpenAIService {
       const openai = new OpenAIApi(config);
       const messages: ChatCompletionRequestMessage[] = [
         {
-          content: `Given the input below, generate a short motivational message to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
+          content: `Given the input below, generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
             input,
             null,
             2,
@@ -266,12 +272,13 @@ export class OpenAIService {
   }
 
   isValidURL(string: string) {
-    let url;
-    try {
-      url = new URL(string);
-    } catch (_) {
-      return false;
+    const validUrl = new RegExp(
+      '^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?',
+    );
+    const validUrlWithoutProtocol = new RegExp('^([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?');
+    if (validUrl.test(string) || validUrlWithoutProtocol.test(string)) {
+      return true;
     }
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    return false;
   }
 }

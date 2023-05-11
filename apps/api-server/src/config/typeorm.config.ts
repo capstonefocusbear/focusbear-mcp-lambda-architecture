@@ -41,6 +41,7 @@ export const typeormConfig = registerAs(
     database: process.env.POSTGRES_DB,
     synchronize: false,
     logging: false,
+    maxQueryExecutionTime: 200,
     entities: [
       User,
       Activity,

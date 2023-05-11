@@ -3,9 +3,11 @@
 exports[`ActivityLibraryService getLibraryActivities positive: should fetch activity templates from the DB and format them as activity DTOs before returning them as response 1`] = `
 Array [
   Object {
+    "check_list": undefined,
     "choice_type": "random",
     "choices": Array [
       Object {
+        "check_list": undefined,
         "choices": Array [],
         "completion_requirements": undefined,
         "duration_seconds": 300,
@@ -15,7 +17,6 @@ Array [
         "log_summary_type": "SUM",
         "name": "Crunches",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "todo_list": undefined,
         "video_urls": Array [],
       },
     ],
@@ -27,10 +28,10 @@ Array [
     "log_summary_type": "SUM",
     "name": "Journaling",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "todo_list": undefined,
     "video_urls": Array [],
   },
   Object {
+    "check_list": undefined,
     "choice_type": "random",
     "choices": Array [],
     "completion_requirements": undefined,
@@ -41,7 +42,6 @@ Array [
     "log_summary_type": "SUM",
     "name": "Swimming",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "todo_list": undefined,
     "video_urls": Array [],
   },
 ]

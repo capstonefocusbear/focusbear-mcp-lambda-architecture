@@ -30,6 +30,7 @@ import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enu
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
+import { AiToneOptions } from '../../../../../../../libs/openai/src/domain/ai-tones.enum';
 
 @Injectable()
 export class UserService {
@@ -425,7 +426,7 @@ export class UserService {
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
   }
 
-  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english') {
+  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english', tone: AiToneOptions) {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
@@ -445,7 +446,7 @@ export class UserService {
           streak_days: focus_modes_streak,
         },
       ];
-      return await this.openAIService.createMotivationalSummary(response, input, language);
+      return await this.openAIService.createMotivationalSummary(response, input, language, tone);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

@@ -29,6 +29,7 @@ import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
+import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -158,10 +159,10 @@ export class UserController {
   @UseGuards(IsAuth)
   async getMotivationalSummary(
     @Res() response: FastifyReply,
-    @Query() { language }: { language?: string },
+    @Query() { language, tone }: MotivationalSummaryQueryDto,
     @AuthContext() { user }: Passport,
   ) {
-    return this.userService.getMotivationalMessage(response, user.id, language);
+    return this.userService.getMotivationalMessage(response, user.id, language, tone);
   }
 
   @Post('/chat')

@@ -41,4 +41,30 @@ describe('OpenAIService', () => {
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
+
+  describe('isValidUrl', () => {
+    it('negative: should return false for empty string', () => {
+      const isUrl = service.isValidURL('');
+
+      expect(isUrl).toBeFalse();
+    });
+
+    it('negative: should return false for invalid URL', () => {
+      const isUrl = service.isValidURL('just-some-text');
+
+      expect(isUrl).toBeFalse();
+    });
+
+    it('positive: should return true for valid URL without protocol', () => {
+      const isUrl = service.isValidURL('messagemedia.zoom.us');
+
+      expect(isUrl).toBeTrue();
+    });
+
+    it('positive: should return true for valid URL with protocol', () => {
+      const isUrl = service.isValidURL('https://github.com');
+
+      expect(isUrl).toBeTrue();
+    });
+  });
 });

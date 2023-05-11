@@ -116,9 +116,9 @@ export class Activity extends BaseEntity {
   @Column({
     type: 'jsonb',
     nullable: true,
-    transformer: BaseEntity.encryptJSONField('checklist'),
+    transformer: BaseEntity.encryptJSONField('check_list'),
   })
-  checklist?: string[];
+  check_list?: string[];
 
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',

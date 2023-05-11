@@ -2,5 +2,5 @@ export enum ActivityChoiceType {
   random = 'random',
   normal = 'normal',
   competency = 'competency',
-  checklist = 'checklist',
+  check_list = 'check_list',
 }

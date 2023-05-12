@@ -28,6 +28,7 @@ export class OpenAIService {
     input: HabitOption[],
     language: string,
     tone = AiToneOptions.HUMOROUS,
+    longTermGoals: string[],
   ) {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -43,11 +44,11 @@ export class OpenAIService {
       const openai = new OpenAIApi(config);
       const messages: ChatCompletionRequestMessage[] = [
         {
-          content: `Given the input below, generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
+          content: `Given the input below and the user's long term goals, generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
             input,
             null,
             2,
-          )}`,
+          )}\n\nLong term goals: ${longTermGoals}`,
           role: ChatCompletionRequestMessageRoleEnum.System,
         },
       ];

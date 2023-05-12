@@ -254,6 +254,13 @@ export class User extends BaseEntity {
   })
   focus_modes_streak?: number;
 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('long_term_goals'),
+  })
+  long_term_goals?: string[];
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

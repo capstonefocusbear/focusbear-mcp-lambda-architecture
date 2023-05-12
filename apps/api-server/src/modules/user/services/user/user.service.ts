@@ -31,6 +31,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { AiToneOptions } from '../../../../../../../libs/openai/src/domain/ai-tones.enum';
+import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 
 @Injectable()
 export class UserService {
@@ -446,7 +447,8 @@ export class UserService {
           streak_days: focus_modes_streak,
         },
       ];
-      return await this.openAIService.createMotivationalSummary(response, input, language, tone);
+      const longTermGoals = await this.getUserLongTermGoals(user_id);
+      return await this.openAIService.createMotivationalSummary(response, input, language, tone, longTermGoals);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -462,5 +464,18 @@ export class UserService {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     await this.openAIService.streamChatReply(response, messages, language);
+  }
+
+  async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    }
+    await this.userRepository.update(user_id, { long_term_goals: goals });
+  }
+
+  async getUserLongTermGoals(user_id: string) {
+    const partialUser = await this.userRepository.orm.findOne({ where: { id: user_id }, select: ['long_term_goals'] });
+    return partialUser.long_term_goals;
   }
 }

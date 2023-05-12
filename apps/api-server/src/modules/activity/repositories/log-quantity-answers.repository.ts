@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Connection } from 'typeorm';
+import { Between, Connection, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { LogQuantityAnswer } from '../entities/log-quantity-answers';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
+import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
 
 @Injectable()
 export class LogQuantityAnswersRepository extends BaseRepository<LogQuantityAnswer> {
@@ -25,5 +27,20 @@ export class LogQuantityAnswersRepository extends BaseRepository<LogQuantityAnsw
       .setParameters({ questionIds, days_number, timezone });
 
     return query.getRawMany();
+  }
+
+  async getAnswersByQuestionIdsInTimeRange(
+    { question_ids }: GetLogQuantityAnswerLogsDto,
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
+  ): Promise<LogQuantityAnswer[]> {
+    return this.orm.find({
+      where: {
+        question_id: In(question_ids),
+        date_logged: Between(from_time, to_time),
+      },
+      order: {
+        date_logged: 'ASC',
+      },
+    });
   }
 }

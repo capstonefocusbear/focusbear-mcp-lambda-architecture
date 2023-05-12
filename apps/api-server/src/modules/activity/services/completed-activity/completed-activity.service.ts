@@ -47,6 +47,7 @@ import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-an
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
+import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -757,6 +758,26 @@ export class CompletedActivityService {
       },
     });
     return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
+  }
+
+  async getLogQuantityAnswersByQuestionInTimeRange(
+    { question_ids }: GetLogQuantityAnswerLogsDto,
+    { from_time, to_time },
+  ) {
+    const answers = await this.logQuantityAnswerRepository.getAnswersByQuestionIdsInTimeRange(
+      { question_ids },
+      { from_time, to_time },
+    );
+    const answersObject = {};
+    for (const answer of answers) {
+      const questionId = answer.question_id;
+
+      if (!(questionId in answersObject)) {
+        answersObject[questionId] = [];
+      }
+      answersObject[questionId].push(answer);
+    }
+    return answersObject;
   }
 
   async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {

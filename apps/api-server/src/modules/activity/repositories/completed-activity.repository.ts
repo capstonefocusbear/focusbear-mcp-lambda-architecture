@@ -64,7 +64,6 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       order: {
         start_time: 'DESC',
       },
-      relations: ['answers'],
     });
   }
 

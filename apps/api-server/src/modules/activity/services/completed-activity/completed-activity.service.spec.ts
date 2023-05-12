@@ -69,6 +69,7 @@ import { ActivitySequenceService } from '../activity-sequence/activity-sequence.
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
+import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -1557,6 +1558,47 @@ describe('CompletedActivityService', () => {
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
       );
+    });
+  });
+
+  describe('getLogQuantityAnswersByQuestionInTimeRange', () => {
+    it('positive: should group log quantity answers by question ID', async () => {
+      const questionOneId = randomUUID();
+      const questionTwoId = randomUUID();
+      LogQuantityAnswersRepositoryMock.getAnswersByQuestionIdsInTimeRange.mockResolvedValueOnce([
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionTwoId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionOneId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+      ]);
+
+      const groupedLogQuantityAnswers = await completedActivityService.getLogQuantityAnswersByQuestionInTimeRange(
+        {
+          question_ids: [questionOneId, questionTwoId],
+        },
+        { from_time: new Date(), to_time: new Date() },
+      );
+
+      expect(groupedLogQuantityAnswers[questionOneId]).toBeArray();
+      expect(groupedLogQuantityAnswers[questionOneId][0]).toBeInstanceOf(LogQuantityAnswer);
     });
   });
 });

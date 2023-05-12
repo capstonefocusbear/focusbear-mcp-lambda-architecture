@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -30,6 +30,7 @@ import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
+import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -180,5 +181,11 @@ export class UserController {
   @UseGuards(IsAuth)
   async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
     return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
+  }
+
+  @Patch('/long-term-goals')
+  @UseGuards(IsAuth)
+  async updateUserLongTermGoals(@Body() { goals }: UpdateLongTermGoalsDto, @AuthContext() { user }: Passport) {
+    return this.userService.updateLongTermGoals(user.id, { goals });
   }
 }

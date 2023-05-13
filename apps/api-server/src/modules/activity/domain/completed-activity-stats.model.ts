@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CompletedActivityStatItem } from './completed-activity-stat-item.model';
 import { CompletedActivityStatType } from './completed-activity-stat-type.enum';
 import { LogSummaryType } from './log-summary-type.enum';
+import { LogQuantityAnswersStats } from './log-quantity-answers-stats.model';
 
 export class CompletedActivityStats {
   constructor(data: CompletedActivityStats) {
@@ -11,6 +12,7 @@ export class CompletedActivityStats {
     this.log_summary_type = data.log_summary_type;
     this.stat_type = data.stat_type;
     this.items = data.items;
+    this.log_quantity_answers_stats = data.log_quantity_answers_stats;
   }
 
   @ApiProperty()
@@ -30,4 +32,7 @@ export class CompletedActivityStats {
 
   @ApiProperty()
   items?: CompletedActivityStatItem[];
+
+  @ApiProperty()
+  log_quantity_answers_stats?: LogQuantityAnswersStats[];
 }

@@ -68,6 +68,8 @@ import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
+import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
+import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -851,6 +853,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -872,6 +875,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithTruthyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -890,11 +894,36 @@ describe('CompletedActivityService', () => {
       const statItemsDummy = [{ date: new Date(Date.now()), summary: '30' }];
       CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce(statItemsDummy);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const result = await completedActivityService.getStatsByActivityPerDay(params, query);
 
       expect(result).toBeDefined();
       expect(result).toBeInstanceOf(CompletedActivityStats);
+    });
+
+    it('positive: if activity has log quantity questions, stats for them should be retrieved and included in response', async () => {
+      const activityWithFalsyQuantityLogs: Activity = {
+        ...ActivityDummy,
+        log_quantity: false,
+        linked_activity_id: null,
+      };
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      const questionOneId = randomUUID();
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([{ id: questionOneId }]);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ id: questionOneId });
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityAnswersRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce({
+        date: new Date(),
+        summary: 5,
+      });
+
+      const result = await completedActivityService.getStatsByActivityPerDay(params, query);
+
+      expect(result).toBeInstanceOf(CompletedActivityStats);
+      expect(result.log_quantity_answers_stats.length).toBe(1);
+      expect(result.log_quantity_answers_stats[0]).toBeInstanceOf(LogQuantityAnswersStats);
     });
   });
 
@@ -1529,6 +1558,47 @@ describe('CompletedActivityService', () => {
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
       );
+    });
+  });
+
+  describe('getLogQuantityAnswersByQuestionInTimeRange', () => {
+    it('positive: should group log quantity answers by question ID', async () => {
+      const questionOneId = randomUUID();
+      const questionTwoId = randomUUID();
+      LogQuantityAnswersRepositoryMock.getAnswersByQuestionIdsInTimeRange.mockResolvedValueOnce([
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionTwoId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionOneId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+      ]);
+
+      const groupedLogQuantityAnswers = await completedActivityService.getLogQuantityAnswersByQuestionInTimeRange(
+        {
+          question_ids: [questionOneId, questionTwoId],
+        },
+        { from_time: new Date(), to_time: new Date() },
+      );
+
+      expect(groupedLogQuantityAnswers[questionOneId]).toBeArray();
+      expect(groupedLogQuantityAnswers[questionOneId][0]).toBeInstanceOf(LogQuantityAnswer);
     });
   });
 });

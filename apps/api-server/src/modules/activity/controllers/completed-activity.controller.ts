@@ -21,6 +21,7 @@ import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 import { ReviseLogQuantityAnswersBodyDto } from '../dto/revise-log-quantity-answers-body.dto';
+import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
 
 @Controller('completed-activity')
 @UseGuards(IsAuth)
@@ -72,6 +73,17 @@ export class CompletedActivityController {
     @Query() { from_time, to_time }: GetCompletedActivityLogsQueryDto,
   ): Promise<CompletedActivity[]> {
     return this.completedActivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, { from_time, to_time });
+  }
+
+  @Post('/answer-logs')
+  async getLogQuantityAnswerLogs(
+    @Body() { question_ids }: GetLogQuantityAnswerLogsDto,
+    @Query() { from_time, to_time }: GetCompletedActivityLogsQueryDto,
+  ) {
+    return this.completedActivityService.getLogQuantityAnswersByQuestionInTimeRange(
+      { question_ids },
+      { from_time, to_time },
+    );
   }
 
   @Patch('/revise/:completed_activity_id')

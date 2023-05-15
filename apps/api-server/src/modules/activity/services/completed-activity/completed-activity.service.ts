@@ -742,8 +742,14 @@ export class CompletedActivityService {
     const idsToFetchStatsFor = [question_id, linked_question_id, ...linkedActivitiesIds];
     const params = { days_number, log_summary_type, timezone };
     const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
-    const stats = new LogQuantityAnswersStats({ question_id, days_number, items, log_summary_type, timezone });
-    return stats;
+    return new LogQuantityAnswersStats({
+      question_id,
+      days_number,
+      items,
+      log_summary_type,
+      timezone,
+      question,
+    });
   }
 
   async getCompletedLogsByActivityInTimeRange(

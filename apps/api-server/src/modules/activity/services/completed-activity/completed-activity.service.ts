@@ -97,11 +97,15 @@ export class CompletedActivityService {
         user_id,
         choice_id,
       );
+      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (activity.type === ActivityType.break) {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-        return createdItem;
+        if (log_quantity_answers?.length > 0) {
+          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
+        return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
       }
       let completingSequenceLog = null;
       if (!should_not_update_current_activity) {
@@ -122,7 +126,6 @@ export class CompletedActivityService {
         should_not_update_current_activity,
         completingSequenceLog,
       );
-      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (log_quantity_answers?.length > 0) {
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }

@@ -213,7 +213,7 @@ export class UserService {
     local_device_settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
     try {
-      const isVerboseLoggingAllowed = await this.isVerboseLoggingAllowed(user_id);
+      const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',

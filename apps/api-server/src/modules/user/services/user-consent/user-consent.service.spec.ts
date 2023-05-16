@@ -85,8 +85,40 @@ describe('UserConsentService', () => {
       expect(UserConsentRepositoryMock.orm.save).toBeCalledWith({
         consent_type: UserConsentTypes.PRIVACY_POLICY,
         consent_status: false,
-        withdrawal_date: DateTime.local({ zone: 'UTC' }).toISO(),
+        withdrawal_date: DateTime.local({ zone: 'UTC' }).toJSDate(),
       });
+    });
+
+    it('positive: if user consents to terms of service, user has_consented_to_terms_of_service should be set to true', async () => {
+      Settings.now = () => new Date('2022-10-06T07:05:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserConsentRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ consent_status: true });
+
+      await service.upsertUserConsent(
+        { consent_type: UserConsentTypes.TERMS_OF_SERVICE, consent_status: true },
+        userDummy.id,
+      );
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+        { id: userDummy.id },
+        { has_consented_to_terms_of_service: true },
+      );
+    });
+
+    it('positive: if user withdraws consent to terms of service, user has_consented_to_terms_of_service should be set to false', async () => {
+      Settings.now = () => new Date('2022-10-06T07:05:00.000Z').valueOf();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserConsentRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ consent_status: true });
+
+      await service.upsertUserConsent(
+        { consent_type: UserConsentTypes.TERMS_OF_SERVICE, consent_status: false },
+        userDummy.id,
+      );
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+        { id: userDummy.id },
+        { has_consented_to_terms_of_service: false },
+      );
     });
   });
 });

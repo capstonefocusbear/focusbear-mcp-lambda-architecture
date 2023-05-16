@@ -146,7 +146,6 @@ describe('UserSettingsService', () => {
   describe('updateSettings', () => {
     it('negative: if user user does not exist in DB, throw NotFoundException', async () => {
       const user_id = randomUUID();
-      // UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false, user: null });
       const errorMessage = `User with id: ${user_id} does not exists!`;
       let exception: any;
@@ -175,7 +174,6 @@ describe('UserSettingsService', () => {
         current_completing_sequence_log_id: undefined,
         cutoff_time_for_non_high_priority_activities: null,
       });
-      // UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: logQuantityQuestionsDummy,

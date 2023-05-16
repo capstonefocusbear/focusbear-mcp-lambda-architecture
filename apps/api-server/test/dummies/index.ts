@@ -601,6 +601,18 @@ export const logQuantityAnswersDtoDummy = [
   { question_id: randomUUID(), logged_value: 8 },
 ];
 
+export const logQuantityAnswerDummy = {
+  id: randomUUID(),
+  created_at: new Date(),
+  updated_at: new Date(),
+  user_id: userDummy.id,
+  activity_id: ActivityDummy.id,
+  question_id: randomUUID(),
+  completed_activity_log_id: randomUUID(),
+  logged_value: 5,
+  date_logged: new Date(),
+};
+
 const completedActivity: CreateCompletedActivityDto = {
   activity_id: ActivityDummy.id,
   quantity_logged: 10,

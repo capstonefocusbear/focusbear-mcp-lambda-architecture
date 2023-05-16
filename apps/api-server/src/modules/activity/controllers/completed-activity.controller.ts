@@ -20,7 +20,6 @@ import { GetDaySummaryQueryDto } from '../dto/get-day-summary-query.dto';
 import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto';
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
-import { ReviseLogQuantityAnswersBodyDto } from '../dto/revise-log-quantity-answers-body.dto';
 import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
 
 @Controller('completed-activity')
@@ -89,17 +88,12 @@ export class CompletedActivityController {
   @Patch('/revise/:completed_activity_id')
   reviseCompletedActivity(
     @Param() { completed_activity_id },
-    @Body() { quantity_logged }: ReviseCompletedActivityDto,
+    @Body() { quantity_logged, log_quantity_answers }: ReviseCompletedActivityDto,
   ): Promise<CompletedActivity> {
-    return this.completedActivityService.reviseCompletedLog(completed_activity_id, { quantity_logged });
-  }
-
-  @Patch('/revise/log-answers')
-  reviseLogQuantityAnswer(
-    @Body() { log_quantity_answers }: ReviseLogQuantityAnswersBodyDto,
-    @AuthContext() { user }: Passport,
-  ) {
-    return this.completedActivityService.reviseLogQuantityAnswers(log_quantity_answers, user.id);
+    return this.completedActivityService.reviseCompletedLog(completed_activity_id, {
+      quantity_logged,
+      log_quantity_answers,
+    });
   }
 
   @Get('/day-summary')

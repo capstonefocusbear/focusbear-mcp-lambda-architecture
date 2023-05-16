@@ -46,7 +46,6 @@ import { LogQuantityAnswerDto } from '../../dto/log-quantity-answers.dto';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
-import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 
 @Injectable()
@@ -789,7 +788,10 @@ export class CompletedActivityService {
     return answersObject;
   }
 
-  async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {
+  async reviseCompletedLog(
+    id: string,
+    { quantity_logged, log_quantity_answers }: ReviseCompletedActivityDto,
+  ): Promise<CompletedActivity> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -801,21 +803,25 @@ export class CompletedActivityService {
     const log = await this.completedActivityRepository.orm.findOneBy({ id });
     if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
     log.quantity_logged = quantity_logged;
-    return this.completedActivityRepository.orm.save(log);
+    let updatedAnswers;
+    if (log_quantity_answers?.length) {
+      updatedAnswers = await this.reviseLogQuantityAnswers(log_quantity_answers, id);
+    }
+    const savedLog = await this.completedActivityRepository.orm.save(log);
+    return { ...savedLog, answers: updatedAnswers };
   }
 
-  async reviseLogQuantityAnswers(logQuantityAnswers: ReviseLogQuantityAnswerDto[], user_id: string) {
+  async reviseLogQuantityAnswers(logQuantityAnswers: LogQuantityAnswerDto[], completed_activity_log_id: string) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Revising log quantity question answers',
-      data: {
-        user_id,
-        logQuantityAnswers,
-      },
     });
-    const updatedLogs = logQuantityAnswers.map(async ({ logged_value, answer_id }) => {
-      const log = await this.logQuantityAnswerRepository.orm.findOneBy({ id: answer_id, user_id });
+    const updatedLogs = logQuantityAnswers?.map(async ({ logged_value, question_id }) => {
+      const log = await this.logQuantityAnswerRepository.orm.findOneBy({
+        question_id,
+        completed_activity_log_id,
+      });
       log.logged_value = logged_value;
       return this.logQuantityAnswerRepository.orm.save(log);
     });

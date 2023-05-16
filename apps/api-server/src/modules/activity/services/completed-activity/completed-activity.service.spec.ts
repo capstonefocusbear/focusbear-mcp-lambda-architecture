@@ -35,6 +35,7 @@ import {
   eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
+  logQuantityAnswerDummy,
   logQuantityAnswersDtoDummy,
   MorningActivitySequenceDummy,
   sequenceWithActivitiesForDifferentDays,
@@ -957,13 +958,34 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: guantity_logged value should be reassigned and the updated item saved', async () => {
+    it('positive: quantity_logged value should be reassigned and the updated item saved', async () => {
       CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValue(CompletedActivityDummy);
 
       await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, { quantity_logged });
 
       const updatedItem = { ...CompletedActivityDummy, quantity_logged };
       expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith(updatedItem);
+    });
+
+    it('positive: if log_quantity_answers are sent they should be updated', async () => {
+      CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedActivityDummy);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...logQuantityAnswerDummy,
+        question_id: logQuantityAnswersDtoDummy[0].question_id,
+      });
+
+      await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, {
+        quantity_logged,
+        log_quantity_answers: [logQuantityAnswersDtoDummy[0]],
+      });
+
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalled();
+
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalledWith({
+        ...logQuantityAnswerDummy,
+        question_id: logQuantityAnswersDtoDummy[0].question_id,
+        logged_value: logQuantityAnswersDtoDummy[0].logged_value,
+      });
     });
   });
 

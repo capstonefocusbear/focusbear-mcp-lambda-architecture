@@ -260,6 +260,13 @@ export class User extends BaseEntity {
   })
   has_consented_to_terms_of_service?: boolean;
 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('long_term_goals'),
+  })
+  long_term_goals?: string[];
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

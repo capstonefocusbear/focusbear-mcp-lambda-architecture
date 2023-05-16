@@ -47,6 +47,7 @@ import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-an
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
+import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 
 @Injectable()
 export class CompletedActivityService {
@@ -96,11 +97,15 @@ export class CompletedActivityService {
         user_id,
         choice_id,
       );
+      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (activity.type === ActivityType.break) {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-        return createdItem;
+        if (log_quantity_answers?.length > 0) {
+          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
+        return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
       }
       let completingSequenceLog = null;
       if (!should_not_update_current_activity) {
@@ -121,7 +126,6 @@ export class CompletedActivityService {
         should_not_update_current_activity,
         completingSequenceLog,
       );
-      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (log_quantity_answers?.length > 0) {
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
@@ -697,6 +701,17 @@ export class CompletedActivityService {
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
       const params = { days_number, log_summary_type, stat_type, timezone };
       const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
+      const logQuantityQuestions = await this.logQuantityQuestionRepository.orm.find({
+        where: { activity_id },
+        select: ['id'],
+      });
+      const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
+      const logQuantityStats = await Promise.all(
+        loqQuantityQuestionIds.map(
+          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone }),
+          // eslint-disable-next-line function-paren-newline
+        ),
+      );
       const stats = new CompletedActivityStats({
         activity_id,
         days_number,
@@ -704,6 +719,7 @@ export class CompletedActivityService {
         log_summary_type,
         stat_type,
         timezone,
+        log_quantity_answers_stats: logQuantityStats,
       });
       return stats;
     } catch (error) {
@@ -726,8 +742,14 @@ export class CompletedActivityService {
     const idsToFetchStatsFor = [question_id, linked_question_id, ...linkedActivitiesIds];
     const params = { days_number, log_summary_type, timezone };
     const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
-    const stats = new LogQuantityAnswersStats({ question_id, days_number, items, log_summary_type, timezone });
-    return stats;
+    return new LogQuantityAnswersStats({
+      question_id,
+      days_number,
+      items,
+      log_summary_type,
+      timezone,
+      question,
+    });
   }
 
   async getCompletedLogsByActivityInTimeRange(
@@ -745,6 +767,26 @@ export class CompletedActivityService {
       },
     });
     return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
+  }
+
+  async getLogQuantityAnswersByQuestionInTimeRange(
+    { question_ids }: GetLogQuantityAnswerLogsDto,
+    { from_time, to_time },
+  ) {
+    const answers = await this.logQuantityAnswerRepository.getAnswersByQuestionIdsInTimeRange(
+      { question_ids },
+      { from_time, to_time },
+    );
+    const answersObject = {};
+    for (const answer of answers) {
+      const questionId = answer.question_id;
+
+      if (!(questionId in answersObject)) {
+        answersObject[questionId] = [];
+      }
+      answersObject[questionId].push(answer);
+    }
+    return answersObject;
   }
 
   async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {

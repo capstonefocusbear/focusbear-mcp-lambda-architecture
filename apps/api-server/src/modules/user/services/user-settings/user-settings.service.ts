@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import * as _ from 'lodash';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -15,6 +15,7 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class UserSettingsService {
@@ -27,6 +28,8 @@ export class UserSettingsService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly helperCommonService: HelperCommonService,
     private readonly activitySequenceService: ActivitySequenceService,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -37,7 +40,6 @@ export class UserSettingsService {
         message: 'Fetching user settings',
         data: {
           user_id,
-          timezone,
         },
       });
       const userSettings = await this.userRepository.getUserSettings(user_id);
@@ -77,12 +79,13 @@ export class UserSettingsService {
     should_update_has_edited_settings: boolean,
   ): Promise<UpdateUserSettingsDto> {
     try {
+      const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Updating user settings',
+        ...(isVerboseLoggingAllowed && { updateSettingsData }),
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
@@ -144,13 +147,14 @@ export class UserSettingsService {
   }
 
   async updateUserTimezone(user_id: string, timezone: string) {
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Updating user timezone',
       data: {
         user_id,
-        timezone,
+        ...(isVerboseLoggingAllowed && { timezone }),
       },
     });
     const currentTime = DateTime.local({ zone: timezone });
@@ -178,7 +182,9 @@ export class UserSettingsService {
         level: 'debug',
         message: 'Checking if user current activity was deleted and updating user accordingly',
         data: {
-          user,
+          current_activity_id: user?.current_activity_id,
+          current_activity_sequence_id: user?.current_activity_sequence_id,
+          current_completing_sequence_log_id: user?.current_completing_sequence_log_id,
         },
       });
       let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;

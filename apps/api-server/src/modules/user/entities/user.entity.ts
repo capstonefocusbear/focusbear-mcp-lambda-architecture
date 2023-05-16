@@ -261,6 +261,12 @@ export class User extends BaseEntity {
   })
   long_term_goals?: string[];
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  verbose_logging?: boolean;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

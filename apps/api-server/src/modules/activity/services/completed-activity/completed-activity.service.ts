@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
@@ -48,11 +55,13 @@ import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
+import { UserService } from '../../../user/services/user/user.service';
 
 @Injectable()
 export class CompletedActivityService {
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
+    @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
@@ -67,6 +76,8 @@ export class CompletedActivityService {
     private readonly activitySequenceService: ActivitySequenceService,
     private readonly logQuantityAnswerRepository: LogQuantityAnswersRepository,
     private readonly logQuantityQuestionRepository: LogQuantityQuestionsRepository,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   async completeActivity(
@@ -802,7 +813,6 @@ export class CompletedActivityService {
       message: 'Revising log quantity question answers',
       data: {
         user_id,
-        logQuantityAnswers,
       },
     });
     const updatedLogs = logQuantityAnswers.map(async ({ logged_value, answer_id }) => {
@@ -814,6 +824,7 @@ export class CompletedActivityService {
   }
 
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -821,7 +832,7 @@ export class CompletedActivityService {
         message: 'Getting day summary',
         data: {
           user_id,
-          timezone,
+          ...(isVerboseLoggingAllowed && { timezone }),
         },
       });
       const timerange = await this.defineStartupTimestamp(user_id, timezone);
@@ -851,7 +862,6 @@ export class CompletedActivityService {
       message: 'Defining startup timestamp',
       data: {
         user_id,
-        timezone,
       },
     });
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
@@ -869,7 +879,6 @@ export class CompletedActivityService {
       message: 'Building timestamp',
       data: {
         startup_time,
-        time_zone: timeZone,
       },
     });
     let to_time;
@@ -1112,9 +1121,6 @@ export class CompletedActivityService {
       category: 'Service',
       level: 'debug',
       message: 'Saving log quantity question answers',
-      data: {
-        logQuantityAnswers,
-      },
     });
     const {
       completed_activity_log: { activity_id, user_id, id, start_time },

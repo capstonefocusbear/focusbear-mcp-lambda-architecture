@@ -148,7 +148,6 @@ export class TeamManagementService {
         level: 'debug',
         message: 'Inviting team member',
         data: {
-          email,
           owner_id,
         },
       });
@@ -180,7 +179,6 @@ export class TeamManagementService {
         level: 'debug',
         message: 'Accepting invitation',
         data: {
-          token,
           user_id,
         },
       });

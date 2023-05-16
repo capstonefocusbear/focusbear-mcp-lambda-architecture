@@ -17,6 +17,7 @@ import {
   UserDailyStatsServiceMock,
   LogQuantityAnswersRepositoryMock,
   LogQuantityQuestionsRepositoryMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -70,6 +71,7 @@ import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-an
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
+import { UserService } from '../../../user/services/user/user.service';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -92,6 +94,7 @@ describe('CompletedActivityService', () => {
         ActivitySequenceService,
         LogQuantityAnswersRepository,
         LogQuantityQuestionsRepository,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -122,6 +125,8 @@ describe('CompletedActivityService', () => {
       .useValue(LogQuantityAnswersRepositoryMock)
       .overrideProvider(LogQuantityQuestionsRepository)
       .useValue(LogQuantityQuestionsRepositoryMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -971,6 +976,7 @@ describe('CompletedActivityService', () => {
     it('negative: should throw NotFoundException if user does not exist', async () => {
       const user_id = randomUUID();
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -988,6 +994,7 @@ describe('CompletedActivityService', () => {
     it('negative: should throw BadRequestException if user has no startup_time value specified', async () => {
       const testUser = { ...userDummy, startup_time: null };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(testUser);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -1013,6 +1020,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -1030,6 +1038,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
 
       await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
@@ -1046,6 +1055,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
 
       const result = await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
@@ -1061,6 +1071,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       const result = await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
       expect(result).toBeInstanceOf(DaySummary);
@@ -1076,6 +1087,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       const result = await completedActivityService.getDaySummary(userDummy.id, 'America/Moncton');
 
       expect(result).toBeInstanceOf(DaySummary);

@@ -102,7 +102,6 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         message: 'Creating focus mode',
         data: {
           user_id,
-          focusModeDto,
         },
       });
       const { tags } = focusModeDto;
@@ -131,7 +130,6 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         message: 'Updating focus mode',
         data: {
           user_id,
-          updateFocusModeDto,
         },
       });
       const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focus_mode_id } });
@@ -166,7 +164,6 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         message: 'Saving focus mode tags',
         data: {
           user_id,
-          tags,
         },
       });
       const newlyCreatedTags = tags?.map((tag) => new FocusModeTag({ ...tag, user_id }));

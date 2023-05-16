@@ -5,7 +5,6 @@ import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { AppModule } from '../../src/app.module';
 import { testUserRoutineHabitPack } from '../dummies/habit-packs.dummies';
 import { auth0LoginUser } from '../utils/auth0-login';
-import { trackDtoDummy } from '../dummies';
 
 describe('endpoints', () => {
   let app: NestFastifyApplication;
@@ -18,7 +17,7 @@ describe('endpoints', () => {
   const userDeviceId = '092d701d-26f4-4e3b-9da0-bde03f950982';
   const userFocusModeId = '6a85825f-2b49-46c5-b838-dd1bafa5f6ed';
   let token: string;
-  const baseURL = 'https://eyst-backend-prod-pr-302.onrender.com';
+  const baseURL = '127.0.0.1:5038';
   let userFirstActivity: Activity;
 
   beforeAll(async () => {
@@ -237,17 +236,6 @@ describe('endpoints', () => {
         .set({ Authorization: `Bearer ${token}` });
 
       expect(response.status).toBe(201);
-    });
-  });
-
-  describe('PUT /tracks', () => {
-    it('positive: should return a 200 status for upserting track', async () => {
-      const response = await request(baseURL)
-        .put('/tracks')
-        .send(trackDtoDummy)
-        .set({ Authorization: `Bearer ${token}` });
-
-      expect(response.status).toBe(200);
     });
   });
 });

@@ -5,11 +5,13 @@ import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
+import { UserService } from '../../../user/services/user/user.service';
 
 @Injectable()
 export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
   constructor(
     private readonly deviceRepository: DeviceRepository,
+    private readonly userService: UserService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {
     super(deviceRepository);
@@ -17,14 +19,14 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
 
   async createDevice({ operating_system, metadata }: CreateDeviceDto, user_id: string): Promise<Device> {
     try {
+      const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Creating device',
         data: {
           user_id,
-          operating_system,
-          metadata,
+          ...(isVerboseLoggingAllowed && { operating_system, metadata }),
         },
       });
       const newDevice = new Device({ operating_system, user_id, metadata });

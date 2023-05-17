@@ -105,8 +105,6 @@ export class UserService {
         message: 'Updating or creating user',
         data: {
           auth0_id,
-          email,
-          name,
         },
       });
       const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
@@ -215,13 +213,14 @@ export class UserService {
     local_device_settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
     try {
+      const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Updating user local device settings',
         data: {
           user_id,
-          local_device_settings,
+          ...(isVerboseLoggingAllowed && { local_device_settings }),
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
@@ -477,5 +476,10 @@ export class UserService {
   async getUserLongTermGoals(user_id: string) {
     const partialUser = await this.userRepository.orm.findOne({ where: { id: user_id }, select: ['long_term_goals'] });
     return partialUser?.long_term_goals;
+  }
+
+  async isVerboseLoggingAllowed(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 }

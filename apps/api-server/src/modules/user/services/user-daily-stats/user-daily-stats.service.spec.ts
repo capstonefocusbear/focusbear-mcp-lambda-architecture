@@ -13,6 +13,7 @@ import {
   DeviceServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
@@ -30,6 +31,7 @@ import { DailyStatsRepository } from '../../repositories/user-daily-stats.reposi
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
+import { UserService } from '../user/user.service';
 
 describe('UserDailyStatsService', () => {
   let service: UserDailyStatsService;
@@ -44,6 +46,7 @@ describe('UserDailyStatsService', () => {
         CompletedActivitySequenceRepository,
         DeviceService,
         ActivitySequenceService,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -66,6 +69,8 @@ describe('UserDailyStatsService', () => {
       .useValue(DeviceServiceMock)
       .overrideProvider(ActivitySequenceService)
       .useValue(ActivitySequenceServiceMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     service = module.get<UserDailyStatsService>(UserDailyStatsService);
@@ -359,6 +364,7 @@ describe('UserDailyStatsService', () => {
     it('positive: if no existing daily stat record is found one should be created showing that a focus mode has been completed', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       DailyStatsRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
       const finishTime = new Date();
       const startOfDate = DateTime.fromJSDate(finishTime).setZone('UTC').startOf('day').toJSDate();
 
@@ -375,6 +381,7 @@ describe('UserDailyStatsService', () => {
       const dailyStatDummy = dailyStatsArrayDummy[0];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       DailyStatsRepositoryMock.orm.findOne.mockResolvedValueOnce(dailyStatDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
       const finishTime = new Date();
 
       await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC');

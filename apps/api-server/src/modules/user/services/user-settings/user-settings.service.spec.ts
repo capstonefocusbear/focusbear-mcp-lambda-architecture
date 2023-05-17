@@ -26,6 +26,7 @@ import {
   ActivitySequenceRepositoryMock,
   UserDailyStatsServiceMock,
   ActivitySequenceServiceMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -40,6 +41,7 @@ import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.serv
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
+import { UserService } from '../user/user.service';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -59,6 +61,7 @@ describe('UserSettingsService', () => {
         UserDailyStatsService,
         HelperCommonService,
         ActivitySequenceService,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -83,6 +86,8 @@ describe('UserSettingsService', () => {
       .useValue(UserDailyStatsServiceMock)
       .overrideProvider(ActivitySequenceService)
       .useValue(ActivitySequenceServiceMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
@@ -141,7 +146,7 @@ describe('UserSettingsService', () => {
   describe('updateSettings', () => {
     it('negative: if user user does not exist in DB, throw NotFoundException', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false, user: null });
       const errorMessage = `User with id: ${user_id} does not exists!`;
       let exception: any;
 
@@ -169,12 +174,12 @@ describe('UserSettingsService', () => {
         current_completing_sequence_log_id: undefined,
         cutoff_time_for_non_high_priority_activities: null,
       });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: logQuantityQuestionsDummy,
       });
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
 
       await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
 
@@ -195,6 +200,10 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
+      });
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
+        isVerboseLoggingAllowed: false,
+        user: userDummy,
       });
 
       await userSettingsService.clearUserActivities(userDummy.id);
@@ -233,6 +242,10 @@ describe('UserSettingsService', () => {
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
       });
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
+        isVerboseLoggingAllowed: false,
+        user: userDummy,
+      });
 
       await userSettingsService.clearUserActivities(userDummy.id);
 
@@ -243,6 +256,7 @@ describe('UserSettingsService', () => {
   describe('updateUserTimezone', () => {
     it('negative: should throw error for invalid timezone', async () => {
       const responseMessage = 'the zone "America/New_Yor" is not supported';
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
       try {
         await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_Yor');
@@ -257,6 +271,7 @@ describe('UserSettingsService', () => {
     it('positive: should user timezone in UTC offset format receiving IANA timezone format', async () => {
       // mock date to be 2023-01-15
       Settings.now = () => 1678813200000;
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezone(userDummy.id, 'America/New_York');
 
       // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
@@ -265,6 +280,7 @@ describe('UserSettingsService', () => {
     });
 
     it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezone(userDummy.id, 'UTC-2');
 
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });

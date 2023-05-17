@@ -3,12 +3,13 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { DeviceDummy } from '../../../../../test/dummies';
-import { DeviceRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
+import { DeviceRepositoryMock, SentryServiceMock, UserServiceMock } from '../../../../../test/mocks';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
 import { DeviceService } from './device.service';
+import { UserService } from '../../../user/services/user/user.service';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
@@ -18,6 +19,7 @@ describe('DeviceService', () => {
       providers: [
         DeviceService,
         DeviceRepository,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -26,6 +28,8 @@ describe('DeviceService', () => {
     })
       .overrideProvider(DeviceRepository)
       .useValue(DeviceRepositoryMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     deviceService = moduleRef.get<DeviceService>(DeviceService);
@@ -43,6 +47,7 @@ describe('DeviceService', () => {
     const user_id = randomUUID();
 
     it('positive: new item should be created', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
       await deviceService.createDevice(createDeviceDto, user_id);
 
       expect(DeviceRepositoryMock.create).toBeCalledWith(new Device({ ...createDeviceDto, user_id }));

@@ -1,5 +1,5 @@
 /* eslint-disable default-case */
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { Equal } from 'typeorm';
@@ -22,6 +22,7 @@ import { User } from '../../entities/user.entity';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -32,8 +33,11 @@ export class UserDailyStatsService {
     private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
     private readonly dailyStatsRepository: DailyStatsRepository,
     @InjectQueue('stats') private statsQueue: Queue,
+    @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
     private readonly activitySequenceService: ActivitySequenceService,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   async updateUserOnboardingProgress(user_id: string, update_type: UserProgressUpdateTypes) {
@@ -190,6 +194,7 @@ export class UserDailyStatsService {
 
   async updateDailyStatsFocusModesCompleted(user_id: string, finishTime: Date, timeZone: string) {
     try {
+      const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -197,7 +202,7 @@ export class UserDailyStatsService {
         data: {
           user_id,
           finishTime,
-          timeZone,
+          ...(isVerboseLoggingAllowed && { timeZone }),
         },
       });
       const startOfDate = DateTime.fromJSDate(finishTime).setZone(timeZone).startOf('day').toJSDate();

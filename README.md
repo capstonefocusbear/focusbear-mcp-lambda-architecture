@@ -108,6 +108,9 @@ $ R2_SECRET_ACCESS_KEY =
 $ R2_SIGNATURE_VERSION = 
 
 $ OPENAI_API_KEY =
+
+# use local URL for local testing, use URL generated for staging server to test on staging
+$ STAGING_SERVER_URL =
 ```
 
 3. Update .env file with actual values for PostgreSQL

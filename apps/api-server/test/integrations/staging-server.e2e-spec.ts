@@ -17,7 +17,7 @@ describe('endpoints', () => {
   const userDeviceId = '092d701d-26f4-4e3b-9da0-bde03f950982';
   const userFocusModeId = '6a85825f-2b49-46c5-b838-dd1bafa5f6ed';
   let token: string;
-  const baseURL = '127.0.0.1:5038';
+  const baseURL = process.env.STAGING_SERVER_URL;
   let userFirstActivity: Activity;
 
   beforeAll(async () => {

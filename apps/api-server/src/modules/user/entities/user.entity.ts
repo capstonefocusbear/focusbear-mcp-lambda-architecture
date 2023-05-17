@@ -255,6 +255,12 @@ export class User extends BaseEntity {
   focus_modes_streak?: number;
 
   @Column({
+    type: 'boolean',
+    default: false,
+  })
+  has_consented_to_terms_of_service?: boolean;
+
+  @Column({
     type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('long_term_goals'),

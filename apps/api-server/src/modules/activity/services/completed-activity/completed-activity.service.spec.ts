@@ -141,6 +141,9 @@ describe('CompletedActivityService', () => {
       jest.resetAllMocks();
     });
 
+    const startTime = new Date(Date.now() - 60);
+    const finishTime = new Date(Date.now() - 1);
+
     const randomQuantity = randomInt(20);
     const completedActivity: CreateCompletedActivityDto = {
       activity_id: ActivityDummy.id,
@@ -149,8 +152,8 @@ describe('CompletedActivityService', () => {
       note_logged: 'some text',
       device_id: DeviceDummy.id,
       activity_sequence_id: ActivityDummy.activity_sequence_id,
-      start_time: new Date(Date.now() - 60),
-      finish_time: new Date(Date.now() - 1),
+      start_time: startTime,
+      finish_time: finishTime,
       metadata: { is_skipped: false },
     };
 
@@ -160,8 +163,8 @@ describe('CompletedActivityService', () => {
       duration_logged: 600,
       activity_note: 'some text',
       activity_sequence_id: ActivityDummy.activity_sequence_id,
-      start_time: new Date(Date.now() - 60),
-      finish_time: new Date(Date.now() - 1),
+      start_time: startTime,
+      finish_time: finishTime,
       metadata: { is_skipped: false },
     };
 

@@ -178,41 +178,25 @@ export class OpenAIService {
     }
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `Please provide a JSON response indicating whether the following website is safe for the user to visit.:
-      - URL: ${isUrlSafeDto.url}
-      - Tab Title: ${titleToUse}
-      - Meta Description: ${metaDescriptionToUse}
-      - Focus Mode: ${isUrlSafeDto.focus_mode}
-      - Intention (what the user wants to focus on): ${isUrlSafeDto.intention}
+      content: `Please provide a JSON response indicating whether the following website is related to the user's Focus Mode:
+    JSON response format:
+    { allowed_probability: number between 0 and 1, reason: the reason why the website and focus mode are related or unrelated }
 
-      The Meta Description and Tab Title are more important than the URL. The URL will be generic but the tab title and meta description are more specific.
+    Website data:
+      URL: ${isUrlSafeDto.url}
+      Tab Title: ${titleToUse}
+      Meta Description: ${metaDescriptionToUse}
 
-      If the meta description/tab title are related to the Intention, allow it. 
+    Focus Mode data:
+      Focus Mode: ${isUrlSafeDto.focus_mode}
+      Intention (what the user wants to focus on): ${isUrlSafeDto.intention}
+
+    If the meta description or tab title are related to the Focus Mode Intention, allow it.
+    If the URL has any words in common with the focus mode or intention, allow it.
        
-      If the website not directly related to the focus mode and intention, the website should be considered as unsafe to visit and have a low score (below 0.8)
-      Example of case where the website is safe for the user to visit (should have a score of 1):
-      - URL: https://stackoverflow.com/
-      - Tab Title: Stack Overflow
-      - Meta Description: Stack Overflow is the largest, most trusted online community for developers to learn, share their programming knowledge, and build their careers.
-      - Focus Mode: Programming Work
-      - Intention: Finish dashboard website
-
-      Another example of case where the website is safe for the user to visit (should have a score of 0.8):
-      - URL: https://www.turing.com/blog/what-is-nest-js-why-use-it/
-      - Tab Title: What Is Nest.JS? Why Should You Use It? | Turing
-      - Meta Description: Nest.JS is a framework that helps build efficient and scalable server-side applications. The Nest framework supports databases like MongoDB and PostgreSQL
-      - Focus Mode: Programming Work
-      - Intention: Work on Nest JS backend
-
-      Example of case where the website is NOT safe for the user to visit (should have a score of 0.1):
-      - URL: https://www.airbnb.com/
-      - Tab Title: Vacation Homes & Condo Rentals - Airbnb - Airbnb
-      - Meta Description: Find the perfect place to stay at an amazing price in 191 countries. Belong anywhere with Airbnb.
-      - Focus Mode: Programming Work
-      - Intention: Finish dashboard website
-
-      The user may have ADHD and could get distracted by unrelated content, so please provide an "allowed_probability" value between 0 and 1 and a short explanation (15 words max) in second person on why the website should be allowed or blocked. The "reason" value should be in ${isUrlSafeDto.language} and there should be no other values in the JSON response other then reason and allowed_probability. 
-      Please do not mention the user's ADHD in your response. The response should include the JSON output and no additional explanation!`,
+    If the website is not directly related to the focus mode and intention, allowed_probability should have a low score (below 0.6), if the website data and focus mode are somewhat related allowed_probability should be from 0.6 to 0.8, and if the website and focus mode are definitely related, allowed_probability should be from 0.9 to 1.
+      
+    JSON Response:`,
     };
     let retryCount = 0;
     while (retryCount < 3) {
@@ -220,7 +204,7 @@ export class OpenAIService {
         const completions = await openai.createChatCompletion({
           model: 'gpt-3.5-turbo',
           messages: [defaultChat],
-          temperature: 0.3,
+          temperature: 0,
           n: 1,
         });
         const newMessage = completions.data.choices[0].message;

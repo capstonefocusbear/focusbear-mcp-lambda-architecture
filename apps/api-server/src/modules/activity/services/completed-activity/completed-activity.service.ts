@@ -811,14 +811,17 @@ export class CompletedActivityService {
         id,
       },
     });
-    const log = await this.completedActivityRepository.orm.findOneBy({ id });
-    if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
-    log.quantity_logged = quantity_logged;
+    let savedLog = {};
+    if (typeof quantity_logged !== 'undefined') {
+      const log = await this.completedActivityRepository.orm.findOneBy({ id });
+      if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
+      log.quantity_logged = quantity_logged;
+      savedLog = await this.completedActivityRepository.orm.save(log);
+    }
     let updatedAnswers;
     if (log_quantity_answers?.length) {
       updatedAnswers = await this.reviseLogQuantityAnswers(log_quantity_answers, id);
     }
-    const savedLog = await this.completedActivityRepository.orm.save(log);
     return { ...savedLog, answers: updatedAnswers };
   }
 

@@ -1,10 +1,10 @@
-import { IsArray, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsArray, IsNumber, IsOptional } from 'class-validator';
 import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
 
 export class ReviseCompletedActivityDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
-  quantity_logged: number;
+  quantity_logged?: number;
 
   @IsOptional()
   @IsArray()

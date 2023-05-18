@@ -80,7 +80,7 @@ describe('ActivityParserService', () => {
       const result = activityParserService.getLogQuantityQuestions(serializedActivityDummy, userDummy.id);
 
       expect(result).toBeArray();
-      expect(result.length).toBe(2);
+      expect(result.length).toBe(4);
     });
   });
 });

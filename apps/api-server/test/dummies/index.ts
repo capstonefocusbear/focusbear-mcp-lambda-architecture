@@ -313,7 +313,7 @@ export const serializedActivityDummy: SerializedActivity = {
       video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
       log_quantity: true,
       name: 'test ',
-      log_quantity_question: 'Log quantity data?',
+      log_quantity_question: '',
       is_default: true,
     },
   ],

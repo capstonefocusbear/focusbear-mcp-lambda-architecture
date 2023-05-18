@@ -124,7 +124,21 @@ export class ActivityParserService {
   }
 
   createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
-    const { id, log_quantity_questions } = activity;
+    const { id, log_quantity_questions, log_quantity_question, log_summary_type } = activity;
+    // if activity has old format log quantity question, create new format question from it
+    if (log_quantity_question) {
+      const questionFromOldFormat = new LogQuantityQuestion({
+        question: log_quantity_question,
+        activity_id: id,
+        user_id: userId,
+        log_summary_type,
+      });
+      const questionsForActivity = log_quantity_questions?.map(
+        (question) => new LogQuantityQuestion({ ...question, activity_id: id, user_id: userId }),
+      );
+      const logQuantityQuestions = [...(questionsForActivity || []), questionFromOldFormat];
+      return logQuantityQuestions?.length > 0 ? logQuantityQuestions : [];
+    }
     const questionsForActivity = log_quantity_questions?.map(
       (question) => new LogQuantityQuestion({ ...question, activity_id: id, user_id: userId }),
     );
@@ -145,6 +159,9 @@ export class ActivityParserService {
       completion_requirements,
       linked_activity_id,
       check_list,
+      // destructure log_quantity_question to remove it from activity data as it will be saved
+      // in the new format in getLogQuantityQuestions function
+      log_quantity_question,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },

@@ -5,7 +5,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Observable } from 'rxjs';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
-import cheerio from 'cheerio';
+import { load } from 'cheerio';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import * as axios from 'axios';
@@ -233,7 +233,7 @@ export class OpenAIService {
       }
       const response = await axios.default.get(url);
       const html = response.data;
-      const $ = cheerio.load(html);
+      const $ = load(html);
 
       const title = $('head title').text().trim() || null;
 

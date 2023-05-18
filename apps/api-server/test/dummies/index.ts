@@ -596,6 +596,24 @@ export const ActivityDummy: Activity = new Activity(
   { generateId: true },
 );
 
+export const ActivityDummyWithCompetencyChoices: Activity = new Activity(
+  {
+    user_id: userDummy.id,
+    type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    duration_seconds: 600,
+    activity_data: new ActivityData({ current_competency_level: 1, choice_type: ActivityChoiceType.competency }),
+    activity_sequence_id: ActivitySequenceDummy.id,
+    days_of_week: [DaysOfWeek.ALL],
+    choices: [
+      new Activity({ id: randomUUID(), activity_data: { name: 'CC 1', competency_level: 1 } }),
+      new Activity({ id: randomUUID(), activity_data: { name: 'CC 2', competency_level: 1 } }),
+    ],
+  },
+  { generateId: true },
+);
+
 export const logQuantityAnswersDtoDummy = [
   { question_id: randomUUID(), logged_value: 5 },
   { question_id: randomUUID(), logged_value: 8 },

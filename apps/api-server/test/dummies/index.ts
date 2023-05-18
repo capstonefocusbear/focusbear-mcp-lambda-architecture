@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
+import { CreateFocusModeTagDto } from 'apps/api-server/src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
@@ -23,6 +24,7 @@ import { FocusMode } from '../../src/modules/focus-mode/entities/focus-mode.enti
 import { CompletedFocusBlock } from '../../src/modules/focus-mode/entities/completed-focus-block.entity';
 import { Team } from '../../src/modules/team/entities/team.entity';
 import { UserTypes } from '../../src/modules/user/domain/user-types.enum';
+import { FocusModeTag } from '../../src/modules/focus-mode/entities/focus-mode-tags';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -617,6 +619,18 @@ export const logQuantityAnswersDtoDummy = [
   { question_id: randomUUID(), logged_value: 8 },
 ];
 
+export const logQuantityAnswerDummy = {
+  id: randomUUID(),
+  created_at: new Date(),
+  updated_at: new Date(),
+  user_id: userDummy.id,
+  activity_id: ActivityDummy.id,
+  question_id: randomUUID(),
+  completed_activity_log_id: randomUUID(),
+  logged_value: 5,
+  date_logged: new Date(),
+};
+
 const completedActivity: CreateCompletedActivityDto = {
   activity_id: ActivityDummy.id,
   quantity_logged: 10,
@@ -1033,15 +1047,29 @@ export const completedActivitiesWithNotesDummyArray = [
   },
 ];
 
+const tagIdDummy = randomUUID();
+export const FocusModeTagsDtoDummy: CreateFocusModeTagDto[] = [{ id: tagIdDummy, text: 'Test Tag' }];
+export const FocusModeTagsDummy = [new FocusModeTag({ id: tagIdDummy, text: 'Test Tag' })];
+
 export const FocusModeDummy = new FocusMode(
   {
     user_id: userDummy.id,
     name: 'Some string value',
     allowed_apps: [],
     allowed_urls: [],
+    tags: [],
   },
   { generateId: true },
 );
+
+export const UpsertFocusModeDummy = {
+  id: randomUUID(),
+  user_id: userDummy.id,
+  name: 'Some string value',
+  allowed_apps: [],
+  allowed_urls: [],
+  tags: [],
+};
 
 export const CompletedFocusBlockDummy = new CompletedFocusBlock(
   {
@@ -1053,6 +1081,7 @@ export const CompletedFocusBlockDummy = new CompletedFocusBlock(
     start_time: new Date(),
     intention: 'Some string',
     achievements: 'Some string',
+    distractions: 'Test string',
     focus_duration_seconds: 3200,
   },
   { generateId: true },
@@ -1418,7 +1447,13 @@ export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
   welcome_video_url: 'https:blah.io',
   marketplace_request: MarketplaceRequestType.requested,
   marketplace_approval_status: false,
+  allowed_apps: [],
+  allowed_urls: [],
   language: 'en',
+  tags: [
+    new FocusModeTag({ id: randomUUID(), text: 'Test Tag' }),
+    new FocusModeTag({ id: randomUUID(), text: 'Test Tag 2' }),
+  ],
 };
 
 const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).startOf('day');
@@ -1463,8 +1498,8 @@ export const dailyStatsArrayDummy = [
     id: randomUUID(),
     user_id: userDummy.id,
     date_completed: latestDateInStatsStreak.minus({ days: 3 }).toJSDate(),
-    morning_routine_completion_percentage: 30,
-    evening_routine_completion_percentage: 30,
+    morning_routine_completion_percentage: 5,
+    evening_routine_completion_percentage: 5,
     focus_modes_completed: 4,
     should_recalculate: false,
     morning_sequence_log_id: null,

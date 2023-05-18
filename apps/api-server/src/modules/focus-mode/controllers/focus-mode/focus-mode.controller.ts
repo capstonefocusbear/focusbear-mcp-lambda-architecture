@@ -26,18 +26,19 @@ export class FocusModeController {
 
   @Post()
   async createFocusMode(
-    @Body() { name, allowed_apps, allowed_urls, metadata, id }: CreateFocusModeDto,
+    @Body() focusModeDto: CreateFocusModeDto,
     @AuthContext() { user }: Passport,
   ): Promise<FocusMode> {
-    return this.focusModeService.create({ id, name, allowed_apps, allowed_urls, metadata, user_id: user.id });
+    return this.focusModeService.createFocusMode(user.id, focusModeDto);
   }
 
   @Patch(':focus_mode_id')
   async updateFocusMode(
-    @Body() { name, allowed_apps, allowed_urls, metadata }: UpdateFocusModeDto,
+    @Body() updateFocusModeDto: UpdateFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
+    @AuthContext() { user }: Passport,
   ): Promise<FocusMode> {
-    return this.focusModeService.update(focus_mode_id, { name, allowed_apps, allowed_urls, metadata });
+    return this.focusModeService.updateFocusMode(user.id, focus_mode_id, updateFocusModeDto);
   }
 
   @Put()
@@ -75,15 +76,16 @@ export class FocusModeController {
 
   @Post(':focus_mode_id/finish')
   async finishCurrentFocusMode(
-    @Body() { achievements, distractions, finish_time, focus_duration_seconds }: FinishFocusModeDto,
+    @Body() finishFocusModeDto: FinishFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeManagerService.finishCurrentFocusMode(
-      { achievements, distractions, finish_time, focus_duration_seconds },
-      { focus_mode_id },
-      user.id,
-    );
+    await this.focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user.id);
     return new ResponseMessage('Focus mode has been successfully finished!');
+  }
+
+  @Get('tags')
+  async getUserFocusTags(@AuthContext() { user }: Passport) {
+    return this.focusModeService.getUserFocusTags(user.id);
   }
 }

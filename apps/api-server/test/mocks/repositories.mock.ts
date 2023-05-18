@@ -65,6 +65,8 @@ export const ActivityRepositoryMock = {
 
 export const LogQuantityAnswersRepositoryMock = {
   ...BaseRepositoryMock,
+  getAggregatedQuantityLogsPerDay: jest.fn(),
+  getAnswersByQuestionIdsInTimeRange: jest.fn(),
 };
 
 export const LogQuantityQuestionsRepositoryMock = {
@@ -95,6 +97,7 @@ export const InstalledFocusModeTemplatesRepositoryMock = {
 export const CompletedFocusBlockRepositoryMock = {
   ...BaseRepositoryMock,
   getLogsByUserInTimeRange: jest.fn(),
+  getFocusBlockLogsForTimeRange: jest.fn(),
 };
 
 export const TeamRepositoryMock = {
@@ -165,4 +168,8 @@ export const LessonsRepositoryMock = {
 export const DailyStatsRepositoryMock = {
   ...BaseRepositoryMock,
   getUserDailyStats: jest.fn(),
+};
+
+export const FocusModeTagRepositoryMock = {
+  ...BaseRepositoryMock,
 };

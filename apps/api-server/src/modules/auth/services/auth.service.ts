@@ -16,9 +16,6 @@ export class AuthService {
         category: 'Service',
         level: 'debug',
         message: 'Authenticating user',
-        data: {
-          authorization,
-        },
       });
       const token: string = this.extractBearerToken(authorization);
       const [isAuth, { payload, declineReason }] = await this.auth0AuthService.validateAccessToken(token);
@@ -37,9 +34,6 @@ export class AuthService {
       category: 'Service',
       level: 'debug',
       message: 'Extracting bearer token',
-      data: {
-        authHeader,
-      },
     });
     if (!authHeader) return undefined;
     const [, token] = authHeader.split(' ');

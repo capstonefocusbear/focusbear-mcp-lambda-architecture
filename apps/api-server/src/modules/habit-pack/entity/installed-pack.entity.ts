@@ -36,7 +36,7 @@ export class InstalledPack extends BaseEntity {
   })
   activity_sequence_id?: string;
 
-  @ManyToOne(() => User, (user) => user.installed_packs, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
+  @ManyToOne(() => User, (user) => user.installed_packs, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

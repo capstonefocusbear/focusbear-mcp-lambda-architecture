@@ -113,4 +113,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @IsUUID('4')
   linked_activity_template_id?: string;
+
+  @IsArray()
+  @IsOptional()
+  check_list?: string[];
 }

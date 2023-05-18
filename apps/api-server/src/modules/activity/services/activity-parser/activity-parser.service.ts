@@ -54,6 +54,7 @@ export class ActivityParserService {
         completion_requirements,
         log_quantity_questions,
         linked_activity_id,
+        check_list,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -69,6 +70,7 @@ export class ActivityParserService {
         completion_requirements: completion_requirements ?? undefined,
         log_quantity_questions,
         linked_activity_id,
+        check_list,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -142,6 +144,7 @@ export class ActivityParserService {
       days_of_week,
       completion_requirements,
       linked_activity_id,
+      check_list,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -172,6 +175,7 @@ export class ActivityParserService {
       days_of_week,
       completion_requirements,
       linked_activity_id,
+      check_list,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));

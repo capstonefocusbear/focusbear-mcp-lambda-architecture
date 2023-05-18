@@ -23,7 +23,6 @@ export class EventsService {
         message: 'Adding event to track-event queue',
         data: {
           user_id,
-          trackEventDto,
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });

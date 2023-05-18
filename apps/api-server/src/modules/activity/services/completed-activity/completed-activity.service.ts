@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
@@ -46,13 +53,15 @@ import { LogQuantityAnswerDto } from '../../dto/log-quantity-answers.dto';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
-import { ReviseLogQuantityAnswerDto } from '../../dto/revise-log-quantity-answer.dto';
 import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
+import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
+import { UserService } from '../../../user/services/user/user.service';
 
 @Injectable()
 export class CompletedActivityService {
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
+    @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     private readonly userRepository: UserRepository,
@@ -67,6 +76,8 @@ export class CompletedActivityService {
     private readonly activitySequenceService: ActivitySequenceService,
     private readonly logQuantityAnswerRepository: LogQuantityAnswersRepository,
     private readonly logQuantityQuestionRepository: LogQuantityQuestionsRepository,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   async completeActivity(
@@ -103,11 +114,15 @@ export class CompletedActivityService {
           log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
         );
       }
+      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (activity.type === ActivityType.break) {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
         const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
-        return createdItem;
+        if (log_quantity_answers?.length > 0) {
+          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+        }
+        return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
       }
       let completingSequenceLog = null;
       if (!should_not_update_current_activity) {
@@ -128,7 +143,6 @@ export class CompletedActivityService {
         should_not_update_current_activity,
         completingSequenceLog,
       );
-      let logQuantityAnswers: LogQuantityAnswer[] = [];
       if (log_quantity_answers?.length > 0) {
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
@@ -710,6 +724,17 @@ export class CompletedActivityService {
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
       const params = { days_number, log_summary_type, stat_type, timezone };
       const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
+      const logQuantityQuestions = await this.logQuantityQuestionRepository.orm.find({
+        where: { activity_id },
+        select: ['id'],
+      });
+      const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
+      const logQuantityStats = await Promise.all(
+        loqQuantityQuestionIds.map(
+          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone }),
+          // eslint-disable-next-line function-paren-newline
+        ),
+      );
       const stats = new CompletedActivityStats({
         activity_id,
         days_number,
@@ -717,6 +742,7 @@ export class CompletedActivityService {
         log_summary_type,
         stat_type,
         timezone,
+        log_quantity_answers_stats: logQuantityStats,
       });
       return stats;
     } catch (error) {
@@ -739,8 +765,14 @@ export class CompletedActivityService {
     const idsToFetchStatsFor = [question_id, linked_question_id, ...linkedActivitiesIds];
     const params = { days_number, log_summary_type, timezone };
     const items = await this.logQuantityAnswerRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
-    const stats = new LogQuantityAnswersStats({ question_id, days_number, items, log_summary_type, timezone });
-    return stats;
+    return new LogQuantityAnswersStats({
+      question_id,
+      days_number,
+      items,
+      log_summary_type,
+      timezone,
+      question,
+    });
   }
 
   async getCompletedLogsByActivityInTimeRange(
@@ -760,7 +792,30 @@ export class CompletedActivityService {
     return this.completedActivityRepository.getLogsByActivityInTimeRange(activity_id, { from_time, to_time });
   }
 
-  async reviseCompletedLog(id: string, { quantity_logged }: ReviseCompletedActivityDto): Promise<CompletedActivity> {
+  async getLogQuantityAnswersByQuestionInTimeRange(
+    { question_ids }: GetLogQuantityAnswerLogsDto,
+    { from_time, to_time },
+  ) {
+    const answers = await this.logQuantityAnswerRepository.getAnswersByQuestionIdsInTimeRange(
+      { question_ids },
+      { from_time, to_time },
+    );
+    const answersObject = {};
+    for (const answer of answers) {
+      const questionId = answer.question_id;
+
+      if (!(questionId in answersObject)) {
+        answersObject[questionId] = [];
+      }
+      answersObject[questionId].push(answer);
+    }
+    return answersObject;
+  }
+
+  async reviseCompletedLog(
+    id: string,
+    { quantity_logged, log_quantity_answers }: ReviseCompletedActivityDto,
+  ): Promise<CompletedActivity> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -769,24 +824,31 @@ export class CompletedActivityService {
         id,
       },
     });
-    const log = await this.completedActivityRepository.orm.findOneBy({ id });
-    if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
-    log.quantity_logged = quantity_logged;
-    return this.completedActivityRepository.orm.save(log);
+    let savedLog = {};
+    if (typeof quantity_logged !== 'undefined') {
+      const log = await this.completedActivityRepository.orm.findOneBy({ id });
+      if (!log) throw new NotFoundException(`Completed log with id: ${id} does not exist!`);
+      log.quantity_logged = quantity_logged;
+      savedLog = await this.completedActivityRepository.orm.save(log);
+    }
+    let updatedAnswers;
+    if (log_quantity_answers?.length) {
+      updatedAnswers = await this.reviseLogQuantityAnswers(log_quantity_answers, id);
+    }
+    return { ...savedLog, answers: updatedAnswers };
   }
 
-  async reviseLogQuantityAnswers(logQuantityAnswers: ReviseLogQuantityAnswerDto[], user_id: string) {
+  async reviseLogQuantityAnswers(logQuantityAnswers: LogQuantityAnswerDto[], completed_activity_log_id: string) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Revising log quantity question answers',
-      data: {
-        user_id,
-        logQuantityAnswers,
-      },
     });
-    const updatedLogs = logQuantityAnswers.map(async ({ logged_value, answer_id }) => {
-      const log = await this.logQuantityAnswerRepository.orm.findOneBy({ id: answer_id, user_id });
+    const updatedLogs = logQuantityAnswers?.map(async ({ logged_value, question_id }) => {
+      const log = await this.logQuantityAnswerRepository.orm.findOneBy({
+        question_id,
+        completed_activity_log_id,
+      });
       log.logged_value = logged_value;
       return this.logQuantityAnswerRepository.orm.save(log);
     });
@@ -794,6 +856,7 @@ export class CompletedActivityService {
   }
 
   async getDaySummary(user_id: string, timezone: string): Promise<DaySummary> {
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -801,7 +864,7 @@ export class CompletedActivityService {
         message: 'Getting day summary',
         data: {
           user_id,
-          timezone,
+          ...(isVerboseLoggingAllowed && { timezone }),
         },
       });
       const timerange = await this.defineStartupTimestamp(user_id, timezone);
@@ -831,7 +894,6 @@ export class CompletedActivityService {
       message: 'Defining startup timestamp',
       data: {
         user_id,
-        timezone,
       },
     });
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
@@ -849,7 +911,6 @@ export class CompletedActivityService {
       message: 'Building timestamp',
       data: {
         startup_time,
-        time_zone: timeZone,
       },
     });
     let to_time;
@@ -957,12 +1018,13 @@ export class CompletedActivityService {
       level: 'debug',
       message: 'Counting focus mode summary',
     });
-    return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '' }) => ({
+    return items.map(({ focus_mode, start_time, finish_time, achievements = '', distractions = '', tags }) => ({
       name: focus_mode.name,
       start_time,
       duration: (new Date(finish_time).getTime() - new Date(start_time).getTime()) / 1000,
       achievements,
       distractions,
+      tags: tags?.map((tag) => tag.text),
     }));
   }
 
@@ -1091,9 +1153,6 @@ export class CompletedActivityService {
       category: 'Service',
       level: 'debug',
       message: 'Saving log quantity question answers',
-      data: {
-        logQuantityAnswers,
-      },
     });
     const {
       completed_activity_log: { activity_id, user_id, id, start_time },

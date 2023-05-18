@@ -244,7 +244,11 @@ export class CompletedActivitySequenceService {
       });
       const relations = ['current_activity', 'current_activity_sequence', 'completing_sequence_log'];
       const user = await this.userRepository.orm.findOne({ where: { id: user_id }, relations });
-      const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(user, activity_sequence_id);
+      const { hasConsistentCurrentSet } = this.validateCurrentActivitySequence(
+        user,
+        activity_sequence_id,
+        cancel_habits_for_today,
+      );
       const shouldAllowForceCompletion = await this.checkIfForceCompletionShouldBeAllowed(
         user,
         cancel_habits_for_today,
@@ -386,6 +390,7 @@ export class CompletedActivitySequenceService {
   private validateCurrentActivitySequence(
     user: User,
     activity_sequence_id: string,
+    cancel_habits_for_today: boolean,
   ): never | { hasConsistentCurrentSet: boolean } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -401,7 +406,7 @@ export class CompletedActivitySequenceService {
     const hasConsistentCurrentSet = userHasCompletingLog && userHasCurrentSequence;
     const givenSequenceIsNotCurrent = user.current_activity_sequence_id !== activity_sequence_id;
     const givenSequenceIsNotCurrentMessage = `Provided sequence with id: ${activity_sequence_id} is not current!`;
-    if (givenSequenceIsNotCurrent) {
+    if (givenSequenceIsNotCurrent && !cancel_habits_for_today) {
       throw new BadRequestException({ message: givenSequenceIsNotCurrentMessage, donotloginslack: true });
     }
     return { hasConsistentCurrentSet };

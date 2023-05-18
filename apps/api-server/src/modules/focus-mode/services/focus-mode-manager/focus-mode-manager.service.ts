@@ -14,6 +14,7 @@ import { CompletedFocusBlock } from '../../entities/completed-focus-block.entity
 import { FocusMode } from '../../entities/focus-mode.entity';
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
+import { FocusModeService } from '../focus-mode/focus-mode.service';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -25,6 +26,7 @@ export class FocusModeManagerService {
     private readonly pusherBeamsService: PusherBeamsService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly focusModeService: FocusModeService,
   ) {}
 
   async startCurrentFocusMode(
@@ -108,7 +110,7 @@ export class FocusModeManagerService {
   }
 
   async finishCurrentFocusMode(
-    { distractions, achievements, finish_time, focus_duration_seconds }: FinishFocusModeDto,
+    finishFocusBlockDto: FinishFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
@@ -118,14 +120,12 @@ export class FocusModeManagerService {
         level: 'debug',
         message: 'Finishing current focus mode',
         data: {
-          finish_time,
           focus_mode_id,
           user_id,
-          focus_duration_seconds,
         },
       });
+      const { finish_time, focus_duration_seconds, tags } = finishFocusBlockDto;
       const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
-      const updateCriteria = user.current_completing_focus_block_id;
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
         id: user.current_completing_focus_block_id,
       });
@@ -133,15 +133,19 @@ export class FocusModeManagerService {
       const durationToUse = isDurationPassedAsParam
         ? focus_duration_seconds
         : this.calculateFocusDurationSeconds(completingFocusBlock.start_time, finish_time);
-      const completedBlockDataToUpdate = {
-        distractions,
-        achievements,
-        finish_time,
+      let focusModeTags = [];
+      if (tags && tags?.length) {
+        focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
+      }
+      const updateCompletingFocusBlock = {
+        ...completingFocusBlock,
+        ...finishFocusBlockDto,
         focus_duration_seconds: durationToUse,
+        tags: focusModeTags,
       };
       const [, completedMode] = await Promise.all([
         this.nullifyCurrentFocusModeForUser(user_id),
-        this.completedFocusBlockRepository.update(updateCriteria, completedBlockDataToUpdate),
+        this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);

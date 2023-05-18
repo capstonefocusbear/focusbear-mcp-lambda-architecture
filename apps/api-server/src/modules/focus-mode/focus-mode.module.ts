@@ -9,10 +9,20 @@ import { FocusModeService } from './services/focus-mode/focus-mode.service';
 import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { IPusherBeamsOptions, PusherBeamsModule } from '../../../../../libs/pusher-beams/src';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
+import { FocusModeTagRepository } from './repositories/focus-mode-tags.repository';
+import { CompletedFocusBlockService } from './services/completed-focus-blocks/completed-focus-blocks.service';
+import { CompletedFocusBlocksController } from './controllers/completed-focus-blocks/completed-focus-blocks.controller';
 
 @Module({
-  providers: [FocusModeService, FocusModeRepository, CompletedFocusBlockRepository, FocusModeManagerService],
-  exports: [FocusModeRepository],
+  providers: [
+    FocusModeService,
+    FocusModeRepository,
+    CompletedFocusBlockRepository,
+    FocusModeManagerService,
+    FocusModeTagRepository,
+    CompletedFocusBlockService,
+  ],
+  exports: [FocusModeRepository, FocusModeTagRepository, FocusModeService],
   imports: [
     forwardRef(() => UserModule),
     PusherModule.registerAsync({
@@ -27,6 +37,6 @@ import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-temp
     }),
     forwardRef(() => FocusModeTemplatesModule),
   ],
-  controllers: [FocusModeController],
+  controllers: [FocusModeController, CompletedFocusBlocksController],
 })
 export class FocusModeModule {}

@@ -37,6 +37,7 @@ export const Auth0ManagementServiceMock = {
 export const UserServiceMock = {
   getUserLocalDeviceSettings: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),
+  isVerboseLoggingAllowed: jest.fn(),
   // rest can be added if needed
 };
 
@@ -47,6 +48,8 @@ export const DeviceServiceMock = {
 
 export const ActivitySequenceServiceMock = {
   getUserRoutineDailyDurations: jest.fn(),
+  sortActivityIdsByExecutionSequence: jest.fn(),
+  filterActivitiesForCurrentDay: jest.fn(),
 };
 
 export const CompletedActivitySequenceServiceMock = {
@@ -142,6 +145,7 @@ export const SentryServiceMock = {
 
 export const FocusModeServiceMock = {
   create: jest.fn(),
+  saveFocusModeTags: jest.fn(),
 };
 
 export const R2ServiceMock = {

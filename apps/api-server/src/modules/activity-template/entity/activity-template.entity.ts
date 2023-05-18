@@ -92,6 +92,13 @@ export class ActivityTemplate extends BaseEntity {
   })
   sequence_index?: number;
 
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('check_list'),
+  })
+  check_list?: string[];
+
   @DeleteDateColumn()
   deleted_at?: Date;
 
@@ -125,7 +132,7 @@ export class ActivityTemplate extends BaseEntity {
   @JoinColumn({ name: 'pack_id' })
   habit_pack?: HabitPack;
 
-  @ManyToOne(() => User, (user) => user.activity_templates)
+  @ManyToOne(() => User, (user) => user.activity_templates, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

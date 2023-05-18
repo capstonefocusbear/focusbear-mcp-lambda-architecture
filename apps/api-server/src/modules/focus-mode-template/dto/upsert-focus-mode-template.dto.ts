@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsUrl, IsUUID, IsNotEmpty, IsBoolean, IsArray, ValidateIf } from 'class-validator';
 import { MarketplaceRequestType } from '../../habit-pack/domain/marketplace-request.enum';
+import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
 
 export class UpsertFocusModeTemplateDto {
   @IsNotEmpty()
@@ -28,6 +29,10 @@ export class UpsertFocusModeTemplateDto {
   @IsString({ each: true })
   @ApiProperty()
   allowed_apps?: string[];
+
+  @IsOptional()
+  @IsArray()
+  tags?: CreateFocusModeTagDto[];
 
   @IsNotEmpty()
   @IsString()

@@ -30,6 +30,8 @@ import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enu
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
+import { AiToneOptions } from '../../../../../../../libs/openai/src/domain/ai-tones.enum';
+import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 
 @Injectable()
 export class UserService {
@@ -103,8 +105,6 @@ export class UserService {
         message: 'Updating or creating user',
         data: {
           auth0_id,
-          email,
-          name,
         },
       });
       const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
@@ -213,13 +213,14 @@ export class UserService {
     local_device_settings: UpdateLocalDeviceSettingsDto,
   ): Promise<UpdateLocalDeviceSettingsDto> {
     try {
+      const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Updating user local device settings',
         data: {
           user_id,
-          local_device_settings,
+          ...(isVerboseLoggingAllowed && { local_device_settings }),
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
@@ -373,8 +374,8 @@ export class UserService {
     if (!fetchedUser) {
       return null;
     }
-    const completedSequences = this.removeUserIncompleteSequences(fetchedUser?.completed_activity_sequences);
-    return { ...fetchedUser, completed_activity_sequences: completedSequences };
+    // returning empty activities array here temporarily until dashboard has implemented new endpoint to get activities
+    return { ...fetchedUser, activities: [] };
   }
 
   removeUserIncompleteSequences(activitySequenceRecords: CompletedActivitySequence[]) {
@@ -425,7 +426,7 @@ export class UserService {
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
   }
 
-  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english') {
+  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english', tone: AiToneOptions) {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
@@ -445,7 +446,8 @@ export class UserService {
           streak_days: focus_modes_streak,
         },
       ];
-      return await this.openAIService.createMotivationalSummary(response, input, language);
+      const longTermGoals = await this.getUserLongTermGoals(user_id);
+      return await this.openAIService.createMotivationalSummary(response, input, language, tone, longTermGoals);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -461,5 +463,23 @@ export class UserService {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     await this.openAIService.streamChatReply(response, messages, language);
+  }
+
+  async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    }
+    await this.userRepository.update(user_id, { long_term_goals: goals });
+  }
+
+  async getUserLongTermGoals(user_id: string) {
+    const partialUser = await this.userRepository.orm.findOne({ where: { id: user_id }, select: ['long_term_goals'] });
+    return partialUser?.long_term_goals;
+  }
+
+  async isVerboseLoggingAllowed(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 }

@@ -18,12 +18,12 @@ export class UpdateUserConsentDto {
   @IsNotEmpty()
   consent_status: boolean;
 
-  @IsDate({ message: 'start_time should be a valid ISO string in UTC zone' })
+  @IsDate({ message: 'withdrawal_date should be a valid ISO string in UTC zone' })
   @Type(() => Date)
   @IsOptional()
   withdrawal_date?: Date;
 
   @IsOptional()
   @IsObject()
-  metadata?: any;
+  metadata?: { policy_version?: string };
 }

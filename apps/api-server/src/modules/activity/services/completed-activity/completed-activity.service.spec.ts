@@ -17,6 +17,7 @@ import {
   UserDailyStatsServiceMock,
   LogQuantityAnswersRepositoryMock,
   LogQuantityQuestionsRepositoryMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -36,6 +37,7 @@ import {
   eveningActivitiesDBResponseDummy,
   EveningActivitySequenceDummy,
   LeaderDeviceDummy,
+  logQuantityAnswerDummy,
   logQuantityAnswersDtoDummy,
   MorningActivitySequenceDummy,
   sequenceWithActivitiesForDifferentDays,
@@ -69,6 +71,9 @@ import { DaysOfWeek } from '../../domain/days-of-week.enum';
 import { ActivitySequenceService } from '../activity-sequence/activity-sequence.service';
 import { LogQuantityAnswersRepository } from '../../repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-questions.repository';
+import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
+import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
+import { UserService } from '../../../user/services/user/user.service';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -91,6 +96,7 @@ describe('CompletedActivityService', () => {
         ActivitySequenceService,
         LogQuantityAnswersRepository,
         LogQuantityQuestionsRepository,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -121,6 +127,8 @@ describe('CompletedActivityService', () => {
       .useValue(LogQuantityAnswersRepositoryMock)
       .overrideProvider(LogQuantityQuestionsRepository)
       .useValue(LogQuantityQuestionsRepositoryMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -139,6 +147,9 @@ describe('CompletedActivityService', () => {
       jest.resetAllMocks();
     });
 
+    const startTime = new Date(Date.now() - 60);
+    const finishTime = new Date(Date.now() - 1);
+
     const randomQuantity = randomInt(20);
     const completedActivity: CreateCompletedActivityDto = {
       activity_id: ActivityDummy.id,
@@ -147,8 +158,8 @@ describe('CompletedActivityService', () => {
       note_logged: 'some text',
       device_id: DeviceDummy.id,
       activity_sequence_id: ActivityDummy.activity_sequence_id,
-      start_time: new Date(Date.now() - 60),
-      finish_time: new Date(Date.now() - 1),
+      start_time: startTime,
+      finish_time: finishTime,
       metadata: { is_skipped: false },
     };
 
@@ -158,8 +169,8 @@ describe('CompletedActivityService', () => {
       duration_logged: 600,
       activity_note: 'some text',
       activity_sequence_id: ActivityDummy.activity_sequence_id,
-      start_time: new Date(Date.now() - 60),
-      finish_time: new Date(Date.now() - 1),
+      start_time: startTime,
+      finish_time: finishTime,
       metadata: { is_skipped: false },
     };
 
@@ -929,6 +940,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -950,6 +962,7 @@ describe('CompletedActivityService', () => {
       };
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithTruthyQuantityLogs);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
@@ -968,11 +981,36 @@ describe('CompletedActivityService', () => {
       const statItemsDummy = [{ date: new Date(Date.now()), summary: '30' }];
       CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce(statItemsDummy);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const result = await completedActivityService.getStatsByActivityPerDay(params, query);
 
       expect(result).toBeDefined();
       expect(result).toBeInstanceOf(CompletedActivityStats);
+    });
+
+    it('positive: if activity has log quantity questions, stats for them should be retrieved and included in response', async () => {
+      const activityWithFalsyQuantityLogs: Activity = {
+        ...ActivityDummy,
+        log_quantity: false,
+        linked_activity_id: null,
+      };
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithFalsyQuantityLogs);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      const questionOneId = randomUUID();
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([{ id: questionOneId }]);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ id: questionOneId });
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityAnswersRepositoryMock.getAggregatedQuantityLogsPerDay.mockResolvedValueOnce({
+        date: new Date(),
+        summary: 5,
+      });
+
+      const result = await completedActivityService.getStatsByActivityPerDay(params, query);
+
+      expect(result).toBeInstanceOf(CompletedActivityStats);
+      expect(result.log_quantity_answers_stats.length).toBe(1);
+      expect(result.log_quantity_answers_stats[0]).toBeInstanceOf(LogQuantityAnswersStats);
     });
   });
 
@@ -1006,7 +1044,7 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: guantity_logged value should be reassigned and the updated item saved', async () => {
+    it('positive: quantity_logged value should be reassigned and the updated item saved', async () => {
       CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValue(CompletedActivityDummy);
 
       await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, { quantity_logged });
@@ -1014,12 +1052,34 @@ describe('CompletedActivityService', () => {
       const updatedItem = { ...CompletedActivityDummy, quantity_logged };
       expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith(updatedItem);
     });
+
+    it('positive: if log_quantity_answers are sent they should be updated', async () => {
+      CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedActivityDummy);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...logQuantityAnswerDummy,
+        question_id: logQuantityAnswersDtoDummy[0].question_id,
+      });
+
+      await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, {
+        quantity_logged,
+        log_quantity_answers: [logQuantityAnswersDtoDummy[0]],
+      });
+
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalled();
+
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalledWith({
+        ...logQuantityAnswerDummy,
+        question_id: logQuantityAnswersDtoDummy[0].question_id,
+        logged_value: logQuantityAnswersDtoDummy[0].logged_value,
+      });
+    });
   });
 
   describe('getDaySummary', () => {
     it('negative: should throw NotFoundException if user does not exist', async () => {
       const user_id = randomUUID();
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -1037,6 +1097,7 @@ describe('CompletedActivityService', () => {
     it('negative: should throw BadRequestException if user has no startup_time value specified', async () => {
       const testUser = { ...userDummy, startup_time: null };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(testUser);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -1062,6 +1123,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       let exception: any;
 
       try {
@@ -1079,6 +1141,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
 
       await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
@@ -1095,6 +1158,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
 
       const result = await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
@@ -1110,6 +1174,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       const result = await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
       expect(result).toBeInstanceOf(DaySummary);
@@ -1125,6 +1190,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.getDaySummaryAVG.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummarySUM.mockResolvedValue([CompletedActivityDummy]);
       CompletedActivityRepositoryMock.getDaySummaryDuration.mockResolvedValue([CompletedActivityDummy]);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       const result = await completedActivityService.getDaySummary(userDummy.id, 'America/Moncton');
 
       expect(result).toBeInstanceOf(DaySummary);
@@ -1607,6 +1673,47 @@ describe('CompletedActivityService', () => {
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
       );
+    });
+  });
+
+  describe('getLogQuantityAnswersByQuestionInTimeRange', () => {
+    it('positive: should group log quantity answers by question ID', async () => {
+      const questionOneId = randomUUID();
+      const questionTwoId = randomUUID();
+      LogQuantityAnswersRepositoryMock.getAnswersByQuestionIdsInTimeRange.mockResolvedValueOnce([
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionTwoId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+        new LogQuantityAnswer({
+          id: randomUUID(),
+          created_at: new Date().toDateString(),
+          updated_at: new Date().toDateString(),
+          user_id: userDummy.id,
+          activity_id: 'a7e6f2e9-d783-4443-864e-22071b853700',
+          question_id: questionOneId,
+          completed_activity_log_id: randomUUID(),
+          logged_value: 4,
+          date_logged: new Date(),
+        }),
+      ]);
+
+      const groupedLogQuantityAnswers = await completedActivityService.getLogQuantityAnswersByQuestionInTimeRange(
+        {
+          question_ids: [questionOneId, questionTwoId],
+        },
+        { from_time: new Date(), to_time: new Date() },
+      );
+
+      expect(groupedLogQuantityAnswers[questionOneId]).toBeArray();
+      expect(groupedLogQuantityAnswers[questionOneId][0]).toBeInstanceOf(LogQuantityAnswer);
     });
   });
 });

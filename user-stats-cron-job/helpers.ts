@@ -5,6 +5,7 @@ import { UserOnboardingProgress } from '../apps/api-server/src/modules/user/doma
 import { BASE_ONBOARDING_PROGRESS, LUXON_WEEK_DAYS, LEVEL_THRESHOLDS, DAYS_OF_WEEK } from './constants';
 import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD } from '../apps/api-server/src/shared/utils/constatnts';
 
 export function findDifferenceInSeconds(startTime: Date, finishTime: Date) {
   const start = DateTime.fromJSDate(startTime);
@@ -160,10 +161,10 @@ export function calculateStreaks(
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
-    (dailyStat) => dailyStat.morning_routine_completion_percentage >= 50,
+    (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
   const daysWhereEveningRoutinesWereCompleted = userDailyStats.filter(
-    (dailyStat) => dailyStat.evening_routine_completion_percentage >= 50,
+    (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
   return {
     focus_modes_streak: calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone),

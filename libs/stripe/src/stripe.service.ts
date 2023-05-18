@@ -94,4 +94,8 @@ export class StripeService extends Stripe {
       throw new BadRequestException(err.message);
     });
   }
+
+  async deleteStripeCustomer(stripeCustomerId: string) {
+    await this.customers.del(stripeCustomerId);
+  }
 }

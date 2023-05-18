@@ -13,6 +13,10 @@ import { UpsertFocusModeTemplateDto } from '../dto/upsert-focus-mode-template.dt
 import { FocusModeTemplate } from '../entities/focus-mode-template.entity';
 import { FocusModeTemplatesRepository } from '../repositories/focus-mode-templates.repository';
 import { InstalledFocusModeTemplatesRepository } from '../repositories/installed-focus-mode-templates.reporisoty';
+import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
+import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
+import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
 
 @Injectable()
 export class FocusModeTemplatesService {
@@ -20,8 +24,10 @@ export class FocusModeTemplatesService {
     private readonly focusModeTemplateRepository: FocusModeTemplatesRepository,
     private readonly focusModeRepository: FocusModeRepository,
     private readonly userRepository: UserRepository,
-    private readonly installedFocusModeTeplatesRepository: InstalledFocusModeTemplatesRepository,
+    private readonly installedFocusModeTemplatesRepository: InstalledFocusModeTemplatesRepository,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly focusModeTagRepository: FocusModeTagRepository,
+    private readonly focusModeService: FocusModeService,
   ) {}
 
   async upsertFocusModeTemplate(
@@ -55,15 +61,23 @@ export class FocusModeTemplatesService {
         focusModeTemplateDto,
         existingFocusModeTemplate,
       );
-      const { author_name } = focusModeTemplateDto;
+      const { author_name, tags } = focusModeTemplateDto;
       const authorName = this.determineFocusTemplateAuthorName(
         existingFocusModeTemplate,
         user,
         author_name,
         userIsAdmin,
       );
+      if (existingFocusModeTemplate) {
+        await this.deleteRemovedFocusTemplateTags(user_id, existingFocusModeTemplate?.tags, tags);
+      }
+      let focusModeTags = [];
+      if (tags && tags?.length) {
+        focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
+      }
       const focusModeTemplate = new FocusModeTemplate({
         ...focusModeTemplateDto,
+        tags: focusModeTags,
         description_plain_text: htmlToPlainText(focusModeTemplateDto.description),
         welcome_message_plain_text: htmlToPlainText(focusModeTemplateDto.welcome_message),
         author_id: user.id,
@@ -72,7 +86,7 @@ export class FocusModeTemplatesService {
         is_featured: isFeatured,
         featured_for_onboarding: isFeaturedForOnboarding,
       });
-      return await this.focusModeTemplateRepository.upsert(focusModeTemplate, ['id']);
+      return await this.focusModeTemplateRepository.orm.save(focusModeTemplate);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -168,7 +182,7 @@ export class FocusModeTemplatesService {
       if (!focusModeTemplate) {
         throw new NotFoundException(`Focus mode template with ID: ${template_id} does not exist!`);
       }
-      const installedFocusModeTemplate = await this.installedFocusModeTeplatesRepository.orm.findOne({
+      const installedFocusModeTemplate = await this.installedFocusModeTemplatesRepository.orm.findOne({
         where: { user_id, focus_mode_template_id: template_id },
       });
       if (installedFocusModeTemplate?.installation_status) {
@@ -179,26 +193,29 @@ export class FocusModeTemplatesService {
       }
       if (installedFocusModeTemplate) {
         // if installation record already exists but focus mode is not currently installed, update existing record as installed
-        this.installedFocusModeTeplatesRepository.orm.update(installedFocusModeTemplate.id, {
+        this.installedFocusModeTemplatesRepository.orm.update(installedFocusModeTemplate.id, {
           installation_status: true,
         });
       } else {
         // if focus mode template has not been installed before, create new install record
-        this.installedFocusModeTeplatesRepository.create({
+        this.installedFocusModeTemplatesRepository.create({
           user_id,
           focus_mode_template_id: template_id,
           installation_status: true,
         });
       }
-      const { name, allowed_apps, allowed_urls } = focusModeTemplate;
-      const createdFocusMode = await this.focusModeRepository.create({
+      const { name, allowed_apps, allowed_urls, tags } = focusModeTemplate;
+      const tagsCreatedFromTemplate = tags?.map(({ text }) => new FocusModeTag({ text, user_id }));
+      await this.focusModeTagRepository.orm.save(tagsCreatedFromTemplate);
+      const createdFocusMode = new FocusMode({
         user_id,
         name,
         allowed_apps,
         allowed_urls,
         focus_mode_template_id: template_id,
+        tags: tagsCreatedFromTemplate,
       });
-      return createdFocusMode;
+      return await this.focusModeRepository.orm.save(createdFocusMode);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -241,7 +258,7 @@ export class FocusModeTemplatesService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      const userInstallLogs = await this.installedFocusModeTeplatesRepository.orm.find({
+      const userInstallLogs = await this.installedFocusModeTemplatesRepository.orm.find({
         where: { user_id, installation_status: true },
       });
       const userInstalledTemplateIds = userInstallLogs.map(
@@ -255,5 +272,22 @@ export class FocusModeTemplatesService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async deleteRemovedFocusTemplateTags(
+    user_id: string,
+    existingTags: FocusModeTag[],
+    incomingTags: CreateFocusModeTagDto[],
+  ) {
+    const existingTagsIds = existingTags?.map((tag) => tag.id);
+    const incomingTagsIds = incomingTags?.map((tag) => tag?.id && tag.id);
+    await Promise.all(
+      existingTagsIds.map((id) => {
+        if (!incomingTagsIds.includes(id)) {
+          return this.focusModeTagRepository.orm.delete({ id, user_id });
+        }
+        return null;
+      }),
+    );
   }
 }

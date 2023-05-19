@@ -23,6 +23,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { UserService } from '../user/user.service';
+import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -288,5 +289,16 @@ export class UserDailyStatsService {
       focus_modes_completion_percentage_for_current_level: focusModesPercentPercentage,
       total_percent: totalPercent,
     };
+  }
+
+  async getLeaderBoardPositions({ streak_type, page = 1, per_page = 20 }: GetLeaderBoardQuery) {
+    const skip = page * per_page - per_page;
+    const usersStreaks = await this.userRepository.orm.find({
+      select: ['id', 'morning_routines_streak', 'evening_routines_streak', 'focus_modes_streak'],
+      take: per_page,
+      skip,
+      order: { [streak_type]: 'DESC' },
+    });
+    return usersStreaks;
   }
 }

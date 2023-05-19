@@ -46,15 +46,15 @@ export class LogQuantityQuestion extends BaseEntity {
   @Column({ type: 'varchar', nullable: false })
   question?: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', nullable: true })
   min_value_description?: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', nullable: true })
   max_value_description?: string;
 
   @Column({
     type: 'numeric',
-    nullable: false,
+    nullable: true,
     default: 0,
     transformer: new ColumnNumericTransformer(),
   })
@@ -62,7 +62,7 @@ export class LogQuantityQuestion extends BaseEntity {
 
   @Column({
     type: 'numeric',
-    nullable: false,
+    nullable: true,
     default: 0,
     transformer: new ColumnNumericTransformer(),
   })

@@ -141,7 +141,7 @@ describe('ActivityTemplateParserService', () => {
       const result = activityTemplateParserService.getLogQuantityQuestions(serializedActivityDummy, userDummy.id);
 
       expect(result).toBeArray();
-      expect(result.length).toBe(2);
+      expect(result.length).toBe(4);
     });
   });
 });

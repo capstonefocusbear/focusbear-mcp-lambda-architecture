@@ -99,6 +99,9 @@ export class ActivityTemplateParserService {
       choices,
       linked_activity_template_id, // see docs/linked-activity-template-id.md
       check_list,
+      // destructure log_quantity_question to remove it from activity_data field as it will be saved
+      // in the new format in getLogQuantityQuestions function
+      log_quantity_question,
       ...activityDataValues
     }: UpdateActivityTemplateDto,
     {
@@ -150,7 +153,24 @@ export class ActivityTemplateParserService {
   }
 
   createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
-    const { id, log_quantity_questions } = activity;
+    const { id, log_quantity_questions, log_quantity_question, log_summary_type } = activity;
+    const questionStrings = log_quantity_questions?.map(({ question }) => question?.toLowerCase());
+    // if activity has old format log quantity question and not yet present in new format questions, create new format question from it
+    if (log_quantity_question && !questionStrings?.includes(log_quantity_question?.toLowerCase())) {
+      const questionFromOldFormat = new LogQuantityQuestion({
+        question: log_quantity_question,
+        activity_template_id: id,
+        activity_id: null,
+        user_id: userId,
+        log_summary_type,
+      });
+      const questionsForActivity = log_quantity_questions?.map(
+        (question) =>
+          new LogQuantityQuestion({ ...question, activity_template_id: id, activity_id: null, user_id: userId }),
+      );
+      const logQuantityQuestions = [...(questionsForActivity || []), questionFromOldFormat];
+      return logQuantityQuestions?.length > 0 ? logQuantityQuestions : [];
+    }
     const questionsForActivity = log_quantity_questions?.map(
       (question) =>
         new LogQuantityQuestion({ ...question, activity_template_id: id, activity_id: null, user_id: userId }),

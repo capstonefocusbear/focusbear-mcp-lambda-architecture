@@ -125,8 +125,9 @@ export class ActivityParserService {
 
   createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
     const { id, log_quantity_questions, log_quantity_question, log_summary_type } = activity;
-    // if activity has old format log quantity question, create new format question from it
-    if (log_quantity_question) {
+    const questionStrings = log_quantity_questions?.map(({ question }) => question?.toLowerCase());
+    // if activity has old format log quantity question and not yet present in new format questions, create new format question from it
+    if (log_quantity_question && !questionStrings?.includes(log_quantity_question?.toLowerCase())) {
       const questionFromOldFormat = new LogQuantityQuestion({
         question: log_quantity_question,
         activity_id: id,
@@ -159,7 +160,7 @@ export class ActivityParserService {
       completion_requirements,
       linked_activity_id,
       check_list,
-      // destructure log_quantity_question to remove it from activity data as it will be saved
+      // destructure log_quantity_question to remove it from activity_data field as it will be saved
       // in the new format in getLogQuantityQuestions function
       log_quantity_question,
       ...rest

@@ -273,6 +273,12 @@ export class User extends BaseEntity {
   })
   verbose_logging?: boolean;
 
+  @Column({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  last_time_user_settings_modified?: Date;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

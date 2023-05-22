@@ -106,6 +106,7 @@ export class UserSettingsService {
         current_activity_id,
         current_activity_sequence_id,
         current_completing_sequence_log_id,
+        last_time_user_settings_modified: new Date(),
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };

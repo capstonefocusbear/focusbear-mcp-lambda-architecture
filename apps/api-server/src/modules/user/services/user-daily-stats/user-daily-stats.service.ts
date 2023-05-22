@@ -292,11 +292,11 @@ export class UserDailyStatsService {
     };
   }
 
-  async getLeaderBoardPositions(
+  async getLeaderBoardRankings(
     user_id: string,
     { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit }: GetLeaderBoardQuery,
   ) {
-    const users_rankings = await this.userRepository.getLoaderboardRankingsByStreakType({ streak_type, limit });
+    const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({ streak_type, limit });
     const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type);
     return { user_rank, users_rankings };
   }

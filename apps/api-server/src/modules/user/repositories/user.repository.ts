@@ -224,7 +224,7 @@ export class UserRepository extends BaseRepository<User> {
     return query.getOne();
   }
 
-  async getLoaderboardRankingsByStreakType({
+  async getLeaderboardRankingsByStreakType({
     streak_type = StreakTypes.MORNING_ROUTINES_STREAK,
     limit = 50,
   }: GetLeaderBoardQuery) {

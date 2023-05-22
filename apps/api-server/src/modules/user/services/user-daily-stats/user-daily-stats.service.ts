@@ -24,6 +24,7 @@ import { ActivitySequenceService } from '../../../activity/services/activity-seq
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { UserService } from '../user/user.service';
 import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
+import { StreakTypes } from '../../domain/StreakTypes.enum';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -291,14 +292,12 @@ export class UserDailyStatsService {
     };
   }
 
-  async getLeaderBoardPositions({ streak_type, page = 1, per_page = 20 }: GetLeaderBoardQuery) {
-    const skip = page * per_page - per_page;
-    const usersStreaks = await this.userRepository.orm.find({
-      select: ['id', 'morning_routines_streak', 'evening_routines_streak', 'focus_modes_streak'],
-      take: per_page,
-      skip,
-      order: { [streak_type]: 'DESC' },
-    });
-    return usersStreaks;
+  async getLeaderBoardPositions(
+    user_id: string,
+    { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit }: GetLeaderBoardQuery,
+  ) {
+    const users_rankings = await this.userRepository.getLoaderboardRankingsByStreakType({ streak_type, limit });
+    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type);
+    return { user_rank, users_rankings };
   }
 }

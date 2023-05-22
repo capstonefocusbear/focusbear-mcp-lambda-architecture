@@ -8,6 +8,8 @@ import { DeserializedActivity } from '../../activity/services/activity-parser/ac
 import { GetUsersQueryDto } from '../dto/get-users-query.dto';
 import { User } from '../entities/user.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { StreakTypes } from '../domain/StreakTypes.enum';
+import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -220,5 +222,57 @@ export class UserRepository extends BaseRepository<User> {
       query.andWhere('users.stripe_customer_id = :stripe_customer_id', { stripe_customer_id });
     }
     return query.getOne();
+  }
+
+  async getLoaderboardRankingsByStreakType({
+    streak_type = StreakTypes.MORNING_ROUTINES_STREAK,
+    limit = 50,
+  }: GetLeaderBoardQuery) {
+    return this.orm.query(
+      `
+      SELECT 
+          id, 
+          morning_routines_streak,
+          evening_routines_streak,
+          focus_modes_streak, 
+          ROW_NUMBER() OVER (ORDER BY ${streak_type} DESC) as rank
+      FROM 
+          users
+      ORDER BY
+          ${streak_type} DESC
+      LIMIT $1
+    `,
+      [limit],
+    );
+  }
+
+  async getUserLeaderboardRank(userId: string, streakType: StreakTypes): Promise<any> {
+    const result = await this.orm.query(
+      `
+        SELECT 
+            id, 
+            morning_routines_streak,
+            evening_routines_streak,
+            focus_modes_streak,
+            rank
+        FROM 
+            (
+                SELECT 
+                    id, 
+                    morning_routines_streak,
+                    evening_routines_streak,
+                    focus_modes_streak,
+                    RANK() OVER (
+                        ORDER BY ${streakType} DESC
+                    ) rank
+                FROM 
+                    users
+            ) ranked_users
+        WHERE 
+            id = $1;
+    `,
+      [userId],
+    );
+    return result[0] || null;
   }
 }

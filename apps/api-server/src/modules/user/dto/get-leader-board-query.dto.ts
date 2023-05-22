@@ -8,9 +8,5 @@ export class GetLeaderBoardQuery {
 
   @IsOptional()
   @IsNumber()
-  page?: number;
-
-  @IsOptional()
-  @IsNumber()
-  per_page?: number;
+  limit?: number;
 }

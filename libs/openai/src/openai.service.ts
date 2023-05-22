@@ -44,7 +44,7 @@ export class OpenAIService {
       const openai = new OpenAIApi(config);
       const messages: ChatCompletionRequestMessage[] = [
         {
-          content: `Given the input below and the user's long term goals, generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
+          content: `Given the input below and the user's long term goals (if no long term goals are included, don't mention them), generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
             input,
             null,
             2,
@@ -52,51 +52,44 @@ export class OpenAIService {
           role: ChatCompletionRequestMessageRoleEnum.System,
         },
       ];
-      let retryCount = 0;
-      while (retryCount < 3) {
-        try {
-          const stream = new Stream.PassThrough();
-          const observable = new Observable((observer) => {
-            openai
-              .createChatCompletion(
-                {
-                  model: 'gpt-3.5-turbo',
-                  messages,
-                  temperature: 0.7,
-                  n: 1,
-                  stream: true,
-                },
-                { responseType: 'stream' },
-              )
-              .then((res: any) => {
-                res.data.on('data', (chunk: any) => {
-                  observer.next(chunk.toString());
-                });
-                res.data.on('end', () => {
-                  observer.complete();
-                });
-              })
-              .catch((error) => {
-                observer.error(error);
-              });
+      const stream = new Stream.PassThrough();
+      const observable = new Observable((observer) => {
+        openai
+          .createChatCompletion(
+            {
+              model: 'gpt-3.5-turbo',
+              messages,
+              temperature: 0.7,
+              n: 1,
+              stream: true,
+            },
+            { responseType: 'stream' },
+          )
+          .then((res: any) => {
+            res.data.on('data', (chunk: any) => {
+              observer.next(chunk.toString());
+            });
+            res.data.on('end', () => {
+              observer.complete();
+            });
+          })
+          .catch((error) => {
+            observer.error(error);
           });
+      });
 
-          observable.subscribe({
-            next: (chunk: string) => {
-              stream.write(chunk);
-            },
-            error: (error: any) => {
-              response.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
-            },
-            complete: () => {
-              stream.end();
-            },
-          });
-          return await response.send(stream);
-        } catch (error) {
-          retryCount++;
-        }
-      }
+      observable.subscribe({
+        next: (chunk: string) => {
+          stream.write(chunk);
+        },
+        error: (error: any) => {
+          response.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
+        },
+        complete: () => {
+          stream.end();
+        },
+      });
+      return await response.send(stream);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -192,7 +185,7 @@ export class OpenAIService {
       Intention (what the user wants to focus on): ${isUrlSafeDto.intention}
 
     If the meta description or tab title are related to the Focus Mode Intention, allow it.
-    If the URL has any words in common with the focus mode or intention, allow it.
+    If you are sure that the URL is related to the focus mode or intention, you can also allow the site.
        
     If the website is not directly related to the focus mode and intention, allowed_probability should have a low score (below 0.6), if the website data and focus mode are somewhat related allowed_probability should be from 0.6 to 0.8, and if the website and focus mode are definitely related, allowed_probability should be from 0.9 to 1.
       

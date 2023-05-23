@@ -28,6 +28,7 @@ import { AdminAccessRequestRepository } from './repositories/admin-access-reques
 import { UserDataService } from './services/user-data/user-data.service';
 import { UserDataController } from './controllers/user-data/user-data.controller';
 import { HelperModule } from '../helper/helper.module';
+import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 
 @Module({
   providers: [
@@ -82,6 +83,12 @@ import { HelperModule } from '../helper/helper.module';
     DeviceModule,
     HelperModule,
   ],
-  controllers: [UserSettingsController, UserController, UserLocalDeviceSettingsController, UserDataController],
+  controllers: [
+    UserSettingsController,
+    UserController,
+    UserLocalDeviceSettingsController,
+    UserDataController,
+    UserStatsController,
+  ],
 })
 export class UserModule {}

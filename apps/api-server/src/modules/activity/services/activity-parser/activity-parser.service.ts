@@ -217,6 +217,9 @@ export class ActivityParserService {
         completion_requirements,
         linked_activity_id,
         activity_template_id,
+        // destructure log_quantity_question to remove it from activity_data field as it will be saved
+        // in the new format in getLogQuantityQuestions function
+        log_quantity_question,
         ...rest
       }) =>
         new Activity({

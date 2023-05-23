@@ -23,6 +23,8 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { UserService } from '../user/user.service';
+import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
+import { StreakTypes } from '../../domain/StreakTypes.enum';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -288,5 +290,14 @@ export class UserDailyStatsService {
       focus_modes_completion_percentage_for_current_level: focusModesPercentPercentage,
       total_percent: totalPercent,
     };
+  }
+
+  async getLeaderBoardRankings(
+    user_id: string,
+    { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit }: GetLeaderBoardQuery,
+  ) {
+    const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({ streak_type, limit });
+    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type);
+    return { user_rank, users_rankings };
   }
 }

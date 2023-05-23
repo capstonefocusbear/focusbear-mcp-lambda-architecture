@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { FastifyReply } from 'fastify';
 import { configsArray } from '../../../../config/index';
 import { StripeService } from '../../../../../../../libs/stripe/src';
 import {
@@ -47,6 +48,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
+import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -488,6 +490,23 @@ describe('UserService', () => {
         take: 100,
         skip: 0,
       });
+    });
+  });
+
+  describe('generateChatReply', () => {
+    it('positive: if user onboarding has_chatted_with_focus_bear value is false, update onboarding progress', async () => {
+      const reply: FastifyReply = null;
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...userDummy,
+        onboarding_progress: { has_chatted_with_focus_bear: false },
+      });
+
+      await userService.generateChatReply(reply, userDummy.id, [], 'english');
+
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+        userDummy.id,
+        UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR,
+      );
     });
   });
 });

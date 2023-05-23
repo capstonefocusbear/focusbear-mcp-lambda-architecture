@@ -10,4 +10,6 @@ export class UserOnboardingProgress {
   has_installed_desktop_app?: boolean;
 
   has_installed_mobile_app?: boolean;
+
+  has_chatted_with_focus_bear?: boolean;
 }

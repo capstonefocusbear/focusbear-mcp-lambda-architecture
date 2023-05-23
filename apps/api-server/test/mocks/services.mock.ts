@@ -161,4 +161,5 @@ export const UserDailyStatsServiceMock = {
 export const OpenAIServiceMock = {
   createChatReply: jest.fn(),
   createMotivationalSummary: jest.fn(),
+  streamChatReply: jest.fn(),
 };

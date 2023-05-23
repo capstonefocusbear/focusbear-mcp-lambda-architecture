@@ -67,6 +67,9 @@ export class UserDailyStatsService {
         case UserProgressUpdateTypes.EDIT_FOCUS_MODE:
           onboarding_progress.has_edited_focus_mode = true;
           break;
+        case UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR:
+          onboarding_progress.has_chatted_with_focus_bear = true;
+          break;
       }
       await this.userRepository.orm.update(user_id, { onboarding_progress });
     } catch (error) {

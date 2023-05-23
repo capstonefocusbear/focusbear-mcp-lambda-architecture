@@ -7,6 +7,7 @@ export const BASE_ONBOARDING_PROGRESS = {
   has_edited_always_blocked_urls: false,
   has_installed_desktop_app: false,
   has_installed_mobile_app: false,
+  has_chatted_with_focus_bear: false,
 };
 
 export const LUXON_WEEK_DAYS = [1, 2, 3, 4, 5];

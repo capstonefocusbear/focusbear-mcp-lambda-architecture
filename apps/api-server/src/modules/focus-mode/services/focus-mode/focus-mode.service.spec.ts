@@ -12,6 +12,7 @@ import {
   FocusModeTagRepositoryMock,
   InstalledFocusModeTemplatesRepositoryMock,
   SentryServiceMock,
+  UserDailyStatsServiceMock,
 } from '../../../../../test/mocks';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
@@ -21,6 +22,8 @@ import { InstalledFocusModeTemplate } from '../../../focus-mode-template/entitie
 import { FocusModeTagRepository } from '../../repositories/focus-mode-tags.repository';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { FocusMode } from '../../entities/focus-mode.entity';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { UserProgressUpdateTypes } from '../../../user/domain/user-progress-update-types.enum';
 
 describe('FocusModeService', () => {
   let focusModeService: FocusModeService;
@@ -32,6 +35,7 @@ describe('FocusModeService', () => {
         FocusModeRepository,
         InstalledFocusModeTemplatesRepository,
         FocusModeTagRepository,
+        UserDailyStatsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -44,6 +48,8 @@ describe('FocusModeService', () => {
       .useValue(InstalledFocusModeTemplatesRepositoryMock)
       .overrideProvider(FocusModeTagRepository)
       .useValue(FocusModeTagRepositoryMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     focusModeService = moduleRef.get<FocusModeService>(FocusModeService);
@@ -54,6 +60,11 @@ describe('FocusModeService', () => {
   });
 
   describe('createFocusMode', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+      jest.clearAllMocks();
+    });
+
     const createFocusModeDto: CreateFocusModeDto = {
       id: randomUUID(),
       name: 'some string',
@@ -70,6 +81,21 @@ describe('FocusModeService', () => {
         new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray() }),
       );
     });
+
+    it('positive: if focus mode IS NOT default created when installing apps, onboarding progress should be updated', async () => {
+      await focusModeService.createFocusMode(user_id, createFocusModeDto);
+
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+        user_id,
+        UserProgressUpdateTypes.EDIT_FOCUS_MODE,
+      );
+    });
+
+    it('positive: if focus mode IS default created when installing apps, onboarding progress should NOT be updated', async () => {
+      await focusModeService.createFocusMode(user_id, { ...createFocusModeDto, metadata: { isDefault: true } });
+
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledTimes(0);
+    });
   });
 
   describe('updateFocusMode', () => {
@@ -84,6 +110,7 @@ describe('FocusModeService', () => {
     FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
 
     it('positive: repository update should be called', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
       await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
 
       expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(

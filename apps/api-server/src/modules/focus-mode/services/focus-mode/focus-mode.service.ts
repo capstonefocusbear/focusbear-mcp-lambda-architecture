@@ -64,6 +64,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           await this.focusModeRepository.orm.save(updatedFocusMode);
         }),
       );
+      await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.fetchUserFocusModes(user_id);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -161,6 +162,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         id: focus_mode_id,
         tags: focusModeTags,
       });
+      await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.focusModeRepository.orm.save(updateFocusMode);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

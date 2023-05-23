@@ -15,6 +15,7 @@ export class CurrentActivityProps {
     this.current_focus_mode_finish_time = data?.current_focus_mode_finish_time || null;
     this.current_focus_mode = data?.current_focus_mode || null;
     this.current_sequence_skipped_activities = data?.current_sequence_skipped_activities || null;
+    this.last_time_user_settings_modified = data?.last_time_user_settings_modified || null;
   }
 
   @ApiProperty()
@@ -43,4 +44,7 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   current_sequence_skipped_activities?: string[];
+
+  @ApiProperty()
+  last_time_user_settings_modified?: Date;
 }

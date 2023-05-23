@@ -170,6 +170,7 @@ export class UserRepository extends BaseRepository<User> {
         'users.current_activity_sequence_id',
         'users.cutoff_time_for_non_high_priority_activities',
         'users.current_completing_sequence_log_id',
+        'users.last_time_user_settings_modified',
         'current_activity',
         'current_activity_sequence',
         'last_completed_sequence',

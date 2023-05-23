@@ -184,7 +184,7 @@ describe('UserSettingsService', () => {
       await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
 
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
-        updatedUser,
+        { ...updatedUser, last_time_user_settings_modified: expect.toBeDateString() },
         deserializedActivitiesDummy,
         logQuantityQuestionsDummy,
       );

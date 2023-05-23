@@ -188,7 +188,17 @@ export class ActivityTemplateParserService {
       message: 'Deserializing activity template choices',
     });
     return choices.map(
-      ({ id, log_quantity, log_summary_type, completion_requirements, linked_activity_template_id, ...rest }) =>
+      ({
+        id,
+        log_quantity,
+        log_summary_type,
+        completion_requirements,
+        linked_activity_template_id,
+        // destructure log_quantity_question to remove it from activity_data field as it will be saved
+        // in the new format in getLogQuantityQuestions function
+        log_quantity_question,
+        ...rest
+      }) =>
         new ActivityTemplate({
           id,
           pack_id: parent.pack_id,

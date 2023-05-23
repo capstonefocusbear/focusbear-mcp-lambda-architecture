@@ -235,14 +235,20 @@ export class UserRepository extends BaseRepository<User> {
           morning_routines_streak,
           evening_routines_streak,
           focus_modes_streak, 
-          ROW_NUMBER() OVER (ORDER BY ${streak_type} DESC) as rank
+          ROW_NUMBER() OVER (ORDER BY 
+              CASE 
+                WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+                WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+                ELSE evening_routines_streak
+              END 
+            DESC) as rank
       FROM 
           users
       ORDER BY
           ${streak_type} DESC
-      LIMIT $1
+      LIMIT $2
     `,
-      [limit],
+      [streak_type, limit],
     );
   }
 
@@ -263,15 +269,21 @@ export class UserRepository extends BaseRepository<User> {
                     evening_routines_streak,
                     focus_modes_streak,
                     RANK() OVER (
-                        ORDER BY ${streakType} DESC
+                        ORDER BY 
+                          CASE 
+                            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+                            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+                            ELSE evening_routines_streak
+                          END 
+                        DESC
                     ) rank
                 FROM 
                     users
             ) ranked_users
         WHERE 
-            id = $1;
+            id = $2;
     `,
-      [userId],
+      [streakType, userId],
     );
     return result[0] || null;
   }

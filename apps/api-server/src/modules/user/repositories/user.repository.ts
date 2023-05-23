@@ -245,7 +245,12 @@ export class UserRepository extends BaseRepository<User> {
       FROM 
           users
       ORDER BY
-          ${streak_type} DESC
+          CASE 
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+            ELSE evening_routines_streak
+          END
+      DESC
       LIMIT $2
     `,
       [streak_type, limit],

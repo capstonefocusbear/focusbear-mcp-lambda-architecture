@@ -69,6 +69,9 @@ export class UserDailyStatsService {
         case UserProgressUpdateTypes.EDIT_FOCUS_MODE:
           onboarding_progress.has_edited_focus_mode = true;
           break;
+        case UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR:
+          onboarding_progress.has_chatted_with_focus_bear = true;
+          break;
       }
       await this.userRepository.orm.update(user_id, { onboarding_progress });
     } catch (error) {
@@ -159,8 +162,13 @@ export class UserDailyStatsService {
         focus_modes_completion_percentage_for_current_level,
         total_percent,
       } = this.calculateCompletionPercentages(morning_routines_streak, evening_routines_streak, focus_modes_streak);
-      const { level, has_edited_focus_mode, has_edited_always_blocked_urls, has_edited_settings } =
-        this.getOnboardingStats(user);
+      const {
+        level,
+        has_edited_focus_mode,
+        has_edited_always_blocked_urls,
+        has_edited_settings,
+        has_chatted_with_focus_bear,
+      } = this.getOnboardingStats(user);
       // replace level 0 with leve 1 for existing users
       const levelToUse = level === 0 ? 1 : level;
       await this.userRepository.update(user_id, {
@@ -174,6 +182,7 @@ export class UserDailyStatsService {
         has_edited_settings,
         has_edited_always_blocked_urls,
         has_edited_focus_mode,
+        has_chatted_with_focus_bear,
         has_installed_desktop_app: hasInstalledDesktopApp,
         has_installed_mobile_app: hasInstalledMobileApp,
         morning_routine_completion_streak_days: morning_routines_streak,

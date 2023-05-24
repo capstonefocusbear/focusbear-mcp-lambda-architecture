@@ -462,6 +462,12 @@ export class UserService {
   ) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    if (!user?.onboarding_progress?.has_chatted_with_focus_bear) {
+      await this.userDailyStatsService.updateUserOnboardingProgress(
+        user_id,
+        UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR,
+      );
+    }
     await this.openAIService.streamChatReply(response, messages, language);
   }
 

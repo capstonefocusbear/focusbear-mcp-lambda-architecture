@@ -9,6 +9,8 @@ import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { FocusModeTag } from '../../entities/focus-mode-tags';
 import { FocusModeTagRepository } from '../../repositories/focus-mode-tags.repository';
 import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { UserProgressUpdateTypes } from '../../../user/domain/user-progress-update-types.enum';
 
 @Injectable()
 export class FocusModeService extends BaseCRUDService<FocusModeRepository, FocusMode> {
@@ -18,6 +20,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly installedFocusModeTemplatesRepository: InstalledFocusModeTemplatesRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {
     super(repo);
   }
@@ -61,6 +64,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           await this.focusModeRepository.orm.save(updatedFocusMode);
         }),
       );
+      await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.fetchUserFocusModes(user_id);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -111,6 +115,15 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
+      // check that focus mode is not one created by default when installing one of the apps
+      // and if so, update onboarding progress
+      const isNotDefaultFocusMode =
+        !focusModeDto?.metadata?.isDefault &&
+        !focusModeDto?.metadata?.isMeetings &&
+        !focusModeDto?.metadata?.isLockedFocus;
+      if (isNotDefaultFocusMode) {
+        await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
+      }
       return savedFocusMode;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -149,6 +162,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         id: focus_mode_id,
         tags: focusModeTags,
       });
+      await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.focusModeRepository.orm.save(updateFocusMode);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

@@ -124,7 +124,7 @@ export class ActivityParserService {
   }
 
   createLogQuantityQuestions(activity: UpdateActivityDto, userId: string) {
-    const { id, log_quantity_questions, log_quantity_question, log_summary_type } = activity;
+    const { id, log_quantity_questions, log_quantity_question, log_summary_type, log_quantity } = activity;
     const questionStrings = log_quantity_questions?.map(({ question }) => question?.toLowerCase());
     // if activity has old format log quantity question and not yet present in new format questions, create new format question from it
     if (log_quantity_question && !questionStrings?.includes(log_quantity_question?.toLowerCase())) {
@@ -143,6 +143,16 @@ export class ActivityParserService {
     const questionsForActivity = log_quantity_questions?.map(
       (question) => new LogQuantityQuestion({ ...question, activity_id: id, user_id: userId }),
     );
+    // if log quantity is true but there are no questions, add default question
+    if (log_quantity && log_quantity_questions?.length < 1 && !log_quantity_question) {
+      const defaultQuestion = new LogQuantityQuestion({
+        question: `Log quantity for ${activity.name}`,
+        activity_id: id,
+        user_id: userId,
+        log_summary_type,
+      });
+      questionsForActivity.push(defaultQuestion);
+    }
     return questionsForActivity?.length > 0 ? questionsForActivity : [];
   }
 

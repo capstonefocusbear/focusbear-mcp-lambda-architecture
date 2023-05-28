@@ -31,6 +31,7 @@ export class R2Service {
     };
     s3.upload(objectData, (error, data) => {
       if (error) {
+        // eslint-disable-next-line no-console
         console.log('Error uploading user requested data to R2: ', data, error);
       }
     });

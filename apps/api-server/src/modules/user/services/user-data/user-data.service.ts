@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import * as axios from 'axios';
+import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bull';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
@@ -14,9 +16,10 @@ export class UserDataService {
     private readonly revenueCatService: RevenueCatService,
     private readonly stripeService: StripeService,
     @InjectSentry() private readonly sentryService: SentryService,
+    @InjectQueue('user-data') private userDataQueue: Queue,
   ) {}
 
-  async getAllUserPersonalData(user_id: string) {
+  async processAndEmailUserData(user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -26,23 +29,9 @@ export class UserDataService {
           user_id,
         },
       });
-      const userFocusBearData = await this.userRepository.orm.findOne({
-        where: { id: user_id },
-        relations: [
-          'devices',
-          'activity_sequences',
-          'activities',
-          'completed_activities',
-          'focus_modes',
-          'completed_focus_blocks',
-          'log_quantity_questions',
-          'log_quantity_answers',
-        ],
+      await this.userDataQueue.add('get-user-personal-data', {
+        user_id,
       });
-      const auth0Promise = this.auth0ManagementService.getAuth0User(userFocusBearData.auth0_id);
-      const revenueCatPromise = this.revenueCatService.getOrCreateSubscriber(user_id);
-      const [userAuth0Data, userRevenueCatData] = await Promise.all([auth0Promise, revenueCatPromise]);
-      return { focus_bear_data: userFocusBearData, auth0_data: userAuth0Data, revenue_cat_data: userRevenueCatData };
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

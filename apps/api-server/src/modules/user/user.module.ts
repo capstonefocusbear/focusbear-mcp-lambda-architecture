@@ -29,6 +29,9 @@ import { UserDataService } from './services/user-data/user-data.service';
 import { UserDataController } from './controllers/user-data/user-data.controller';
 import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
+import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
+import { R2Module } from '../../../../../libs/r2/src/r2.module';
+import { ISendGridOptions, SendGridModule } from '../../../../../libs/send-grid/src';
 
 @Module({
   providers: [
@@ -42,6 +45,7 @@ import { UserStatsController } from './controllers/user-stats/user-stats.control
     DailyStatsConsumer,
     AdminAccessRequestRepository,
     UserDataService,
+    UserPersonalDataConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
   imports: [
@@ -66,13 +70,28 @@ import { UserStatsController } from './controllers/user-stats/user-stats.control
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
-    BullModule.registerQueue({
-      name: 'stats',
+    BullModule.registerQueue(
+      {
+        name: 'stats',
+      },
+      {
+        name: 'user-data',
+      },
+    ),
+    R2Module.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('r2'),
     }),
     OpenAIModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('openai'),
+    }),
+    SendGridModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     ActivityModule,
     AuthModule,

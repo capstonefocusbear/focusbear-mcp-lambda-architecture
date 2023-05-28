@@ -14,7 +14,7 @@ export class UserDataController {
 
   @Get()
   getUserPersonalData(@AuthContext() { user }: Passport) {
-    return this.userDataService.getAllUserPersonalData(user.id);
+    return this.userDataService.processAndEmailUserData(user.id);
   }
 
   @Delete()

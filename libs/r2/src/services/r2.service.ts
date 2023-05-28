@@ -17,4 +17,22 @@ export class R2Service {
     });
     return url;
   }
+
+  async addObjectToBucket(bucket: string, key: string, body: any) {
+    const s3 = new S3({ ...this.r2Options });
+    const buf = Buffer.from(JSON.stringify(body));
+    const objectData = {
+      Bucket: bucket,
+      Key: `${key}.json`,
+      Body: buf,
+      ContentEncoding: 'base64',
+      ContentType: 'application/json',
+      ContentDisposition: 'attachment',
+    };
+    s3.upload(objectData, (error, data) => {
+      if (error) {
+        console.log('Error uploading user requested data to R2: ', data, error);
+      }
+    });
+  }
 }

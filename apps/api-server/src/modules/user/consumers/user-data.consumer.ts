@@ -1,13 +1,14 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
+import { I18nService } from 'nestjs-i18n';
 import { RevenueCatService } from '../../../../../../libs/revenue-cat/src';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../repositories/user.repository';
 import { R2Service } from '../../../../../../libs/r2/src/services/r2.service';
 import { SendGridService } from '../../../../../../libs/send-grid/src';
 import { LanguageOptions } from '../domain/language-options.enum';
-import { ENGLISH_SUBJECT, FOCUS_BEAR_TEAM_EMAIL, SPANISH_SUBJECT } from '../../../shared/utils/constants';
+import { FOCUS_BEAR_TEAM_EMAIL } from '../../../shared/utils/constants';
 
 @Processor('user-data')
 export class UserPersonalDataConsumer {
@@ -18,6 +19,7 @@ export class UserPersonalDataConsumer {
     private readonly userRepository: UserRepository,
     private readonly r2Service: R2Service,
     private readonly emailService: SendGridService,
+    private readonly i18nService: I18nService,
   ) {}
 
   @Process('get-user-personal-data')
@@ -52,13 +54,11 @@ export class UserPersonalDataConsumer {
         revenue_cat_data: userRevenueCatData,
       });
       const downloadLink = await this.r2Service.getPresignedUrl('user-data', `${user_id}.json`);
-      const englishEmail = `Download a copy of your data recorded by Focus Bear at\n\n${downloadLink}\n\nPlease note that this link expires after 7 days.`;
-      const spanishEmail = `Descargue una copia de sus datos registrados por Focus Bear en\n\n${downloadLink}\n\nTenga en cuenta que este enlace vence después de 7 días.`;
       await this.emailService.sendEmail({
-        to: 'deonvisser44@gmail.com',
+        to: userFocusBearData.email,
         from: FOCUS_BEAR_TEAM_EMAIL,
-        text: language === LanguageOptions.ENGLISH ? englishEmail : spanishEmail,
-        subject: language === LanguageOptions.ENGLISH ? ENGLISH_SUBJECT : SPANISH_SUBJECT,
+        text: this.i18nService.t('common.user_data_email_body', { lang: language, args: { link: downloadLink } }),
+        subject: this.i18nService.t('common.user_data_email_header', { lang: language }),
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

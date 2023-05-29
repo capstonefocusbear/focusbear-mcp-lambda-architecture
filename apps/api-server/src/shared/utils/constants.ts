@@ -2,6 +2,3 @@ export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
 export const FOCUS_BEAR_TEAM_EMAIL = 'team@focusbear.io';
-
-export const ENGLISH_SUBJECT = 'Your Focus Bear Data';
-export const SPANISH_SUBJECT = 'Tus datos de Focus Bear';

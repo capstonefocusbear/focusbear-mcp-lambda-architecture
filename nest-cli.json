@@ -12,14 +12,11 @@
         "options": {
           "classValidatorShim": true,
           "introspectComments": true,
-          "dtoFileNameSuffix": [
-            ".dto.ts",
-            ".entity.ts",
-            ".model.ts"
-          ]
+          "dtoFileNameSuffix": [".dto.ts", ".entity.ts", ".model.ts"]
         }
       }
-    ]
+    ],
+    "assets": [{ "include": "shared/i18n/**/*", "watchAssets": true }]
   },
   "projects": {
     "api-server": {

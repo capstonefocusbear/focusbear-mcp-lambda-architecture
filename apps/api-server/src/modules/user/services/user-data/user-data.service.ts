@@ -7,6 +7,7 @@ import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { UserRepository } from '../../repositories/user.repository';
 import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { StripeService } from '../../../../../../../libs/stripe/src';
+import { LanguageOptions } from '../../domain/language-options.enum';
 
 @Injectable()
 export class UserDataService {
@@ -19,7 +20,7 @@ export class UserDataService {
     @InjectQueue('user-data') private userDataQueue: Queue,
   ) {}
 
-  async processAndEmailUserData(user_id: string) {
+  async processAndEmailUserData(user_id: string, language: LanguageOptions) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -31,6 +32,7 @@ export class UserDataService {
       });
       await this.userDataQueue.add('get-user-personal-data', {
         user_id,
+        language,
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

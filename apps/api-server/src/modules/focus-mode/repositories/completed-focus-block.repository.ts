@@ -3,7 +3,7 @@ import { Between, Connection } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedFocusBlock } from '../entities/completed-focus-block.entity';
 import { GetFocusStatsQueryDto } from '../dto/get-focus-stats-query.dto';
-import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constants';
 
 @Injectable()
 export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocusBlock> {

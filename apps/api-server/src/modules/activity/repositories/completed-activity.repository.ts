@@ -6,7 +6,7 @@ import { ActivityType } from '../domain/activity-type.enum';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { CompletedActivity } from '../entities/completed-activity.entity';
-import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constants';
 
 @Injectable()
 export class CompletedActivityRepository extends BaseRepository<CompletedActivity> {

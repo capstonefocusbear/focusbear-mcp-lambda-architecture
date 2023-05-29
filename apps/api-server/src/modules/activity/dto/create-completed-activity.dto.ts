@@ -25,7 +25,7 @@ export function IsTimestampGreaterThan(property: string, validationOptions?: Val
       validator: {
         validate(value: any, args: ValidationArguments) {
           const start_time = (args.object as any)[property];
-          return value > start_time;
+          return value >= start_time;
         },
       },
     });
@@ -71,7 +71,7 @@ export class CreateCompletedActivityDto {
   // @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'finish_time should be a valid ISO string in UTC zone' })
-  @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than start_time' })
+  @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than or equal to start_time' })
   finish_time?: Date;
 
   @IsOptional()

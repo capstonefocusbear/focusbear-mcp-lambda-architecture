@@ -117,4 +117,7 @@ export class UpdateActivityDto extends ActivityData {
   @IsArray()
   @IsOptional()
   check_list?: string[];
+
+  @IsOptional()
+  activity_type?: string;
 }

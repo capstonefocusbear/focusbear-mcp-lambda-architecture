@@ -10,6 +10,7 @@ import {
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import {
+  ActivityRepositoryMock,
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
   SentryServiceMock,
@@ -19,6 +20,7 @@ import { UserRepository } from '../../user/repositories/user.repository';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
+import { ActivityRepository } from '../../activity/repositories/activity.repository';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -30,6 +32,7 @@ describe('ActivityLibraryService', () => {
         UserRepository,
         ActivityTemplateParserService,
         ActivityTemplateRepository,
+        ActivityRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -40,6 +43,8 @@ describe('ActivityLibraryService', () => {
       .useValue(ActivityTemplateRepositoryMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ActivityRepository)
+      .useValue(ActivityRepositoryMock)
       .compile();
 
     activityLibraryService = moduleRef.get<ActivityLibraryService>(ActivityLibraryService);
@@ -67,6 +72,7 @@ describe('ActivityLibraryService', () => {
     it('positive: should fetch activity templates from the DB and format them as activity DTOs before returning them as response', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce(activityTemplateArrayDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const response = await activityLibraryService.getLibraryActivities(userDummy.id);
 
@@ -94,6 +100,7 @@ describe('ActivityLibraryService', () => {
       ActivityTemplateRepositoryMock.orm.find
         .mockResolvedValueOnce([activityTemplateFromDBDummy])
         .mockResolvedValueOnce([activityTemplateFromDBDummy]);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const response = await activityLibraryService.upsertLibraryActivities(
         deserializedStandaloneActivitiesDummy[0],
@@ -112,6 +119,7 @@ describe('ActivityLibraryService', () => {
         deserializedActivityTemplates: [],
         logQuantityQuestions: [],
       });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await activityLibraryService.upsertLibraryActivities([upsertActiivtyTemplateDummy], userDummy.id);
 

@@ -7,6 +7,7 @@ import { ActivityTemplate } from './entity/activity-template.entity';
 import { ActivityLibraryController } from './controllers/activity-library.controller';
 import { ActivityLibraryService } from './services/activity-library.service';
 import { UserModule } from '../user/user.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   providers: [
@@ -17,6 +18,6 @@ import { UserModule } from '../user/user.module';
   ],
   exports: [ActivityTemplateParserService, ActivityTemplateService, ActivityTemplateRepository, ActivityLibraryService],
   controllers: [ActivityLibraryController],
-  imports: [TypeOrmModule.forFeature([ActivityTemplate]), forwardRef(() => UserModule)],
+  imports: [TypeOrmModule.forFeature([ActivityTemplate]), forwardRef(() => UserModule), ActivityModule],
 })
 export class ActivityTemplateModule {}

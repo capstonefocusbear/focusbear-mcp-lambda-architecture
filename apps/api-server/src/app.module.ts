@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { SentryModule } from '@ntegral/nestjs-sentry';
+import { I18nModule } from 'nestjs-i18n';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -43,6 +45,13 @@ import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => config.get('sentry'),
+    }),
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(__dirname, '/shared/i18n'),
+        watch: true,
+      },
     }),
     AuthModule,
     HelperModule,

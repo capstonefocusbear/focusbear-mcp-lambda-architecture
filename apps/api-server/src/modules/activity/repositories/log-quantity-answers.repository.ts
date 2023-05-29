@@ -3,7 +3,7 @@ import { Between, Connection, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { LogQuantityAnswer } from '../entities/log-quantity-answers';
 import { CompletedActivityStatItem } from '../domain/completed-activity-stat-item.model';
-import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constatnts';
+import { CURRENT_TIME, TWENTY_FOUR_HOURS_AGO } from '../../../shared/utils/constants';
 import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
 
 @Injectable()

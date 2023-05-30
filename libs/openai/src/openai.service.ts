@@ -259,4 +259,26 @@ export class OpenAIService {
     }
     return false;
   }
+
+  async checkIfUsernameIsValid(username: string): Promise<{ allowed: boolean }> {
+    const config = new Configuration({ ...this.options });
+    const openai = new OpenAIApi(config);
+    const defaultChat: ChatCompletionRequestMessage = {
+      role: 'system',
+      content: `Given the following username, determine whether it uses curse words or could be offensive to anyone, if it is deemed fine, return true, if offensive, return false.
+      the output should be in the format:
+      { allowed: boolean }
+      username: ${username}
+      JSON output:`,
+    };
+    const completions = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [defaultChat],
+      temperature: 0,
+      n: 1,
+    });
+    const newMessage = completions.data.choices[0].message;
+    const { content } = newMessage;
+    return JSON.parse(content);
+  }
 }

@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
@@ -32,6 +38,7 @@ import { CompletedActivitySequence } from '../../../activity/entities/completed-
 import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { AiToneOptions } from '../../../../../../../libs/openai/src/domain/ai-tones.enum';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
+import { UpdateUsernameDto } from '../../dto/update-username.dto';
 
 @Injectable()
 export class UserService {
@@ -487,5 +494,21 @@ export class UserService {
   async isVerboseLoggingAllowed(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     return { isVerboseLoggingAllowed: user?.verbose_logging, user };
+  }
+
+  async updateUsername(user_id: string, { username }: UpdateUsernameDto) {
+    const existingUserWithSameUsername = await this.userRepository.orm.findOne({
+      where: { username: username.toLowerCase() },
+    });
+    if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
+      throw new ConflictException(
+        `Username: ${username} already taken by user with ID: ${existingUserWithSameUsername.id}`,
+      );
+    }
+    const { allowed } = await this.openAIService.checkIfUsernameIsValid(username);
+    if (!allowed) {
+      throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
+    }
+    await this.userRepository.update(user_id, { username: username.toLowerCase() });
   }
 }

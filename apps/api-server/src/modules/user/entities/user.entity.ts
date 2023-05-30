@@ -279,6 +279,14 @@ export class User extends BaseEntity {
   })
   last_time_user_settings_modified?: Date;
 
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    unique: true,
+    length: 30,
+  })
+  username?: string;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

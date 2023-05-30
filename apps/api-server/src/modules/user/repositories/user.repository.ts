@@ -233,6 +233,7 @@ export class UserRepository extends BaseRepository<User> {
       `
       SELECT 
           id, 
+          username, 
           morning_routines_streak,
           evening_routines_streak,
           focus_modes_streak, 
@@ -263,6 +264,7 @@ export class UserRepository extends BaseRepository<User> {
       `
         SELECT 
             id, 
+            username, 
             morning_routines_streak,
             evening_routines_streak,
             focus_modes_streak,
@@ -271,6 +273,7 @@ export class UserRepository extends BaseRepository<User> {
             (
                 SELECT 
                     id, 
+                    username, 
                     morning_routines_streak,
                     evening_routines_streak,
                     focus_modes_streak,

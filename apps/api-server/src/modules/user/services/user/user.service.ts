@@ -39,6 +39,7 @@ import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { AiToneOptions } from '../../../../../../../libs/openai/src/domain/ai-tones.enum';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
+import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class UserService {
@@ -505,7 +506,17 @@ export class UserService {
         `Username: ${username} already taken by user with ID: ${existingUserWithSameUsername.id}`,
       );
     }
-    const { allowed } = await this.openAIService.checkIfUsernameIsValid(username);
+    // Set a default response after 15 seconds
+    const timeoutPromise = new Promise<{ allowed: boolean }>((resolve) => {
+      setTimeout(() => {
+        // eslint-disable-next-line no-console
+        console.log(`Error: OpenAI username validation timed out - user ID: ${user_id}, username: ${username} `);
+        resolve({ allowed: true });
+      }, USERNAME_VALIDATION_TIMEOUT);
+    });
+    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(username);
+    // Check if username is allowed or default to true after 15 seconds
+    const { allowed } = await Promise.race([usernameIsValidPromise, timeoutPromise]);
     if (!allowed) {
       throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
     }

@@ -1,8 +1,8 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional } from 'class-validator';
 import { StreakTypes } from '../domain/StreakTypes.enum';
 
 export class GetLeaderBoardQuery {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(StreakTypes)
   streak_type: StreakTypes;
 

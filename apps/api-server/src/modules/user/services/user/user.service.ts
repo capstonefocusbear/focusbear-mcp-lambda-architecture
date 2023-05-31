@@ -506,9 +506,10 @@ export class UserService {
         `Username: ${username} already taken by user with ID: ${existingUserWithSameUsername.id}`,
       );
     }
+    let timeoutId: NodeJS.Timeout;
     // Set a default response after 15 seconds
     const timeoutPromise = new Promise<{ allowed: boolean }>((resolve) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(async () => {
         // eslint-disable-next-line no-console
         console.log(`Error: OpenAI username validation timed out - user ID: ${user_id}, username: ${username} `);
         resolve({ allowed: true });
@@ -517,6 +518,7 @@ export class UserService {
     const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(username);
     // Check if username is allowed or default to true after 15 seconds
     const { allowed } = await Promise.race([usernameIsValidPromise, timeoutPromise]);
+    clearTimeout(timeoutId); // Clear the timeout if usernameIsValidPromise has resolved
     if (!allowed) {
       throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
     }

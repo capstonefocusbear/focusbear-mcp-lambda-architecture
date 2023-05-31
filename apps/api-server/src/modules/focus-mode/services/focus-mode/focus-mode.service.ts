@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
@@ -147,7 +147,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       });
       const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focus_mode_id } });
       if (!focusMode) {
-        throw new BadRequestException(`Focus mode with ID: ${focus_mode_id} does not exist`);
+        throw new NotFoundException(`Focus mode with ID: ${focus_mode_id} does not exist`);
       }
       const { tags } = updateFocusModeDto;
       await this.deleteRemovedFocusModeTags(user_id, focusMode?.tags, tags);

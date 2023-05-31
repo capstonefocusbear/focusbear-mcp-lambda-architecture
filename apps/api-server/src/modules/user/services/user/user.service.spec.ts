@@ -1,4 +1,4 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -507,6 +507,33 @@ describe('UserService', () => {
         userDummy.id,
         UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR,
       );
+    });
+  });
+
+  describe('updateUsername', () => {
+    it('negative: if username is considered offensive, error should be thrown', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: false });
+      const username = 'randomusername';
+      const errorMessage = `Username: ${username} not accepted because it is deemed offensive`;
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: username should be saved if valid', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const username = 'randomusername';
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { username });
     });
   });
 });

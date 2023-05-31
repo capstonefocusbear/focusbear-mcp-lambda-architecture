@@ -162,4 +162,5 @@ export const OpenAIServiceMock = {
   createChatReply: jest.fn(),
   createMotivationalSummary: jest.fn(),
   streamChatReply: jest.fn(),
+  checkIfUsernameIsValid: jest.fn(),
 };

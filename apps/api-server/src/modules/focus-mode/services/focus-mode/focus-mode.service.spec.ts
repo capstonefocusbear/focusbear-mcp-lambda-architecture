@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { NotFoundException } from '@nestjs/common';
 import {
   FocusModeDummy,
   UpsertFocusModeDummy,
@@ -24,6 +25,7 @@ import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { FocusMode } from '../../entities/focus-mode.entity';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { UserProgressUpdateTypes } from '../../../user/domain/user-progress-update-types.enum';
+import { FocusModeTag } from '../../entities/focus-mode-tags';
 
 describe('FocusModeService', () => {
   let focusModeService: FocusModeService;
@@ -109,6 +111,22 @@ describe('FocusModeService', () => {
     const user_id = randomUUID();
     FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
 
+    it('negative: if focus mode does not exist not found error should be thrown', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `Focus mode with ID: ${updateFocusModeDto.id} does not exist`;
+      let exception: any;
+
+      try {
+        await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: repository update should be called', async () => {
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
       await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
@@ -141,12 +159,27 @@ describe('FocusModeService', () => {
   });
 
   describe('updateFocusModes', () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
     it('positive: should call update on supplied user focus modes', async () => {
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
 
       await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
       expect(FocusModeRepositoryMock.orm.save).toBeCalledWith({ ...FocusModeDummy });
+    });
+
+    it('positive: if a focus mode contains tags the tags should be saved', async () => {
+      const tagId = randomUUID();
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([{ ...FocusModeDummy }]);
+      const savedTag = new FocusModeTag({ text: 'Some tag', id: tagId, user_id: userDummy.id });
+
+      await focusModeService.updateFocusModes(userDummy.id, [
+        { ...UpsertFocusModeDummy, id: FocusModeDummy.id, tags: [{ text: 'Some tag', id: tagId }] },
+      ]);
+
+      expect(FocusModeTagRepositoryMock.upsert).toBeCalledWith(savedTag, ['id']);
     });
   });
 
@@ -177,6 +210,22 @@ describe('FocusModeService', () => {
       expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toBeCalledWith(installedRecord.id, {
         installation_status: false,
       });
+    });
+  });
+
+  describe('deleteRemovedFocusModeTags', () => {
+    it('positive: should call delete on tags that are not included in update data', async () => {
+      const tagIdOne = randomUUID();
+      const tagIdTwo = randomUUID();
+      const existingTags = [
+        new FocusModeTag({ id: tagIdOne, text: 'Test Tag', user_id: userDummy.id }),
+        new FocusModeTag({ id: tagIdTwo, text: 'Test Tag Two', user_id: userDummy.id }),
+      ];
+      const incomingTags = [{ id: tagIdOne, text: 'Test Tag', user_id: userDummy.id }];
+
+      await focusModeService.deleteRemovedFocusModeTags(userDummy.id, existingTags, incomingTags);
+
+      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({ id: tagIdTwo, user_id: userDummy.id });
     });
   });
 });

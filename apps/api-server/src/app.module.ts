@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { SentryModule } from '@ntegral/nestjs-sentry';
-import { I18nModule } from 'nestjs-i18n';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
@@ -52,6 +52,7 @@ import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
         path: path.join(__dirname, '/shared/i18n'),
         watch: true,
       },
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
     }),
     AuthModule,
     HelperModule,

@@ -31,6 +31,7 @@ import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
+import { UpdateUsernameDto } from '../../dto/update-username.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -187,5 +188,11 @@ export class UserController {
   @UseGuards(IsAuth)
   async updateUserLongTermGoals(@Body() { goals }: UpdateLongTermGoalsDto, @AuthContext() { user }: Passport) {
     return this.userService.updateLongTermGoals(user.id, { goals });
+  }
+
+  @Put('/username')
+  @UseGuards(IsAuth)
+  async updateUsername(@Body() { username }: UpdateUsernameDto, @AuthContext() { user }: Passport) {
+    return this.userService.updateUsername(user.id, { username });
   }
 }

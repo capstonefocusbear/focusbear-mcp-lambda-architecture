@@ -11,7 +11,7 @@ export class UpdateTableUsersDeleteColumnsEmailAndName1685538640674 implements M
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('ALTER TABLE "users" ADD "name" character varying(255)');
-    await queryRunner.query('ALTER TABLE "users" ADD "email" character varying(255) NOT NULL');
+    await queryRunner.query('ALTER TABLE "users" ADD "email" character varying(255)');
     await queryRunner.query('ALTER TABLE "users" ADD CONSTRAINT "users_email_key" UNIQUE ("email")');
   }
 }

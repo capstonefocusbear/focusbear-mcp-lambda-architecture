@@ -177,6 +177,7 @@ describe('UserService', () => {
 
     it('positive: getUserDetails should be called', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getUser.mockResolvedValueOnce({ email: auth0UserDummy.email });
 
       await userService.getUserDetails(id);
 

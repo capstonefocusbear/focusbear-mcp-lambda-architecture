@@ -151,7 +151,7 @@ export class UserService {
     }
   }
 
-  async getUserDetails(id: string): Promise<User> {
+  async getUserDetails(id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -163,6 +163,7 @@ export class UserService {
       });
       const userDetails = await this.userRepository.getUserDetails(id);
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      const { email } = await this.auth0ManagementService.getUser({ id: userDetails.auth0_id });
       const { focus_modes } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
@@ -171,7 +172,7 @@ export class UserService {
         }
         return focusMode;
       });
-      return { ...userDetails, focus_modes: formattedFocusModes };
+      return { ...userDetails, email, focus_modes: formattedFocusModes };
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

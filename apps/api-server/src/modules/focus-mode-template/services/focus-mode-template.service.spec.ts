@@ -140,7 +140,7 @@ describe('FocusModeTemplatesService', () => {
       expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
         ...focusModeTemplateDtoDummy,
         author_id: userDummy.id,
-        author_name: userDummy.name,
+        author_name: userDummy.username,
         welcome_message_plain_text: 'Welcome message text',
         description_plain_text: 'Text description',
       });
@@ -158,7 +158,7 @@ describe('FocusModeTemplatesService', () => {
           marketplace_approval_status: true,
           is_featured: true,
           featured_for_onboarding: true,
-          author_name: userDummy.name,
+          author_name: userDummy.username,
         },
         userDummy.id,
       );
@@ -167,7 +167,7 @@ describe('FocusModeTemplatesService', () => {
         new FocusModeTemplate({
           ...focusModeTemplateDtoDummy,
           author_id: userDummy.id,
-          author_name: userDummy.name,
+          author_name: userDummy.username,
           marketplace_approval_status: true,
           is_featured: true,
           featured_for_onboarding: true,
@@ -198,7 +198,7 @@ describe('FocusModeTemplatesService', () => {
       expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
         ...focusModeTemplateDtoDummy,
         author_id: userDummy.id,
-        author_name: userDummy.name,
+        author_name: userDummy.username,
         welcome_message_plain_text: 'Welcome message text',
         description_plain_text: 'Text description',
       });

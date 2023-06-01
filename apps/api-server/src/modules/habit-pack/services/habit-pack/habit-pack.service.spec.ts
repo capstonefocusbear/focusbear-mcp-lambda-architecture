@@ -250,7 +250,7 @@ describe('HabitPackService', () => {
         morning_routine_duration_seconds: 0,
         evening_routine_duration_seconds: 0,
         duration: 600,
-        creator_name: 'User Dummy',
+        creator_name: userDummy.username,
         breaks_only: false,
       });
       const activityIds = [
@@ -287,7 +287,7 @@ describe('HabitPackService', () => {
         ...restOfRoutinePackDummy,
         user_id,
         duration: 300,
-        creator_name: 'User Dummy',
+        creator_name: userDummy.username,
         description_plain_text: 'test desc',
         welcome_message_plain_text: 'test welcome message',
         morning_routine_duration_seconds: 300,
@@ -325,7 +325,7 @@ describe('HabitPackService', () => {
         ...restOfRoutinePackDummy,
         user_id: userDummy.id,
         duration: 300,
-        creator_name: 'User Dummy',
+        creator_name: userDummy.username,
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -348,7 +348,7 @@ describe('HabitPackService', () => {
         marketplace_approval_status: true,
         is_featured: true,
         featured_for_onboarding: true,
-        creator_name: userDummy.name,
+        creator_name: userDummy.username,
       });
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
@@ -374,7 +374,7 @@ describe('HabitPackService', () => {
         ...restOfRoutinePackDummy,
         user_id: adminUserDummy.id,
         duration: 300,
-        creator_name: 'User Dummy',
+        creator_name: userDummy.username,
       });
       const activityIds = [
         'b24c9383-f8a0-409c-bbd9-e37b9566de3b',
@@ -397,7 +397,7 @@ describe('HabitPackService', () => {
         marketplace_approval_status: true,
         is_featured: true,
         featured_for_onboarding: true,
-        creator_name: adminUserDummy.name,
+        creator_name: adminUserDummy.username,
       });
 
       expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
@@ -424,7 +424,7 @@ describe('HabitPackService', () => {
         ...restOfRoutinePackDummy,
         user_id,
         duration: 30,
-        creator_name: 'User Dummy',
+        creator_name: userDummy.username,
         description_plain_text: 'test desc',
         welcome_message_plain_text: 'test welcome message',
         morning_routine_duration_seconds: 0,

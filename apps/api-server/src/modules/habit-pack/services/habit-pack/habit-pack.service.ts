@@ -299,8 +299,8 @@ export class HabitPackService {
   }
 
   determinePackCreatorName(habitPack: HabitPack, user: User, upsertName: string, userIsAdmin: boolean) {
-    // allow admin user to edit pack creator name, if not admin, use existing creator name, if new pack, use user's name
-    const ifExistingPackUseSetName = habitPack ? habitPack.creator_name : user.name;
+    // allow admin user to edit pack creator name, if not admin, use existing creator name, if new pack, use user's username
+    const ifExistingPackUseSetName = habitPack ? habitPack.creator_name : user.username;
     const creatorNameToUse = userIsAdmin ? upsertName : ifExistingPackUseSetName;
     return creatorNameToUse;
   }

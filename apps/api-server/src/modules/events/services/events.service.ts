@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bull';
 import * as axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { EventTypes, EVENT_TYPES_TO_ALERT_IN_SLACK } from '../domain/event-types.enum';
@@ -13,6 +14,7 @@ export class EventsService {
     @InjectQueue('events') private eventsQueue: Queue,
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async addEventToQueue(trackEventDto: TrackEventDto, user_id: string) {
@@ -27,13 +29,14 @@ export class EventsService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
       const { event_type } = trackEventDto;
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
       await this.eventsQueue.add('track-event', {
         user_id,
-        email: user.email,
+        email: userAuth0Data.email,
         trackEventDto,
       });
     } catch (error) {

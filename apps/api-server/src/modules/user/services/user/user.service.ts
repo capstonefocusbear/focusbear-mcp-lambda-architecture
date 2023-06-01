@@ -61,7 +61,7 @@ export class UserService {
     private readonly openAIService: OpenAIService,
   ) {}
 
-  async syncUserAccount({ auth0_id, email, name }: SyncUserAccountDto): Promise<UserAuthContext> {
+  async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -70,12 +70,11 @@ export class UserService {
         data: {
           auth0_id,
           email,
-          name,
         },
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exit in Auth0!');
-      const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email, name }, registeredUser);
+      const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
       const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
       if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
@@ -102,10 +101,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
-  private async updateOrCreateUser(
-    { auth0_id, email, name }: SyncUserAccountDto,
-    registeredUser?: User,
-  ): Promise<User> {
+  private async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -116,8 +112,7 @@ export class UserService {
         },
       });
       const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
-      const hasNameDefined = Boolean(registeredUser?.name);
-      const userProperties = hasNameDefined ? { auth0_id, email } : { auth0_id, email, name };
+      const userProperties = { auth0_id };
       if (hasNoStripeCustomer) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',

@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '../../../../../../../libs/send-grid/src';
 import { JwtService } from '../../../../../../../libs/jwt/src';
-import { TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
+import { TeamMemberDummy, TeamWithMembersDummy, auth0UserDummy, userDummy } from '../../../../../test/dummies';
 import {
   JwtServiceMock,
   RevenueCatServiceMock,
@@ -14,10 +14,12 @@ import {
   SentryServiceMock,
   TeamRepositoryMock,
   UserRepositoryMock,
+  Auth0ManagementServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
 import { TeamManagementService } from './team-management.service';
+import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
@@ -32,6 +34,7 @@ describe('TeamManagementService', () => {
         JwtService,
         SendGridService,
         ConfigService,
+        Auth0ManagementService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -48,6 +51,8 @@ describe('TeamManagementService', () => {
       .useValue(JwtServiceMock)
       .overrideProvider(SendGridService)
       .useValue(SendGridServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -207,6 +212,7 @@ describe('TeamManagementService', () => {
     it('negative: if user with invitation email already exist in DB, throw the BadRequest', async () => {
       const user = { ...userDummy, id: randomUUID(), email };
       UserRepositoryMock.orm.findOne.mockResolvedValue(user);
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([auth0UserDummy]);
       let exception: any;
 
       try {
@@ -222,8 +228,8 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: jwt should be created with email and owner_id in payload', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValue(TeamWithMembersDummy);
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
 
       await teamManagementService.inviteTeamMember(email, userDummy.id);
 
@@ -232,9 +238,9 @@ describe('TeamManagementService', () => {
 
     it('positive: email should be sent with invitation link inside', async () => {
       const singedJwt = 'some.test.jwt.string';
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
       TeamRepositoryMock.findActiveTeamWithMembersByOwnerId.mockResolvedValue(TeamWithMembersDummy);
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
 
       await teamManagementService.inviteTeamMember(email, userDummy.id);
 

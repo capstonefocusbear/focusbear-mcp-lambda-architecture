@@ -9,6 +9,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
+import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 
 @Injectable()
 export class TeamManagementService {
@@ -20,6 +21,7 @@ export class TeamManagementService {
     private readonly emailService: SendGridService,
     private readonly configService: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async addTeamMember(member_id: string, owner_id: string): Promise<User> {
@@ -151,10 +153,9 @@ export class TeamManagementService {
           owner_id,
         },
       });
-      const teamPromise = this.teamRepository.findActiveTeamWithMembersByOwnerId(owner_id);
-      const userPromise = this.userRepository.orm.findOne({ where: { email } });
-      const [team, user] = await Promise.all([teamPromise, userPromise]);
-      if (user) throw new BadRequestException(`The user with email: ${email} already exists!`);
+      const team = await this.teamRepository.findActiveTeamWithMembersByOwnerId(owner_id);
+      const [auth0User] = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+      if (auth0User) throw new BadRequestException(`The user with email: ${email} already exists!`);
       this.checkTeamFreeSpots(team, owner_id);
       const payload = new MemberInvitationPayload({ owner_id, email });
       const token = await this.jwtService.asyncSign({ ...payload });
@@ -185,8 +186,9 @@ export class TeamManagementService {
       const userPromise = this.userRepository.orm.findOneBy({ id: user_id });
       const payloadPromise = this.jwtService.asyncVerify(token);
       const [user, { owner_id, email }] = await Promise.all([userPromise, payloadPromise]);
-      const hasInvitationEmail = user.email === email;
-      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${user.email}.`;
+      const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
+      const hasInvitationEmail = userAuth0Data.email === email;
+      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${userAuth0Data.email}.`;
       if (!hasInvitationEmail) throw new BadRequestException(hasInvalidEmailMsg);
       return await this.addTeamMember(user_id, owner_id);
     } catch (error) {

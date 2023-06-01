@@ -119,7 +119,7 @@ describe('UserService', () => {
   describe('syncUserAccount', () => {
     const syncAccountDto: SyncUserAccountDto = {
       auth0_id: 'dcidejd348ryhjeckwx3',
-      email: 'some@gmail.com',
+      email: 'some@email.com',
     };
 
     const emptySubscriber = {
@@ -164,7 +164,7 @@ describe('UserService', () => {
 
       await userService.syncUserAccount(syncAccountDto);
 
-      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(userDummy.email);
+      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email);
       expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toBeCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toBeCalledWith(userDummy.id);

@@ -4,15 +4,17 @@ import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { FastifyReply } from 'fastify';
+import { RevenueCatService } from '@app/revenue-cat';
+import { Auth0ManagementService } from '@app/auth0';
+import { OpenAIService } from '@app/openai';
+import { StripeService } from '@app/stripe';
 import { configsArray } from '../../../../config/index';
-import { StripeService } from '../../../../../../../libs/stripe/src';
 import {
   ActivityDummy,
   auth0UserDummy,
   focusModeTemplateDBResponseDummy,
   userDummy,
 } from '../../../../../test/dummies';
-import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import {
   Auth0ManagementServiceMock,
   CompletedActivityRepositoryMock,
@@ -33,7 +35,6 @@ import {
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserService } from './user.service';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
@@ -47,7 +48,6 @@ import { AdminAccessRequestRepository } from '../../repositories/admin-access-re
 import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
-import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 
 describe('UserService', () => {

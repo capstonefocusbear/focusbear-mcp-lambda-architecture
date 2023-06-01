@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { ISendGridOptions } from '../../../../libs/send-grid/src';
+import { ISendGridOptions } from '@app/send-grid';
 
 export const sendGridConfig = registerAs(
   'sendGrid',

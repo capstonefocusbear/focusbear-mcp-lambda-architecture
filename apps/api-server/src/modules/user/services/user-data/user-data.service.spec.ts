@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { getQueueToken } from '@nestjs/bull';
-import { StripeService } from '../../../../../../../libs/stripe/src';
-import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
+import { RevenueCatService } from '@app/revenue-cat';
+import { Auth0ManagementService } from '@app/auth0';
+import { StripeService } from '@app/stripe';
 import {
   Auth0ManagementServiceMock,
   RevenueCatServiceMock,

@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
+import { PusherService } from '@app/pusher';
+import { PusherBeamsService } from '@app/pusher-beams';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -28,8 +30,6 @@ import { CompletedFocusBlock } from '../../entities/completed-focus-block.entity
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeManagerService } from './focus-mode-manager.service';
-import { PusherService } from '../../../../../../../libs/pusher/src';
-import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
 

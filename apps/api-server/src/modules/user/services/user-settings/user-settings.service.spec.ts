@@ -4,6 +4,9 @@ import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { Settings } from 'luxon';
+import { RevenueCatService } from '@app/revenue-cat';
+import { Auth0ManagementService } from '@app/auth0';
+import { StripeService } from '@app/stripe';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
@@ -31,9 +34,6 @@ import {
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserSettingsService } from './user-settings.service';
-import { StripeService } from '../../../../../../../libs/stripe/src';
-import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { User } from '../../entities/user.entity';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';

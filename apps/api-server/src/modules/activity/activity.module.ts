@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
+import { IPusherOptions, PusherModule } from '@app/pusher';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
@@ -13,7 +14,6 @@ import { CompletedActivityRepository } from './repositories/completed-activity.r
 import { ActivityParserService } from './services/activity-parser/activity-parser.service';
 import { CompletedActivitySequenceService } from './services/completed-activity-sequence/completed-activity-sequence.service';
 import { CompletedActivityService } from './services/completed-activity/completed-activity.service';
-import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { CompletedFocusBlockRepository } from '../focus-mode/repositories/completed-focus-block.repository';
 import { ActivityService } from './services/activity-service/activity.service';
 import { ActivityController } from './controllers/activity.controller';

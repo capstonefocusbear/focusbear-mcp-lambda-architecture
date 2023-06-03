@@ -12,7 +12,7 @@ import { ChatCompletionRequestMessage } from 'openai';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
-import { OpenAIService } from '@app/openai';
+import { HabitOption, OpenAIService } from '@app/openai';
 import { AiToneOptions } from '@app/openai/domain/ai-tones.enum';
 import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../repositories/user.repository';
@@ -40,6 +40,7 @@ import { CompletedActivitySequence } from '../../../activity/entities/completed-
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import { RoutineType } from '../../domain/routine-type.enum';
 
 @Injectable()
 export class UserService {
@@ -434,32 +435,52 @@ export class UserService {
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
   }
 
-  async getMotivationalMessage(response: FastifyReply, user_id: string, language = 'english', tone: AiToneOptions) {
+  async getMotivationalMessage(
+    response: FastifyReply,
+    user_id: string,
+    language = 'english',
+    tone: AiToneOptions,
+    routine: RoutineType,
+  ) {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-      const { morning_routines_streak, evening_routines_streak, focus_modes_streak } =
-        await this.userDailyStatsService.getUserStreaks(user);
-      const input = [
-        {
-          name: 'Morning routine',
-          streak_days: morning_routines_streak,
-        },
-        {
-          name: 'Evening routine',
-          streak_days: evening_routines_streak,
-        },
-        {
-          name: 'Focus blocks',
-          streak_days: focus_modes_streak,
-        },
-      ];
+      const streakData = await this.constructStreaksArray(routine, user);
       const longTermGoals = await this.getUserLongTermGoals(user_id);
-      return await this.openAIService.createMotivationalSummary(response, input, language, tone, longTermGoals);
+      return await this.openAIService.createMotivationalSummary(response, streakData, language, tone, longTermGoals);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async constructStreaksArray(routineType: RoutineType, user: User): Promise<HabitOption[]> {
+    const { morning_routines_streak, evening_routines_streak, focus_modes_streak } =
+      await this.userDailyStatsService.getUserStreaks(user);
+    const morningStreak = {
+      name: 'Morning routine',
+      streak_days: morning_routines_streak,
+    };
+    const eveningStreak = {
+      name: 'Evening routine',
+      streak_days: evening_routines_streak,
+    };
+    const focusBlocksStreak = {
+      name: 'Focus blocks',
+      streak_days: focus_modes_streak,
+    };
+    let streakData = [];
+    switch (routineType) {
+      case RoutineType.MORNING_ROUTINE:
+        streakData = [morningStreak];
+        break;
+      case RoutineType.EVENING_ROUTINE:
+        streakData = [eveningStreak];
+        break;
+      default:
+        streakData = [morningStreak, eveningStreak, focusBlocksStreak];
+    }
+    return streakData;
   }
 
   async generateChatReply(

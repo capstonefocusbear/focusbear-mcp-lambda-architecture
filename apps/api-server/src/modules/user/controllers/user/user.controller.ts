@@ -161,10 +161,10 @@ export class UserController {
   @UseGuards(IsAuth)
   async getMotivationalSummary(
     @Res() response: FastifyReply,
-    @Query() { language, tone }: MotivationalSummaryQueryDto,
+    @Query() { language, tone, routine }: MotivationalSummaryQueryDto,
     @AuthContext() { user }: Passport,
   ) {
-    return this.userService.getMotivationalMessage(response, user.id, language, tone);
+    return this.userService.getMotivationalMessage(response, user.id, language, tone, routine);
   }
 
   @Post('/chat')

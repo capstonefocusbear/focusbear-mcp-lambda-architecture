@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
+import { OpenAIService } from '@app/openai';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
@@ -28,7 +29,6 @@ import { UserDailyStatsService } from '../../services/user-daily-stats/user-dail
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
-import { OpenAIService } from '../../../../../../../libs/openai/src';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';

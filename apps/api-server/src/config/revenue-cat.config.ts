@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { IRevenueCatOptions } from '../../../../libs/revenue-cat/src';
+import { IRevenueCatOptions } from '@app/revenue-cat';
 
 export const revenueCatConfig = registerAs(
   'revenueCat',

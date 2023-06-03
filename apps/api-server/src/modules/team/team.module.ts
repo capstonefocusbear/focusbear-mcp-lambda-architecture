@@ -1,9 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ISendGridOptions, SendGridModule } from '../../../../../libs/send-grid/src';
-import { JwtModule } from '../../../../../libs/jwt/src';
-import { IJwtOptions } from '../../../../../libs/jwt/src/interfaces';
-import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
+import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
+import { ISendGridOptions, SendGridModule } from '@app/send-grid';
+import { IJwtOptions } from '@app/jwt/interfaces';
+import { JwtModule } from '@app/jwt';
 import { UserModule } from '../user/user.module';
 import { TeamManagementController } from './controllers/team-management.controller';
 import { TeamRepository } from './repositories/team.repository';

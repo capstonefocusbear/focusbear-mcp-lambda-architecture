@@ -2,9 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
-import { OpenAIModule } from '../../../../../libs/openai/src';
+import { Auth0Module } from '@app/auth0';
+import { OpenAIModule } from '@app/openai';
+import { IStripeOptions, StripeModule } from '@app/stripe';
+import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
+import { R2Module } from '@app/r2/r2.module';
+import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { ActivityModule } from '../activity/activity.module';
-import { Auth0Module } from '../../../../../libs/auth0/src';
 import { AuthModule } from '../auth/auth.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
 import { UserController } from './controllers/user/user.controller';
@@ -12,10 +16,8 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserSettingsService } from './services/user-settings/user-settings.service';
 import { UserService } from './services/user/user.service';
-import { IRevenueCatOptions, RevenueCatModule } from '../../../../../libs/revenue-cat/src';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
-import { IStripeOptions, StripeModule } from '../../../../../libs/stripe/src';
 import { HabitPackModule } from '../habit-pack/habit-pack.module';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
 import { UserConsentService } from './services/user-consent/user-consent.service';
@@ -30,8 +32,6 @@ import { UserDataController } from './controllers/user-data/user-data.controller
 import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
-import { R2Module } from '../../../../../libs/r2/src/r2.module';
-import { ISendGridOptions, SendGridModule } from '../../../../../libs/send-grid/src';
 
 @Module({
   providers: [

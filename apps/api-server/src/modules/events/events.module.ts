@@ -1,7 +1,7 @@
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SendinblueService } from '../../../../../libs/sendinblue/src/sendinblue.service';
+import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { UserRepository } from '../user/repositories/user.repository';
 import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';

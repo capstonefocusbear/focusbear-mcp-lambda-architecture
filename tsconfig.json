@@ -74,6 +74,24 @@
       "@app/openai/*": [
         "libs/openai/src/*"
       ],
+      "@app/send-grid": [
+        "libs/send-grid/src"
+      ],
+      "@app/send-grid/*": [
+        "libs/send-grid/src/*"
+      ],
+      "@app/jwt": [
+        "libs/jwt/src"
+      ],
+      "@app/jwt/*": [
+        "libs/jwt/src/*"
+      ],
+      "@app/sendinblue": [
+        "libs/sendinblue/src"
+      ],
+      "@app/sendinblue/*": [
+        "libs/sendinblue/src/*"
+      ],
     }
   }
 }

@@ -1,6 +1,6 @@
 import { IsEnum, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AiToneOptions } from '../../../../../../libs/openai/src/domain/ai-tones.enum';
+import { AiToneOptions } from '@app/openai/domain/ai-tones.enum';
 
 export class MotivationalSummaryQueryDto {
   @IsOptional()

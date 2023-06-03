@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import Stripe from 'stripe';
+import { StripeService } from '@app/stripe';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
-import { StripeService } from '../../../../../../../libs/stripe/src';
 import { Passport } from '../../../auth/domain/passport.model';
 import { CreateStripeCheckoutSessionDto } from '../../dto/create-stripe-checkout-session.dto';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';

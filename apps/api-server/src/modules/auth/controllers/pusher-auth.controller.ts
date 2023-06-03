@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthResponse } from 'pusher';
-import { PusherService } from '../../../../../../libs/pusher/src';
+import { PusherService } from '@app/pusher';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../domain/passport.model';
 import { PusherAuthDto } from '../dto/pusher-auth.dto';

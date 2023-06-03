@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { IPusherBeamsOptions, PusherBeamsModule } from '../../../../../libs/pusher-beams/src';
-import { Auth0Module } from '../../../../../libs/auth0/src';
+import { Auth0Module } from '@app/auth0';
+import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
+import { IPusherOptions, PusherModule } from '@app/pusher';
 import { AuthService } from './services/auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
 import { HelperModule } from '../helper/helper.module';
 import { HasAuth0ActionSecret } from './guards/has-auth0-action-secret/has-auth0-action-secret.guard';
-import { IPusherOptions, PusherModule } from '../../../../../libs/pusher/src';
 import { PusherAuthController } from './controllers/pusher-auth.controller';
 import { PusherBeamsAuthService } from './services/pusher-beams-auth.service';
 import { UserRepository } from '../user/repositories/user.repository';

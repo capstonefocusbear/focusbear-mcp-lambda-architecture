@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { PusherBeamsService } from '../../../../../../libs/pusher-beams/src';
+import { PusherBeamsService } from '@app/pusher-beams';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { PusherBeamsAuthResponse } from '../dto/pusher-beams-auth-response.dto';
 

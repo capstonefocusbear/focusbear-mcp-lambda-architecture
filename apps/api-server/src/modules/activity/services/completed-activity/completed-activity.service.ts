@@ -9,6 +9,7 @@ import {
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
+import { PusherService } from '@app/pusher';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -27,7 +28,6 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { CompletedActivityRepository } from '../../repositories/completed-activity.repository';
 import { CompletedActivitySequenceService } from '../completed-activity-sequence/completed-activity-sequence.service';
-import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 import { CurrentActivityState } from '../../domain/current-activity-state.mode';

@@ -1,10 +1,10 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { PusherBeamsService } from '@app/pusher-beams';
 import { userDummy } from '../../../../test/dummies';
 import { PusherBeamsAuthService } from './pusher-beams-auth.service';
 import { PusherBeamsServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks/index';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { PusherBeamsService } from '../../../../../../libs/pusher-beams/src';
 
 describe('PusherBeamsAuthService', () => {
   let pusherBeamsAuthService: PusherBeamsAuthService;

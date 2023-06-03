@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import * as axios from 'axios';
-import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
+import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { TrackEventDto } from '../dto/track-event.dto';
 
 @Processor('events')

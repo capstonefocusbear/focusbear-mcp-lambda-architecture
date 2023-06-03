@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { IJwtOptions } from '../../../../libs/jwt/src/interfaces';
+import { IJwtOptions } from '@app/jwt/interfaces';
 
 export const tokensConfig = registerAs('tokens', (): { [key: string]: IJwtOptions } => ({
   invitation: {

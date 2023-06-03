@@ -3,10 +3,10 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import * as axios from 'axios';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
-import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
+import { RevenueCatService } from '@app/revenue-cat';
+import { Auth0ManagementService } from '@app/auth0';
+import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../repositories/user.repository';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
-import { StripeService } from '../../../../../../../libs/stripe/src';
 import { LanguageOptions } from '../../domain/language-options.enum';
 
 @Injectable()

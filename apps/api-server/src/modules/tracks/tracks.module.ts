@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { R2Module } from '../../../../../libs/r2/src/r2.module';
+import { R2Module } from '@app/r2/r2.module';
 import { UserModule } from '../user/user.module';
 import { TracksController } from './controllers/tracks.controller';
 import { TracksRepository } from './repositories/tracks.repository';

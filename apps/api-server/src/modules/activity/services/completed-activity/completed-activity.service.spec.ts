@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { Settings } from 'luxon';
+import { PusherService } from '@app/pusher';
 import {
   ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
@@ -58,7 +59,6 @@ import { User } from '../../../user/entities/user.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivityStatType } from '../../domain/activity-stat-type.enum';
 import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
-import { PusherService } from '../../../../../../../libs/pusher/src';
 import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { ActivityType } from '../../domain/activity-type.enum';

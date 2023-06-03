@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Auth0AuthenticationService } from '../../../../../../libs/auth0/src';
+import { Auth0AuthenticationService } from '@app/auth0';
 import { Passport } from '../domain/passport.model';
 
 @Injectable()

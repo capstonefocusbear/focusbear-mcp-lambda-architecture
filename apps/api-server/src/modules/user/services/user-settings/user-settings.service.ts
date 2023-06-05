@@ -102,12 +102,10 @@ export class UserSettingsService {
       if (isVerboseLoggingAllowed) {
         validationErrors = await validate(dto, {
           validationError: { target: true, value: true },
-          enableDebugMessages: true,
         });
       } else {
         validationErrors = await validate(dto, {
           validationError: { target: false, value: true },
-          enableDebugMessages: true,
         });
       }
       if (validationErrors.length > 0) {

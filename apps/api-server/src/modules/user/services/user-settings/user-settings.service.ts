@@ -1,7 +1,16 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  ValidationError,
+  forwardRef,
+} from '@nestjs/common';
 import * as _ from 'lodash';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { plainToClass } from 'class-transformer';
+import { validate } from 'class-validator';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -86,6 +95,24 @@ export class UserSettingsService {
         message: 'Updating user settings',
         ...(isVerboseLoggingAllowed && { updateSettingsData }),
       });
+      // manually validate settings after determining if verbose logging is allowed
+      // to avoid logging user settings unnecessarily for privacy reasons
+      const dto = plainToClass(UpdateUserSettingsDto, updateSettingsData);
+      let validationErrors: ValidationError[] = [];
+      if (isVerboseLoggingAllowed) {
+        validationErrors = await validate(dto, {
+          validationError: { target: true, value: true },
+          enableDebugMessages: true,
+        });
+      } else {
+        validationErrors = await validate(dto, {
+          validationError: { target: false, value: true },
+          enableDebugMessages: true,
+        });
+      }
+      if (validationErrors.length > 0) {
+        throw new BadRequestException({ validationErrors });
+      }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);

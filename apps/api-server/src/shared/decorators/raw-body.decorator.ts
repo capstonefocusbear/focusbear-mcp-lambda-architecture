@@ -1,10 +1,10 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-const extractRawBadyStrategy = Object.freeze({
+const extractRawBodyStrategy = Object.freeze({
   http: (ctx: ExecutionContext) => ctx.switchToHttp().getRequest().rawBody,
 });
 
 export const RawBody = createParamDecorator((data: unknown, ctx: ExecutionContext): unknown => {
   const ctxType = ctx.getType();
-  return extractRawBadyStrategy[ctxType](ctx);
+  return extractRawBodyStrategy[ctxType](ctx);
 });

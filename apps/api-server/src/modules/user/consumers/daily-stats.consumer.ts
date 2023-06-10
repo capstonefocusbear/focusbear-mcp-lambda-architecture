@@ -71,6 +71,16 @@ export class DailyStatsConsumer {
       } else if (activityType === ActivityType.evening) {
         routineToUpdate = 'evening_routine_completion_percentage';
       }
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Debug values in daily stats queue',
+        data: {
+          startOfDate,
+          dailyStats,
+          routineCompletionPercentage,
+        },
+      });
       if (dailyStats) {
         const morningSequenceIdIfNoExisting = activityType === ActivityType.morning ? completed_activity_log_id : null;
         const eveningSequenceIdIfNoExisting = activityType === ActivityType.evening ? completed_activity_log_id : null;
@@ -89,6 +99,7 @@ export class DailyStatsConsumer {
           should_recalculate: shouldStatsBeRecalculated,
           morning_sequence_log_id,
           evening_sequence_log_id,
+          focus_modes_completed: 0,
         });
         await this.dailyStatsRepository.create(newDailyStats);
       }
@@ -112,6 +123,8 @@ export class DailyStatsConsumer {
         onboarding_progress: { ...user.onboarding_progress, level: updatedLevel },
       });
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('Error in daily stats queued job: ', error);
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
     }
   }

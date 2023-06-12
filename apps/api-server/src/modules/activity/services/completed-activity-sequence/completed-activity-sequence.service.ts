@@ -280,12 +280,14 @@ export class CompletedActivitySequenceService {
           donotloginslack: true,
         });
       }
+      let sequenceStartTime = user.current_sequence_started_at;
+      if (!hasConsistentCurrentSet && cancel_habits_for_today) {
+        const currentTimeForUser = DateTime.local().setZone(user.timezone).toJSDate();
+        await this.createSkippedSequenceLog(user_id, activity_sequence_id, currentTimeForUser);
+        sequenceStartTime = currentTimeForUser;
+      }
       hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
-      return await this.nullifyUserCurrentActivityProps(
-        user_id,
-        activity_sequence_id,
-        user.current_sequence_started_at,
-      );
+      return await this.nullifyUserCurrentActivityProps(user_id, activity_sequence_id, sequenceStartTime);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -410,5 +412,17 @@ export class CompletedActivitySequenceService {
       throw new BadRequestException({ message: givenSequenceIsNotCurrentMessage, donotloginslack: true });
     }
     return { hasConsistentCurrentSet };
+  }
+
+  async createSkippedSequenceLog(user_id: string, activity_sequence_id: string, currentTimeForUser: Date) {
+    const newCompletingSequenceLog = new CompletedActivitySequence({
+      activity_sequence_id,
+      user_id,
+      start_time: currentTimeForUser,
+      finish_time: currentTimeForUser,
+      is_completed: true,
+      duration_minutes: 0,
+    });
+    await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
 }

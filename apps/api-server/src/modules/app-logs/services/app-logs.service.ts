@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { R2Service } from '@app/r2';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -11,6 +11,10 @@ export class AppLogsService {
   async uploadFile(request: FileUploadRequest, response: FastifyReply, user_id: string): Promise<any> {
     try {
       const fileData = await request.file();
+      // Validate that the file is a text file.
+      if (fileData.mimetype !== 'text/plain') {
+        throw new BadRequestException('Invalid file type. Please upload a .txt file.');
+      }
       const fileBuffer = await fileData.toBuffer();
       await this.r2Service.uploadFileToBucket(
         'app-usage-logs',

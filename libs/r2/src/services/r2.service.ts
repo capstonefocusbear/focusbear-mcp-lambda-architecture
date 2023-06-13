@@ -6,11 +6,14 @@ import { IR2Options } from '../interfaces';
 
 @Injectable()
 export class R2Service {
-  constructor(@Inject(R2_MODULE_OPTIONS) private readonly r2Options: IR2Options) {}
+  private s3: S3;
+
+  constructor(@Inject(R2_MODULE_OPTIONS) private readonly r2Options: IR2Options) {
+    this.s3 = new S3({ ...this.r2Options });
+  }
 
   async getPresignedUrl(bucket: string, key: string) {
-    const s3 = new S3({ ...this.r2Options });
-    const url = await s3.getSignedUrlPromise('getObject', {
+    const url = await this.s3.getSignedUrlPromise('getObject', {
       Bucket: bucket,
       Key: key,
       Expires: 86400,
@@ -19,7 +22,6 @@ export class R2Service {
   }
 
   async addObjectToBucket(bucket: string, key: string, body: any) {
-    const s3 = new S3({ ...this.r2Options });
     const buf = Buffer.from(JSON.stringify(body));
     const objectData = {
       Bucket: bucket,
@@ -29,6 +31,16 @@ export class R2Service {
       ContentType: 'application/json',
       ContentDisposition: 'attachment',
     };
-    await s3.upload(objectData).promise();
+    await this.s3.upload(objectData).promise();
+  }
+
+  async uploadFileToBucket(bucket: string, key: string, body: any, contentType: string) {
+    const fileData = {
+      Bucket: bucket,
+      Body: body,
+      Key: key,
+      ContentType: contentType,
+    };
+    await this.s3.upload(fileData).promise();
   }
 }

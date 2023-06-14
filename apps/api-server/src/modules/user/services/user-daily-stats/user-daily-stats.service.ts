@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import { Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { ONE_MINUTE } from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
   findDifferenceInSeconds,
@@ -254,14 +255,18 @@ export class UserDailyStatsService {
           is_offline_activity: isOffLineActivity,
         },
       });
-      await this.statsQueue.add('daily-stats-activity-completed', {
-        user,
-        activityType,
-        completed_activity_log_id,
-        startTime,
-        timeZone,
-        isOffLineActivity,
-      });
+      await this.statsQueue.add(
+        'daily-stats-activity-completed',
+        {
+          user,
+          activityType,
+          completed_activity_log_id,
+          startTime,
+          timeZone,
+          isOffLineActivity,
+        },
+        { delay: ONE_MINUTE },
+      );
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

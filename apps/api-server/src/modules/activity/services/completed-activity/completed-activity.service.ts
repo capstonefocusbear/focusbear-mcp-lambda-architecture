@@ -147,9 +147,9 @@ export class CompletedActivityService {
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
-      const isCurrentActivityIsMorningOrEveningType =
+      const isCurrentActivityMorningOrEveningType =
         activity.type === ActivityType.morning || activity.type === ActivityType.evening;
-      const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityIsMorningOrEveningType;
+      const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningType;
       if (shouldUpdateDailyStats) {
         await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
           user,

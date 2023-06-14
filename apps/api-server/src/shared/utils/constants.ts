@@ -3,3 +3,4 @@ export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
 export const FOCUS_BEAR_TEAM_EMAIL = 'team@focusbear.io';
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
+export const ONE_MINUTE = 60000;

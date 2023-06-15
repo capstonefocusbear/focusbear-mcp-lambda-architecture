@@ -6,10 +6,11 @@ import {
   UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
-import { DateTime } from 'luxon';
+import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
+import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -721,8 +722,9 @@ export class CompletedActivityService {
       const linkedActivitiesIds = linkedActivities.map((linkedActivity) => linkedActivity?.id);
       const idsToFetchStatsFor = [activity_id, linked_activity_id, ...linkedActivitiesIds];
       await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
+      const zone = this.convertUtcToIana(timezone);
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
-      const params = { days_number, log_summary_type, stat_type, timezone };
+      const params = { days_number, log_summary_type, stat_type, timezone: zone };
       const items = await this.completedActivityRepository.getAggregatedQuantityLogsPerDay(idsToFetchStatsFor, params);
       const logQuantityQuestions = await this.logQuantityQuestionRepository.orm.find({
         where: { activity_id },
@@ -731,7 +733,7 @@ export class CompletedActivityService {
       const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
       const logQuantityStats = await Promise.all(
         loqQuantityQuestionIds.map(
-          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone }),
+          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone: zone }),
           // eslint-disable-next-line function-paren-newline
         ),
       );
@@ -1199,5 +1201,22 @@ export class CompletedActivityService {
       updateActivity.activity_data.current_competency_level = currentCompetencyLevel;
       await this.activityRepository.orm.save(updateActivity);
     }
+  }
+
+  convertUtcToIana(timezone: string) {
+    // if the input is already in IANA format, just return it
+    if (IANAZone.isValidZone(timezone)) {
+      return timezone;
+    }
+    // get UTC offset
+    const offset = timezone.match(/([+\\-][0-9]{2}:[0-9]{2})/g);
+    if (!offset) {
+      throw new Error('Invalid timezone format');
+    }
+    const iana = UTC_TO_IANA_MAP[offset[0]];
+    if (!iana) {
+      return DEFAULT_IANA_TIMEZONE;
+    }
+    return iana;
   }
 }

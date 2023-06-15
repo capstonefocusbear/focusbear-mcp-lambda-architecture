@@ -151,7 +151,7 @@ describe('UserSettingsService', () => {
       let exception: any;
 
       try {
-        await userSettingsService.updateSettings({ user_id }, serializedActivityDummy, false);
+        await userSettingsService.updateSettings({ user_id }, userSettingsDummy, false);
       } catch (error) {
         exception = error;
       }

@@ -123,7 +123,11 @@ export class UserService {
         const stripeCustomer = await this.stripeService.registerNewCustomer(email);
         Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
       }
-      return await this.userRepository.upsert(userProperties, ['auth0_id']);
+      if (registeredUser) {
+        return await this.userRepository.update(registeredUser.id, userProperties);
+      }
+      const newUser = new User({ auth0_id });
+      return await this.userRepository.create(newUser);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

@@ -157,7 +157,7 @@ describe('UserService', () => {
 
     it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and defsult settings assigned', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
-      UserRepositoryMock.upsert.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);

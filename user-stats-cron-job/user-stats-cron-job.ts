@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import { LessThan } from 'typeorm';
+import { DaysOfWeek } from '../apps/api-server/src/modules/activity/domain/days-of-week.enum';
 import { CompletedActivity } from '../apps/api-server/src/modules/activity/entities/completed-activity.entity';
 import { CompletedActivitySequence } from '../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
@@ -9,6 +10,7 @@ import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-da
 import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
 import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { Activity } from '../apps/api-server/src/modules/activity/entities/activity.entity';
+import { DAYS_OF_WEEK } from './constants';
 
 async function calculateRoutineCompletionPercentage(
   user_id: string,
@@ -38,6 +40,39 @@ async function calculateRoutineCompletionPercentage(
   return Math.round(completionPercentage);
 }
 
+function filterActivitiesForCurrentDay(currentDay: DaysOfWeek, activities: Activity[]) {
+  const activitiesForCurrentDay = activities.filter(
+    ({ days_of_week }) => days_of_week.includes(DaysOfWeek.ALL) || days_of_week.includes(currentDay),
+  );
+  return activitiesForCurrentDay;
+}
+
+function sumDurationOfActivities(activities: Activity[]) {
+  return activities.reduce((total, { duration_seconds }) => total + Number(duration_seconds), 0);
+}
+
+function getSequenceDurationForDay(activities: Activity[], currentDay: DaysOfWeek) {
+  const activitiesForCurrentDay = filterActivitiesForCurrentDay(currentDay, activities);
+  return sumDurationOfActivities(activitiesForCurrentDay);
+}
+
+function calculateSequenceDurationForWeek(activities: Activity[]): DailySequenceDurations {
+  const dailySequenceDurations = {
+    MON: 0,
+    TUE: 0,
+    WED: 0,
+    THU: 0,
+    FRI: 0,
+    SAT: 0,
+    SUN: 0,
+  };
+  DAYS_OF_WEEK.forEach((day) => {
+    const sequenceDuration = getSequenceDurationForDay(activities, day);
+    dailySequenceDurations[day] = sequenceDuration;
+  });
+  return dailySequenceDurations;
+}
+
 async function getUserRoutineDailyDurations(user_id: string): Promise<{
   morningRoutineDailyDurations: DailySequenceDurations;
   eveningRoutineDailyDurations: DailySequenceDurations;
@@ -48,8 +83,8 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
   const eveningActivities = await CronJobDataSource.manager.find(Activity, {
     where: { user_id, type: ActivityType.evening },
   });
-  const morningRoutineDailyDurations = this.calculateSequenceDurationForWeek(morningActivities);
-  const eveningRoutineDailyDurations = this.calculateSequenceDurationForWeek(eveningActivities);
+  const morningRoutineDailyDurations = calculateSequenceDurationForWeek(morningActivities);
+  const eveningRoutineDailyDurations = calculateSequenceDurationForWeek(eveningActivities);
   return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
 }
 

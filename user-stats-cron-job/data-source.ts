@@ -23,6 +23,10 @@ import { Track } from '../apps/api-server/src/modules/tracks/entities/track.enti
 import { UserConsent } from '../apps/api-server/src/modules/user/entities/user-consent.entity';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
 import { VideoMetadata } from '../apps/api-server/src/modules/video-metadata/entities/video-metadata.entity';
+import { AdminAccessRequest } from '../apps/api-server/src/modules/user/entities/admin-access-requests.entity';
+import { LogQuantityQuestion } from '../apps/api-server/src/modules/activity/entities/log-quantity-questions';
+import { LogQuantityAnswer } from '../apps/api-server/src/modules/activity/entities/log-quantity-answers';
+import { FocusModeTag } from '../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -58,6 +62,10 @@ export const CronJobDataSource = new DataSource({
     LessonCompletion,
     UserConsent,
     DailyStats,
+    AdminAccessRequest,
+    LogQuantityQuestion,
+    LogQuantityAnswer,
+    FocusModeTag,
   ],
   subscribers: [],
   migrations: [],

@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { R2Service } from '../../../../../../libs/r2/src/services/r2.service';
+import { R2Service } from '@app/r2/services/r2.service';
 import { trackDtoDummy, userDummy } from '../../../../test/dummies';
 import { R2ServiceMock, SentryServiceMock, TracksRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
 import { UserRepository } from '../../user/repositories/user.repository';

@@ -16,6 +16,7 @@ import { ActivityChoiceType } from './activity-choice-type.enum';
 import { ActivityPriority } from './activity-priority.enum';
 import { ActivityImageData } from './ActivityImageData.model';
 import { TakeNotesOptions } from './take-notes-options.enum';
+import { BreakType } from './break-type.enum';
 
 export class ActivityData {
   constructor(data: Partial<ActivityData> = {}) {
@@ -35,6 +36,7 @@ export class ActivityData {
     this.priority = data?.priority;
     this.current_competency_level = data?.current_competency_level;
     this.competency_level = data?.competency_level;
+    this.break_type = data?.break_type;
   }
 
   @IsNotEmpty()
@@ -124,4 +126,10 @@ export class ActivityData {
   @IsOptional()
   @IsNumber()
   competency_level?: number;
+
+  @IsEnum(BreakType)
+  @IsIn(Object.values(BreakType))
+  @IsOptional()
+  @ApiProperty({ enum: BreakType })
+  break_type?: BreakType;
 }

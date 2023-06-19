@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
+import fastifyMultiPart = require('fastify-multipart');
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
@@ -38,6 +39,7 @@ async function bootstrap(): Promise<void> {
   await app.register(require('@fastify/helmet'), HELMET);
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
   app.register(require('@fastify/cors'));
+  app.register(fastifyMultiPart);
   app.useLogger(app.get(Pino));
 
   AppDataSource.initialize()

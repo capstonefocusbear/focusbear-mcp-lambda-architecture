@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
-import { PusherBeamsService } from '../../../../../../../libs/pusher-beams/src';
-import { PusherService } from '../../../../../../../libs/pusher/src';
+import { PusherService } from '@app/pusher';
+import { PusherBeamsService } from '@app/pusher-beams';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';

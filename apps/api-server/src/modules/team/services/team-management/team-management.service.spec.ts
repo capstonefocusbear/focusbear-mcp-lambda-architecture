@@ -4,9 +4,9 @@ import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { SendGridService } from '../../../../../../../libs/send-grid/src';
-import { JwtService } from '../../../../../../../libs/jwt/src';
 import { TeamMemberDummy, TeamWithMembersDummy, auth0UserDummy, userDummy } from '../../../../../test/dummies';
+import { SendGridService } from '@app/send-grid';
+import { JwtService } from '@app/jwt';
 import {
   JwtServiceMock,
   RevenueCatServiceMock,

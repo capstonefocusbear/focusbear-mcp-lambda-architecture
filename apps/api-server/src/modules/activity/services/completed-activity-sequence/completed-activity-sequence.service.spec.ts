@@ -695,6 +695,39 @@ describe('CompletedActivitySequenceService', () => {
       });
       Settings.now = () => new Date().valueOf();
     });
+
+    it('positive: if user does not have current sequence and cancel_habits_for_today is true, completed record should be created for skipped routine', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...testUser,
+        completing_sequence_log: null,
+        current_activity_sequence_id: null,
+      });
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      jest.spyOn(completedActivitySequenceService, 'completeActivitySequence').mockResolvedValue(null);
+
+      await completedActivitySequenceService.forceCompleteCurrentSequence(ActivitySequenceDummy.id, testUser.id, true);
+
+      expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith(
+        new CompletedActivitySequence({
+          activity_sequence_id: ActivitySequenceDummy.id,
+          user_id: testUser.id,
+          start_time: expect.toBeDate(),
+          finish_time: expect.toBeDate(),
+          is_completed: true,
+          duration_minutes: 0,
+        }),
+      );
+      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_activity_assigned_at: null,
+        last_completed_sequence_id: ActivitySequenceDummy.id,
+        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: null,
+        current_completing_sequence_log_id: null,
+      });
+    });
   });
 
   describe('nullifyCurrentSequenceSkippedActivities', () => {

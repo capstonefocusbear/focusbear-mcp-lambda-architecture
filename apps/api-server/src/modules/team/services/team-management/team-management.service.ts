@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { JwtService } from '../../../../../../../libs/jwt/src';
-import { SendGridService } from '../../../../../../../libs/send-grid/src';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
+import { RevenueCatService } from '@app/revenue-cat';
+import { SendGridService } from '@app/send-grid';
+import { JwtService } from '@app/jwt';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';

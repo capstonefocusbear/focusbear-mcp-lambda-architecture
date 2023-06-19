@@ -1,9 +1,9 @@
 import { BadRequestException, Body, Controller, HttpCode, Logger, Post, RawBodyRequest, Req } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
-import { StripeService } from '../../../../../../../libs/stripe/src';
+import { StripeService } from '@app/stripe';
+import { RevenueCatService } from '@app/revenue-cat';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 import { Headers } from '../../../../shared/decorators/headers.decorator';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
 import { SubscriptionProvider } from '../../domain/subscription-provider.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
 

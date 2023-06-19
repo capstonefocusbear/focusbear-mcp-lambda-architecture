@@ -3,6 +3,7 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { getQueueToken } from '@nestjs/bull';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
+import { ONE_MINUTE } from '../../../../shared/utils/constants';
 import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../user-stats-cron-job/constants';
 import { UserDailyStatsService } from './user-daily-stats.service';
 import {
@@ -408,14 +409,18 @@ describe('UserDailyStatsService', () => {
         false,
       );
 
-      expect(QueueMock.add).toBeCalledWith('daily-stats-activity-completed', {
-        user: userDummy,
-        activityType: ActivityType.morning,
-        completed_activity_log_id: sequenceId,
-        startTime,
-        timeZone: 'UTC',
-        isOffLineActivity: false,
-      });
+      expect(QueueMock.add).toBeCalledWith(
+        'daily-stats-activity-completed',
+        {
+          user: userDummy,
+          activityType: ActivityType.morning,
+          completed_activity_log_id: sequenceId,
+          startTime,
+          timeZone: 'UTC',
+          isOffLineActivity: false,
+        },
+        { delay: ONE_MINUTE },
+      );
     });
   });
 });

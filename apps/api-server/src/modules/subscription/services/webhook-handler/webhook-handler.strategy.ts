@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RevenueCatService } from '../../../../../../../libs/revenue-cat/src';
+import { RevenueCatService } from '@app/revenue-cat';
 import { Team } from '../../../team/entities/team.entity';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';

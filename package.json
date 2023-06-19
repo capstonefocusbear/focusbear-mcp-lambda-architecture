@@ -56,6 +56,7 @@
     "fastify": "^4.10.2",
     "fastify-cors": "^6.1.0",
     "fastify-helmet": "^7.1.0",
+    "fastify-multipart": "^5.4.0",
     "fastify-raw-body": "^4.0.0",
     "fastify-swagger": "^5.2.0",
     "html-to-text": "^9.0.4",
@@ -192,10 +193,14 @@
       "^@app/dynamic-module(|/.*)$": "<rootDir>/libs/dynamic-module/src/$1",
       "^@app/auth0(|/.*)$": "<rootDir>/libs/auth0/src/$1",
       "^@app/pusher(|/.*)$": "<rootDir>/libs/pusher/src/$1",
+      "^@app/pusher-beams(|/.*)$": "<rootDir>/libs/pusher-beams/src/$1",
       "^@app/revenue-cat(|/.*)$": "<rootDir>/libs/revenue-cat/src/$1",
       "^@app/send-grid(|/.*)$": "<rootDir>/libs/send-grid/src/$1",
       "^@app/jwt(|/.*)$": "<rootDir>/libs/jwt/src/$1",
-      "^@app/stripe(|/.*)$": "<rootDir>/libs/stripe/src/$1"
+      "^@app/stripe(|/.*)$": "<rootDir>/libs/stripe/src/$1",
+      "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
+      "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
+      "^@app/sendinblue(|/.*)$": "<rootDir>/libs/sendinblue/src/$1"
     }
   }
 }

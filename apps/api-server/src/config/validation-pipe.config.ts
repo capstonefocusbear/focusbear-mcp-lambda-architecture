@@ -1,7 +1,7 @@
 import { BadRequestException, ValidationError, ValidationPipeOptions } from '@nestjs/common';
 import { registerAs } from '@nestjs/config';
 
-export const validationPipeCongif = registerAs(
+export const validationPipeConfig = registerAs(
   'validation-pipe',
   (): ValidationPipeOptions => ({
     transform: true,

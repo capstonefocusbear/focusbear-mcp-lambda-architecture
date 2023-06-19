@@ -9,7 +9,7 @@ import {
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
-import { SendinblueService } from '../../../../../../libs/sendinblue/src/sendinblue.service';
+import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';

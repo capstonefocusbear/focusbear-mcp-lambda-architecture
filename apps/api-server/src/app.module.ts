@@ -26,6 +26,7 @@ import { FocusModeTemplatesModule } from './modules/focus-mode-template/focus-mo
 import { CoursesModule } from './modules/course/courses.module';
 import { LessonModule } from './modules/lesson/lesson.module';
 import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
+import { AppLogsModule } from './modules/app-logs/app-logs.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
     CoursesModule,
     LessonModule,
     TabKeywordsModule,
+    AppLogsModule,
   ],
   controllers: [AppController],
 })

@@ -215,7 +215,7 @@ export const standaloneHabitPackDBResponseDummy = {
 
 export const routineHabitPackDBResponseDummy = {
   id: 'bc55568b-59bb-4842-8a83-e92843356978',
-  creator_name: userDummy.name,
+  creator_name: userDummy.username,
   user_id: userDummy.id,
   pack_name: 'Nice routine pack',
   pack_type: HabitPackType.routine,

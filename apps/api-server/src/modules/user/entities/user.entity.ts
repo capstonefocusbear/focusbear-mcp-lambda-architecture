@@ -33,14 +33,6 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    nullable: false,
-    transformer: BaseEntity.encryptField('email'),
-  })
-  email?: string;
-
-  @Column({
-    type: 'varchar',
-    length: 255,
     unique: true,
   })
   stripe_customer_id?: string;
@@ -52,13 +44,6 @@ export class User extends BaseEntity {
     unique: true,
   })
   auth0_id?: string;
-
-  @Column({
-    type: 'varchar',
-    length: 255,
-    transformer: BaseEntity.encryptField('name'),
-  })
-  name?: string;
 
   @Column({
     type: 'varchar',

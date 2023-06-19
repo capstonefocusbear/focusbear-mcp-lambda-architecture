@@ -6,6 +6,7 @@ import { UserRepository } from '../user/repositories/user.repository';
 import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';
 import { EventsService } from './services/events.service';
+import { Auth0Module } from '../../../../../libs/auth0/src';
 
 @Module({
   providers: [EventsService, SendinblueService, UserRepository, EventsConsumer],
@@ -18,6 +19,11 @@ import { EventsService } from './services/events.service';
     }),
     BullModule.registerQueue({
       name: 'events',
+    }),
+    Auth0Module.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('auth0'),
     }),
   ],
   controllers: [EventsController],

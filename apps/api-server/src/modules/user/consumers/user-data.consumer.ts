@@ -55,7 +55,7 @@ export class UserPersonalDataConsumer {
       });
       const downloadLink = await this.r2Service.getPresignedUrl('user-data', `${user_id}.json`);
       await this.emailService.sendEmail({
-        to: userFocusBearData.email,
+        to: userAuth0Data.email,
         from: FOCUS_BEAR_TEAM_EMAIL,
         text: this.i18nService.t('common.user_data_email_body', { lang: language, args: { link: downloadLink } }),
         subject: this.i18nService.t('common.user_data_email_header', { lang: language }),

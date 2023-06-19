@@ -16,6 +16,10 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     return this.getUser({ id: auth0Id });
   }
 
+  async getAuth0UserWithEmail(email: string) {
+    return this.getUsers({ q: `email:"${email}"` });
+  }
+
   async deleteAuth0User(auth0Id: string) {
     await this.deleteUser({ id: auth0Id });
   }

@@ -99,8 +99,8 @@ export class FocusModeTemplatesService {
     upsertName: string,
     userIsAdmin: boolean,
   ) {
-    // allow admin user to edit author name, if not admin, use existing creator name, if new pack, use user's name
-    const ifExistingFocusTemplateUseSetName = focusTemplate ? focusTemplate.author_name : user.name;
+    // allow admin user to edit author name, if not admin, use existing creator name, if new pack, use user's username
+    const ifExistingFocusTemplateUseSetName = focusTemplate ? focusTemplate.author_name : user.username;
     const creatorNameToUse = userIsAdmin ? upsertName : ifExistingFocusTemplateUseSetName;
     return creatorNameToUse;
   }

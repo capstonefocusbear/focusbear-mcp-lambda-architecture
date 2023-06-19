@@ -32,6 +32,8 @@ export const ConfigServiceMock = {
 
 export const Auth0ManagementServiceMock = {
   getUser: jest.fn(),
+  getAuth0User: jest.fn(),
+  getAuth0UserWithEmail: jest.fn(),
 };
 
 export const UserServiceMock = {

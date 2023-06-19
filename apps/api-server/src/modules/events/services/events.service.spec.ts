@@ -2,11 +2,17 @@ import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
+import {
+  Auth0ManagementServiceMock,
+  SendinblueServiceMock,
+  SentryServiceMock,
+  UserRepositoryMock,
+} from '../../../../test/mocks';
 import { SendinblueService } from '@app/sendinblue/sendinblue.service';
-import { userDummy, QueueMock } from '../../../../test/dummies';
-import { SendinblueServiceMock, SentryServiceMock, UserRepositoryMock } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 
 describe('EventService', () => {
   let eventsService: EventsService;
@@ -16,6 +22,7 @@ describe('EventService', () => {
         EventsService,
         SendinblueService,
         UserRepository,
+        Auth0ManagementService,
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
@@ -30,6 +37,8 @@ describe('EventService', () => {
       .useValue(SendinblueServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);
@@ -58,12 +67,13 @@ describe('EventService', () => {
 
     it('positive: should add the incoming track event to the events queue', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
 
       await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
 
       expect(QueueMock.add).toBeCalledWith('track-event', {
         user_id: userDummy.id,
-        email: userDummy.email,
+        email: auth0UserDummy.email,
         trackEventDto: { event_type: 'test-event' },
       });
     });

@@ -46,11 +46,10 @@ export const userDummy = new User(
     startup_time: '06:15',
     break_after_minutes: 15,
     shutdown_time: '20:30',
-    email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.STANDARD,
-    name: 'User Dummy',
     timezone: 'UTC',
+    username: 'someusername',
   },
   { generateId: false },
 );
@@ -61,17 +60,16 @@ export const adminUserDummy = new User(
     startup_time: '06:15',
     break_after_minutes: 15,
     shutdown_time: '20:30',
-    email: 'some@gmail.com',
     auth0_id: '123dfewvwbt4de3e',
     user_type: UserTypes.ADMIN,
-    name: 'User Dummy',
+    username: 'someusername',
   },
   { generateId: false },
 );
 
 export const auth0UserDummy: Auth0User = {
   _id: '1',
-  email: 'some@email',
+  email: 'some@email.com',
   email_verified: true,
 };
 

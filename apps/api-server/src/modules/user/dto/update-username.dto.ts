@@ -4,8 +4,8 @@ export class UpdateUsernameDto {
   @IsNotEmpty()
   @IsString()
   @MaxLength(30)
-  @Matches(/^[A-Za-z0-9]*$/, {
-    message: 'username may not include any special characters or spaces, only letters and digits are allowed',
+  @Matches(/^([A-Za-z]|[0-9]|_)+$/, {
+    message: 'invalid username, only letters, digits, and underscores are allowed',
   })
   username: string;
 }

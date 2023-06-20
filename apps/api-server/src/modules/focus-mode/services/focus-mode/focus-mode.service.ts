@@ -224,4 +224,9 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
   async getUserFocusTags(user_id: string): Promise<Partial<FocusModeTag>[]> {
     return this.focusModeTagRepository.orm.find({ where: { user_id }, select: ['id', 'text'] });
   }
+
+  async upsertFocusModeTag(tag: CreateFocusModeTagDto, user_id: string) {
+    const newTag = new FocusModeTag({ ...tag, user_id });
+    return this.focusModeTagRepository.upsert(newTag, ['id']);
+  }
 }

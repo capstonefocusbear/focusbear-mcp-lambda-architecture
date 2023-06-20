@@ -13,6 +13,7 @@ import { FocusMode } from '../../entities/focus-mode.entity';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { BulckDeleteQueryDto } from '../../dto/bulck-delete-query.dto';
+import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
 
 @Controller('focus-mode')
 @ApiTags('focus-mode')
@@ -87,5 +88,10 @@ export class FocusModeController {
   @Get('tags')
   async getUserFocusTags(@AuthContext() { user }: Passport) {
     return this.focusModeService.getUserFocusTags(user.id);
+  }
+
+  @Put('tags')
+  async upsertFocusModeTag(@Body() tag: CreateFocusModeTagDto, @AuthContext() { user }: Passport) {
+    return this.focusModeService.upsertFocusModeTag(tag, user.id);
   }
 }

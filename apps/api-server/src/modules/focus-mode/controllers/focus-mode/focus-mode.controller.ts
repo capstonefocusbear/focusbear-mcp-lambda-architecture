@@ -14,6 +14,7 @@ import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { BulckDeleteQueryDto } from '../../dto/bulck-delete-query.dto';
 import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
+import { DeleteFocusModeTagQuery } from '../../dto/delete-focus-mode-tag-query.dto';
 
 @Controller('focus-mode')
 @ApiTags('focus-mode')
@@ -93,5 +94,11 @@ export class FocusModeController {
   @Put('tags')
   async upsertFocusModeTag(@Body() tag: CreateFocusModeTagDto, @AuthContext() { user }: Passport) {
     return this.focusModeService.upsertFocusModeTag(tag, user.id);
+  }
+
+  @Delete('tags')
+  @HttpCode(204)
+  async deleteFocusModeTag(@Query() { tag_id }: DeleteFocusModeTagQuery, @AuthContext() { user }: Passport) {
+    return this.focusModeService.deleteFocusModeTag(tag_id, user.id);
   }
 }

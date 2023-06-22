@@ -229,4 +229,8 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     const newTag = new FocusModeTag({ ...tag, user_id });
     return this.focusModeTagRepository.upsert(newTag, ['id']);
   }
+
+  async deleteFocusModeTag(tag_id: string, user_id: string) {
+    return this.focusModeTagRepository.orm.delete({ id: tag_id, user_id });
+  }
 }

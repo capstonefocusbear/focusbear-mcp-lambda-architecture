@@ -29,7 +29,7 @@ export class AppLogsService {
       const fileBuffer = await fileData.toBuffer();
       await this.r2Service.uploadFileToBucket(
         'app-usage-logs',
-        `${user_id}-${fileData.filename}`,
+        `${user_id}-${new Date().toISOString()}-${fileData.filename}`,
         fileBuffer,
         fileData.mimetype,
       );

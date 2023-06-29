@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
@@ -57,6 +58,8 @@ import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats
 import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 import { UserService } from '../../../user/services/user/user.service';
+
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class CompletedActivityService {
@@ -135,6 +138,16 @@ export class CompletedActivityService {
           activity,
           choice,
         );
+      }
+      if (user_id === JEREMYS_USER_ID) {
+        console.log("Jeremy's completed activity data: ", {
+          completingSequenceLog,
+          completedActivity,
+          user,
+          activity,
+          choice,
+          sequence,
+        });
       }
       const createdItem = await this.saveCompletedLog(
         completedActivity,
@@ -370,6 +383,9 @@ export class CompletedActivityService {
       current_sequence_skipped_activities: skippedActivityIds.length !== 0 ? skippedActivityIds : null,
     });
     if (!nextActivity) {
+      if (user.id === JEREMYS_USER_ID) {
+        console.log('No next activity, marking sequence as completed');
+      }
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
     return completingSequenceLog;
@@ -494,6 +510,13 @@ export class CompletedActivityService {
       const nextHighPriorityActivity = remainingActivities.find(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
       );
+      if (user.id === JEREMYS_USER_ID) {
+        console.log('Data if cutoff time has been reached: ', {
+          nextHighPriorityActivity,
+          activitiesSortedInSequence,
+          remainingActivities,
+        });
+      }
       nextActivity = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
     } else {
       nextActivity = sortedIdsForCurrentDayActivities[completedActivityIndexInCurrentDaySequence + 1];
@@ -508,6 +531,17 @@ export class CompletedActivityService {
       user,
       completedActivity,
     );
+    if (user.id === JEREMYS_USER_ID) {
+      console.log('Data in defineNextCurrentActivity function: ', {
+        nextActivity,
+        currentState,
+        hasCutoffTimeBeenReached,
+        sortedIdsForCurrentDayActivities,
+        completedActivityIndexInCurrentDaySequence,
+        activitiesForToday,
+        currentDay,
+      });
+    }
     return { nextActivity, currentState };
   }
 

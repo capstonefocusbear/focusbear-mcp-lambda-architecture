@@ -11,7 +11,7 @@ export const constants = registerAs('constants', () => ({
     },
   },
   subscriptions: {
-    trialDurationDays: '3',
+    trialDurationDays: '7',
   },
   userSettings: {
     generateDefault: (): UpdateUserSettingsDto => ({

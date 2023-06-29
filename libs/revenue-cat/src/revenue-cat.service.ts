@@ -21,9 +21,9 @@ export class RevenueCatService {
 
   async grantTrialAccess(app_user_id: string) {
     await this.getOrCreateSubscriber(app_user_id);
-    const personalAccess = Entitlement.trial;
-    const duration = 'monthly';
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${personalAccess}/promotional`;
+    const trialAccess = Entitlement.trial;
+    const duration = 'weekly';
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${trialAccess}/promotional`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
     return this.httpService

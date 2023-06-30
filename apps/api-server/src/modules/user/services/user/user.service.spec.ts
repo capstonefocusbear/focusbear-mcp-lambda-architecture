@@ -155,7 +155,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and defsult settings assigned', async () => {
+    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);

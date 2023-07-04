@@ -279,6 +279,10 @@ export class CompletedActivityService {
         const { is_completed } = completingSequenceLog;
         // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
         if ((!nextActivity && !is_completed) || is_completed) {
+          if (user.id === JEREMYS_USER_ID) {
+            console.log('Completing sequence by date - syncOfflineActivity');
+            console.log({ is_completed });
+          }
           await this.completedActivitySequenceService.completeActivitySequenceByDate(
             completingSequenceLog.id,
             user.id,
@@ -384,7 +388,8 @@ export class CompletedActivityService {
     });
     if (!nextActivity) {
       if (user.id === JEREMYS_USER_ID) {
-        console.log('No next activity, marking sequence as completed');
+        console.log('Completing sequence - updateUserAndSequence');
+        console.log({ currentState, nextActivity, activityData });
       }
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
@@ -494,6 +499,8 @@ export class CompletedActivityService {
     // check if activity exists in entire sequence
     this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
     const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
+    // temporary variable for debugging
+    const idsForTodaysActivities = activitiesForToday.map((activity) => activity.id);
     // sorts the activities for current day in order they should be executed in
     const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
       sequenceActivityIds,
@@ -531,14 +538,14 @@ export class CompletedActivityService {
       user,
       completedActivity,
     );
-    if (user.id === JEREMYS_USER_ID) {
+    if (user.id === JEREMYS_USER_ID && !nextActivity) {
       console.log('Data in defineNextCurrentActivity function: ', {
         nextActivity,
         currentState,
         hasCutoffTimeBeenReached,
         sortedIdsForCurrentDayActivities,
         completedActivityIndexInCurrentDaySequence,
-        activitiesForToday,
+        idsForTodaysActivities,
         currentDay,
       });
     }
@@ -591,6 +598,10 @@ export class CompletedActivityService {
       userCurrentTime < userShutdownTime;
 
     if (morningRoutineShouldBeCompleted || eveningRoutineShouldBeCompleted) {
+      if (id === JEREMYS_USER_ID) {
+        console.log('Completing sequence - recalculateCurrentActivity1');
+        console.log({ morningRoutineShouldBeCompleted, eveningRoutineShouldBeCompleted });
+      }
       await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
       await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
         partialUser.id,
@@ -618,6 +629,10 @@ export class CompletedActivityService {
       );
       currentActivity = nextHighPriorityActivity ?? null;
       if (!currentActivity) {
+        if (id === JEREMYS_USER_ID) {
+          console.log('Completing sequence - recalculateCurrentActivity2');
+          console.log({ remainingActivities, nextHighPriorityActivity });
+        }
         await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
         await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
           partialUser.id,

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
@@ -25,6 +26,8 @@ import { ActivityPriority } from '../../../activity/domain/activity-priority.enu
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
+
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserSettingsService {
@@ -265,6 +268,10 @@ export class UserSettingsService {
           );
           const [nextId] = sortedIdsForCurrentDayActivities;
           if (!nextId) {
+            if (user.id === JEREMYS_USER_ID) {
+              console.log('Completing sequence - updateUserIfCurrentActivityDeleted');
+              console.log({ current_activity_id, activityIds });
+            }
             await this.completedActivitySequenceService.completeActivitySequence(
               current_completing_sequence_log_id,
               user.id,

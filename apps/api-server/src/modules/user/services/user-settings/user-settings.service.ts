@@ -120,6 +120,11 @@ export class UserSettingsService {
         cutoff_time_for_non_high_priority_activities: cutoffTime,
         break_after_minutes,
       } = updateSettingsData;
+      const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
+        startup_time,
+        shutdown_time,
+        user.timezone,
+      );
       const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
       const updatedUser = new User({
         startup_time,
@@ -132,6 +137,8 @@ export class UserSettingsService {
         current_activity_sequence_id,
         current_completing_sequence_log_id,
         last_time_user_settings_modified: new Date(),
+        utc_startup_time,
+        utc_shutdown_time,
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };
@@ -199,6 +206,43 @@ export class UserSettingsService {
       const userZone = `UTC-${negavtiveTime}`;
       await this.userRepository.update(user_id, { timezone: userZone });
     }
+  }
+
+  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string) {
+    const [startHours, startMinutes] = startupTime.split(':');
+    const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
+    const userStartupTime = DateTime.local({ zone: timezone }).set({
+      hour: this.formatTimeToSingleDigit(startHours),
+      minute: this.formatTimeToSingleDigit(startMinutes),
+    });
+    const userShutdownTime = DateTime.local({ zone: timezone }).set({
+      hour: this.formatTimeToSingleDigit(shutdownHours),
+      minute: this.formatTimeToSingleDigit(shutdownMinutes),
+    });
+    const userStartupAsUTC = userStartupTime.toUTC();
+    const userShutdownAsUTC = userShutdownTime.toUTC();
+    const startupUTCHours = this.formatTimeToDoubleDigits(userStartupAsUTC.hour);
+    const startupUTCMinutes = this.formatTimeToDoubleDigits(userStartupAsUTC.minute);
+    const shutdownUTCHours = this.formatTimeToDoubleDigits(userShutdownAsUTC.hour);
+    const shutdownUTCMinutes = this.formatTimeToDoubleDigits(userShutdownAsUTC.minute);
+    return {
+      utc_startup_time: `${startupUTCHours}:${startupUTCMinutes}`,
+      utc_shutdown_time: `${shutdownUTCHours}:${shutdownUTCMinutes}`,
+    };
+  }
+
+  formatTimeToDoubleDigits(hour: number) {
+    if (hour < 10) {
+      return `0${hour}`;
+    }
+    return hour.toString();
+  }
+
+  formatTimeToSingleDigit(time: string) {
+    if (time.startsWith('0')) {
+      return parseInt(time.substring(1), 10);
+    }
+    return parseInt(time, 10);
   }
 
   async updateUserIfCurrentActivityDeleted(updateSettingsData: UpdateUserSettingsDto, user: User) {

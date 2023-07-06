@@ -601,6 +601,22 @@ export class CompletedActivityService {
       if (id === JEREMYS_USER_ID) {
         console.log('Completing sequence - recalculateCurrentActivity1');
         console.log({ morningRoutineShouldBeCompleted, eveningRoutineShouldBeCompleted });
+        console.log('Current activity props:');
+        console.log({
+          timezone,
+          cutoff_time_for_non_high_priority_activities: cutOffTime,
+          current_activity,
+          current_activity_sequence_id,
+          id,
+          current_completing_sequence_log_id,
+          current_sequence_started_at,
+          startup_time,
+          shutdown_time,
+          userCurrentTime: userCurrentTime.toISO(),
+          userStartupTime: userStartupTime.toISO(),
+          userShutdownTime: userShutdownTime.toISO(),
+          sequence,
+        });
       }
       await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
       await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(

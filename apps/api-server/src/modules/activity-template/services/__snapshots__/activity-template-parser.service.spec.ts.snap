@@ -18,6 +18,7 @@ Array [
       "log_quantity_question": undefined,
       "name": "Yoga",
       "priority": undefined,
+      "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [
@@ -54,6 +55,7 @@ Array [
       "log_quantity_question": undefined,
       "name": "Journaling",
       "priority": undefined,
+      "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [],
@@ -87,6 +89,7 @@ Array [
       "log_quantity_question": undefined,
       "name": "Deep breathing",
       "priority": undefined,
+      "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
       "video_urls": Array [
@@ -129,6 +132,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Yoga",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -165,6 +169,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Deep breathing",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -202,6 +207,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Yoga",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -238,6 +244,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Deep breathing",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -275,6 +282,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Yoga",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -311,6 +319,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Deep breathing",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -356,6 +365,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Yoga",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [
@@ -392,6 +402,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Journaling",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [],
@@ -425,6 +436,7 @@ Object {
           "log_quantity_question": undefined,
           "name": "Deep breathing",
           "priority": undefined,
+          "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
           "video_urls": Array [

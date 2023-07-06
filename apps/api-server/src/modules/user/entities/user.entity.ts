@@ -22,6 +22,7 @@ import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-b
 import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { LogQuantityAnswer } from '../../activity/entities/log-quantity-answers';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { SavedWebsite } from '../../saved-website/entities/saved-website.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -319,6 +320,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => LogQuantityAnswer, (answer) => answer.user)
   log_quantity_answers?: LogQuantityAnswer[];
+
+  @OneToMany(() => SavedWebsite, (website) => website.user)
+  saved_websites?: SavedWebsite[];
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

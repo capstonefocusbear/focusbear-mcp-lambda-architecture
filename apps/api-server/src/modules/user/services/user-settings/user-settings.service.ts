@@ -11,6 +11,7 @@ import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
+import { randomUUID } from 'crypto';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -25,6 +26,7 @@ import { ActivityPriority } from '../../../activity/domain/activity-priority.enu
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
+import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 
 @Injectable()
 export class UserSettingsService {
@@ -134,7 +136,24 @@ export class UserSettingsService {
         last_time_user_settings_modified: new Date(),
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
-      const serializedActivities = { morning_activities, evening_activities, break_activities };
+      let eveningActivities = evening_activities;
+      if (updateSettingsData?.sleep_time) {
+        const relaxActivityDuration = this.calculateRelaxActivityDuration(
+          updateSettingsData.sleep_time,
+          updateSettingsData.shutdown_time,
+          updateSettingsData.evening_activities,
+        );
+        const relaxActivity: UpdateActivityDto = {
+          id: randomUUID(),
+          name: 'Relax',
+          duration_seconds: relaxActivityDuration,
+          show_saved_distracting_websites: true,
+        };
+        if (relaxActivityDuration > 0) {
+          eveningActivities = [relaxActivity, ...evening_activities];
+        }
+      }
+      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
       const { deserializedActivities, logQuantityQuestions } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
@@ -152,6 +171,32 @@ export class UserSettingsService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  calculateRelaxActivityDuration(sleepTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
+    const [sleepHours, sleepMinutes] = sleepTime.split(':');
+    const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
+    const sleepDateTime = DateTime.local().set({
+      hour: this.formatTime(sleepHours),
+      minute: this.formatTime(sleepMinutes),
+    });
+    const shutdownDateTime = DateTime.local().set({
+      hour: this.formatTime(shutdownHours),
+      minute: this.formatTime(shutdownMinutes),
+    });
+    const differenceSeconds = sleepDateTime.diff(shutdownDateTime, 'seconds').toObject().seconds;
+    const eveningRoutineDuration = eveningActivities.reduce(
+      (totalDuration, activity) => totalDuration + activity.duration_seconds,
+      0,
+    );
+    return Math.round(differenceSeconds - eveningRoutineDuration);
+  }
+
+  formatTime(formattedHour) {
+    if (formattedHour.startsWith('0')) {
+      return parseInt(formattedHour.substring(1), 10);
+    }
+    return parseInt(formattedHour, 10);
   }
 
   async clearUserActivities(user_id: string) {

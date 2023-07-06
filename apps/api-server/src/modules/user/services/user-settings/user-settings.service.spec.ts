@@ -189,6 +189,38 @@ describe('UserSettingsService', () => {
         logQuantityQuestionsDummy,
       );
     });
+
+    it('positive: if sleep_time is sent Relax activity should be added to evening routine', async () => {
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: [],
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+
+      await userSettingsService.updateSettings(
+        { user_id: userDummy.id },
+        {
+          ...userSettingsDummy,
+          morning_activities: [],
+          evening_activities: [],
+          break_activities: [],
+          sleep_time: '21:00',
+        },
+        true,
+      );
+
+      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(
+        {
+          morning_activities: [],
+          evening_activities: [
+            { duration_seconds: 1800, name: 'Relax', show_saved_distracting_websites: true, id: expect.toBeString() },
+          ],
+          break_activities: [],
+        },
+        userDummy.id,
+      );
+    });
   });
 
   describe('clearUserActivities', () => {

@@ -158,7 +158,7 @@ export class Activity extends BaseEntity {
   user_activities?: User;
 
   @ManyToOne(() => ActivityTemplate, (activity_template) => activity_template.activities, {
-    onDelete: 'NO ACTION',
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_template_id' })

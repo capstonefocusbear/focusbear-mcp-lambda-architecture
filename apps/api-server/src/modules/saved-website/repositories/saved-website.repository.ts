@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from 'apps/api-server/src/shared/repositories/base-repository.repository';
 import { Connection } from 'typeorm';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { SavedWebsite } from '../entities/saved-website.entity';
 
 @Injectable()

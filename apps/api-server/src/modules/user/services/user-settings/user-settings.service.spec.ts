@@ -466,4 +466,36 @@ describe('UserSettingsService', () => {
       });
     });
   });
+
+  describe('calculateRelaxActivityDuration', () => {
+    it('Positive: should calculate the correct time difference between sleep and shutdown time', () => {
+      const sleepTime = '23:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [
+        { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
+        { duration_seconds: 1800, id: randomUUID(), name: 'Name Two' }, // 30 minutes
+      ];
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(result).toBe(5400); // 1.5 hours of relax time
+    });
+
+    it('Positive: should handle time difference with no activities', () => {
+      const sleepTime = '22:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [];
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(result).toBe(7200); // 2 hours of relax time
+    });
+
+    it('Positive: should handle time difference where activity time is equal to difference', () => {
+      const sleepTime = '22:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [{ duration_seconds: 7200, id: randomUUID(), name: 'Name One' }]; // 2 hours
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(Object.is(result, 0)).toBe(true); // no relax time
+    });
+  });
 });

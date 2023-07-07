@@ -30,6 +30,10 @@ export const UserConsentRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
+export const SavedWebsiteRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),

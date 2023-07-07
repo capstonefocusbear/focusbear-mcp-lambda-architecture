@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { BeamsPublishRequest } from '../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../user-stats-cron-job/data-source';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
+import { LanguageOptions } from '../apps/api-server/src/modules/user/domain/language-options.enum';
 
 const MORNING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/morning-message-english.json';
 const EVENING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/evening-message-english.json';
@@ -12,6 +13,10 @@ const MORNING_JSON_FILE_SPANISH = './routine-notifications-cron-job/morning-mess
 const EVENING_JSON_FILE_SPANISH = './routine-notifications-cron-job/evening-message-spanish.json';
 const ENGLISH = 'English';
 const SPANISH = 'Spanish';
+const MORNING_ROUTINE_TITLE_ENGLISH = "It's time for your morning routine!";
+const EVENING_ROUTINE_TITLE_ENGLISH = "It's time for your evening routine!";
+const MORNING_ROUTINE_TITLE_SPANISH = '¡Es hora de tu rutina matutina!';
+const EVENING_ROUTINE_TITLE_SPANISH = '¡Es hora de tu rutina nocturna!';
 
 const beamsClient = new PushNotifications({
   instanceId: process.env.PUSHER_BEAMS_INSTANCE_ID,
@@ -126,61 +131,79 @@ async function updateUsersEveningRoutineNotification(users: User[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
-async function sendMorningNotifications(users: User[]) {
-  const userIds = users.map((user) => user.id);
-  const publishRequest = new BeamsPublishRequest({
+async function sendNotifications(
+  users: User[],
+  englishMessage: string,
+  spanishMessage: string,
+  englishTitle: string,
+  spanishTitle: string,
+) {
+  const englishUsers = users.filter((user) => user.language === LanguageOptions.ENGLISH);
+  const spanishUsers = users.filter((user) => user.language === LanguageOptions.SPANISH);
+  const englishUsersIds = englishUsers.map((user) => user.id);
+  const spanishUsersIds = spanishUsers.map((user) => user.id);
+  const englishPublishRequest = new BeamsPublishRequest({
     apns: {
       aps: {},
       data: {
-        text: 'Time for your morning routine!',
-        body: 'Start your morning routine to get your productivity up.',
+        title: englishTitle,
+        body: englishMessage,
       },
     },
     fcm: {
       data: {
-        text: 'Time for your morning routine!',
-        body: 'Start your morning routine to get your productivity up.',
+        title: englishTitle,
+        body: englishMessage,
       },
     },
   });
-  if (userIds.length !== 0) {
-    await beamsClient.publishToUsers(userIds, publishRequest);
+  const spanishPublishRequest = new BeamsPublishRequest({
+    apns: {
+      aps: {},
+      data: {
+        title: spanishTitle,
+        body: spanishMessage,
+      },
+    },
+    fcm: {
+      data: {
+        title: spanishTitle,
+        body: spanishMessage,
+      },
+    },
+  });
+  if (englishUsersIds.length !== 0) {
+    await beamsClient.publishToUsers(englishUsersIds, englishPublishRequest);
   }
-}
-
-// TODO: Merge PR adding language column to users table then separate English and Spanish users and send different notifications
-async function sendEveningNotifications(users: User[]) {
-  const userIds = users.map((user) => user.id);
-  const publishRequest = new BeamsPublishRequest({
-    apns: {
-      aps: {},
-      data: {
-        text: 'Time for your evening routine!',
-        body: 'Start your evening routine to get your productivity up.',
-      },
-    },
-    fcm: {
-      data: {
-        text: 'Time for your evening routine!',
-        body: 'Start your evening routine to get your productivity up.',
-      },
-    },
-  });
-  if (userIds.length !== 0) {
-    await beamsClient.publishToUsers(userIds, publishRequest);
+  if (spanishUsersIds.length !== 0) {
+    await beamsClient.publishToUsers(spanishUsersIds, spanishPublishRequest);
   }
 }
 
 (async () => {
   await CronJobDataSource.initialize();
-  // TODO: pass messages into functions sending notifications
-  await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_ENGLISH, ENGLISH);
-  await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_ENGLISH, ENGLISH);
-  await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_SPANISH, SPANISH);
-  await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_SPANISH, SPANISH);
+  const englishMorningMessage = await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_ENGLISH, ENGLISH);
+  const englishEveningMessage = await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_ENGLISH, ENGLISH);
+  const spanishMorningMessage = await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_SPANISH, SPANISH);
+  const spanishEveningMessage = await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_SPANISH, SPANISH);
   const startupUsers = await getUsersForStartup();
   const shutdownUsers = await getUsersForShutdown();
-  await Promise.all([sendMorningNotifications(startupUsers), sendEveningNotifications(shutdownUsers)]);
+  await Promise.all([
+    sendNotifications(
+      startupUsers,
+      englishMorningMessage,
+      spanishMorningMessage,
+      MORNING_ROUTINE_TITLE_ENGLISH,
+      MORNING_ROUTINE_TITLE_SPANISH,
+    ),
+    sendNotifications(
+      shutdownUsers,
+      englishEveningMessage,
+      spanishEveningMessage,
+      EVENING_ROUTINE_TITLE_ENGLISH,
+      EVENING_ROUTINE_TITLE_SPANISH,
+    ),
+  ]);
   await Promise.all([
     updateUsersMorningRoutineNotification(startupUsers),
     updateUsersEveningRoutineNotification(shutdownUsers),

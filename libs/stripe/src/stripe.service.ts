@@ -1,12 +1,13 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 
 @Injectable()
 export class StripeService extends Stripe {
   constructor(@Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions) {
-    super(options.secretKey, { apiVersion: '2022-08-01' });
+    super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
   async createCheckoutSession(price: string, customer: string) {

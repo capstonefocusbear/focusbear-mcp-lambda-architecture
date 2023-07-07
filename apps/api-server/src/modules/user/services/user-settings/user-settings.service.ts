@@ -26,6 +26,7 @@ import { ActivityPriority } from '../../../activity/domain/activity-priority.enu
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
+import { LanguageOptions } from '../../domain/language-options.enum';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -44,7 +45,7 @@ export class UserSettingsService {
     private readonly userService: UserService,
   ) {}
 
-  async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
+  async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -61,8 +62,8 @@ export class UserSettingsService {
       if (userSettings.cutoff_time_for_non_high_priority_activities === null) {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
-      if (timezone) {
-        await this.updateUserTimezone(user_id, timezone);
+      if (timezone || language) {
+        await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
       return await this.serializeSettings(userSettings);
     } catch (error) {
@@ -135,6 +136,8 @@ export class UserSettingsService {
         current_activity_sequence_id,
         current_completing_sequence_log_id,
         last_time_user_settings_modified: new Date(),
+        updated_at: new Date().toISOString(),
+        has_received_inactivity_warning: false,
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       const serializedActivities = { morning_activities, evening_activities, break_activities };
@@ -175,7 +178,10 @@ export class UserSettingsService {
     await this.updateSettings({ user_id }, newSettings, false);
   }
 
-  async updateUserTimezone(user_id: string, timezone: string) {
+  async updateUserTimezoneAndLanguage(
+    user_id: string,
+    { timezone, language }: { timezone?: string; language?: LanguageOptions },
+  ) {
     const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -192,15 +198,29 @@ export class UserSettingsService {
     }
     const currentTimeISO = currentTime.toISO();
     const positiveTime = currentTimeISO.split('+')[1];
-    const negavtiveTime = currentTimeISO.split('-')[3];
-    if (positiveTime) {
-      const userZone = `UTC+${positiveTime}`;
-      await this.userRepository.update(user_id, { timezone: userZone });
-      return;
+    const negativeTime = currentTimeISO.split('-')[3];
+    if (timezone) {
+      if (positiveTime) {
+        const userZone = `UTC+${positiveTime}`;
+        await this.userRepository.update(user_id, {
+          timezone: userZone,
+          ...(language && { language }),
+        });
+        return;
+      }
+      if (negativeTime) {
+        const userZone = `UTC-${negativeTime}`;
+        await this.userRepository.update(user_id, {
+          timezone: userZone,
+          ...(language && { language }),
+        });
+        return;
+      }
     }
-    if (negavtiveTime) {
-      const userZone = `UTC-${negavtiveTime}`;
-      await this.userRepository.update(user_id, { timezone: userZone });
+    if (language) {
+      await this.userRepository.update(user_id, {
+        ...(language && { language }),
+      });
     }
   }
 

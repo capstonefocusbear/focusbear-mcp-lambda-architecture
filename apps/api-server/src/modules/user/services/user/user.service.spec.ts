@@ -287,7 +287,11 @@ describe('UserService', () => {
 
       await userService.updateUserLocalDeviceSettings(userDummy.id, localSettings);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, { local_device_settings: localSettings });
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        local_device_settings: localSettings,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
     });
   });
 
@@ -534,7 +538,11 @@ describe('UserService', () => {
 
       await userService.updateUsername(userDummy.id, { username });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { username });
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+        username,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
     });
   });
 });

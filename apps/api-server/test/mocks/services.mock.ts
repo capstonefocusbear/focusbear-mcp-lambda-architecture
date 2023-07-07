@@ -82,7 +82,7 @@ export const UserSettingsServiceMock = {
   updateSettings: jest.fn(),
   getSettings: jest.fn(),
   clearUserActivities: jest.fn(),
-  updateUserTimezone: jest.fn(),
+  updateUserTimezoneAndLanguage: jest.fn(),
 };
 
 export const JwtServiceMock = {

@@ -16,10 +16,10 @@ export class UserSettingsController {
 
   @Get()
   getSettings(
-    @Query() { timezone }: GetUserSettingsQueryDto,
+    @Query() { timezone, language }: GetUserSettingsQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<UpdateUserSettingsDto> {
-    return this.userSettingsService.getSettings({ user_id: user.id, timezone });
+    return this.userSettingsService.getSettings({ user_id: user.id, timezone, language });
   }
 
   @Put()

@@ -9,6 +9,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
+import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 
 @Injectable()
@@ -162,7 +163,7 @@ export class TeamManagementService {
       const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
       await this.emailService.sendEmail({
         to: email,
-        from: 'marketing@focusbear.io',
+        from: FOCUS_BEAR_EMAILS.MARKETING,
         text: inviteUrl,
         subject: 'You were invited to a join team in Focus Bear.',
       });

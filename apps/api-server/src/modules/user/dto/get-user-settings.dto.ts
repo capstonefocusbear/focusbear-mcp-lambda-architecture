@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { LanguageOptions } from '../domain/language-options.enum';
 
 export class GetUserSettingsDto {
   @IsNotEmpty()
@@ -8,4 +10,9 @@ export class GetUserSettingsDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @IsOptional()
+  @IsEnum(LanguageOptions)
+  @ApiProperty({ enum: LanguageOptions })
+  language?: LanguageOptions;
 }

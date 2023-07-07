@@ -320,6 +320,8 @@ describe('FocusModeManagerService', () => {
 
       expect(UserRepositoryMock.update).toBeCalledWith(user_id, {
         last_completed_focus_mode_at: DateTime.fromISO('2023-02-07T05:42:39.221Z').toJSDate(),
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
     });
 

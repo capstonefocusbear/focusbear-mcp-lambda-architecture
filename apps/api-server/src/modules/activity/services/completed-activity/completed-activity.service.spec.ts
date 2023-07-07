@@ -306,6 +306,8 @@ describe('CompletedActivityService', () => {
         current_sequence_started_at: expect.toBeDateString(),
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
         current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
     });
 
@@ -337,6 +339,8 @@ describe('CompletedActivityService', () => {
         last_completed_sequence_started_at: expect.toBeDateString(),
         current_completing_sequence_log_id: null,
         current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
     });
 
@@ -549,6 +553,8 @@ describe('CompletedActivityService', () => {
         current_sequence_started_at: expect.toBeDateString(),
         current_completing_sequence_log_id: completingSequenceLogId,
         current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
       Settings.now = () => new Date().valueOf();
     });
@@ -597,6 +603,8 @@ describe('CompletedActivityService', () => {
         current_sequence_started_at: expect.toBeValidDate(),
         current_completing_sequence_log_id: null,
         current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
       Settings.now = () => new Date().valueOf();
     });
@@ -635,6 +643,8 @@ describe('CompletedActivityService', () => {
         current_sequence_started_at: expect.toBeDateString(),
         current_completing_sequence_log_id: completingSequenceLogId,
         current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
       Settings.now = () => new Date().valueOf();
     });
@@ -676,6 +686,8 @@ describe('CompletedActivityService', () => {
         last_completed_sequence_at: expect.toBeDate(),
         last_completed_sequence_id: sequenceWithActivitiesForDifferentDays.id,
         last_completed_sequence_started_at: expect.toBeDate(),
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
       Settings.now = () => new Date().valueOf();
     });
@@ -830,6 +842,8 @@ describe('CompletedActivityService', () => {
         current_sequence_started_at: expect.toBeDateString(),
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
         current_sequence_skipped_activities: [previousSkippedId, completedActivity.activity_id],
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
     });
 
@@ -863,6 +877,8 @@ describe('CompletedActivityService', () => {
         last_completed_sequence_started_at: expect.toBeDate(),
         current_completing_sequence_log_id: null,
         current_sequence_skipped_activities: [previousSkippedId, completedActivity.activity_id],
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
       });
     });
 

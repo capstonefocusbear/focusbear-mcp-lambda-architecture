@@ -101,7 +101,11 @@ describe('UserConsentService', () => {
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(
         { id: userDummy.id },
-        { has_consented_to_terms_of_service: true },
+        {
+          has_consented_to_terms_of_service: true,
+          has_received_inactivity_warning: false,
+          updated_at: expect.toBeDateString(),
+        },
       );
     });
 
@@ -117,7 +121,11 @@ describe('UserConsentService', () => {
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(
         { id: userDummy.id },
-        { has_consented_to_terms_of_service: false },
+        {
+          has_consented_to_terms_of_service: false,
+          has_received_inactivity_warning: false,
+          updated_at: expect.toBeDateString(),
+        },
       );
     });
   });

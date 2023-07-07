@@ -18,7 +18,14 @@ export class UserConsentService {
     const { consent_type, consent_status } = userConsent;
     const existingConsentRecord = await this.userConsentRepository.orm.findOneBy({ consent_type, user_id });
     if (consent_type === UserConsentTypes.TERMS_OF_SERVICE) {
-      await this.userRepository.orm.update({ id: user_id }, { has_consented_to_terms_of_service: !!consent_status });
+      await this.userRepository.orm.update(
+        { id: user_id },
+        {
+          has_consented_to_terms_of_service: !!consent_status,
+          updated_at: new Date().toISOString(),
+          has_received_inactivity_warning: false,
+        },
+      );
     }
     if (existingConsentRecord) {
       // if user is revoking consent, update withdrawal date

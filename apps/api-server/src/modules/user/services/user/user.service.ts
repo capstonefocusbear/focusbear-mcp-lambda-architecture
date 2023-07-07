@@ -235,7 +235,11 @@ export class UserService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
       const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
-      await this.userRepository.orm.update(user_id, { local_device_settings: updatedSettings });
+      await this.userRepository.orm.update(user_id, {
+        local_device_settings: updatedSettings,
+        updated_at: new Date().toISOString(),
+        has_received_inactivity_warning: false,
+      });
       if (local_device_settings?.MacOS?.has_edited_blocked_urls) {
         await this.userDailyStatsService.updateUserOnboardingProgress(
           user_id,
@@ -424,7 +428,11 @@ export class UserService {
   async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    await this.userRepository.orm.update(user_id, { metadata: { profile_image, description } });
+    await this.userRepository.orm.update(user_id, {
+      metadata: { profile_image, description },
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
+    });
   }
 
   async getSubscription(user_id: string) {
@@ -505,7 +513,11 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
-    await this.userRepository.update(user_id, { long_term_goals: goals });
+    await this.userRepository.update(user_id, {
+      long_term_goals: goals,
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
+    });
   }
 
   async getUserLongTermGoals(user_id: string) {
@@ -543,6 +555,10 @@ export class UserService {
     if (!allowed) {
       throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
     }
-    await this.userRepository.update(user_id, { username: username.toLowerCase() });
+    await this.userRepository.update(user_id, {
+      username: username.toLowerCase(),
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
+    });
   }
 }

@@ -23,6 +23,7 @@ import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-c
 import { LogQuantityAnswer } from '../../activity/entities/log-quantity-answers';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
+import { LanguageOptions } from '../domain/language-options.enum';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -292,6 +293,18 @@ export class User extends BaseEntity {
     length: 30,
   })
   username?: string;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  has_received_inactivity_warning?: boolean;
+
+  @Column({
+    type: 'varchar',
+    default: LanguageOptions.ENGLISH,
+  })
+  language?: string;
 
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];

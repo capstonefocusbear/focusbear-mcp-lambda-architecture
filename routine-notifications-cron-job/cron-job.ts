@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { BeamsPublishRequest } from '../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../user-stats-cron-job/data-source';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
-import { LanguageOptions } from '../apps/api-server/src/modules/user/domain/language-options.enum';
+import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
 
 const MORNING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/morning-message-english.json';
 const EVENING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/evening-message-english.json';
@@ -22,6 +22,10 @@ const beamsClient = new PushNotifications({
   instanceId: process.env.PUSHER_BEAMS_INSTANCE_ID,
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
+
+interface TranslationDataType {
+  [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
+}
 
 const openAiConfig = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
 const openAiAPI = new OpenAIApi(openAiConfig);
@@ -66,18 +70,12 @@ async function getMessage(prompt: string, fileName: string, language: string): P
 }
 
 async function getUsersForStartup() {
-  const currentTime = DateTime.local();
+  const currentTime = DateTime.local(2023, 7, 8, 10, 30);
   const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
-  const currentHours = currentTime.hour < 10 ? `0${currentTime.hour}` : currentTime.hour.toString();
-  const currentMinutes = currentTime.minute < 10 ? `0${currentTime.minute}` : currentTime.minute.toString();
-  const currentHoursMinusMinute =
-    oneMinuteBeforeNow.hour < 10 ? `0${oneMinuteBeforeNow.hour}` : oneMinuteBeforeNow.hour.toString();
-  const currentMinutesMinusMinute =
-    oneMinuteBeforeNow.minute < 10 ? `0${oneMinuteBeforeNow.minute}` : oneMinuteBeforeNow.minute.toString();
-  const timeStamp = `${currentHours}:${currentMinutes}`;
-  const timeStampOneMinuteBeforeNow = `${currentHoursMinusMinute}:${currentMinutesMinusMinute}`;
+  const timeStamp = currentTime.toFormat('HH:mm');
+  const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
   const users = await CronJobDataSource.manager.find(User, {
-    where: [{ utc_startup_time: timeStamp }, { utc_startup_time: timeStampOneMinuteBeforeNow }],
+    where: [{ utc_startup_time: timeStamp }, { utc_startup_time: timeStampMinusMinute }],
   });
   const usersToReceiveNotification = users.filter((user) => {
     const lastMorningRoutineNotification = DateTime.fromJSDate(
@@ -92,16 +90,10 @@ async function getUsersForStartup() {
 async function getUsersForShutdown() {
   const currentTime = DateTime.local();
   const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
-  const currentHours = currentTime.hour < 10 ? `0${currentTime.hour}` : currentTime.hour.toString();
-  const currentMinutes = currentTime.minute < 10 ? `0${currentTime.minute}` : currentTime.minute.toString();
-  const currentHoursMinusMinute =
-    oneMinuteBeforeNow.hour < 10 ? `0${oneMinuteBeforeNow.hour}` : oneMinuteBeforeNow.hour.toString();
-  const currentMinutesMinusMinute =
-    oneMinuteBeforeNow.minute < 10 ? `0${oneMinuteBeforeNow.minute}` : oneMinuteBeforeNow.minute.toString();
-  const timeStamp = `${currentHours}:${currentMinutes}`;
-  const timeStampOneMinuteFromNow = `${currentHoursMinusMinute}:${currentMinutesMinusMinute}`;
+  const timeStamp = currentTime.toFormat('HH:mm');
+  const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
   const users = await CronJobDataSource.manager.find(User, {
-    where: [{ utc_shutdown_time: timeStamp }, { utc_shutdown_time: timeStampOneMinuteFromNow }],
+    where: [{ utc_shutdown_time: timeStamp }, { utc_shutdown_time: timeStampMinusMinute }],
   });
   const usersToReceiveNotification = users.filter((user) => {
     const lastEveningRoutineNotification = DateTime.fromJSDate(
@@ -131,52 +123,22 @@ async function updateUsersEveningRoutineNotification(users: User[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
-async function sendNotifications(
+function publishToUsersByLanguage(
   users: User[],
-  englishMessage: string,
-  spanishMessage: string,
-  englishTitle: string,
-  spanishTitle: string,
+  language: string,
+  routine: string,
+  translationData: TranslationDataType,
 ) {
-  const englishUsers = users.filter((user) => user.language === LanguageOptions.ENGLISH);
-  const spanishUsers = users.filter((user) => user.language === LanguageOptions.SPANISH);
-  const englishUsersIds = englishUsers.map((user) => user.id);
-  const spanishUsersIds = spanishUsers.map((user) => user.id);
-  const englishPublishRequest = new BeamsPublishRequest({
-    apns: {
-      aps: {},
-      data: {
-        title: englishTitle,
-        body: englishMessage,
-      },
-    },
-    fcm: {
-      data: {
-        title: englishTitle,
-        body: englishMessage,
-      },
-    },
-  });
-  const spanishPublishRequest = new BeamsPublishRequest({
-    apns: {
-      aps: {},
-      data: {
-        title: spanishTitle,
-        body: spanishMessage,
-      },
-    },
-    fcm: {
-      data: {
-        title: spanishTitle,
-        body: spanishMessage,
-      },
-    },
-  });
-  if (englishUsersIds.length !== 0) {
-    await beamsClient.publishToUsers(englishUsersIds, englishPublishRequest);
-  }
-  if (spanishUsersIds.length !== 0) {
-    await beamsClient.publishToUsers(spanishUsersIds, spanishPublishRequest);
+  const filteredUsers = users.filter((user) => user.language === language);
+  const userIDs = filteredUsers.map((user) => user.id);
+  if (userIDs.length !== 0) {
+    const { title, message } = translationData[language][routine];
+    const publishRequest = new BeamsPublishRequest({
+      apns: { aps: {}, data: { title, body: message } },
+      fcm: { data: { title, body: message } },
+    });
+
+    return beamsClient.publishToUsers(userIDs, publishRequest);
   }
 }
 
@@ -188,22 +150,24 @@ async function sendNotifications(
   const spanishEveningMessage = await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_SPANISH, SPANISH);
   const startupUsers = await getUsersForStartup();
   const shutdownUsers = await getUsersForShutdown();
-  await Promise.all([
-    sendNotifications(
-      startupUsers,
-      englishMorningMessage,
-      spanishMorningMessage,
-      MORNING_ROUTINE_TITLE_ENGLISH,
-      MORNING_ROUTINE_TITLE_SPANISH,
-    ),
-    sendNotifications(
-      shutdownUsers,
-      englishEveningMessage,
-      spanishEveningMessage,
-      EVENING_ROUTINE_TITLE_ENGLISH,
-      EVENING_ROUTINE_TITLE_SPANISH,
-    ),
-  ]);
+  const translationData: TranslationDataType = {
+    es: {
+      morning: { title: MORNING_ROUTINE_TITLE_SPANISH, message: spanishMorningMessage },
+      evening: { title: EVENING_ROUTINE_TITLE_SPANISH, message: spanishEveningMessage },
+    },
+    en: {
+      morning: { title: MORNING_ROUTINE_TITLE_ENGLISH, message: englishMorningMessage },
+      evening: { title: EVENING_ROUTINE_TITLE_ENGLISH, message: englishEveningMessage },
+    },
+  };
+  // send notifications for morning routine
+  for await (const language of Object.keys(translationData)) {
+    await publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData);
+  }
+  // send notifications for evening routine
+  for await (const language of Object.keys(translationData)) {
+    await publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData);
+  }
   await Promise.all([
     updateUsersMorningRoutineNotification(startupUsers),
     updateUsersEveningRoutineNotification(shutdownUsers),

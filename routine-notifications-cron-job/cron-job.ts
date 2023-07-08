@@ -70,7 +70,7 @@ async function getMessage(prompt: string, fileName: string, language: string): P
 }
 
 async function getUsersForStartup() {
-  const currentTime = DateTime.local(2023, 7, 8, 10, 30);
+  const currentTime = DateTime.local();
   const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
   const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');

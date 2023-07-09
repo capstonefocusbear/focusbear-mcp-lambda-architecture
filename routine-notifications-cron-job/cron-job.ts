@@ -7,16 +7,19 @@ import { CronJobDataSource } from '../user-stats-cron-job/data-source';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
 
-const MORNING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/morning-message-english.json';
-const EVENING_JSON_FILE_ENGLISH = './routine-notifications-cron-job/evening-message-english.json';
-const MORNING_JSON_FILE_SPANISH = './routine-notifications-cron-job/morning-message-spanish.json';
-const EVENING_JSON_FILE_SPANISH = './routine-notifications-cron-job/evening-message-spanish.json';
-const ENGLISH = 'English';
-const SPANISH = 'Spanish';
-const MORNING_ROUTINE_TITLE_ENGLISH = "It's time for your morning routine!";
-const EVENING_ROUTINE_TITLE_ENGLISH = "It's time for your evening routine!";
-const MORNING_ROUTINE_TITLE_SPANISH = '¡Es hora de tu rutina matutina!';
-const EVENING_ROUTINE_TITLE_SPANISH = '¡Es hora de tu rutina nocturna!';
+const MORNING_ROUTINE_TITLES = {
+  en: "It's time for your morning routine!",
+  es: '¡Es hora de tu rutina matutina!',
+};
+const EVENING_ROUTINE_TITLES = {
+  en: "It's time for your evening routine!",
+  es: '¡Es hora de tu rutina nocturna!',
+};
+const LANGUAGES = ['es', 'en'];
+const LANGUAGES_MAP = {
+  en: 'English',
+  es: 'Spanish',
+};
 
 const beamsClient = new PushNotifications({
   instanceId: process.env.PUSHER_BEAMS_INSTANCE_ID,
@@ -30,20 +33,20 @@ interface TranslationDataType {
 const openAiConfig = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
 const openAiAPI = new OpenAIApi(openAiConfig);
 
-const MORNING_NOTIFICATION_PROMPT =
-  "create a push notification text telling the user it's time to start their morning routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: ";
-const EVENING_NOTIFICATION_PROMPT =
-  "create a push notification text telling the user it's time to start their evening routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: ";
+function getPrompt(routine: string, language: string) {
+  return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their evening ${routine} they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
+}
 
-async function generateRoutineNotification(prompt: string, fileName: string, language: string) {
+async function generateRoutineNotification(routine: string, fileName: string, language: string) {
   try {
-    const response = await openAiAPI.createCompletion({
-      model: 'text-davinci-003',
+    const response = await openAiAPI.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'system', content: getPrompt(routine, language) }],
       temperature: 0.5,
       max_tokens: 100,
-      prompt: `In ${language}, ${prompt}`,
+      n: 1,
     });
-    const message = response.data.choices[0].text.trim();
+    const message = response.data.choices[0].message.content.trim();
     const messageObj = {
       message,
       timestamp: DateTime.utc().toISO(),
@@ -54,16 +57,16 @@ async function generateRoutineNotification(prompt: string, fileName: string, lan
   }
 }
 
-async function getMessage(prompt: string, fileName: string, language: string): Promise<null | string> {
+async function getMessage(routine: string, fileName: string, language: string): Promise<null | string> {
   if (!fs.existsSync(fileName)) {
-    await generateRoutineNotification(prompt, fileName, language);
+    await generateRoutineNotification(routine, fileName, language);
     return null;
   }
   const messageObj = JSON.parse(fs.readFileSync(fileName, 'utf8'));
   const messageDate = DateTime.fromISO(messageObj.timestamp);
   const currentDate = DateTime.utc();
   if (!currentDate.hasSame(messageDate, 'day')) {
-    await generateRoutineNotification(prompt, fileName, language);
+    await generateRoutineNotification(routine, fileName, language);
     return null;
   }
   return messageObj.message;
@@ -129,48 +132,52 @@ function publishToUsersByLanguage(
   routine: string,
   translationData: TranslationDataType,
 ) {
-  const filteredUsers = users.filter((user) => user.language === language);
-  const userIDs = filteredUsers.map((user) => user.id);
+  const usersMatchingLanguage = users.filter((user) => user.language === language);
+  const userIDs = usersMatchingLanguage.map((user) => user.id);
   if (userIDs.length !== 0) {
     const { title, message } = translationData[language][routine];
     const publishRequest = new BeamsPublishRequest({
       apns: { aps: {}, data: { title, body: message } },
       fcm: { data: { title, body: message } },
     });
-
     return beamsClient.publishToUsers(userIDs, publishRequest);
   }
 }
 
+function createFileName(routine: string, language: string) {
+  return `./routine-notifications-cron-job/${routine}-message-${language}.json`;
+}
+
 (async () => {
   await CronJobDataSource.initialize();
-  const englishMorningMessage = await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_ENGLISH, ENGLISH);
-  const englishEveningMessage = await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_ENGLISH, ENGLISH);
-  const spanishMorningMessage = await getMessage(MORNING_NOTIFICATION_PROMPT, MORNING_JSON_FILE_SPANISH, SPANISH);
-  const spanishEveningMessage = await getMessage(EVENING_NOTIFICATION_PROMPT, EVENING_JSON_FILE_SPANISH, SPANISH);
-  const startupUsers = await getUsersForStartup();
-  const shutdownUsers = await getUsersForShutdown();
-  const translationData: TranslationDataType = {
-    es: {
-      morning: { title: MORNING_ROUTINE_TITLE_SPANISH, message: spanishMorningMessage },
-      evening: { title: EVENING_ROUTINE_TITLE_SPANISH, message: spanishEveningMessage },
-    },
-    en: {
-      morning: { title: MORNING_ROUTINE_TITLE_ENGLISH, message: englishMorningMessage },
-      evening: { title: EVENING_ROUTINE_TITLE_ENGLISH, message: englishEveningMessage },
-    },
-  };
-  // send notifications for morning routine
-  for await (const language of Object.keys(translationData)) {
-    await publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData);
+  const translationData: TranslationDataType = {};
+
+  for await (const language of LANGUAGES) {
+    const morningMessage = await getMessage(
+      ActivityType.morning,
+      createFileName(ActivityType.morning, language),
+      language,
+    );
+    const eveningMessage = await getMessage(
+      ActivityType.evening,
+      createFileName(ActivityType.evening, language),
+      language,
+    );
+    translationData[language] = {
+      morning: { title: MORNING_ROUTINE_TITLES[language], message: morningMessage },
+      evening: { title: EVENING_ROUTINE_TITLES[language], message: eveningMessage },
+    };
+    const startupUsers = await getUsersForStartup();
+    const shutdownUsers = await getUsersForShutdown();
+    await Promise.all([
+      publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData),
+      publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData),
+    ]);
+    await Promise.all([
+      updateUsersMorningRoutineNotification(startupUsers),
+      updateUsersEveningRoutineNotification(shutdownUsers),
+    ]);
   }
-  // send notifications for evening routine
-  for await (const language of Object.keys(translationData)) {
-    await publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData);
-  }
-  await Promise.all([
-    updateUsersMorningRoutineNotification(startupUsers),
-    updateUsersEveningRoutineNotification(shutdownUsers),
-  ]);
+
   process.exit();
 })();

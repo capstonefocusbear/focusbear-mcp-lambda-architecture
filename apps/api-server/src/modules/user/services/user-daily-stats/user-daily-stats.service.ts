@@ -176,6 +176,12 @@ export class UserDailyStatsService {
         morning_routines_streak,
         evening_routines_streak,
         focus_modes_streak,
+        onboarding_progress: {
+          ...user.onboarding_progress,
+          level: levelToUse,
+          has_installed_desktop_app: hasInstalledDesktopApp,
+          has_installed_mobile_app: hasInstalledMobileApp,
+        },
       });
       return {
         level: levelToUse,

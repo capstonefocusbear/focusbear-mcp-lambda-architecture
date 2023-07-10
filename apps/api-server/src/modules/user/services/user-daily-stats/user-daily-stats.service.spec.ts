@@ -335,6 +335,11 @@ describe('UserDailyStatsService', () => {
         morning_routines_streak: 3,
         evening_routines_streak: 3,
         focus_modes_streak: 10,
+        onboarding_progress: {
+          has_installed_desktop_app: false,
+          has_installed_mobile_app: false,
+          level: 1,
+        },
       });
     });
 

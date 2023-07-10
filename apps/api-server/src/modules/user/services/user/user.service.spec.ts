@@ -155,7 +155,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and defsult settings assigned', async () => {
+    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
@@ -287,7 +287,11 @@ describe('UserService', () => {
 
       await userService.updateUserLocalDeviceSettings(userDummy.id, localSettings);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, { local_device_settings: localSettings });
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        local_device_settings: localSettings,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
     });
   });
 
@@ -534,7 +538,11 @@ describe('UserService', () => {
 
       await userService.updateUsername(userDummy.id, { username });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { username });
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+        username,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
     });
   });
 });

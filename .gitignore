@@ -44,3 +44,9 @@ todo.txt
 .history
 
 /tmp
+
+# cron job cache
+/routine-notifications-cron-job/evening-message-en.json
+/routine-notifications-cron-job/evening-message-es.json
+/routine-notifications-cron-job/morning-message-en.json
+/routine-notifications-cron-job/morning-message-es.json

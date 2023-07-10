@@ -60,6 +60,7 @@
     "fastify-raw-body": "^4.0.0",
     "fastify-swagger": "^5.2.0",
     "html-to-text": "^9.0.4",
+    "i18next": "^23.2.0",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^2.1.2",
     "lodash": "^4.17.21",

@@ -385,6 +385,8 @@ export class CompletedActivitySequenceService {
       last_completed_sequence_started_at: current_sequence_started_at ?? new Date(),
       current_sequence_started_at: null,
       current_completing_sequence_log_id: null,
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
     };
     return this.userRepository.update(user_id, nullifiedCurrentSequence);
   }

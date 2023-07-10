@@ -19,6 +19,7 @@ import {
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
 import { TeamManagementService } from './team-management.service';
+import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 
 describe('TeamManagementService', () => {
@@ -246,7 +247,7 @@ describe('TeamManagementService', () => {
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
         to: email,
-        from: 'marketing@focusbear.io',
+        from: FOCUS_BEAR_EMAILS.MARKETING,
         text: expect.toInclude(`?token=${singedJwt}`),
         subject: 'You were invited to a join team in Focus Bear.',
       });

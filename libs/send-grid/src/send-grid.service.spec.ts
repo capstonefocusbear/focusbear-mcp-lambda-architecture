@@ -4,12 +4,13 @@ import { ISendGridOptions } from './interfaces';
 import { SendGridModule } from './send-grid.module';
 import { SendGridService } from './send-grid.service';
 import { configsArray } from '../../../apps/api-server/src/config';
+import { FOCUS_BEAR_EMAILS } from '../../../apps/api-server/src/shared/utils/constants';
 
 describe('SendGridService', () => {
   let service: SendGridService;
   const payload = {
     to: 'evgeniy.zhygliy@gmail.com',
-    from: 'marketing@focusbear.io',
+    from: FOCUS_BEAR_EMAILS.MARKETING,
     text: 'SendGrid is home!',
     subject: 'Sending with Twilio SendGrid is Fun',
   };

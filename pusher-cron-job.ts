@@ -48,6 +48,7 @@ const sendBeamsPushNotification = async (userId: string, notificationData: Notif
 (async () => {
   try {
     const notificationsToSend = await fetchNotifications();
+    // eslint-disable-next-line no-console
     console.log(`Ran for ${notificationsToSend.length} notification(s).`);
     if (notificationsToSend.length === 0) process.exit();
     notificationsToSend.forEach(async (notification) => {

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
@@ -27,6 +28,9 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
+import { LanguageOptions } from '../../domain/language-options.enum';
+
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserSettingsService {
@@ -43,7 +47,7 @@ export class UserSettingsService {
     private readonly userService: UserService,
   ) {}
 
-  async getSettings({ user_id, timezone }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
+  async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -60,8 +64,8 @@ export class UserSettingsService {
       if (userSettings.cutoff_time_for_non_high_priority_activities === null) {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
-      if (timezone) {
-        await this.updateUserTimezone(user_id, timezone);
+      if (timezone || language) {
+        await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
       return await this.serializeSettings(userSettings);
     } catch (error) {
@@ -122,6 +126,11 @@ export class UserSettingsService {
         cutoff_time_for_non_high_priority_activities: cutoffTime,
         break_after_minutes,
       } = updateSettingsData;
+      const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
+        startup_time,
+        shutdown_time,
+        user.timezone,
+      );
       const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
       const updatedUser = new User({
         startup_time,
@@ -134,6 +143,10 @@ export class UserSettingsService {
         current_activity_sequence_id,
         current_completing_sequence_log_id,
         last_time_user_settings_modified: new Date(),
+        utc_startup_time,
+        utc_shutdown_time,
+        updated_at: new Date().toISOString(),
+        has_received_inactivity_warning: false,
       });
       const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       let eveningActivities = evening_activities;
@@ -217,7 +230,10 @@ export class UserSettingsService {
     await this.updateSettings({ user_id }, newSettings, false);
   }
 
-  async updateUserTimezone(user_id: string, timezone: string) {
+  async updateUserTimezoneAndLanguage(
+    user_id: string,
+    { timezone, language }: { timezone?: string; language?: LanguageOptions },
+  ) {
     const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -234,16 +250,67 @@ export class UserSettingsService {
     }
     const currentTimeISO = currentTime.toISO();
     const positiveTime = currentTimeISO.split('+')[1];
-    const negavtiveTime = currentTimeISO.split('-')[3];
-    if (positiveTime) {
-      const userZone = `UTC+${positiveTime}`;
-      await this.userRepository.update(user_id, { timezone: userZone });
-      return;
+    const negativeTime = currentTimeISO.split('-')[3];
+    if (timezone) {
+      if (positiveTime) {
+        const userZone = `UTC+${positiveTime}`;
+        await this.userRepository.update(user_id, {
+          timezone: userZone,
+          ...(language && { language }),
+        });
+        return;
+      }
+      if (negativeTime) {
+        const userZone = `UTC-${negativeTime}`;
+        await this.userRepository.update(user_id, {
+          timezone: userZone,
+          ...(language && { language }),
+        });
+        return;
+      }
     }
-    if (negavtiveTime) {
-      const userZone = `UTC-${negavtiveTime}`;
-      await this.userRepository.update(user_id, { timezone: userZone });
+    if (language) {
+      await this.userRepository.update(user_id, {
+        ...(language && { language }),
+      });
     }
+  }
+
+  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string) {
+    const [startHours, startMinutes] = startupTime.split(':');
+    const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
+    const userStartupTime = DateTime.local({ zone: timezone }).set({
+      hour: this.formatTimeToSingleDigit(startHours),
+      minute: this.formatTimeToSingleDigit(startMinutes),
+    });
+    const userShutdownTime = DateTime.local({ zone: timezone }).set({
+      hour: this.formatTimeToSingleDigit(shutdownHours),
+      minute: this.formatTimeToSingleDigit(shutdownMinutes),
+    });
+    const userStartupAsUTC = userStartupTime.toUTC();
+    const userShutdownAsUTC = userShutdownTime.toUTC();
+    const startupUTCHours = this.formatTimeToDoubleDigits(userStartupAsUTC.hour);
+    const startupUTCMinutes = this.formatTimeToDoubleDigits(userStartupAsUTC.minute);
+    const shutdownUTCHours = this.formatTimeToDoubleDigits(userShutdownAsUTC.hour);
+    const shutdownUTCMinutes = this.formatTimeToDoubleDigits(userShutdownAsUTC.minute);
+    return {
+      utc_startup_time: `${startupUTCHours}:${startupUTCMinutes}`,
+      utc_shutdown_time: `${shutdownUTCHours}:${shutdownUTCMinutes}`,
+    };
+  }
+
+  formatTimeToDoubleDigits(hour: number) {
+    if (hour < 10) {
+      return `0${hour}`;
+    }
+    return hour.toString();
+  }
+
+  formatTimeToSingleDigit(time: string) {
+    if (time.startsWith('0')) {
+      return parseInt(time.substring(1), 10);
+    }
+    return parseInt(time, 10);
   }
 
   async updateUserIfCurrentActivityDeleted(updateSettingsData: UpdateUserSettingsDto, user: User) {
@@ -310,6 +377,10 @@ export class UserSettingsService {
           );
           const [nextId] = sortedIdsForCurrentDayActivities;
           if (!nextId) {
+            if (user.id === JEREMYS_USER_ID) {
+              console.log('Completing sequence - updateUserIfCurrentActivityDeleted');
+              console.log({ current_activity_id, activityIds });
+            }
             await this.completedActivitySequenceService.completeActivitySequence(
               current_completing_sequence_log_id,
               user.id,

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
@@ -57,6 +58,8 @@ import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats
 import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 import { UserService } from '../../../user/services/user/user.service';
+
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class CompletedActivityService {
@@ -135,6 +138,16 @@ export class CompletedActivityService {
           activity,
           choice,
         );
+      }
+      if (user_id === JEREMYS_USER_ID) {
+        console.log("Jeremy's completed activity data: ", {
+          completingSequenceLog,
+          completedActivity,
+          user,
+          activity,
+          choice,
+          sequence,
+        });
       }
       const createdItem = await this.saveCompletedLog(
         completedActivity,
@@ -266,6 +279,10 @@ export class CompletedActivityService {
         const { is_completed } = completingSequenceLog;
         // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
         if ((!nextActivity && !is_completed) || is_completed) {
+          if (user.id === JEREMYS_USER_ID) {
+            console.log('Completing sequence by date - syncOfflineActivity');
+            console.log({ is_completed });
+          }
           await this.completedActivitySequenceService.completeActivitySequenceByDate(
             completingSequenceLog.id,
             user.id,
@@ -368,8 +385,14 @@ export class CompletedActivityService {
       ...currentState,
       current_completing_sequence_log_id,
       current_sequence_skipped_activities: skippedActivityIds.length !== 0 ? skippedActivityIds : null,
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
     });
     if (!nextActivity) {
+      if (user.id === JEREMYS_USER_ID) {
+        console.log('Completing sequence - updateUserAndSequence');
+        console.log({ currentState, nextActivity, activityData });
+      }
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
     return completingSequenceLog;
@@ -478,6 +501,8 @@ export class CompletedActivityService {
     // check if activity exists in entire sequence
     this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
     const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
+    // temporary variable for debugging
+    const idsForTodaysActivities = activitiesForToday.map((activity) => activity.id);
     // sorts the activities for current day in order they should be executed in
     const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
       sequenceActivityIds,
@@ -494,6 +519,13 @@ export class CompletedActivityService {
       const nextHighPriorityActivity = remainingActivities.find(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
       );
+      if (user.id === JEREMYS_USER_ID) {
+        console.log('Data if cutoff time has been reached: ', {
+          nextHighPriorityActivity,
+          activitiesSortedInSequence,
+          remainingActivities,
+        });
+      }
       nextActivity = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
     } else {
       nextActivity = sortedIdsForCurrentDayActivities[completedActivityIndexInCurrentDaySequence + 1];
@@ -508,6 +540,17 @@ export class CompletedActivityService {
       user,
       completedActivity,
     );
+    if (user.id === JEREMYS_USER_ID && !nextActivity) {
+      console.log('Data in defineNextCurrentActivity function: ', {
+        nextActivity,
+        currentState,
+        hasCutoffTimeBeenReached,
+        sortedIdsForCurrentDayActivities,
+        completedActivityIndexInCurrentDaySequence,
+        idsForTodaysActivities,
+        currentDay,
+      });
+    }
     return { nextActivity, currentState };
   }
 
@@ -557,6 +600,26 @@ export class CompletedActivityService {
       userCurrentTime < userShutdownTime;
 
     if (morningRoutineShouldBeCompleted || eveningRoutineShouldBeCompleted) {
+      if (id === JEREMYS_USER_ID) {
+        console.log('Completing sequence - recalculateCurrentActivity1');
+        console.log({ morningRoutineShouldBeCompleted, eveningRoutineShouldBeCompleted });
+        console.log('Current activity props:');
+        console.log({
+          timezone,
+          cutoff_time_for_non_high_priority_activities: cutOffTime,
+          current_activity,
+          current_activity_sequence_id,
+          id,
+          current_completing_sequence_log_id,
+          current_sequence_started_at,
+          startup_time,
+          shutdown_time,
+          userCurrentTime: userCurrentTime.toISO(),
+          userStartupTime: userStartupTime.toISO(),
+          userShutdownTime: userShutdownTime.toISO(),
+          sequence,
+        });
+      }
       await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
       await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
         partialUser.id,
@@ -584,6 +647,10 @@ export class CompletedActivityService {
       );
       currentActivity = nextHighPriorityActivity ?? null;
       if (!currentActivity) {
+        if (id === JEREMYS_USER_ID) {
+          console.log('Completing sequence - recalculateCurrentActivity2');
+          console.log({ remainingActivities, nextHighPriorityActivity });
+        }
         await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
         await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
           partialUser.id,
@@ -594,7 +661,11 @@ export class CompletedActivityService {
         // update user current_activity_id if current activity has changed
         const shouldUpdateUser = current_activity.id !== currentActivity.id;
         if (shouldUpdateUser) {
-          await this.userRepository.update(partialUser.id, { current_activity_id: currentActivity?.id ?? null });
+          await this.userRepository.update(partialUser.id, {
+            current_activity_id: currentActivity?.id ?? null,
+            updated_at: new Date().toISOString(),
+            has_received_inactivity_warning: false,
+          });
         }
       }
     }
@@ -721,7 +792,7 @@ export class CompletedActivityService {
       });
       const linkedActivitiesIds = linkedActivities.map((linkedActivity) => linkedActivity?.id);
       const idsToFetchStatsFor = [activity_id, linked_activity_id, ...linkedActivitiesIds];
-      await this.userSettingsService.updateUserTimezone(activity.user_id, timezone);
+      await this.userSettingsService.updateUserTimezoneAndLanguage(activity.user_id, { timezone });
       const zone = this.convertUtcToIana(timezone);
       const stat_type = log_quantity ? CompletedActivityStatType.quantity : CompletedActivityStatType.duration;
       const params = { days_number, log_summary_type, stat_type, timezone: zone };
@@ -870,7 +941,7 @@ export class CompletedActivityService {
         },
       });
       const timerange = await this.defineStartupTimestamp(user_id, timezone);
-      await this.userSettingsService.updateUserTimezone(user_id, timezone);
+      await this.userSettingsService.updateUserTimezoneAndLanguage(user_id, { timezone });
       const [focusSummaryItems, daySummaryAVGItems, daySummarySUMItems, daySummaryDurationItems] = await Promise.all([
         this.completedFocusModesRepository.getLogsByUserInTimeRange(user_id, { ...timerange }),
         this.completedActivityRepository.getDaySummaryAVG(user_id, { ...timerange }),

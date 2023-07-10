@@ -3,9 +3,16 @@ export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
 export const FOCUS_BEAR_TEAM_EMAIL = 'team@focusbear.io';
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
+export const STRIPE_API_VERSION = '2022-08-01';
+export const FOCUS_BEAR_EMAILS = {
+  TEAM: 'team@focusbear.io',
+  MARKETING: 'marketing@focusbear.io',
+};
+export const EMAIL_SUBJECTS = {
+  INACTIVE_ACCOUNT: 'Inactive Account',
+};
 export const ONE_MINUTE = 60000;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
-
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',
   '+01:00': 'Europe/London',

@@ -153,6 +153,8 @@ export class FocusModeManagerService {
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(user_id, finish_time, user.timezone);
       await this.userRepository.update(user.id, {
         last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
+        updated_at: new Date().toISOString(),
+        has_received_inactivity_warning: false,
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

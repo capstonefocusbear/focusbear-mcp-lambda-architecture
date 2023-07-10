@@ -37,6 +37,7 @@ export class ActivityData {
     this.current_competency_level = data?.current_competency_level;
     this.competency_level = data?.competency_level;
     this.break_type = data?.break_type;
+    this.show_saved_distracting_websites = data?.show_saved_distracting_websites;
   }
 
   @IsNotEmpty()
@@ -132,4 +133,8 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty({ enum: BreakType })
   break_type?: BreakType;
+
+  @IsBoolean()
+  @IsOptional()
+  show_saved_distracting_websites?: boolean;
 }

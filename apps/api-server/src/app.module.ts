@@ -27,6 +27,7 @@ import { CoursesModule } from './modules/course/courses.module';
 import { LessonModule } from './modules/lesson/lesson.module';
 import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
 import { AppLogsModule } from './modules/app-logs/app-logs.module';
+import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { AppLogsModule } from './modules/app-logs/app-logs.module';
     LessonModule,
     TabKeywordsModule,
     AppLogsModule,
+    SavedWebsiteModule,
   ],
   controllers: [AppController],
 })

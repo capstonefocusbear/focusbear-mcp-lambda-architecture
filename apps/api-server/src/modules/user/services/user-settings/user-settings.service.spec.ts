@@ -197,6 +197,38 @@ describe('UserSettingsService', () => {
         logQuantityQuestionsDummy,
       );
     });
+
+    it('positive: if sleep_time is sent Relax activity should be added to evening routine', async () => {
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: [],
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+
+      await userSettingsService.updateSettings(
+        { user_id: userDummy.id },
+        {
+          ...userSettingsDummy,
+          morning_activities: [],
+          evening_activities: [],
+          break_activities: [],
+          sleep_time: '21:00',
+        },
+        true,
+      );
+
+      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(
+        {
+          morning_activities: [],
+          evening_activities: [
+            { duration_seconds: 1800, name: 'Relax', show_saved_distracting_websites: true, id: expect.toBeString() },
+          ],
+          break_activities: [],
+        },
+        userDummy.id,
+      );
+    });
   });
 
   describe('clearUserActivities', () => {
@@ -447,6 +479,38 @@ describe('UserSettingsService', () => {
         current_activity_id: userSettingsDummy.morning_activities[0].id,
         current_activity_sequence_id: userSettingsDummy.morning_activities[0].activity_sequence_id,
       });
+    });
+  });
+
+  describe('calculateRelaxActivityDuration', () => {
+    it('Positive: should calculate the correct time difference between sleep and shutdown time', () => {
+      const sleepTime = '23:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [
+        { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
+        { duration_seconds: 1800, id: randomUUID(), name: 'Name Two' }, // 30 minutes
+      ];
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(result).toBe(5400); // 1.5 hours of relax time
+    });
+
+    it('Positive: should handle time difference with no activities', () => {
+      const sleepTime = '22:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [];
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(result).toBe(7200); // 2 hours of relax time
+    });
+
+    it('Positive: should handle time difference where activity time is equal to difference', () => {
+      const sleepTime = '22:00';
+      const shutdownTime = '20:00';
+      const eveningActivities = [{ duration_seconds: 7200, id: randomUUID(), name: 'Name One' }]; // 2 hours
+      const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
+
+      expect(Object.is(result, 0)).toBe(true); // no relax time
     });
   });
 });

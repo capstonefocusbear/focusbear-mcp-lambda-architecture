@@ -29,6 +29,7 @@ import { AdminAccessRequest } from '../modules/user/entities/admin-access-reques
 import { LogQuantityQuestion } from '../modules/activity/entities/log-quantity-questions';
 import { LogQuantityAnswer } from '../modules/activity/entities/log-quantity-answers';
 import { FocusModeTag } from '../modules/focus-mode/entities/focus-mode-tags';
+import { SavedWebsite } from '../modules/saved-website/entities/saved-website.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -71,6 +72,7 @@ export const typeormConfig = registerAs(
       LogQuantityQuestion,
       LogQuantityAnswer,
       FocusModeTag,
+      SavedWebsite,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

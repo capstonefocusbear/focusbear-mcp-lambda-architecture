@@ -202,7 +202,11 @@ export class UserSettingsService {
       (totalDuration, activity) => totalDuration + activity.duration_seconds,
       0,
     );
-    return Math.round(differenceSeconds - eveningRoutineDuration);
+    let remainingTime = Math.round(differenceSeconds - eveningRoutineDuration);
+    if (Object.is(remainingTime, -0)) {
+      remainingTime = 0;
+    }
+    return remainingTime;
   }
 
   formatTime(formattedHour) {

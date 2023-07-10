@@ -168,6 +168,8 @@ describe('UserSettingsService', () => {
         id: userDummy.id,
         startup_time,
         shutdown_time,
+        utc_shutdown_time: shutdown_time,
+        utc_startup_time: startup_time,
         break_after_minutes,
         has_edited_settings: true,
         current_activity_id: undefined,

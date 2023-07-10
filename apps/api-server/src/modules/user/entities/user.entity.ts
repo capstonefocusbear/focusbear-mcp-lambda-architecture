@@ -22,6 +22,7 @@ import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-b
 import { ColumnNumericTransformer } from '../../../shared/transformers/numeric-column-transformer';
 import { LogQuantityAnswer } from '../../activity/entities/log-quantity-answers';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
 import { LanguageOptions } from '../domain/language-options.enum';
 
 @Entity('users')
@@ -57,6 +58,26 @@ export class User extends BaseEntity {
     length: 255,
   })
   shutdown_time?: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  utc_startup_time?: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  utc_shutdown_time?: string;
+
+  @Column({
+    type: 'jsonb',
+    default: { last_time_notified_of_morning_routine: null, last_time_notified_of_evening_routine: null },
+  })
+  routine_notification_times?: RoutineNotificationTimes;
 
   @Column({
     type: 'varchar',

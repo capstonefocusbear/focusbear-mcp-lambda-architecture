@@ -244,7 +244,9 @@ export class UserRepository extends BaseRepository<User> {
                 WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
                 ELSE evening_routines_streak
               END 
-            DESC) as rank
+            DESC,
+            username
+          ) as rank
       FROM 
           users
       ORDER BY
@@ -253,7 +255,8 @@ export class UserRepository extends BaseRepository<User> {
             WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
             ELSE evening_routines_streak
           END
-      DESC
+      DESC,
+      username
       LIMIT $2
     `,
       [streak_type, limit],
@@ -285,7 +288,8 @@ export class UserRepository extends BaseRepository<User> {
                             WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
                             ELSE evening_routines_streak
                           END 
-                        DESC
+                        DESC,
+                        username
                     ) rank
                 FROM 
                     users

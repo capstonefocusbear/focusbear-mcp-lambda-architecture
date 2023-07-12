@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
 import { OpenAIApi, Configuration } from 'openai';
@@ -34,26 +35,45 @@ const openAiConfig = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
 const openAiAPI = new OpenAIApi(openAiConfig);
 
 function getPrompt(routine: string, language: string) {
-  return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their evening ${routine} they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
+  return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
-  try {
-    const response = await openAiAPI.createChatCompletion({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'system', content: getPrompt(routine, language) }],
-      temperature: 0.5,
-      max_tokens: 100,
-      n: 1,
-    });
-    const message = response.data.choices[0].message.content.trim();
-    const messageObj = {
-      message,
-      timestamp: DateTime.utc().toISO(),
-    };
-    fs.writeFileSync(fileName, JSON.stringify(messageObj));
-  } catch (error) {
-    console.error('Error generating message in notification cron job: ', error);
+  const maxRetries = 3;
+  const TEN_SECONDS = 10000;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const response = await openAiAPI.createChatCompletion({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'system', content: getPrompt(routine, language) }],
+        temperature: 0.5,
+        max_tokens: 100,
+        n: 1,
+      });
+      const message = response.data.choices[0].message.content.trim();
+      const messageObj = {
+        message,
+        timestamp: DateTime.utc().toISO(),
+      };
+      fs.writeFileSync(fileName, JSON.stringify(messageObj));
+      // Exit the loop if request is successful
+      break;
+    } catch (error) {
+      console.error(
+        `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
+        error,
+      );
+      // If we have not reached max retries, wait for ten seconds and retry.
+      if (i < maxRetries) {
+        await sleep(TEN_SECONDS);
+      } else {
+        console.error(`Failed to generate message in notification after ${maxRetries + 1} attempts.`);
+      }
+    }
   }
 }
 
@@ -75,10 +95,16 @@ async function getMessage(routine: string, fileName: string, language: string): 
 async function getUsersForStartup() {
   const currentTime = DateTime.local();
   const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
+  const oneMinuteAfterNow = currentTime.minus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
   const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
+  const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
   const users = await CronJobDataSource.manager.find(User, {
-    where: [{ utc_startup_time: timeStamp }, { utc_startup_time: timeStampMinusMinute }],
+    where: [
+      { utc_startup_time: timeStamp },
+      { utc_startup_time: timeStampMinusMinute },
+      { utc_startup_time: timeStampPlusMinute },
+    ],
   });
   const usersToReceiveNotification = users.filter((user) => {
     const lastMorningRoutineNotification = DateTime.fromJSDate(
@@ -93,10 +119,16 @@ async function getUsersForStartup() {
 async function getUsersForShutdown() {
   const currentTime = DateTime.local();
   const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
+  const oneMinuteAfterNow = currentTime.minus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
   const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
+  const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
   const users = await CronJobDataSource.manager.find(User, {
-    where: [{ utc_shutdown_time: timeStamp }, { utc_shutdown_time: timeStampMinusMinute }],
+    where: [
+      { utc_shutdown_time: timeStamp },
+      { utc_shutdown_time: timeStampMinusMinute },
+      { utc_shutdown_time: timeStampPlusMinute },
+    ],
   });
   const usersToReceiveNotification = users.filter((user) => {
     const lastEveningRoutineNotification = DateTime.fromJSDate(

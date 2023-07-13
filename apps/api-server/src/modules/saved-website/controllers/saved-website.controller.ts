@@ -1,12 +1,16 @@
-import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { SavedWebsiteService } from '../services/saved-website.service';
-import { SavedWebsiteDto } from '../dto/saved-website.dto';
 import { DeleteSavedWebsiteDto } from '../dto/delete-saved-website.dto';
 import { SavedWebsite } from '../entities/saved-website.entity';
+import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { SavedWebsiteDto } from '../dto/saved-website.dto';
 
 @Controller('saved-website')
+@UseGuards(IsAuth)
+@ApiTags('saved-website')
 export class SavedWebsiteController {
   constructor(private readonly savedWebsiteService: SavedWebsiteService) {}
 
@@ -16,8 +20,11 @@ export class SavedWebsiteController {
   }
 
   @Post()
-  async saveWebsite(@Body() websiteData: SavedWebsiteDto, @AuthContext() { user }: Passport): Promise<SavedWebsite> {
-    return this.savedWebsiteService.saveWebsite(user.id, websiteData);
+  async saveWebsite(
+    @Body() saved_websites: SavedWebsiteDto[],
+    @AuthContext() { user }: Passport,
+  ): Promise<SavedWebsite[]> {
+    return this.savedWebsiteService.saveWebsites(user.id, saved_websites);
   }
 
   @Delete()

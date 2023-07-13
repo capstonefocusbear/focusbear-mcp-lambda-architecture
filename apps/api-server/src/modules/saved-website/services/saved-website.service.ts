@@ -12,9 +12,11 @@ export class SavedWebsiteService {
     return this.savedWebsiteRepository.orm.find({ where: { user_id }, order: { created_at: 'DESC' } });
   }
 
-  async saveWebsite(user_id: string, websiteData: SavedWebsiteDto) {
-    const savedWebsite = new SavedWebsite({ user_id, ...websiteData });
-    return this.savedWebsiteRepository.create(savedWebsite);
+  async saveWebsites(user_id: string, savedWebsites: SavedWebsiteDto[]) {
+    const websites = savedWebsites.map((website) => {
+      return new SavedWebsite({ user_id, ...website });
+    });
+    return this.savedWebsiteRepository.orm.save(websites);
   }
 
   async deleteSavedWebsite(user_id: string, website_id: string) {

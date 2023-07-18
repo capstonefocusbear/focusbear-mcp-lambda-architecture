@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { SavedWebsiteRepository } from '../repositories/saved-website.repository';
 import { SavedWebsiteDto } from '../dto/saved-website.dto';
@@ -22,5 +23,10 @@ export class SavedWebsiteService {
   async deleteSavedWebsite(user_id: string, website_id: string) {
     await this.savedWebsiteRepository.orm.delete({ user_id, id: website_id });
     return new ResponseMessage(`Successfully deleted saved website with ID: ${website_id}`);
+  }
+
+  async deleteSavedWebsites(user_id: string, website_ids: string[]) {
+    await this.savedWebsiteRepository.orm.delete({ user_id, id: In(website_ids) });
+    return new ResponseMessage('Successfully deleted saved websites');
   }
 }

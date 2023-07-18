@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
@@ -61,7 +62,7 @@ async function generateRoutineNotification(routine: string, fileName: string, la
       };
       fs.writeFileSync(fileName, JSON.stringify(messageObj));
       // Exit the loop if request is successful
-      break;
+      return message;
     } catch (error) {
       console.error(
         `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
@@ -79,16 +80,17 @@ async function generateRoutineNotification(routine: string, fileName: string, la
 
 async function getMessage(routine: string, fileName: string, language: string): Promise<null | string> {
   if (!fs.existsSync(fileName)) {
-    await generateRoutineNotification(routine, fileName, language);
-    return null;
+    console.log('Routine notifications cron-job: Cached file does not exist');
+    return generateRoutineNotification(routine, fileName, language);
   }
   const messageObj = JSON.parse(fs.readFileSync(fileName, 'utf8'));
   const messageDate = DateTime.fromISO(messageObj.timestamp);
   const currentDate = DateTime.utc();
   if (!currentDate.hasSame(messageDate, 'day')) {
-    await generateRoutineNotification(routine, fileName, language);
-    return null;
+    console.log('Routine notifications cron-job: Cached file exists but not same date');
+    return generateRoutineNotification(routine, fileName, language);
   }
+  console.log('Routine notifications cron-job: Cached file exists');
   return messageObj.message;
 }
 

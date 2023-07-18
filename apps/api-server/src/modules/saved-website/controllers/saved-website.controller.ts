@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -30,5 +30,10 @@ export class SavedWebsiteController {
   @Delete()
   async deleteSavedWebsite(@Query() { website_id }: DeleteSavedWebsiteDto, @AuthContext() { user }: Passport) {
     return this.savedWebsiteService.deleteSavedWebsite(user.id, website_id);
+  }
+
+  @Put('/delete')
+  async deleteMultipleWebsites(@Body() website_ids: string[], @AuthContext() { user }: Passport) {
+    return this.savedWebsiteService.deleteSavedWebsites(user.id, website_ids);
   }
 }

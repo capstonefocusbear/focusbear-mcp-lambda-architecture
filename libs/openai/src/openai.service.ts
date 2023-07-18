@@ -44,11 +44,17 @@ export class OpenAIService {
       const openai = new OpenAIApi(config);
       const messages: ChatCompletionRequestMessage[] = [
         {
-          content: `Given the input below and the user's long term goals (if no long term goals are included, don't mention them), generate a short motivational message in a ${tone} tone to keep someone motivated in their daily habits in ${language}\n\n${JSON.stringify(
+          content: `Given the user's habits input below ${
+            longTermGoals?.length > 0 && "and the user's long term goals"
+          }, generate a short motivational message in a ${tone} tone, ${
+            tone === AiToneOptions.FUTURE_SELF
+              ? " as if you're a future self 20 years from now talking back to the present user "
+              : ''
+          }to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
             input,
             null,
             2,
-          )}\n\nLong term goals: ${longTermGoals}`,
+          )}\n\n${longTermGoals?.length > 0 && `Long term goals: ${longTermGoals}`}`,
           role: ChatCompletionRequestMessageRoleEnum.System,
         },
       ];

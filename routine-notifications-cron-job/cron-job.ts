@@ -3,7 +3,8 @@
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
 import { OpenAIApi, Configuration } from 'openai';
-import * as fs from 'fs';
+// eslint-disable-next-line import/extensions
+import * as S3 from 'aws-sdk/clients/s3.js';
 import { BeamsPublishRequest } from '../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../user-stats-cron-job/data-source';
 import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
@@ -28,6 +29,13 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
+const s3Client = new S3({
+  endpoint: process.env.R2_ENDPOINT,
+  accessKeyId: process.env.R2_ACCESS_KEY_ID,
+  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  signatureVersion: process.env.R2_SIGNATURE_VERSION,
+});
+
 interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
@@ -41,6 +49,28 @@ function getPrompt(routine: string, language: string) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getMessageFromR2(fileName: string) {
+  try {
+    const messageData = await s3Client.getObject({ Bucket: 'routine-notifications', Key: fileName }).promise();
+    return JSON.parse(messageData.Body.toString());
+  } catch (error) {
+    return null;
+  }
+}
+
+async function addMessageToR2(filename: string, messageData: { message: string; timestamp: string }) {
+  const buf = Buffer.from(JSON.stringify(messageData));
+  const objectData = {
+    Bucket: 'routine-notifications',
+    Key: filename,
+    Body: buf,
+    ContentEncoding: 'base64',
+    ContentType: 'application/json',
+    ContentDisposition: 'attachment',
+  };
+  await s3Client.upload({ ...objectData }).promise();
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
@@ -60,7 +90,7 @@ async function generateRoutineNotification(routine: string, fileName: string, la
         message,
         timestamp: DateTime.utc().toISO(),
       };
-      fs.writeFileSync(fileName, JSON.stringify(messageObj));
+      await addMessageToR2(fileName, messageObj);
       // Exit the loop if request is successful
       return message;
     } catch (error) {
@@ -79,19 +109,16 @@ async function generateRoutineNotification(routine: string, fileName: string, la
 }
 
 async function getMessage(routine: string, fileName: string, language: string): Promise<null | string> {
-  if (!fs.existsSync(fileName)) {
-    console.log('Routine notifications cron-job: Cached file does not exist');
+  const existingMessage = await getMessageFromR2(fileName);
+  if (!existingMessage) {
     return generateRoutineNotification(routine, fileName, language);
   }
-  const messageObj = JSON.parse(fs.readFileSync(fileName, 'utf8'));
-  const messageDate = DateTime.fromISO(messageObj.timestamp);
+  const messageDate = DateTime.fromISO(existingMessage.timestamp);
   const currentDate = DateTime.utc();
   if (!currentDate.hasSame(messageDate, 'day')) {
-    console.log('Routine notifications cron-job: Cached file exists but not same date');
     return generateRoutineNotification(routine, fileName, language);
   }
-  console.log('Routine notifications cron-job: Cached file exists');
-  return messageObj.message;
+  return existingMessage.message;
 }
 
 async function getUsersForStartup() {
@@ -179,7 +206,7 @@ function publishToUsersByLanguage(
 }
 
 function createFileName(routine: string, language: string) {
-  return `./routine-notifications-cron-job/${routine}-message-${language}.json`;
+  return `${routine}-message-${language}.json`;
 }
 
 (async () => {

@@ -12,6 +12,7 @@ export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
 };
 export const ONE_MINUTE = 60000;
+export const TEN_MINUTES = 600000;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',

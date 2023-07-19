@@ -5,7 +5,7 @@ import { DateTime } from 'luxon';
 import { Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { ONE_MINUTE } from '../../../../shared/utils/constants';
+import { TEN_MINUTES } from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
   findDifferenceInSeconds,
@@ -271,7 +271,7 @@ export class UserDailyStatsService {
           timeZone,
           isOffLineActivity,
         },
-        { delay: ONE_MINUTE },
+        { delay: TEN_MINUTES },
       );
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

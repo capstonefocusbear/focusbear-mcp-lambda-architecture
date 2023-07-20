@@ -56,7 +56,7 @@ export const ActivitySequenceServiceMock = {
 
 export const CompletedActivityServiceMock = {
   recalculateCurrentActivity: jest.fn(),
-  getCurrentSequenceCompletedActivities: jest.fn(),
+  getCurrentSequenceCompletedActivityIds: jest.fn(),
 };
 
 export const CompletedActivitySequenceServiceMock = {

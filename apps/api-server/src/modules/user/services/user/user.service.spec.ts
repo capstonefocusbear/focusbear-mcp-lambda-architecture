@@ -238,7 +238,7 @@ describe('UserService', () => {
         current_activity_id: ActivityDummy.id,
         current_completing_sequence_log_id: randomUUID(),
       });
-      CompletedActivityServiceMock.getCurrentSequenceCompletedActivities.mockResolvedValueOnce([
+      CompletedActivityServiceMock.getCurrentSequenceCompletedActivityIds.mockResolvedValueOnce([
         activityOneId,
         activityTwoId,
       ]);

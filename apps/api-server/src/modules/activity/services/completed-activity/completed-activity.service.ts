@@ -1291,7 +1291,7 @@ export class CompletedActivityService {
     return iana;
   }
 
-  async getCurrentSequenceCompletedActivities(currentCompletingSequenceLogId: string) {
+  async getCurrentSequenceCompletedActivityIds(currentCompletingSequenceLogId: string) {
     const completedActivities = await this.completedActivityRepository.orm.find({
       where: { completed_sequence_id: currentCompletingSequenceLogId },
     });

@@ -201,7 +201,7 @@ export class UserService {
         const updatedPartialUser = await this.recalculateActivityProps(partialUser);
         partialUser = updatedPartialUser;
         current_sequence_completed_activities =
-          await this.completedActivityService.getCurrentSequenceCompletedActivities(
+          await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
             partialUser.current_completing_sequence_log_id,
           );
       }

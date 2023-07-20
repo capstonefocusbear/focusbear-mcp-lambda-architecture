@@ -196,11 +196,16 @@ export class UserService {
       });
       let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      let current_sequence_completed_activities = [];
       if (partialUser.current_activity) {
         const updatedPartialUser = await this.recalculateActivityProps(partialUser);
         partialUser = updatedPartialUser;
+        current_sequence_completed_activities =
+          await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
+            partialUser.current_completing_sequence_log_id,
+          );
       }
-      const currentActivityProps = new CurrentActivityProps(partialUser);
+      const currentActivityProps = new CurrentActivityProps({ ...partialUser, current_sequence_completed_activities });
       return currentActivityProps;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

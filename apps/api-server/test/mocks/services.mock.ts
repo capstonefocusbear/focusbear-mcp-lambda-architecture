@@ -54,13 +54,17 @@ export const ActivitySequenceServiceMock = {
   filterActivitiesForCurrentDay: jest.fn(),
 };
 
+export const CompletedActivityServiceMock = {
+  recalculateCurrentActivity: jest.fn(),
+  getCurrentSequenceCompletedActivityIds: jest.fn(),
+};
+
 export const CompletedActivitySequenceServiceMock = {
   completeActivitySequence: jest.fn(),
   getOrCreateCompletingSequenceLog: jest.fn(),
   forceCompleteCurrentSequence: jest.fn(),
   getOrCreateCompletingSequenceLogForSyncing: jest.fn(),
   completeActivitySequenceByDate: jest.fn(),
-  recalculateCurrentActivity: jest.fn(),
   getUserTimes: jest.fn(),
   nullifyUserCurrentActivityProps: jest.fn(),
 };

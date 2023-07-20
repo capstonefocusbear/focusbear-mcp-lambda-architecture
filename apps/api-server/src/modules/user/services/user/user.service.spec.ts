@@ -29,8 +29,8 @@ import {
   UserDailyStatsServiceMock,
   CompletedActivitySequenceRepositoryMock,
   AdminAccessRequestRepositoryMock,
-  CompletedActivitySequenceServiceMock,
   OpenAIServiceMock,
+  CompletedActivityServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -103,7 +103,7 @@ describe('UserService', () => {
       .overrideProvider(AdminAccessRequestRepository)
       .useValue(AdminAccessRequestRepositoryMock)
       .overrideProvider(CompletedActivityService)
-      .useValue(CompletedActivitySequenceServiceMock)
+      .useValue(CompletedActivityServiceMock)
       .overrideProvider(OpenAIService)
       .useValue(OpenAIServiceMock)
       .compile();
@@ -200,6 +200,10 @@ describe('UserService', () => {
   });
 
   describe('getUserCurrentActivityProps', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     it('negative: if there is no user throw NotFoundExcaption', async () => {
       const user_id = randomUUID();
       UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue(null);
@@ -225,12 +229,35 @@ describe('UserService', () => {
       expect(result).toBeInstanceOf(CurrentActivityProps);
     });
 
+    it("positive: user current sequence completed activities' IDs should be included in response", async () => {
+      const activityOneId = randomUUID();
+      const activityTwoId = randomUUID();
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        ...userDummy,
+        current_activity: ActivityDummy,
+        current_activity_id: ActivityDummy.id,
+        current_completing_sequence_log_id: randomUUID(),
+      });
+      CompletedActivityServiceMock.getCurrentSequenceCompletedActivityIds.mockResolvedValueOnce([
+        activityOneId,
+        activityTwoId,
+      ]);
+      CompletedActivityServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
+        activity: null,
+        shouldRefetchUser: true,
+      });
+
+      const result = await userService.getUserCurrentActivityProps(userDummy.id);
+
+      expect(result.current_sequence_completed_activities).toEqual([activityOneId, activityTwoId]);
+    });
+
     it('positive: if current activity is null after being recalculated, user data should be fetched again', async () => {
       UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
         ...userDummy,
         current_activity: ActivityDummy,
       });
-      CompletedActivitySequenceServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
+      CompletedActivityServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
         activity: null,
         shouldRefetchUser: true,
       });
@@ -245,7 +272,7 @@ describe('UserService', () => {
         ...userDummy,
         current_activity: ActivityDummy,
       });
-      CompletedActivitySequenceServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
+      CompletedActivityServiceMock.recalculateCurrentActivity.mockResolvedValueOnce({
         activity: ActivityDummy,
         shouldRefetchUser: false,
       });

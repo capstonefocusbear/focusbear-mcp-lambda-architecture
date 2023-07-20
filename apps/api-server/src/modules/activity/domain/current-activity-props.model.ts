@@ -4,8 +4,12 @@ import { User } from '../../user/entities/user.entity';
 import { ActivitySequence } from '../entities/activity-sequence.entity';
 import { Activity } from '../entities/activity.entity';
 
+interface ExtendedActivityProps {
+  current_sequence_completed_activities?: string[];
+}
+
 export class CurrentActivityProps {
-  constructor(data?: User) {
+  constructor(data?: User & ExtendedActivityProps) {
     this.current_activity_sequence = data?.current_activity_sequence || null;
     this.last_completed_sequence_started_at = data?.last_completed_sequence_started_at || null;
     this.current_activity = data?.current_activity || null;
@@ -16,6 +20,7 @@ export class CurrentActivityProps {
     this.current_focus_mode = data?.current_focus_mode || null;
     this.current_sequence_skipped_activities = data?.current_sequence_skipped_activities || null;
     this.last_time_user_settings_modified = data?.last_time_user_settings_modified || null;
+    this.current_sequence_completed_activities = data?.current_sequence_completed_activities;
   }
 
   @ApiProperty()
@@ -47,4 +52,7 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   last_time_user_settings_modified?: Date;
+
+  @ApiProperty()
+  current_sequence_completed_activities?: string[];
 }

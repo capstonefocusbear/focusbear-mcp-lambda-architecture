@@ -1290,4 +1290,11 @@ export class CompletedActivityService {
     }
     return iana;
   }
+
+  async getCurrentSequenceCompletedActivities(currentCompletingSequenceLogId: string) {
+    const completedActivities = await this.completedActivityRepository.orm.find({
+      where: { completed_sequence_id: currentCompletingSequenceLogId },
+    });
+    return completedActivities.map((completedActivity) => completedActivity.activity_id);
+  }
 }

@@ -112,9 +112,9 @@ export class UserService {
           auth0_id,
         },
       });
-      const hasNoStripeCustomer = !registeredUser?.stripe_customer_id;
       const userProperties = { auth0_id };
-      if (hasNoStripeCustomer) {
+      const stripeId = await this.stripeService.getStripeCustomerId(email);
+      if (!stripeId) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
           level: 'debug',
@@ -122,6 +122,8 @@ export class UserService {
         });
         const stripeCustomer = await this.stripeService.registerNewCustomer(email);
         Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+      } else {
+        Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
         return await this.userRepository.update(registeredUser.id, userProperties);

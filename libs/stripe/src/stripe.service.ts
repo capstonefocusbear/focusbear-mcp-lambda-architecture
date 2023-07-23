@@ -99,4 +99,12 @@ export class StripeService extends Stripe {
   async deleteStripeCustomer(stripeCustomerId: string) {
     await this.customers.del(stripeCustomerId);
   }
+
+  async getStripeCustomerId(email: string) {
+    const { data: users } = await this.customers.list({ email });
+    if (users.length < 1) {
+      return null;
+    }
+    return users[0].id;
+  }
 }

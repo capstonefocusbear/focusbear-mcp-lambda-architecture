@@ -14,6 +14,7 @@ import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode
 import { User } from '../../user/entities/user.entity';
 import { CompletedFocusBlock } from './completed-focus-block.entity';
 import { FocusModeTag } from './focus-mode-tags';
+import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Entity('focus_modes')
 export class FocusMode extends BaseEntity {
@@ -77,6 +78,9 @@ export class FocusMode extends BaseEntity {
 
   @OneToMany(() => CompletedFocusBlock, (log) => log.focus_mode)
   completed_logs?: CompletedFocusBlock[];
+
+  @OneToMany(() => ToDo, (to_do) => to_do.focus_mode)
+  to_dos?: ToDo[];
 
   @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
   @JoinTable()

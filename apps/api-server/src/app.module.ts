@@ -28,6 +28,7 @@ import { LessonModule } from './modules/lesson/lesson.module';
 import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
 import { AppLogsModule } from './modules/app-logs/app-logs.module';
 import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
+import { ToDoModule } from './modules/to-do/to-do.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { SavedWebsiteModule } from './modules/saved-website/saved-website.module
     TabKeywordsModule,
     AppLogsModule,
     SavedWebsiteModule,
+    ToDoModule,
   ],
   controllers: [AppController],
 })

@@ -25,6 +25,7 @@ import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questi
 import { SavedWebsite } from '../../saved-website/entities/saved-website.entity';
 import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
 import { LanguageOptions } from '../domain/language-options.enum';
+import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -324,6 +325,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Device, (device) => device.user)
   devices?: Device[];
+
+  @OneToMany(() => ToDo, (to_do) => to_do.user)
+  to_dos?: ToDo[];
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications?: Notification[];

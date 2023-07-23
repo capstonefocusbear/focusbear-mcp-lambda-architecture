@@ -46,7 +46,7 @@ export class OpenAIService {
         {
           content: `Given the user's habits input below ${
             longTermGoals?.length > 0 && "and the user's long term goals"
-          }, generate a short motivational message (keep it below 50 words) in a ${tone} tone, ${
+          }, generate a short motivational message (keep it below 50 words and add line breaks where appropriate) in a ${tone} tone, ${
             tone === AiToneOptions.FUTURE_SELF
               ? " as if you're a future self 20 years from now talking back to the present user "
               : ''

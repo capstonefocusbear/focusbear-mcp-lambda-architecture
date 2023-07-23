@@ -138,6 +138,7 @@ export const TracksRepositoryMock = {
 
 export const ToDoRepositoryMock = {
   ...BaseRepositoryMock,
+  getUserToDos: jest.fn(),
 };
 
 export const FocusModeTemplatesRepositoryMock = {

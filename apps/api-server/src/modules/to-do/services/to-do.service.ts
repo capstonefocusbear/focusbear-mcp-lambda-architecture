@@ -3,6 +3,7 @@ import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 
 @Injectable()
 export class ToDoService {
@@ -23,7 +24,8 @@ export class ToDoService {
     if (upsertToDo.id) {
       await this.validateUpdatingToDo(user_id, upsertToDo);
     }
-    const newToDo = new ToDo({ ...upsertToDo, user_id, updated_at: new Date().toISOString() });
+    const tags = upsertToDo?.tags.map((tag) => new FocusModeTag({ ...tag, user_id }));
+    const newToDo = new ToDo({ ...upsertToDo, user_id, updated_at: new Date().toISOString(), tags });
     return this.toDoRepository.orm.save(newToDo);
   }
 

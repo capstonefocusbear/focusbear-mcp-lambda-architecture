@@ -1,6 +1,19 @@
-import { IsDate, IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsDate,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ToDoStatus } from '../domain/to-do-status.enum';
+import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
 
 export class CreateToDoDto {
   @IsOptional()
@@ -34,4 +47,8 @@ export class CreateToDoDto {
   @IsIn(Object.values(ToDoStatus))
   @ApiProperty({ enum: ToDoStatus })
   status?: ToDoStatus;
+
+  @IsOptional()
+  @IsArray()
+  tags?: CreateFocusModeTagDto[];
 }

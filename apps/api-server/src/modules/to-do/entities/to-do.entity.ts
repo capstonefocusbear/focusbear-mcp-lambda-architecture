@@ -1,8 +1,9 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { User } from '../../user/entities/user.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 
 @Entity('to_do')
 export class ToDo extends BaseEntity {
@@ -59,4 +60,8 @@ export class ToDo extends BaseEntity {
   @ManyToOne(() => FocusMode, (focus_mode) => focus_mode.to_dos, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'focus_type' })
   focus_mode?: FocusMode;
+
+  @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
+  @JoinTable()
+  tags?: FocusModeTag[];
 }

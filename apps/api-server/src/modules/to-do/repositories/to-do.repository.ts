@@ -15,6 +15,18 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     const skip = page_num * take - take;
     const query = this.orm
       .createQueryBuilder('to_do')
+      .leftJoinAndSelect('to_do.tags', 'tags')
+      .select([
+        'to_do.id',
+        'to_do.title',
+        'to_do.details',
+        'to_do.due_date',
+        'to_do.eisenhower_quadrant',
+        'to_do.status',
+        'to_do.focus_type',
+        'tags.id',
+        'tags.text',
+      ])
       .take(take)
       .skip(skip)
       .where('to_do.user_id = :user_id', { user_id: userId });

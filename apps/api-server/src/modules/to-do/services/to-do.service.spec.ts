@@ -39,6 +39,7 @@ describe('toDoService', () => {
     details: 'Some text...',
     eisenhower_quadrant: 3,
     status: ToDoStatus.IN_PROGRESS,
+    tags: [],
   };
 
   describe('upsertToDo', () => {

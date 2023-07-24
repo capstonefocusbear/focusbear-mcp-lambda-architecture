@@ -9,6 +9,8 @@ import { load } from 'cheerio';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import * as axios from 'axios';
+import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
+import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS } from './openai.constants';
@@ -26,9 +28,8 @@ export class OpenAIService {
   async createMotivationalSummary(
     response: FastifyReply,
     input: HabitOption[],
-    language: string,
-    tone = AiToneOptions.HUMOROUS,
     longTermGoals: string[],
+    { language, tone, device_type = DeviceType.MOBILE }: MotivationalSummaryQueryDto,
   ) {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -46,7 +47,9 @@ export class OpenAIService {
         {
           content: `Given the user's habits input below ${
             longTermGoals?.length > 0 && "and the user's long term goals"
-          }, generate a short motivational message (keep it below 50 words and add line breaks where appropriate) in a ${tone} tone, ${
+          }, generate a short motivational message (keep it below ${
+            device_type === DeviceType.DESKTOP ? '100' : '50'
+          } words and add line breaks where appropriate) in a ${tone} tone, ${
             tone === AiToneOptions.FUTURE_SELF
               ? " as if you're a future self 20 years from now talking back to the present user "
               : ''

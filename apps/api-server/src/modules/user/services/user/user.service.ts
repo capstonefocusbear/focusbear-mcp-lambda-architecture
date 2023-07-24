@@ -42,6 +42,8 @@ import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+
 @Injectable()
 export class UserService {
   constructor(
@@ -202,12 +204,18 @@ export class UserService {
       if (partialUser.current_activity) {
         const updatedPartialUser = await this.recalculateActivityProps(partialUser);
         partialUser = updatedPartialUser;
-        current_sequence_completed_activities =
-          await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
-            partialUser.current_completing_sequence_log_id,
-          );
+        if (partialUser.current_completing_sequence_log_id) {
+          current_sequence_completed_activities =
+            await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
+              partialUser.current_completing_sequence_log_id,
+            );
+        }
       }
       const currentActivityProps = new CurrentActivityProps({ ...partialUser, current_sequence_completed_activities });
+      if (id === JEREMYS_USER_ID) {
+        // eslint-disable-next-line no-console
+        console.log('Jeremy current user state', { partialUser, updatedActivityProps: currentActivityProps });
+      }
       return currentActivityProps;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

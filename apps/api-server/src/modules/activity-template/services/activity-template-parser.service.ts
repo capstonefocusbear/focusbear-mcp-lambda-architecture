@@ -297,6 +297,7 @@ export class ActivityTemplateParserService {
       choices,
       log_quantity_questions,
       check_list,
+      activity_type,
     }: ActivityTemplate) => {
       return {
         id,
@@ -309,6 +310,7 @@ export class ActivityTemplateParserService {
         choices: choices?.map(mapActivity),
         log_quantity_questions,
         check_list,
+        activity_type,
       };
     };
     return fetchedActivities.map(mapActivity);

@@ -510,10 +510,12 @@ Object {
 
 exports[`ActivityTemplateParserService serializeLibraryActivities Positive: Should format ActivityTemplates to UpdateActivityDto type to send as response 1`] = `
 Object {
+  "activity_type": "standalone",
   "check_list": undefined,
   "choice_type": "random",
   "choices": Array [
     Object {
+      "activity_type": "standalone",
       "check_list": undefined,
       "choices": Array [],
       "completion_requirements": undefined,

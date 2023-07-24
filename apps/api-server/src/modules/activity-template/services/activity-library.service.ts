@@ -6,12 +6,15 @@ import { UserRepository } from '../../user/repositories/user.repository';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
+import { ActivityRepository } from '../../activity/repositories/activity.repository';
+import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 @Injectable()
 export class ActivityLibraryService {
   constructor(
     private readonly activityTemplateRepository: ActivityTemplateRepository,
     private readonly activityTemplateParserService: ActivityTemplateParserService,
+    private readonly activityRepository: ActivityRepository,
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
@@ -26,11 +29,16 @@ export class ActivityLibraryService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      const libraryActivities = await this.activityTemplateRepository.orm.find({
+      const libraryActivitiesPromise = this.activityTemplateRepository.orm.find({
         where: { user_id, activity_type: 'library' },
         relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions'],
       });
-      return this.activityTemplateParserService.serializeLibraryActivities(libraryActivities);
+      const userActivitiesPromise = this.activityRepository.orm.find({
+        where: { user_id },
+        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions'],
+      });
+      const [libraryActivities, userActivities] = await Promise.all([libraryActivitiesPromise, userActivitiesPromise]);
+      return this.activityTemplateParserService.serializeLibraryActivities([...libraryActivities, ...userActivities]);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -65,13 +73,16 @@ export class ActivityLibraryService {
   }
 
   async removeActivitiesNotBelongingToUser(updateActivities: UpdateActivityTemplateDto[], user_id: string) {
-    const incomingActivityIds = updateActivities.map((activity) => activity.id);
+    const templateActivitiesOnly = updateActivities.filter(
+      (activity) => activity.activity_type === ActivityType.library,
+    );
+    const incomingActivityIds = templateActivitiesOnly.map((activity) => activity.id);
     const existingActivities = await this.activityTemplateRepository.orm.find({
       where: { id: In(incomingActivityIds) },
     });
     const activitiesNotBelongingToUser = existingActivities
       .filter((activity) => activity.user_id !== user_id)
       .map((activity) => activity.id);
-    return updateActivities.filter(({ id }) => !activitiesNotBelongingToUser.includes(id));
+    return templateActivitiesOnly.filter(({ id }) => !activitiesNotBelongingToUser.includes(id));
   }
 }

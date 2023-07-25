@@ -275,10 +275,16 @@ export class CompletedActivityService {
             log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
           );
         }
-        const { nextActivity } = this.defineNextCurrentActivity(sequence, activity_id, user, completedActivity);
+        const { nextActivityId } = await this.defineNextCurrentActivity(
+          sequence,
+          activity_id,
+          user,
+          completingSequenceLog.id,
+          completedActivity,
+        );
         const { is_completed } = completingSequenceLog;
         // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
-        if ((!nextActivity && !is_completed) || is_completed) {
+        if ((!nextActivityId && !is_completed) || is_completed) {
           if (user.id === JEREMYS_USER_ID) {
             console.log('Completing sequence by date - syncOfflineActivity');
             console.log({ is_completed });
@@ -374,8 +380,14 @@ export class CompletedActivityService {
       activity_sequence_id,
       start_time,
     );
-    const { nextActivity, currentState } = this.defineNextCurrentActivity(sequence, activity_id, user, activityData);
-    const current_completing_sequence_log_id = nextActivity ? completingSequenceLog.id : null;
+    const { nextActivityId, currentState } = await this.defineNextCurrentActivity(
+      sequence,
+      activity_id,
+      user,
+      completingSequenceLog.id,
+      activityData,
+    );
+    const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
     const skippedActivityIds = user.current_sequence_skipped_activities ?? [];
     if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
@@ -388,10 +400,10 @@ export class CompletedActivityService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
-    if (!nextActivity) {
+    if (!nextActivityId) {
       if (user.id === JEREMYS_USER_ID) {
         console.log('Completing sequence - updateUserAndSequence');
-        console.log({ currentState, nextActivity, activityData });
+        console.log({ currentState, nextActivityId, activityData });
       }
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
@@ -476,15 +488,16 @@ export class CompletedActivityService {
     if (isProvidedChoiceInvalid) throw new BadRequestException(invalidChoiceMessage);
   }
 
-  private defineNextCurrentActivity(
+  private async defineNextCurrentActivity(
     sequence: ActivitySequence,
     activity_id: string,
     user: User,
+    completingSequenceLogId: string,
     completedActivity?: CreateCompletedActivityDto | CreateSkippedActivityDto,
-  ): {
+  ): Promise<{
     currentState: CurrentActivityState;
-    nextActivity: string | null | undefined;
-  } {
+    nextActivityId: string | null | undefined;
+  }> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -495,6 +508,9 @@ export class CompletedActivityService {
         completed_activity_id: completedActivity?.activity_id,
       },
     });
+    const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(completingSequenceLogId);
+    // add current completed activity ID to completed activity IDs array
+    completedActivitiesIds.push(activity_id);
     const currentDay = this.helperCommonService.getDayOfWeek(user.timezone);
     const { sequenceActivityIds, id, activities, activity_ids } = sequence;
     const { timezone, cutoff_time_for_non_high_priority_activities: cutOffTime } = user;
@@ -512,37 +528,33 @@ export class CompletedActivityService {
       (e) => e === activity_id,
     );
     const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
-    let nextActivity;
+    let nextActivityId;
     if (hasCutoffTimeBeenReached) {
       const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, activity_ids);
-      const remainingActivities = activitiesSortedInSequence.slice(completedActivityIndexInCurrentDaySequence + 1);
-      const nextHighPriorityActivity = remainingActivities.find(
+      const highPriorityActivities = activitiesSortedInSequence.filter(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
       );
-      if (user.id === JEREMYS_USER_ID) {
-        console.log('Data if cutoff time has been reached: ', {
-          nextHighPriorityActivity,
-          activitiesSortedInSequence,
-          remainingActivities,
-        });
-      }
-      nextActivity = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
+      const nextHighPriorityActivity = highPriorityActivities.find(
+        (activity) => !completedActivitiesIds.includes(activity.id),
+      );
+      nextActivityId = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
     } else {
-      nextActivity = sortedIdsForCurrentDayActivities[completedActivityIndexInCurrentDaySequence + 1];
+      nextActivityId = this.findNextActivity(completedActivitiesIds, sortedIdsForCurrentDayActivities);
     }
-    const currentActivityIndex = completedActivityIndexInCurrentDaySequence;
+    const isFirstActivity = completedActivitiesIds.length === 1;
     const currentState = new CurrentActivityState(
       {
-        nextActivity,
+        nextActivityId,
         lastSequenceId: id,
-        currentActivityIndex,
+        isFirstActivity,
       },
       user,
       completedActivity,
     );
-    if (user.id === JEREMYS_USER_ID && !nextActivity) {
+
+    if (user.id === JEREMYS_USER_ID && !nextActivityId) {
       console.log('Data in defineNextCurrentActivity function: ', {
-        nextActivity,
+        nextActivityId,
         currentState,
         hasCutoffTimeBeenReached,
         sortedIdsForCurrentDayActivities,
@@ -551,7 +563,13 @@ export class CompletedActivityService {
         currentDay,
       });
     }
-    return { nextActivity, currentState };
+    return { nextActivityId, currentState };
+  }
+
+  findNextActivity(completedActivities: string[], todaysActivities: string[]) {
+    const idsSet = new Set(completedActivities);
+    const nextActivityId = todaysActivities.find((id) => !idsSet.has(id));
+    return nextActivityId || null;
   }
 
   getUserTimes(timezone: string, startUp: string, shutDown: string) {
@@ -629,19 +647,17 @@ export class CompletedActivityService {
       return { activity: null, shouldRefetchUser: true };
     }
     const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(
+      current_completing_sequence_log_id,
+    );
     if (hasCutoffTimeBeenReached) {
       const currentDay = this.helperCommonService.getDayOfWeek(timezone);
       const { activities, sequenceActivityIds } = sequence;
       const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
-      const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
-        sequenceActivityIds,
-        activitiesForToday,
-      );
-      const currentActivityIndexInCurrentDaySequence = sortedIdsForCurrentDayActivities.findIndex(
-        (activityId) => activityId === current_activity.id,
-      );
       const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, sequenceActivityIds);
-      const remainingActivities = activitiesSortedInSequence.slice(currentActivityIndexInCurrentDaySequence);
+      const remainingActivities = activitiesSortedInSequence.filter(
+        (activity) => !completedActivitiesIds.includes(activity.id),
+      );
       const nextHighPriorityActivity = remainingActivities.find(
         (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
       );

@@ -39,10 +39,19 @@ export class CompletedActivityController {
 
   @Post('sync')
   completedMultipleActivities(
-    @Body() { completed_activites }: { completed_activites: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] },
+    @Body()
+    {
+      completed_activites,
+      completed_activities,
+    }: {
+      completed_activites: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
+      completed_activities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
+    },
     @AuthContext() { user }: Passport,
   ): Promise<CompletedActivityResponse[]> {
-    return this.completedActivityService.completeMultipleActivities(completed_activites, { user_id: user.id });
+    // temporary implementation to fix typo in body key
+    const activities = [...(completed_activites || []), ...(completed_activities || [])];
+    return this.completedActivityService.completeMultipleActivities(activities, { user_id: user.id });
   }
 
   @Post('skip')

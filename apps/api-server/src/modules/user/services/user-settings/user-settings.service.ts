@@ -92,6 +92,7 @@ export class UserSettingsService {
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
     should_update_has_edited_settings: boolean,
+    isOnboarding = false,
   ): Promise<UpdateUserSettingsDto> {
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
@@ -131,7 +132,7 @@ export class UserSettingsService {
         shutdown_time,
         user.timezone,
       );
-      const userHasEditedSettings = user.has_edited_settings || !!should_update_has_edited_settings;
+      const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !isOnboarding);
       const updatedUser = new User({
         startup_time,
         shutdown_time,

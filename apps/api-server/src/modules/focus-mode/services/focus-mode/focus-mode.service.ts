@@ -120,7 +120,8 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       const isNotDefaultFocusMode =
         !focusModeDto?.metadata?.isDefault &&
         !focusModeDto?.metadata?.isMeetings &&
-        !focusModeDto?.metadata?.isLockedFocus;
+        !focusModeDto?.metadata?.isLockedFocus &&
+        !focusModeDto?.metadata?.isRelaxFocus;
       if (isNotDefaultFocusMode) {
         await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       }

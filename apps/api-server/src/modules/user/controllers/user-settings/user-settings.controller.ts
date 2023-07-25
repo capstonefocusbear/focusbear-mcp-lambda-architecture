@@ -6,6 +6,7 @@ import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { GetUserSettingsQueryDto } from '../../dto/get-user-settings-query.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsService } from '../../services/user-settings/user-settings.service';
+import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 
 @Controller('user-settings')
 @UseGuards(IsAuth)
@@ -23,7 +24,11 @@ export class UserSettingsController {
   }
 
   @Put()
-  updateSettings(@AuthContext() { user }: Passport, @Body() updateSettingsData: any): Promise<UpdateUserSettingsDto> {
-    return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData, true);
+  updateSettings(
+    @AuthContext() { user }: Passport,
+    @Query() { is_onboarding }: UpdateSettingsQueryDto,
+    @Body() updateSettingsData: any,
+  ): Promise<UpdateUserSettingsDto> {
+    return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData, true, is_onboarding);
   }
 }

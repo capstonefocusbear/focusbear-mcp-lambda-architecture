@@ -784,6 +784,47 @@ describe('CompletedActivityService', () => {
         activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 1 },
       });
     });
+
+    it('positive: next activity should be set to first activity that has not been completed yet rather than next activity in sequence', async () => {
+      // mock date to be a Monday because dummy sequence has activities that should only be done on Mondays
+      Settings.now = () => 1676874600000;
+      const activity: CreateCompletedActivityDto = {
+        activity_id: sequenceWithActivitiesForDifferentDays.activities[2].id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        device_id: DeviceDummy.id,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      const completingSequenceLogId = randomUUID();
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
+        ...UncompletedSequenceLogDummy,
+        activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        id: completingSequenceLogId,
+      });
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      await completedActivityService.completeActivity(activity, { user_id });
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+        current_activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
+        current_activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
+        current_activity_assigned_at: expect.toBeDateString(),
+        current_completing_sequence_log_id: completingSequenceLogId,
+        current_sequence_skipped_activities: null,
+        current_sequence_started_at: expect.toBeDate(),
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+      Settings.now = () => new Date().valueOf();
+    });
   });
 
   describe('skipActivity', () => {

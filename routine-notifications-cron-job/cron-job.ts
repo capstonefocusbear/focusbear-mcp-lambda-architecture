@@ -198,8 +198,8 @@ function publishToUsersByLanguage(
   if (userIDs.length !== 0) {
     const { title, message } = translationData[language][routine];
     const publishRequest = new BeamsPublishRequest({
-      apns: { aps: {}, data: { title, body: message } },
-      fcm: { data: { title, body: message } },
+      apns: { aps: { alert: { title, body: message } } },
+      fcm: { notification: { title, body: message } },
     });
     return beamsClient.publishToUsers(userIDs, publishRequest);
   }

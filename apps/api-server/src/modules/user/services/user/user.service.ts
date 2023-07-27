@@ -13,7 +13,6 @@ import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { HabitOption, OpenAIService } from '@app/openai';
-import { AiToneOptions } from '@app/openai/domain/ai-tones.enum';
 import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -41,6 +40,7 @@ import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
+import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -461,16 +461,18 @@ export class UserService {
   async getMotivationalMessage(
     response: FastifyReply,
     user_id: string,
-    language = 'english',
-    tone: AiToneOptions,
-    routine: RoutineType,
+    { language = 'english', tone, routine, device_type }: MotivationalSummaryQueryDto,
   ) {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       const streakData = await this.constructStreaksArray(routine, user);
       const longTermGoals = await this.getUserLongTermGoals(user_id);
-      return await this.openAIService.createMotivationalSummary(response, streakData, language, tone, longTermGoals);
+      return await this.openAIService.createMotivationalSummary(response, streakData, longTermGoals, {
+        language,
+        tone,
+        device_type,
+      });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

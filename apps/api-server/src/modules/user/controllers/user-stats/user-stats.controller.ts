@@ -16,4 +16,9 @@ export class UserStatsController {
   async getStreaksLeaderBoard(@Query() { streak_type, limit }: GetLeaderBoardQuery, @AuthContext() { user }: Passport) {
     return this.userDailyStatsService.getLeaderBoardRankings(user.id, { streak_type, limit });
   }
+
+  @Get('daily-summary')
+  async getWeeklyStats(@AuthContext() { user }: Passport) {
+    return this.userDailyStatsService.getLastWeekDailyStats(user.id);
+  }
 }

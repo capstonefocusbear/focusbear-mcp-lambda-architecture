@@ -12,6 +12,7 @@ export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
 };
 export const ONE_MINUTE = 60000;
+export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
 export const UTC_TO_IANA_MAP = {
@@ -50,3 +51,5 @@ export const UTC_TO_IANA_MAP = {
   '-11:00': 'Pacific/Pago_Pago',
   '-12:00': 'Etc/UTC-12',
 };
+
+export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];

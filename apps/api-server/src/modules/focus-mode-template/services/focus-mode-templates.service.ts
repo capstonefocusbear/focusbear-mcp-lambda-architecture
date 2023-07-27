@@ -224,7 +224,6 @@ export class FocusModeTemplatesService {
 
   async getMultipleFocusModeTemplates(
     getTemplatesQuery: GetMultipleFocusModeTemplatesQueryDto,
-    user_id: string,
   ): Promise<FocusModeTemplate[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -232,12 +231,9 @@ export class FocusModeTemplatesService {
         level: 'debug',
         message: 'installing focus mode template',
         data: {
-          user_id,
           getTemplatesQuery,
         },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const templates = await this.focusModeTemplateRepository.fetchTemplatesByFilter(getTemplatesQuery);
       return templates;
     } catch (error) {

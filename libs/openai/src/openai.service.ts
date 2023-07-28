@@ -41,26 +41,33 @@ export class OpenAIService {
           language,
         },
       });
-      const config = new Configuration({ ...this.options });
-      const openai = new OpenAIApi(config);
+      const prompt = `Given the user's habits input below ${
+        longTermGoals?.length > 0 ? "and the user's long term goals" : ''
+      }, generate a short motivational message (keep it below ${
+        device_type === DeviceType.DESKTOP ? '100' : '50'
+      } words and add line breaks where appropriate) in a ${tone} tone, ${
+        tone === AiToneOptions.FUTURE_SELF
+          ? " as if you're a future self 20 years from now talking back to the present user "
+          : ''
+      }to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
+        input,
+        null,
+        2,
+      )}\n\n${longTermGoals?.length > 0 ? `Long term goals: ${longTermGoals}` : ''}`;
+      // clear up prompt formatting to stream to client as string
+      const promptWithoutNewLines = prompt.replace(/\n/g, ' ');
+      const formattedPrompt = promptWithoutNewLines
+        .split(' ')
+        .filter((word) => word !== '')
+        .join(' ');
       const messages: ChatCompletionRequestMessage[] = [
         {
-          content: `Given the user's habits input below ${
-            longTermGoals?.length > 0 && "and the user's long term goals"
-          }, generate a short motivational message (keep it below ${
-            device_type === DeviceType.DESKTOP ? '100' : '50'
-          } words and add line breaks where appropriate) in a ${tone} tone, ${
-            tone === AiToneOptions.FUTURE_SELF
-              ? " as if you're a future self 20 years from now talking back to the present user "
-              : ''
-          }to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
-            input,
-            null,
-            2,
-          )}\n\n${longTermGoals?.length > 0 && `Long term goals: ${longTermGoals}`}`,
+          content: prompt,
           role: ChatCompletionRequestMessageRoleEnum.System,
         },
       ];
+      const config = new Configuration({ ...this.options });
+      const openai = new OpenAIApi(config);
       const stream = new Stream.PassThrough();
       const observable = new Observable((observer) => {
         openai
@@ -95,6 +102,7 @@ export class OpenAIService {
           response.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
         },
         complete: () => {
+          stream.write(`data: PROMPT: ${formattedPrompt}\n\n`);
           stream.end();
         },
       });

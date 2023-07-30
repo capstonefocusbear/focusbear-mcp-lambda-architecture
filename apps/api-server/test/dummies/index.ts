@@ -1644,3 +1644,26 @@ export const logQuantityQuestionsDummy = [
     user_id: userDummy.id,
   },
 ];
+
+export const DailyStatsDummy = [
+  {
+    date_completed: DateTime.local().minus({ days: 1 }).toJSDate(),
+    focus_modes_completed: 3,
+    morning_routine_completion_percentage: 50,
+    evening_routine_completion_percentage: 60,
+  },
+  {
+    date_completed: DateTime.local().minus({ days: 2 }).toJSDate(),
+    focus_modes_completed: 3,
+    morning_routine_completion_percentage: 34,
+    evening_routine_completion_percentage: 78,
+  },
+  {
+    date_completed: DateTime.local().minus({ days: 3 }).toJSDate(),
+    focus_modes_completed: 3,
+    morning_routine_completion_percentage: 47,
+    evening_routine_completion_percentage: 98,
+  },
+];
+
+export const DailyDurationsDummy = { MON: 300, TUE: 500, WED: 350, THU: 600, FRI: 300, SAT: 400, SUN: 1000 };

@@ -2,10 +2,10 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
-import { Equal } from 'typeorm';
+import { Between, Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { TEN_MINUTES } from '../../../../shared/utils/constants';
+import { DAYS_OF_WEEK, ONE_MINUTE_SECONDS, TEN_MINUTES } from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
   findDifferenceInSeconds,
@@ -26,6 +26,7 @@ import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.
 import { UserService } from '../user/user.service';
 import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 import { StreakTypes } from '../../domain/StreakTypes.enum';
+import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -319,5 +320,76 @@ export class UserDailyStatsService {
     const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({ streak_type, limit });
     const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type);
     return { user_rank, users_rankings };
+  }
+
+  generateLast7Days(): Date[] {
+    const dates: Date[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dates.push(date);
+    }
+    return dates;
+  }
+
+  convertToUserTimezone(date: Date, timezone: string): Date {
+    const isoDate = DateTime.fromJSDate(date).setZone(timezone).toISODate();
+    return new Date(isoDate);
+  }
+
+  findDayStat(stats: DailyStats[], date: Date) {
+    return stats.find((stat) => stat.date_completed.toISOString().slice(0, 10) === date.toISOString().slice(0, 10));
+  }
+
+  getWeekStartAndEndDates(zone: string) {
+    const currentTime = DateTime.local().set({ hour: 23, minute: 59 }).setZone(zone);
+    const end_date = currentTime.endOf('day').toJSDate();
+    const start_date = currentTime.minus({ days: 6 }).toJSDate();
+    return { start_date, end_date };
+  }
+
+  async getLastWeekDailyStats(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    const { start_date, end_date } = this.getWeekStartAndEndDates(user.timezone);
+    const last7Days = this.generateLast7Days();
+    const stats = await this.dailyStatsRepository.orm.find({
+      where: { user_id, date_completed: Between(start_date, end_date) },
+    });
+    // Adjust dates to user timezone
+    for (const stat of stats) {
+      stat.date_completed = this.convertToUserTimezone(stat.date_completed, user.timezone);
+    }
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+      await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
+    const last7DaysSummary = last7Days.map((date) => {
+      const dayStat = this.findDayStat(stats, date);
+      const dayOfWeek = DAYS_OF_WEEK[date.getUTCDay()];
+      const morningTotalMinutes = Math.round(morningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
+      const eveningTotalMinutes = Math.round(eveningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
+      if (dayStat) {
+        const morningSeconds =
+          (dayStat.morning_routine_completion_percentage / 100) * morningRoutineDailyDurations[dayOfWeek];
+        const eveningSeconds =
+          (dayStat.evening_routine_completion_percentage / 100) * eveningRoutineDailyDurations[dayOfWeek];
+        return new DailyStatSummary({
+          date: dayStat.date_completed,
+          day_of_week: dayOfWeek,
+          morning_percentage: dayStat.morning_routine_completion_percentage,
+          evening_percentage: dayStat.evening_routine_completion_percentage,
+          focus_modes: dayStat.focus_modes_completed,
+          morning_minutes: morningSeconds / ONE_MINUTE_SECONDS,
+          morning_total_minutes: morningTotalMinutes,
+          evening_minutes: eveningSeconds / ONE_MINUTE_SECONDS,
+          evening_total_minutes: eveningTotalMinutes,
+        });
+      }
+      return new DailyStatSummary({
+        date,
+        day_of_week: dayOfWeek,
+        morning_total_minutes: morningTotalMinutes,
+        evening_total_minutes: eveningTotalMinutes,
+      });
+    });
+    return last7DaysSummary;
   }
 }

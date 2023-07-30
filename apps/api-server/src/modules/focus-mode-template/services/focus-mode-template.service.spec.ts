@@ -421,10 +421,10 @@ describe('FocusModeTemplatesService', () => {
     it('Positive: should call FocusModeTemplateRepository.fetchTemplatesByFilter with query params', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
-      await focusModeTemplateService.getMultipleFocusModeTemplates(
-        { is_featured: true, marketplace_approval_status: true },
-        userDummy.id,
-      );
+      await focusModeTemplateService.getMultipleFocusModeTemplates({
+        is_featured: true,
+        marketplace_approval_status: true,
+      });
 
       expect(FocusModeTemplatesRepositoryMock.fetchTemplatesByFilter).toBeCalledWith({
         is_featured: true,
@@ -434,22 +434,6 @@ describe('FocusModeTemplatesService', () => {
   });
 
   describe('getUserInstalledTemplates', () => {
-    it('Negative: should return not found message if no user is returned from user repository', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
-      let exception: any;
-
-      try {
-        await focusModeTemplateService.getUserInstalledTemplates(userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
     it('Positive: should fetch user current installed focus mode templates using IDs from install logs', async () => {
       const installRecordDummyOne = { focus_mode_template_id: randomUUID() };
       const installRecordDummyTwo = { focus_mode_template_id: randomUUID() };

@@ -26,6 +26,8 @@ import {
   dailyStatsArrayDummy,
   routineDurationsDummy,
   dailyStatsArrayDummyWithSkippedDay,
+  DailyStatsDummy,
+  DailyDurationsDummy,
 } from '../../../../../test/dummies';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { DailyStatsRepository } from '../../repositories/user-daily-stats.repository';
@@ -33,6 +35,7 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { DeviceService } from '../../../device/services/device/device.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
+import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
 
 describe('UserDailyStatsService', () => {
   let service: UserDailyStatsService;
@@ -426,6 +429,42 @@ describe('UserDailyStatsService', () => {
         },
         { delay: TEN_MINUTES },
       );
+    });
+  });
+
+  describe('generateLast7Days', () => {
+    it('should return last 7 dates including today', () => {
+      const dates = service.generateLast7Days();
+      expect(dates.length).toBe(7);
+      expect(dates[6].toISOString().slice(0, 10)).toBe(new Date().toISOString().slice(0, 10));
+    });
+  });
+
+  describe('findDayStat', () => {
+    it('should find stat by date', () => {
+      const mockStat = {
+        date_completed: new Date('2023-01-01T12:00:00Z'),
+        morning_routine_completion_percentage: 50,
+        evening_routine_completion_percentage: 50,
+        focus_modes_completed: 2,
+      };
+      const date = new Date('2023-01-01T12:00:00Z');
+      const foundStat = service.findDayStat([mockStat], date);
+      expect(foundStat).toBe(mockStat);
+    });
+  });
+
+  describe('getLastWeekDailyStats', () => {
+    it('should fetch last week stats', async () => {
+      DailyStatsRepositoryMock.orm.find.mockResolvedValueOnce(DailyStatsDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, timezome: 'UTC' });
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: DailyDurationsDummy,
+        eveningRoutineDailyDurations: DailyDurationsDummy,
+      });
+      const stats = await service.getLastWeekDailyStats(userDummy.id);
+      expect(stats.length).toBe(7);
+      expect(stats[0]).toBeInstanceOf(DailyStatSummary);
     });
   });
 });

@@ -28,6 +28,7 @@ import { LogQuantityQuestion } from '../apps/api-server/src/modules/activity/ent
 import { LogQuantityAnswer } from '../apps/api-server/src/modules/activity/entities/log-quantity-answers';
 import { FocusModeTag } from '../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { SavedWebsite } from '../apps/api-server/src/modules/saved-website/entities/saved-website.entity';
+import { ToDo } from '../apps/api-server/src/modules/to-do/entities/to-do.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -68,6 +69,7 @@ export const CronJobDataSource = new DataSource({
     LogQuantityAnswer,
     FocusModeTag,
     SavedWebsite,
+    ToDo,
   ],
   subscribers: [],
   migrations: [],

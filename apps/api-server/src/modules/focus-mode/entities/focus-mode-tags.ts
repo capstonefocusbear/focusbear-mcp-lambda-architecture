@@ -4,6 +4,7 @@ import { User } from '../../user/entities/user.entity';
 import { FocusMode } from './focus-mode.entity';
 import { FocusModeTemplate } from '../../focus-mode-template/entities/focus-mode-template.entity';
 import { CompletedFocusBlock } from './completed-focus-block.entity';
+import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Entity('focus_mode_tags')
 export class FocusModeTag extends BaseEntity {
@@ -29,6 +30,9 @@ export class FocusModeTag extends BaseEntity {
   @ManyToMany(() => FocusModeTemplate, (focusModeTemplate) => focusModeTemplate.tags)
   focusModeTemplates: FocusModeTemplate[];
 
-  @ManyToMany(() => FocusModeTemplate, (completedFocusBlock) => completedFocusBlock.tags)
+  @ManyToMany(() => CompletedFocusBlock, (completedFocusBlock) => completedFocusBlock.tags)
   completedFocusBlocks: CompletedFocusBlock[];
+
+  @ManyToMany(() => ToDo, (toDo) => toDo.tags)
+  toDos: ToDo[];
 }

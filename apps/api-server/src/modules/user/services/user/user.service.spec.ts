@@ -8,9 +8,11 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
+import { getQueueToken } from '@nestjs/bull';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
+  QueueMock,
   auth0UserDummy,
   focusModeTemplateDBResponseDummy,
   userDummy,
@@ -49,6 +51,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
+import { ONE_MINUTE } from '../../../../shared/utils/constants';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -75,6 +78,10 @@ describe('UserService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('profitwell'),
+          useValue: QueueMock,
         },
       ],
     })
@@ -570,6 +577,56 @@ describe('UserService', () => {
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
+    });
+  });
+
+  describe('updateOrCreateUser', () => {
+    const dummyStripeId = 'some_id';
+    it('positive: should add item to ProfitWell queue for new user', async () => {
+      UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
+      StripeServiceMock.registerNewCustomer.mockResolvedValueOnce({ id: dummyStripeId });
+
+      await userService.updateOrCreateUser({ auth0_id: 'some_id', email: 'someone@email.com' }, null);
+
+      expect(QueueMock.add).toBeCalledWith(
+        'register-profitwell-user',
+        {
+          user_id: userDummy.id,
+          stripe_id: dummyStripeId,
+        },
+        {
+          delay: ONE_MINUTE,
+        },
+      );
+    });
+
+    it('positive: should add item to ProfitWell queue for existing user without profitwell_id saved', async () => {
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
+
+      await userService.updateOrCreateUser({ auth0_id: 'some_id', email: 'someone@email.com' }, userDummy);
+
+      expect(QueueMock.add).toBeCalledWith(
+        'register-profitwell-user',
+        {
+          user_id: userDummy.id,
+          stripe_id: dummyStripeId,
+        },
+        {
+          delay: ONE_MINUTE,
+        },
+      );
+    });
+
+    it('positive: should NOT add item to ProfitWell queue for existing user if they are already registered', async () => {
+      UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
+
+      await userService.updateOrCreateUser(
+        { auth0_id: 'some_id', email: 'someone@email.com' },
+        { ...userDummy, profitwell_id: 'some_id' },
+      );
+
+      expect(QueueMock.add).not.toBeCalled();
     });
   });
 });

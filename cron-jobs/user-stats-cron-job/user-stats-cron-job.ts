@@ -1,15 +1,15 @@
 import { DateTime } from 'luxon';
 import { LessThan } from 'typeorm';
-import { DaysOfWeek } from '../apps/api-server/src/modules/activity/domain/days-of-week.enum';
-import { CompletedActivity } from '../apps/api-server/src/modules/activity/entities/completed-activity.entity';
-import { CompletedActivitySequence } from '../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
-import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
-import { CronJobDataSource } from './data-source';
+import { DaysOfWeek } from '../../apps/api-server/src/modules/activity/domain/days-of-week.enum';
+import { CompletedActivity } from '../../apps/api-server/src/modules/activity/entities/completed-activity.entity';
+import { CompletedActivitySequence } from '../../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
+import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import { CronJobDataSource } from '../data-source';
 import { calculateStreaks, determineUserLevel, findDifferenceInSeconds } from './helpers';
-import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
-import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
-import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
-import { Activity } from '../apps/api-server/src/modules/activity/entities/activity.entity';
+import { DailyStats } from '../../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
+import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
+import { Activity } from '../../apps/api-server/src/modules/activity/entities/activity.entity';
 import { DAYS_OF_WEEK } from './constants';
 
 async function calculateRoutineCompletionPercentage(

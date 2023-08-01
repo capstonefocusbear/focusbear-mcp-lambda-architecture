@@ -14,6 +14,8 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { HabitOption, OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
@@ -38,7 +40,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import { ONE_MINUTE, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 
@@ -62,6 +64,7 @@ export class UserService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
+    @InjectQueue('profitwell') private profitwellQueue: Queue,
   ) {}
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -104,7 +107,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
-  private async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
+  async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -115,7 +118,7 @@ export class UserService {
         },
       });
       const userProperties = { auth0_id };
-      const stripeId = await this.stripeService.getStripeCustomerId(email);
+      let stripeId = await this.stripeService.getStripeCustomerId(email);
       if (!stripeId) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
@@ -123,15 +126,41 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
         const stripeCustomer = await this.stripeService.registerNewCustomer(email);
-        Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+        stripeId = stripeCustomer.id;
+        Object.assign(userProperties, { stripe_customer_id: stripeId });
       } else {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
+        // register existing user in ProfitWell if not yet registered
+        if (!registeredUser.profitwell_id) {
+          await this.profitwellQueue.add(
+            'register-profitwell-user',
+            {
+              user_id: registeredUser.id,
+              stripe_id: stripeId,
+            },
+            {
+              delay: ONE_MINUTE,
+            },
+          );
+        }
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
-      return await this.userRepository.create(newUser);
+      const newlySavedUser = await this.userRepository.create(newUser);
+      // register new user in ProfitWell
+      await this.profitwellQueue.add(
+        'register-profitwell-user',
+        {
+          user_id: newlySavedUser.id,
+          stripe_id: stripeId,
+        },
+        {
+          delay: ONE_MINUTE,
+        },
+      );
+      return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

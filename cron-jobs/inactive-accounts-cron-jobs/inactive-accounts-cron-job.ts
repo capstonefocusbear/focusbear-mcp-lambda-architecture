@@ -7,9 +7,9 @@ import * as sendGrid from '@sendgrid/mail';
 import * as axios from 'axios';
 import Stripe from 'stripe';
 import * as i18next from 'i18next';
-import { CronJobDataSource } from '../user-stats-cron-job/data-source';
-import { User } from '../apps/api-server/src/modules/user/entities/user.entity';
-import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../apps/api-server/src/shared/utils/constants';
+import { CronJobDataSource } from '../data-source';
+import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
 
 i18next.init({
   lng: 'en',

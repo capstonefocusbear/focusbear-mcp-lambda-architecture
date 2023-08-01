@@ -44,6 +44,19 @@ export class User extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
+    nullable: true,
+  })
+  profitwell_id?: string;
+
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+  })
+  profitwell_registration_date?: Date;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
     nullable: false,
     unique: true,
   })

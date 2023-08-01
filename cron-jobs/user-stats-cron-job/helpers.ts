@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon';
-import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
-import { TasksStreaksResponse } from '../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
-import { UserOnboardingProgress } from '../apps/api-server/src/modules/user/domain/user-onboarding-progress.model';
+import { DailyStats } from '../../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
+import { TasksStreaksResponse } from '../../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
+import { UserOnboardingProgress } from '../../apps/api-server/src/modules/user/domain/user-onboarding-progress.model';
 import { BASE_ONBOARDING_PROGRESS, LUXON_WEEK_DAYS, LEVEL_THRESHOLDS, DAYS_OF_WEEK } from './constants';
-import { ActivityType } from '../apps/api-server/src/modules/activity/domain/activity-type.enum';
-import { DailySequenceDurations } from '../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
-import { ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD } from '../apps/api-server/src/shared/utils/constants';
+import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
+import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD } from '../../apps/api-server/src/shared/utils/constants';
 
 export function findDifferenceInSeconds(startTime: Date, finishTime: Date) {
   const start = DateTime.fromJSDate(startTime);

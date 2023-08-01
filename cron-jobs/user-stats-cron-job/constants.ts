@@ -1,4 +1,4 @@
-import { DaysOfWeek } from '../apps/api-server/src/modules/activity/domain/days-of-week.enum';
+import { DaysOfWeek } from '../../apps/api-server/src/modules/activity/domain/days-of-week.enum';
 
 export const BASE_ONBOARDING_PROGRESS = {
   level: 1,

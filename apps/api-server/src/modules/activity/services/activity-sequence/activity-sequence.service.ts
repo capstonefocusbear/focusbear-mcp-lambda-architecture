@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { DAYS_OF_WEEK } from '../../../../../../../user-stats-cron-job/constants';
+import { DAYS_OF_WEEK } from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { DailySequenceDurations } from '../../domain/daily-sequence-durations.model';
 import { DaysOfWeek } from '../../domain/days-of-week.enum';

@@ -51,7 +51,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { ONE_MINUTE } from '../../../../shared/utils/constants';
+import { ONE_MINUTE, TRIAL_COST_CENTS } from '../../../../shared/utils/constants';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -81,6 +81,10 @@ describe('UserService', () => {
         },
         {
           provide: getQueueToken('profitwell'),
+          useValue: QueueMock,
+        },
+        {
+          provide: getQueueToken('revenue-cat-status'),
           useValue: QueueMock,
         },
       ],
@@ -593,6 +597,9 @@ describe('UserService', () => {
         {
           user_id: userDummy.id,
           stripe_id: dummyStripeId,
+          effectiveDate: expect.toBeNumber(),
+          plan_id: 'trial',
+          renewalAmountCents: TRIAL_COST_CENTS,
         },
         {
           delay: ONE_MINUTE,
@@ -603,13 +610,19 @@ describe('UserService', () => {
     it('positive: should add item to ProfitWell queue for existing user without profitwell_id saved', async () => {
       StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
 
-      await userService.updateOrCreateUser({ auth0_id: 'some_id', email: 'someone@email.com' }, userDummy);
+      await userService.updateOrCreateUser(
+        { auth0_id: 'some_id', email: 'someone@email.com' },
+        { ...userDummy, revenue_cat_data: null, revenue_cat_status: null },
+      );
 
       expect(QueueMock.add).toBeCalledWith(
         'register-profitwell-user',
         {
           user_id: userDummy.id,
           stripe_id: dummyStripeId,
+          effectiveDate: expect.toBeNumber(),
+          plan_id: 'trial',
+          renewalAmountCents: TRIAL_COST_CENTS,
         },
         {
           delay: ONE_MINUTE,

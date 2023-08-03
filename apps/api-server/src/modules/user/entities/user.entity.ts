@@ -26,6 +26,7 @@ import { SavedWebsite } from '../../saved-website/entities/saved-website.entity'
 import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
 import { LanguageOptions } from '../domain/language-options.enum';
 import { ToDo } from '../../to-do/entities/to-do.entity';
+import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -320,6 +321,31 @@ export class User extends BaseEntity {
     default: LanguageOptions.ENGLISH,
   })
   language?: string;
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('revenue_cat_data'),
+  })
+  revenue_cat_data?: SubscriptionStatus;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  revenue_cat_status?: string;
+
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+  })
+  last_date_revenue_cat_data_synced?: Date;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  last_status_synced_with_profitwell?: string;
 
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];

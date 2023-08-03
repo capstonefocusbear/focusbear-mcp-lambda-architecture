@@ -14,10 +14,13 @@ export const EMAIL_SUBJECTS = {
 export const ONE_MINUTE = 60000;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
+export const TRIAL_COST_CENTS = 0;
+export const PERSONAL_PLAN_COST_CENTS = 500;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
 export const MONTH = 'month';
 export const USD = 'USD';
 export const TRIALING = 'trialing';
+export const ACTIVE = 'active';
 export const TRIAL = 'trial';
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',

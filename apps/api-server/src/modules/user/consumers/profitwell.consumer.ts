@@ -2,9 +2,10 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import * as axios from 'axios';
-import { MONTH, PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, TRIAL, TRIALING, USD } from '../../../shared/utils/constants';
+import { MONTH, PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, TRIALING, ACTIVE, USD } from '../../../shared/utils/constants';
 import { ProfitWellCustomer } from '../domain/profitwell-customer.model';
 import { UserRepository } from '../repositories/user.repository';
+import { Entitlement } from '../../subscription/domain/entitlement.enum';
 
 @Processor('profitwell')
 export class ProfitWellConsumer {
@@ -18,11 +19,14 @@ export class ProfitWellConsumer {
     job: Job<{
       user_id: string;
       stripe_id: string;
+      plan_id: Entitlement | null;
+      renewalAmountCents: number;
+      effectiveDate: number;
     }>,
   ) {
     try {
       const {
-        data: { user_id, stripe_id },
+        data: { user_id, stripe_id, plan_id, renewalAmountCents, effectiveDate },
       } = job;
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -34,21 +38,20 @@ export class ProfitWellConsumer {
         },
       });
 
-      const renewalAmountCents = 0;
-      const planPeriod = MONTH;
       const userAlias = stripe_id;
-      const subscriptionAlias = `${stripe_id}_trial`;
+      const subscriptionAlias = `${stripe_id}_pw_subscription`;
+      const subscriptionStatus = plan_id === Entitlement.trial ? TRIALING : ACTIVE;
 
       const dataForProfitWell = new ProfitWellCustomer({
         user_alias: userAlias,
         subscription_alias: subscriptionAlias,
         email: stripe_id,
-        plan_id: TRIAL,
-        plan_interval: planPeriod,
+        plan_id,
+        plan_interval: MONTH,
         value: renewalAmountCents,
         plan_currency: USD,
-        effective_date: Math.round(new Date().getTime() / 1000),
-        status: TRIALING,
+        effective_date: effectiveDate,
+        status: subscriptionStatus,
       });
 
       const { data: profitWellUser } = await axios.default.post(

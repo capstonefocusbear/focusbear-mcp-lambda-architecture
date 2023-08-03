@@ -1,20 +1,24 @@
 import { DateTime } from 'luxon';
-import { LessThan } from 'typeorm';
+import { IsNull, LessThan } from 'typeorm';
 import * as axios from 'axios';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { CronJobDataSource } from '../data-source';
 import { wait } from '../../apps/api-server/src/shared/utils/helpers';
+import { Entitlement } from '../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 
 type TrialData = {
   registration_date: Date;
   stripe_customer_id: string;
 };
 
-async function getUsersWhosTrialsExpired() {
+async function getUsersWhoseTrialsExpired() {
   const currentDate = DateTime.local();
   const sevenDaysAgo = currentDate.minus({ days: 7 }).toJSDate();
   return CronJobDataSource.manager.find(User, {
-    where: { profitwell_registration_date: LessThan(sevenDaysAgo) },
+    where: [
+      { profitwell_registration_date: LessThan(sevenDaysAgo), revenue_cat_status: IsNull() },
+      { profitwell_registration_date: LessThan(sevenDaysAgo), revenue_cat_status: Entitlement.trial },
+    ],
   });
 }
 
@@ -23,7 +27,7 @@ async function handleChurnedTrial(trialData: TrialData, attempts = 0) {
   const churnDate = new Date(trialData.registration_date);
   churnDate.setDate(churnDate.getDate() + 15);
   const churnTime = Math.floor(churnDate.getTime() / 1000);
-  const CHURN_URL = `https://api.profitwell.com/v2/subscriptions/${trialData.stripe_customer_id}_trial/?effective_date=${churnTime}&churn_type=${churnType}`;
+  const CHURN_URL = `https://api.profitwell.com/v2/subscriptions/${trialData.stripe_customer_id}_pw_subscription/?effective_date=${churnTime}&churn_type=${churnType}`;
 
   try {
     await axios.default.delete(CHURN_URL, {
@@ -50,15 +54,24 @@ async function handleChurnedTrial(trialData: TrialData, attempts = 0) {
   }
 }
 
+async function clearUserProfitWellRegistrationDate(userId: string) {
+  return CronJobDataSource.manager.update(User, { id: userId }, { profitwell_registration_date: null });
+}
+
 (async () => {
   try {
     await CronJobDataSource.initialize();
-    const usersWithExpiredTrials = await getUsersWhosTrialsExpired();
+    const usersWithExpiredTrials = await getUsersWhoseTrialsExpired();
     for await (const user of usersWithExpiredTrials) {
-      await handleChurnedTrial({
-        registration_date: user.profitwell_registration_date,
-        stripe_customer_id: user.stripe_customer_id,
-      });
+      if (user.stripe_customer_id) {
+        await Promise.all([
+          handleChurnedTrial({
+            registration_date: user.profitwell_registration_date,
+            stripe_customer_id: user.stripe_customer_id,
+          }),
+          clearUserProfitWellRegistrationDate(user.id),
+        ]);
+      }
     }
 
     process.exit();

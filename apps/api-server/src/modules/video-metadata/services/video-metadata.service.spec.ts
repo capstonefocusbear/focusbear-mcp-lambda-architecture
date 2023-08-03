@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import * as axios from 'axios';
+import axios from 'axios';
 import { NotFoundException } from '@nestjs/common';
 import {
   userDummy,
@@ -16,7 +16,7 @@ import { VideoMetadataRepository } from '../repositories/video-metadata.reposito
 import { UserRepository } from '../../user/repositories/user.repository';
 
 jest.mock('axios');
-const mockedAxios = axios as unknown as jest.Mocked<typeof axios.default>;
+const mockedAxios = axios as unknown as jest.Mocked<typeof axios>;
 
 describe('VideoMetadataService', () => {
   let videoMetadataService: VideoMetadataService;

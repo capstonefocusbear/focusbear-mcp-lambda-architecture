@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { IsNull, LessThan } from 'typeorm';
-import * as axios from 'axios';
+import axios from 'axios';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { CronJobDataSource } from '../data-source';
 import { wait } from '../../apps/api-server/src/shared/utils/helpers';
@@ -30,7 +30,7 @@ async function handleChurnedTrial(trialData: TrialData, attempts = 0) {
   const CHURN_URL = `https://api.profitwell.com/v2/subscriptions/${trialData.stripe_customer_id}_pw_subscription/?effective_date=${churnTime}&churn_type=${churnType}`;
 
   try {
-    await axios.default.delete(CHURN_URL, {
+    await axios.delete(CHURN_URL, {
       headers: {
         Authorization: process.env.PROFITWELL_API_KEY,
       },

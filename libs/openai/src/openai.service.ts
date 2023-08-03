@@ -8,7 +8,7 @@ import { FastifyReply } from 'fastify';
 import { load } from 'cheerio';
 import { join } from 'path';
 import { promises as fs } from 'fs';
-import * as axios from 'axios';
+import axios from 'axios';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
@@ -233,7 +233,7 @@ export class OpenAIService {
           throw err;
         }
       }
-      const response = await axios.default.get(url);
+      const response = await axios.get(url);
       const html = response.data;
       const $ = load(html);
 

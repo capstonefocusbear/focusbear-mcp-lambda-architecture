@@ -1,7 +1,7 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
-import * as axios from 'axios';
+import axios from 'axios';
 import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { TrackEventDto } from '../dto/track-event.dto';
 
@@ -30,7 +30,7 @@ export class EventsConsumer {
       await this.sendinblueService.registerSendinblueEvent(email, trackEventDto);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      await axios.default.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
+      await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Error in track-event queue for user with ID: ${user_id}\nTrack event: \`\`\`${JSON.stringify(
           trackEventDto,
         )}\`\`\`\nError: \`\`\`${error}\`\`\``,

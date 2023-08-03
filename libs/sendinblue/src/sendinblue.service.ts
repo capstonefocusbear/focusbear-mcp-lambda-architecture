@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { TrackEventDto } from 'apps/api-server/src/modules/events/dto/track-event.dto';
-import * as axios from 'axios';
+import axios from 'axios';
 
 @Injectable()
 export class SendinblueService {
-  private httpService: axios.AxiosStatic = axios.default;
+  private httpService = axios;
 
   async registerSendinblueEvent(email: string, event: TrackEventDto) {
     const callUrl = 'https://in-automate.sendinblue.com/api/v2/trackEvent';

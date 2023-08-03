@@ -1,5 +1,5 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import * as axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { SubscriptionProvider } from '../../../apps/api-server/src/modules/subscription/domain/subscription-provider.enum';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';
@@ -10,13 +10,13 @@ import { REVENUE_CAT_MODULE_OPTIONS } from './revenue-cat.constants';
 export class RevenueCatService {
   constructor(@Inject(REVENUE_CAT_MODULE_OPTIONS) private options: IRevenueCatOptions) {}
 
-  private httpService: axios.AxiosStatic = axios.default;
+  private httpService = axios;
 
   async getOrCreateSubscriber(app_user_id: string): Promise<any> {
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}`;
     const Authorization = `Bearer ${this.options.publicApiKey}`;
     const headers = { Authorization };
-    return this.httpService.get(callUrl, { headers }).then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+    return this.httpService.get(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   async grantTrialAccess(app_user_id: string) {
@@ -28,7 +28,7 @@ export class RevenueCatService {
     const headers = { Authorization };
     return this.httpService
       .post(callUrl, { duration }, { headers })
-      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+      .then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   async grantTeamMembership(app_user_id: string) {
@@ -40,7 +40,7 @@ export class RevenueCatService {
     const headers = { Authorization };
     return this.httpService
       .post(callUrl, { duration }, { headers })
-      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+      .then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
@@ -72,7 +72,7 @@ export class RevenueCatService {
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/revoke_promotionals`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
-    return this.httpService.post(callUrl, { headers }).then(({ data }: axios.AxiosResponse<unknown, any>): any => data);
+    return this.httpService.post(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   async createPurchase(provider: SubscriptionProvider, { app_user_id, fetch_token }) {
@@ -83,7 +83,7 @@ export class RevenueCatService {
     const body = { app_user_id, fetch_token };
     return this.httpService
       .post(callUrl, body, { headers })
-      .then(({ data }: axios.AxiosResponse<unknown, any>): any => data)
+      .then(({ data }: AxiosResponse<unknown, any>): any => data)
       .catch((err) => {
         throw new BadRequestException(err);
       });

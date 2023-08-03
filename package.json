@@ -49,6 +49,8 @@
     "api": "^4.5.1",
     "auth0": "^2.40.0",
     "aws-sdk": "^2.1292.0",
+    "axios": "^1.4.0",
+    "axios-retry": "^3.6.0",
     "bull": "^4.10.2",
     "cheerio": "^1.0.0-rc.12",
     "class-transformer": "^0.4.0",

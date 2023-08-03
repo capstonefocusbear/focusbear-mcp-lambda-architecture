@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import { LessThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
 import * as sendGrid from '@sendgrid/mail';
-import * as axios from 'axios';
+import axios from 'axios';
 import Stripe from 'stripe';
 import * as i18next from 'i18next';
 import { CronJobDataSource } from '../data-source';
@@ -102,7 +102,7 @@ async function deleteUserFromRevenueCat(user_id: string) {
   const callUrl = `https://api.revenuecat.com/v1/subscribers/${user_id}`;
   const Authorization = `Bearer ${process.env.REVENUE_CAT_SECRET_KEY}`;
   const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
-  await axios.default.delete(callUrl, { headers });
+  await axios.delete(callUrl, { headers });
 }
 
 async function deleteUsers(users: User[]) {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import * as axios from 'axios';
+import axios from 'axios';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -57,7 +57,7 @@ export class UserDataService {
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const stripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
-      const backendAlertPromise = axios.default.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
+      const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: 'Account deleted for user with email: testaccountdeletion@mail.com and ID: 41765292-33d0-4834-a387-97bddd5c0500',
       });
       await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise, backendAlertPromise]);

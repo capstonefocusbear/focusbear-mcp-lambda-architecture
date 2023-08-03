@@ -1,4 +1,4 @@
-import * as axios from 'axios';
+import axios from 'axios';
 import { URLSearchParams } from 'url';
 import { auth0Config } from '../../src/config';
 
@@ -31,6 +31,6 @@ export const auth0LoginUser = async (email: string, password: string): Promise<I
   const { domain } = auth0Config();
   const body = buildRequestBody(email, password);
   const endpoint = `https://${domain}/oauth/token`;
-  const { data } = await axios.default.post<ILoginData>(endpoint, body);
+  const { data } = await axios.post<ILoginData>(endpoint, body);
   return data;
 };

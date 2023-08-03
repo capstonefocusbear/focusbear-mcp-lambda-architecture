@@ -1,11 +1,24 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
-import * as axios from 'axios';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import { MONTH, PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, TRIALING, ACTIVE, USD } from '../../../shared/utils/constants';
 import { ProfitWellCustomer } from '../domain/profitwell-customer.model';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
+
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount) => retryCount * 10000,
+  retryCondition: (error) => {
+    return (
+      axiosRetry.isNetworkError(error) ||
+      axiosRetry.isRetryableError(error) ||
+      (error.response && error.response.status === 429)
+    );
+  },
+});
 
 @Processor('profitwell')
 export class ProfitWellConsumer {
@@ -54,15 +67,11 @@ export class ProfitWellConsumer {
         status: subscriptionStatus,
       });
 
-      const { data: profitWellUser } = await axios.default.post(
-        PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT,
-        dataForProfitWell,
-        {
-          headers: {
-            Authorization: process.env.PROFITWELL_API_KEY,
-          },
+      const { data: profitWellUser } = await axios.post(PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, dataForProfitWell, {
+        headers: {
+          Authorization: process.env.PROFITWELL_API_KEY,
         },
-      );
+      });
 
       await this.userRepository.update(user_id, {
         profitwell_id: profitWellUser.user_id,

@@ -53,12 +53,13 @@ export class UserDataService {
       const user = await this.userRepository.orm.findOne({
         where: { id: user_id },
       });
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const stripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
       const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: 'Account deleted for user with email: testaccountdeletion@mail.com and ID: 41765292-33d0-4834-a387-97bddd5c0500',
+        text: `Account deleted for user with email: ${auth0User.email} and ID: ${user_id}`,
       });
       await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise, backendAlertPromise]);
     } catch (error) {

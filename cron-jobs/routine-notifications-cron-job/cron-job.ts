@@ -9,6 +9,8 @@ import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('dotenv').config();
 
 const MORNING_ROUTINE_TITLES = {
   en: "It's time for your morning routine!",

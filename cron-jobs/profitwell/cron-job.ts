@@ -6,6 +6,8 @@ import { CronJobDataSource } from '../data-source';
 import { wait } from '../../apps/api-server/src/shared/utils/helpers';
 import { Entitlement } from '../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { ONE_SECOND_AS_MILLIS, TWENTY } from '../../apps/api-server/src/shared/utils/constants';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('dotenv').config();
 
 type TrialData = {
   registration_date: Date;

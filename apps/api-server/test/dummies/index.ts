@@ -761,6 +761,7 @@ export const CompletedActivityDummy = new CompletedActivity(
     duration_logged: 13,
     start_time: new Date(Date.now() - 50 * 1000),
     finish_time: new Date(),
+    answers: [],
   },
   {
     generateId: true,

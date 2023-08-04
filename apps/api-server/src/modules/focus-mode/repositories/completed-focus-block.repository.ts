@@ -16,7 +16,16 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
     { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
   ): Promise<CompletedFocusBlock[]> {
     return this.orm.find({
-      select: ['finish_time', 'start_time', 'focus_duration_seconds', 'intention', 'achievements', 'distractions'],
+      select: [
+        'finish_time',
+        'start_time',
+        'focus_duration_seconds',
+        'intention',
+        'achievements',
+        'distractions',
+        'created_at',
+        'updated_at',
+      ],
       where: {
         user_id,
         finish_time: Between(from_time, to_time),

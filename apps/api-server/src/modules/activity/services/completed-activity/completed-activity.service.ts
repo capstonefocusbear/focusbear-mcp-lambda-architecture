@@ -1062,7 +1062,14 @@ export class CompletedActivityService {
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => {
-      const average = items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0) / items.length;
+      const average =
+        items.reduce((acc, { quantity_logged = 0, answers }) => {
+          // use value of log quantity answer if any
+          if (answers?.length) {
+            return answers[0]?.logged_value ?? 0;
+          }
+          return acc + Number(quantity_logged);
+        }, 0) / items.length;
       return {
         name,
         quantity: Number(average.toFixed(1)),
@@ -1079,7 +1086,13 @@ export class CompletedActivityService {
     const groupedItems = this.groupByName(logs);
     const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
     return entries.map(([name, items]) => {
-      const sum = items.reduce((acc, { quantity_logged = 0 }) => acc + Number(quantity_logged), 0);
+      const sum = items.reduce((acc, { quantity_logged = 0, answers }) => {
+        // use value of log quantity answer if any
+        if (answers?.length) {
+          return answers[0]?.logged_value ?? 0;
+        }
+        return acc + Number(quantity_logged);
+      }, 0);
       return {
         name,
         quantity: Number(sum.toFixed(1)),

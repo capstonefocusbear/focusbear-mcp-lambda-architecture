@@ -58,7 +58,7 @@ export class UserDataService {
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const stripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
-      const backendAlertPromise = axios.default.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
+      const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Account deleted for user with email: ${auth0user?.email} and ID: ${user_id}`,
       });
       await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise, backendAlertPromise]);

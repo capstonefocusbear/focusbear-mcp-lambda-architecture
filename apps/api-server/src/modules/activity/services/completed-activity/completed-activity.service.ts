@@ -1065,7 +1065,7 @@ export class CompletedActivityService {
       const average =
         items.reduce((acc, { quantity_logged = 0, answers }) => {
           // use value of log quantity answer if any
-          if (answers.length) {
+          if (answers?.length) {
             return answers[0]?.logged_value ?? 0;
           }
           return acc + Number(quantity_logged);
@@ -1088,7 +1088,7 @@ export class CompletedActivityService {
     return entries.map(([name, items]) => {
       const sum = items.reduce((acc, { quantity_logged = 0, answers }) => {
         // use value of log quantity answer if any
-        if (answers.length) {
+        if (answers?.length) {
           return answers[0]?.logged_value ?? 0;
         }
         return acc + Number(quantity_logged);

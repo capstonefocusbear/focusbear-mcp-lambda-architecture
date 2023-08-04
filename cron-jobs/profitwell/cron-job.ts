@@ -5,7 +5,7 @@ import { User } from '../../apps/api-server/src/modules/user/entities/user.entit
 import { CronJobDataSource } from '../data-source';
 import { wait } from '../../apps/api-server/src/shared/utils/helpers';
 import { Entitlement } from '../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
-import { ONE_SECOND_AS_MILLIS, TWENTY } from '../../apps/api-server/src/shared/utils/constants';
+import { ONE_SECOND_AS_MILLIS, TRIAL_LENGTH_DAYS, TWENTY } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -29,7 +29,7 @@ async function getUsersWhoseTrialsExpired() {
 async function handleChurnedTrial(trialData: TrialData, attempts = 0) {
   const churnType = 'delinquent';
   const churnDate = new Date(trialData.registration_date);
-  churnDate.setDate(churnDate.getDate() + 15);
+  churnDate.setDate(churnDate.getDate() + TRIAL_LENGTH_DAYS);
   const churnTime = Math.floor(churnDate.getTime() / ONE_SECOND_AS_MILLIS);
   const CHURN_URL = `https://api.profitwell.com/v2/subscriptions/${trialData.stripe_customer_id}_pw_subscription/?effective_date=${churnTime}&churn_type=${churnType}`;
 

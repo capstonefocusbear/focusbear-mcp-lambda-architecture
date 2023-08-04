@@ -18,6 +18,7 @@ export const ONE_SECOND_AS_MILLIS = 1000;
 export const TEN_SECONDS_AS_MILLIS = 10000;
 export const TWENTY = 20;
 export const TRIAL_COST_CENTS = 0;
+export const TRIAL_LENGTH_DAYS = 7;
 export const PERSONAL_PLAN_COST_CENTS = 500;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
 export const MONTH = 'month';

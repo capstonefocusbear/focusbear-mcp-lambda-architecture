@@ -3,14 +3,22 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import { MONTH, PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, TRIALING, ACTIVE, USD } from '../../../shared/utils/constants';
+import {
+  MONTH,
+  PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT,
+  TRIALING,
+  ACTIVE,
+  USD,
+  TEN_SECONDS_AS_MILLIS,
+} from '../../../shared/utils/constants';
 import { ProfitWellCustomer } from '../domain/profitwell-customer.model';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
 
 axiosRetry(axios, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 10000,
+  shouldResetTimeout: true,
+  retryDelay: (retryCount) => retryCount * TEN_SECONDS_AS_MILLIS,
   retryCondition: (error) => {
     return (
       axiosRetry.isNetworkError(error) ||

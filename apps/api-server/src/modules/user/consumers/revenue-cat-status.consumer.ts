@@ -9,8 +9,10 @@ import { Entitlement } from '../../subscription/domain/entitlement.enum';
 import {
   ACTIVE,
   MONTH,
+  ONE_SECOND_AS_MILLIS,
   PERSONAL_PLAN_COST_CENTS,
   PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT,
+  TEN_SECONDS_AS_MILLIS,
   TRIALING,
   TRIAL_COST_CENTS,
   USD,
@@ -19,7 +21,8 @@ import { ProfitWellCustomer } from '../domain/profitwell-customer.model';
 
 axiosRetry(axios, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 10000,
+  shouldResetTimeout: true,
+  retryDelay: (retryCount) => retryCount * TEN_SECONDS_AS_MILLIS,
   retryCondition: (error) => {
     return (
       axiosRetry.isNetworkError(error) ||
@@ -85,8 +88,11 @@ export class RevenueCatStatusConsumer {
         ? PERSONAL_PLAN_COST_CENTS
         : TRIAL_COST_CENTS;
       const effectiveDate = subscriptionInfo.hasActiveSubscription
-        ? Math.round(new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() / 1000)
-        : Math.round(new Date().getTime() / 1000);
+        ? Math.round(
+            new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() /
+              ONE_SECOND_AS_MILLIS,
+          )
+        : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
       const subscriptionStatus = subscriptionInfo.hasActiveSubscription ? ACTIVE : TRIALING;
       // if user current subscription type isn't same as what revenue cat returned, update subscription in ProfitWell
       if (

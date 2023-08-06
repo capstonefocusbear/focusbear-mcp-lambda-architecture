@@ -4,7 +4,7 @@ import { getQueueToken } from '@nestjs/bull';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
 import { TEN_MINUTES } from '../../../../shared/utils/constants';
-import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../user-stats-cron-job/constants';
+import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { UserDailyStatsService } from './user-daily-stats.service';
 import {
   ActivitySequenceServiceMock,

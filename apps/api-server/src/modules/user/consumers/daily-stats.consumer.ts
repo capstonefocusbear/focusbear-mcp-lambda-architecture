@@ -5,7 +5,7 @@ import { DateTime } from 'luxon';
 import { Equal } from 'typeorm';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { DailyStats } from '../entities/user-daily-stats.entity';
-import { calculateStreaks, determineUserLevel } from '../../../../../../user-stats-cron-job/helpers';
+import { calculateStreaks, determineUserLevel } from '../../../../../../cron-jobs/user-stats-cron-job/helpers';
 import { DailyStatsRepository } from '../repositories/user-daily-stats.repository';
 import { UserDailyStatsService } from '../services/user-daily-stats/user-daily-stats.service';
 import { UserRepository } from '../repositories/user.repository';

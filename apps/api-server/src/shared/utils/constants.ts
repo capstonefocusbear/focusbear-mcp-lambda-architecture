@@ -14,7 +14,18 @@ export const EMAIL_SUBJECTS = {
 export const ONE_MINUTE = 60000;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
+export const ONE_SECOND_AS_MILLIS = 1000;
+export const TEN_SECONDS_AS_MILLIS = 10000;
+export const TWENTY = 20;
+export const TRIAL_COST_CENTS = 0;
+export const TRIAL_LENGTH_DAYS = 7;
+export const PERSONAL_PLAN_COST_CENTS = 500;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
+export const MONTH = 'month';
+export const USD = 'USD';
+export const TRIALING = 'trialing';
+export const ACTIVE = 'active';
+export const TRIAL = 'trial';
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',
   '+01:00': 'Europe/London',
@@ -53,3 +64,5 @@ export const UTC_TO_IANA_MAP = {
 };
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+export const PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT = 'https://api.profitwell.com/v2/subscriptions/';

@@ -10,8 +10,11 @@ import {
   calculateStreaks,
   findDifferenceInSeconds,
   getRoutinesAndFocusModesAverages,
-} from '../../../../../../../user-stats-cron-job/helpers';
-import { BASE_ONBOARDING_PROGRESS, LEVEL_THRESHOLDS } from '../../../../../../../user-stats-cron-job/constants';
+} from '../../../../../../../cron-jobs/user-stats-cron-job/helpers';
+import {
+  BASE_ONBOARDING_PROGRESS,
+  LEVEL_THRESHOLDS,
+} from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';

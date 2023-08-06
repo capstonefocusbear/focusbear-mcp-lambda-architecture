@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -9,7 +10,6 @@ import {
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
-import { SendinblueService } from '@app/sendinblue/sendinblue.service';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';

@@ -1,5 +1,5 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
-import { Notification } from './apps/api-server/src/modules/notification/entities/notification.entity';
+import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Pool } = require('pg');

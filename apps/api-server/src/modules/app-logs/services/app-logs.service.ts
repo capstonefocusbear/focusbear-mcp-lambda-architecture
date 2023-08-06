@@ -3,7 +3,7 @@ import { FastifyReply } from 'fastify';
 import { R2Service } from '@app/r2';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '@app/auth0';
-import * as axios from 'axios';
+import axios from 'axios';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UninstallFeedback } from '../domain/uninstall-feedback.model';
@@ -42,7 +42,7 @@ export class AppLogsService {
         email: auth0User.email,
         log_url: presignedUrl,
       });
-      await axios.default.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
+      await axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
         text: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
       });
       return await response.send('Upload successful!').status(201);

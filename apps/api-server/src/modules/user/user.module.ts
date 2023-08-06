@@ -32,6 +32,8 @@ import { UserDataController } from './controllers/user-data/user-data.controller
 import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
+import { ProfitWellConsumer } from './consumers/profitwell.consumer';
+import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
 
 @Module({
   providers: [
@@ -46,6 +48,8 @@ import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
     AdminAccessRequestRepository,
     UserDataService,
     UserPersonalDataConsumer,
+    ProfitWellConsumer,
+    RevenueCatStatusConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
   imports: [
@@ -76,6 +80,12 @@ import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
       },
       {
         name: 'user-data',
+      },
+      {
+        name: 'profitwell',
+      },
+      {
+        name: 'revenue-cat-status',
       },
     ),
     R2Module.registerAsync({

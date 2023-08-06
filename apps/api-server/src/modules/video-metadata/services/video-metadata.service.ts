@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import * as axios from 'axios';
+import axios from 'axios';
 import { In } from 'typeorm';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { VideoMetadataResponseDto } from '../dto/video-metadata-response.dto';
@@ -80,7 +80,7 @@ export class VideoMetadataService {
   }
 
   private async getVideoMetadataById({ video_id, video_url }: { video_id: string; video_url: string }) {
-    const { data } = await axios.default.get(
+    const { data } = await axios.get(
       `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${video_id}&key=${process.env.YOUTUBE_API_KEY}`,
     );
     if (data.pageInfo.totalResults === 0) {

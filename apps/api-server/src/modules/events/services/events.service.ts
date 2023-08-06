@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bull';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bull';
-import * as axios from 'axios';
+import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -66,7 +66,7 @@ export class EventsService {
       if (event_type === EventTypes.APP_QUIT) {
         message = `*User quit app:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``;
       }
-      await axios.default.post(process.env.SLACK_WEBHOOKS_CHANNEL, {
+      await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, {
         text: message,
       });
     } catch (error) {

@@ -14,6 +14,8 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { HabitOption, OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
@@ -38,9 +40,16 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import {
+  ONE_MINUTE,
+  PERSONAL_PLAN_COST_CENTS,
+  TRIAL,
+  TRIAL_COST_CENTS,
+  USERNAME_VALIDATION_TIMEOUT,
+} from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
+import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -62,6 +71,8 @@ export class UserService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
+    @InjectQueue('profitwell') private profitwellQueue: Queue,
+    @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
   ) {}
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -104,7 +115,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
-  private async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
+  async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -115,7 +126,7 @@ export class UserService {
         },
       });
       const userProperties = { auth0_id };
-      const stripeId = await this.stripeService.getStripeCustomerId(email);
+      let stripeId = await this.stripeService.getStripeCustomerId(email);
       if (!stripeId) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
@@ -123,19 +134,49 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
         const stripeCustomer = await this.stripeService.registerNewCustomer(email);
-        Object.assign(userProperties, { stripe_customer_id: stripeCustomer.id });
+        stripeId = stripeCustomer.id;
+        Object.assign(userProperties, { stripe_customer_id: stripeId });
       } else {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
+        await this.handleRegisterUserInProfitWell(registeredUser, stripeId);
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
-      return await this.userRepository.create(newUser);
+      const newlySavedUser = await this.userRepository.create(newUser);
+      await this.handleRegisterUserInProfitWell(newlySavedUser, stripeId);
+      return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async handleRegisterUserInProfitWell(user: User | null, stripeId: string) {
+    // user is already registered in Profit Well
+    if (user.profitwell_id) return;
+    const { revenue_cat_data, revenue_cat_status } = user;
+    const revenueCatStatus = revenue_cat_status ?? TRIAL;
+    const renewalAmountCents = revenue_cat_data?.activeEntitlements?.includes(Entitlement.personal)
+      ? PERSONAL_PLAN_COST_CENTS
+      : TRIAL_COST_CENTS;
+    const effectiveDate = revenue_cat_data?.hasActiveSubscription
+      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus].purchase_date).getTime() / 1000)
+      : Math.round(new Date().getTime() / 1000);
+    await this.profitwellQueue.add(
+      'register-profitwell-user',
+      {
+        user_id: user.id,
+        stripe_id: stripeId,
+        plan_id: revenueCatStatus,
+        renewalAmountCents,
+        effectiveDate,
+      },
+      {
+        delay: ONE_MINUTE,
+      },
+    );
   }
 
   private async handleInitialRegistration(id: string): Promise<void> {
@@ -450,9 +491,24 @@ export class UserService {
     });
   }
 
+  shouldSyncWithRevenueCat(user: User) {
+    if (!user.revenue_cat_data || !user.last_date_revenue_cat_data_synced) return true;
+    const currentDate = DateTime.local();
+    const lastDateSynced = DateTime.fromJSDate(user.last_date_revenue_cat_data_synced);
+    const wasSyncedToday = currentDate.hasSame(lastDateSynced, 'day');
+    return !wasSyncedToday;
+  }
+
   async getSubscription(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    if (this.shouldSyncWithRevenueCat(user)) {
+      await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
+    }
+    if (user.revenue_cat_data) {
+      return user.revenue_cat_data;
+    }
+    // if there's no cache to use, get data from RevenueCat directly
     const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
     if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);

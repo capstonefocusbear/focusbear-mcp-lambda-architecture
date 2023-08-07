@@ -84,9 +84,8 @@ export class RevenueCatStatusConsumer {
         revenue_cat_status: userActiveSubscription,
         last_date_revenue_cat_data_synced: new Date(),
       });
-      const renewalAmountCents = subscriptionInfo.expirations[Entitlement.personal]
-        ? PERSONAL_PLAN_COST_CENTS
-        : TRIAL_COST_CENTS;
+      const renewalAmountCents =
+        userActiveSubscription === Entitlement.personal ? PERSONAL_PLAN_COST_CENTS : TRIAL_COST_CENTS;
       const effectiveDate = subscriptionInfo.hasActiveSubscription
         ? Math.round(
             new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() /

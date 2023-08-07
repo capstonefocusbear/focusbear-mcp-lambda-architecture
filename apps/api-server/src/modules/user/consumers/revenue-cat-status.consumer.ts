@@ -93,7 +93,8 @@ export class RevenueCatStatusConsumer {
               ONE_SECOND_AS_MILLIS,
           )
         : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
-      const subscriptionStatus = subscriptionInfo.hasActiveSubscription ? ACTIVE : TRIALING;
+      const subscriptionStatus =
+        userActiveSubscription === Entitlement.trial || !userActiveSubscription ? TRIALING : ACTIVE;
       // if user current subscription type isn't same as what revenue cat returned, update subscription in ProfitWell
       if (
         last_status_synced_with_profitwell &&

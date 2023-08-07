@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
@@ -87,8 +88,8 @@ export class ProfitWellConsumer {
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      // eslint-disable-next-line no-console
       console.log('Error in ProfitWell queued job: ', error);
+      console.log('Error Data: ', error?.response?.data);
     }
   }
 }

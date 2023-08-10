@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { IStripeOptions, StripeModule } from '@app/stripe';
+import { BullModule } from '@nestjs/bull';
 import { constants, revenueCatConfig, stripeConfig } from '../../config';
 import { TeamModule } from '../team/team.module';
 import { UserModule } from '../user/user.module';
@@ -26,6 +27,9 @@ import { StripeController } from './controllers/webhooks/stripe.controller';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
+    }),
+    BullModule.registerQueue({
+      name: 'revenue-cat-status',
     }),
   ],
   controllers: [WebhooksController, StripeController],

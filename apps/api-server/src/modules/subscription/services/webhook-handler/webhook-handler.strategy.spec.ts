@@ -1,7 +1,8 @@
 import { RevenueCatService } from '@app/revenue-cat';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
+import { getQueueToken } from '@nestjs/bull';
+import { QueueMock, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
 import { UserRepositoryMock, TeamRepositoryMock, RevenueCatServiceMock } from '../../../../../test/mocks';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -12,7 +13,16 @@ describe('WebhookHandlerStrategy', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [UserRepository, TeamRepository, RevenueCatService, WebhookHandlerStrategy],
+      providers: [
+        UserRepository,
+        TeamRepository,
+        RevenueCatService,
+        WebhookHandlerStrategy,
+        {
+          provide: getQueueToken('revenue-cat-status'),
+          useValue: QueueMock,
+        },
+      ],
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
@@ -116,32 +126,32 @@ describe('WebhookHandlerStrategy', () => {
   });
 
   describe('NON_RENEWING_PURCHASE', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.NON_RENEWING_PURCHASE();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.NON_RENEWING_PURCHASE(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('CANCELLATION', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.CANCELLATION();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.CANCELLATION(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('PRODUCT_CHANGE', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.PRODUCT_CHANGE();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.PRODUCT_CHANGE(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('UNCANCELLATION', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.UNCANCELLATION();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.UNCANCELLATION(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });

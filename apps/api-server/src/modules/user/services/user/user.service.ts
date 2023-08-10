@@ -502,13 +502,14 @@ export class UserService {
   async getSubscription(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    if (this.shouldSyncWithRevenueCat(user)) {
+    const shouldUpdateCache = this.shouldSyncWithRevenueCat(user);
+    if (shouldUpdateCache) {
       await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
     }
-    if (user.revenue_cat_data) {
+    if (!shouldUpdateCache && user.revenue_cat_data) {
       return user.revenue_cat_data;
     }
-    // if there's no cache to use, get data from RevenueCat directly
+    // if there's no cache to use or cache is outdated, get data from RevenueCat directly
     const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
     if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
     return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);

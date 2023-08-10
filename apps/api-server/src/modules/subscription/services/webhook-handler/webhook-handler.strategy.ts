@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RevenueCatService } from '@app/revenue-cat';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { Team } from '../../../team/entities/team.entity';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -10,19 +12,16 @@ export class WebhookHandlerStrategy {
     private readonly teamRepository: TeamRepository,
     private readonly userRepository: UserRepository,
     private readonly revenueCatService: RevenueCatService,
+    @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
   ) {}
 
-  async clearUserRevenueCatCache(user_id: string) {
-    await this.userRepository.update(user_id, {
-      revenue_cat_data: null,
-      last_date_revenue_cat_data_synced: null,
-      revenue_cat_status: null,
-    });
+  async updateUserRevenueCatCache(user_id: string) {
+    await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
   }
 
   async INITIAL_PURCHASE(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     if (!isTeamOwner) return null;
     const team_size = this.extractTeamSize(event);
     const owner_id = event.app_user_id;
@@ -52,7 +51,7 @@ export class WebhookHandlerStrategy {
   // should be handled // for team_owners and members
   async RENEWAL(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     if (!isTeamOwner) return null;
     const owner_id = event.app_user_id;
     const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
@@ -68,7 +67,7 @@ export class WebhookHandlerStrategy {
   async EXPIRATION(event) {
     try {
       const isTeamOwner = this.checkTeamOwnerEntitlement(event);
-      await this.clearUserRevenueCatCache(event.app_user_id);
+      await this.updateUserRevenueCatCache(event.app_user_id);
       if (!isTeamOwner) return null;
       const owner_id = event.app_user_id;
       const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
@@ -97,22 +96,22 @@ export class WebhookHandlerStrategy {
   // assigned from the RevenueCat dashboard
   // https://github.com/Focus-Bear/backend/issues/54
   async NON_RENEWING_PURCHASE(event) {
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
   async PRODUCT_CHANGE(event) {
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
   async CANCELLATION(event) {
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
   async UNCANCELLATION(event) {
-    await this.clearUserRevenueCatCache(event.app_user_id);
+    await this.updateUserRevenueCatCache(event.app_user_id);
     return null;
   }
 

@@ -12,8 +12,17 @@ export class WebhookHandlerStrategy {
     private readonly revenueCatService: RevenueCatService,
   ) {}
 
+  async clearUserRevenueCatCache(user_id: string) {
+    await this.userRepository.update(user_id, {
+      revenue_cat_data: null,
+      last_date_revenue_cat_data_synced: null,
+      revenue_cat_status: null,
+    });
+  }
+
   async INITIAL_PURCHASE(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
+    await this.clearUserRevenueCatCache(event.app_user_id);
     if (!isTeamOwner) return null;
     const team_size = this.extractTeamSize(event);
     const owner_id = event.app_user_id;
@@ -43,6 +52,7 @@ export class WebhookHandlerStrategy {
   // should be handled // for team_owners and members
   async RENEWAL(event) {
     const isTeamOwner = this.checkTeamOwnerEntitlement(event);
+    await this.clearUserRevenueCatCache(event.app_user_id);
     if (!isTeamOwner) return null;
     const owner_id = event.app_user_id;
     const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
@@ -58,6 +68,7 @@ export class WebhookHandlerStrategy {
   async EXPIRATION(event) {
     try {
       const isTeamOwner = this.checkTeamOwnerEntitlement(event);
+      await this.clearUserRevenueCatCache(event.app_user_id);
       if (!isTeamOwner) return null;
       const owner_id = event.app_user_id;
       const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
@@ -85,19 +96,23 @@ export class WebhookHandlerStrategy {
   // TODO: handle creating teams for subscriptions
   // assigned from the RevenueCat dashboard
   // https://github.com/Focus-Bear/backend/issues/54
-  NON_RENEWING_PURCHASE() {
+  async NON_RENEWING_PURCHASE(event) {
+    await this.clearUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
-  PRODUCT_CHANGE() {
+  async PRODUCT_CHANGE(event) {
+    await this.clearUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
-  CANCELLATION() {
+  async CANCELLATION(event) {
+    await this.clearUserRevenueCatCache(event.app_user_id);
     return null;
   }
 
-  UNCANCELLATION() {
+  async UNCANCELLATION(event) {
+    await this.clearUserRevenueCatCache(event.app_user_id);
     return null;
   }
 

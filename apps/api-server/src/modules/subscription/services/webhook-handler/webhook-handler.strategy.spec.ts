@@ -116,32 +116,32 @@ describe('WebhookHandlerStrategy', () => {
   });
 
   describe('NON_RENEWING_PURCHASE', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.NON_RENEWING_PURCHASE();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.NON_RENEWING_PURCHASE(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('CANCELLATION', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.CANCELLATION();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.CANCELLATION(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('PRODUCT_CHANGE', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.PRODUCT_CHANGE();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.PRODUCT_CHANGE(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });
   });
 
   describe('UNCANCELLATION', () => {
-    it('positive: should return null', () => {
-      const result = webhookHandlerStrategy.UNCANCELLATION();
+    it('positive: should return null', async () => {
+      const result = await webhookHandlerStrategy.UNCANCELLATION(testEventWithTeamEntitlement);
 
       expect(result).toBeNull();
     });

@@ -99,7 +99,7 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
           log_summary_type: LogSummaryType.AVERAGE,
         },
       },
-      relations: ['activity'],
+      relations: ['activity', 'answers'],
       order: {
         start_time: 'DESC',
       },

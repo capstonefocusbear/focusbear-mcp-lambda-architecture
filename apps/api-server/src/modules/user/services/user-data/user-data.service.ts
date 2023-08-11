@@ -56,12 +56,15 @@ export class UserDataService {
       const auth0user = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
-      const stripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
       const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Account deleted for user with email: ${auth0user?.email} and ID: ${user_id}`,
       });
-      await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise, backendAlertPromise]);
+      // conditionally delete in stripe because of issue with stripe IDs being cleared
+      if (user.stripe_customer_id) {
+        await this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
+      }
+      await Promise.all([auth0Promise, revenueCatPromise, userRepositoryPromise, backendAlertPromise]);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

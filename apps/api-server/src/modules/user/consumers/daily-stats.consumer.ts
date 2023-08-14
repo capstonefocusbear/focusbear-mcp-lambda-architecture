@@ -47,6 +47,8 @@ export class DailyStatsConsumer {
       });
       const startTimeAsJSDate = new Date(startTime);
       const startOfDate = DateTime.fromJSDate(startTimeAsJSDate).setZone(timeZone).startOf('day').toJSDate();
+      // eslint-disable-next-line no-console
+      console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, startOfDate });
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
         where: { user_id: user.id, date_completed: Equal(startOfDate) },
       });

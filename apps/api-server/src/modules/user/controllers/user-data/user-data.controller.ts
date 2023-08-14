@@ -5,6 +5,7 @@ import { Passport } from '../../../auth/domain/passport.model';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { UserDataService } from '../../services/user-data/user-data.service';
 import { GetUserDataQuery } from '../../dto/get-user-data-query.dto';
+import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 
 @Controller('user-data')
 @UseGuards(IsAuth)
@@ -23,7 +24,10 @@ export class UserDataController {
     summary:
       'This endpoint deletes all user data from Auth0, RevenueCat, Stripe, and from the DB. DATA IS NOT RECOVERABLE',
   })
-  async deleteAllUserData(@AuthContext() { user }: Passport) {
-    return this.userDataService.deleteUser(user.id);
+  async deleteAllUserData(
+    @Query() { message, can_contact }: DeleteUserQueryParamDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userDataService.deleteUser(user.id, { message, can_contact });
   }
 }

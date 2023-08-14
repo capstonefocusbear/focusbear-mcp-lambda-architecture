@@ -8,6 +8,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../repositories/user.repository';
 import { LanguageOptions } from '../../domain/language-options.enum';
+import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 
 @Injectable()
 export class UserDataService {
@@ -40,7 +41,7 @@ export class UserDataService {
     }
   }
 
-  async deleteUser(user_id: string) {
+  async deleteUser(user_id: string, { message, can_contact }: DeleteUserQueryParamDto) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -58,7 +59,9 @@ export class UserDataService {
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
       const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: `Account deleted for user with email: ${auth0user?.email} and ID: ${user_id}`,
+        text: `Account deleted for user with email: ${auth0user?.email} and ID: ${user_id} \n\n Message: ${
+          message ?? ''
+        } \n\n Can contact: ${can_contact ?? false}`,
       });
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {

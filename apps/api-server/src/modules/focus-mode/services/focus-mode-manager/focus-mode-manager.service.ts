@@ -88,9 +88,19 @@ export class FocusModeManagerService {
     if (!focusMode) throw new NotFoundException(notFoundModeMsg);
     const hasUserCurrentMode = Boolean(user.current_focus_mode_id);
     if (hasUserCurrentMode) {
-      await this.finishCurrentFocusMode({ finish_time }, { focus_mode_id: user.current_focus_mode_id }, user.id);
+      const hasCurrentFocusModeBeenDeleted = await this.checkFocusModeDeleted(user.current_focus_mode_id);
+      if (hasCurrentFocusModeBeenDeleted) {
+        await this.nullifyCurrentFocusModeForUser(user_id);
+      } else {
+        await this.finishCurrentFocusMode({ finish_time }, { focus_mode_id: user.current_focus_mode_id }, user.id);
+      }
     }
     return [focusMode, user];
+  }
+
+  async checkFocusModeDeleted(focusModeId: string) {
+    const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focusModeId } });
+    return !focusMode;
   }
 
   private async fetchFocusModeAndUser(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> {

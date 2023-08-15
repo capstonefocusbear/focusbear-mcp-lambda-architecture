@@ -14,6 +14,7 @@ import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../to-do/entities/to-do.entity';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
+import { ProjectManagementPlatforms } from '../domain/project-management-platforms.enum';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -222,20 +223,31 @@ export class ZohoService {
     }
   }
 
-  async syncUserProjects(userId: string) {
-    const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
+  async getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string) {
     const syncedProjects = await this.focusModeTagRepository.orm.find({
       where: { user_id: userId, external_project_id: Not(IsNull()) },
     });
-    const syncedProjectIds = syncedProjects.map((project) => project.external_project_id);
-    const projectsToSync = zohoProjects.filter((project) => !syncedProjectIds.includes(project.id_string));
+    const syncedZohoProjects = syncedProjects.filter(
+      (project) => project.external_project_metadata.platform === 'zoho',
+    );
+    const syncedZohoProjectIds = syncedZohoProjects.map((project) => project.external_project_id);
+    const projectsToSync = zohoProjects.filter((project) => !syncedZohoProjectIds.includes(project.id_string));
+    return { projectsToSync, syncedZohoProjects };
+  }
+
+  async getZohoTasksToSync(zohoTasks: any[], userId: string) {
     const syncedTasks = await this.toDoRepository.orm.find({
       where: { user_id: userId, external_task_id: Not(IsNull()) },
     });
-    const syncedTasksIds = syncedTasks.map((task) => task.external_task_id);
-    const tasksToSync = zohoTasks.filter((task) => !syncedTasksIds.includes(task.id_string));
+    const syncedZohoTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'zoho');
+    const syncedZohoTasksIds = syncedZohoTasks.map((task) => task.external_task_id);
+    const tasksToSync = zohoTasks.filter((task) => !syncedZohoTasksIds.includes(task.id_string));
+    return { tasksToSync, syncedZohoTasks };
+  }
+
+  getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) {
     const zohoTasksIds = zohoTasks.map((task) => task.id_string);
-    const tasksToRemoveIds = syncedTasks
+    return syncedZohoTasks
       .map((syncedTask) => {
         if (!zohoTasksIds.includes(syncedTask.external_task_id)) {
           return syncedTask.id;
@@ -243,40 +255,62 @@ export class ZohoService {
         return null;
       })
       .filter((taskId) => taskId);
+  }
+
+  getZohoProjectsToDelete(zohoProjects: ZohoProject[], syncedZohoProjects: FocusModeTag[]) {
     const zohoProjectsIds = zohoProjects.map((project) => project.id_string);
-    const projectsToRemoveIds = syncedProjects
+    return syncedZohoProjects
       .map((syncedProject) => {
         if (!zohoProjectsIds.includes(syncedProject.external_project_id)) {
           return syncedProject.id;
         }
         return null;
       })
-      .filter((taskId) => taskId);
-    const getTagForTodo = (task: any, tags: FocusModeTag[]): FocusModeTag | null => {
-      return tags.find((tag) => tag.external_project_id === task.project_id);
-    };
-    const newTags = projectsToSync.map(
+      .filter((projectId) => projectId);
+  }
+
+  getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | null {
+    return tags.find((tag) => tag.external_project_id === task.project_id);
+  }
+
+  createNewTags(projectsToSync: ZohoProject[], userId: string, platform: ProjectManagementPlatforms) {
+    return projectsToSync.map(
       (project) =>
         new FocusModeTag({
           user_id: userId,
           text: project.name,
           external_project_id: project.id_string,
-          external_project_metadata: { platform: 'zoho', project_data: project },
+          external_project_metadata: { platform, project_data: project },
         }),
     );
-    const newToDos = tasksToSync.map((task) => {
-      const project = getTagForTodo(task, newTags);
+  }
+
+  createNewToDos(tasksToSync: any[], userId: string, newTags: FocusModeTag[], platform: ProjectManagementPlatforms) {
+    return tasksToSync.map((task) => {
+      const project = this.getTagForTodo(task, newTags);
       return new ToDo({
         user_id: userId,
         title: task.name,
         details: task.description,
         external_task_id: task.id_string,
-        external_task_metadata: { platform: 'zoho', task_data: task },
+        external_task_metadata: { platform, task_data: task },
         tags: [...(project ? [project] : [])],
       });
     });
-    const savedToDos = await this.toDoRepository.orm.save(newToDos);
-    const savedTags = await this.focusModeTagRepository.orm.save(newTags);
+  }
+
+  async syncUserProjects(userId: string) {
+    const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
+    const { projectsToSync, syncedZohoProjects } = await this.getZohoProjectsToSync(zohoProjects, userId);
+    const { tasksToSync, syncedZohoTasks } = await this.getZohoTasksToSync(zohoTasks, userId);
+    const tasksToRemoveIds = this.getZohoTasksToDelete(zohoTasks, syncedZohoTasks);
+    const projectsToRemoveIds = this.getZohoProjectsToDelete(zohoProjects, syncedZohoProjects);
+    const newZohoTags = this.createNewTags(projectsToSync, userId, ProjectManagementPlatforms.ZOHO);
+    const newZohoToDos = this.createNewToDos(tasksToSync, userId, newZohoTags, ProjectManagementPlatforms.ZOHO);
+    // Save new projects and tasks
+    const savedToDos = await this.toDoRepository.orm.save(newZohoToDos);
+    const savedTags = await this.focusModeTagRepository.orm.save(newZohoTags);
+    // Delete removed projects and tasks
     await this.toDoRepository.orm.delete({ id: In(tasksToRemoveIds) });
     await this.focusModeTagRepository.orm.delete({ id: In(projectsToRemoveIds) });
     return {

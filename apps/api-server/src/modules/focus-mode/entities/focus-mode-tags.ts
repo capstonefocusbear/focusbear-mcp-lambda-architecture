@@ -20,6 +20,12 @@ export class FocusModeTag extends BaseEntity {
   @Column({ type: 'varchar', default: null })
   text: string;
 
+  @Column({ type: 'varchar', default: null, nullable: true })
+  external_project_id?: string;
+
+  @Column({ type: 'jsonb', default: null, nullable: true })
+  external_project_metadata?: any;
+
   @ManyToOne(() => User, (user) => user.focus_modes, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

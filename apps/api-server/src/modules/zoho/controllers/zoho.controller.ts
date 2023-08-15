@@ -19,21 +19,7 @@ export class ZohoController {
   @Get('projects/all')
   @UseGuards(IsAuth)
   async getAllProjects(@AuthContext() { user }: Passport) {
-    const portals: any = await this.zohoService.getPortals(user.id);
-    let projectsResponse = [];
-    if (!portals.portals) return projectsResponse;
-    for (const portal of portals.portals) {
-      // eslint-disable-next-line no-await-in-loop
-      const projects: any = await this.zohoService.getProjects(user.id, portal.id);
-      // eslint-disable-next-line no-continue
-      if (!projects.projects) continue;
-      projects.projects.forEach((project) => {
-        // eslint-disable-next-line no-param-reassign
-        project.portal_id = portal.id_string;
-      });
-      projectsResponse = [...projectsResponse, ...projects.projects];
-    }
-    return projectsResponse;
+    return this.zohoService.getAllProjects(user.id);
   }
 
   @Get(':portalId/projects')
@@ -66,5 +52,11 @@ export class ZohoController {
     @AuthContext() { user }: Passport,
   ) {
     return this.zohoService.addTimeEntry(user.id, portalId, projectId, taskId, timeEntry);
+  }
+
+  @Post('sync-projects')
+  @UseGuards(IsAuth)
+  async syncUserProjects(@AuthContext() { user }: Passport) {
+    return this.zohoService.syncUserProjects(user.id);
   }
 }

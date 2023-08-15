@@ -73,12 +73,8 @@ export class ZohoAuthService {
       user.zoho_refresh_token
     }`;
     const { data } = await axios.post(url);
-    const payload = { sub: user.id };
-    return {
-      access_token: await this.jwtService.signAsync(payload, {
-        expiresIn: data.expires_in,
-      }),
-    };
+    await this.userRepository.update(userId, { zoho_access_token: data?.access_token || '' });
+    return data;
   }
 
   async authorize(userId: string, zohoAuthorizeQuery: ZohoAuthorizeQuery) {

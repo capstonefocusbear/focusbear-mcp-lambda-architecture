@@ -1,18 +1,31 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable no-console */
 import { BadRequestException, Injectable, UseGuards } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
+import { In, IsNull, Not } from 'typeorm';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
 import { CreateTaskTimeLog } from '../dto/create-task-timelog.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
+import { ZohoProject } from '../domain/zoho-project.model';
+import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
+import { ToDo } from '../../to-do/entities/to-do.entity';
+import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
+import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
 
 @Injectable()
 @UseGuards(IsAuth)
 export class ZohoService {
   private readonly baseUrl = 'https://projectsapi.zoho.com.location/restapi';
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly focusModeTagRepository: FocusModeTagRepository,
+    private readonly toDoRepository: ToDoRepository,
+    private readonly zohoAuthService: ZohoAuthService,
+  ) {}
 
   private httpService = axios;
 
@@ -84,7 +97,7 @@ export class ZohoService {
 
   async addTimeEntry(
     userId: string,
-    portalId,
+    portalId: string,
     projectId: string,
     taskId: string,
     timeEntry: any,
@@ -94,7 +107,6 @@ export class ZohoService {
       const url = `${
         getDataCenterUrl(user.zoho_location).api
       }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-      console.log('🚀 ~ file: portals.service.ts:92 ~ PortalsService ~ url:', url);
       const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
       const [year, month, day] = timeEntry.date.split('-');
       const formData = new FormData();
@@ -115,30 +127,28 @@ export class ZohoService {
     }
   }
 
-  async getTasks(userId: string, portalId, projectId: string): Promise<any> {
+  async getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
     try {
       const user = await this.getUser(userId);
       const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
       const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
-      console.log('🚀 ~ file: portals.service.ts:71 ~ PortalsService ~ url:', url, headers);
       const response = await this.httpService.get(url, {
         headers,
       });
-      console.log(response.data.tasks[0]);
-      return response.data;
+      return response.data?.tasks;
     } catch (e) {
       throw new BadRequestException(e.response?.data);
     }
   }
 
-  async getProjects(userId: string, portalId: any): Promise<AxiosResponse<any>> {
+  async getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
     const user = await this.getUser(userId);
     const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/`;
     const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
-    return response.data;
+    return response.data.projects;
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
@@ -149,5 +159,131 @@ export class ZohoService {
       headers,
     });
     return response.data;
+  }
+
+  async getAllProjects(userId: string): Promise<ZohoProject[]> {
+    const portals: any = await this.getPortals(userId);
+    let projectsResponse = [];
+    if (!portals.portals) return projectsResponse;
+    for (const portal of portals.portals) {
+      // eslint-disable-next-line no-await-in-loop
+      const projects = await this.getProjects(userId, portal.id);
+      // eslint-disable-next-line no-continue
+      if (!projects.length) continue;
+      projects.forEach((project) => {
+        // eslint-disable-next-line no-param-reassign
+        project.portal_id = portal.id_string;
+      });
+      projectsResponse = [...projectsResponse, ...projects];
+    }
+    return projectsResponse;
+  }
+
+  async getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[]; zohoProjects: ZohoProject[] }> {
+    const MAX_RETRY = 2;
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const portals: any = await this.getPortals(userId);
+        const zohoTasks = [];
+        let zohoProjects = [];
+        if (!portals.portals) return { zohoProjects, zohoTasks };
+
+        for (const portal of portals.portals) {
+          zohoProjects = await this.getProjects(userId, portal.id);
+          // eslint-disable-next-line no-continue
+          if (!zohoProjects.length) continue;
+
+          for (const project of zohoProjects) {
+            const tasksFromProject = await this.getTasks(userId, portal.id, project.id_string);
+            const tasksLinkedToProjects = tasksFromProject.map((task) => {
+              return { ...task, project_id: project.id_string };
+            });
+            zohoTasks.push(...tasksLinkedToProjects);
+          }
+        }
+
+        return { zohoProjects, zohoTasks };
+      } catch (error) {
+        // Get new access token for user if current token expired
+        if (error.response && error.response.status === 401) {
+          if (retryCount === 0) {
+            await this.zohoAuthService.refreshToken(userId);
+            retryCount++;
+          } else {
+            // Retry already attempted, don't retry again
+            throw error;
+          }
+        } else {
+          throw error; // Throw other errors
+        }
+      }
+    }
+  }
+
+  async syncUserProjects(userId: string) {
+    const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
+    const syncedProjects = await this.focusModeTagRepository.orm.find({
+      where: { user_id: userId, external_project_id: Not(IsNull()) },
+    });
+    const syncedProjectIds = syncedProjects.map((project) => project.external_project_id);
+    const projectsToSync = zohoProjects.filter((project) => !syncedProjectIds.includes(project.id_string));
+    const syncedTasks = await this.toDoRepository.orm.find({
+      where: { user_id: userId, external_task_id: Not(IsNull()) },
+    });
+    const syncedTasksIds = syncedTasks.map((task) => task.external_task_id);
+    const tasksToSync = zohoTasks.filter((task) => !syncedTasksIds.includes(task.id_string));
+    const zohoTasksIds = zohoTasks.map((task) => task.id_string);
+    const tasksToRemoveIds = syncedTasks
+      .map((syncedTask) => {
+        if (!zohoTasksIds.includes(syncedTask.external_task_id)) {
+          return syncedTask.id;
+        }
+        return null;
+      })
+      .filter((taskId) => taskId);
+    const zohoProjectsIds = zohoProjects.map((project) => project.id_string);
+    const projectsToRemoveIds = syncedProjects
+      .map((syncedProject) => {
+        if (!zohoProjectsIds.includes(syncedProject.external_project_id)) {
+          return syncedProject.id;
+        }
+        return null;
+      })
+      .filter((taskId) => taskId);
+    const getTagForTodo = (task: any, tags: FocusModeTag[]): FocusModeTag | null => {
+      return tags.find((tag) => tag.external_project_id === task.project_id);
+    };
+    const newTags = projectsToSync.map(
+      (project) =>
+        new FocusModeTag({
+          user_id: userId,
+          text: project.name,
+          external_project_id: project.id_string,
+          external_project_metadata: { platform: 'zoho', project_data: project },
+        }),
+    );
+    const newToDos = tasksToSync.map((task) => {
+      const project = getTagForTodo(task, newTags);
+      return new ToDo({
+        user_id: userId,
+        title: task.name,
+        details: task.description,
+        external_task_id: task.id_string,
+        external_task_metadata: { platform: 'zoho', task_data: task },
+        tags: [...(project ? [project] : [])],
+      });
+    });
+    const savedToDos = await this.toDoRepository.orm.save(newToDos);
+    const savedTags = await this.focusModeTagRepository.orm.save(newTags);
+    await this.toDoRepository.orm.delete({ id: In(tasksToRemoveIds) });
+    await this.focusModeTagRepository.orm.delete({ id: In(projectsToRemoveIds) });
+    return {
+      projectsSaved: savedTags.length,
+      projectsRemoved: projectsToRemoveIds.length,
+      tasksSaved: savedToDos.length,
+      tasksRemoved: tasksToRemoveIds.length,
+    };
   }
 }

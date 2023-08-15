@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`UserSettingsService getSettings positive: should return serialized user settings data 1`] = `
-Object {
+{
   "break_after_minutes": 15,
   "id": "e1477f9a-515f-49f5-be2b-0c39af087324",
   "shutdown_time": "20:30",

@@ -2,15 +2,15 @@
 
 exports[`PusherBeamsService createBeamsPublishRequest should return a pusher beams publishRequest object 1`] = `
 BeamsPublishRequest {
-  "apns": Object {
-    "aps": Object {},
-    "data": Object {
+  "apns": {
+    "aps": {},
+    "data": {
       "pushData": CompletedFocusBlock {
         "achievements": "Some string",
         "finish_time": 2022-10-10T04:21:46.269Z,
         "focus_mode": FocusMode {
-          "allowed_apps": Array [],
-          "allowed_urls": Array [],
+          "allowed_apps": [],
+          "allowed_urls": [],
           "id": "7a9368e1-9b80-462f-9975-ab29e9b2f171",
           "name": "Some string value",
           "user_id": "f7aa0206-e3bc-4057-a3ab-6e387dd4107a",
@@ -25,14 +25,14 @@ BeamsPublishRequest {
       },
     },
   },
-  "fcm": Object {
-    "data": Object {
+  "fcm": {
+    "data": {
       "pushData": CompletedFocusBlock {
         "achievements": "Some string",
         "finish_time": 2022-10-10T04:21:46.269Z,
         "focus_mode": FocusMode {
-          "allowed_apps": Array [],
-          "allowed_urls": Array [],
+          "allowed_apps": [],
+          "allowed_urls": [],
           "id": "7a9368e1-9b80-462f-9975-ab29e9b2f171",
           "name": "Some string value",
           "user_id": "f7aa0206-e3bc-4057-a3ab-6e387dd4107a",

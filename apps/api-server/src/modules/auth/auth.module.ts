@@ -25,7 +25,7 @@ import { ZohoAuthController } from './controllers/zoho-auth.controller';
     IsAdmin,
     ZohoAuthService,
   ],
-  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret],
+  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService],
   controllers: [PusherAuthController, ZohoAuthController],
   imports: [
     Auth0Module.registerAsync({

@@ -6,7 +6,7 @@ import { ToDoRepository } from './repositories/to-do.repository';
 
 @Module({
   providers: [ToDoService, ToDoRepository],
-  exports: [],
+  exports: [ToDoRepository],
   imports: [UserModule],
   controllers: [TodoController],
 })

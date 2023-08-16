@@ -7,7 +7,7 @@ import { TaskParamsQueryDto } from '../dto/task-params-query.dto';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 
-@Controller('portals')
+@Controller('zoho')
 export class ZohoController {
   constructor(private readonly zohoService: ZohoService) {}
 
@@ -54,9 +54,9 @@ export class ZohoController {
     return this.zohoService.addTimeEntry(user.id, portalId, projectId, taskId, timeEntry);
   }
 
-  @Post('sync-projects')
+  @Post('sync')
   @UseGuards(IsAuth)
-  async syncUserProjects(@AuthContext() { user }: Passport) {
-    return this.zohoService.syncUserProjects(user.id);
+  async syncUserProjectsAndTasks(@AuthContext() { user }: Passport) {
+    return this.zohoService.syncUserProjectsAndTasks(user.id);
   }
 }

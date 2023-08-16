@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
@@ -14,6 +14,7 @@ import { UserRepository } from '../user/repositories/user.repository';
 import { IsAdmin } from './guards/is-admin/is-admin.guard';
 import { ZohoAuthService } from './services/zoho-auth.service';
 import { ZohoAuthController } from './controllers/zoho-auth.controller';
+import { ZohoModule } from '../zoho/zoho.module';
 
 @Module({
   providers: [
@@ -50,6 +51,7 @@ import { ZohoAuthController } from './controllers/zoho-auth.controller';
     }),
     HelperModule,
     ConfigModule,
+    forwardRef(() => ZohoModule),
   ],
 })
 export class AuthModule {}

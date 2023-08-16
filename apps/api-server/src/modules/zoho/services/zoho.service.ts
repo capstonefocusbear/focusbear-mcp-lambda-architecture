@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-console */
-import { BadRequestException, Injectable, UseGuards } from '@nestjs/common';
+import { BadRequestException, Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { In, IsNull, Not } from 'typeorm';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
@@ -29,6 +29,7 @@ export class ZohoService {
     private readonly userRepository: UserRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
     private readonly toDoRepository: ToDoRepository,
+    @Inject(forwardRef(() => ZohoAuthService))
     private readonly zohoAuthService: ZohoAuthService,
   ) {}
 
@@ -249,7 +250,7 @@ export class ZohoService {
     return { tasksToSync, syncedZohoTasks };
   }
 
-  async syncUserProjects(userId: string) {
+  async syncUserProjectsAndTasks(userId: string) {
     const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
     const { projectsToSync, syncedZohoProjects } = await this.getZohoProjectsToSync(zohoProjects, userId);
     const { tasksToSync, syncedZohoTasks } = await this.getZohoTasksToSync(zohoTasks, userId);

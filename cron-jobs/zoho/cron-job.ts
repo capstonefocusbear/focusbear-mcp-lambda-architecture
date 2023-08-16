@@ -122,7 +122,7 @@ async function getZohoTasksToSync(zohoTasks: any[], userId: string) {
   return { tasksToSync, syncedZohoTasks };
 }
 
-async function syncUserProjects(userId: string) {
+async function syncUserProjectsAndTasks(userId: string) {
   const { zohoTasks, zohoProjects } = await getAllProjectsAndTasks(userId);
   const { projectsToSync, syncedZohoProjects } = await getZohoProjectsToSync(zohoProjects, userId);
   const { tasksToSync, syncedZohoTasks } = await getZohoTasksToSync(zohoTasks, userId);
@@ -155,7 +155,7 @@ async function getUsersToSyncWithZoho() {
   try {
     await CronJobDataSource.initialize();
     const usersToSync = await getUsersToSyncWithZoho();
-    const syncUserPromises = usersToSync.map((user) => syncUserProjects(user.id));
+    const syncUserPromises = usersToSync.map((user) => syncUserProjectsAndTasks(user.id));
     await Promise.all(syncUserPromises);
     process.exit();
   } catch (error) {

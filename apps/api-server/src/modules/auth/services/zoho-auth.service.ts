@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { ZohoAuthorizeQuery } from '../dto/zoho-authorize-query.dto';
+import { ZohoService } from '../../zoho/services/zoho.service';
 
 @Injectable()
 export class ZohoAuthService {
@@ -12,6 +13,8 @@ export class ZohoAuthService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => ZohoService))
+    private readonly zohoService: ZohoService,
   ) {}
 
   getZohoLoginUrl() {
@@ -86,6 +89,7 @@ export class ZohoAuthService {
         location,
         accountServer,
       });
+      await this.zohoService.syncUserProjectsAndTasks(user.id);
       const payload = { sub: user.id };
       return {
         access_token: await this.jwtService.signAsync(payload, {

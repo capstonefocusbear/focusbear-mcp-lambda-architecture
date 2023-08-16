@@ -52,20 +52,11 @@ export class ZohoAuthService {
       ...(accountServer && { zoho_account_server: accountServer }),
     };
 
-    // Update the user's access token and refresh token
     await this.userRepository.update(existingUser.id, detailPayload);
     return existingUser;
-
-    // DON'T THINK FEATURE WILL BE AVAILABLE TO UNREGISTERED USERS?
-    // Create a new user
-    // const newUser = await this.userService.create({
-    //   ...detailPayload,
-    // });
-    // return newUser;
   }
 
   async refreshToken(userId: string) {
-    // const { refreshToken, accountServer } = user;
     const user = await this.getUser(userId);
     const url = `${user.zoho_account_server}/oauth/v2/token?client_id=${this.configService.get(
       'zoho.ZOHO_CLIENT_ID',
@@ -118,7 +109,6 @@ export class ZohoAuthService {
         zoho_account_server: query['accounts-server'],
       }),
     };
-    // existingUser.apiDomain = apiDomain;
     await this.userRepository.update(existingUser.id, {
       ...updatePayload,
     });

@@ -10,11 +10,15 @@ import { User } from '../../user/entities/user.entity';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 import { ZohoProject } from '../domain/zoho-project.model';
-import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
-import { ToDo } from '../../to-do/entities/to-do.entity';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
 import { ProjectManagementPlatforms } from '../domain/project-management-platforms.enum';
+import {
+  createNewTags,
+  createNewToDos,
+  getZohoProjectsToDelete,
+  getZohoTasksToDelete,
+} from '../../../../../../cron-jobs/zoho/helpers';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -245,68 +249,14 @@ export class ZohoService {
     return { tasksToSync, syncedZohoTasks };
   }
 
-  getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) {
-    const zohoTasksIds = zohoTasks.map((task) => task.id_string);
-    return syncedZohoTasks
-      .map((syncedTask) => {
-        if (!zohoTasksIds.includes(syncedTask.external_task_id)) {
-          return syncedTask.id;
-        }
-        return null;
-      })
-      .filter((taskId) => taskId);
-  }
-
-  getZohoProjectsToDelete(zohoProjects: ZohoProject[], syncedZohoProjects: FocusModeTag[]) {
-    const zohoProjectsIds = zohoProjects.map((project) => project.id_string);
-    return syncedZohoProjects
-      .map((syncedProject) => {
-        if (!zohoProjectsIds.includes(syncedProject.external_project_id)) {
-          return syncedProject.id;
-        }
-        return null;
-      })
-      .filter((projectId) => projectId);
-  }
-
-  getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | null {
-    return tags.find((tag) => tag.external_project_id === task.project_id);
-  }
-
-  createNewTags(projectsToSync: ZohoProject[], userId: string, platform: ProjectManagementPlatforms) {
-    return projectsToSync.map(
-      (project) =>
-        new FocusModeTag({
-          user_id: userId,
-          text: project.name,
-          external_project_id: project.id_string,
-          external_project_metadata: { platform, project_data: project },
-        }),
-    );
-  }
-
-  createNewToDos(tasksToSync: any[], userId: string, newTags: FocusModeTag[], platform: ProjectManagementPlatforms) {
-    return tasksToSync.map((task) => {
-      const project = this.getTagForTodo(task, newTags);
-      return new ToDo({
-        user_id: userId,
-        title: task.name,
-        details: task.description,
-        external_task_id: task.id_string,
-        external_task_metadata: { platform, task_data: task },
-        tags: [...(project ? [project] : [])],
-      });
-    });
-  }
-
   async syncUserProjects(userId: string) {
     const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
     const { projectsToSync, syncedZohoProjects } = await this.getZohoProjectsToSync(zohoProjects, userId);
     const { tasksToSync, syncedZohoTasks } = await this.getZohoTasksToSync(zohoTasks, userId);
-    const tasksToRemoveIds = this.getZohoTasksToDelete(zohoTasks, syncedZohoTasks);
-    const projectsToRemoveIds = this.getZohoProjectsToDelete(zohoProjects, syncedZohoProjects);
-    const newZohoTags = this.createNewTags(projectsToSync, userId, ProjectManagementPlatforms.ZOHO);
-    const newZohoToDos = this.createNewToDos(tasksToSync, userId, newZohoTags, ProjectManagementPlatforms.ZOHO);
+    const tasksToRemoveIds = getZohoTasksToDelete(zohoTasks, syncedZohoTasks);
+    const projectsToRemoveIds = getZohoProjectsToDelete(zohoProjects, syncedZohoProjects);
+    const newZohoTags = createNewTags(projectsToSync, userId, ProjectManagementPlatforms.ZOHO);
+    const newZohoToDos = createNewToDos(tasksToSync, userId, newZohoTags, ProjectManagementPlatforms.ZOHO);
     // Save new projects and tasks
     const savedToDos = await this.toDoRepository.orm.save(newZohoToDos);
     const savedTags = await this.focusModeTagRepository.orm.save(newZohoTags);

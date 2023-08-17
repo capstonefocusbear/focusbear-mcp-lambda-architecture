@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
 import { CreateFocusModeTagDto } from 'apps/api-server/src/modules/focus-mode/dto/create-focus-mode-tag.dto';
+import { FastifyRequest } from 'fastify';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
@@ -1668,3 +1669,8 @@ export const DailyStatsDummy = [
 ];
 
 export const DailyDurationsDummy = { MON: 300, TUE: 500, WED: 350, THU: 600, FRI: 300, SAT: 400, SUN: 1000 };
+
+export const fastifyRequestDummy: FastifyRequest = {
+  body: {},
+  headers: {},
+} as FastifyRequest;

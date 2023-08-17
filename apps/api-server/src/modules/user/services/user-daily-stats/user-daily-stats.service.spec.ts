@@ -409,7 +409,7 @@ describe('UserDailyStatsService', () => {
       const startTime = new Date();
 
       await service.updateDailyStatsRoutineCompletion(
-        userDummy,
+        userDummy.id,
         ActivityType.morning,
         sequenceId,
         startTime,
@@ -420,7 +420,7 @@ describe('UserDailyStatsService', () => {
       expect(QueueMock.add).toBeCalledWith(
         'daily-stats-activity-completed',
         {
-          user: userDummy,
+          user_id: userDummy.id,
           activityType: ActivityType.morning,
           completed_activity_log_id: sequenceId,
           startTime,

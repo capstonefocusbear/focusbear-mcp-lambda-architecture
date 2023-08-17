@@ -11,6 +11,7 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
+import { FastifyRequest } from 'fastify';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
@@ -84,11 +85,10 @@ export class CompletedActivityService {
     private readonly userService: UserService,
   ) {}
 
-  async completeActivity(
-    completedActivity: CreateCompletedActivityDto,
-    { user_id }: GetUserSettingsDto,
-  ): Promise<CompletedActivityResponse> {
+  async completeActivity(request: FastifyRequest, { user_id }: GetUserSettingsDto): Promise<CompletedActivityResponse> {
     try {
+      const { body, headers } = request;
+      const completedActivity = body as CreateCompletedActivityDto;
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -105,7 +105,15 @@ export class CompletedActivityService {
         choice_id,
         should_not_update_current_activity,
         log_quantity_answers,
-      } = completedActivity;
+        start_time,
+      } = completedActivity as CreateCompletedActivityDto;
+      const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
+      const startTimeAsDate = new Date(start_time);
+      // log start time with wrong date to identify which client it's coming from
+      // see issue https://github.com/Focus-Bear/backend/issues/469
+      if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
+        console.log('Error with start time date: ', { body, headers });
+      }
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
         activity_id,

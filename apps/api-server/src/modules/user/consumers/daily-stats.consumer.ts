@@ -46,7 +46,13 @@ export class DailyStatsConsumer {
         },
       });
       const startTimeAsJSDate = new Date(startTime);
-      const startOfDate = DateTime.fromJSDate(startTimeAsJSDate).setZone(timeZone).startOf('day').toJSDate();
+      const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
+      let startTimeToUse = startTimeAsJSDate;
+      // handle invalid start time issue where activities get linked with wrong daily stats
+      if (startTimeAsJSDate.getTime() < oneMonthAgo.getTime()) {
+        startTimeToUse = new Date();
+      }
+      const startOfDate = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
       // eslint-disable-next-line no-console
       console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, startOfDate });
       const dailyStats = await this.dailyStatsRepository.orm.findOne({

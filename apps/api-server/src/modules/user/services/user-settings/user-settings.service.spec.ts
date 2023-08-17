@@ -319,11 +319,18 @@ describe('UserSettingsService', () => {
       Settings.now = () => new Date().valueOf();
     });
 
-    it('positive: should user timezone in UTC offset format receiving UTC offset zone format', async () => {
+    it('positive: should update user timezone in UTC offset format receiving negative UTC offset zone format', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC-2' });
 
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
+    });
+
+    it('positive: should update user timezone in UTC offset format receiving positive UTC offset zone format', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
+      await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC+2' });
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
     });
 
     it('positive: if only language is passed in timezone should not be updated', async () => {
@@ -511,6 +518,20 @@ describe('UserSettingsService', () => {
       const result = userSettingsService.calculateRelaxActivityDuration(sleepTime, shutdownTime, eveningActivities);
 
       expect(Object.is(result, 0)).toBe(true); // no relax time
+    });
+  });
+
+  describe('validateCutoffTime', () => {
+    it('positive: invalid hh:mm format time should return false', () => {
+      const response = userSettingsService.validateCutoffTime('7:30');
+
+      expect(response).toBeFalse();
+    });
+
+    it('positive: valid hh:mm format time should return true', () => {
+      const response = userSettingsService.validateCutoffTime('20:30');
+
+      expect(response).toBeTrue();
     });
   });
 });

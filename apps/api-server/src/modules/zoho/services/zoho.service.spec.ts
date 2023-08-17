@@ -1,5 +1,12 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import {
+  savedZohoProjectDummy,
+  savedZohoTaskDummy,
+  zohoProjectDummy,
+  zohoTaskDummy,
+} from '../../../../test/dummies/zoho.dummies';
+import { userDummy } from '../../../../test/dummies';
 import { SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
@@ -47,5 +54,27 @@ describe('ZohoService', () => {
 
   it('positive: should be defined', () => {
     expect(zohoService).toBeDefined();
+  });
+
+  describe('getZohoProjectsToSync', () => {
+    it('positive: returns projects already saved and ones that need to be synced', async () => {
+      FocusModeTagRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoProjectDummy]);
+
+      const result = await zohoService.getZohoProjectsToSync([zohoProjectDummy], userDummy.id);
+
+      expect(result.projectsToSync.length).toBe(0);
+      expect(result.syncedZohoProjects.length).toBe(1);
+    });
+  });
+
+  describe('getZohoTasksToSync', () => {
+    it('positive: returns tasks already saved and ones that need to be synced', async () => {
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
+
+      const result = await zohoService.getZohoTasksToSync([zohoTaskDummy], userDummy.id);
+
+      expect(result.tasksToSync.length).toBe(0);
+      expect(result.syncedZohoTasks.length).toBe(1);
+    });
   });
 });

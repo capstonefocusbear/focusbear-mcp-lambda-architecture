@@ -164,14 +164,14 @@ export class ZohoService {
     const response = await this.httpService.get(url, {
       headers,
     });
-    return response.data;
+    return response.data?.portals;
   }
 
   async getAllProjects(userId: string): Promise<ZohoProject[]> {
     const portals: any = await this.getPortals(userId);
     let projectsResponse = [];
-    if (!portals.portals) return projectsResponse;
-    for (const portal of portals.portals) {
+    if (!portals) return projectsResponse;
+    for (const portal of portals) {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
@@ -194,9 +194,9 @@ export class ZohoService {
         const portals: any = await this.getPortals(userId);
         const zohoTasks = [];
         let zohoProjects = [];
-        if (!portals.portals) return { zohoProjects, zohoTasks };
+        if (!portals) return { zohoProjects, zohoTasks };
 
-        for (const portal of portals.portals) {
+        for (const portal of portals) {
           zohoProjects = await this.getProjects(userId, portal.id);
           // eslint-disable-next-line no-continue
           if (!zohoProjects.length) continue;

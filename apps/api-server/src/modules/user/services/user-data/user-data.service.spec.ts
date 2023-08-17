@@ -13,7 +13,8 @@ import {
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserDataService } from './user-data.service';
-import { QueueMock } from '../../../../../test/dummies';
+import { QueueMock, userDummy } from '../../../../../test/dummies';
+import { LanguageOptions } from '../../domain/language-options.enum';
 
 describe('UserDataService', () => {
   let service: UserDataService;
@@ -51,5 +52,16 @@ describe('UserDataService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('processAndEmailUserData', () => {
+    it('positive: should enter job into queue to process and email user their data', async () => {
+      await service.processAndEmailUserData(userDummy.id, LanguageOptions.ENGLISH);
+
+      expect(QueueMock.add).toBeCalledWith('get-user-personal-data', {
+        user_id: userDummy.id,
+        language: LanguageOptions.ENGLISH,
+      });
+    });
   });
 });

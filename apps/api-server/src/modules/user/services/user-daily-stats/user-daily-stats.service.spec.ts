@@ -151,6 +151,28 @@ describe('UserDailyStatsService', () => {
       });
     });
 
+    it("positive: if called with CHAT_WITH_FOCUS_BEAR event type, user's onboarding progress has_chatted_with_focus_bear property should change to true", async () => {
+      const mockOnboardingProgress = {
+        level: 1,
+        has_edited_focus_mode: false,
+        has_edited_settings: false,
+        has_edited_always_blocked_urls: false,
+        has_installed_desktop_app: true,
+        has_installed_mobile_app: true,
+        has_chatted_with_focus_bear: false,
+      };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...userDummy,
+        onboarding_progress: mockOnboardingProgress,
+      });
+
+      await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR);
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        onboarding_progress: { ...mockOnboardingProgress, has_chatted_with_focus_bear: true },
+      });
+    });
+
     it("positive: if user doesn't have onboarding stats, base onboarding stats should be used", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
         ...userDummy,

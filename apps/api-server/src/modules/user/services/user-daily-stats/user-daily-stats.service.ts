@@ -247,7 +247,7 @@ export class UserDailyStatsService {
   }
 
   async updateDailyStatsRoutineCompletion(
-    user: User,
+    user_id: string,
     activityType: ActivityType,
     completed_activity_log_id: string,
     startTime: Date,
@@ -260,7 +260,7 @@ export class UserDailyStatsService {
         level: 'debug',
         message: 'User completed activity - updating daily stats',
         data: {
-          user_id: user.id,
+          user_id,
           activity_type: activityType,
           is_offline_activity: isOffLineActivity,
         },
@@ -268,7 +268,7 @@ export class UserDailyStatsService {
       await this.statsQueue.add(
         'daily-stats-activity-completed',
         {
-          user,
+          user_id,
           activityType,
           completed_activity_log_id,
           startTime,

@@ -9,7 +9,6 @@ import { calculateStreaks, determineUserLevel } from '../../../../../../cron-job
 import { DailyStatsRepository } from '../repositories/user-daily-stats.repository';
 import { UserDailyStatsService } from '../services/user-daily-stats/user-daily-stats.service';
 import { UserRepository } from '../repositories/user.repository';
-import { User } from '../entities/user.entity';
 import { ActivitySequenceService } from '../../activity/services/activity-sequence/activity-sequence.service';
 
 @Processor('stats')
@@ -25,7 +24,7 @@ export class DailyStatsConsumer {
   @Process('daily-stats-activity-completed')
   async readOperationJob(
     job: Job<{
-      user: User;
+      user_id: string;
       activityType: ActivityType;
       completed_activity_log_id: string;
       startTime: Date;
@@ -34,7 +33,7 @@ export class DailyStatsConsumer {
     }>,
   ) {
     const {
-      data: { user, timeZone, startTime, activityType, isOffLineActivity, completed_activity_log_id },
+      data: { user_id, timeZone, startTime, activityType, isOffLineActivity, completed_activity_log_id },
     } = job;
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -42,15 +41,25 @@ export class DailyStatsConsumer {
         level: 'debug',
         message: 'Updating user daily stat record from queue',
         data: {
-          user_id: user.id,
+          user_id,
         },
       });
+      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
       const startTimeAsJSDate = new Date(startTime);
-      const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
       let startTimeToUse = startTimeAsJSDate;
-      // handle invalid start time issue where activities get linked with wrong daily stats
-      if (startTimeAsJSDate.getTime() < oneMonthAgo.getTime()) {
-        startTimeToUse = new Date();
+      const { startup_time, shutdown_time, current_sequence_started_at, last_completed_sequence_started_at } = user;
+      const startUp = DateTime.fromFormat(startup_time, 'hh:mm', { zone: timeZone });
+      const shutDown = DateTime.fromFormat(shutdown_time, 'hh:mm', { zone: timeZone });
+      // if user shutdown is after startup on same date, use start of sequence to find daily stat record in case sequence caries over to next day
+      // use last_completed_sequence_started_at in case queued job was executed after sequence completed
+      if (startUp < shutDown) {
+        startTimeToUse = current_sequence_started_at
+          ? new Date(current_sequence_started_at)
+          : new Date(last_completed_sequence_started_at);
+      }
+      // If user shutdown is before startup on same date, use previous date to link activities with correct day
+      if (shutDown < startUp) {
+        startTimeToUse = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).minus({ days: 1 }).toJSDate();
       }
       const startOfDate = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
       // eslint-disable-next-line no-console

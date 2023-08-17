@@ -109,10 +109,12 @@ export class CompletedActivityService {
       } = completedActivity as CreateCompletedActivityDto;
       const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
       const startTimeAsDate = new Date(start_time);
+      let startTimeToUse = start_time;
       // log start time with wrong date to identify which client it's coming from
       // see issue https://github.com/Focus-Bear/backend/issues/469
       if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
         console.log('Error with start time date: ', { body, headers });
+        startTimeToUse = new Date();
       }
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         activity_sequence_id,
@@ -130,7 +132,12 @@ export class CompletedActivityService {
       if (activity.type === ActivityType.break) {
         this.validateChoice(activity, choice);
         await this.deviceService.markAsLeader(device_id, user_id);
-        const createdItem = await this.saveCompletedLog(completedActivity, activity, choice, user_id);
+        const createdItem = await this.saveCompletedLog(
+          { ...completedActivity, start_time: startTimeToUse },
+          activity,
+          choice,
+          user_id,
+        );
         if (log_quantity_answers?.length > 0) {
           logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
         }
@@ -139,7 +146,7 @@ export class CompletedActivityService {
       let completingSequenceLog = null;
       if (!should_not_update_current_activity) {
         completingSequenceLog = await this.updateUserAndSequence(
-          completedActivity,
+          { ...completedActivity, start_time: startTimeToUse },
           { user_id },
           user,
           sequence,
@@ -158,7 +165,7 @@ export class CompletedActivityService {
         });
       }
       const createdItem = await this.saveCompletedLog(
-        completedActivity,
+        { ...completedActivity, start_time: startTimeToUse },
         activity,
         choice,
         user_id,
@@ -174,10 +181,10 @@ export class CompletedActivityService {
       const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningType;
       if (shouldUpdateDailyStats) {
         await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
-          user,
+          user_id,
           activity.type,
           createdItem.completed_activity_log.completed_sequence_id,
-          completedActivity.start_time,
+          startTimeToUse,
           user.timezone,
         );
       }
@@ -308,7 +315,7 @@ export class CompletedActivityService {
         );
         if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
           await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
-            user,
+            user.id,
             activity.type,
             createdItem.completed_activity_log.completed_sequence_id,
             startTime,

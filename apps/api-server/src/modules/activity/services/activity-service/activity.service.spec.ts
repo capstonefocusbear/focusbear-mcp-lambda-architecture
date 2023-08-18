@@ -3,11 +3,13 @@ import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
-import { QueueMock, userDummy } from '../../../../../test/dummies';
+import { QueueMock, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
 import { ActivityService } from './activity.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../../test/mocks/index';
 import { ActivityRepository } from '../../repositories/activity.repository';
+import { ActivityType } from '../../domain/activity-type.enum';
+import { UserTypes } from '../../../user/domain/user-types.enum';
 
 describe('ActivityService', () => {
   let activityService: ActivityService;
@@ -92,6 +94,47 @@ describe('ActivityService', () => {
         user_id: userDummy.id,
         filePath: `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       });
+    });
+  });
+
+  describe('getUserActivitiesForAdmin', () => {
+    it('negative: should throw error if non-admin user tries to access other users activities', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.STANDARD });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.getActivitiesForAdmin.mockResolvedValueOnce(
+        userSettingsDBResponseDummy.activity_sequences[0].activities,
+      );
+      let exception;
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access this endpoint!`;
+
+      try {
+        await activityService.getUserActivitiesForAdmin(userDummy.id, {
+          user_id: userDummy.id,
+          page_num: 2,
+          activity_type: ActivityType.morning,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return users activities for admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.getActivitiesForAdmin.mockResolvedValueOnce(
+        userSettingsDBResponseDummy.activity_sequences[0].activities,
+      );
+
+      await activityService.getUserActivitiesForAdmin(userDummy.id, {
+        user_id: userDummy.id,
+        page_num: 2,
+        activity_type: ActivityType.morning,
+      });
+
+      expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
     });
   });
 });

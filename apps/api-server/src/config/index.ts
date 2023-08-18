@@ -15,5 +15,6 @@ export * from './sentry.config';
 export * from './bull.config';
 export * from './r2.config';
 export * from './openai.config';
+export * from './zoho.config';
 
 export const configsArray: any = Object.values(this).slice(1);

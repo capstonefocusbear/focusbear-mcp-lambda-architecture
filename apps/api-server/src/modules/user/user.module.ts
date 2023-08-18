@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
@@ -104,12 +104,12 @@ import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consume
       useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     ActivityModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
     ConfigModule,
     SubscriptionModule,
     HabitPackModule,
     FocusModeTemplatesModule,
-    DeviceModule,
+    forwardRef(() => DeviceModule),
     HelperModule,
   ],
   controllers: [

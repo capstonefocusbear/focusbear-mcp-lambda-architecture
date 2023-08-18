@@ -87,7 +87,7 @@ export class UserService {
         },
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
-      if (!auth0User) throw new NotFoundException('User does not exit in Auth0!');
+      if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
       const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
@@ -212,7 +212,7 @@ export class UserService {
         },
       });
       const userDetails = await this.userRepository.getUserDetails(id);
-      if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const { email } = await this.auth0ManagementService.getUser({ id: userDetails.auth0_id });
       const { focus_modes } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
@@ -240,7 +240,7 @@ export class UserService {
         },
       });
       let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
-      if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exit!`);
+      if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
       let current_sequence_completed_activities = [];
       if (partialUser.current_activity) {
         const updatedPartialUser = await this.recalculateActivityProps(partialUser);
@@ -289,7 +289,7 @@ export class UserService {
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       const updatedSettings = this.mergeLocalSettings(user.local_device_settings, local_device_settings);
       await this.userRepository.orm.update(user_id, {
         local_device_settings: updatedSettings,
@@ -320,7 +320,7 @@ export class UserService {
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exit!`);
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       if (!user.local_device_settings) {
         return { iOS: null, Windows: null, MacOS: null, Android: null, Web: { hasEditedSettings: false } };
       }

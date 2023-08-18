@@ -347,6 +347,18 @@ export class User extends BaseEntity {
   })
   last_status_synced_with_profitwell?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  zoho_location?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  zoho_access_token?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  zoho_refresh_token?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  zoho_account_server?: string;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

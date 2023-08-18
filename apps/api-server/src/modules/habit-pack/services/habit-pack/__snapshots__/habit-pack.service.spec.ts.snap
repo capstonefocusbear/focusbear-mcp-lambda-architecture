@@ -1,10 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`HabitPackService getHabitPack Positive: should return a habit pack 1`] = `
-Object {
+{
   "description": "This is a great pack",
   "description_video_url": "www.youtube.com",
-  "deserializedActivityTemplates": Object {
+  "deserializedActivityTemplates": {
     "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
     "featured_for_onboarding": false,
@@ -14,19 +14,19 @@ Object {
     "marketplace_request": "requested",
     "pack_name": "Standalone Pack's Name",
     "pack_type": "standalone",
-    "standalone_activities": Array [
-      Object {
+    "standalone_activities": [
+      {
         "activity_type": "standalone_activity",
         "choice_type": "random",
-        "choices": Array [
-          Object {
+        "choices": [
+          {
             "activity_type": "standalone_activity",
             "duration_seconds": 300,
             "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
             "log_quantity": true,
             "log_summary_type": "SUM",
             "name": "Crunches",
-            "video_urls": Array [
+            "video_urls": [
               "https://www.youtube.com/watch?v=ueSWOFxOZSc",
             ],
           },
@@ -37,18 +37,18 @@ Object {
         "log_summary_type": "SUM",
         "name": "Journaling",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
+        "video_urls": [],
       },
-      Object {
+      {
         "activity_type": "standalone_activity",
-        "choices": Array [],
+        "choices": [],
         "duration_seconds": 300,
         "id": "b9501b60-1286-484a-b0be-5838f52e2ff9",
         "log_quantity": false,
         "log_summary_type": "SUM",
         "name": "Swimming",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
+        "video_urls": [],
       },
     ],
     "welcome_message": "<p>test welcome message</p>",
@@ -66,8 +66,8 @@ Object {
 `;
 
 exports[`HabitPackService getMultipleHabitPacks positive: should fetch habit packs 1`] = `
-Array [
-  Object {
+[
+  {
     "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
     "featured_for_onboarding": false,
@@ -77,19 +77,19 @@ Array [
     "marketplace_request": "requested",
     "pack_name": "Standalone Pack's Name",
     "pack_type": "standalone",
-    "standalone_activities": Array [
-      Object {
+    "standalone_activities": [
+      {
         "activity_type": "standalone_activity",
         "choice_type": "random",
-        "choices": Array [
-          Object {
+        "choices": [
+          {
             "activity_type": "standalone_activity",
             "duration_seconds": 300,
             "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
             "log_quantity": true,
             "log_summary_type": "SUM",
             "name": "Crunches",
-            "video_urls": Array [
+            "video_urls": [
               "https://www.youtube.com/watch?v=ueSWOFxOZSc",
             ],
           },
@@ -100,32 +100,32 @@ Array [
         "log_summary_type": "SUM",
         "name": "Journaling",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
+        "video_urls": [],
       },
-      Object {
+      {
         "activity_type": "standalone_activity",
-        "choices": Array [],
+        "choices": [],
         "duration_seconds": 300,
         "id": "b9501b60-1286-484a-b0be-5838f52e2ff9",
         "log_quantity": false,
         "log_summary_type": "SUM",
         "name": "Swimming",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
+        "video_urls": [],
       },
     ],
     "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
     "welcome_message": "<p>test welcome message</p>",
     "welcome_video_url": "www.youtube.com",
   },
-  Object {
-    "break_activities": Array [
-      Object {
+  {
+    "break_activities": [
+      {
         "activity_type": "break_activity",
-        "allowed_apps": Array [],
-        "allowed_urls": Array [],
+        "allowed_apps": [],
+        "allowed_urls": [],
         "choice_type": "random",
-        "choices": Array [],
+        "choices": [],
         "duration_seconds": 30,
         "id": "630c921d-dc9c-4107-acd2-023d7930d9bf",
         "include_in_every_break": true,
@@ -135,23 +135,23 @@ Array [
         "log_summary_type": "SUM",
         "name": "Micro-workout",
         "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
-        "video_urls": Array [],
+        "video_urls": [],
       },
     ],
     "creator_name": "someusername",
     "description": "<p>test desc</p>",
     "description_video_url": "www.google.com",
-    "evening_activities": Array [
-      Object {
+    "evening_activities": [
+      {
         "activity_type": "evening_activity",
-        "choices": Array [],
+        "choices": [],
         "duration_seconds": 150,
         "id": "f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e",
         "log_quantity": false,
         "log_summary_type": "SUM",
         "name": "Mess up desk",
         "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
-        "video_urls": Array [],
+        "video_urls": [],
       },
     ],
     "featured_for_onboarding": false,
@@ -159,17 +159,17 @@ Array [
     "is_featured": false,
     "marketplace_approval_status": false,
     "marketplace_request": "requested",
-    "morning_activities": Array [
-      Object {
+    "morning_activities": [
+      {
         "activity_type": "morning_activity",
-        "choices": Array [],
+        "choices": [],
         "duration_seconds": 300,
         "id": "b24c9383-f8a0-409c-bbd9-e37b9566de3b",
         "log_quantity": false,
         "log_summary_type": "SUM",
         "name": "Yoga",
         "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
-        "video_urls": Array [
+        "video_urls": [
           "https://www.youtube.com/watch?v=nz5MCv0sFDA",
           "https://www.youtube.com/watch?v=oexYiIy75V8",
         ],
@@ -185,7 +185,7 @@ Array [
 `;
 
 exports[`HabitPackService serializeHabitPack Positive: should return serialized pack 1`] = `
-Object {
+{
   "description": "This is a great pack",
   "description_video_url": "www.youtube.com",
   "id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",

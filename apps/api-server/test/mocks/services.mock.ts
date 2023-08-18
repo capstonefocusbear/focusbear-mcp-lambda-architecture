@@ -171,3 +171,15 @@ export const OpenAIServiceMock = {
   streamChatReply: jest.fn(),
   checkIfUsernameIsValid: jest.fn(),
 };
+
+export const ZohoAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  refreshToken: jest.fn(),
+  getZohoLoginUrl: jest.fn(),
+};
+
+export const ZohoServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+};

@@ -52,6 +52,7 @@ import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enu
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { ONE_MINUTE, TRIAL_COST_CENTS } from '../../../../shared/utils/constants';
+import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -152,7 +153,7 @@ describe('UserService', () => {
 
     it('negative: if user account does not exist in Auth, throw the NotFoundException', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(undefined);
-      const errorMessage = 'User does not exit in Auth0!';
+      const errorMessage = 'User does not exist in Auth0!';
       let exception: any;
 
       try {
@@ -197,7 +198,7 @@ describe('UserService', () => {
 
     it('negative: if user account does not exist, throw the NotFoundException', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(null);
-      const errorMessage = `User with id: ${id} does not exit!`;
+      const errorMessage = `User with id: ${id} does not exist!`;
       let exception: any;
       try {
         await userService.getUserDetails(id);
@@ -226,7 +227,7 @@ describe('UserService', () => {
         exception = error;
       }
 
-      const errorMessage = `User with id: ${user_id} does not exit!`;
+      const errorMessage = `User with id: ${user_id} does not exist!`;
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
@@ -314,7 +315,7 @@ describe('UserService', () => {
         exception = error;
       }
 
-      const errorMessage = `User with id: ${user_id} does not exit!`;
+      const errorMessage = `User with id: ${user_id} does not exist!`;
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
@@ -331,6 +332,20 @@ describe('UserService', () => {
         updated_at: expect.toBeDateString(),
       });
     });
+
+    it('positive: if user has edited blocked URLs, onboarding data should be updated', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+
+      await userService.updateUserLocalDeviceSettings(userDummy.id, {
+        ...localSettings,
+        MacOS: { has_edited_blocked_urls: true },
+      });
+
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+        userDummy.id,
+        UserProgressUpdateTypes.EDIT_BLOCKED_URLS,
+      );
+    });
   });
 
   describe('getUserLocalDeviceSettings', () => {
@@ -345,7 +360,7 @@ describe('UserService', () => {
         exception = error;
       }
 
-      const errorMessage = `User with id: ${user_id} does not exit!`;
+      const errorMessage = `User with id: ${user_id} does not exist!`;
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
@@ -640,6 +655,131 @@ describe('UserService', () => {
       );
 
       expect(QueueMock.add).not.toBeCalled();
+    });
+  });
+
+  describe('getFocusBlockSummary', () => {
+    it('negative: should throw error if user is not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.getFocusBlockSummary(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should fetch focus blocks for user for last 7 days', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      await userService.getFocusBlockSummary(userDummy.id);
+
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, {
+        from_time: expect.toBeDate(),
+        to_time: expect.toBeDate(),
+      });
+    });
+  });
+
+  describe('getCompletedActivitySummary', () => {
+    it('negative: should throw error if user is not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.getCompletedActivitySummary(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should fetch completed activity summary for user for last 7 days', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      await userService.getCompletedActivitySummary(userDummy.id);
+
+      expect(CompletedActivityRepositoryMock.getWeekSummary).toBeCalledWith(userDummy.id);
+    });
+  });
+
+  describe('getUserById', () => {
+    it('positive: should fetch user for admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.STANDARD });
+      let exception: any;
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access this endpoint!`;
+      try {
+        await userService.getUserById(userDummy.id, userDummy.id, userDummy.stripe_customer_id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should fetch user for admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.getUserForAdmin.mockResolvedValueOnce(userDummy);
+
+      const response = await userService.getUserById(userDummy.id, userDummy.id, userDummy.stripe_customer_id);
+
+      expect(response).toEqual({ ...userDummy, activities: [] });
+    });
+  });
+
+  describe('updateMetadata', () => {
+    it('positive: should call function to update user metadata', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
+      const descriptionDummy = 'Random text here';
+
+      await userService.updateMetadata(
+        { profile_image: profileImageDummy, description: descriptionDummy },
+        userDummy.id,
+      );
+
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        metadata: { profile_image: profileImageDummy, description: descriptionDummy },
+        updated_at: expect.toBeDateString(),
+        has_received_inactivity_warning: false,
+      });
+    });
+  });
+
+  describe('saveAdminAccessRequest', () => {
+    it('negative: should throw error if user is not admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.STANDARD });
+      const accessReasonDummy = 'Check user activities';
+      let exception: any;
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access this endpoint!`;
+      try {
+        await userService.saveAdminAccessRequest(userDummy.id, accessReasonDummy);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should save admin access request in database', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      const accessReasonDummy = 'Check user activities';
+
+      await userService.saveAdminAccessRequest(userDummy.id, accessReasonDummy);
+
+      expect(AdminAccessRequestRepositoryMock.create).toBeCalledWith(
+        new AdminAccessRequest({ admin_user_id: userDummy.id, access_reason: accessReasonDummy }),
+      );
     });
   });
 });

@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Should convert UpdateActivityDto type activities to ActivityTemplate class and return them in an array 1`] = `
-Array [
+[
   ActivityTemplate {
     "activity_data": ActivityData {
       "allowed_apps": undefined,
@@ -21,7 +21,7 @@ Array [
       "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
-      "video_urls": Array [
+      "video_urls": [
         "https://www.youtube.com/watch?v=nz5MCv0sFDA",
         "https://www.youtube.com/watch?v=oexYiIy75V8",
       ],
@@ -58,7 +58,7 @@ Array [
       "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
-      "video_urls": Array [],
+      "video_urls": [],
     },
     "activity_type": "library",
     "check_list": undefined,
@@ -92,7 +92,7 @@ Array [
       "show_saved_distracting_websites": undefined,
       "take_notes": undefined,
       "text_instructions": undefined,
-      "video_urls": Array [
+      "video_urls": [
         "https://www.youtube.com/watch?v=36mnXAQGRzc",
       ],
     },
@@ -113,9 +113,9 @@ Array [
 `;
 
 exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Should return an array containing deserialized routine activities(formats activity DTOs to ActivityTemplates) 1`] = `
-Object {
-  "deserializedActivityTemplates": Array [
-    Array [
+{
+  "deserializedActivityTemplates": [
+    [
       ActivityTemplate {
         "activity_data": ActivityData {
           "allowed_apps": undefined,
@@ -135,7 +135,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=nz5MCv0sFDA",
             "https://www.youtube.com/watch?v=oexYiIy75V8",
           ],
@@ -172,7 +172,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=36mnXAQGRzc",
           ],
         },
@@ -190,7 +190,7 @@ Object {
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
-    Array [
+    [
       ActivityTemplate {
         "activity_data": ActivityData {
           "allowed_apps": undefined,
@@ -210,7 +210,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=nz5MCv0sFDA",
             "https://www.youtube.com/watch?v=oexYiIy75V8",
           ],
@@ -247,7 +247,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=36mnXAQGRzc",
           ],
         },
@@ -265,7 +265,7 @@ Object {
         "user_id": "3a4f0bb1-5313-49da-9ae6-cc28e864763f",
       },
     ],
-    Array [
+    [
       ActivityTemplate {
         "activity_data": ActivityData {
           "allowed_apps": undefined,
@@ -285,7 +285,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=nz5MCv0sFDA",
             "https://www.youtube.com/watch?v=oexYiIy75V8",
           ],
@@ -322,7 +322,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=36mnXAQGRzc",
           ],
         },
@@ -341,14 +341,14 @@ Object {
       },
     ],
   ],
-  "logQuantityQuestions": Array [],
+  "logQuantityQuestions": [],
 }
 `;
 
 exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive: Should return an object containing deserialized standalone activities(formats activity DTOs to ActivityTemplates) 1`] = `
-Object {
-  "deserializedActivityTemplates": Array [
-    Array [
+{
+  "deserializedActivityTemplates": [
+    [
       ActivityTemplate {
         "activity_data": ActivityData {
           "allowed_apps": undefined,
@@ -368,7 +368,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=nz5MCv0sFDA",
             "https://www.youtube.com/watch?v=oexYiIy75V8",
           ],
@@ -405,7 +405,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [],
+          "video_urls": [],
         },
         "activity_type": "standalone",
         "check_list": undefined,
@@ -439,7 +439,7 @@ Object {
           "show_saved_distracting_websites": undefined,
           "take_notes": undefined,
           "text_instructions": undefined,
-          "video_urls": Array [
+          "video_urls": [
             "https://www.youtube.com/watch?v=36mnXAQGRzc",
           ],
         },
@@ -458,14 +458,14 @@ Object {
       },
     ],
   ],
-  "logQuantityQuestions": Array [],
+  "logQuantityQuestions": [],
 }
 `;
 
 exports[`ActivityTemplateParserService serialize Positive: should return serialized activity templates 1`] = `
-Object {
-  "standalone_activities": Array [
-    Object {
+{
+  "standalone_activities": [
+    {
       "activity_type": "standalone_activity",
       "check_list": undefined,
       "choices": undefined,
@@ -478,7 +478,7 @@ Object {
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
     },
-    Object {
+    {
       "activity_type": "standalone_activity",
       "check_list": undefined,
       "choices": undefined,
@@ -491,7 +491,7 @@ Object {
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
     },
-    Object {
+    {
       "activity_type": "standalone_activity",
       "check_list": undefined,
       "choices": undefined,
@@ -509,15 +509,15 @@ Object {
 `;
 
 exports[`ActivityTemplateParserService serializeLibraryActivities Positive: Should format ActivityTemplates to UpdateActivityDto type to send as response 1`] = `
-Object {
+{
   "activity_type": "standalone",
   "check_list": undefined,
   "choice_type": "random",
-  "choices": Array [
-    Object {
+  "choices": [
+    {
       "activity_type": "standalone",
       "check_list": undefined,
-      "choices": Array [],
+      "choices": [],
       "completion_requirements": undefined,
       "duration_seconds": 300,
       "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
@@ -526,7 +526,7 @@ Object {
       "log_summary_type": "SUM",
       "name": "Crunches",
       "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-      "video_urls": Array [],
+      "video_urls": [],
     },
   ],
   "completion_requirements": undefined,
@@ -537,6 +537,6 @@ Object {
   "log_summary_type": "SUM",
   "name": "Journaling",
   "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-  "video_urls": Array [],
+  "video_urls": [],
 }
 `;

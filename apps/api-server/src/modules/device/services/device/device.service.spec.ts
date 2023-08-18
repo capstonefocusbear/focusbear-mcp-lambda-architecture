@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
-import { DeviceDummy } from '../../../../../test/dummies';
+import { DeviceDummy, userDummy } from '../../../../../test/dummies';
 import { DeviceRepositoryMock, SentryServiceMock, UserServiceMock } from '../../../../../test/mocks';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
@@ -89,6 +89,36 @@ describe('DeviceService', () => {
       await deviceService.markAsLeader(id, user_id);
 
       expect(DeviceRepositoryMock.orm.save).toBeCalledWith({ ...DeviceDummy, is_leader: true });
+    });
+  });
+
+  describe('getUserInstalledDevices', () => {
+    const desktopDeviceDummy = new Device({
+      user_id: userDummy.id,
+      operating_system: OperatingSystem.MacOS,
+      is_leader: true,
+    });
+    const mobileDeviceDummy = new Device({
+      user_id: userDummy.id,
+      operating_system: OperatingSystem.Android,
+      is_leader: true,
+    });
+    it('positive: should return true for each platform type if user has used app on platform', async () => {
+      DeviceRepositoryMock.orm.find.mockResolvedValueOnce([desktopDeviceDummy, mobileDeviceDummy]);
+
+      const response = await deviceService.getUserInstalledDevices(userDummy.id);
+
+      expect(response.hasInstalledDesktopApp).toBeTrue();
+      expect(response.hasInstalledMobileApp).toBeTrue();
+    });
+
+    it('positive: should return false for each platform type if user has NOT used app on platform', async () => {
+      DeviceRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      const response = await deviceService.getUserInstalledDevices(userDummy.id);
+
+      expect(response.hasInstalledDesktopApp).toBeFalse();
+      expect(response.hasInstalledMobileApp).toBeFalse();
     });
   });
 });

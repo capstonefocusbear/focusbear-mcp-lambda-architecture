@@ -1,16 +1,16 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`ActivityLibraryService getLibraryActivities positive: should fetch activity templates from the DB and format them as activity DTOs before returning them as response 1`] = `
-Array [
-  Object {
+[
+  {
     "activity_type": "standalone",
     "check_list": undefined,
     "choice_type": "random",
-    "choices": Array [
-      Object {
+    "choices": [
+      {
         "activity_type": "standalone",
         "check_list": undefined,
-        "choices": Array [],
+        "choices": [],
         "completion_requirements": undefined,
         "duration_seconds": 300,
         "id": "3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80",
@@ -19,7 +19,7 @@ Array [
         "log_summary_type": "SUM",
         "name": "Crunches",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-        "video_urls": Array [],
+        "video_urls": [],
       },
     ],
     "completion_requirements": undefined,
@@ -30,13 +30,13 @@ Array [
     "log_summary_type": "SUM",
     "name": "Journaling",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "video_urls": Array [],
+    "video_urls": [],
   },
-  Object {
+  {
     "activity_type": "standalone",
     "check_list": undefined,
     "choice_type": "random",
-    "choices": Array [],
+    "choices": [],
     "completion_requirements": undefined,
     "duration_seconds": 300,
     "id": "b9501b60-1286-484a-b0be-5838f52e2ff9",
@@ -45,9 +45,9 @@ Array [
     "log_summary_type": "SUM",
     "name": "Swimming",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
-    "video_urls": Array [],
+    "video_urls": [],
   },
 ]
 `;
 
-exports[`ActivityLibraryService updateLibraryActivities positive: should format activity DTOs as ActivityTemplates and then upsert activity templates 1`] = `Array []`;
+exports[`ActivityLibraryService updateLibraryActivities positive: should format activity DTOs as ActivityTemplates and then upsert activity templates 1`] = `[]`;

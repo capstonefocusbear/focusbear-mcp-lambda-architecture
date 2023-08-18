@@ -24,6 +24,7 @@ export const UserRepositoryMock = {
   getUsersList: jest.fn(),
   getUserCurrentActivityProps: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),
+  getUserForAdmin: jest.fn(),
 };
 
 export const UserConsentRepositoryMock = {
@@ -65,6 +66,7 @@ export const DeviceRepositoryMock = {
 
 export const ActivityRepositoryMock = {
   ...BaseRepositoryMock,
+  getActivitiesForAdmin: jest.fn(),
 };
 
 export const LogQuantityAnswersRepositoryMock = {

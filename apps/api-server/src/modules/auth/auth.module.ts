@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { IPusherOptions, PusherModule } from '@app/pusher';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './services/auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
 import { HelperModule } from '../helper/helper.module';
@@ -11,11 +12,22 @@ import { PusherAuthController } from './controllers/pusher-auth.controller';
 import { PusherBeamsAuthService } from './services/pusher-beams-auth.service';
 import { UserRepository } from '../user/repositories/user.repository';
 import { IsAdmin } from './guards/is-admin/is-admin.guard';
+import { ZohoAuthService } from './services/zoho-auth.service';
+import { ZohoAuthController } from './controllers/zoho-auth.controller';
+import { ZohoModule } from '../zoho/zoho.module';
 
 @Module({
-  providers: [AuthService, IsAuth, HasAuth0ActionSecret, PusherBeamsAuthService, UserRepository, IsAdmin],
-  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret],
-  controllers: [PusherAuthController],
+  providers: [
+    AuthService,
+    IsAuth,
+    HasAuth0ActionSecret,
+    PusherBeamsAuthService,
+    UserRepository,
+    IsAdmin,
+    ZohoAuthService,
+  ],
+  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService],
+  controllers: [PusherAuthController, ZohoAuthController],
   imports: [
     Auth0Module.registerAsync({
       imports: [ConfigModule],
@@ -32,8 +44,14 @@ import { IsAdmin } from './guards/is-admin/is-admin.guard';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => configService.get('tokens.invitation'),
+    }),
     HelperModule,
     ConfigModule,
+    forwardRef(() => ZohoModule),
   ],
 })
 export class AuthModule {}

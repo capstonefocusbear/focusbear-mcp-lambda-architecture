@@ -44,6 +44,12 @@ export class ToDo extends BaseEntity {
   })
   details: string;
 
+  @Column({ type: 'varchar', default: null, nullable: true })
+  external_task_id?: string;
+
+  @Column({ type: 'jsonb', default: null, nullable: true })
+  external_task_metadata?: any;
+
   @Column({ type: 'timestamptz', default: null, nullable: true })
   due_date?: Date;
 

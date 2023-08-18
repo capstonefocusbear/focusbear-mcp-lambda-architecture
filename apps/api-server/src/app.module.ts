@@ -29,6 +29,7 @@ import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
 import { AppLogsModule } from './modules/app-logs/app-logs.module';
 import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
 import { ToDoModule } from './modules/to-do/to-do.module';
+import { ZohoModule } from './modules/zoho/zoho.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { ToDoModule } from './modules/to-do/to-do.module';
     AppLogsModule,
     SavedWebsiteModule,
     ToDoModule,
+    ZohoModule,
   ],
   controllers: [AppController],
 })

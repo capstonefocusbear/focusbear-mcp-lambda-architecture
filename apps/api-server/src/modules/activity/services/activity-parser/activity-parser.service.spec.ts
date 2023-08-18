@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { randomUUID } from 'crypto';
 import { ActivitySequenceRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
@@ -7,6 +8,8 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { ActivityParserService } from './activity-parser.service';
 import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
 import { standaloneHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
+import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
+import { LogSummaryType } from '../../domain/log-summary-type.enum';
 
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;
@@ -81,6 +84,28 @@ describe('ActivityParserService', () => {
 
       expect(result).toBeArray();
       expect(result.length).toBe(4);
+    });
+  });
+
+  describe('createLogQuantityQuestions', () => {
+    it("positive: should create log quantity question for activity if log quantity is true and it doesn't have any log quantity questions yet (convert old type log quantity activities to new format using log quantity questions)", () => {
+      const activityDummy = {
+        name: 'test',
+        id: randomUUID(),
+        log_summary_type: LogSummaryType.SUM,
+        log_quantity: true,
+        log_quantity_questions: [],
+      };
+      const response = activityParserService.createLogQuantityQuestions(activityDummy, userDummy.id);
+
+      expect(response[0]).toStrictEqual(
+        new LogQuantityQuestion({
+          question: `Log quantity for ${activityDummy.name}`,
+          activity_id: activityDummy.id,
+          user_id: userDummy.id,
+          log_summary_type: activityDummy.log_summary_type,
+        }),
+      );
     });
   });
 });

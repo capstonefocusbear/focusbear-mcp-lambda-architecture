@@ -65,7 +65,6 @@ import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/
 import { ActivityType } from '../../domain/activity-type.enum';
 import { DaySummary } from '../../domain/day-summary.mode';
 import { UserSettingsService } from '../../../user/services/user-settings/user-settings.service';
-import { CompletedActivityResponse } from '../../domain/completed-activity-response.model';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { HelperCommonService } from '../../../helper/services/helper-common/helper-common.service';
 import { DaysOfWeek } from '../../domain/days-of-week.enum';
@@ -1356,7 +1355,7 @@ describe('CompletedActivityService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('Positive: should return an array of completed activities', async () => {
+    it('Positive: should save completed activities and return empty array if no errors', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(MorningActivitySequenceDummy);
       ActivityRepositoryMock.orm.find.mockResolvedValue(ActivitiesArrayDummy.morning_activities);
@@ -1375,8 +1374,27 @@ describe('CompletedActivityService', () => {
         },
       );
 
-      expect(result[0]).toBeInstanceOf(CompletedActivityResponse);
-      expect(result).toMatchSnapshot();
+      expect(result).toBeArray();
+      expect(result.length).toBe(0);
+    });
+
+    it('Positive: should return array of activities that failed to save', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(MorningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValue(ActivitiesArrayDummy.morning_activities);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLogForSyncing.mockRejectedValue(
+        new NotFoundException('Throwing for test'),
+      );
+      CompletedActivityRepositoryMock.upsert
+        .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
+        .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+
+      const result = await completedActivityService.completeMultipleActivities([completedActivitiesArrayDummy[0]], {
+        user_id: userDummy.id,
+      });
+
+      expect(result).toBeArray();
+      expect(result[0]).toStrictEqual(completedActivitiesArrayDummy[0]);
     });
 
     it('Positive: should fetch sequence for each sequence activities are from (case with activities from 2 different sequences)', async () => {

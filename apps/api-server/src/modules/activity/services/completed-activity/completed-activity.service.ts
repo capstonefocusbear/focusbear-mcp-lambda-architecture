@@ -208,7 +208,7 @@ export class CompletedActivityService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-      const createdLogs: CompletedActivityResponse[] = [];
+      const failedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] = [];
       const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
       const activitySequenceCache = {};
       const activitiesCache = {};
@@ -230,31 +230,27 @@ export class CompletedActivityService {
               allActivitiesFromSequence = activitiesCache[sequenceId];
             }
             for await (const completedActivity of activities) {
-              await this.syncOfflineActivity({
+              const wasSaved = await this.syncOfflineActivity({
                 completedActivity,
                 user,
                 allActivitiesFromSequence,
                 sequence,
-                createdLogs,
               });
+              if (!wasSaved) {
+                failedActivities.push(completedActivity);
+              }
             }
           }
         }),
       );
-      return createdLogs;
+      return failedActivities;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  async syncOfflineActivity({
-    completedActivity,
-    user,
-    allActivitiesFromSequence,
-    sequence,
-    createdLogs,
-  }: SyncOfflineActivityArgs) {
+  async syncOfflineActivity({ completedActivity, user, allActivitiesFromSequence, sequence }: SyncOfflineActivityArgs) {
     try {
       const startTime = completedActivity.start_time;
       const completingSequenceLog =
@@ -280,9 +276,8 @@ export class CompletedActivityService {
           false,
           completingSequenceLog,
         );
-        let logQuantityAnswers: LogQuantityAnswer[] = [];
         if (log_quantity_answers?.length > 0) {
-          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+          await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
         }
         if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
           await this.updateCompetencyLevel(
@@ -310,9 +305,6 @@ export class CompletedActivityService {
             startTime,
           );
         }
-        createdLogs.push(
-          new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers }),
-        );
         if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
           await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
             user.id,
@@ -323,9 +315,23 @@ export class CompletedActivityService {
             true,
           );
         }
+        // return true to indicate activity was saved successfully
+        return true;
       }
     } catch (error) {
+      console.error('Error syncing offline activity: ', error);
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      // avoid retrying saving activity in case of these error types
+      console.log(typeof error);
+      if (
+        error?.name.includes('TypeError') ||
+        error?.name.includes('RangeError') ||
+        error?.name.includes('ReferenceError')
+      ) {
+        return true;
+      }
+      // return false to indicate saving activity should be retried
+      return false;
     }
   }
 

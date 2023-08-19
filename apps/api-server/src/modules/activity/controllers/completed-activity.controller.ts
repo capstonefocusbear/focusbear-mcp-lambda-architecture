@@ -49,7 +49,7 @@ export class CompletedActivityController {
       completed_activities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
     },
     @AuthContext() { user }: Passport,
-  ): Promise<CompletedActivityResponse[]> {
+  ): Promise<(CreateCompletedActivityDto | CreateSkippedActivityDto)[]> {
     // temporary implementation to fix typo in body key
     const activities = [...(completed_activites || []), ...(completed_activities || [])];
     return this.completedActivityService.completeMultipleActivities(activities, { user_id: user.id });

@@ -9,6 +9,7 @@ import { CompletedActivity } from './completed-activity.entity';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogQuantityQuestion } from './log-quantity-questions';
+import { ImpactCategory } from '../domain/impact-category.enum';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -119,6 +120,15 @@ export class Activity extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('check_list'),
   })
   check_list?: string[];
+
+  @Column({
+    type: 'enum',
+    name: 'impact_category',
+    enum: ImpactCategory,
+    nullable: true,
+    default: null,
+  })
+  impact_category?: ImpactCategory;
 
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',

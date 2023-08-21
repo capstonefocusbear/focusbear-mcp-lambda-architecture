@@ -56,6 +56,7 @@ export class ActivityParserService {
         linked_activity_id,
         check_list,
         impact_category,
+        created_at,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -73,6 +74,7 @@ export class ActivityParserService {
         linked_activity_id,
         check_list,
         impact_category,
+        created_at,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);

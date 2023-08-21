@@ -55,6 +55,7 @@ export class ActivityParserService {
         log_quantity_questions,
         linked_activity_id,
         check_list,
+        impact_category,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -71,6 +72,7 @@ export class ActivityParserService {
         log_quantity_questions,
         linked_activity_id,
         check_list,
+        impact_category,
         ...activity_data,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -173,6 +175,7 @@ export class ActivityParserService {
       // destructure log_quantity_question to remove it from activity_data field as it will be saved
       // in the new format in getLogQuantityQuestions function
       log_quantity_question,
+      impact_category,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -204,6 +207,7 @@ export class ActivityParserService {
       completion_requirements,
       linked_activity_id,
       check_list,
+      impact_category,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));

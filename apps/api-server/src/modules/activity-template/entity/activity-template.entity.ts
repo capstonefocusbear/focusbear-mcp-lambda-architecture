@@ -7,6 +7,7 @@ import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 
 @Entity('activity_template')
 export class ActivityTemplate extends BaseEntity {
@@ -98,6 +99,15 @@ export class ActivityTemplate extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('check_list'),
   })
   check_list?: string[];
+
+  @Column({
+    type: 'enum',
+    name: 'impact_category',
+    enum: ImpactCategory,
+    nullable: true,
+    default: null,
+  })
+  impact_category?: ImpactCategory;
 
   @DeleteDateColumn()
   deleted_at?: Date;

@@ -110,6 +110,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.days_of_week',
         'activities.linked_activity_id',
         'activities.check_list',
+        'activities.impact_category',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',

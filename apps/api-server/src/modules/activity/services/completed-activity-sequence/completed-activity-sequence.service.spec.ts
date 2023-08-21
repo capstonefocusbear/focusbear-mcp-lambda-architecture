@@ -612,11 +612,15 @@ describe('CompletedActivitySequenceService', () => {
         shutdown_time: '02:00',
         current_sequence_started_at: new Date('2022-10-06T02:05:00.000+00:00'),
       });
-      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivitySequenceDummy);
+      ActivitySequenceRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        type: ActivityType.evening,
+      });
       UncompletedSequenceLogDummy.finalizeUncompletedLog();
       jest
         .spyOn(completedActivitySequenceService, 'completeActivitySequence')
         .mockResolvedValue(UncompletedSequenceLogDummy);
+
       await completedActivitySequenceService.forceCompleteCurrentSequence(
         testUser.current_activity_sequence_id,
         testUser.id,

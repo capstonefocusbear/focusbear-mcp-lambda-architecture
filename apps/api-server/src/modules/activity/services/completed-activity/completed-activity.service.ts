@@ -602,10 +602,14 @@ export class CompletedActivityService {
       hour: Number(startupHours),
       minute: Number(startupMins),
     });
-    const userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
+    let userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
       hour: Number(shutdownHours),
       minute: Number(shutdownMins),
     });
+    // If shutdown time is before startup time in hh:mm format (meaning it's past midnight), set it to be following day
+    if (userShutdownTime < userStartupTime) {
+      userShutdownTime = userShutdownTime.plus({ days: 1 });
+    }
     return { userTimeZone, userCurrentTime, userStartupTime, userShutdownTime };
   }
 

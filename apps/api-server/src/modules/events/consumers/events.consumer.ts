@@ -2,14 +2,14 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import axios from 'axios';
-import { SendinblueService } from '@app/sendinblue/sendinblue.service';
+import { BrevoService } from '@app/brevo/brevo.service';
 import { TrackEventDto } from '../dto/track-event.dto';
 
 @Processor('events')
 export class EventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
-    private readonly sendinblueService: SendinblueService,
+    private readonly brevoService: BrevoService,
   ) {}
 
   @Process('track-event')
@@ -21,13 +21,13 @@ export class EventsConsumer {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Registering sendinblue event',
+        message: 'Registering Brevo event',
         data: {
           user_id,
           treack_event: trackEventDto,
         },
       });
-      await this.sendinblueService.registerSendinblueEvent(email, trackEventDto);
+      await this.brevoService.registerBrevoEvent(email, trackEventDto);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {

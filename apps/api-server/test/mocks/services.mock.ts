@@ -137,8 +137,8 @@ export const InstalledPackServiceMock = {
   setPackAsUninstalledForUser: jest.fn(),
 };
 
-export const SendinblueServiceMock = {
-  registerSendinblueEvent: jest.fn(),
+export const BrevoServiceMock = {
+  registerBrevoEvent: jest.fn(),
 };
 
 const mockSentryInstance = {

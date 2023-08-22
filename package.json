@@ -204,7 +204,7 @@
       "^@app/stripe(|/.*)$": "<rootDir>/libs/stripe/src/$1",
       "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
-      "^@app/sendinblue(|/.*)$": "<rootDir>/libs/sendinblue/src/$1",
+      "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
     }
   }

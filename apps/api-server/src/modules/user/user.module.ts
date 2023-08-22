@@ -8,6 +8,7 @@ import { IStripeOptions, StripeModule } from '@app/stripe';
 import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { R2Module } from '@app/r2/r2.module';
 import { ISendGridOptions, SendGridModule } from '@app/send-grid';
+import { BrevoModule } from '@app/brevo/brevo.module';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
@@ -111,6 +112,7 @@ import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consume
     FocusModeTemplatesModule,
     forwardRef(() => DeviceModule),
     HelperModule,
+    BrevoModule,
   ],
   controllers: [
     UserSettingsController,

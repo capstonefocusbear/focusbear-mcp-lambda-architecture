@@ -88,8 +88,9 @@ $ STRIPE_CHECKOUT_SUCCESS_URL =
 $ STRIPE_CHECKOUT_CANCEL_URL =
 $ STRIPE_WEBHOOK_SECRET =
 
-# Get this from the Sendinblue account
+# Get this from the Brevo account
 $ SENDINBLUE_MA_KEY = 
+$ BREVO_API_KEY =
 
 # Get these from Sentry
 $ SENTRY_DSN = 
@@ -111,6 +112,14 @@ $ OPENAI_API_KEY =
 
 # use local URL for local testing, use URL generated for staging server to test on staging
 $ STAGING_SERVER_URL =
+
+#Get these from Zoho
+$ ZOHO_CALLBACK_URL = should be URL of callback path for dashboard zoho login
+$ ZOHO_CLIENT_ID =
+$ ZOHO_CLIENT_SECRET =
+
+# Get from ProfitWell
+$ PROFITWELL_API_KEY = 
 ```
 
 3. Update .env file with actual values for PostgreSQL

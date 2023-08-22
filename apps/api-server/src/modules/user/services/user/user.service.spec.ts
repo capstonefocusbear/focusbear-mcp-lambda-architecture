@@ -528,6 +528,7 @@ describe('UserService', () => {
 
     it('positive: if no field to order by is passed, users should be fetched in  descending order by date they joined', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([userDummy]);
 
       await userService.getListOfUsers(userDummy.id, 100, 0);
 
@@ -540,9 +541,11 @@ describe('UserService', () => {
 
     it('positive: if field to order by is passed to function, users should be fetched in descending order ordered by field passed as argument', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([userDummy]);
 
       await userService.getListOfUsers(userDummy.id, 100, 0, UsersOrderByOptions.LAST_COMPLETED_ROUTINE);
 
+      expect(Auth0ManagementServiceMock.getAuth0User).toBeCalledWith(userDummy.auth0_id);
       expect(UserRepositoryMock.orm.find).toBeCalledWith({
         order: { last_completed_sequence_started_at: { direction: 'DESC', nulls: 'LAST' } },
         take: 100,
@@ -715,7 +718,10 @@ describe('UserService', () => {
       let exception: any;
       const errorMessage = `User with ID: ${userDummy.id} is not authorized to access this endpoint!`;
       try {
-        await userService.getUserById(userDummy.id, userDummy.id, userDummy.stripe_customer_id);
+        await userService.getUserById(userDummy.id, {
+          id: userDummy.id,
+          stripe_customer_id: userDummy.stripe_customer_id,
+        });
       } catch (error) {
         exception = error;
       }
@@ -726,12 +732,31 @@ describe('UserService', () => {
     });
 
     it('positive: should fetch user for admin', async () => {
+      const emailDummy = 'test@mail.com';
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
       UserRepositoryMock.getUserForAdmin.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: emailDummy });
 
-      const response = await userService.getUserById(userDummy.id, userDummy.id, userDummy.stripe_customer_id);
+      const response = await userService.getUserById(userDummy.id, {
+        id: userDummy.id,
+        stripe_customer_id: userDummy.stripe_customer_id,
+      });
 
-      expect(response).toEqual({ ...userDummy, activities: [] });
+      expect(response).toEqual({ ...userDummy, email: emailDummy, activities: [] });
+    });
+
+    it('positive: if searching for user using email, user stripe ID should be fetched from stripe and be used to fetch user in DB', async () => {
+      const dummyStripeId = 'cus_xxx';
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.getUserForAdmin.mockResolvedValueOnce(userDummy);
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'test@mail.com' });
+
+      await userService.getUserById(userDummy.id, {
+        email: 'test@email.com',
+      });
+
+      expect(UserRepositoryMock.getUserForAdmin).toBeCalledWith(undefined, dummyStripeId);
     });
   });
 

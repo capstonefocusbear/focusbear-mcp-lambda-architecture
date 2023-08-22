@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
 import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
@@ -9,6 +9,7 @@ import { Passport } from '../../../auth/domain/passport.model';
 @Controller('user-stats')
 @UseGuards(IsAuth)
 @ApiTags('user-stats')
+@ApiSecurity('Auth0AccessToken')
 export class UserStatsController {
   constructor(private readonly userDailyStatsService: UserDailyStatsService) {}
 

@@ -201,7 +201,7 @@ export class UserRepository extends BaseRepository<User> {
       .getMany();
   }
 
-  async getUserForAdmin(id: string, stripe_customer_id: string) {
+  async getUserForAdmin(searchedId: string, stripe_customer_id: string) {
     const currentDate = new Date();
     const sevenDaysAgo = new Date(currentDate.setDate(currentDate.getDate() - 1));
     const query = this.orm
@@ -219,8 +219,8 @@ export class UserRepository extends BaseRepository<User> {
       )
       .setParameters({ sevenDaysAgo, is_completed: true });
 
-    if (id) {
-      query.andWhere('users.id = :id', { id });
+    if (searchedId) {
+      query.andWhere('users.id = :id', { id: searchedId });
     }
     if (stripe_customer_id) {
       query.andWhere('users.stripe_customer_id = :stripe_customer_id', { stripe_customer_id });

@@ -22,12 +22,13 @@ export class ActivityController {
   @Get()
   @UseGuards(IsAdmin)
   async getActivitiesForAdmin(
-    @Query() { user_id, stripe_customer_id, activity_type, page_num }: GetActivitiesForAdminQueryDto,
+    @Query() { user_id, stripe_customer_id, email, activity_type, page_num }: GetActivitiesForAdminQueryDto,
     @AuthContext() { user: admin }: Passport,
   ) {
     return this.activityService.getUserActivitiesForAdmin(admin.id, {
       user_id,
       stripe_customer_id,
+      email,
       activity_type,
       page_num,
     });

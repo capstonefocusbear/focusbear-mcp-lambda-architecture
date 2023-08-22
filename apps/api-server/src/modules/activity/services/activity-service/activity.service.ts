@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Queue } from 'bull';
+import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
@@ -14,6 +15,7 @@ export class ActivityService {
     private readonly userRepository: UserRepository,
     @InjectQueue('activity-image') private activityQueue: Queue,
     private readonly activityRepository: ActivityRepository,
+    private readonly stripeService: StripeService,
   ) {}
 
   async deleteActivityImageFromUploadIO(user_id: string, filePath: string) {
@@ -50,13 +52,23 @@ export class ActivityService {
 
   async getUserActivitiesForAdmin(
     admin_id: string,
-    { user_id, stripe_customer_id, activity_type, page_num }: GetActivitiesForAdminQueryDto,
+    { user_id, stripe_customer_id, email, activity_type, page_num }: GetActivitiesForAdminQueryDto,
   ) {
     const adminUser = await this.userRepository.orm.findOneBy({ id: admin_id });
     if (adminUser.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
-    const user = await this.userRepository.orm.findOne({ where: [{ id: user_id }, { stripe_customer_id }] });
+    let stripeIdToSearchBy = stripe_customer_id;
+    // If searching by email, get user Stripe ID from Stripe and then fetch user using stripe ID
+    if (email) {
+      const searchedUserStripeId = await this.stripeService.getStripeCustomerId(email);
+      if (searchedUserStripeId) {
+        stripeIdToSearchBy = searchedUserStripeId;
+      }
+    }
+    const user = await this.userRepository.orm.findOne({
+      where: [{ id: user_id }, { stripe_customer_id: stripeIdToSearchBy }],
+    });
     return this.activityRepository.getActivitiesForAdmin(user.id, page_num, activity_type);
   }
 }

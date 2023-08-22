@@ -32,6 +32,7 @@ import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
+import { SearchForUserDto } from '../../dto/search-for-user.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -104,11 +105,8 @@ export class UserController {
   @UseGuards(IsAdmin)
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async getUserById(
-    @Query() { id, stripe_customer_id }: { id: string; stripe_customer_id: string },
-    @AuthContext() { user }: Passport,
-  ): Promise<User> {
-    return this.userService.getUserById(user.id, id, stripe_customer_id);
+  async getUserById(@Query() { id, stripe_customer_id, email }: SearchForUserDto, @AuthContext() { user }: Passport) {
+    return this.userService.getUserById(user.id, { id, stripe_customer_id, email });
   }
 
   @Put('sign-up-template')

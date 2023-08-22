@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ActivityType } from '../domain/activity-type.enum';
 
@@ -10,6 +10,10 @@ export class GetActivitiesForAdminQueryDto {
   @IsOptional()
   @IsString()
   stripe_customer_id?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsEnum(ActivityType)

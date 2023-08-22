@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { IPusherOptions, PusherModule } from '@app/pusher';
+import { IStripeOptions, StripeModule } from '@app/stripe';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
@@ -67,6 +68,11 @@ import { LogQuantityQuestionsRepository } from './repositories/log-quantity-ques
     }),
     BullModule.registerQueue({
       name: 'activity-image',
+    }),
+    StripeModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     HelperModule,
   ],

@@ -67,4 +67,20 @@ describe('OpenAIService', () => {
       expect(isUrl).toBeTrue();
     });
   });
+
+  describe('addHttpsProtocol', () => {
+    it('positive: should add https protocol to url', () => {
+      const response = service.addHttpsProtocol('google.com');
+
+      expect(response).toEqual('https://google.com');
+    });
+  });
+
+  describe('addHttpsProtocolAndWWW', () => {
+    it('positive: should add https protocol and www subdomain to url', () => {
+      const response = service.addHttpsProtocolAndWWW('google.com');
+
+      expect(response).toEqual('https://www.google.com');
+    });
+  });
 });

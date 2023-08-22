@@ -4,8 +4,10 @@ import { getQueueToken } from '@nestjs/bull';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
+import { BrevoService } from '@app/brevo/brevo.service';
 import {
   Auth0ManagementServiceMock,
+  BrevoServiceMock,
   RevenueCatServiceMock,
   SentryServiceMock,
   StripeServiceMock,
@@ -27,6 +29,7 @@ describe('UserDataService', () => {
         Auth0ManagementService,
         StripeService,
         RevenueCatService,
+        BrevoService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -45,6 +48,8 @@ describe('UserDataService', () => {
       .useValue(RevenueCatServiceMock)
       .overrideProvider(StripeService)
       .useValue(StripeServiceMock)
+      .overrideProvider(BrevoService)
+      .useValue(BrevoServiceMock)
       .compile();
 
     service = module.get<UserDataService>(UserDataService);

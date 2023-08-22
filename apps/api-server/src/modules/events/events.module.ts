@@ -1,7 +1,7 @@
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SendinblueService } from '@app/sendinblue/sendinblue.service';
+import { BrevoService } from '@app/brevo/brevo.service';
 import { UserRepository } from '../user/repositories/user.repository';
 import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';
@@ -9,7 +9,7 @@ import { EventsService } from './services/events.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 
 @Module({
-  providers: [EventsService, SendinblueService, UserRepository, EventsConsumer],
+  providers: [EventsService, BrevoService, UserRepository, EventsConsumer],
   exports: [EventsService],
   imports: [
     BullModule.forRootAsync({

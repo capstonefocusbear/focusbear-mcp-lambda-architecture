@@ -3,11 +3,11 @@ import { TrackEventDto } from 'apps/api-server/src/modules/events/dto/track-even
 import axios from 'axios';
 
 @Injectable()
-export class SendinblueService {
+export class BrevoService {
   private httpService = axios;
 
-  async registerSendinblueEvent(email: string, event: TrackEventDto) {
-    const callUrl = 'https://in-automate.sendinblue.com/api/v2/trackEvent';
+  async registerBrevoEvent(email: string, event: TrackEventDto) {
+    const callUrl = 'https://in-automate.brevo.com/api/v2/trackEvent';
     const config = {
       headers: {
         accept: 'application/json',
@@ -25,6 +25,22 @@ export class SendinblueService {
 
     try {
       await this.httpService.post(callUrl, data, config);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async deleteContactFromBrevo(email: string) {
+    try {
+      const callUrl = `https://api.brevo.com/v3/contacts/${email}`;
+      const config = {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+        },
+      };
+      await this.httpService.delete(callUrl, config);
     } catch (error) {
       console.error(error);
     }

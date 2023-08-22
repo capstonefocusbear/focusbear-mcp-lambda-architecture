@@ -230,6 +230,22 @@ export class OpenAIService {
     }
   }
 
+  addHttpsProtocol(url: string): string {
+    if (!url.startsWith('https://')) {
+      return `https://${url}`;
+    }
+    return url;
+  }
+
+  addHttpsProtocolAndWWW(url: string): string {
+    let newUrl = this.addHttpsProtocol(url); // Ensures https:// is present
+    const matchHttps = newUrl.match(/^https:\/\/([^/]+)/);
+    if (matchHttps && !matchHttps[1].startsWith('www.')) {
+      newUrl = newUrl.replace(/^https:\/\//, 'https://www.');
+    }
+    return newUrl;
+  }
+
   async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
     try {
       const cacheFile = join(this.cacheDir, `${encodeURIComponent(url)}.json`);
@@ -241,7 +257,18 @@ export class OpenAIService {
           throw err;
         }
       }
-      const response = await axios.get(url);
+      const urlWithProtocol = this.addHttpsProtocol(url);
+      const urlWithProtocolAndSubdomain = this.addHttpsProtocolAndWWW(url);
+      let response;
+      try {
+        response = await axios.get(urlWithProtocol);
+      } catch (error) {
+        try {
+          response = await axios.get(urlWithProtocolAndSubdomain);
+        } catch (nestedError) {
+          return { title: '', description: '' };
+        }
+      }
       const html = response.data;
       const $ = load(html);
 

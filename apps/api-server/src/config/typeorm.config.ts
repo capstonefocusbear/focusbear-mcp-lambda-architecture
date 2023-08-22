@@ -31,6 +31,7 @@ import { LogQuantityAnswer } from '../modules/activity/entities/log-quantity-ans
 import { FocusModeTag } from '../modules/focus-mode/entities/focus-mode-tags';
 import { SavedWebsite } from '../modules/saved-website/entities/saved-website.entity';
 import { ToDo } from '../modules/to-do/entities/to-do.entity';
+import { ImpactEvent } from '../modules/events/entities/impact-event.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -75,6 +76,7 @@ export const typeormConfig = registerAs(
       FocusModeTag,
       SavedWebsite,
       ToDo,
+      ImpactEvent,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

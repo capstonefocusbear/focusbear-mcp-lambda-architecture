@@ -3,6 +3,5 @@ export enum EventTypes {
   GIVE_ME_4HR_BREAK = 'give-me-4hr-break',
   POSTPONE_HABITS_FROM_MOBILE = 'postpone_habits_from_mobile',
   POSTPONE_FOCUS_MODE_FROM_MOBILE = 'postpone_focus_mode_from_mobile',
+  UNLOCK_SUPER_DISTRACTING_WEBSITE = 'unlock_super_distracting_website',
 }
-
-export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];

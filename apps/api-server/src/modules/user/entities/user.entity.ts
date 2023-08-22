@@ -27,6 +27,7 @@ import { RoutineNotificationTimes } from '../domain/routine-notification-times.m
 import { LanguageOptions } from '../domain/language-options.enum';
 import { ToDo } from '../../to-do/entities/to-do.entity';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
+import { ImpactEvent } from '../../events/entities/impact-event.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -412,6 +413,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => SavedWebsite, (website) => website.user)
   saved_websites?: SavedWebsite[];
+
+  @OneToMany(() => ImpactEvent, (impactEvent) => impactEvent.user)
+  impact_events?: ImpactEvent[];
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

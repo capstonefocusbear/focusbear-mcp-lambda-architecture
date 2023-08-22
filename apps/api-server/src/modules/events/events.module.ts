@@ -8,9 +8,10 @@ import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';
 import { EventsService } from './services/events.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
+import { EventsRepository } from './repositories/events.repository';
 
 @Module({
-  providers: [EventsService, BrevoService, UserRepository, EventsConsumer],
+  providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository],
   exports: [EventsService],
   imports: [
     BullModule.forRootAsync({

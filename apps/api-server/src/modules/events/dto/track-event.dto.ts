@@ -9,5 +9,9 @@ export class TrackEventDto {
   user_properties?: Record<string, unknown>;
 
   @IsObject()
-  event_data?: Record<string, unknown>;
+  event_data?: {
+    data?: {
+      minutes?: number;
+    };
+  };
 }

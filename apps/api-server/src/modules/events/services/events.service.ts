@@ -6,7 +6,14 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
-import { EventTypes, EVENT_TYPES_TO_ALERT_IN_SLACK } from '../domain/event-types.enum';
+import { EventTypes } from '../domain/event-types.enum';
+import { ImpactEvent } from '../entities/impact-event.entity';
+import { EventsRepository } from '../repositories/events.repository';
+import {
+  EVENTS_TO_IMPACT_CATEGORIES_MAP,
+  EVENT_TYPES_TO_ALERT_IN_SLACK,
+  IMPACT_MEASUREMENT_EVENT_TYPES,
+} from '../../../shared/utils/constants';
 
 @Injectable()
 export class EventsService {
@@ -15,9 +22,10 @@ export class EventsService {
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly eventsRepository: EventsRepository,
   ) {}
 
-  async addEventToQueue(trackEventDto: TrackEventDto, user_id: string) {
+  async handleIncomingEvent(trackEventDto: TrackEventDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -33,6 +41,9 @@ export class EventsService {
       const { event_type } = trackEventDto;
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
+      }
+      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
+        await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.minutes);
       }
       await this.eventsQueue.add('track-event', {
         user_id,
@@ -73,5 +84,11 @@ export class EventsService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async saveImpactEvent(eventType: EventTypes, userId: string, minutes = 0) {
+    const impactCategory = EVENTS_TO_IMPACT_CATEGORIES_MAP[eventType];
+    const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, minutes });
+    await this.eventsRepository.orm.save(impactEvent);
   }
 }

@@ -1,3 +1,6 @@
+import { ImpactCategory } from '../../modules/activity/domain/impact-category.enum';
+import { EventTypes } from '../../modules/events/domain/event-types.enum';
+
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
@@ -66,3 +69,17 @@ export const UTC_TO_IANA_MAP = {
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export const PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT = 'https://api.profitwell.com/v2/subscriptions/';
+
+export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];
+
+export const IMPACT_MEASUREMENT_EVENT_TYPES = [
+  EventTypes.UNLOCK_SUPER_DISTRACTING_WEBSITE,
+  EventTypes.POSTPONE_HABITS_ON_MOBILE,
+  EventTypes.POSTPONE_FOCUS_MODE_ON_MOBILE,
+];
+
+export const EVENTS_TO_IMPACT_CATEGORIES_MAP = {
+  [EventTypes.POSTPONE_FOCUS_MODE_ON_MOBILE]: ImpactCategory.MINUTES_SPENT_POSTPONING_APP_BLOCKS,
+  [EventTypes.POSTPONE_HABITS_ON_MOBILE]: ImpactCategory.MINUTES_SPENT_POSTPONING_HABITS,
+  [EventTypes.UNLOCK_SUPER_DISTRACTING_WEBSITE]: ImpactCategory.MINUTES_SPENT_ON_DISTRACTING_WEBSITES,
+};

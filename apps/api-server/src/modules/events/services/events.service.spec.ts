@@ -7,6 +7,7 @@ import axios from 'axios';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
+  EventsRepositoryMock,
   SendinblueServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
@@ -15,6 +16,10 @@ import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { EventTypes } from '../domain/event-types.enum';
+import { EventsRepository } from '../repositories/events.repository';
+import { ImpactEvent } from '../entities/impact-event.entity';
+import { TrackEventDto } from '../dto/track-event.dto';
+import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -29,6 +34,7 @@ describe('EventService', () => {
         SendinblueService,
         UserRepository,
         Auth0ManagementService,
+        EventsRepository,
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
@@ -45,6 +51,8 @@ describe('EventService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(Auth0ManagementService)
       .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(EventsRepository)
+      .useValue(EventsRepositoryMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);
@@ -58,14 +66,14 @@ describe('EventService', () => {
     expect(eventsService).toBeDefined();
   });
 
-  describe('addEventToQueue', () => {
+  describe('handleIncomingEvent', () => {
     it('negative: should return a not found exception if user is not found in DB', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
 
       try {
-        await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
+        await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -79,7 +87,7 @@ describe('EventService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
 
-      await eventsService.addEventToQueue({ event_type: 'test-event' }, userDummy.id);
+      await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id);
 
       expect(QueueMock.add).toBeCalledWith('track-event', {
         user_id: userDummy.id,
@@ -94,11 +102,30 @@ describe('EventService', () => {
       const dummyEvent = { event_type: EventTypes.APP_QUIT };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
 
-      await eventsService.addEventToQueue({ event_type: EventTypes.APP_QUIT }, userDummy.id);
+      await eventsService.handleIncomingEvent({ event_type: EventTypes.APP_QUIT }, userDummy.id);
 
       expect(mockedAxios.post).toBeCalledWith('some-url', {
         text: message,
       });
+    });
+
+    it('positive: if event is impact measurement event, event should be saved in DB', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      const dummyEvent: TrackEventDto = {
+        event_type: EventTypes.POSTPONE_FOCUS_MODE_ON_MOBILE,
+        event_data: { data: { minutes: 5 } },
+      };
+
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+
+      expect(EventsRepositoryMock.orm.save).toBeCalledWith(
+        new ImpactEvent({
+          user_id: userDummy.id,
+          minutes: 5,
+          impact_category: ImpactCategory.MINUTES_SPENT_POSTPONING_APP_BLOCKS,
+        }),
+      );
     });
   });
 

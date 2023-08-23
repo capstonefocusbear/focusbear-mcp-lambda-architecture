@@ -200,6 +200,10 @@ describe('UserDailyStatsService', () => {
         onboarding_progress: mockOnboardingProgress,
       });
       CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
 
       const sequenceId = randomUUID();
 
@@ -223,6 +227,40 @@ describe('UserDailyStatsService', () => {
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce(
         UncompletedSequenceLogDummy.completed_activity_logs,
       );
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: routineDurationsDummy,
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
+      const sequenceId = randomUUID();
+
+      const percentage = await service.calculateRoutineCompletionPercentage(userDummy.id, sequenceId);
+
+      expect(percentage).toBe(60);
+    });
+
+    it('positive: if current day duration is 360 seconds and completed activities duration is 180, completion % should be 50%', async () => {
+      const mockOnboardingProgress = {
+        level: 1,
+        has_edited_focus_mode: false,
+        has_edited_settings: false,
+        has_edited_always_blocked_urls: false,
+      };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...userDummy,
+        onboarding_progress: mockOnboardingProgress,
+      });
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...UncompletedSequenceLogDummy,
+        // Set date to be Monday (has morning sequence duration duration of 360 seconds)
+        start_time: new Date('2023-08-21T06:00:00.000Z'),
+      });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy.completed_activity_logs,
+      );
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: { ...routineDurationsDummy, MON: 360 },
+        eveningRoutineDailyDurations: routineDurationsDummy,
+      });
       const sequenceId = randomUUID();
 
       const percentage = await service.calculateRoutineCompletionPercentage(userDummy.id, sequenceId);

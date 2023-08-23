@@ -115,9 +115,17 @@ export class UserDailyStatsService {
         (totalSeconds, { start_time, finish_time }) => totalSeconds + findDifferenceInSeconds(start_time, finish_time),
         0,
       );
-      const totalSequenceDuration = Number(existingRoutineLog.activity_sequence.sequenceDurationSeconds);
+      const currentDayOfWeek = DateTime.fromJSDate(existingRoutineLog.start_time).weekdayShort;
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+        await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
+      const sequenceType = existingRoutineLog.activity_sequence.type;
+      const sequenceDurationForCurrentDay: number =
+        sequenceType === ActivityType.morning
+          ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
+          : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+
       // TODO: handle sequence duration if sequence is empty for daysOfTheWeek feature
-      const completionPercentage = (totalOfCompletedActivities / totalSequenceDuration) * 100;
+      const completionPercentage = (totalOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
       return Math.round(completionPercentage);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

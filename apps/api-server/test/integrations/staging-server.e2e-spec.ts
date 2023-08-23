@@ -21,6 +21,7 @@ describe('endpoints', () => {
   let userFirstActivity: Activity;
 
   beforeAll(async () => {
+    jest.setTimeout(20000);
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

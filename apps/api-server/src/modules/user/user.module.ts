@@ -35,6 +35,9 @@ import { UserStatsController } from './controllers/user-stats/user-stats.control
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
 import { ProfitWellConsumer } from './consumers/profitwell.consumer';
 import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
+import { UserFeedbackRepository } from './repositories/user-feedback.repository';
+import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
+import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
 
 @Module({
   providers: [
@@ -51,6 +54,8 @@ import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consume
     UserPersonalDataConsumer,
     ProfitWellConsumer,
     RevenueCatStatusConsumer,
+    UserFeedbackRepository,
+    UserFeedbackService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
   imports: [
@@ -120,6 +125,7 @@ import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consume
     UserLocalDeviceSettingsController,
     UserDataController,
     UserStatsController,
+    UserFeedbackController,
   ],
 })
 export class UserModule {}

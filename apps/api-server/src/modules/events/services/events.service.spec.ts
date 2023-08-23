@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { SendinblueService } from '@app/sendinblue/sendinblue.service';
+import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
   EventsRepositoryMock,
-  SendinblueServiceMock,
+  BrevoServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
@@ -28,7 +28,7 @@ describe('EventService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         EventsService,
-        SendinblueService,
+        BrevoService,
         UserRepository,
         Auth0ManagementService,
         EventsRepository,
@@ -42,8 +42,8 @@ describe('EventService', () => {
         },
       ],
     })
-      .overrideProvider(SendinblueService)
-      .useValue(SendinblueServiceMock)
+      .overrideProvider(BrevoService)
+      .useValue(BrevoServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .overrideProvider(Auth0ManagementService)

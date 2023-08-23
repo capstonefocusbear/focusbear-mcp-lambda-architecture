@@ -12,34 +12,6 @@ import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/
 import { Activity } from '../../apps/api-server/src/modules/activity/entities/activity.entity';
 import { DAYS_OF_WEEK } from './constants';
 
-async function calculateRoutineCompletionPercentage(
-  user_id: string,
-  completed_activity_log_id: string,
-): Promise<number> {
-  const existingRoutineLog = await CronJobDataSource.manager.findOne(CompletedActivitySequence, {
-    where: {
-      user_id,
-      id: completed_activity_log_id,
-    },
-  });
-  if (!existingRoutineLog) {
-    return 0;
-  }
-  const activitiesFromRoutine = await CronJobDataSource.manager.find(CompletedActivity, {
-    where: { completed_sequence_id: existingRoutineLog.id },
-  });
-  const activitiesThatWereCompleted = activitiesFromRoutine.filter(
-    (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
-  );
-  const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
-    (acc, { start_time, finish_time }) => acc + findDifferenceInSeconds(start_time, finish_time),
-    0,
-  );
-  const totalSequenceDuration = Number(existingRoutineLog.activity_sequence.sequenceDurationSeconds);
-  const completionPercentage = (totalDurationOfCompletedActivities / totalSequenceDuration) * 100;
-  return Math.round(completionPercentage);
-}
-
 function filterActivitiesForCurrentDay(currentDay: DaysOfWeek, activities: Activity[]) {
   const activitiesForCurrentDay = activities.filter(
     ({ days_of_week }) => days_of_week.includes(DaysOfWeek.ALL) || days_of_week.includes(currentDay),
@@ -86,6 +58,45 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
   const morningRoutineDailyDurations = calculateSequenceDurationForWeek(morningActivities);
   const eveningRoutineDailyDurations = calculateSequenceDurationForWeek(eveningActivities);
   return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
+}
+
+async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
+  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
+  const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(userId);
+  const sequenceType = routineLog.activity_sequence.type;
+  const sequenceDurationForCurrentDay: number =
+    sequenceType === ActivityType.morning
+      ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
+      : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  return sequenceDurationForCurrentDay;
+}
+
+async function calculateRoutineCompletionPercentage(
+  user_id: string,
+  completed_activity_log_id: string,
+): Promise<number> {
+  const existingRoutineLog = await CronJobDataSource.manager.findOne(CompletedActivitySequence, {
+    where: {
+      user_id,
+      id: completed_activity_log_id,
+    },
+  });
+  if (!existingRoutineLog) {
+    return 0;
+  }
+  const activitiesFromRoutine = await CronJobDataSource.manager.find(CompletedActivity, {
+    where: { completed_sequence_id: existingRoutineLog.id },
+  });
+  const activitiesThatWereCompleted = activitiesFromRoutine.filter(
+    (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
+  );
+  const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
+    (acc, { start_time, finish_time }) => acc + findDifferenceInSeconds(start_time, finish_time),
+    0,
+  );
+  const sequenceDurationForCurrentDay = await getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
+  const completionPercentage = (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
+  return Math.round(completionPercentage);
 }
 
 async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {

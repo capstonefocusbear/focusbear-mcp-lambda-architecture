@@ -30,6 +30,7 @@ import { UserService } from '../user/user.service';
 import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 import { StreakTypes } from '../../domain/StreakTypes.enum';
 import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
+import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -115,14 +116,25 @@ export class UserDailyStatsService {
         (totalSeconds, { start_time, finish_time }) => totalSeconds + findDifferenceInSeconds(start_time, finish_time),
         0,
       );
-      const totalSequenceDuration = Number(existingRoutineLog.activity_sequence.sequenceDurationSeconds);
-      // TODO: handle sequence duration if sequence is empty for daysOfTheWeek feature
-      const completionPercentage = (totalOfCompletedActivities / totalSequenceDuration) * 100;
+      const sequenceDurationForCurrentDay = await this.getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
+      const completionPercentage = (totalOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
       return Math.round(completionPercentage);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
+    const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+      await this.activitySequenceService.getUserRoutineDailyDurations(userId);
+    const sequenceType = routineLog.activity_sequence.type;
+    const sequenceDurationForCurrentDay: number =
+      sequenceType === ActivityType.morning
+        ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
+        : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    return sequenceDurationForCurrentDay;
   }
 
   async getUserStreaks(user: User) {

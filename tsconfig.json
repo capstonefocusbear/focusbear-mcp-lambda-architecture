@@ -86,11 +86,11 @@
       "@app/jwt/*": [
         "libs/jwt/src/*"
       ],
-      "@app/sendinblue": [
-        "libs/sendinblue/src"
+      "@app/brevo": [
+        "libs/brevo/src"
       ],
-      "@app/sendinblue/*": [
-        "libs/sendinblue/src/*"
+      "@app/brevo/*": [
+        "libs/brevo/src/*"
       ],
     }
   }

@@ -3,10 +3,17 @@ import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
+import { StripeService } from '@app/stripe';
 import { QueueMock, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
 import { ActivityService } from './activity.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
-import { ActivityRepositoryMock, SentryServiceMock, UserRepositoryMock } from '../../../../../test/mocks/index';
+import {
+  ActivityRepositoryMock,
+  SentryServiceMock,
+  StripeServiceMock,
+  UserConsentRepositoryMock,
+  UserRepositoryMock,
+} from '../../../../../test/mocks/index';
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { UserTypes } from '../../../user/domain/user-types.enum';
@@ -19,6 +26,7 @@ describe('ActivityService', () => {
         ActivityService,
         ActivityRepository,
         UserRepository,
+        StripeService,
         {
           provide: getQueueToken('activity-image'),
           useValue: QueueMock,
@@ -33,6 +41,8 @@ describe('ActivityService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityRepository)
       .useValue(ActivityRepositoryMock)
+      .overrideProvider(StripeService)
+      .useValue(StripeServiceMock)
       .compile();
 
     activityService = moduleRef.get<ActivityService>(ActivityService);
@@ -134,6 +144,28 @@ describe('ActivityService', () => {
         activity_type: ActivityType.morning,
       });
 
+      expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
+    });
+
+    it("positive: if activities are searched using user's email, stripe ID should be fetched first from Stripe and that should be used to query user's activities", async () => {
+      const dummyEmail = 'test@email.com';
+      const dummyStripeId = 'cus_xxx';
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.getActivitiesForAdmin.mockResolvedValueOnce(
+        userSettingsDBResponseDummy.activity_sequences[0].activities,
+      );
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
+
+      await activityService.getUserActivitiesForAdmin(userDummy.id, {
+        email: dummyEmail,
+        page_num: 1,
+      });
+
+      expect(StripeServiceMock.getStripeCustomerId).toBeCalledWith(dummyEmail);
+      expect(UserConsentRepositoryMock.orm.findOne).toBeCalledWith({
+        where: [{ id: undefined }, { stripe_customer_id: dummyStripeId }],
+      });
       expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
     });
   });

@@ -50,6 +50,7 @@ import {
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
+import { SearchForUserDto } from '../../dto/search-for-user.dto';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -420,31 +421,52 @@ export class UserService {
     if (adminUser.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${adminUserId} is not authorized to access this endpoint!`);
     }
+    let users: User[] = [];
     if (order_by) {
-      return this.userRepository.orm.find({
+      users = await this.userRepository.orm.find({
         order: { [order_by]: { direction: 'DESC', nulls: 'LAST' } },
         take,
         skip,
       });
+    } else {
+      users = await this.userRepository.orm.find({
+        order: { created_at: { direction: 'DESC' } },
+        take,
+        skip,
+      });
     }
-    return this.userRepository.orm.find({
-      order: { created_at: { direction: 'DESC' } },
-      take,
-      skip,
-    });
+    const getUserEmail = async (user: User) => {
+      try {
+        const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        return { ...user, email };
+      } catch (error) {
+        return { ...user, email: null };
+      }
+    };
+    const usersWithEmailsPromise = users.map(getUserEmail);
+    return Promise.all(usersWithEmailsPromise);
   }
 
-  async getUserById(user_id: string, id: string, stripe_customer_id: string): Promise<User> {
+  async getUserById(user_id: string, { id: searchedId, email, stripe_customer_id }: SearchForUserDto) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (user.user_type !== UserTypes.ADMIN) {
       throw new UnauthorizedException(`User with ID: ${user_id} is not authorized to access this endpoint!`);
     }
-    const fetchedUser = await this.userRepository.getUserForAdmin(id, stripe_customer_id);
+    let stripeIdToSearchBy = stripe_customer_id;
+    // If searching by email, get user Stripe ID from Stripe and then fetch user using stripe ID
+    if (email) {
+      const searchedUserStripeId = await this.stripeService.getStripeCustomerId(email);
+      if (searchedUserStripeId) {
+        stripeIdToSearchBy = searchedUserStripeId;
+      }
+    }
+    const fetchedUser = await this.userRepository.getUserForAdmin(searchedId, stripeIdToSearchBy);
     if (!fetchedUser) {
       return null;
     }
-    // returning empty activities array here temporarily until dashboard has implemented new endpoint to get activities
-    return { ...fetchedUser, activities: [] };
+    const { email: userEmail } = await this.auth0ManagementService.getAuth0User(fetchedUser.auth0_id);
+    // Returning empty activities array here temporarily until dashboard has implemented new endpoint to get activities
+    return { ...fetchedUser, email: userEmail, activities: [] };
   }
 
   removeUserIncompleteSequences(activitySequenceRecords: CompletedActivitySequence[]) {

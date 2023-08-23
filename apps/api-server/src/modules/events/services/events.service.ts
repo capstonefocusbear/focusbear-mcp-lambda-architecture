@@ -9,11 +9,7 @@ import { TrackEventDto } from '../dto/track-event.dto';
 import { EventTypes } from '../domain/event-types.enum';
 import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
-import {
-  EVENTS_TO_IMPACT_CATEGORIES_MAP,
-  EVENT_TYPES_TO_ALERT_IN_SLACK,
-  IMPACT_MEASUREMENT_EVENT_TYPES,
-} from '../../../shared/utils/constants';
+import { EVENTS_TO_IMPACT_CATEGORIES_MAP, EVENT_TYPES_TO_ALERT_IN_SLACK } from '../../../shared/utils/constants';
 
 @Injectable()
 export class EventsService {
@@ -41,9 +37,6 @@ export class EventsService {
       const { event_type } = trackEventDto;
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
-      }
-      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
-        await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.minutes);
       }
       await this.eventsQueue.add('track-event', {
         user_id,
@@ -86,9 +79,9 @@ export class EventsService {
     }
   }
 
-  async saveImpactEvent(eventType: EventTypes, userId: string, minutes = 0) {
+  async saveImpactEvent(eventType: EventTypes, userId: string, quantity = 0) {
     const impactCategory = EVENTS_TO_IMPACT_CATEGORIES_MAP[eventType];
-    const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, minutes });
+    const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, quantity });
     await this.eventsRepository.orm.save(impactEvent);
   }
 }

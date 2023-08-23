@@ -33,7 +33,7 @@ export class ImpactEvent extends BaseEntity {
     default: 0,
     transformer: new ColumnNumericTransformer(),
   })
-  minutes?: number;
+  quantity?: number;
 
   @ManyToOne(() => User, (user) => user.impact_events, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

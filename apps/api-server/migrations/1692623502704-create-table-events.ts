@@ -5,7 +5,7 @@ export class CreateTableImpactEvents1692623502704 implements MigrationInterface 
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      'CREATE TABLE "impact_events" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "user_id" uuid NOT NULL, "impact_category" "public"."impact_category_enum", "minutes" numeric DEFAULT \'0\', CONSTRAINT "PK_40731c7151fe4be3116e45ddf73" PRIMARY KEY ("id"))',
+      'CREATE TABLE "impact_events" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "user_id" uuid NOT NULL, "impact_category" "public"."impact_category_enum", "quantity" numeric DEFAULT \'0\', CONSTRAINT "PK_40731c7151fe4be3116e45ddf73" PRIMARY KEY ("id"))',
     );
     await queryRunner.query('CREATE INDEX "IDX_09f256fb7f9a05f0ed9927f406" ON "impact_events" ("user_id") ');
     await queryRunner.query(

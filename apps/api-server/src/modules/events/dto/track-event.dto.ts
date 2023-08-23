@@ -11,7 +11,7 @@ export class TrackEventDto {
   @IsObject()
   event_data?: {
     data?: {
-      minutes?: number;
+      quantity?: number;
     };
   };
 }

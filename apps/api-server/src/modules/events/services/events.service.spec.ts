@@ -17,9 +17,6 @@ import { UserRepository } from '../../user/repositories/user.repository';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsRepository } from '../repositories/events.repository';
-import { ImpactEvent } from '../entities/impact-event.entity';
-import { TrackEventDto } from '../dto/track-event.dto';
-import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -107,25 +104,6 @@ describe('EventService', () => {
       expect(mockedAxios.post).toBeCalledWith('some-url', {
         text: message,
       });
-    });
-
-    it('positive: if event is impact measurement event, event should be saved in DB', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
-      const dummyEvent: TrackEventDto = {
-        event_type: EventTypes.POSTPONE_FOCUS_MODE_ON_MOBILE,
-        event_data: { data: { minutes: 5 } },
-      };
-
-      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
-
-      expect(EventsRepositoryMock.orm.save).toBeCalledWith(
-        new ImpactEvent({
-          user_id: userDummy.id,
-          minutes: 5,
-          impact_category: ImpactCategory.MINUTES_SPENT_POSTPONING_APP_BLOCKS,
-        }),
-      );
     });
   });
 

@@ -123,6 +123,11 @@ export class CompletedActivityService {
         choice_id,
       );
       if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
+        if (typeof completedActivity.quantity_logged === 'undefined' && typeof log_quantity_answers === 'undefined') {
+          throw new BadRequestException(
+            `Competency based activities can't be completed without log_quantity answers or a quantity_logged value. Activity with ID: ${completedActivity.activity_id} is a competency based activity`,
+          );
+        }
         await this.updateCompetencyLevel(
           activity,
           log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,

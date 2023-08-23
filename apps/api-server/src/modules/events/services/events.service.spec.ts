@@ -18,8 +18,8 @@ import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsRepository } from '../repositories/events.repository';
 import { ImpactEvent } from '../entities/impact-event.entity';
-import { TrackEventDto } from '../dto/track-event.dto';
 import { ImpactCategory } from '../../activity/domain/impact-category.enum';
+import { TrackEventDto } from '../dto/track-event.dto';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -144,7 +144,7 @@ describe('EventService', () => {
       expect(EventsRepositoryMock.orm.save).toBeCalledWith(
         new ImpactEvent({
           user_id: userDummy.id,
-          minutes: 5,
+          quantity: 5,
           impact_category: ImpactCategory.MINUTES_SPENT_POSTPONING_APP_BLOCKS,
         }),
       );

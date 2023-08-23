@@ -107,9 +107,9 @@ export class EventsService {
     }
   }
 
-  async saveImpactEvent(eventType: EventTypes, userId: string, minutes = 0) {
+  async saveImpactEvent(eventType: EventTypes, userId: string, quantity = 0) {
     const impactCategory = EVENTS_TO_IMPACT_CATEGORIES_MAP[eventType];
-    const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, minutes });
+    const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, quantity });
     await this.eventsRepository.orm.save(impactEvent);
   }
 }

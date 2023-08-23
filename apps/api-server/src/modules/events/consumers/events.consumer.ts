@@ -7,7 +7,9 @@ import { I18nService } from 'nestjs-i18n';
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
+import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
+import { EventsService } from '../services/events.service';
 
 @Processor('events')
 export class EventsConsumer {
@@ -16,6 +18,7 @@ export class EventsConsumer {
     private readonly brevoService: BrevoService,
     private readonly pusherBeamsService: PusherBeamsService,
     private readonly i18nService: I18nService,
+    private readonly eventsService: EventsService,
   ) {}
 
   @Process('track-event')
@@ -34,6 +37,14 @@ export class EventsConsumer {
         },
       });
       await this.brevoService.registerBrevoEvent(email, trackEventDto);
+      const { event_type } = trackEventDto;
+      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
+        await this.eventsService.saveImpactEvent(
+          event_type as EventTypes,
+          user_id,
+          trackEventDto.event_data?.data?.quantity,
+        );
+      }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {

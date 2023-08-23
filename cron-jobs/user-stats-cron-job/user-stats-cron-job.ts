@@ -60,6 +60,17 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
   return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
 }
 
+async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
+  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
+  const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(userId);
+  const sequenceType = routineLog.activity_sequence.type;
+  const sequenceDurationForCurrentDay: number =
+    sequenceType === ActivityType.morning
+      ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
+      : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  return sequenceDurationForCurrentDay;
+}
+
 async function calculateRoutineCompletionPercentage(
   user_id: string,
   completed_activity_log_id: string,
@@ -83,13 +94,7 @@ async function calculateRoutineCompletionPercentage(
     (acc, { start_time, finish_time }) => acc + findDifferenceInSeconds(start_time, finish_time),
     0,
   );
-  const currentDayOfWeek = DateTime.fromJSDate(existingRoutineLog.start_time).weekdayShort;
-  const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(user_id);
-  const sequenceType = existingRoutineLog.activity_sequence.type;
-  const sequenceDurationForCurrentDay: number =
-    sequenceType === ActivityType.morning
-      ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
-      : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  const sequenceDurationForCurrentDay = await getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
   const completionPercentage = (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
   return Math.round(completionPercentage);
 }

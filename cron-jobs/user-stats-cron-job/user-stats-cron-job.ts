@@ -131,7 +131,7 @@ async function calculateOfflineActivitiesCompletionPercentage() {
       where: { last_time_stats_updated: LessThan(time24HoursAgo) },
       take: 50,
     });
-    usersWhoseStatsAreOutOfDate.forEach(async (user) => {
+    for await (const user of usersWhoseStatsAreOutOfDate) {
       const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
         where: {
           user_id: user.id,
@@ -156,7 +156,6 @@ async function calculateOfflineActivitiesCompletionPercentage() {
         User,
         { id: user.id },
         {
-          ...user,
           onboarding_progress: {
             ...user.onboarding_progress,
             level: userLevel,
@@ -167,8 +166,10 @@ async function calculateOfflineActivitiesCompletionPercentage() {
           focus_modes_streak,
         },
       );
-      process.exit();
-    });
+    }
+    // eslint-disable-next-line no-console
+    console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
+    process.exit();
   } catch (error) {
     console.error('Error in user daily stats cron job:', error);
   }

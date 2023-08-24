@@ -28,6 +28,7 @@ import {
   dailyStatsArrayDummyWithSkippedDay,
   DailyStatsDummy,
   DailyDurationsDummy,
+  CompletedActivityDummy,
 } from '../../../../../test/dummies';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { DailyStatsRepository } from '../../repositories/user-daily-stats.repository';
@@ -224,9 +225,11 @@ describe('UserDailyStatsService', () => {
         onboarding_progress: mockOnboardingProgress,
       });
       CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(UncompletedSequenceLogDummy);
-      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce(
-        UncompletedSequenceLogDummy.completed_activity_logs,
-      );
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        { ...CompletedActivityDummy, duration_logged: 60 },
+        { ...CompletedActivityDummy, duration_logged: 60 },
+        { ...CompletedActivityDummy, duration_logged: 60 },
+      ]);
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
@@ -254,9 +257,11 @@ describe('UserDailyStatsService', () => {
         // Set date to be Monday (has morning sequence duration duration of 360 seconds)
         start_time: new Date('2023-08-21T06:00:00.000Z'),
       });
-      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce(
-        UncompletedSequenceLogDummy.completed_activity_logs,
-      );
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        { ...CompletedActivityDummy, duration_logged: 60 },
+        { ...CompletedActivityDummy, duration_logged: 60 },
+        { ...CompletedActivityDummy, duration_logged: 60 },
+      ]);
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: { ...routineDurationsDummy, MON: 360 },
         eveningRoutineDailyDurations: routineDurationsDummy,

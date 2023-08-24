@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsEnum,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -21,6 +22,7 @@ import { ActivityData } from '../domain/activity-data.model';
 import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
+import { ImpactCategory } from '../domain/impact-category.enum';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -120,4 +122,9 @@ export class UpdateActivityDto extends ActivityData {
 
   @IsOptional()
   activity_type?: string;
+
+  @IsOptional()
+  @IsEnum(ImpactCategory)
+  @ApiProperty({ enum: ImpactCategory })
+  impact_category?: ImpactCategory;
 }

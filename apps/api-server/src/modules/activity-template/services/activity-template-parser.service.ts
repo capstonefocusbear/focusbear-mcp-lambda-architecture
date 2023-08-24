@@ -102,6 +102,7 @@ export class ActivityTemplateParserService {
       // destructure log_quantity_question to remove it from activity_data field as it will be saved
       // in the new format in getLogQuantityQuestions function
       log_quantity_question,
+      impact_category,
       ...activityDataValues
     }: UpdateActivityTemplateDto,
     {
@@ -132,6 +133,7 @@ export class ActivityTemplateParserService {
       sequence_index: index,
       linked_activity_template_id,
       check_list,
+      impact_category,
     });
     const newActivityTemplateAndChoices = [activity];
     if (has_choices) newActivityTemplateAndChoices.push(...this.deserializeActivityTemplateChoices(choices, activity));
@@ -238,6 +240,7 @@ export class ActivityTemplateParserService {
       log_quantity_questions,
       linked_activity_template_id, // see docs/linked-activity-template-id.md
       check_list,
+      impact_category,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -251,6 +254,7 @@ export class ActivityTemplateParserService {
       log_quantity_questions,
       linked_activity_template_id,
       check_list,
+      impact_category,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {

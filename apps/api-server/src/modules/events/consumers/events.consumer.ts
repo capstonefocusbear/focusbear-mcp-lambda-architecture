@@ -4,11 +4,15 @@ import { Job } from 'bull';
 import axios from 'axios';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { TrackEventDto } from '../dto/track-event.dto';
+import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
+import { EventTypes } from '../domain/event-types.enum';
+import { EventsService } from '../services/events.service';
 
 @Processor('events')
 export class EventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly eventsService: EventsService,
     private readonly brevoService: BrevoService,
   ) {}
 
@@ -27,6 +31,14 @@ export class EventsConsumer {
           treack_event: trackEventDto,
         },
       });
+      const { event_type } = trackEventDto;
+      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
+        await this.eventsService.saveImpactEvent(
+          event_type as EventTypes,
+          user_id,
+          trackEventDto.event_data?.data?.quantity,
+        );
+      }
       await this.brevoService.registerBrevoEvent(email, trackEventDto);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

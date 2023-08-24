@@ -8,7 +8,6 @@ import { Queue } from 'bull';
 import { DAYS_OF_WEEK, ONE_MINUTE_SECONDS, TEN_MINUTES } from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
-  findDifferenceInSeconds,
   getRoutinesAndFocusModesAverages,
 } from '../../../../../../../cron-jobs/user-stats-cron-job/helpers';
 import {
@@ -113,7 +112,7 @@ export class UserDailyStatsService {
         (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
       );
       const totalOfCompletedActivities = activitiesThatWereCompleted.reduce(
-        (totalSeconds, { start_time, finish_time }) => totalSeconds + findDifferenceInSeconds(start_time, finish_time),
+        (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),
         0,
       );
       const sequenceDurationForCurrentDay = await this.getSequenceDurationForCurrentDay(existingRoutineLog, user_id);

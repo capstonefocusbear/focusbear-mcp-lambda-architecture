@@ -32,6 +32,7 @@ import { FocusModeTag } from '../modules/focus-mode/entities/focus-mode-tags';
 import { SavedWebsite } from '../modules/saved-website/entities/saved-website.entity';
 import { ToDo } from '../modules/to-do/entities/to-do.entity';
 import { ImpactEvent } from '../modules/events/entities/impact-event.entity';
+import { UserFeedback } from '../modules/user/entities/user-feedback.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -77,6 +78,7 @@ export const typeormConfig = registerAs(
       SavedWebsite,
       ToDo,
       ImpactEvent,
+      UserFeedback,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

@@ -23,7 +23,7 @@ export class AppLogsService {
       const { app_platform, app_version, feedback_message } = request.query;
       const fileData = await request.file();
       // Validate that the file is a text file.
-      if (fileData.mimetype !== 'text/plain') {
+      if (fileData.mimetype !== 'text/plain' && fileData.mimetype !== 'application/zip') {
         throw new BadRequestException('Invalid file type. Please upload a .txt file.');
       }
       const fileBuffer = await fileData.toBuffer();

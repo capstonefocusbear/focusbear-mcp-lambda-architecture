@@ -5,7 +5,7 @@ import { CompletedActivity } from '../../apps/api-server/src/modules/activity/en
 import { CompletedActivitySequence } from '../../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { CronJobDataSource } from '../data-source';
-import { calculateStreaks, determineUserLevel, findDifferenceInSeconds } from './helpers';
+import { calculateStreaks, determineUserLevel } from './helpers';
 import { DailyStats } from '../../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
 import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
@@ -91,7 +91,7 @@ async function calculateRoutineCompletionPercentage(
     (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
   );
   const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
-    (acc, { start_time, finish_time }) => acc + findDifferenceInSeconds(start_time, finish_time),
+    (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),
     0,
   );
   const sequenceDurationForCurrentDay = await getSequenceDurationForCurrentDay(existingRoutineLog, user_id);

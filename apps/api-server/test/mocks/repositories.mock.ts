@@ -188,3 +188,7 @@ export const FocusModeTagRepositoryMock = {
 export const EventsRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const UserFeedbackRepositoryMock = {
+  ...BaseRepositoryMock,
+};

@@ -7,6 +7,7 @@ import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { EventTypes, EVENT_TYPES_TO_ALERT_IN_SLACK } from '../domain/event-types.enum';
+import { ONE_MINUTE } from '../../../shared/utils/constants';
 
 @Injectable()
 export class EventsService {
@@ -34,6 +35,9 @@ export class EventsService {
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
+      if (event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE) {
+        await this.handleMobileHabitsPostpone(user_id, trackEventDto.event_data.data.quantity, user.language);
+      }
       await this.eventsQueue.add('track-event', {
         user_id,
         email: userAuth0Data.email,
@@ -43,6 +47,19 @@ export class EventsService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async handleMobileHabitsPostpone(userId: string, durationMinutes: number, language: string) {
+    // Convert minutes to postpone to milliseconds
+    const durationMilliseconds = durationMinutes * ONE_MINUTE;
+    await this.eventsQueue.add(
+      'resume-habits-notification',
+      {
+        user_id: userId,
+        language,
+      },
+      { delay: durationMilliseconds },
+    );
   }
 
   async logEventInSlack(user_id: string, event: TrackEventDto) {

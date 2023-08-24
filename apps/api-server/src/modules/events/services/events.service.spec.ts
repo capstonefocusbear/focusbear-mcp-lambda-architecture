@@ -100,6 +100,27 @@ describe('EventService', () => {
         text: message,
       });
     });
+
+    it('positive: if event is of type postpone_habits_from_mobile, event should be added to queue to send push notification to user', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, language: 'en' });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      const minutesToPostpone = 1;
+      const dummyEvent = {
+        event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
+        event_data: { data: { quantity: minutesToPostpone } },
+      };
+
+      await eventsService.addEventToQueue(dummyEvent, userDummy.id);
+
+      expect(QueueMock.add).toBeCalledWith(
+        'resume-habits-notification',
+        {
+          user_id: userDummy.id,
+          language: 'en',
+        },
+        { delay: 60000 },
+      );
+    });
   });
 
   describe('logEventInSlack', () => {

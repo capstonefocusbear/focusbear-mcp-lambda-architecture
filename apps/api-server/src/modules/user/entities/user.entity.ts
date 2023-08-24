@@ -27,6 +27,7 @@ import { RoutineNotificationTimes } from '../domain/routine-notification-times.m
 import { LanguageOptions } from '../domain/language-options.enum';
 import { ToDo } from '../../to-do/entities/to-do.entity';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
+import { UserFeedback } from './user-feedback.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -347,6 +348,12 @@ export class User extends BaseEntity {
   })
   last_status_synced_with_profitwell?: string;
 
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+  })
+  last_date_gave_feedback?: Date;
+
   @Column({ type: 'varchar', nullable: true })
   zoho_location?: string;
 
@@ -412,6 +419,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => SavedWebsite, (website) => website.user)
   saved_websites?: SavedWebsite[];
+
+  @OneToMany(() => UserFeedback, (userFeedback) => userFeedback.user)
+  feedback?: UserFeedback[];
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

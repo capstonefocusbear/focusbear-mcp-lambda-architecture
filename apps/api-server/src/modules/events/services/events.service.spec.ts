@@ -7,8 +7,8 @@ import axios from 'axios';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
-  BrevoServiceMock,
   EventsRepositoryMock,
+  BrevoServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';

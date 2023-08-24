@@ -15,7 +15,6 @@ import { EventsService } from '../services/events.service';
 export class EventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
-    private readonly eventsService: EventsService,
     private readonly brevoService: BrevoService,
     private readonly pusherBeamsService: PusherBeamsService,
     private readonly i18nService: I18nService,
@@ -46,7 +45,6 @@ export class EventsConsumer {
         );
       }
       await this.brevoService.registerBrevoEvent(email, trackEventDto);
-      const { event_type } = trackEventDto;
       if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
         await this.eventsService.saveImpactEvent(
           event_type as EventTypes,

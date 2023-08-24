@@ -35,8 +35,11 @@ export class EventsService {
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
-      if (event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE) {
-        await this.handleMobileHabitsPostpone(user_id, trackEventDto.event_data.data.quantity, user.language);
+      if (
+        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE ||
+        event_type === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE
+      ) {
+        await this.handleMobilePostpone(user_id, event_type, trackEventDto.event_data.data.quantity, user.language);
       }
       await this.eventsQueue.add('track-event', {
         user_id,
@@ -49,13 +52,14 @@ export class EventsService {
     }
   }
 
-  async handleMobileHabitsPostpone(userId: string, durationMinutes: number, language: string) {
+  async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {
     // Convert minutes to postpone to milliseconds
     const durationMilliseconds = durationMinutes * ONE_MINUTE;
     await this.eventsQueue.add(
-      'resume-habits-notification',
+      'resume-notification',
       {
         user_id: userId,
+        event_type: eventType,
         language,
       },
       { delay: durationMilliseconds },

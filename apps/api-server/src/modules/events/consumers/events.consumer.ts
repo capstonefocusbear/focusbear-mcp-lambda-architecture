@@ -7,6 +7,7 @@ import { I18nService } from 'nestjs-i18n';
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
+import { EventTypes } from '../domain/event-types.enum';
 
 @Processor('events')
 export class EventsConsumer {
@@ -43,14 +44,24 @@ export class EventsConsumer {
     }
   }
 
-  @Process('resume-habits-notification')
-  async sendResumeHabitsNotification(job: Job<{ user_id: string; language: string }>) {
+  @Process('resume-notification')
+  async sendResumeHabitsNotification(job: Job<{ user_id: string; event_type: EventTypes; language: string }>) {
     try {
       const {
-        data: { user_id, language },
+        data: { user_id, event_type, language },
       } = job;
-      const title = this.i18nService.t('common.resume_habits_title', { lang: language });
-      const body = this.i18nService.t('common.resume_habits_body', { lang: language });
+      const title = this.i18nService.t(
+        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE
+          ? 'common.resume_habits_title'
+          : 'common.resume_focus_mode_title',
+        { lang: language },
+      );
+      const body = this.i18nService.t(
+        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE
+          ? 'common.resume_habits_body'
+          : 'common.resume_focus_mode_body',
+        { lang: language },
+      );
       const publishRequest = new BeamsPublishRequest({
         apns: { aps: { alert: { title, body } } },
         fcm: { notification: { title, body } },

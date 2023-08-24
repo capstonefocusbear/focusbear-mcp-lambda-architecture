@@ -113,9 +113,10 @@ describe('EventService', () => {
       await eventsService.addEventToQueue(dummyEvent, userDummy.id);
 
       expect(QueueMock.add).toBeCalledWith(
-        'resume-habits-notification',
+        'resume-notification',
         {
           user_id: userDummy.id,
+          event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
           language: 'en',
         },
         { delay: 60000 },

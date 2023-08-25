@@ -1,4 +1,8 @@
 {
   "user_data_email_header": "Your Focus Bear Data",
-  "user_data_email_body": "Download a copy of your data recorded by Focus Bear at\n\n{link}\n\nPlease note that this link expires after 7 days."
+  "user_data_email_body": "Download a copy of your data recorded by Focus Bear at\n\n{link}\n\nPlease note that this link expires after 7 days.",
+  "resume_habits_title": "Resume your habits",
+  "resume_habits_body": "Your break is over and it's time to get back into doing your habits!",
+  "resume_focus_mode_title": "Resume your focus session",
+  "resume_focus_mode_body": "Your break is over and it's time to get back into your focus session!"
 }

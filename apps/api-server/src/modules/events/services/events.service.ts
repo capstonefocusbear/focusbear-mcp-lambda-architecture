@@ -9,7 +9,12 @@ import { TrackEventDto } from '../dto/track-event.dto';
 import { EventTypes } from '../domain/event-types.enum';
 import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
-import { EVENTS_TO_IMPACT_CATEGORIES_MAP, EVENT_TYPES_TO_ALERT_IN_SLACK } from '../../../shared/utils/constants';
+import {
+  EVENTS_TO_IMPACT_CATEGORIES_MAP,
+  EVENT_TYPES_TO_ALERT_IN_SLACK,
+  IMPACT_MEASUREMENT_EVENT_TYPES,
+  ONE_MINUTE,
+} from '../../../shared/utils/constants';
 
 @Injectable()
 export class EventsService {
@@ -38,6 +43,15 @@ export class EventsService {
       if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
+      if (
+        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE ||
+        event_type === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE
+      ) {
+        await this.handleMobilePostpone(user_id, event_type, trackEventDto.event_data.data.quantity, user.language);
+      }
+      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
+        await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.quantity);
+      }
       await this.eventsQueue.add('track-event', {
         user_id,
         email: userAuth0Data.email,
@@ -47,6 +61,20 @@ export class EventsService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {
+    // Convert minutes to postpone to milliseconds
+    const durationMilliseconds = durationMinutes * ONE_MINUTE;
+    await this.eventsQueue.add(
+      'resume-notification',
+      {
+        user_id: userId,
+        event_type: eventType,
+        language,
+      },
+      { delay: durationMilliseconds },
+    );
   }
 
   async logEventInSlack(user_id: string, event: TrackEventDto) {

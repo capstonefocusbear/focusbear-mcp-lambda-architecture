@@ -421,13 +421,11 @@ export class User extends BaseEntity {
   @OneToMany(() => SavedWebsite, (website) => website.user)
   saved_websites?: SavedWebsite[];
 
-
   @OneToMany(() => ImpactEvent, (impactEvent) => impactEvent.user)
   impact_events?: ImpactEvent[];
 
   @OneToMany(() => UserFeedback, (userFeedback) => userFeedback.user)
   feedback?: UserFeedback[];
-
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

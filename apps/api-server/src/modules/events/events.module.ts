@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BrevoService } from '@app/brevo/brevo.service';
+import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { UserRepository } from '../user/repositories/user.repository';
 import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';
@@ -25,6 +26,11 @@ import { EventsRepository } from './repositories/events.repository';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('auth0'),
+    }),
+    PusherBeamsModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
   ],
   controllers: [EventsController],

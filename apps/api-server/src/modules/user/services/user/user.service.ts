@@ -41,6 +41,7 @@ import { CompletedActivitySequence } from '../../../activity/entities/completed-
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import {
+  INTERNAL_TEST,
   ONE_MINUTE,
   PERSONAL_PLAN_COST_CENTS,
   TRIAL,
@@ -141,7 +142,11 @@ export class UserService {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
-        await this.handleRegisterUserInProfitWell(registeredUser, stripeId);
+        const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
+        const isUserRegisteredInProfitWell = !!registeredUser.profitwell_id;
+        if (!isTestUser && !isUserRegisteredInProfitWell) {
+          await this.handleRegisterUserInProfitWell(registeredUser, stripeId);
+        }
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
@@ -155,8 +160,6 @@ export class UserService {
   }
 
   async handleRegisterUserInProfitWell(user: User | null, stripeId: string) {
-    // user is already registered in Profit Well
-    if (user.profitwell_id) return;
     const { revenue_cat_data, revenue_cat_status } = user;
     const revenueCatStatus = revenue_cat_status ?? TRIAL;
     const renewalAmountCents = revenue_cat_data?.activeEntitlements?.includes(Entitlement.personal)

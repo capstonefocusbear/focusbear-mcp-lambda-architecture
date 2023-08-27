@@ -4,10 +4,12 @@ import { Job } from 'bull';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { RevenueCatService } from '@app/revenue-cat';
+import { Auth0ManagementService } from '@app/auth0';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
 import {
   ACTIVE,
+  INTERNAL_TEST,
   MONTH,
   ONE_SECOND_AS_MILLIS,
   PERSONAL_PLAN_COST_CENTS,
@@ -40,6 +42,7 @@ export class RevenueCatStatusConsumer {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly revenueCatService: RevenueCatService,
     private readonly userRepository: UserRepository,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   getHighestRankingSubscription(userSubscriptions: Entitlement[] | string[]) {
@@ -162,7 +165,10 @@ export class RevenueCatStatusConsumer {
         : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
       const subscriptionStatus =
         userActiveSubscription === Entitlement.trial || !userActiveSubscription ? TRIALING : ACTIVE;
-
+      // Avoid syncing user in ProfitWell if they don't have a Stripe ID
+      if (!stripe_customer_id) {
+        return;
+      }
       // churn user if their trial expired
       if (last_status_synced_with_profitwell === Entitlement.trial && !userActiveSubscription && stripe_customer_id) {
         await this.churnTrial(profitwell_registration_date, stripe_customer_id);
@@ -191,6 +197,12 @@ export class RevenueCatStatusConsumer {
           profitwell_registration_date: new Date(effectiveDate),
           last_status_synced_with_profitwell: userActiveSubscription ?? last_status_synced_with_profitwell,
         });
+        return;
+      }
+      // Avoid registering tets users with ProfitWell to keep analytics data accurate
+      const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+      const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
+      if (isTestUser) {
         return;
       }
       // register user in profitwell if not registered yet

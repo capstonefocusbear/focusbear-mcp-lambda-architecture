@@ -758,6 +758,19 @@ describe('UserService', () => {
 
       expect(UserRepositoryMock.getUserForAdmin).toBeCalledWith(undefined, dummyStripeId);
     });
+
+    it('positive: if no matching user is found in Stripe when searching by email, null should be returned', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.getUserForAdmin.mockResolvedValueOnce(userDummy);
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(null);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'test@mail.com' });
+
+      const response = await userService.getUserById(userDummy.id, {
+        email: 'test@email.com',
+      });
+
+      expect(response).toBeNull();
+    });
   });
 
   describe('updateMetadata', () => {

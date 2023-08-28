@@ -62,6 +62,7 @@ export class UserPersonalDataConsumer {
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      console.error('Error in user data email queued job: ', error);
     }
   }
 }

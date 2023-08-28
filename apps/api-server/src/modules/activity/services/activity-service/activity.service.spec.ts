@@ -168,5 +168,22 @@ describe('ActivityService', () => {
       });
       expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
     });
+
+    it("positive: if activities are searched using user's email and no matching user is found in Stripe, empty array of activities should be returned", async () => {
+      const dummyEmail = 'test@email.com';
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      ActivityRepositoryMock.getActivitiesForAdmin.mockResolvedValueOnce(
+        userSettingsDBResponseDummy.activity_sequences[0].activities,
+      );
+      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(null);
+
+      const response = await activityService.getUserActivitiesForAdmin(userDummy.id, {
+        email: dummyEmail,
+        page_num: 1,
+      });
+
+      expect(response).toBeArrayOfSize(0);
+    });
   });
 });

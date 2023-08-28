@@ -64,6 +64,9 @@ export class ActivityService {
       const searchedUserStripeId = await this.stripeService.getStripeCustomerId(email);
       if (searchedUserStripeId) {
         stripeIdToSearchBy = searchedUserStripeId;
+      } else {
+        // Return empty array of activities if user does not exist
+        return [];
       }
     }
     const user = await this.userRepository.orm.findOne({

@@ -461,6 +461,9 @@ export class UserService {
       const searchedUserStripeId = await this.stripeService.getStripeCustomerId(email);
       if (searchedUserStripeId) {
         stripeIdToSearchBy = searchedUserStripeId;
+      } else {
+        // Return null if no user in Stripe matches email
+        return null;
       }
     }
     const fetchedUser = await this.userRepository.getUserForAdmin(searchedId, stripeIdToSearchBy);

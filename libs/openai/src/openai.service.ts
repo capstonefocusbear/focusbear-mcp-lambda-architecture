@@ -25,6 +25,38 @@ export class OpenAIService {
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
 
+  constructMotivationalMessagePrompt(
+    streaksData: HabitOption[],
+    longTermGoals: string[],
+    { language, tone, device_type = DeviceType.MOBILE }: MotivationalSummaryQueryDto,
+  ) {
+    const wordCount = device_type === DeviceType.DESKTOP ? '100' : '50';
+    const longTermGoalsPhrase = longTermGoals?.length > 0 ? "and the user's long term goals" : '';
+    const addedLongTermGoals = longTermGoals?.length > 0 ? `Long term goals: ${longTermGoals}` : '';
+    const baseMessage = `Given the user's habits input below ${longTermGoalsPhrase}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
+      streaksData,
+      null,
+      2,
+    )}\n\n${addedLongTermGoals}`;
+    const futureSelfMessage = `Given the user's habits input below ${longTermGoalsPhrase}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone as if you're a future self 20 years from now talking to the present user to encourage them to work hard for the future version of themselves, and don't use past tense. Do this in ${language}\n\nHabits input: ${JSON.stringify(
+      streaksData,
+      null,
+      2,
+    )}\n\n${addedLongTermGoals}\n\nDon't start with 'Dear...' just start with the message`;
+    const factualMessage = `Given the user's habits input below ${longTermGoalsPhrase}, generate a short message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone, pretend you are talking to the user and give them a summary of their habits input streaks. Do this in ${language} and don't start with 'Based on your input,', just start with the message.\n\nHabits input: ${JSON.stringify(
+      streaksData,
+      null,
+      2,
+    )}\n\n${addedLongTermGoals}`;
+    if (tone === AiToneOptions.FUTURE_SELF) {
+      return futureSelfMessage;
+    }
+    if (tone === AiToneOptions.FACTUAL) {
+      return factualMessage;
+    }
+    return baseMessage;
+  }
+
   async createMotivationalSummary(
     response: FastifyReply,
     input: HabitOption[],
@@ -41,19 +73,7 @@ export class OpenAIService {
           language,
         },
       });
-      const prompt = `Given the user's habits input below ${
-        longTermGoals?.length > 0 ? "and the user's long term goals" : ''
-      }, generate a short motivational message (keep it below ${
-        device_type === DeviceType.DESKTOP ? '100' : '50'
-      } words and add line breaks where appropriate) in a ${tone} tone, ${
-        tone === AiToneOptions.FUTURE_SELF
-          ? " as if you're a future self 20 years from now talking back to the present user "
-          : ''
-      }to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
-        input,
-        null,
-        2,
-      )}\n\n${longTermGoals?.length > 0 ? `Long term goals: ${longTermGoals}` : ''}`;
+      const prompt = this.constructMotivationalMessagePrompt(input, longTermGoals, { language, tone, device_type });
       // clear up prompt formatting to stream to client as string
       const promptWithoutNewLines = prompt.replace(/\n/g, ' ');
       const formattedPrompt = promptWithoutNewLines

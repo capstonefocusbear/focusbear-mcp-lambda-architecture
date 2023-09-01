@@ -24,7 +24,7 @@ export class ToDoService {
     if (upsertToDo.id) {
       await this.validateUpdatingToDo(user_id, upsertToDo);
     }
-    const tags = upsertToDo?.tags.map((tag) => new FocusModeTag({ ...tag, user_id }));
+    const tags = upsertToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id }));
     const newToDo = new ToDo({ ...upsertToDo, user_id, updated_at: new Date().toISOString(), tags });
     return this.toDoRepository.orm.save(newToDo);
   }

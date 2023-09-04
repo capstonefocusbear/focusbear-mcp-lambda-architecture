@@ -5,6 +5,7 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
+import { StripeService } from '@app/stripe';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
 import {
@@ -43,6 +44,7 @@ export class RevenueCatStatusConsumer {
     private readonly revenueCatService: RevenueCatService,
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly stripeService: StripeService,
   ) {}
 
   getHighestRankingSubscription(userSubscriptions: Entitlement[] | string[]) {
@@ -155,8 +157,6 @@ export class RevenueCatStatusConsumer {
         revenue_cat_status: userActiveSubscription,
         last_date_revenue_cat_data_synced: new Date(),
       });
-      const renewalAmountCents =
-        userActiveSubscription === Entitlement.personal ? PERSONAL_PLAN_COST_CENTS : TRIAL_COST_CENTS;
       const effectiveDate = subscriptionInfo.hasActiveSubscription
         ? Math.round(
             new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() /
@@ -168,6 +168,12 @@ export class RevenueCatStatusConsumer {
       // Avoid syncing user in ProfitWell if they don't have a Stripe ID
       if (!stripe_customer_id) {
         return;
+      }
+      let renewalAmountCents = TRIAL_COST_CENTS;
+      const hasPersonalSubscription =
+        userActiveSubscription === Entitlement.personal ? PERSONAL_PLAN_COST_CENTS : TRIAL_COST_CENTS;
+      if (hasPersonalSubscription) {
+        renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripe_customer_id);
       }
       // churn user if their trial expired
       if (last_status_synced_with_profitwell === Entitlement.trial && !userActiveSubscription && stripe_customer_id) {

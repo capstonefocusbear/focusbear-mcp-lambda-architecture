@@ -43,7 +43,6 @@ import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import {
   INTERNAL_TEST,
   ONE_MINUTE,
-  PERSONAL_PLAN_COST_CENTS,
   TRIAL,
   TRIAL_COST_CENTS,
   USERNAME_VALIDATION_TIMEOUT,
@@ -162,9 +161,11 @@ export class UserService {
   async handleRegisterUserInProfitWell(user: User | null, stripeId: string) {
     const { revenue_cat_data, revenue_cat_status } = user;
     const revenueCatStatus = revenue_cat_status ?? TRIAL;
-    const renewalAmountCents = revenue_cat_data?.activeEntitlements?.includes(Entitlement.personal)
-      ? PERSONAL_PLAN_COST_CENTS
-      : TRIAL_COST_CENTS;
+    let renewalAmountCents = TRIAL_COST_CENTS;
+    const hasPersonalSubscription = revenue_cat_data?.activeEntitlements?.includes(Entitlement.personal);
+    if (hasPersonalSubscription) {
+      renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripeId);
+    }
     const effectiveDate = revenue_cat_data?.hasActiveSubscription
       ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus].purchase_date).getTime() / 1000)
       : Math.round(new Date().getTime() / 1000);

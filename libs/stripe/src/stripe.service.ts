@@ -107,4 +107,12 @@ export class StripeService extends Stripe {
     }
     return users[0].id;
   }
+
+  async getCustomerSubscriptionRate(stripeCustomerId: string) {
+    const stripeUser: any = await this.customers.retrieve(stripeCustomerId, { expand: ['subscriptions'] });
+    const invoiceId = stripeUser.subscriptions?.data[0]?.latest_invoice ?? null;
+    if (!invoiceId) return 0;
+    const invoice = await this.invoices.retrieve(invoiceId);
+    return invoice.amount_paid;
+  }
 }

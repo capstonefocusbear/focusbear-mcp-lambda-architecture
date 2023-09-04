@@ -1,9 +1,11 @@
-import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { User } from '../../user/entities/user.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
+import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
+import { TaskTimeLog } from './tasks-time-logs.entity';
 
 @Entity('to_do')
 export class ToDo extends BaseEntity {
@@ -28,7 +30,7 @@ export class ToDo extends BaseEntity {
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 10000,
     default: null,
     nullable: true,
     transformer: BaseEntity.encryptField('title'),
@@ -37,7 +39,7 @@ export class ToDo extends BaseEntity {
 
   @Column({
     type: 'varchar',
-    length: 2000,
+    length: 32000,
     default: null,
     nullable: true,
     transformer: BaseEntity.encryptField('details'),
@@ -47,7 +49,7 @@ export class ToDo extends BaseEntity {
   @Column({ type: 'varchar', default: null, nullable: true })
   external_task_id?: string;
 
-  @Column({ type: 'jsonb', default: null, nullable: true })
+  @Column({ type: 'jsonb', default: null, nullable: true, select: false })
   external_task_metadata?: any;
 
   @Column({ type: 'timestamptz', default: null, nullable: true })
@@ -67,7 +69,13 @@ export class ToDo extends BaseEntity {
   @JoinColumn({ name: 'focus_type' })
   focus_mode?: FocusMode;
 
+  @OneToMany(() => TaskTimeLog, (timeLog) => timeLog.to_do)
+  task_time_logs?: TaskTimeLog[];
+
   @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
   @JoinTable()
   tags?: FocusModeTag[];
+
+  @ManyToMany(() => CompletedFocusBlock, (completedFocusBlock) => completedFocusBlock.to_dos)
+  completedFocusBlocks: CompletedFocusBlock[];
 }

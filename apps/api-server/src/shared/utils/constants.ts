@@ -14,6 +14,7 @@ export const FOCUS_BEAR_EMAILS = {
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
 };
+export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;

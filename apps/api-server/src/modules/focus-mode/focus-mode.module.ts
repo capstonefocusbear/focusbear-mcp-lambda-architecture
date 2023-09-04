@@ -12,6 +12,7 @@ import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-temp
 import { FocusModeTagRepository } from './repositories/focus-mode-tags.repository';
 import { CompletedFocusBlockService } from './services/completed-focus-blocks/completed-focus-blocks.service';
 import { CompletedFocusBlocksController } from './controllers/completed-focus-blocks/completed-focus-blocks.controller';
+import { ToDoModule } from '../to-do/to-do.module';
 
 @Module({
   providers: [
@@ -36,6 +37,7 @@ import { CompletedFocusBlocksController } from './controllers/completed-focus-bl
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
     forwardRef(() => FocusModeTemplatesModule),
+    ToDoModule,
   ],
   controllers: [FocusModeController, CompletedFocusBlocksController],
 })

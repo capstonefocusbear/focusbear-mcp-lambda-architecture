@@ -29,6 +29,7 @@ import { ToDo } from '../../to-do/entities/to-do.entity';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
 import { ImpactEvent } from '../../events/entities/impact-event.entity';
 import { UserFeedback } from './user-feedback.entity';
+import { TaskTimeLog } from '../../to-do/entities/tasks-time-logs.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -427,6 +428,9 @@ export class User extends BaseEntity {
   @OneToMany(() => UserFeedback, (userFeedback) => userFeedback.user)
   feedback?: UserFeedback[];
 
+  @OneToMany(() => TaskTimeLog, (timeLog) => timeLog.user)
+  task_time_logs?: TaskTimeLog[];
+
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })
   owner_of_team?: Team;
@@ -454,6 +458,10 @@ export class User extends BaseEntity {
   @OneToOne(() => CompletedActivitySequence, (sequence_log) => sequence_log.user)
   @JoinColumn({ name: 'current_completing_sequence_log_id' })
   completing_sequence_log?: CompletedActivitySequence;
+
+  @OneToOne(() => CompletedFocusBlock, (focusBlock) => focusBlock.user)
+  @JoinColumn({ name: 'current_completing_focus_block_id' })
+  completing_focus_block?: CompletedFocusBlock;
 
   @OneToOne(() => FocusMode, (mode) => mode.user)
   @JoinColumn({ name: 'current_focus_mode_id' })

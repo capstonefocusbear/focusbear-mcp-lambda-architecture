@@ -4,6 +4,7 @@ import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { JwtModule } from '@nestjs/jwt';
+import { BullModule } from '@nestjs/bull';
 import { AuthService } from './services/auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
 import { HelperModule } from '../helper/helper.module';
@@ -52,6 +53,14 @@ import { ZohoModule } from '../zoho/zoho.module';
     HelperModule,
     ConfigModule,
     forwardRef(() => ZohoModule),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => config.get('bull'),
+    }),
+    BullModule.registerQueue({
+      name: 'time-logs',
+    }),
   ],
 })
 export class AuthModule {}

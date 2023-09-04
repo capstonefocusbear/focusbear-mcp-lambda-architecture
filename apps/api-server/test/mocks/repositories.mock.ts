@@ -143,6 +143,10 @@ export const ToDoRepositoryMock = {
   getUserToDos: jest.fn(),
 };
 
+export const TaskTimeLogsRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const FocusModeTemplatesRepositoryMock = {
   ...BaseRepositoryMock,
   fetchTemplatesByFilter: jest.fn(),

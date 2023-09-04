@@ -33,6 +33,7 @@ import { SavedWebsite } from '../modules/saved-website/entities/saved-website.en
 import { ToDo } from '../modules/to-do/entities/to-do.entity';
 import { ImpactEvent } from '../modules/events/entities/impact-event.entity';
 import { UserFeedback } from '../modules/user/entities/user-feedback.entity';
+import { TaskTimeLog } from '../modules/to-do/entities/tasks-time-logs.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -79,6 +80,7 @@ export const typeormConfig = registerAs(
       ToDo,
       ImpactEvent,
       UserFeedback,
+      TaskTimeLog,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

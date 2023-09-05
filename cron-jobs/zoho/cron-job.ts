@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import axios, { AxiosResponse } from 'axios';
-import { BadRequestException } from '@nestjs/common';
 import { In, IsNull, Not } from 'typeorm';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-project.model';
@@ -25,20 +24,6 @@ async function refreshToken(userId: string) {
   return data;
 }
 
-async function getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
-  try {
-    const user = await getUser(userId);
-    const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
-    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
-    const response = await axios.get(url, {
-      headers,
-    });
-    return response.data?.tasks;
-  } catch (e) {
-    throw new BadRequestException(e.response?.data);
-  }
-}
-
 async function getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
   const user = await getUser(userId);
   const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/`;
@@ -59,6 +44,16 @@ async function getPortals(userId: string): Promise<AxiosResponse<any>> {
   return response.data;
 }
 
+async function getTasksOwnedByUser(userId: string, portalId: string) {
+  const user = await getUser(userId);
+  const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/mytasks/?owner=${user.zoho_user_id}`;
+  const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+  const response = await axios.get(url, {
+    headers,
+  });
+  return response.data?.tasks ?? [];
+}
+
 async function getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[]; zohoProjects: ZohoProject[] }> {
   const MAX_RETRY = 2;
   let retryCount = 0;
@@ -67,21 +62,14 @@ async function getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[
     try {
       const portals: any = await getPortals(userId);
       const zohoTasks = [];
-      let zohoProjects = [];
+      const zohoProjects = [];
       if (!portals.portals) return { zohoProjects, zohoTasks };
 
       for (const portal of portals.portals) {
-        zohoProjects = await getProjects(userId, portal.id);
-        // eslint-disable-next-line no-continue
-        if (!zohoProjects.length) continue;
-
-        for (const project of zohoProjects) {
-          const tasksFromProject = await getTasks(userId, portal.id, project.id_string);
-          const tasksLinkedToProjects = tasksFromProject.map((task) => {
-            return { ...task, project_id: project.id_string };
-          });
-          zohoTasks.push(...tasksLinkedToProjects);
-        }
+        const projects = await getProjects(userId, portal.id);
+        zohoProjects.push(...projects);
+        const tasks = await getTasksOwnedByUser(userId, portal.id);
+        zohoTasks.push(...tasks);
       }
 
       return { zohoProjects, zohoTasks };

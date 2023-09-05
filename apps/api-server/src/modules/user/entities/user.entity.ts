@@ -368,6 +368,9 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   zoho_account_server?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  zoho_user_id?: string;
+
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 

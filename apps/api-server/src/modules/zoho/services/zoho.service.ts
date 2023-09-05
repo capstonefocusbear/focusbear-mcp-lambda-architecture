@@ -192,21 +192,14 @@ export class ZohoService {
       try {
         const portals: any = await this.getPortals(userId);
         const zohoTasks = [];
-        let zohoProjects = [];
+        const zohoProjects = [];
         if (!portals) return { zohoProjects, zohoTasks };
 
         for (const portal of portals) {
-          zohoProjects = await this.getProjects(userId, portal.id);
-          // eslint-disable-next-line no-continue
-          if (!zohoProjects.length) continue;
-
-          for (const project of zohoProjects) {
-            const tasksFromProject = await this.getTasks(userId, portal.id, project.id_string);
-            const tasksLinkedToProjects = tasksFromProject.map((task) => {
-              return { ...task, project_id: project.id_string, portal_id: portal.id };
-            });
-            zohoTasks.push(...tasksLinkedToProjects);
-          }
+          const projects = await this.getProjects(userId, portal.id);
+          zohoProjects.push(...projects);
+          const tasks = await this.getTasksOwnedByUser(userId, portal.id);
+          zohoTasks.push(...tasks);
         }
 
         return { zohoProjects, zohoTasks };
@@ -284,5 +277,15 @@ export class ZohoService {
       tasksSaved: savedToDos.length,
       tasksRemoved: tasksToRemoveIds.length,
     };
+  }
+
+  async getTasksOwnedByUser(userId: string, portalId: string) {
+    const user = await this.getUser(userId);
+    const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/mytasks/?owner=${user.zoho_user_id}`;
+    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+    const response = await this.httpService.get(url, {
+      headers,
+    });
+    return response.data?.tasks ?? [];
   }
 }

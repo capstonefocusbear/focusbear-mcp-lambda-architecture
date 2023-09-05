@@ -60,9 +60,17 @@ export class ZohoAuthService {
     if (!existingUser) {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
     }
+    // Get user Zoho ID
+    const profileUrl = `${accountServer}/oauth/user/info`;
+    const headers = { Authorization: `Zoho-oauthtoken ${accessToken}` };
+    const {
+      data: { ZUID },
+    } = await axios.get(profileUrl, { headers });
+    // Save user Zoho info needed for requests to Zoho Projects API
     const detailPayload = {
       zoho_refresh_token: refreshToken || '',
       zoho_access_token: accessToken || '',
+      zoho_user_id: ZUID,
       ...(location && { zoho_location: location }),
       ...(accountServer && { zoho_account_server: accountServer }),
     };

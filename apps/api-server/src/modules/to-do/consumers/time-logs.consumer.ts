@@ -36,7 +36,7 @@ export class TimeLogsConsumer {
           continue;
         }
         const portalId = toDoRecord.external_task_metadata.task_data.portal_id;
-        const projectId = toDoRecord.external_task_metadata.task_data.project_id;
+        const projectId = toDoRecord.external_task_metadata.task_data?.project?.id_string;
         const taskId = toDoRecord.external_task_metadata.task_data.id_string;
         const billStatus = timeLog.is_billable ? BillingStatus.BILLABLE : BillingStatus.NON_BILLABLE;
         const currentTime = DateTime.local();

@@ -286,6 +286,10 @@ export class ZohoService {
     const response = await this.httpService.get(url, {
       headers,
     });
-    return response.data?.tasks ?? [];
+    const tasks = response.data?.tasks ?? [];
+    const tasksWithPortalIds = tasks.map((task) => {
+      return { ...task, portal_id: portalId };
+    });
+    return tasksWithPortalIds;
   }
 }

@@ -1,3 +1,5 @@
+import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
+
 export function wait(seconds: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, seconds * 1000);
@@ -39,4 +41,12 @@ export const getDataCenterUrl = (location) => {
     api: `https://projectsapi.zoho.com.${location}/restapi`,
     accounts: `https://accounts.zoho.co.${location}`,
   };
+};
+
+export const secondsToHHMM = (seconds: number) => {
+  const hours = Math.floor(seconds / ONE_HOUR_SECONDS);
+  const minutes = Math.floor((seconds % ONE_HOUR_SECONDS) / ONE_MINUTE_SECONDS);
+  const hoursStr = String(hours).padStart(2, '0');
+  const minutesStr = String(minutes).padStart(2, '0');
+  return `${hoursStr}:${minutesStr}`;
 };

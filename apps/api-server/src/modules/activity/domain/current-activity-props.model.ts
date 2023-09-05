@@ -3,6 +3,7 @@ import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { User } from '../../user/entities/user.entity';
 import { ActivitySequence } from '../entities/activity-sequence.entity';
 import { Activity } from '../entities/activity.entity';
+import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
 
 interface ExtendedActivityProps {
   current_sequence_completed_activities?: string[];
@@ -21,6 +22,7 @@ export class CurrentActivityProps {
     this.current_sequence_skipped_activities = data?.current_sequence_skipped_activities || null;
     this.last_time_user_settings_modified = data?.last_time_user_settings_modified || null;
     this.current_sequence_completed_activities = data?.current_sequence_completed_activities;
+    this.completing_focus_block = data?.completing_focus_block;
   }
 
   @ApiProperty()
@@ -55,4 +57,7 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   current_sequence_completed_activities?: string[];
+
+  @ApiProperty()
+  completing_focus_block?: CompletedFocusBlock;
 }

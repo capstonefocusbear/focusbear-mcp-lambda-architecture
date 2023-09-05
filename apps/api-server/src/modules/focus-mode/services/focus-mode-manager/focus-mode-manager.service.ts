@@ -3,6 +3,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
+import { In } from 'typeorm';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
@@ -15,6 +16,7 @@ import { FocusMode } from '../../entities/focus-mode.entity';
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
+import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -27,10 +29,11 @@ export class FocusModeManagerService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly focusModeService: FocusModeService,
+    private readonly toDoRepository: ToDoRepository,
   ) {}
 
   async startCurrentFocusMode(
-    { finish_time, intention, start_time }: StartFocusModeDto,
+    { finish_time, intention, start_time, to_do_ids }: StartFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
@@ -49,18 +52,25 @@ export class FocusModeManagerService {
       // by passing start_time here for finish_time argument of validateStartingFocusMode
       await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
       const scheduled_finish_time = finish_time;
+      let toDosToLink = [];
+      if (to_do_ids?.length) {
+        toDosToLink = await this.toDoRepository.orm.find({ where: { user_id, id: In(to_do_ids) } });
+      }
       const completedFocusBlock = new CompletedFocusBlock({
         start_time,
         scheduled_finish_time,
         intention,
         user_id,
         focus_mode_id,
+        to_dos: toDosToLink,
       });
-      const completedMode = await this.completedFocusBlockRepository.create(completedFocusBlock);
+      const completedMode = await this.completedFocusBlockRepository.orm.save(completedFocusBlock);
       const completed_mode_id = completedMode.id;
       const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
       await this.userRepository.orm.update(user_id, userDataToUpdate);
+      // Pusher throwing error about data exceeding size limit,  removing to dos
+      delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
@@ -158,6 +168,8 @@ export class FocusModeManagerService {
         this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
+      // Pusher throwing error about data exceeding size limit, removing to dos
+      delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(user_id, finish_time, user.timezone);

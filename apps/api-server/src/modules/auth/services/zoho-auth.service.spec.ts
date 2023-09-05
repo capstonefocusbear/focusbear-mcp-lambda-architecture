@@ -2,11 +2,13 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { getQueueToken } from '@nestjs/bull';
 import { SentryServiceMock, ZohoServiceMock } from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoAuthService } from './zoho-auth.service';
 import { ZohoService } from '../../zoho/services/zoho.service';
+import { QueueMock } from '../../../../test/dummies';
 
 describe('ZohoService', () => {
   let zohoAuthService: ZohoAuthService;
@@ -22,6 +24,10 @@ describe('ZohoService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('time-logs'),
+          useValue: QueueMock,
         },
       ],
     })

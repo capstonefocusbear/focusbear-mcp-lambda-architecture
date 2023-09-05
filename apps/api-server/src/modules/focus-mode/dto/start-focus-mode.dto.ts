@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 // import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
 
 // export function IsTimestampGreaterThanNow(property: string, validationOptions?: ValidationOptions) {
@@ -35,4 +35,8 @@ export class StartFocusModeDto {
   @Type(() => Date)
   @IsDate({ message: 'start_time  should be a valid ISO string in UTC zone' })
   start_time: Date;
+
+  @IsOptional()
+  @IsArray()
+  to_do_ids?: string[];
 }

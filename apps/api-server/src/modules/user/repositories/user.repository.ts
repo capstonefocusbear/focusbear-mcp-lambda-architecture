@@ -160,29 +160,10 @@ export class UserRepository extends BaseRepository<User> {
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.current_activity', 'current_activity')
       .leftJoinAndSelect('users.current_focus_mode', 'current_focus_mode')
+      .leftJoinAndSelect('users.completing_focus_block', 'completing_focus_block')
+      .leftJoinAndSelect('completing_focus_block.to_dos', 'to_dos')
       .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
-      .select([
-        'users.current_activity_assigned_at',
-        'users.current_focus_mode_finish_time',
-        'users.last_completed_sequence_started_at',
-        'users.id',
-        'users.last_completed_sequence_at',
-        'users.current_sequence_skipped_activities',
-        'users.timezone',
-        'users.startup_time',
-        'users.shutdown_time',
-        'users.current_sequence_started_at',
-        'users.current_activity_id',
-        'users.current_activity_sequence_id',
-        'users.cutoff_time_for_non_high_priority_activities',
-        'users.current_completing_sequence_log_id',
-        'users.last_time_user_settings_modified',
-        'current_activity',
-        'current_activity_sequence',
-        'last_completed_sequence',
-        'current_focus_mode',
-      ])
       .where('users.id = :id', { id })
       .getOne();
   }

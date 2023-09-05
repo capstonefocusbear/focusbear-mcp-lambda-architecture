@@ -1,11 +1,15 @@
+/* eslint-disable no-console */
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { ZohoAuthorizeQuery } from '../dto/zoho-authorize-query.dto';
 import { ZohoService } from '../../zoho/services/zoho.service';
+import { ONE_MINUTE } from '../../../shared/utils/constants';
 
 @Injectable()
 export class ZohoAuthService {
@@ -15,7 +19,14 @@ export class ZohoAuthService {
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => ZohoService))
     private readonly zohoService: ZohoService,
+    @InjectQueue('time-logs') private timeLogsQueue: Queue,
   ) {}
+
+  private zohoClientId = this.configService.get('zoho.ZOHO_CLIENT_ID');
+
+  private zohoClientSecret = this.configService.get('zoho.ZOHO_CLIENT_SECRET');
+
+  private zohoCallbackUrl = this.configService.get('zoho.ZOHO_CALLBACK_URL');
 
   getZohoLoginUrl() {
     const scopes = [
@@ -24,13 +35,14 @@ export class ZohoAuthService {
       'ZohoProjects.projects.ALL',
       'ZohoProjects.portals.ALL',
       'ZohoProjects.timesheets.ALL',
+      'ZohoProjects.users.ALL',
     ];
 
     let queryParams: any = {
       scope: scopes.join(','),
-      client_id: this.configService.get('zoho.ZOHO_CLIENT_ID'),
-      client_secret: this.configService.get('zoho.ZOHO_CLIENT_SECRET'),
-      redirect_uri: this.configService.get('zoho.ZOHO_CALLBACK_URL'),
+      client_id: this.zohoClientId,
+      client_secret: this.zohoClientSecret,
+      redirect_uri: this.zohoCallbackUrl,
       response_type: 'code',
       access_type: 'offline',
       prompt: 'consent',
@@ -54,18 +66,13 @@ export class ZohoAuthService {
       ...(location && { zoho_location: location }),
       ...(accountServer && { zoho_account_server: accountServer }),
     };
-
     await this.userRepository.update(existingUser.id, detailPayload);
     return existingUser;
   }
 
   async refreshToken(userId: string) {
     const user = await this.getUser(userId);
-    const url = `${user.zoho_account_server}/oauth/v2/token?client_id=${this.configService.get(
-      'zoho.ZOHO_CLIENT_ID',
-    )}&grant_type=refresh_token&client_secret=${this.configService.get('zoho.ZOHO_CLIENT_SECRET')}&refresh_token=${
-      user.zoho_refresh_token
-    }`;
+    const url = `${user.zoho_account_server}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=refresh_token&client_secret=${this.zohoClientSecret}&refresh_token=${user.zoho_refresh_token}`;
     const { data } = await axios.post(url);
     await this.userRepository.update(userId, { zoho_access_token: data?.access_token || '' });
     return data;
@@ -75,11 +82,7 @@ export class ZohoAuthService {
     try {
       const { code, location, 'accounts-server': accountServer } = zohoAuthorizeQuery;
 
-      const url = `${accountServer}/oauth/v2/token?client_id=${this.configService.get(
-        'zoho.ZOHO_CLIENT_ID',
-      )}&grant_type=authorization_code&client_secret=${this.configService.get(
-        'zoho.ZOHO_CLIENT_SECRET',
-      )}&redirect_uri=${this.configService.get('zoho.ZOHO_CALLBACK_URL')}&code=${code}`;
+      const url = `${accountServer}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=authorization_code&client_secret=${this.zohoClientSecret}&redirect_uri=${this.zohoCallbackUrl}&code=${code}`;
 
       const { data } = await axios.post(url);
       const user = await this.validateUser({
@@ -89,7 +92,10 @@ export class ZohoAuthService {
         location,
         accountServer,
       });
-      await this.zohoService.syncUserProjectsAndTasks(user.id);
+      const { zoho_access_token } = await this.getUser(userId);
+      if (zoho_access_token) {
+        await this.timeLogsQueue.add('sync-projects-and-tasks', { userId }, { delay: ONE_MINUTE });
+      }
       const payload = { sub: user.id };
       return {
         access_token: await this.jwtService.signAsync(payload, {

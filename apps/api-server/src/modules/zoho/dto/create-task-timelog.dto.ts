@@ -11,7 +11,7 @@ export class CreateTaskTimeLog {
 
   @ValidateIf((o) => o.owner)
   @IsString()
-  owner: string;
+  owner?: string;
 
   @IsNotEmpty()
   @IsIn(['Billable', 'Non Billable'])
@@ -25,11 +25,11 @@ export class CreateTaskTimeLog {
 
   @ValidateIf((o) => o.notes)
   @IsString()
-  notes: string;
+  notes?: string;
 
   @ValidateIf((o) => o.custom_fields && typeof o.custom_fields === 'object')
-  custom_fields: any;
+  custom_fields?: any;
 
   @ValidateIf((o) => o.cost_per_hour)
-  cost_per_hour: number;
+  cost_per_hour?: number;
 }

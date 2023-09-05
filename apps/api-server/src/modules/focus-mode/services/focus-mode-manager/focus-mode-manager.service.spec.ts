@@ -20,6 +20,7 @@ import {
   SentryServiceMock,
   UserDailyStatsServiceMock,
   FocusModeServiceMock,
+  ToDoRepositoryMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -32,6 +33,7 @@ import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeManagerService } from './focus-mode-manager.service';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
+import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -47,6 +49,7 @@ describe('FocusModeManagerService', () => {
         PusherBeamsService,
         UserDailyStatsService,
         FocusModeService,
+        ToDoRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -67,6 +70,8 @@ describe('FocusModeManagerService', () => {
       .useValue(UserDailyStatsServiceMock)
       .overrideProvider(FocusModeService)
       .useValue(FocusModeServiceMock)
+      .overrideProvider(ToDoRepository)
+      .useValue(ToDoRepositoryMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);
@@ -104,17 +109,18 @@ describe('FocusModeManagerService', () => {
     it('positive: new completed focus block item should be created', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
 
-      expect(CompletedFocusBlockRepositoryMock.create).toBeCalledWith(
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
         new CompletedFocusBlock({
           start_time: startFocusModeDto.start_time,
           scheduled_finish_time: startFocusModeDto.finish_time,
           intention: startFocusModeDto.intention,
           user_id,
           focus_mode_id,
+          to_dos: [],
         }),
       );
     });
@@ -122,7 +128,7 @@ describe('FocusModeManagerService', () => {
     it('positive: started focus mode should be made current in the User entity', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
 
@@ -139,7 +145,7 @@ describe('FocusModeManagerService', () => {
     it('positive: push notification should be sent via "focus_mode" channel', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
@@ -159,7 +165,7 @@ describe('FocusModeManagerService', () => {
       });
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValue(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userWithCurrentFocusMode);
-      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
       await focusModeManagerService.startCurrentFocusMode(
@@ -185,7 +191,7 @@ describe('FocusModeManagerService', () => {
       });
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValue(FocusModeDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userWithCurrentFocusMode);
-      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
       await focusModeManagerService.startCurrentFocusMode(
@@ -194,13 +200,14 @@ describe('FocusModeManagerService', () => {
         userWithCurrentFocusMode.id,
       );
 
-      expect(CompletedFocusBlockRepositoryMock.create).toBeCalledWith(
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
         new CompletedFocusBlock({
           start_time: startFocusModeDto.start_time,
           scheduled_finish_time: startFocusModeDto.finish_time,
           intention: startFocusModeDto.intention,
           user_id,
           focus_mode_id,
+          to_dos: [],
         }),
       );
     });

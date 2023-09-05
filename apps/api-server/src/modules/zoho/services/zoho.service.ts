@@ -57,7 +57,7 @@ export class ZohoService {
 
   async addTaskTimeLog(
     userId: string,
-    portalId,
+    portalId: string,
     projectId: string,
     task: CreateTaskTimeLog,
   ): Promise<AxiosResponse<any>> {
@@ -126,7 +126,6 @@ export class ZohoService {
           'Content-Type': 'multipart/form-data',
         },
       });
-
       return response.data;
     } catch (e) {
       throw new BadRequestException(e.response?.data);
@@ -141,7 +140,7 @@ export class ZohoService {
       const response = await this.httpService.get(url, {
         headers,
       });
-      return response.data?.tasks;
+      return response.data?.tasks ?? [];
     } catch (e) {
       throw new BadRequestException(e.response?.data);
     }
@@ -204,7 +203,7 @@ export class ZohoService {
           for (const project of zohoProjects) {
             const tasksFromProject = await this.getTasks(userId, portal.id, project.id_string);
             const tasksLinkedToProjects = tasksFromProject.map((task) => {
-              return { ...task, project_id: project.id_string };
+              return { ...task, project_id: project.id_string, portal_id: portal.id };
             });
             zohoTasks.push(...tasksLinkedToProjects);
           }
@@ -241,8 +240,23 @@ export class ZohoService {
   }
 
   async getZohoTasksToSync(zohoTasks: any[], userId: string) {
+    // TODO: Get only tasks belonging to user
     const syncedTasks = await this.toDoRepository.orm.find({
       where: { user_id: userId, external_task_id: Not(IsNull()) },
+      select: [
+        'id',
+        'external_task_id',
+        'external_task_metadata',
+        'status',
+        'title',
+        'eisenhower_quadrant',
+        'status',
+        'due_date',
+        'details',
+        'focus_type',
+        'updated_at',
+        'created_at',
+      ],
     });
     const syncedZohoTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'zoho');
     const syncedZohoTasksIds = syncedZohoTasks.map((task) => task.external_task_id);

@@ -64,15 +64,11 @@ export class FocusModeController {
 
   @Post(':focus_mode_id/start')
   async startCurrentFocusMode(
-    @Body() { finish_time, intention, start_time }: StartFocusModeDto,
+    @Body() startFocusModeData: StartFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeManagerService.startCurrentFocusMode(
-      { finish_time, intention, start_time },
-      { focus_mode_id },
-      user.id,
-    );
+    await this.focusModeManagerService.startCurrentFocusMode(startFocusModeData, { focus_mode_id }, user.id);
     return new ResponseMessage('Focus mode has been successfully started!');
   }
 

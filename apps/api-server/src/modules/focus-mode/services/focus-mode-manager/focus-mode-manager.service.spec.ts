@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
+import { In } from 'typeorm';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -34,6 +35,7 @@ import { FocusModeManagerService } from './focus-mode-manager.service';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
 import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
+import { ToDo } from '../../../to-do/entities/to-do.entity';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -208,6 +210,38 @@ describe('FocusModeManagerService', () => {
           user_id,
           focus_mode_id,
           to_dos: [],
+        }),
+      );
+    });
+
+    it('positive: if to dos are sent with starting focus mode they should be linked to completed focus block record', async () => {
+      const userWithCurrentFocusMode = new User({
+        ...userDummy,
+        current_focus_mode_id: randomUUID(),
+      });
+      const toDoDummy = { id: randomUUID(), title: 'test', details: 'test', eisenhower_quadrant: 1 };
+      const toDoDBResponseDummy = new ToDo({ user_id: userDummy.id, ...toDoDummy });
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValue(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([toDoDBResponseDummy]);
+
+      await focusModeManagerService.startCurrentFocusMode(
+        { ...startFocusModeDto, to_dos: [toDoDummy] },
+        { focus_mode_id },
+        userWithCurrentFocusMode.id,
+      );
+
+      expect(ToDoRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userDummy.id, id: In([toDoDummy.id]) } });
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
+        new CompletedFocusBlock({
+          start_time: startFocusModeDto.start_time,
+          scheduled_finish_time: startFocusModeDto.finish_time,
+          intention: startFocusModeDto.intention,
+          user_id,
+          focus_mode_id,
+          to_dos: [toDoDBResponseDummy],
         }),
       );
     });

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { CreateToDoDto } from '../../to-do/dto/create-to-do.dto';
 // import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
 
 // export function IsTimestampGreaterThanNow(property: string, validationOptions?: ValidationOptions) {
@@ -38,5 +39,5 @@ export class StartFocusModeDto {
 
   @IsOptional()
   @IsArray()
-  to_do_ids?: string[];
+  to_dos?: CreateToDoDto[];
 }

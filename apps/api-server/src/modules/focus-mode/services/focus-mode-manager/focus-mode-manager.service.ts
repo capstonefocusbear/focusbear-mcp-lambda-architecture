@@ -33,7 +33,7 @@ export class FocusModeManagerService {
   ) {}
 
   async startCurrentFocusMode(
-    { finish_time, intention, start_time, to_do_ids }: StartFocusModeDto,
+    { finish_time, intention, start_time, to_dos }: StartFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
   ): Promise<void> {
@@ -52,9 +52,10 @@ export class FocusModeManagerService {
       // by passing start_time here for finish_time argument of validateStartingFocusMode
       await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
       const scheduled_finish_time = finish_time;
+      const toDoIds = to_dos?.map((todo) => todo.id);
       let toDosToLink = [];
-      if (to_do_ids?.length) {
-        toDosToLink = await this.toDoRepository.orm.find({ where: { user_id, id: In(to_do_ids) } });
+      if (toDoIds?.length) {
+        toDosToLink = await this.toDoRepository.orm.find({ where: { user_id, id: In(toDoIds) } });
       }
       const completedFocusBlock = new CompletedFocusBlock({
         start_time,

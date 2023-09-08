@@ -181,8 +181,6 @@ export class ZohoService {
     const response = await this.httpService.get(url, {
       headers,
     });
-    console.log('Projects');
-    console.log(response?.data);
     return response.data.projects;
   }
 
@@ -198,8 +196,6 @@ export class ZohoService {
     const response = await this.httpService.get(url, {
       headers,
     });
-    console.log('Portals');
-    console.log(response?.data.portals);
     return response.data?.portals;
   }
 

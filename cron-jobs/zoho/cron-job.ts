@@ -142,6 +142,20 @@ async function getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string
 async function getZohoTasksToSync(zohoTasks: any[], userId: string) {
   const syncedTasks = await CronJobDataSource.manager.find(ToDo, {
     where: { user_id: userId, external_task_id: Not(IsNull()) },
+    select: [
+      'id',
+      'external_task_id',
+      'external_task_metadata',
+      'status',
+      'title',
+      'eisenhower_quadrant',
+      'status',
+      'due_date',
+      'details',
+      'focus_type',
+      'updated_at',
+      'created_at',
+    ],
   });
   const syncedZohoTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'zoho');
   const syncedZohoTasksIds = syncedZohoTasks.map((task) => task.external_task_id);

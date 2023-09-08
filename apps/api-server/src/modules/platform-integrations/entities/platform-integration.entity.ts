@@ -31,6 +31,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'jsonb',
     nullable: true,
+    transformer: BaseEntity.encryptJSONField('data'),
   })
   data?: any;
 

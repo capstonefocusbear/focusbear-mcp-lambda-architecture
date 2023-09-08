@@ -19,6 +19,8 @@ import {
   getZohoProjectsToDelete,
   getZohoTasksToDelete,
 } from '../../../../../../cron-jobs/zoho/helpers';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -31,6 +33,7 @@ export class ZohoService {
     private readonly toDoRepository: ToDoRepository,
     @Inject(forwardRef(() => ZohoAuthService))
     private readonly zohoAuthService: ZohoAuthService,
+    private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
   private httpService = axios;
@@ -41,11 +44,16 @@ export class ZohoService {
 
   async getTaskTimeLogs(userId: string, portalId, projectId: string, taskId: string): Promise<AxiosResponse<any>> {
     try {
-      const user = await this.getUser(userId);
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: zohoData } = platformIntegrationRecord;
       const url = `${
-        getDataCenterUrl(user.zoho_location).api
+        getDataCenterUrl(zohoData.zoho_location).api
       }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-      const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
       const response = await this.httpService.get(url, {
         headers,
       });
@@ -62,11 +70,16 @@ export class ZohoService {
     task: CreateTaskTimeLog,
   ): Promise<AxiosResponse<any>> {
     try {
-      const user = await this.getUser(userId);
-      const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/${
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: zohoData } = platformIntegrationRecord;
+      const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/${
         task.name ? `?name=${task.name}` : ''
       }`;
-      const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
       const tasks: any = await this.httpService.post(
         url,
         {},
@@ -77,9 +90,9 @@ export class ZohoService {
       if (tasks?.tasks?.length > 0) {
         const tasksId = tasks.tasks[0].id_string;
         const logsUrl = `${
-          getDataCenterUrl(user.zoho_location).api
+          getDataCenterUrl(zohoData.zoho_location).api
         }/portal/${portalId}/projects/${projectId}/tasks/${tasksId}/logs/`;
-        const logsHeaders = { Authorization: `Bearer ${user.zoho_access_token}` };
+        const logsHeaders = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
         const [year, month, day] = task.date.split('-');
         const formData = new FormData();
         formData.append('date', `${month}-${day}-${year}`);
@@ -109,11 +122,16 @@ export class ZohoService {
     timeEntry: any,
   ): Promise<AxiosResponse<any>> {
     try {
-      const user = await this.getUser(userId);
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: zohoData } = platformIntegrationRecord;
       const url = `${
-        getDataCenterUrl(user.zoho_location).api
+        getDataCenterUrl(zohoData.location).api
       }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-      const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
       const [year, month, day] = timeEntry.date.split('-');
       const formData = new FormData();
       formData.append('date', `${month}-${day}-${year}`);
@@ -134,9 +152,14 @@ export class ZohoService {
 
   async getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
     try {
-      const user = await this.getUser(userId);
-      const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
-      const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: zohoData } = platformIntegrationRecord;
+      const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
+      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
       const response = await this.httpService.get(url, {
         headers,
       });
@@ -147,22 +170,36 @@ export class ZohoService {
   }
 
   async getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
-    const user = await this.getUser(userId);
-    const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/`;
-    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+      IntegrationPlatforms.ZOHO,
+      userId,
+    );
+    if (!platformIntegrationRecord) return;
+    const { data: zohoData } = platformIntegrationRecord;
+    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/`;
+    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
+    console.log('Projects');
+    console.log(response?.data);
     return response.data.projects;
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
-    const user = await this.getUser(userId);
-    const url = `${getDataCenterUrl(user.zoho_location).api}/portals/`;
-    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+      IntegrationPlatforms.ZOHO,
+      userId,
+    );
+    if (!platformIntegrationRecord) return;
+    const { data: zohoData } = platformIntegrationRecord;
+    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
+    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
+    console.log('Portals');
+    console.log(response?.data.portals);
     return response.data?.portals;
   }
 
@@ -280,9 +317,16 @@ export class ZohoService {
   }
 
   async getTasksOwnedByUser(userId: string, portalId: string) {
-    const user = await this.getUser(userId);
-    const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/mytasks/?owner=${user.zoho_user_id}`;
-    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+      IntegrationPlatforms.ZOHO,
+      userId,
+    );
+    if (!platformIntegrationRecord) return;
+    const { data: zohoData } = platformIntegrationRecord;
+    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/mytasks/?owner=${
+      zohoData.zoho_user_id
+    }`;
+    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });

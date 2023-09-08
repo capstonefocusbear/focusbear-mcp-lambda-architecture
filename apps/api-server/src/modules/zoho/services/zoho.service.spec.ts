@@ -7,7 +7,7 @@ import {
   zohoTaskDummy,
 } from '../../../../test/dummies/zoho.dummies';
 import { userDummy } from '../../../../test/dummies';
-import { SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
+import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
   ToDoRepositoryMock,
@@ -18,6 +18,7 @@ import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 
 describe('ZohoService', () => {
   let zohoService: ZohoService;
@@ -30,6 +31,7 @@ describe('ZohoService', () => {
         FocusModeTagRepository,
         ToDoRepository,
         ZohoAuthService,
+        PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -44,6 +46,8 @@ describe('ZohoService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(ZohoAuthService)
       .useValue(ZohoAuthServiceMock)
+      .overrideProvider(PlatformIntegrationsService)
+      .useValue(PlatformIntegrationsServiceMock)
       .compile();
     zohoService = moduleRef.get<ZohoService>(ZohoService);
   });

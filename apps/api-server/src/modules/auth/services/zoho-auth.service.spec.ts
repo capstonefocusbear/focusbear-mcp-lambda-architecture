@@ -3,12 +3,13 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
-import { SentryServiceMock, ZohoServiceMock } from '../../../../test/mocks';
+import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoServiceMock } from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoAuthService } from './zoho-auth.service';
 import { ZohoService } from '../../zoho/services/zoho.service';
 import { QueueMock } from '../../../../test/dummies';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 
 describe('ZohoService', () => {
   let zohoAuthService: ZohoAuthService;
@@ -21,6 +22,7 @@ describe('ZohoService', () => {
         JwtService,
         ConfigService,
         ZohoService,
+        PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -35,6 +37,8 @@ describe('ZohoService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ZohoService)
       .useValue(ZohoServiceMock)
+      .overrideProvider(PlatformIntegrationsService)
+      .useValue(PlatformIntegrationsServiceMock)
       .compile();
     zohoAuthService = moduleRef.get<ZohoAuthService>(ZohoAuthService);
   });

@@ -30,6 +30,7 @@ import { AppLogsModule } from './modules/app-logs/app-logs.module';
 import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
 import { ToDoModule } from './modules/to-do/to-do.module';
 import { ZohoModule } from './modules/zoho/zoho.module';
+import { PlatformIntegrationsModule } from './modules/platform-integrations/platform-integrations.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { ZohoModule } from './modules/zoho/zoho.module';
     SavedWebsiteModule,
     ToDoModule,
     ZohoModule,
+    PlatformIntegrationsModule,
   ],
   controllers: [AppController],
 })

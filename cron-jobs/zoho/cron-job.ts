@@ -1,8 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import axios, { AxiosResponse } from 'axios';
-import { BadRequestException } from '@nestjs/common';
 import { In, IsNull, Not } from 'typeorm';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-project.model';
 import { getDataCenterUrl } from '../../apps/api-server/src/shared/utils/helpers';
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
@@ -10,39 +8,64 @@ import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.ent
 import { ProjectManagementPlatforms } from '../../apps/api-server/src/modules/zoho/domain/project-management-platforms.enum';
 import { CronJobDataSource } from '../data-source';
 import { createNewTags, createNewToDos, getZohoProjectsToDelete, getZohoTasksToDelete } from './helpers';
+import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
+import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
-async function getUser(userId: string): Promise<User> {
-  return CronJobDataSource.manager.findOneBy(User, { id: userId });
+async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string) {
+  const platformRecord = await CronJobDataSource.manager.findOne(PlatformIntegration, {
+    where: { user_id: userId, platform },
+  });
+  if (!platformRecord) return null;
+  return platformRecord;
 }
 
-async function refreshToken(userId: string) {
-  const user = await getUser(userId);
-  const url = `${user.zoho_account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${user.zoho_refresh_token}`;
-  const { data } = await axios.post(url);
-  await CronJobDataSource.manager.update(User, userId, { zoho_access_token: data?.access_token || '' });
+async function getZohoData(userId: string) {
+  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
+  if (!platformIntegrationRecord) return null;
+  const { data } = platformIntegrationRecord;
   return data;
 }
 
-async function getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
-  try {
-    const user = await getUser(userId);
-    const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
-    const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
-    const response = await axios.get(url, {
-      headers,
+async function updatePlatformIntegration(
+  userId: string,
+  platform: IntegrationPlatforms,
+  data: any,
+  userExternalId?: string,
+) {
+  const existingRecord = await getPlatformIntegrationData(platform, userId);
+  if (existingRecord) {
+    const platformIntegration = new PlatformIntegration({
+      ...existingRecord,
+      data: { ...existingRecord.data, ...data },
     });
-    return response.data?.tasks;
-  } catch (e) {
-    throw new BadRequestException(e.response?.data);
+    await CronJobDataSource.manager.save(PlatformIntegration, platformIntegration);
+    return;
   }
+  const platformIntegration = new PlatformIntegration({
+    user_id: userId,
+    platform,
+    ...(userExternalId && { external_user_id: userExternalId }),
+    data,
+  });
+  await CronJobDataSource.manager.save(PlatformIntegration, platformIntegration);
+}
+
+async function refreshToken(userId: string) {
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
+  const url = `${zohoData.zoho_account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${zohoData.zoho_refresh_token}`;
+  const { data } = await axios.post(url);
+  await updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, { zoho_access_token: data?.access_token || '' });
+  return data;
 }
 
 async function getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
-  const user = await getUser(userId);
-  const url = `${getDataCenterUrl(user.zoho_location).api}/portal/${portalId}/projects/`;
-  const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
+  const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/`;
+  const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
   const response = await axios.get(url, {
     headers,
   });
@@ -50,56 +73,75 @@ async function getProjects(userId: string, portalId: any): Promise<ZohoProject[]
 }
 
 async function getPortals(userId: string): Promise<AxiosResponse<any>> {
-  const user = await getUser(userId);
-  const url = `${getDataCenterUrl(user.zoho_location).api}/portals/`;
-  const headers = { Authorization: `Bearer ${user.zoho_access_token}` };
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
+  const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
+  const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
   const response = await axios.get(url, {
     headers,
   });
   return response.data;
 }
 
+async function getTasksOwnedByUser(userId: string, portalId: string) {
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
+  const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/mytasks/?owner=${
+    zohoData.zoho_user_id
+  }`;
+  const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+  const response = await axios.get(url, {
+    headers,
+  });
+  return response.data?.tasks ?? [];
+}
+
+async function fetchZohoData(userId: string, portalId: string): Promise<{ projects: ZohoProject[]; tasks: any[] }> {
+  const [projects, tasks] = await Promise.all([getProjects(userId, portalId), getTasksOwnedByUser(userId, portalId)]);
+  return { projects, tasks };
+}
+
+async function handleUnauthorizedError(userId: string, retryCount: number): Promise<number> {
+  if (retryCount === 0) {
+    await refreshToken(userId);
+    return 1;
+  }
+  throw new Error('Unauthorized after retry');
+}
+
 async function getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[]; zohoProjects: ZohoProject[] }> {
   const MAX_RETRY = 2;
   let retryCount = 0;
+  const zohoTasks = [];
+  const zohoProjects = [];
 
   while (retryCount < MAX_RETRY) {
     try {
       const portals: any = await getPortals(userId);
-      const zohoTasks = [];
-      let zohoProjects = [];
-      if (!portals.portals) return { zohoProjects, zohoTasks };
 
-      for (const portal of portals.portals) {
-        zohoProjects = await getProjects(userId, portal.id);
-        // eslint-disable-next-line no-continue
-        if (!zohoProjects.length) continue;
-
-        for (const project of zohoProjects) {
-          const tasksFromProject = await getTasks(userId, portal.id, project.id_string);
-          const tasksLinkedToProjects = tasksFromProject.map((task) => {
-            return { ...task, project_id: project.id_string };
-          });
-          zohoTasks.push(...tasksLinkedToProjects);
-        }
+      if (!portals.portals) {
+        return { zohoProjects, zohoTasks };
       }
+
+      const allPromises = portals.portals.map((portal: any) => fetchZohoData(userId, portal.id));
+      const allData = await Promise.all(allPromises);
+
+      allData.forEach(({ projects, tasks }) => {
+        zohoProjects.push(...projects);
+        zohoTasks.push(...tasks);
+      });
 
       return { zohoProjects, zohoTasks };
     } catch (error) {
-      // Get new access token for user if current token expired
       if (error.response && error.response.status === 401) {
-        if (retryCount === 0) {
-          await refreshToken(userId);
-          retryCount++;
-        } else {
-          // Retry already attempted, don't retry again
-          throw error;
-        }
+        retryCount = await handleUnauthorizedError(userId, retryCount);
       } else {
-        throw error; // Throw other errors
+        throw error;
       }
     }
   }
+
+  throw new Error(`Max retries reached for getting user ZOho data, user ID: ${userId}`);
 }
 
 async function getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string) {
@@ -115,6 +157,20 @@ async function getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string
 async function getZohoTasksToSync(zohoTasks: any[], userId: string) {
   const syncedTasks = await CronJobDataSource.manager.find(ToDo, {
     where: { user_id: userId, external_task_id: Not(IsNull()) },
+    select: [
+      'id',
+      'external_task_id',
+      'external_task_metadata',
+      'status',
+      'title',
+      'eisenhower_quadrant',
+      'status',
+      'due_date',
+      'details',
+      'focus_type',
+      'updated_at',
+      'created_at',
+    ],
   });
   const syncedZohoTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'zoho');
   const syncedZohoTasksIds = syncedZohoTasks.map((task) => task.external_task_id);
@@ -145,17 +201,21 @@ async function syncUserProjectsAndTasks(userId: string) {
 }
 
 async function getUsersToSyncWithZoho() {
-  const users = await CronJobDataSource.manager.find(User, {
-    where: { zoho_access_token: Not(IsNull()), zoho_refresh_token: Not(IsNull()) },
+  const zohoIntegrationRecords = await CronJobDataSource.manager.find(PlatformIntegration, {
+    where: { platform: IntegrationPlatforms.ZOHO },
   });
-  return users;
+  const recordsWithAccessAndRefreshTokens = zohoIntegrationRecords.filter(
+    (integration) => integration.data.zoho_access_token && integration.data.zoho_refresh_token,
+  );
+  const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => integrationRecord.user_id);
+  return idsOfUsersToSync;
 }
 
 (async () => {
   try {
     await CronJobDataSource.initialize();
     const usersToSync = await getUsersToSyncWithZoho();
-    const syncUserPromises = usersToSync.map((user) => syncUserProjectsAndTasks(user.id));
+    const syncUserPromises = usersToSync.map((userId) => syncUserProjectsAndTasks(userId));
     await Promise.all(syncUserPromises);
     process.exit();
   } catch (error) {

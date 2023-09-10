@@ -28,7 +28,7 @@ export function getZohoProjectsToDelete(zohoProjects: ZohoProject[], syncedZohoP
 }
 
 export function getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | null {
-  return tags.find((tag) => tag.external_project_id === task.project_id);
+  return tags.find((tag) => tag.external_project_id === task?.project?.id_string);
 }
 
 export function createNewTags(projectsToSync: ZohoProject[], userId: string, platform: ProjectManagementPlatforms) {

@@ -31,6 +31,8 @@ import { SavedWebsite } from '../apps/api-server/src/modules/saved-website/entit
 import { ToDo } from '../apps/api-server/src/modules/to-do/entities/to-do.entity';
 import { ImpactEvent } from '../apps/api-server/src/modules/events/entities/impact-event.entity';
 import { UserFeedback } from '../apps/api-server/src/modules/user/entities/user-feedback.entity';
+import { PlatformIntegration } from '../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
+import { TaskTimeLog } from '../apps/api-server/src/modules/to-do/entities/tasks-time-logs.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -74,6 +76,8 @@ export const CronJobDataSource = new DataSource({
     ToDo,
     ImpactEvent,
     UserFeedback,
+    TaskTimeLog,
+    PlatformIntegration,
   ],
   subscribers: [],
   migrations: [],

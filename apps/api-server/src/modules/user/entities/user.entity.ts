@@ -30,6 +30,7 @@ import { SubscriptionStatus } from '../../subscription/domain/subscription-statu
 import { ImpactEvent } from '../../events/entities/impact-event.entity';
 import { UserFeedback } from './user-feedback.entity';
 import { TaskTimeLog } from '../../to-do/entities/tasks-time-logs.entity';
+import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -356,18 +357,6 @@ export class User extends BaseEntity {
   })
   last_date_gave_feedback?: Date;
 
-  @Column({ type: 'varchar', nullable: true })
-  zoho_location?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  zoho_access_token?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  zoho_refresh_token?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  zoho_account_server?: string;
-
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];
 
@@ -430,6 +419,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => TaskTimeLog, (timeLog) => timeLog.user)
   task_time_logs?: TaskTimeLog[];
+
+  @OneToMany(() => PlatformIntegration, (platformIntegration) => platformIntegration.user)
+  platform_integrations?: PlatformIntegration[];
 
   @OneToOne(() => Team, (team) => team.owner)
   @JoinColumn({ name: 'owner_of_team_id' })

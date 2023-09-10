@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
@@ -8,8 +8,9 @@ import { Queue } from 'bull';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { ZohoAuthorizeQuery } from '../dto/zoho-authorize-query.dto';
-import { ZohoService } from '../../zoho/services/zoho.service';
 import { ONE_MINUTE } from '../../../shared/utils/constants';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 @Injectable()
 export class ZohoAuthService {
@@ -17,9 +18,8 @@ export class ZohoAuthService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
-    @Inject(forwardRef(() => ZohoService))
-    private readonly zohoService: ZohoService,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
+    private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
   private zohoClientId = this.configService.get('zoho.ZOHO_CLIENT_ID');
@@ -54,49 +54,68 @@ export class ZohoAuthService {
     return { redirect_url: `https://accounts.zoho.com.au/oauth/v2/auth?${queryParams}` };
   }
 
-  async validateUser(user: any): Promise<any> {
-    const { userId, accessToken, refreshToken, location, accountServer } = user;
+  async saveUserZohoData(
+    userId: string,
+    data: {
+      zoho_access_token: string;
+      zoho_refresh_token: string;
+      zoho_location: string;
+      zoho_account_server: string;
+    },
+  ): Promise<any> {
+    const { zoho_access_token, zoho_refresh_token, zoho_location, zoho_account_server } = data;
     const existingUser = await this.getUser(userId);
     if (!existingUser) {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
     }
-    const detailPayload = {
-      zoho_refresh_token: refreshToken || '',
-      zoho_access_token: accessToken || '',
-      ...(location && { zoho_location: location }),
-      ...(accountServer && { zoho_account_server: accountServer }),
+    // Get user Zoho ID
+    const profileUrl = `${zoho_account_server}/oauth/user/info`;
+    const headers = { Authorization: `Zoho-oauthtoken ${zoho_access_token}` };
+    const {
+      data: { ZUID },
+    } = await axios.get(profileUrl, { headers });
+    // Save user Zoho info needed for requests to Zoho Projects API
+    const zohoData = {
+      zoho_refresh_token: zoho_refresh_token || '',
+      zoho_access_token: zoho_access_token || '',
+      zoho_user_id: ZUID || '',
+      zoho_location: zoho_location || '',
+      zoho_account_server: zoho_account_server || '',
     };
-    await this.userRepository.update(existingUser.id, detailPayload);
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, zohoData, ZUID);
     return existingUser;
   }
 
   async refreshToken(userId: string) {
-    const user = await this.getUser(userId);
-    const url = `${user.zoho_account_server}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=refresh_token&client_secret=${this.zohoClientSecret}&refresh_token=${user.zoho_refresh_token}`;
+    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+      IntegrationPlatforms.ZOHO,
+      userId,
+    );
+    if (!platformIntegrationRecord) return;
+    const { data: zohoData } = platformIntegrationRecord;
+    const url = `${zohoData.zoho_account_server}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=refresh_token&client_secret=${this.zohoClientSecret}&refresh_token=${zohoData.zoho_refresh_token}`;
     const { data } = await axios.post(url);
-    await this.userRepository.update(userId, { zoho_access_token: data?.access_token || '' });
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, {
+      zoho_access_token: data?.access_token || '',
+    });
     return data;
   }
 
   async authorize(userId: string, zohoAuthorizeQuery: ZohoAuthorizeQuery) {
     try {
       const { code, location, 'accounts-server': accountServer } = zohoAuthorizeQuery;
-
       const url = `${accountServer}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=authorization_code&client_secret=${this.zohoClientSecret}&redirect_uri=${this.zohoCallbackUrl}&code=${code}`;
-
       const { data } = await axios.post(url);
-      const user = await this.validateUser({
-        userId,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        location,
-        accountServer,
+      await this.saveUserZohoData(userId, {
+        zoho_access_token: data.access_token,
+        zoho_refresh_token: data.refresh_token,
+        zoho_location: location,
+        zoho_account_server: accountServer,
       });
-      const { zoho_access_token } = await this.getUser(userId);
-      if (zoho_access_token) {
+      if (data.access_token) {
         await this.timeLogsQueue.add('sync-projects-and-tasks', { userId }, { delay: ONE_MINUTE });
       }
-      const payload = { sub: user.id };
+      const payload = { sub: userId };
       return {
         access_token: await this.jwtService.signAsync(payload, {
           expiresIn: data.expires_in,

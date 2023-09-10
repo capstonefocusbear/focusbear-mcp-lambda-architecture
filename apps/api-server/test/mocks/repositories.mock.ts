@@ -35,6 +35,10 @@ export const SavedWebsiteRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
+export const PlatformIntegrationsRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const ActivitySequenceRepositoryMock = {
   ...BaseRepositoryMock,
   findOneByTypeForUser: jest.fn(),

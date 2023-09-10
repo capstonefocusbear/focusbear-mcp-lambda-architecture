@@ -16,6 +16,7 @@ import { IsAdmin } from './guards/is-admin/is-admin.guard';
 import { ZohoAuthService } from './services/zoho-auth.service';
 import { ZohoAuthController } from './controllers/zoho-auth.controller';
 import { ZohoModule } from '../zoho/zoho.module';
+import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 
 @Module({
   providers: [
@@ -52,6 +53,7 @@ import { ZohoModule } from '../zoho/zoho.module';
     }),
     HelperModule,
     ConfigModule,
+    PlatformIntegrationsModule,
     forwardRef(() => ZohoModule),
     BullModule.forRootAsync({
       imports: [ConfigModule],

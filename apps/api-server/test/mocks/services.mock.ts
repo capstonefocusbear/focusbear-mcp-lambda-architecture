@@ -188,3 +188,7 @@ export const PlatformIntegrationsServiceMock = {
   getPlatformIntegrationData: jest.fn(),
   updatePlatformIntegration: jest.fn(),
 };
+
+export const ToDoServiceMock = {
+  logToDosTime: jest.fn(),
+};

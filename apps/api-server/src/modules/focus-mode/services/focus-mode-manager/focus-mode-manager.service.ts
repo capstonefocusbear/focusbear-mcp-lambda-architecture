@@ -17,6 +17,7 @@ import { CompletedFocusBlockRepository } from '../../repositories/completed-focu
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
 import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
+import { ToDoService } from '../../../to-do/services/to-do.service';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -30,6 +31,7 @@ export class FocusModeManagerService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly focusModeService: FocusModeService,
     private readonly toDoRepository: ToDoRepository,
+    private readonly toDoService: ToDoService,
   ) {}
 
   async startCurrentFocusMode(
@@ -145,11 +147,12 @@ export class FocusModeManagerService {
           user_id,
         },
       });
-      const { finish_time, focus_duration_seconds, tags } = finishFocusBlockDto;
+      const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
       const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
         id: user.current_completing_focus_block_id,
       });
+      await this.toDoService.logToDosTime(to_dos, user_id, completingFocusBlock.id);
       const isDurationPassedAsParam = typeof focus_duration_seconds === 'number';
       const durationToUse = isDurationPassedAsParam
         ? focus_duration_seconds

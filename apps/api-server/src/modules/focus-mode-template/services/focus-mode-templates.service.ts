@@ -72,7 +72,7 @@ export class FocusModeTemplatesService {
         await this.deleteRemovedFocusTemplateTags(user_id, existingFocusModeTemplate?.tags, tags);
       }
       let focusModeTags = [];
-      if (tags && tags?.length) {
+      if (tags?.length) {
         focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
       }
       const focusModeTemplate = new FocusModeTemplate({

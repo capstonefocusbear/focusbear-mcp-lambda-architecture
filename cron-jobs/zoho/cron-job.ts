@@ -21,6 +21,13 @@ async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId
   return platformRecord;
 }
 
+async function getZohoData(userId: string) {
+  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
+  if (!platformIntegrationRecord) return null;
+  const { data } = platformIntegrationRecord;
+  return data;
+}
+
 async function updatePlatformIntegration(
   userId: string,
   platform: IntegrationPlatforms,
@@ -46,9 +53,8 @@ async function updatePlatformIntegration(
 }
 
 async function refreshToken(userId: string) {
-  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
-  if (!platformIntegrationRecord) return;
-  const { data: zohoData } = platformIntegrationRecord;
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
   const url = `${zohoData.zoho_account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${zohoData.zoho_refresh_token}`;
   const { data } = await axios.post(url);
   await updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, { zoho_access_token: data?.access_token || '' });
@@ -56,9 +62,8 @@ async function refreshToken(userId: string) {
 }
 
 async function getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
-  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
-  if (!platformIntegrationRecord) return;
-  const { data: zohoData } = platformIntegrationRecord;
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
   const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/`;
   const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
   const response = await axios.get(url, {
@@ -68,9 +73,8 @@ async function getProjects(userId: string, portalId: any): Promise<ZohoProject[]
 }
 
 async function getPortals(userId: string): Promise<AxiosResponse<any>> {
-  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
-  if (!platformIntegrationRecord) return;
-  const { data: zohoData } = platformIntegrationRecord;
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
   const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
   const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
   const response = await axios.get(url, {
@@ -80,9 +84,8 @@ async function getPortals(userId: string): Promise<AxiosResponse<any>> {
 }
 
 async function getTasksOwnedByUser(userId: string, portalId: string) {
-  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
-  if (!platformIntegrationRecord) return;
-  const { data: zohoData } = platformIntegrationRecord;
+  const zohoData = await getZohoData(userId);
+  if (!zohoData) return;
   const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/mytasks/?owner=${
     zohoData.zoho_user_id
   }`;
@@ -93,40 +96,52 @@ async function getTasksOwnedByUser(userId: string, portalId: string) {
   return response.data?.tasks ?? [];
 }
 
+async function fetchZohoData(userId: string, portalId: string): Promise<{ projects: ZohoProject[]; tasks: any[] }> {
+  const [projects, tasks] = await Promise.all([getProjects(userId, portalId), getTasksOwnedByUser(userId, portalId)]);
+  return { projects, tasks };
+}
+
+async function handleUnauthorizedError(userId: string, retryCount: number): Promise<number> {
+  if (retryCount === 0) {
+    await refreshToken(userId);
+    return 1;
+  }
+  throw new Error('Unauthorized after retry');
+}
+
 async function getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[]; zohoProjects: ZohoProject[] }> {
   const MAX_RETRY = 2;
   let retryCount = 0;
+  const zohoTasks = [];
+  const zohoProjects = [];
 
   while (retryCount < MAX_RETRY) {
     try {
       const portals: any = await getPortals(userId);
-      const zohoTasks = [];
-      const zohoProjects = [];
-      if (!portals.portals) return { zohoProjects, zohoTasks };
 
-      for (const portal of portals.portals) {
-        const projects = await getProjects(userId, portal.id);
-        zohoProjects.push(...projects);
-        const tasks = await getTasksOwnedByUser(userId, portal.id);
-        zohoTasks.push(...tasks);
+      if (!portals.portals) {
+        return { zohoProjects, zohoTasks };
       }
+
+      const allPromises = portals.portals.map((portal: any) => fetchZohoData(userId, portal.id));
+      const allData = await Promise.all(allPromises);
+
+      allData.forEach(({ projects, tasks }) => {
+        zohoProjects.push(...projects);
+        zohoTasks.push(...tasks);
+      });
 
       return { zohoProjects, zohoTasks };
     } catch (error) {
-      // Get new access token for user if current token expired
       if (error.response && error.response.status === 401) {
-        if (retryCount === 0) {
-          await refreshToken(userId);
-          retryCount++;
-        } else {
-          // Retry already attempted, don't retry again
-          throw error;
-        }
+        retryCount = await handleUnauthorizedError(userId, retryCount);
       } else {
-        throw error; // Throw other errors
+        throw error;
       }
     }
   }
+
+  throw new Error(`Max retries reached for getting user ZOho data, user ID: ${userId}`);
 }
 
 async function getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string) {

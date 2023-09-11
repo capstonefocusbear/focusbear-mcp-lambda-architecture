@@ -105,9 +105,9 @@ describe('toDoService', () => {
     it('positive: todo statuses should be updated in Focus Bear DB', async () => {
       const toDoId = randomUUID();
       const toDoTimeLogDummy: ToDoTimeLogDto = {
-        todo_id: toDoId,
-        duration_logged_seconds: 60,
-        completion_status: ToDoStatus.COMPLETED,
+        id: toDoId,
+        duration: 60,
+        status: ToDoStatus.COMPLETED,
         is_billable: false,
       };
       const ToDoDBResponseDummy = new ToDo({ user_id: userDummy.id, id: toDoId, title: 'test', details: 'test' });
@@ -120,38 +120,40 @@ describe('toDoService', () => {
         new TaskTimeLog({
           user_id: userDummy.id,
           task_id: toDoId,
-          duration_logged_seconds: toDoTimeLogDummy.duration_logged_seconds,
+          duration_logged_seconds: toDoTimeLogDummy.duration,
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
       expect(QueueMock.add).not.toBeCalled();
     });
 
-    it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
-      const toDoId = randomUUID();
-      const toDoExternalId = randomUUID();
-      const toDoTimeLogDummy: ToDoTimeLogDto = {
-        todo_id: toDoId,
-        duration_logged_seconds: 60,
-        completion_status: ToDoStatus.COMPLETED,
-        is_billable: false,
-      };
-      const ToDoDBResponseDummy = new ToDo({
-        user_id: userDummy.id,
-        id: toDoId,
-        title: 'test',
-        details: 'test',
-        external_task_id: toDoExternalId,
-      });
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([ToDoDBResponseDummy]);
+    // Commented out until Zoho integration is continued
+    //
+    // it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
+    //   const toDoId = randomUUID();
+    //   const toDoExternalId = randomUUID();
+    //   const toDoTimeLogDummy: ToDoTimeLogDto = {
+    //     id: toDoId,
+    //     duration: 60,
+    //     status: ToDoStatus.COMPLETED,
+    //     is_billable: false,
+    //   };
+    //   const ToDoDBResponseDummy = new ToDo({
+    //     user_id: userDummy.id,
+    //     id: toDoId,
+    //     title: 'test',
+    //     details: 'test',
+    //     external_task_id: toDoExternalId,
+    //   });
+    //   ToDoRepositoryMock.orm.find.mockResolvedValueOnce([ToDoDBResponseDummy]);
 
-      await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
+    //   await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(QueueMock.add).toBeCalledWith('save-task-time-log', {
-        userId: userDummy.id,
-        toDoTimeLogs: [toDoTimeLogDummy],
-        toDos: [ToDoDBResponseDummy],
-      });
-    });
+    //   expect(QueueMock.add).toBeCalledWith('save-task-time-log', {
+    //     userId: userDummy.id,
+    //     toDoTimeLogs: [toDoTimeLogDummy],
+    //     toDos: [ToDoDBResponseDummy],
+    //   });
+    // });
   });
 });

@@ -1,22 +1,22 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsUUID } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 
 export class ToDoTimeLogDto {
   @IsNotEmpty()
   @IsUUID()
-  todo_id: string;
+  id: string;
 
   @IsNotEmpty()
   @IsNumber()
-  duration_logged_seconds: number;
+  duration: number;
 
   @IsNotEmpty()
   @IsEnum(ToDoStatus)
   @ApiProperty({ enum: ToDoStatus })
-  completion_status: ToDoStatus;
+  status: ToDoStatus;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsBoolean()
-  is_billable: boolean;
+  is_billable?: boolean;
 }

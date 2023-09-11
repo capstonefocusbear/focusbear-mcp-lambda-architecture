@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsDate, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { CreateFocusModeTagDto } from './create-focus-mode-tag.dto';
+import { ToDoTimeLogDto } from '../../to-do/dto/to-do-time-log.dto.ts';
 // import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
 
 export class FinishFocusModeDto {
@@ -25,4 +26,8 @@ export class FinishFocusModeDto {
   @IsOptional()
   @IsArray()
   tags?: CreateFocusModeTagDto[];
+
+  @IsOptional()
+  @IsArray()
+  to_dos?: ToDoTimeLogDto[];
 }

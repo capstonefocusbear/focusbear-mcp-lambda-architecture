@@ -110,7 +110,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       });
       const { tags } = focusModeDto;
       let focusModeTags = [];
-      if (tags && tags?.length) {
+      if (tags?.length) {
         focusModeTags = await this.saveFocusModeTags(user_id, tags);
       }
       const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
@@ -153,7 +153,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       const { tags } = updateFocusModeDto;
       await this.deleteRemovedFocusModeTags(user_id, focusMode?.tags, tags);
       let focusModeTags = [];
-      if (tags && tags?.length) {
+      if (tags?.length) {
         focusModeTags = await this.saveFocusModeTags(user_id, tags);
       }
       const updateFocusMode = new FocusMode({

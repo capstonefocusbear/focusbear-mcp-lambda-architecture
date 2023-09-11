@@ -11,7 +11,7 @@ import { ZohoModule } from '../zoho/zoho.module';
 
 @Module({
   providers: [ToDoService, ToDoRepository, TaskTimeLogsRepository, TimeLogsConsumer],
-  exports: [ToDoRepository],
+  exports: [ToDoRepository, ToDoService],
   imports: [
     forwardRef(() => ZohoModule),
     forwardRef(() => UserModule),

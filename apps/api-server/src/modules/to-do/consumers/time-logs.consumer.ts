@@ -30,7 +30,7 @@ export class TimeLogsConsumer {
     } = job;
     try {
       for await (const timeLog of toDoTimeLogs) {
-        const toDoRecord = toDos.find((toDo) => toDo.id === timeLog.todo_id);
+        const toDoRecord = toDos.find((toDo) => toDo.id === timeLog.id);
         if (!toDoRecord) {
           // eslint-disable-next-line no-continue
           continue;
@@ -44,7 +44,7 @@ export class TimeLogsConsumer {
         const createdTaskTimeEntry = {
           date,
           bill_status: billStatus,
-          hours: secondsToHHMM(timeLog.duration_logged_seconds),
+          hours: secondsToHHMM(timeLog.duration),
           notes: '',
         };
         await this.zohoService.addTimeEntry(userId, portalId, projectId, taskId, createdTaskTimeEntry);

@@ -1,6 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Headers, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { FastifyRequest } from 'fastify';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -32,10 +31,11 @@ export class CompletedActivityController {
 
   @Post()
   createCompletedActivity(
-    @Req() request: FastifyRequest,
+    @Body() completedActivity: CreateCompletedActivityDto,
+    @Headers() headers: any,
     @AuthContext() { user }: Passport,
   ): Promise<CompletedActivityResponse> {
-    return this.completedActivityService.completeActivity(request, { user_id: user.id });
+    return this.completedActivityService.completeActivity(completedActivity, headers, { user_id: user.id });
   }
 
   @Post('sync')

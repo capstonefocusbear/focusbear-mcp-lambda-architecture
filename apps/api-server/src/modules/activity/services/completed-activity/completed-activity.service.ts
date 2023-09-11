@@ -11,7 +11,6 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
-import { FastifyRequest } from 'fastify';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
@@ -59,6 +58,7 @@ import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats
 import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 import { UserService } from '../../../user/services/user/user.service';
+import { UserTimesResponse } from '../../domain/user-times-response.model';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -85,10 +85,12 @@ export class CompletedActivityService {
     private readonly userService: UserService,
   ) {}
 
-  async completeActivity(request: FastifyRequest, { user_id }: GetUserSettingsDto): Promise<CompletedActivityResponse> {
+  async completeActivity(
+    completedActivity: CreateCompletedActivityDto,
+    headers: any,
+    { user_id }: GetUserSettingsDto,
+  ): Promise<CompletedActivityResponse> {
     try {
-      const { body, headers } = request;
-      const completedActivity = body as CreateCompletedActivityDto;
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -98,58 +100,27 @@ export class CompletedActivityService {
           completedActivity,
         },
       });
-      const {
-        device_id,
-        activity_sequence_id,
-        activity_id,
-        choice_id,
-        should_not_update_current_activity,
-        log_quantity_answers,
-        start_time,
-      } = completedActivity as CreateCompletedActivityDto;
-      const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
-      const startTimeAsDate = new Date(start_time);
-      let startTimeToUse = start_time;
-      // log start time with wrong date to identify which client it's coming from
-      // see issue https://github.com/Focus-Bear/backend/issues/469
-      if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
-        console.log('Error with start time date: ', { body, headers });
-        startTimeToUse = new Date();
-      }
+      const startTimeToUse = this.handleStartTime(completedActivity?.start_time, headers);
+
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-        activity_sequence_id,
-        activity_id,
+        completedActivity.activity_sequence_id,
+        completedActivity.activity_id,
         user_id,
-        choice_id,
+        completedActivity.choice_id,
       );
+
       if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
-        if (typeof completedActivity.quantity_logged === 'undefined' && typeof log_quantity_answers === 'undefined') {
-          throw new BadRequestException(
-            `Competency based activities can't be completed without log_quantity answers or a quantity_logged value. Activity with ID: ${completedActivity.activity_id} is a competency based activity`,
-          );
-        }
-        await this.updateCompetencyLevel(
-          activity,
-          log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
-        );
+        this.handleCompetencyActivity(activity, completedActivity);
       }
+
       let logQuantityAnswers: LogQuantityAnswer[] = [];
-      if (activity.type === ActivityType.break) {
-        this.validateChoice(activity, choice);
-        await this.deviceService.markAsLeader(device_id, user_id);
-        const createdItem = await this.saveCompletedLog(
-          { ...completedActivity, start_time: startTimeToUse },
-          activity,
-          choice,
-          user_id,
-        );
-        if (log_quantity_answers?.length > 0) {
-          logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
-        }
-        return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
-      }
       let completingSequenceLog = null;
-      if (!should_not_update_current_activity) {
+
+      if (activity.type === ActivityType.break) {
+        return await this.handleBreakActivity(completedActivity, activity, choice, user_id, startTimeToUse);
+      }
+
+      if (!completedActivity.should_not_update_current_activity) {
         completingSequenceLog = await this.updateUserAndSequence(
           { ...completedActivity, start_time: startTimeToUse },
           { user_id },
@@ -159,45 +130,130 @@ export class CompletedActivityService {
           choice,
         );
       }
-      if (user_id === JEREMYS_USER_ID) {
-        console.log("Jeremy's completed activity data: ", {
-          completingSequenceLog,
-          completedActivity,
-          user,
-          activity,
-          choice,
-          sequence,
-        });
-      }
+
       const createdItem = await this.saveCompletedLog(
         { ...completedActivity, start_time: startTimeToUse },
         activity,
         choice,
         user_id,
-        should_not_update_current_activity,
+        completedActivity.should_not_update_current_activity,
         completingSequenceLog,
       );
-      if (log_quantity_answers?.length > 0) {
-        logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+
+      if (completedActivity.log_quantity_answers?.length > 0) {
+        logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, completedActivity.log_quantity_answers);
       }
+
+      await this.handleUpdateDailyStats(
+        activity,
+        completedActivity.should_not_update_current_activity,
+        startTimeToUse,
+        user,
+        createdItem,
+      );
       await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
-      const isCurrentActivityMorningOrEveningType =
-        activity.type === ActivityType.morning || activity.type === ActivityType.evening;
-      const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningType;
-      if (shouldUpdateDailyStats) {
-        await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
-          user_id,
-          activity.type,
-          createdItem.completed_activity_log.completed_sequence_id,
-          startTimeToUse,
-          user.timezone,
-        );
-      }
+      this.logJeremyData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      throw error;
+      this.handleError(error);
     }
+  }
+
+  private async handleUpdateDailyStats(
+    activity: Activity,
+    should_not_update_current_activity: boolean,
+    startTimeToUse: Date,
+    user: User,
+    createdItem: CompletedActivityResponse,
+  ) {
+    const isCurrentActivityMorningOrEveningType =
+      activity.type === ActivityType.morning || activity.type === ActivityType.evening;
+    const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningType;
+    if (shouldUpdateDailyStats) {
+      await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
+        user.id,
+        activity.type,
+        createdItem.completed_activity_log.completed_sequence_id,
+        startTimeToUse,
+        user.timezone,
+      );
+    }
+  }
+
+  private handleStartTime(start_time: Date, headers: any): Date {
+    const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
+    const startTimeAsDate = new Date(start_time);
+    let startTimeToUse = start_time;
+    // log start time with wrong date to identify which client it's coming from
+    // see issue https://github.com/Focus-Bear/backend/issues/469
+    if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
+      console.log('Error with start time date: ', { start_time, headers });
+      startTimeToUse = new Date();
+    }
+    return startTimeToUse;
+  }
+
+  private logJeremyData(
+    choice: any,
+    user: User,
+    completedActivity: CreateCompletedActivityDto,
+    activity: Activity,
+    sequence: ActivitySequence,
+    completingSequenceLog: any,
+  ) {
+    if (user.id === JEREMYS_USER_ID) {
+      console.log("Jeremy's completed activity data: ", {
+        completingSequenceLog,
+        completedActivity,
+        user,
+        activity,
+        choice,
+        sequence,
+      });
+    }
+  }
+
+  private async handleCompetencyActivity(activity: any, completedActivity: CreateCompletedActivityDto) {
+    const { log_quantity_answers } = completedActivity;
+    if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
+      if (typeof completedActivity.quantity_logged === 'undefined' && typeof log_quantity_answers === 'undefined') {
+        throw new BadRequestException(
+          `Competency based activities can't be completed without log_quantity answers or a quantity_logged value. Activity with ID: ${completedActivity.activity_id} is a competency based activity`,
+        );
+      }
+      await this.updateCompetencyLevel(
+        activity,
+        log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
+      );
+    }
+  }
+
+  private async handleBreakActivity(
+    completedActivity: CreateCompletedActivityDto,
+    activity: any,
+    choice: any,
+    user_id: string,
+    startTimeToUse: Date,
+  ): Promise<CompletedActivityResponse> {
+    const { device_id, log_quantity_answers } = completedActivity;
+    this.validateChoice(activity, choice);
+    await this.deviceService.markAsLeader(device_id, user_id);
+    const createdItem = await this.saveCompletedLog(
+      { ...completedActivity, start_time: startTimeToUse },
+      activity,
+      choice,
+      user_id,
+    );
+    let logQuantityAnswers = [];
+    if (log_quantity_answers?.length > 0) {
+      logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+    }
+    return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
+  }
+
+  private handleError(error: any) {
+    this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    throw error;
   }
 
   async completeMultipleActivities(
@@ -255,89 +311,122 @@ export class CompletedActivityService {
     }
   }
 
-  async syncOfflineActivity({ completedActivity, user, allActivitiesFromSequence, sequence }: SyncOfflineActivityArgs) {
+  async syncOfflineActivity({
+    completedActivity,
+    user,
+    allActivitiesFromSequence,
+    sequence,
+  }: SyncOfflineActivityArgs): Promise<boolean> {
     try {
-      const startTime = completedActivity.start_time;
-      const completingSequenceLog =
-        await this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
-          user,
-          sequence.id,
-          startTime,
-        );
-      const { choice_id, activity_id, log_quantity_answers } = completedActivity;
-      const activity = allActivitiesFromSequence.find((fetchedActivity) => fetchedActivity.id === activity_id);
-      if (activity) {
-        const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
-        // if activity was done without app, save a finish time for it to show up in stats
-        let { finish_time } = completedActivity;
-        if (completedActivity.metadata?.skipped_did_complete) {
-          finish_time = completedActivity.start_time;
-        }
-        const createdItem = await this.saveCompletedLog(
-          { ...completedActivity, finish_time },
-          activity,
-          choice,
-          user.id,
-          false,
-          completingSequenceLog,
-        );
-        if (log_quantity_answers?.length > 0) {
-          await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
-        }
-        if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
-          await this.updateCompetencyLevel(
-            activity,
-            log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged,
-          );
-        }
-        const { nextActivityId } = await this.defineNextCurrentActivity(
-          sequence,
-          activity_id,
-          user,
-          completingSequenceLog.id,
-          completedActivity,
-        );
-        const { is_completed } = completingSequenceLog;
-        // mark sequence as completed if no more activities or update sequence if incoming activity is from completed sequence
-        if ((!nextActivityId && !is_completed) || is_completed) {
-          if (user.id === JEREMYS_USER_ID) {
-            console.log('Completing sequence by date - syncOfflineActivity');
-            console.log({ is_completed });
-          }
-          await this.completedActivitySequenceService.completeActivitySequenceByDate(
-            completingSequenceLog.id,
-            user.id,
-            startTime,
-          );
-        }
-        if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
-          await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
-            user.id,
-            activity.type,
-            createdItem.completed_activity_log.completed_sequence_id,
-            startTime,
-            user.timezone,
-            true,
-          );
-        }
-        // return true to indicate activity was saved successfully
-        return true;
+      const { choice_id, activity_id, log_quantity_answers, metadata, start_time } = completedActivity;
+      const completingSequenceLog = await this.getOrCreateCompletingSequenceLog(user, sequence.id, start_time);
+      const activity = this.findMatchingActivity(allActivitiesFromSequence, activity_id);
+
+      if (!activity) {
+        return false;
       }
+
+      const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
+      const finish_time = metadata?.skipped_did_complete ? start_time : completedActivity.finish_time;
+      const createdItem = await this.saveCompletedLog(
+        { ...completedActivity, finish_time },
+        activity,
+        choice,
+        user.id,
+        false,
+        completingSequenceLog,
+      );
+
+      if (log_quantity_answers?.length > 0) {
+        await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
+      }
+
+      if (activity.activity_data?.choice_type === ActivityChoiceType.competency) {
+        const answers = log_quantity_answers?.length ? log_quantity_answers : completedActivity.quantity_logged;
+        await this.updateCompetencyLevel(activity, answers);
+      }
+
+      await this.handleSequenceCompletion(
+        sequence,
+        activity_id,
+        user,
+        completingSequenceLog,
+        start_time,
+        completedActivity,
+      );
+
+      if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
+        await this.updateDailyStats(user, activity, createdItem, start_time);
+      }
+
+      return true;
     } catch (error) {
-      console.error('Error syncing offline activity: ', error);
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      // avoid retrying saving activity in case of these error types
-      console.log(typeof error);
-      if (
-        error?.name.includes('TypeError') ||
-        error?.name.includes('RangeError') ||
-        error?.name.includes('ReferenceError')
-      ) {
-        return true;
-      }
-      // return false to indicate saving activity should be retried
-      return false;
+      return this.handleSyncActivityError(error);
     }
+  }
+
+  async getOrCreateCompletingSequenceLog(user: User, sequenceId: string, startTime: Date) {
+    return this.completedActivitySequenceService.getOrCreateCompletingSequenceLogForSyncing(
+      user,
+      sequenceId,
+      startTime,
+    );
+  }
+
+  findMatchingActivity(allActivitiesFromSequence: Activity[], activity_id: string) {
+    return allActivitiesFromSequence.find((activity) => activity.id === activity_id);
+  }
+
+  async handleSequenceCompletion(
+    sequence: ActivitySequence,
+    activity_id: string,
+    user: User,
+    completingSequenceLog: any,
+    startTime: Date,
+    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto,
+  ) {
+    const { nextActivityId } = await this.defineNextCurrentActivity(
+      sequence,
+      activity_id,
+      user,
+      completingSequenceLog.id,
+      completedActivity,
+    );
+    const { is_completed } = completingSequenceLog;
+
+    if ((!nextActivityId && !is_completed) || is_completed) {
+      await this.completedActivitySequenceService.completeActivitySequenceByDate(
+        completingSequenceLog.id,
+        user.id,
+        startTime,
+      );
+    }
+  }
+
+  async updateDailyStats(user: User, activity: Activity, createdItem: CompletedActivityResponse, startTime: Date) {
+    await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
+      user.id,
+      activity.type,
+      createdItem.completed_activity_log.completed_sequence_id,
+      startTime,
+      user.timezone,
+      true,
+    );
+  }
+
+  handleSyncActivityError(error: Error): boolean {
+    console.error('Error syncing offline activity: ', error);
+    this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+
+    if (
+      error?.name.includes('TypeError') ||
+      error?.name.includes('RangeError') ||
+      error?.name.includes('ReferenceError')
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   async skipActivity(skippedActivity: CreateSkippedActivityDto, { user_id }: GetUserSettingsDto) {
@@ -472,7 +561,7 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     activity: Activity,
     choice?: Activity,
-  ): Promise<void | never> {
+  ): Promise<void> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -619,106 +708,114 @@ export class CompletedActivityService {
   }
 
   async recalculateCurrentActivity(partialUser: Partial<User>) {
-    const {
-      timezone,
-      cutoff_time_for_non_high_priority_activities: cutOffTime,
-      current_activity,
-      current_activity_sequence_id,
-      id,
-      current_completing_sequence_log_id,
-      current_sequence_started_at,
-      startup_time,
-      shutdown_time,
-    } = partialUser;
-    const sequence = await this.activitySequenceRepository.orm.findOne({
+    const { id, current_activity_sequence_id, current_activity, current_completing_sequence_log_id } = partialUser;
+
+    const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
+    const userTimes = this.getUserTimesFromPartialUser(partialUser);
+
+    if (this.shouldCompleteRoutine(sequence, userTimes)) {
+      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+    }
+
+    if (this.isCutoffTimeReached(partialUser)) {
+      return this.handleActivitiesAfterCutoffTime(partialUser, sequence);
+    }
+
+    if (id === JEREMYS_USER_ID) {
+      console.log('Jeremy data - recalculateCurrentActivity - no change in current activity');
+    }
+
+    return {
+      activity: current_activity,
+      shouldRefetchUser: false,
+    };
+  }
+
+  async fetchActivitySequence(current_activity_sequence_id: string) {
+    return this.activitySequenceRepository.orm.findOne({
       where: { id: current_activity_sequence_id },
       relations: ['activities'],
     });
-    let currentActivity = current_activity;
-    const { userCurrentTime, userStartupTime, userShutdownTime } = this.getUserTimes(
-      timezone,
-      startup_time,
-      shutdown_time,
-    );
-    const morningRoutineShouldBeCompleted =
-      sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime;
-    const eveningRoutineShouldBeCompleted =
-      sequence.type === ActivityType.evening &&
-      userCurrentTime >= userStartupTime &&
-      userCurrentTime < userShutdownTime;
+  }
 
-    if (morningRoutineShouldBeCompleted || eveningRoutineShouldBeCompleted) {
-      if (id === JEREMYS_USER_ID) {
-        console.log('Completing sequence - recalculateCurrentActivity1');
-        console.log({ morningRoutineShouldBeCompleted, eveningRoutineShouldBeCompleted });
-        console.log('Current activity props:');
-        console.log({
-          timezone,
-          cutoff_time_for_non_high_priority_activities: cutOffTime,
-          current_activity,
-          current_activity_sequence_id,
-          id,
-          current_completing_sequence_log_id,
-          current_sequence_started_at,
-          startup_time,
-          shutdown_time,
-          userCurrentTime: userCurrentTime.toISO(),
-          userStartupTime: userStartupTime.toISO(),
-          userShutdownTime: userShutdownTime.toISO(),
-          sequence,
-        });
-      }
-      await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
-      await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
-        partialUser.id,
-        current_activity_sequence_id,
-        current_sequence_started_at,
-      );
-      return { activity: null, shouldRefetchUser: true };
+  getUserTimesFromPartialUser(partialUser: Partial<User>) {
+    const { timezone, startup_time, shutdown_time } = partialUser;
+    return this.getUserTimes(timezone, startup_time, shutdown_time);
+  }
+
+  shouldCompleteRoutine(sequence: ActivitySequence, userTimes: UserTimesResponse): boolean {
+    return (
+      (sequence.type === ActivityType.morning && userTimes.userCurrentTime >= userTimes.userShutdownTime) ||
+      (sequence.type === ActivityType.evening &&
+        userTimes.userCurrentTime >= userTimes.userStartupTime &&
+        userTimes.userCurrentTime < userTimes.userShutdownTime)
+    );
+  }
+
+  async completeRoutineAndNullifyProps(
+    current_completing_sequence_log_id: string,
+    id: string,
+    partialUser: Partial<User>,
+  ) {
+    await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
+    await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
+      partialUser.id,
+      partialUser.current_activity_sequence_id,
+      partialUser.current_sequence_started_at,
+    );
+    if (id === JEREMYS_USER_ID) {
+      console.log('Jeremy data - completeRoutineAndNullifyProps triggered');
     }
-    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    return { activity: null, shouldRefetchUser: true };
+  }
+
+  isCutoffTimeReached(partialUser: Partial<User>): boolean {
+    const { cutoff_time_for_non_high_priority_activities: cutOffTime, timezone } = partialUser;
+    return this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+  }
+
+  async handleActivitiesAfterCutoffTime(partialUser: Partial<User>, sequence: ActivitySequence) {
+    const { id, current_activity, current_completing_sequence_log_id } = partialUser;
     const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(
       current_completing_sequence_log_id,
     );
-    if (hasCutoffTimeBeenReached) {
-      const currentDay = this.helperCommonService.getDayOfWeek(timezone);
-      const { activities, sequenceActivityIds } = sequence;
-      const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
-      const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, sequenceActivityIds);
-      const remainingActivities = activitiesSortedInSequence.filter(
-        (activity) => !completedActivitiesIds.includes(activity.id),
-      );
-      const nextHighPriorityActivity = remainingActivities.find(
-        (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
-      );
-      currentActivity = nextHighPriorityActivity ?? null;
-      if (!currentActivity) {
-        if (id === JEREMYS_USER_ID) {
-          console.log('Completing sequence - recalculateCurrentActivity2');
-          console.log({ remainingActivities, nextHighPriorityActivity });
-        }
-        await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
-        await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
-          partialUser.id,
-          current_activity_sequence_id,
-          current_sequence_started_at,
-        );
-      } else {
-        // update user current_activity_id if current activity has changed
-        const shouldUpdateUser = current_activity.id !== currentActivity.id;
-        if (shouldUpdateUser) {
-          await this.userRepository.update(partialUser.id, {
-            current_activity_id: currentActivity?.id ?? null,
-            updated_at: new Date().toISOString(),
-            has_received_inactivity_warning: false,
-          });
-        }
-      }
+    const currentDay = this.helperCommonService.getDayOfWeek(partialUser.timezone);
+
+    const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(
+      currentDay,
+      sequence.activities,
+    );
+    const remainingActivities = this.filterRemainingActivities(activitiesForToday, completedActivitiesIds);
+    const nextHighPriorityActivity = this.findNextHighPriorityActivity(remainingActivities);
+
+    if (!nextHighPriorityActivity) {
+      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
     }
-    // if sequence was completed, tell activity service to refetch user because multiple fields changed,
-    // if not - it's only the activity that's changed and no refetch is needed
-    const shouldRefetchUser = current_activity && !currentActivity;
-    return { activity: currentActivity, shouldRefetchUser };
+
+    if (current_activity.id !== nextHighPriorityActivity.id) {
+      await this.userRepository.update(partialUser.id, {
+        current_activity_id: nextHighPriorityActivity.id,
+        updated_at: new Date().toISOString(),
+        has_received_inactivity_warning: false,
+      });
+    }
+
+    if (id === JEREMYS_USER_ID) {
+      console.log('Jeremy data - handleActivitiesAfterCutoffTime triggered');
+      console.log({ nextHighPriorityActivity });
+    }
+
+    const shouldRefetchUser = current_activity !== nextHighPriorityActivity;
+
+    return { activity: nextHighPriorityActivity, shouldRefetchUser };
+  }
+
+  filterRemainingActivities(activitiesForToday: Activity[], completedActivitiesIds: string[]) {
+    return activitiesForToday.filter((activity) => !completedActivitiesIds.includes(activity.id));
+  }
+
+  findNextHighPriorityActivity(remainingActivities: Activity[]) {
+    return remainingActivities.find((activity) => activity.activity_data.priority === ActivityPriority.HIGH);
   }
 
   private hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
@@ -1339,7 +1436,7 @@ export class CompletedActivityService {
       return timezone;
     }
     // get UTC offset
-    const offset = timezone.match(/([+\\-][0-9]{2}:[0-9]{2})/g);
+    const offset = timezone.match(/([+\\-]\d{2}:\d{2})/g);
     if (!offset) {
       throw new Error('Invalid timezone format');
     }

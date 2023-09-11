@@ -74,6 +74,7 @@ import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 import { UserService } from '../../../user/services/user/user.service';
+import { UTC_TO_IANA_MAP } from '../../../../shared/utils/constants';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -203,13 +204,9 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `Activity Sequence with id: ${completedActivity.activity_sequence_id} does not exist!`;
       let exception: any;
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
       try {
-        await completedActivityService.completeActivity(requestDummy, { user_id });
+        await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -224,13 +221,9 @@ describe('CompletedActivityService', () => {
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `Activity with id: ${completedActivity.activity_id} does not exist!`;
       let exception: any;
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
       try {
-        await completedActivityService.completeActivity(requestDummy, { user_id });
+        await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -246,13 +239,9 @@ describe('CompletedActivityService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with id: ${user_id} does not exist!`;
       let exception: any;
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
       try {
-        await completedActivityService.completeActivity(requestDummy, { user_id });
+        await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -274,13 +263,9 @@ describe('CompletedActivityService', () => {
 
       const errorMsg = `Activity with id: ${activityWithChoices.id} cannot be completed without choice_id provided`;
       let exception: any;
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
       try {
-        await completedActivityService.completeActivity(requestDummy, { user_id });
+        await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
       } catch (error) {
         exception = error;
       }
@@ -299,12 +284,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(DeviceServiceMock.markAsLeader).toBeCalledWith(completedActivity.device_id, user_id);
     });
@@ -320,12 +301,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
@@ -354,12 +331,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: null,
@@ -387,12 +360,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
       expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(
         new CompletedActivity(
           { ...completedActivityUpsertFormat, user_id, completed_sequence_id: undefined },
@@ -415,12 +384,12 @@ describe('CompletedActivityService', () => {
       LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
         identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
       });
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: { ...completedActivity, log_quantity_answers: logQuantityAnswersDtoDummy },
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(
+        { ...completedActivity, log_quantity_answers: logQuantityAnswersDtoDummy },
+        fastifyRequestDummy.headers,
+        { user_id },
+      );
 
       expect(LogQuantityAnswersRepositoryMock.orm.insert).toBeCalledWith(createdLogQuantityAnswerDummies);
     });
@@ -437,12 +406,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: completedActivity,
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(PusherServiceMock.trigger).toBeCalledWith(
         `private-${user_id}`,
@@ -462,12 +427,12 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = {
-        ...fastifyRequestDummy,
-        body: { ...completedActivity, should_not_update_current_activity: true },
-      };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(
+        { ...completedActivity, should_not_update_current_activity: true },
+        fastifyRequestDummy.headers,
+        { user_id },
+      );
 
       expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
       expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toBeCalledTimes(0);
@@ -488,9 +453,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = { ...fastifyRequestDummy, body: completedActivity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
         UncompletedSequenceLogDummy.id,
@@ -519,9 +483,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
-      const requestDummy = { ...fastifyRequestDummy, body: dtoWithChoice };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(dtoWithChoice, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(
         new CompletedActivity(
@@ -552,9 +515,8 @@ describe('CompletedActivityService', () => {
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
-      const requestDummy = { ...fastifyRequestDummy, body: completedActivity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(
         new CompletedActivity(
@@ -594,9 +556,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
-      const requestDummy = { ...fastifyRequestDummy, body: activity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[2].id,
@@ -643,9 +604,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
-      const requestDummy = { ...fastifyRequestDummy, body: activity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: null,
@@ -690,9 +650,8 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
         { activity_id: sequenceWithActivitiesForDifferentDays.activity_ids[0] },
       ]);
-      const requestDummy = { ...fastifyRequestDummy, body: activity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWithActivitiesForDifferentDays.activities[2].id,
@@ -731,9 +690,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([{ activity_id: activity.activity_id }]);
-      const requestDummy = { ...fastifyRequestDummy, body: activity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: null,
@@ -780,9 +738,10 @@ describe('CompletedActivityService', () => {
           { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 10 },
         ],
       };
-      const requestDummy = { ...fastifyRequestDummy, body: completedActivityWithLogQAnswers };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, fastifyRequestDummy.headers, {
+        user_id,
+      });
 
       expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
         ...ActivityDummyWithCompetencyChoices,
@@ -822,9 +781,10 @@ describe('CompletedActivityService', () => {
           { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 3 },
         ],
       };
-      const requestDummy = { ...fastifyRequestDummy, body: completedActivityWithLogQAnswers };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, fastifyRequestDummy.headers, {
+        user_id,
+      });
 
       expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
         ...ActivityDummyWithCompetencyChoices,
@@ -857,9 +817,8 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
-      const requestDummy = { ...fastifyRequestDummy, body: activity };
 
-      await completedActivityService.completeActivity(requestDummy, { user_id });
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
@@ -1866,6 +1825,15 @@ describe('CompletedActivityService', () => {
 
       expect(groupedLogQuantityAnswers[questionOneId]).toBeArray();
       expect(groupedLogQuantityAnswers[questionOneId][0]).toBeInstanceOf(LogQuantityAnswer);
+    });
+  });
+
+  describe('convertUtcToIana', () => {
+    it('positive: should map +7 UTC timezone to Asia/Jakarta', () => {
+      const timeZone = '+07:00';
+      const res = completedActivityService.convertUtcToIana(timeZone);
+
+      expect(res).toEqual(UTC_TO_IANA_MAP['+07:00']);
     });
   });
 });

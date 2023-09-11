@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   BadRequestException,
   ConflictException,
@@ -272,6 +273,10 @@ export class UserService {
   private async recalculateActivityProps(partialUser: User) {
     const { activity, shouldRefetchUser } = await this.completedActivityService.recalculateCurrentActivity(partialUser);
     let updatedUser = partialUser;
+    if (partialUser.id === JEREMYS_USER_ID) {
+      console.log("Jeremy's values for recalculateActivityProps: ");
+      console.log({ activity, shouldRefetchUser });
+    }
     if (shouldRefetchUser) {
       updatedUser = await this.userRepository.getUserCurrentActivityProps(partialUser.id);
     }

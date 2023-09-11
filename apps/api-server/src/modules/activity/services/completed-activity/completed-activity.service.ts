@@ -680,6 +680,14 @@ export class CompletedActivityService {
     const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(
       current_completing_sequence_log_id,
     );
+    if (id === JEREMYS_USER_ID) {
+      console.log('Jeremy values in recalculateCurrentActivity: ');
+      console.log({
+        hasCutoffTimeBeenReached,
+        currentActivity: currentActivity.id,
+        current_sequence: current_activity_sequence_id,
+      });
+    }
     if (hasCutoffTimeBeenReached) {
       const currentDay = this.helperCommonService.getDayOfWeek(timezone);
       const { activities, sequenceActivityIds } = sequence;

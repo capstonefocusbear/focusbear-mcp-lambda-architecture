@@ -11,6 +11,7 @@ import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repository';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 @Injectable()
 export class ToDoService {
@@ -41,7 +42,35 @@ export class ToDoService {
   }
 
   async getToDos(user_id: string, { page_num, status, eisenhower_quadrant }: GetToDosQueryDto) {
-    return this.toDoRepository.getUserToDos(user_id, { page_num, status, eisenhower_quadrant });
+    const toDos = await this.toDoRepository.getUserToDos(user_id, { page_num, status, eisenhower_quadrant });
+    return this.addProjectStatusesToToDos(toDos);
+  }
+
+  addProjectStatusesToToDos(toDos: ToDo[]) {
+    const toDosWithAvailableStatuses = toDos.map((toDo) => {
+      if (toDo?.external_task_id || toDo.tags[0]?.external_project_metadata) {
+        const availableStatuses = toDo.tags[0]?.external_project_metadata?.project_data?.available_statuses;
+        // Remove tag external metadata to clean up response data
+        const tagsWithoutExternalMetadata = toDo?.tags?.map((tag) => {
+          const tagCopy = { ...tag };
+          delete tagCopy?.external_project_metadata;
+          return tagCopy;
+        });
+        const externalStatusLabel = toDo?.external_task_metadata?.task_data?.status?.name;
+        const externalStatusId = toDo?.external_task_metadata?.task_data?.status?.id;
+        const externalStatus = { label: externalStatusLabel, id: externalStatusId };
+        const toDoCopy = { ...toDo };
+        delete toDoCopy?.external_task_metadata;
+        return {
+          ...toDoCopy,
+          tags: tagsWithoutExternalMetadata,
+          current_external_status: externalStatus,
+          external_statuses: availableStatuses,
+        };
+      }
+      return toDo;
+    });
+    return toDosWithAvailableStatuses;
   }
 
   async deleteToDo(user_id: string, toDoId: string) {
@@ -77,15 +106,18 @@ export class ToDoService {
     await this.taskTimeLogsRepository.orm.save(timeLogs);
 
     // TODO: Finish Zoho integration - update task statuses and log their times
-    //
-    // const toDosFromExternalPlatform = existingToDos.filter((toDo) => !!toDo.external_task_id);
-    // if (toDosFromExternalPlatform.length) {
-    //   await this.timeLogsQueue.add('save-task-time-log', {
-    //     userId,
-    //     toDoTimeLogs,
-    //     toDos: toDosFromExternalPlatform,
-    //   });
-    // }
+
+    const toDosFromZoho = existingToDos.filter(
+      (toDo) => toDo.external_task_metadata?.platform === IntegrationPlatforms.ZOHO,
+    );
+
+    if (toDosFromZoho.length) {
+      await this.timeLogsQueue.add('save-task-time-log', {
+        userId,
+        toDoTimeLogs,
+        toDos: toDosFromZoho,
+      });
+    }
     return timeLogs;
   }
 }

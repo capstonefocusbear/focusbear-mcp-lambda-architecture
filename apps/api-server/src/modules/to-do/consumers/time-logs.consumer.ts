@@ -3,7 +3,6 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import { secondsToHHMM } from 'apps/api-server/src/shared/utils/helpers';
 import { DateTime } from 'luxon';
-import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoService } from '../../zoho/services/zoho.service';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { ToDo } from '../entities/to-do.entity';
@@ -13,7 +12,6 @@ import { BillingStatus } from '../../zoho/domain/billing-status.enum';
 export class TimeLogsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
-    private readonly userRepository: UserRepository,
     private readonly zohoService: ZohoService,
   ) {}
 
@@ -47,7 +45,21 @@ export class TimeLogsConsumer {
           hours: secondsToHHMM(timeLog.duration),
           notes: '',
         };
-        await this.zohoService.addTimeEntry(userId, portalId, projectId, taskId, createdTaskTimeEntry);
+        const addTimeEntryPromise = this.zohoService.addTimeEntry(
+          userId,
+          portalId,
+          projectId,
+          taskId,
+          createdTaskTimeEntry,
+        );
+        const updateTaskStatusPromise = this.zohoService.updateTaskStatus(
+          userId,
+          portalId,
+          projectId,
+          taskId,
+          timeLog?.external_status?.status_id,
+        );
+        await Promise.all([addTimeEntryPromise, updateTaskStatusPromise]);
       }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

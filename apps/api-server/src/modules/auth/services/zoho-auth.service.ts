@@ -150,4 +150,12 @@ export class ZohoAuthService {
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
   }
+
+  async handleUnauthorizedError(userId: string, retryCount: number): Promise<number> {
+    if (retryCount === 0) {
+      await this.refreshToken(userId);
+      return 1;
+    }
+    throw new Error('Unauthorized after retry');
+  }
 }

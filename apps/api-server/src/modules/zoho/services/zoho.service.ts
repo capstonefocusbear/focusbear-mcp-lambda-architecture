@@ -121,33 +121,43 @@ export class ZohoService {
     taskId: string,
     timeEntry: any,
   ): Promise<AxiosResponse<any>> {
-    try {
-      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-        IntegrationPlatforms.ZOHO,
-        userId,
-      );
-      if (!platformIntegrationRecord) return;
-      const { data: zohoData } = platformIntegrationRecord;
-      const url = `${
-        getDataCenterUrl(zohoData.location).api
-      }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-      const [year, month, day] = timeEntry.date.split('-');
-      const formData = new FormData();
-      formData.append('date', `${month}-${day}-${year}`);
-      formData.append('bill_status', timeEntry.bill_status);
-      formData.append('hours', timeEntry.hours || '00:00');
-      formData.append('notes', timeEntry.notes || '');
-      const response = await this.httpService.post(url, formData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (e) {
-      throw new BadRequestException(e.response?.data);
+    const MAX_RETRY = 2;
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+          IntegrationPlatforms.ZOHO,
+          userId,
+        );
+        if (!platformIntegrationRecord) return;
+        const { data: zohoData } = platformIntegrationRecord;
+        const url = `${
+          getDataCenterUrl(zohoData.zoho_location).api
+        }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
+        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+        const [year, month, day] = timeEntry.date.split('-');
+        const formData = new FormData();
+        formData.append('date', `${month}-${day}-${year}`);
+        formData.append('bill_status', timeEntry.bill_status);
+        formData.append('hours', timeEntry.hours || '00:00');
+        formData.append('notes', timeEntry.notes || '');
+        const response = await this.httpService.post(url, formData, {
+          headers: {
+            ...headers,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        return response.data;
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
     }
+    throw new Error('Failed to add Zoho task time entry after trying to get new access token.');
   }
 
   async getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
@@ -230,27 +240,26 @@ export class ZohoService {
 
         for (const portal of portals) {
           const projects = await this.getProjects(userId, portal.id);
-          zohoProjects.push(...projects);
+          // Get project available statuses
+          for await (const project of projects) {
+            const available_statuses = await this.getProjectStatuses(userId, portal.id, project.id_string);
+            project.available_statuses = available_statuses;
+            zohoProjects.push(project);
+          }
           const tasks = await this.getTasksOwnedByUser(userId, portal.id);
           zohoTasks.push(...tasks);
         }
 
         return { zohoProjects, zohoTasks };
       } catch (error) {
-        // Get new access token for user if current token expired
         if (error.response && error.response.status === 401) {
-          if (retryCount === 0) {
-            await this.zohoAuthService.refreshToken(userId);
-            retryCount++;
-          } else {
-            // Retry already attempted, don't retry again
-            throw error;
-          }
+          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          throw error; // Throw other errors
+          throw error;
         }
       }
     }
+    throw new Error('Failed to fetch user Zoho projects and tasks after trying to get new access token.');
   }
 
   async getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string) {
@@ -266,7 +275,6 @@ export class ZohoService {
   }
 
   async getZohoTasksToSync(zohoTasks: any[], userId: string) {
-    // TODO: Get only tasks belonging to user
     const syncedTasks = await this.toDoRepository.orm.find({
       where: { user_id: userId, external_task_id: Not(IsNull()) },
       select: [
@@ -331,5 +339,56 @@ export class ZohoService {
       return { ...task, portal_id: portalId };
     });
     return tasksWithPortalIds;
+  }
+
+  async getProjectStatuses(userId: string, portalId: string, projectId: string) {
+    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+      IntegrationPlatforms.ZOHO,
+      userId,
+    );
+    if (!platformIntegrationRecord) return;
+    const { data: zohoData } = platformIntegrationRecord;
+    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
+    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+    const { data } = await this.httpService.get(url, {
+      headers,
+    });
+    const availableStatuses = data?.status_details?.map((details) => {
+      return { label: details.name, status_id: details.id };
+    });
+    return availableStatuses;
+  }
+
+  async updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string) {
+    const MAX_RETRY = 2;
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+          IntegrationPlatforms.ZOHO,
+          userId,
+        );
+        if (!platformIntegrationRecord) return;
+        const { data: zohoData } = platformIntegrationRecord;
+        const url = `${
+          getDataCenterUrl(zohoData.zoho_location).api
+        }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
+        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+        const formData = new FormData();
+        formData.append('custom_status', statusId);
+        const response = await this.httpService.post(url, formData, {
+          headers,
+        });
+        return response.data;
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('Failed to update task status after trying to get new access token.');
   }
 }

@@ -8,10 +8,11 @@ import { ToDoRepository } from './repositories/to-do.repository';
 import { TaskTimeLogsRepository } from './repositories/task-time-logs.repository';
 import { TimeLogsConsumer } from './consumers/time-logs.consumer';
 import { ZohoModule } from '../zoho/zoho.module';
+import { SyncedProjectsRepository } from './repositories/synced-projects.repository';
 
 @Module({
-  providers: [ToDoService, ToDoRepository, TaskTimeLogsRepository, TimeLogsConsumer],
-  exports: [ToDoRepository, ToDoService],
+  providers: [ToDoService, ToDoRepository, TaskTimeLogsRepository, TimeLogsConsumer, SyncedProjectsRepository],
+  exports: [ToDoRepository, ToDoService, SyncedProjectsRepository],
   imports: [
     forwardRef(() => ZohoModule),
     forwardRef(() => UserModule),

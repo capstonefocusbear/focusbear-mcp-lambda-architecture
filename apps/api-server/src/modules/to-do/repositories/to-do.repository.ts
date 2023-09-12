@@ -27,7 +27,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.external_task_metadata',
         'tags.id',
         'tags.text',
-        'tags.external_project_metadata',
       ])
       .take(take)
       .skip(skip)

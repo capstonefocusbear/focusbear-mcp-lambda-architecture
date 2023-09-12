@@ -12,6 +12,8 @@ import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
+import { ToDoResponse } from '../dto/to-do-response.dto';
 
 @Injectable()
 export class ToDoService {
@@ -19,6 +21,7 @@ export class ToDoService {
     private readonly toDoRepository: ToDoRepository,
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
+    private readonly syncedProjectsRepository: SyncedProjectsRepository,
   ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
@@ -41,36 +44,38 @@ export class ToDoService {
     return this.toDoRepository.orm.save(newToDo);
   }
 
-  async getToDos(user_id: string, { page_num, status, eisenhower_quadrant }: GetToDosQueryDto) {
+  async getToDos(
+    user_id: string,
+    { page_num, status, eisenhower_quadrant }: GetToDosQueryDto,
+  ): Promise<ToDoResponse[]> {
     const toDos = await this.toDoRepository.getUserToDos(user_id, { page_num, status, eisenhower_quadrant });
-    return this.addProjectStatusesToToDos(toDos);
+    return this.addProjectStatusesToToDos(toDos, user_id);
   }
 
-  addProjectStatusesToToDos(toDos: ToDo[]) {
-    const toDosWithAvailableStatuses = toDos.map((toDo) => {
-      if (toDo?.external_task_id || toDo.tags[0]?.external_project_metadata) {
-        const availableStatuses = toDo.tags[0]?.external_project_metadata?.project_data?.available_statuses;
-        // Remove tag external metadata to clean up response data
-        const tagsWithoutExternalMetadata = toDo?.tags?.map((tag) => {
-          const tagCopy = { ...tag };
-          delete tagCopy?.external_project_metadata;
-          return tagCopy;
-        });
-        const externalStatusLabel = toDo?.external_task_metadata?.task_data?.status?.name;
-        const externalStatusId = toDo?.external_task_metadata?.task_data?.status?.id;
-        const externalStatus = { label: externalStatusLabel, id: externalStatusId };
-        const toDoCopy = { ...toDo };
-        // Remove to do external metadata to clean up response data
-        delete toDoCopy?.external_task_metadata;
-        return {
-          ...toDoCopy,
-          tags: tagsWithoutExternalMetadata,
-          current_external_status: externalStatus,
-          external_statuses: availableStatuses,
-        };
-      }
-      return toDo;
-    });
+  async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
+    const toDosWithAvailableStatuses = await Promise.all(
+      toDos.map(async (toDo) => {
+        if (toDo?.external_task_metadata) {
+          const toDoProjectId = toDo.external_task_metadata.task_data?.project?.id_string;
+          const syncedProject = await this.syncedProjectsRepository.orm.findOne({
+            where: { user_id: userId, external_project_id: toDoProjectId },
+          });
+          const availableStatuses = syncedProject.available_statuses;
+          const externalStatusLabel = toDo?.external_task_metadata?.task_data?.status?.name;
+          const externalStatusId = toDo?.external_task_metadata?.task_data?.status?.id;
+          const externalStatus = { label: externalStatusLabel, id: externalStatusId };
+          const toDoCopy = { ...toDo };
+          // Remove to do external metadata to clean up response data
+          delete toDoCopy?.external_task_metadata;
+          return {
+            ...toDoCopy,
+            current_external_status: externalStatus,
+            external_statuses: availableStatuses,
+          };
+        }
+        return toDo;
+      }),
+    );
     return toDosWithAvailableStatuses;
   }
 

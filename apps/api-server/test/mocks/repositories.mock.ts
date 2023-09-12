@@ -200,3 +200,7 @@ export const EventsRepositoryMock = {
 export const UserFeedbackRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const SyncedProjectsRepositoryMock = {
+  ...BaseRepositoryMock,
+};

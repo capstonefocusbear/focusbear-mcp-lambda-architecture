@@ -21,6 +21,8 @@ import {
 } from '../../../../../../cron-jobs/zoho/helpers';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
+import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -34,6 +36,7 @@ export class ZohoService {
     @Inject(forwardRef(() => ZohoAuthService))
     private readonly zohoAuthService: ZohoAuthService,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
+    private readonly syncedProjectsRepository: SyncedProjectsRepository,
   ) {}
 
   private httpService = axios;
@@ -236,6 +239,8 @@ export class ZohoService {
         const portals: any = await this.getPortals(userId);
         const zohoTasks = [];
         const zohoProjects = [];
+        const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+        const syncedProjectsExternalIds = userSyncedProjects.map((project) => project.external_project_id);
         if (!portals) return { zohoProjects, zohoTasks };
 
         for (const portal of portals) {
@@ -243,7 +248,22 @@ export class ZohoService {
           // Get project available statuses
           for await (const project of projects) {
             const available_statuses = await this.getProjectStatuses(userId, portal.id, project.id_string);
-            project.available_statuses = available_statuses;
+            const hasProjectBeenSynced = syncedProjectsExternalIds.includes(project.id_string);
+            if (!hasProjectBeenSynced) {
+              const newProject = new SyncedProject({
+                user_id: userId,
+                external_project_id: project.id_string,
+                available_statuses,
+              });
+              await this.syncedProjectsRepository.orm.save(newProject);
+            } else {
+              // if project has already been synced, update statuses
+              const linkedProject = userSyncedProjects.find(
+                (syncedProject) => syncedProject.external_project_id === project.id_string,
+              );
+              linkedProject.available_statuses = available_statuses;
+              await this.syncedProjectsRepository.orm.save(linkedProject);
+            }
             zohoProjects.push(project);
           }
           const tasks = await this.getTasksOwnedByUser(userId, portal.id);

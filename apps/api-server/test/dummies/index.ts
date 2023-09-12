@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
-import { CreateFocusModeTagDto } from 'apps/api-server/src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { FastifyRequest } from 'fastify';
+import { CreateFocusModeTagDto } from '../../src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
 import { ActivityPriority } from '../../src/modules/activity/domain/activity-priority.enum';
@@ -26,6 +26,9 @@ import { CompletedFocusBlock } from '../../src/modules/focus-mode/entities/compl
 import { Team } from '../../src/modules/team/entities/team.entity';
 import { UserTypes } from '../../src/modules/user/domain/user-types.enum';
 import { FocusModeTag } from '../../src/modules/focus-mode/entities/focus-mode-tags';
+import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
+import { IntegrationPlatforms } from '../../src/modules/platform-integrations/domain/integration-platforms.enum';
+import { SyncedProject } from '../../src/modules/to-do/entities/synced-project.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1674,3 +1677,17 @@ export const fastifyRequestDummy: FastifyRequest = {
   body: {},
   headers: {},
 } as FastifyRequest;
+
+export const ToDoDBResponseDummy = new ToDo({
+  user_id: userDummy.id,
+  id: randomUUID(),
+  title: 'test',
+  details: 'test',
+  external_task_id: randomUUID(),
+  external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+});
+
+export const syncedProjectDummy = new SyncedProject({
+  user_id: userDummy.id,
+  available_statuses: { label: 'Open', status_id: 'test-id' },
+});

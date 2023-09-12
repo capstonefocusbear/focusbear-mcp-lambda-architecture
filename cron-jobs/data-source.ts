@@ -33,6 +33,7 @@ import { ImpactEvent } from '../apps/api-server/src/modules/events/entities/impa
 import { UserFeedback } from '../apps/api-server/src/modules/user/entities/user-feedback.entity';
 import { PlatformIntegration } from '../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { TaskTimeLog } from '../apps/api-server/src/modules/to-do/entities/tasks-time-logs.entity';
+import { SyncedProject } from '../apps/api-server/src/modules/to-do/entities/synced-project.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -78,6 +79,7 @@ export const CronJobDataSource = new DataSource({
     UserFeedback,
     TaskTimeLog,
     PlatformIntegration,
+    SyncedProject,
   ],
   subscribers: [],
   migrations: [],

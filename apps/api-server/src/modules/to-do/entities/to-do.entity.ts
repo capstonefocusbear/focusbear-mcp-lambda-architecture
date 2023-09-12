@@ -6,6 +6,7 @@ import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
 import { TaskTimeLog } from './tasks-time-logs.entity';
+import { SyncedProject } from './synced-project.entity';
 
 @Entity('to_do')
 export class ToDo extends BaseEntity {
@@ -27,6 +28,13 @@ export class ToDo extends BaseEntity {
     nullable: true,
   })
   focus_type?: string;
+
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  synced_project_id?: string;
 
   @Column({
     type: 'varchar',
@@ -64,6 +72,13 @@ export class ToDo extends BaseEntity {
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @ManyToOne(() => SyncedProject, (syncedProject) => syncedProject.to_dos, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'synced_project_id' })
+  synced_project?: SyncedProject;
 
   @ManyToOne(() => FocusMode, (focus_mode) => focus_mode.to_dos, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'focus_type' })

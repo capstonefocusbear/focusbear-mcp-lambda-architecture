@@ -60,6 +60,7 @@ export class ToDoService {
         const externalStatusId = toDo?.external_task_metadata?.task_data?.status?.id;
         const externalStatus = { label: externalStatusLabel, id: externalStatusId };
         const toDoCopy = { ...toDo };
+        // Remove to do external metadata to clean up response data
         delete toDoCopy?.external_task_metadata;
         return {
           ...toDoCopy,
@@ -104,8 +105,6 @@ export class ToDoService {
     );
     await this.updateTasksStatuses(toDosToUpdate);
     await this.taskTimeLogsRepository.orm.save(timeLogs);
-
-    // TODO: Finish Zoho integration - update task statuses and log their times
 
     const toDosFromZoho = existingToDos.filter(
       (toDo) => toDo.external_task_metadata?.platform === IntegrationPlatforms.ZOHO,

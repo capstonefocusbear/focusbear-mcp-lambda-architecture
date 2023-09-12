@@ -247,6 +247,7 @@ export class UserService {
       });
       let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      const initialCurrentActivity = partialUser.current_activity_id;
       let current_sequence_completed_activities = [];
       if (partialUser.current_activity) {
         const updatedPartialUser = await this.recalculateActivityProps(partialUser);
@@ -261,7 +262,10 @@ export class UserService {
       const currentActivityProps = new CurrentActivityProps({ ...partialUser, current_sequence_completed_activities });
       if (id === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console
-        console.log('Jeremy current user state', { partialUser, updatedActivityProps: currentActivityProps });
+        console.log('Jeremy current user state', {
+          initialCurrentActivity,
+          updatedActivityProps: currentActivityProps,
+        });
       }
       return currentActivityProps;
     } catch (error) {

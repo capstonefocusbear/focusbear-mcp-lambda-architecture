@@ -785,8 +785,13 @@ export class CompletedActivityService {
       currentDay,
       sequence.activities,
     );
-    const remainingActivities = this.filterRemainingActivities(activitiesForToday, completedActivitiesIds);
-    const nextHighPriorityActivity = this.findNextHighPriorityActivity(remainingActivities);
+    const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, sequence.activity_ids);
+    const highPriorityActivities = activitiesSortedInSequence.filter(
+      (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+    );
+    const nextHighPriorityActivity = highPriorityActivities.find(
+      (activity) => !completedActivitiesIds.includes(activity.id),
+    );
 
     if (!nextHighPriorityActivity) {
       return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);

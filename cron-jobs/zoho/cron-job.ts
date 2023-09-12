@@ -5,7 +5,6 @@ import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-
 import { getDataCenterUrl } from '../../apps/api-server/src/shared/utils/helpers';
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
-import { ProjectManagementPlatforms } from '../../apps/api-server/src/modules/zoho/domain/project-management-platforms.enum';
 import { CronJobDataSource } from '../data-source';
 import { createNewTags, createNewToDos, getZohoProjectsToDelete, getZohoTasksToDelete } from './helpers';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
@@ -184,8 +183,8 @@ async function syncUserProjectsAndTasks(userId: string) {
   const { tasksToSync, syncedZohoTasks } = await getZohoTasksToSync(zohoTasks, userId);
   const tasksToRemoveIds = getZohoTasksToDelete(zohoTasks, syncedZohoTasks);
   const projectsToRemoveIds = getZohoProjectsToDelete(zohoProjects, syncedZohoProjects);
-  const newZohoTags = createNewTags(projectsToSync, userId, ProjectManagementPlatforms.ZOHO);
-  const newZohoToDos = createNewToDos(tasksToSync, userId, newZohoTags, ProjectManagementPlatforms.ZOHO);
+  const newZohoTags = createNewTags(projectsToSync, userId, IntegrationPlatforms.ZOHO);
+  const newZohoToDos = createNewToDos(tasksToSync, userId, newZohoTags, IntegrationPlatforms.ZOHO);
   // Save new projects and tasks
   const savedToDos = await CronJobDataSource.manager.save(ToDo, newZohoToDos);
   const savedTags = await CronJobDataSource.manager.save(FocusModeTag, newZohoTags);

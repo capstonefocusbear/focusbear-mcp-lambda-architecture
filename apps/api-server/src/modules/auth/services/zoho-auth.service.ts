@@ -8,7 +8,6 @@ import { Queue } from 'bull';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { ZohoAuthorizeQuery } from '../dto/zoho-authorize-query.dto';
-import { ONE_MINUTE } from '../../../shared/utils/constants';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
@@ -112,9 +111,6 @@ export class ZohoAuthService {
         zoho_location: location,
         zoho_account_server: accountServer,
       });
-      if (data.access_token) {
-        await this.timeLogsQueue.add('sync-projects-and-tasks', { userId }, { delay: ONE_MINUTE });
-      }
       const payload = { sub: userId };
       return {
         access_token: await this.jwtService.signAsync(payload, {

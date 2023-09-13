@@ -1,7 +1,7 @@
 import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ToDoStatus } from '../domain/to-do-status.enum';
-import { ZohoTaskStatus } from '../../zoho/domain/zoho-task-status.model';
+import { ExternalSystemStatus } from '../../zoho/domain/zoho-task-status.model';
 
 export class ToDoTimeLogDto {
   @IsNotEmpty()
@@ -18,7 +18,7 @@ export class ToDoTimeLogDto {
   status: ToDoStatus;
 
   @IsOptional()
-  external_status?: ZohoTaskStatus;
+  external_status?: ExternalSystemStatus;
 
   @IsOptional()
   @IsBoolean()

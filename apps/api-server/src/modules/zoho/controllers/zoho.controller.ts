@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { ZohoService } from '../services/zoho.service';
-import { CreateTaskTimeLog } from '../dto/create-task-timelog.dto';
 import { CreateTimeLog } from '../dto/create-time-log.dto';
 import { TaskParamsQueryDto } from '../dto/task-params-query.dto';
 import { Passport } from '../../auth/domain/passport.model';
@@ -47,16 +46,6 @@ export class ZohoController {
   @UseGuards(IsAuth)
   async getTasks(@Param() { portalId, projectId }: TaskParamsQueryDto, @AuthContext() { user }: Passport) {
     return this.zohoService.getTasks(user.id, portalId, projectId);
-  }
-
-  @Post(':portalId/projects/:projectId/tasks')
-  @UseGuards(IsAuth)
-  async addTaskTimeLog(
-    @Body() tasks: CreateTaskTimeLog,
-    @Param() { portalId, projectId }: TaskParamsQueryDto,
-    @AuthContext() { user }: Passport,
-  ) {
-    return this.zohoService.addTaskTimeLog(user.id, portalId, projectId, tasks);
   }
 
   @Post(':portalId/projects/:projectId/tasks/:taskId/logs')

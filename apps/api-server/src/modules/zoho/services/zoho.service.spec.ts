@@ -69,6 +69,16 @@ describe('ZohoService', () => {
     expect(zohoService).toBeDefined();
   });
 
+  describe('getUser', () => {
+    it('positive: user should be fetched from DB', async () => {
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
+
+      await zohoService.getUser(userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+    });
+  });
+
   describe('getZohoTasksToSync', () => {
     it('positive: returns tasks already saved and ones that need to be synced', async () => {
       ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);

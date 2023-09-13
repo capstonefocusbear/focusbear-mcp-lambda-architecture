@@ -1,8 +1,8 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
-import { secondsToHHMM } from 'apps/api-server/src/shared/utils/helpers';
 import { DateTime } from 'luxon';
+import { secondsToHHMM } from '../../../shared/utils/helpers';
 import { ZohoService } from '../../zoho/services/zoho.service';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { ToDo } from '../entities/to-do.entity';
@@ -64,23 +64,6 @@ export class TimeLogsConsumer {
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       console.error('Error in save-task-time-log queued job: ', error);
-    }
-  }
-
-  @Process('sync-projects-and-tasks')
-  async readOperationJob2(
-    job: Job<{
-      userId: string;
-    }>,
-  ) {
-    const {
-      data: { userId },
-    } = job;
-    try {
-      await this.zohoService.syncUserProjectsAndTasks(userId);
-    } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      console.error('Error in sync-projects-and-tasks queued job: ', error);
     }
   }
 }

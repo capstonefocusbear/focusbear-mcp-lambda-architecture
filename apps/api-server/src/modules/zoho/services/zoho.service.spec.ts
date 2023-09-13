@@ -2,12 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import {
-  savedZohoProjectDummy,
-  savedZohoTaskDummy,
-  zohoProjectDummy,
-  zohoTaskDummy,
-} from '../../../../test/dummies/zoho.dummies';
+import { savedZohoTaskDummy, zohoTaskDummy } from '../../../../test/dummies/zoho.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -74,17 +69,6 @@ describe('ZohoService', () => {
     expect(zohoService).toBeDefined();
   });
 
-  describe('getZohoProjectsToSync', () => {
-    it('positive: returns projects already saved and ones that need to be synced', async () => {
-      FocusModeTagRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoProjectDummy]);
-
-      const result = await zohoService.getZohoProjectsToSync([zohoProjectDummy], userDummy.id);
-
-      expect(result.projectsToSync.length).toBe(0);
-      expect(result.syncedZohoProjects.length).toBe(1);
-    });
-  });
-
   describe('getZohoTasksToSync', () => {
     it('positive: returns tasks already saved and ones that need to be synced', async () => {
       ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
@@ -119,7 +103,9 @@ describe('ZohoService', () => {
         const syncedProjectDBResponseDummy = new SyncedProject({
           user_id: userDummy.id,
           external_project_id: projectId,
+          external_portal_id: portalId,
           available_statuses: [{ label: incomingStatusDummy.name, status_id: incomingStatusDummy.id }],
+          platform: IntegrationPlatforms.ZOHO,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
           new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
@@ -146,6 +132,7 @@ describe('ZohoService', () => {
           user_id: userDummy.id,
           external_project_id: projectId,
           available_statuses: [{ label: existingStatusDummy.name, status_id: existingStatusDummy.id }],
+          platform: IntegrationPlatforms.ZOHO,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
           new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),

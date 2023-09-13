@@ -68,10 +68,4 @@ export class ZohoController {
   ) {
     return this.zohoService.addTimeEntry(user.id, portalId, projectId, taskId, timeEntry);
   }
-
-  @Post('sync')
-  @UseGuards(IsAuth)
-  async syncUserProjectsAndTasks(@AuthContext() { user }: Passport) {
-    return this.zohoService.syncUserProjectsAndTasks(user.id);
-  }
 }

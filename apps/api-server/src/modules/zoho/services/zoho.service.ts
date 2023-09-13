@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
-import { In, IsNull, Not } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
 import { CreateTaskTimeLog } from '../dto/create-task-timelog.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -12,12 +12,7 @@ import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode
 import { ZohoProject } from '../domain/zoho-project.model';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
-import {
-  createNewTags,
-  createNewToDos,
-  getZohoProjectsToDelete,
-  getZohoTasksToDelete,
-} from '../../../../../../cron-jobs/zoho/helpers';
+import { createNewTags, createNewToDos } from '../../../../../../cron-jobs/zoho/helpers';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
@@ -256,40 +251,6 @@ export class ZohoService {
     return projectsResponse;
   }
 
-  async getAllProjectsAndTasks(userId: string): Promise<{ zohoTasks: any[]; zohoProjects: ZohoProject[] }> {
-    const MAX_RETRY = 2;
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const portals: any = await this.getPortals(userId);
-        const zohoTasks = [];
-        const zohoProjects = [];
-        if (!portals) return { zohoProjects, zohoTasks };
-
-        for (const portal of portals) {
-          const projects = await this.getProjects(userId, portal.id);
-          // Get project available statuses
-          for await (const project of projects) {
-            await this.upsertSyncedProjectRecord(userId, portal.id, project.id_string);
-            zohoProjects.push(project);
-          }
-          const tasks = await this.getTasksOwnedByUser(userId, portal.id);
-          zohoTasks.push(...tasks);
-        }
-
-        return { zohoProjects, zohoTasks };
-      } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          throw error;
-        }
-      }
-    }
-    throw new Error('Failed to fetch user Zoho projects and tasks after trying to get new access token.');
-  }
-
   async upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string) {
     const available_statuses = await this.getProjectStatuses(userId, portalId, projectId);
     const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
@@ -299,7 +260,9 @@ export class ZohoService {
       const newProject = new SyncedProject({
         user_id: userId,
         external_project_id: projectId,
+        external_portal_id: portalId,
         available_statuses,
+        platform: IntegrationPlatforms.ZOHO,
       });
       await this.syncedProjectsRepository.orm.save(newProject);
     } else {
@@ -308,18 +271,6 @@ export class ZohoService {
       linkedProject.available_statuses = available_statuses;
       await this.syncedProjectsRepository.orm.save(linkedProject);
     }
-  }
-
-  async getZohoProjectsToSync(zohoProjects: ZohoProject[], userId: string) {
-    const syncedProjects = await this.focusModeTagRepository.orm.find({
-      where: { user_id: userId, external_project_id: Not(IsNull()) },
-    });
-    const syncedZohoProjects = syncedProjects.filter(
-      (project) => project.external_project_metadata.platform === 'zoho',
-    );
-    const syncedZohoProjectIds = syncedZohoProjects.map((project) => project.external_project_id);
-    const projectsToSync = zohoProjects.filter((project) => !syncedZohoProjectIds.includes(project.id_string));
-    return { projectsToSync, syncedZohoProjects };
   }
 
   async getZohoTasksToSync(zohoTasks: any[], userId: string) {
@@ -356,28 +307,6 @@ export class ZohoService {
     // Save new projects and tasks
     await this.toDoRepository.orm.save(tasksAsToDos);
     await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
-  }
-
-  async syncUserProjectsAndTasks(userId: string) {
-    const { zohoTasks, zohoProjects } = await this.getAllProjectsAndTasks(userId);
-    const { projectsToSync, syncedZohoProjects } = await this.getZohoProjectsToSync(zohoProjects, userId);
-    const { tasksToSync, syncedZohoTasks } = await this.getZohoTasksToSync(zohoTasks, userId);
-    const tasksToRemoveIds = getZohoTasksToDelete(zohoTasks, syncedZohoTasks);
-    const projectsToRemoveIds = getZohoProjectsToDelete(zohoProjects, syncedZohoProjects);
-    const newZohoTags = createNewTags(projectsToSync, userId, IntegrationPlatforms.ZOHO);
-    const newZohoToDos = createNewToDos(tasksToSync, userId, newZohoTags, IntegrationPlatforms.ZOHO);
-    // Save new projects and tasks
-    const savedToDos = await this.toDoRepository.orm.save(newZohoToDos);
-    const savedTags = await this.focusModeTagRepository.orm.save(newZohoTags);
-    // Delete removed projects and tasks
-    await this.toDoRepository.orm.delete({ id: In(tasksToRemoveIds) });
-    await this.focusModeTagRepository.orm.delete({ id: In(projectsToRemoveIds) });
-    return {
-      projectsSaved: savedTags.length,
-      projectsRemoved: projectsToRemoveIds.length,
-      tasksSaved: savedToDos.length,
-      tasksRemoved: tasksToRemoveIds.length,
-    };
   }
 
   async getProject(userId: string, portalId: string, projectId: string) {

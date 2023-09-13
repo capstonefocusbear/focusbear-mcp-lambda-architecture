@@ -46,11 +46,11 @@ export function createNewTags(projectsToSync: ZohoProject[], userId: string, pla
 export function createNewToDos(
   tasksToSync: any[],
   userId: string,
-  newTags: FocusModeTag[],
+  tags: FocusModeTag[],
   platform: IntegrationPlatforms,
 ) {
   return tasksToSync.map((task) => {
-    const project = getTagForTodo(task, newTags);
+    const project = getTagForTodo(task, tags);
     return new ToDo({
       user_id: userId,
       title: task.name,

@@ -22,7 +22,21 @@ export class SyncedProject extends BaseEntity {
     type: 'varchar',
     nullable: true,
   })
+  platform?: string;
+
+  @Index()
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
   external_project_id?: string;
+
+  @Index()
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  external_portal_id?: string;
 
   @Column({ type: 'jsonb', default: null, nullable: true })
   available_statuses?: any;

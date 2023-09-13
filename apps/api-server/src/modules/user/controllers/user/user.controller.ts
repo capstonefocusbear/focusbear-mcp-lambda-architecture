@@ -188,6 +188,12 @@ export class UserController {
     return this.userService.updateLongTermGoals(user.id, { goals });
   }
 
+  @Put('/long-term-goals')
+  @UseGuards(IsAuth)
+  async updateLongTermGoals(@Body() { goals }: UpdateLongTermGoalsDto, @AuthContext() { user }: Passport) {
+    return this.userService.updateLongTermGoals(user.id, { goals });
+  }
+
   @Put('/username')
   @UseGuards(IsAuth)
   async updateUsername(@Body() { username }: UpdateUsernameDto, @AuthContext() { user }: Passport) {

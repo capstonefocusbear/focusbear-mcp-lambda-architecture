@@ -8,6 +8,7 @@ import {
   SyncedProjectsRepositoryMock,
   TaskTimeLogsRepositoryMock,
   ToDoRepositoryMock,
+  ZohoServiceMock,
 } from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -25,6 +26,7 @@ import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { ZohoService } from '../../zoho/services/zoho.service';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -36,6 +38,7 @@ describe('toDoService', () => {
         ToDoRepository,
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
+        ZohoService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -52,6 +55,8 @@ describe('toDoService', () => {
       .useValue(TaskTimeLogsRepositoryMock)
       .overrideProvider(SyncedProjectsRepository)
       .useValue(SyncedProjectsRepositoryMock)
+      .overrideProvider(ZohoService)
+      .useValue(ZohoServiceMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);
@@ -113,11 +118,11 @@ describe('toDoService', () => {
           ...ToDoDBResponseDummy,
           external_task_metadata: {
             platform: IntegrationPlatforms.ZOHO,
-            task_data: { project: { id_string: 'test-id' }, status: { id: 'test-id', name: 'status-name' } },
           },
         },
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
+      ZohoServiceMock.getTaskDetails.mockResolvedValueOnce({ status: { id: 'test-id', name: 'status-name' } });
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,

@@ -104,6 +104,36 @@ export class ZohoService {
     }
   }
 
+  async getTaskDetails(userId: string, portalId: string, projectId: string, taskId: string): Promise<any> {
+    const MAX_RETRY = 2;
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+          IntegrationPlatforms.ZOHO,
+          userId,
+        );
+        if (!platformIntegrationRecord) return;
+        const { data: zohoData } = platformIntegrationRecord;
+        const url = `${
+          getDataCenterUrl(zohoData.zoho_location).api
+        }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
+        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+        const response = await this.httpService.get(url, {
+          headers,
+        });
+        return response.data?.tasks[0];
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
   async getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
       IntegrationPlatforms.ZOHO,

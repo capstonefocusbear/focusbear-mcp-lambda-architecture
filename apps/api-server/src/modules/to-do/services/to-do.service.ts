@@ -14,6 +14,7 @@ import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repositor
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { ToDoResponse } from '../dto/to-do-response.dto';
+import { ZohoService } from '../../zoho/services/zoho.service';
 
 @Injectable()
 export class ToDoService {
@@ -22,6 +23,7 @@ export class ToDoService {
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
+    private readonly zohoService: ZohoService,
   ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
@@ -61,8 +63,12 @@ export class ToDoService {
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
           const availableStatuses = syncedProject.available_statuses;
-          const externalStatusLabel = toDo?.external_task_metadata?.task_data?.status?.name;
-          const externalStatusId = toDo?.external_task_metadata?.task_data?.status?.id;
+          const portalId = toDo?.external_task_metadata?.task_data?.portal_id;
+          const projectId = toDo?.external_task_metadata?.task_data?.project?.id_string;
+          const taskId = toDo?.external_task_id;
+          const taskDetails = await this.zohoService.getTaskDetails(userId, portalId, projectId, taskId);
+          const externalStatusLabel = taskDetails?.status?.name;
+          const externalStatusId = taskDetails?.status?.id;
           const externalStatus = { label: externalStatusLabel, id: externalStatusId };
           const toDoCopy = { ...toDo };
           // Remove to do external metadata to clean up response data

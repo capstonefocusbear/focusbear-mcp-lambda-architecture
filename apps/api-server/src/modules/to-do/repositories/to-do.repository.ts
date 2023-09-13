@@ -24,6 +24,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.eisenhower_quadrant',
         'to_do.status',
         'to_do.focus_type',
+        'to_do.external_task_metadata',
         'tags.id',
         'tags.text',
       ])

@@ -1,6 +1,6 @@
+import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
-import { ProjectManagementPlatforms } from '../../apps/api-server/src/modules/zoho/domain/project-management-platforms.enum';
 import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-project.model';
 
 export function getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) {
@@ -31,7 +31,7 @@ export function getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | n
   return tags.find((tag) => tag.external_project_id === task?.project?.id_string);
 }
 
-export function createNewTags(projectsToSync: ZohoProject[], userId: string, platform: ProjectManagementPlatforms) {
+export function createNewTags(projectsToSync: ZohoProject[], userId: string, platform: IntegrationPlatforms) {
   return projectsToSync.map(
     (project) =>
       new FocusModeTag({
@@ -46,11 +46,11 @@ export function createNewTags(projectsToSync: ZohoProject[], userId: string, pla
 export function createNewToDos(
   tasksToSync: any[],
   userId: string,
-  newTags: FocusModeTag[],
-  platform: ProjectManagementPlatforms,
+  tags: FocusModeTag[],
+  platform: IntegrationPlatforms,
 ) {
   return tasksToSync.map((task) => {
-    const project = getTagForTodo(task, newTags);
+    const project = getTagForTodo(task, tags);
     return new ToDo({
       user_id: userId,
       title: task.name,

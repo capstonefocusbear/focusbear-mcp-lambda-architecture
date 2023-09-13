@@ -3,15 +3,28 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { getQueueToken } from '@nestjs/bull';
-import { SentryServiceMock, TaskTimeLogsRepositoryMock, ToDoRepositoryMock } from '../../../../test/mocks';
+import {
+  SentryServiceMock,
+  SyncedProjectsRepositoryMock,
+  TaskTimeLogsRepositoryMock,
+  ToDoRepositoryMock,
+} from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { ToDoStatus } from '../domain/to-do-status.enum';
-import { CompletedFocusBlockDummy, QueueMock, userDummy } from '../../../../test/dummies';
+import {
+  CompletedFocusBlockDummy,
+  QueueMock,
+  ToDoDBResponseDummy,
+  syncedProjectDummy,
+  userDummy,
+} from '../../../../test/dummies';
 import { ToDo } from '../entities/to-do.entity';
 import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repository';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
+import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -22,6 +35,7 @@ describe('toDoService', () => {
         ToDoService,
         ToDoRepository,
         TaskTimeLogsRepository,
+        SyncedProjectsRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -36,6 +50,8 @@ describe('toDoService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(TaskTimeLogsRepository)
       .useValue(TaskTimeLogsRepositoryMock)
+      .overrideProvider(SyncedProjectsRepository)
+      .useValue(SyncedProjectsRepositoryMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);
@@ -90,6 +106,28 @@ describe('toDoService', () => {
 
       expect(response).toBeArray();
     });
+
+    it('positive: if to do is linked to an external project, its available statuses should be added to response', async () => {
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([
+        {
+          ...ToDoDBResponseDummy,
+          external_task_metadata: {
+            platform: IntegrationPlatforms.ZOHO,
+            task_data: { project: { id_string: 'test-id' }, status: { id: 'test-id', name: 'status-name' } },
+          },
+        },
+      ]);
+      SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        status: ToDoStatus.NOT_STARTED,
+        page_num: 1,
+        eisenhower_quadrant: 2,
+      });
+
+      expect(response[0].external_statuses).toEqual(syncedProjectDummy.available_statuses);
+      expect(response[0].current_external_status).toEqual({ label: 'status-name', id: 'test-id' });
+    });
   });
 
   describe('deleteToDo', () => {
@@ -103,15 +141,14 @@ describe('toDoService', () => {
 
   describe('logToDosTime', () => {
     it('positive: todo statuses should be updated in Focus Bear DB', async () => {
-      const toDoId = randomUUID();
+      const toDoId = ToDoDBResponseDummy.id;
       const toDoTimeLogDummy: ToDoTimeLogDto = {
         id: toDoId,
         duration: 60,
         status: ToDoStatus.COMPLETED,
         is_billable: false,
       };
-      const ToDoDBResponseDummy = new ToDo({ user_id: userDummy.id, id: toDoId, title: 'test', details: 'test' });
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([ToDoDBResponseDummy]);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([{ ...ToDoDBResponseDummy, external_task_metadata: {} }]);
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
@@ -129,31 +166,33 @@ describe('toDoService', () => {
 
     // Commented out until Zoho integration is continued
     //
-    // it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
-    //   const toDoId = randomUUID();
-    //   const toDoExternalId = randomUUID();
-    //   const toDoTimeLogDummy: ToDoTimeLogDto = {
-    //     id: toDoId,
-    //     duration: 60,
-    //     status: ToDoStatus.COMPLETED,
-    //     is_billable: false,
-    //   };
-    //   const ToDoDBResponseDummy = new ToDo({
-    //     user_id: userDummy.id,
-    //     id: toDoId,
-    //     title: 'test',
-    //     details: 'test',
-    //     external_task_id: toDoExternalId,
-    //   });
-    //   ToDoRepositoryMock.orm.find.mockResolvedValueOnce([ToDoDBResponseDummy]);
+    it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
+      const toDoId = ToDoDBResponseDummy.id;
+      const toDoTimeLogDummy: ToDoTimeLogDto = {
+        id: toDoId,
+        duration: 60,
+        status: ToDoStatus.COMPLETED,
+        is_billable: false,
+      };
 
-    //   await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([ToDoDBResponseDummy]);
 
-    //   expect(QueueMock.add).toBeCalledWith('save-task-time-log', {
-    //     userId: userDummy.id,
-    //     toDoTimeLogs: [toDoTimeLogDummy],
-    //     toDos: [ToDoDBResponseDummy],
-    //   });
-    // });
+      await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
+
+      expect(ToDoRepositoryMock.update).toBeCalledWith(toDoTimeLogDummy.id, { status: toDoTimeLogDummy.status });
+      expect(TaskTimeLogsRepositoryMock.orm.save).toBeCalledWith([
+        new TaskTimeLog({
+          user_id: userDummy.id,
+          duration_logged_seconds: 60,
+          task_id: toDoId,
+          completed_focus_block_id: CompletedFocusBlockDummy.id,
+        }),
+      ]);
+      expect(QueueMock.add).toBeCalledWith('save-task-time-log', {
+        userId: userDummy.id,
+        toDoTimeLogs: [toDoTimeLogDummy],
+        toDos: [ToDoDBResponseDummy],
+      });
+    });
   });
 });

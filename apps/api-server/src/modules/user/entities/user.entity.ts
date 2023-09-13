@@ -31,6 +31,7 @@ import { ImpactEvent } from '../../events/entities/impact-event.entity';
 import { UserFeedback } from './user-feedback.entity';
 import { TaskTimeLog } from '../../to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
+import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -356,6 +357,9 @@ export class User extends BaseEntity {
     nullable: true,
   })
   last_date_gave_feedback?: Date;
+
+  @OneToMany(() => SyncedProject, (syncedProject) => syncedProject.user)
+  synced_projects?: SyncedProject[];
 
   @OneToMany(() => UserConsent, (consent) => consent.user)
   consents?: UserConsent[];

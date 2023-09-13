@@ -7,6 +7,7 @@ import { ToDoService } from '../services/to-do.service';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
 import { DeleteToDoQuery } from '../dto/delete-todo-query.dto';
+import { ToDoResponse } from '../dto/to-do-response.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -24,7 +25,7 @@ export class TodoController {
   async getUserToDos(
     @Query() { page_num, status, eisenhower_quadrant }: GetToDosQueryDto,
     @AuthContext() { user }: Passport,
-  ) {
+  ): Promise<ToDoResponse[]> {
     return this.toDoService.getToDos(user.id, { page_num, status, eisenhower_quadrant });
   }
 

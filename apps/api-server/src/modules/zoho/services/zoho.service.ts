@@ -150,20 +150,33 @@ export class ZohoService {
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
-    const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-      IntegrationPlatforms.ZOHO,
-      userId,
-    );
-    if (!platformIntegrationRecord) {
-      throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Zoho!`);
+    const MAX_RETRY = 2;
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+          IntegrationPlatforms.ZOHO,
+          userId,
+        );
+        if (!platformIntegrationRecord) {
+          throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Zoho!`);
+        }
+        const { data: zohoData } = platformIntegrationRecord;
+        const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
+        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+        const response = await this.httpService.get(url, {
+          headers,
+        });
+        return response.data?.portals;
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
     }
-    const { data: zohoData } = platformIntegrationRecord;
-    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
-    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-    const response = await this.httpService.get(url, {
-      headers,
-    });
-    return response.data?.portals;
   }
 
   async getAllProjects(userId: string): Promise<ZohoProject[]> {

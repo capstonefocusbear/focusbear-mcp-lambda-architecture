@@ -182,6 +182,7 @@ export const ZohoAuthServiceMock = {
 
 export const ZohoServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
+  getTaskDetails: jest.fn(),
 };
 
 export const PlatformIntegrationsServiceMock = {

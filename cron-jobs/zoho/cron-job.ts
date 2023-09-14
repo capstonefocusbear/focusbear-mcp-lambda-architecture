@@ -116,7 +116,12 @@ async function getAllUserZohoTasks(userId: string) {
   let allUserTasks = [];
   for await (const portal of portals) {
     const userTasksFromPortal = await getTasksOwnedByUser(userId, portal.id);
-    allUserTasks = [...allUserTasks, ...userTasksFromPortal];
+    const tasks = [];
+    for (const task of userTasksFromPortal) {
+      task.portal_id = portal.id;
+      tasks.push(task);
+    }
+    allUserTasks = [...allUserTasks, ...tasks];
   }
   return allUserTasks;
 }

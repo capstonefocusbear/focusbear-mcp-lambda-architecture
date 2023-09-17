@@ -23,6 +23,7 @@ import {
 } from '../../../shared/utils/constants';
 import { ProfitWellCustomer } from '../domain/profitwell-customer.model';
 import { ProfitWellData } from '../domain/profitwell-data.model';
+import { UserService } from '../services/user/user.service';
 
 axiosRetry(axios, {
   retries: 3,
@@ -43,6 +44,7 @@ export class RevenueCatStatusConsumer {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly revenueCatService: RevenueCatService,
     private readonly userRepository: UserRepository,
+    private readonly userService: UserService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly stripeService: StripeService,
   ) {}
@@ -147,8 +149,7 @@ export class RevenueCatStatusConsumer {
         },
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      const { last_status_synced_with_profitwell, profitwell_id, profitwell_registration_date, stripe_customer_id } =
-        user;
+      const { last_status_synced_with_profitwell, profitwell_registration_date, stripe_customer_id } = user;
       const revenueCatUser = await this.revenueCatService.getOrCreateSubscriber(user_id);
       const subscriptionInfo = this.revenueCatService.checkSubscriptionStatus(revenueCatUser.subscriber);
       const userActiveSubscription = this.getHighestRankingSubscription(subscriptionInfo.activeEntitlements);
@@ -212,7 +213,9 @@ export class RevenueCatStatusConsumer {
         return;
       }
       // register user in profitwell if not registered yet
-      if (!profitwell_id && stripe_customer_id) {
+      if (stripe_customer_id) {
+        const isUserRegistered = await this.userService.doesUserExistInProfitWell(stripe_customer_id);
+        if (isUserRegistered) return;
         const profitWellUser = await this.registerUserInProfitWell({
           stripe_customer_id,
           userActiveSubscription,

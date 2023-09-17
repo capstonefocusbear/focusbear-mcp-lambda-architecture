@@ -17,6 +17,7 @@ import { HabitOption, OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import axios from 'axios';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
@@ -76,6 +77,8 @@ export class UserService {
     @InjectQueue('profitwell') private profitwellQueue: Queue,
     @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
   ) {}
+
+  private httpService = axios;
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
@@ -143,7 +146,7 @@ export class UserService {
       }
       if (registeredUser) {
         const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
-        const isUserRegisteredInProfitWell = !!registeredUser.profitwell_id;
+        const isUserRegisteredInProfitWell = await this.doesUserExistInProfitWell(stripeId);
         if (!isTestUser && !isUserRegisteredInProfitWell) {
           await this.handleRegisterUserInProfitWell(registeredUser, stripeId);
         }
@@ -672,5 +675,20 @@ export class UserService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
+  }
+
+  async doesUserExistInProfitWell(stripeId: string) {
+    try {
+      const response = await this.httpService.get(`https://api.profitwell.com/v2/customers/${stripeId}/`, {
+        headers: {
+          Authorization: process.env.PROFITWELL_API_KEY,
+        },
+      });
+      console.log(response.data);
+      if (response.status === 200) return true;
+      return false;
+    } catch (error) {
+      return false;
+    }
   }
 }

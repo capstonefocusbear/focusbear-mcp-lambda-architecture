@@ -9,6 +9,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
+import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -53,6 +54,10 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { ONE_MINUTE, TRIAL_COST_CENTS } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
+
+// Mock axios and set the type
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserService', () => {
   let userService: UserService;
@@ -651,6 +656,7 @@ describe('UserService', () => {
     it('positive: should NOT add item to ProfitWell queue for existing user if they are already registered', async () => {
       UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
       StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
+      mockedAxios.get.mockResolvedValueOnce({ status: 200 });
 
       await userService.updateOrCreateUser(
         { auth0_id: 'some_id', email: 'someone@email.com' },

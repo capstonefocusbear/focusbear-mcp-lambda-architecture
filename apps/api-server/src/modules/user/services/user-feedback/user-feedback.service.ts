@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import axios from 'axios';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
 import { UserFeedback } from '../../entities/user-feedback.entity';
@@ -11,6 +12,8 @@ export class UserFeedbackService {
     private readonly userFeedbackRepository: UserFeedbackRepository,
   ) {}
 
+  private httpService = axios;
+
   async saveUserFeedback(userId: string, { rating, feedback, metadata }: UserFeedbackDto) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) {
@@ -19,5 +22,10 @@ export class UserFeedbackService {
     const savedFeedback = new UserFeedback({ user_id: userId, rating, feedback, metadata });
     await this.userFeedbackRepository.orm.save(savedFeedback);
     await this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
+    await this.httpService.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
+      text: `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
+        metadata,
+      )}`,
+    });
   }
 }

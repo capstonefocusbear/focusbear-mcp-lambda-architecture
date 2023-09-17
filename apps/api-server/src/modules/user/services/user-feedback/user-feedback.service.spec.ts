@@ -1,12 +1,17 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import axios from 'axios';
 import { userDummy } from '../../../../../test/dummies';
 import { UserRepositoryMock, SentryServiceMock, UserFeedbackRepositoryMock } from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackService } from './user-feedback.service';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
 import { UserFeedback } from '../../entities/user-feedback.entity';
+
+// Mock axios and set the type
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserFeedbackService', () => {
   let service: UserFeedbackService;
@@ -71,6 +76,7 @@ describe('UserFeedbackService', () => {
         }),
       );
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { last_date_gave_feedback: expect.toBeDate() });
+      expect(mockedAxios.post).toBeCalled();
     });
   });
 });

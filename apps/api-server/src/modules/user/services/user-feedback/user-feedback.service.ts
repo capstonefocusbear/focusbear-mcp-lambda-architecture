@@ -22,7 +22,7 @@ export class UserFeedbackService {
     const savedFeedback = new UserFeedback({ user_id: userId, rating, feedback, metadata });
     await this.userFeedbackRepository.orm.save(savedFeedback);
     await this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
-    await this.httpService.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
+    await this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
       text: `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
         metadata,
       )}`,

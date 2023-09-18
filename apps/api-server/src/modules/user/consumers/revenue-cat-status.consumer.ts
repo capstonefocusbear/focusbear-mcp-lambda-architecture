@@ -13,7 +13,6 @@ import {
   INTERNAL_TEST,
   MONTH,
   ONE_SECOND_AS_MILLIS,
-  PERSONAL_PLAN_COST_CENTS,
   PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT,
   TEN_SECONDS_AS_MILLIS,
   TRIALING,
@@ -130,109 +129,119 @@ export class RevenueCatStatusConsumer {
     return profitWellUser;
   }
 
-  @Process('update-revenue-cat-status')
-  async readOperationJob(
-    job: Job<{
-      user_id: string;
-    }>,
+  async updateUserInfo(userId: string, subscriptionInfo: any, userActiveSubscription: string) {
+    await this.userRepository.update(userId, {
+      revenue_cat_data: subscriptionInfo,
+      revenue_cat_status: userActiveSubscription,
+      last_date_revenue_cat_data_synced: new Date(),
+    });
+  }
+
+  async updateSubscriptionStatusInProfitWell(
+    user: any,
+    userActiveSubscription: Entitlement,
+    effectiveDate: number,
+    renewalAmountCents: number,
+    subscriptionStatus: string,
   ) {
-    const {
-      data: { user_id },
-    } = job;
+    await this.updateProfitWellSubscription({
+      stripe_customer_id: user.stripe_customer_id,
+      userActiveSubscription,
+      last_status_synced_with_profitwell: user.last_status_synced_with_profitwell,
+      subscriptionStatus,
+      renewalAmountCents,
+      effectiveDate,
+    });
+
+    await this.userRepository.update(user.id, {
+      profitwell_registration_date: new Date(effectiveDate),
+      last_status_synced_with_profitwell: userActiveSubscription ?? user.last_status_synced_with_profitwell,
+    });
+  }
+
+  @Process('update-revenue-cat-status')
+  async readOperationJob(job: Job<{ user_id: string }>) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Updating user revenue cat status',
         data: {
-          user_id,
+          user_id: job.data.user_id,
         },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      const { last_status_synced_with_profitwell, profitwell_registration_date, stripe_customer_id } = user;
-      const revenueCatUser = await this.revenueCatService.getOrCreateSubscriber(user_id);
+      const user = await this.userRepository.orm.findOneBy({ id: job.data.user_id });
+      if (!user) return;
+
+      const revenueCatUser = await this.revenueCatService.getOrCreateSubscriber(job.data.user_id);
       const subscriptionInfo = this.revenueCatService.checkSubscriptionStatus(revenueCatUser.subscriber);
       const userActiveSubscription = this.getHighestRankingSubscription(subscriptionInfo.activeEntitlements);
-      await this.userRepository.update(user_id, {
-        revenue_cat_data: subscriptionInfo,
-        revenue_cat_status: userActiveSubscription,
-        last_date_revenue_cat_data_synced: new Date(),
-      });
-      const effectiveDate = subscriptionInfo.hasActiveSubscription
-        ? Math.round(
-            new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() /
-              ONE_SECOND_AS_MILLIS,
-          )
-        : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
       const subscriptionStatus =
         userActiveSubscription === Entitlement.trial || !userActiveSubscription ? TRIALING : ACTIVE;
-      // Avoid syncing user in ProfitWell if they don't have a Stripe ID
-      if (!stripe_customer_id) {
-        return;
-      }
+      await this.updateUserInfo(job.data.user_id, subscriptionInfo, userActiveSubscription);
+
+      if (!user.stripe_customer_id) return;
+
       let renewalAmountCents = TRIAL_COST_CENTS;
-      const hasPersonalSubscription =
-        userActiveSubscription === Entitlement.personal ? PERSONAL_PLAN_COST_CENTS : TRIAL_COST_CENTS;
-      if (hasPersonalSubscription) {
-        renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripe_customer_id);
+      if (userActiveSubscription === Entitlement.personal) {
+        renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(user.stripe_customer_id);
       }
-      // churn user if their trial expired
-      if (last_status_synced_with_profitwell === Entitlement.trial && !userActiveSubscription && stripe_customer_id) {
-        await this.churnTrial(profitwell_registration_date, stripe_customer_id);
-        await this.userRepository.update(user_id, {
+
+      if (user.last_status_synced_with_profitwell === Entitlement.trial && !userActiveSubscription) {
+        await this.churnTrial(user.profitwell_registration_date, user.stripe_customer_id);
+        await this.userRepository.update(job.data.user_id, {
           profitwell_registration_date: null,
           last_status_synced_with_profitwell: null,
         });
         return;
       }
-      // if user current subscription type isn't same as what revenue cat returned, update subscription in ProfitWell
-      if (
-        last_status_synced_with_profitwell &&
-        last_status_synced_with_profitwell !== userActiveSubscription &&
-        stripe_customer_id
-      ) {
-        // update profit well status
-        await this.updateProfitWellSubscription({
-          stripe_customer_id,
-          userActiveSubscription,
-          last_status_synced_with_profitwell,
-          subscriptionStatus,
-          renewalAmountCents,
-          effectiveDate,
-        });
-        await this.userRepository.update(user_id, {
-          profitwell_registration_date: new Date(effectiveDate),
-          last_status_synced_with_profitwell: userActiveSubscription ?? last_status_synced_with_profitwell,
-        });
-        return;
-      }
-      // Avoid registering tets users with ProfitWell to keep analytics data accurate
-      const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-      const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
-      if (isTestUser) {
-        return;
-      }
-      // register user in profitwell if not registered yet
-      if (stripe_customer_id) {
-        const isUserRegistered = await this.userService.doesUserExistInProfitWell(stripe_customer_id);
-        if (isUserRegistered) return;
-        const profitWellUser = await this.registerUserInProfitWell({
-          stripe_customer_id,
-          userActiveSubscription,
-          effectiveDate,
-          subscriptionStatus,
-          renewalAmountCents,
-        });
 
-        await this.userRepository.update(user_id, {
-          profitwell_id: profitWellUser.user_id,
-          profitwell_registration_date: new Date(),
-          last_status_synced_with_profitwell: userActiveSubscription ?? Entitlement.trial,
-        });
+      if (
+        user.last_status_synced_with_profitwell &&
+        user.last_status_synced_with_profitwell !== userActiveSubscription
+      ) {
+        const effectiveDate = this.getEffectiveDate(subscriptionInfo, userActiveSubscription);
+        await this.updateSubscriptionStatusInProfitWell(
+          user,
+          userActiveSubscription,
+          effectiveDate,
+          renewalAmountCents,
+          subscriptionStatus,
+        );
+        return;
       }
+
+      const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+      if (email.toLowerCase().includes(INTERNAL_TEST)) return;
+
+      const isUserRegistered = await this.userService.doesUserExistInProfitWell(user.stripe_customer_id);
+      if (isUserRegistered) return;
+
+      const effectiveDate = this.getEffectiveDate(subscriptionInfo, userActiveSubscription);
+      const profitWellUser = await this.registerUserInProfitWell({
+        stripe_customer_id: user.stripe_customer_id,
+        userActiveSubscription,
+        effectiveDate,
+        subscriptionStatus,
+        renewalAmountCents,
+      });
+
+      await this.userRepository.update(job.data.user_id, {
+        profitwell_id: profitWellUser.user_id,
+        profitwell_registration_date: new Date(),
+        last_status_synced_with_profitwell: userActiveSubscription ?? Entitlement.trial,
+      });
     } catch (error) {
       console.error({ error, data: error.response?.data });
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
     }
+  }
+
+  getEffectiveDate(subscriptionInfo: any, userActiveSubscription: string): number {
+    return subscriptionInfo.hasActiveSubscription
+      ? Math.round(
+          new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() / ONE_SECOND_AS_MILLIS,
+        )
+      : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
   }
 }

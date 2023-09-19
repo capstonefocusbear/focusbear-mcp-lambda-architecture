@@ -14,6 +14,7 @@ import {
   EVENT_TYPES_TO_ALERT_IN_SLACK,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_MINUTE,
+  WORDS_TO_LOG_FOR,
 } from '../../../shared/utils/constants';
 
 @Injectable()
@@ -39,8 +40,9 @@ export class EventsService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
-      const { event_type } = trackEventDto;
-      if (EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes)) {
+      const { event_type, event_data } = trackEventDto;
+      const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
+      if (shouldLogEvent) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
       if (
@@ -61,6 +63,18 @@ export class EventsService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  shouldEventBeLogged(quitReason: string, event_type: string) {
+    const shouldLogEventType = EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes);
+    if (!shouldLogEventType) return false;
+    const sentenceWords = quitReason.toLowerCase().split(/\s+/);
+    for (const word of WORDS_TO_LOG_FOR) {
+      if (sentenceWords.includes(word.toLowerCase())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {

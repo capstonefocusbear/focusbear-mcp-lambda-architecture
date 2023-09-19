@@ -99,10 +99,10 @@ describe('EventService', () => {
     it('positive: should log event in slack for quit or disable app for 4 hours events', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
-      const dummyEvent = { event_type: EventTypes.APP_QUIT };
+      const dummyEvent = { event_type: EventTypes.APP_QUIT, event_data: { data: { quitReason: 'App is broken' } } };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
 
-      await eventsService.handleIncomingEvent({ event_type: EventTypes.APP_QUIT }, userDummy.id);
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
 
       expect(mockedAxios.post).toBeCalledWith('some-url', {
         text: message,

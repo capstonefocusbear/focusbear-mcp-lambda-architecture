@@ -38,6 +38,7 @@ import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consume
 import { UserFeedbackRepository } from './repositories/user-feedback.repository';
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
+import { ToDoModule } from '../to-do/to-do.module';
 
 @Module({
   providers: [
@@ -118,6 +119,7 @@ import { UserFeedbackService } from './services/user-feedback/user-feedback.serv
     forwardRef(() => DeviceModule),
     HelperModule,
     BrevoModule,
+    ToDoModule,
   ],
   controllers: [
     UserSettingsController,

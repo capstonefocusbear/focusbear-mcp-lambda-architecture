@@ -4,4 +4,5 @@ export enum IntegrationPlatforms {
   TRELLO = 'trello',
   JIRA = 'jira',
   ASANA = 'asana',
+  MONDAY = 'monday',
 }

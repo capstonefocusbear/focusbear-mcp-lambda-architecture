@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Headers } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -14,7 +14,11 @@ export class UserFeedbackController {
   constructor(private readonly userFeedbackService: UserFeedbackService) {}
 
   @Post()
-  async saveUserFeedback(@Body() feedbackData: UserFeedbackDto, @AuthContext() { user }: Passport) {
-    return this.userFeedbackService.saveUserFeedback(user.id, feedbackData);
+  async saveUserFeedback(
+    @Body() feedbackData: UserFeedbackDto,
+    @Headers() headers: any,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userFeedbackService.saveUserFeedback(user.id, feedbackData, headers);
   }
 }

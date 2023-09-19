@@ -46,6 +46,7 @@ describe('UserFeedbackService', () => {
       rating: 5,
       feedback: 'Just a test!',
     };
+    const dummyHeaders = { 'app-version': '1.0.100', platform: 'Windows' };
 
     it('negative: should throw not found error if user ot returned from DB', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
@@ -53,7 +54,7 @@ describe('UserFeedbackService', () => {
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
 
       try {
-        await service.saveUserFeedback(userDummy.id, userFeedbackDummy);
+        await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
       } catch (error) {
         exception = error;
       }
@@ -65,14 +66,14 @@ describe('UserFeedbackService', () => {
     it('positive: should save user feedback in DB and update user', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
-      await service.saveUserFeedback(userDummy.id, userFeedbackDummy);
+      await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
 
       expect(UserFeedbackRepositoryMock.orm.save).toBeCalledWith(
         new UserFeedback({
           user_id: userDummy.id,
           feedback: userFeedbackDummy.feedback,
           rating: userFeedbackDummy.rating,
-          metadata: undefined,
+          metadata: { app: dummyHeaders.platform, version: dummyHeaders['app-version'], user_id: userDummy.id },
         }),
       );
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { last_date_gave_feedback: expect.toBeDate() });

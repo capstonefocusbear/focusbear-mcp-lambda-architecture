@@ -53,8 +53,7 @@ import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
-import { SyncedProjectsRepository } from '../../../to-do/repositories/synced-projects.repository';
-import { IntegrationPlatforms } from '../../../platform-integrations/domain/integration-platforms.enum';
+import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -78,7 +77,7 @@ export class UserService {
     private readonly openAIService: OpenAIService,
     @InjectQueue('profitwell') private profitwellQueue: Queue,
     @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
-    private readonly syncedProjectsRepository: SyncedProjectsRepository,
+    private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
   private httpService = axios;
@@ -234,7 +233,7 @@ export class UserService {
         }
         return focusMode;
       });
-      const syncedPlatformsMap = await this.getAllSyncedPlatforms(id);
+      const syncedPlatformsMap = await this.platformIntegrationsService.getUserSyncedPlatforms(id);
       return { ...userDetails, email, focus_modes: formattedFocusModes, synced_platforms: syncedPlatformsMap };
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -694,21 +693,5 @@ export class UserService {
     } catch (error) {
       return false;
     }
-  }
-
-  async getAllSyncedPlatforms(userId: string) {
-    const syncedProjects = await this.syncedProjectsRepository.orm.find({
-      where: { user_id: userId },
-      select: ['platform'],
-    });
-    const platforms = syncedProjects.map((project) => project.platform);
-    return {
-      zoho: platforms.includes(IntegrationPlatforms.ZOHO),
-      jira: platforms.includes(IntegrationPlatforms.JIRA),
-      click_up: platforms.includes(IntegrationPlatforms.CLICK_UP),
-      trello: platforms.includes(IntegrationPlatforms.TRELLO),
-      asana: platforms.includes(IntegrationPlatforms.ASANA),
-      monday: platforms.includes(IntegrationPlatforms.MONDAY),
-    };
   }
 }

@@ -39,6 +39,7 @@ import { UserFeedbackRepository } from './repositories/user-feedback.repository'
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
 import { ToDoModule } from '../to-do/to-do.module';
+import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 
 @Module({
   providers: [
@@ -120,6 +121,7 @@ import { ToDoModule } from '../to-do/to-do.module';
     HelperModule,
     BrevoModule,
     ToDoModule,
+    PlatformIntegrationsModule,
   ],
   controllers: [
     UserSettingsController,

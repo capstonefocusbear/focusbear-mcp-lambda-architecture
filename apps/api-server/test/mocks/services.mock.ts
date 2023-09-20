@@ -188,6 +188,7 @@ export const ZohoServiceMock = {
 export const PlatformIntegrationsServiceMock = {
   getPlatformIntegrationData: jest.fn(),
   updatePlatformIntegration: jest.fn(),
+  getUserSyncedPlatforms: jest.fn(),
 };
 
 export const ToDoServiceMock = {

@@ -32,4 +32,20 @@ export class PlatformIntegrationsService {
     });
     await this.platformIntegrationsRepository.orm.save(platformIntegration);
   }
+
+  async getUserSyncedPlatforms(userId: string) {
+    const syncedProjects = await this.platformIntegrationsRepository.orm.find({
+      where: { user_id: userId },
+      select: ['platform'],
+    });
+    const platforms = syncedProjects.map((project) => project.platform);
+    return {
+      zoho: platforms.includes(IntegrationPlatforms.ZOHO),
+      jira: platforms.includes(IntegrationPlatforms.JIRA),
+      click_up: platforms.includes(IntegrationPlatforms.CLICK_UP),
+      trello: platforms.includes(IntegrationPlatforms.TRELLO),
+      asana: platforms.includes(IntegrationPlatforms.ASANA),
+      monday: platforms.includes(IntegrationPlatforms.MONDAY),
+    };
+  }
 }

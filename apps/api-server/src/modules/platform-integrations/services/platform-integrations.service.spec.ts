@@ -89,4 +89,25 @@ describe('PlatformIntegrationsService', () => {
       );
     });
   });
+
+  describe('getUserSyncedPlatforms', () => {
+    it('positive: should return an array of all platforms user has synced with', async () => {
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        { platform: 'zoho' },
+        { platform: 'zoho' },
+        { platform: 'jira' },
+      ]);
+
+      const response = await platformIntegrationsService.getUserSyncedPlatforms(userDummy.id);
+
+      expect(response).toEqual({
+        zoho: true,
+        jira: true,
+        click_up: false,
+        trello: false,
+        asana: false,
+        monday: false,
+      });
+    });
+  });
 });

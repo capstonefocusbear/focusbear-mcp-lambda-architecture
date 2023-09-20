@@ -34,7 +34,7 @@ import {
   AdminAccessRequestRepositoryMock,
   OpenAIServiceMock,
   CompletedActivityServiceMock,
-  SyncedProjectsRepositoryMock,
+  PlatformIntegrationsServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -55,7 +55,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { ONE_MINUTE, TRIAL_COST_CENTS } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
-import { SyncedProjectsRepository } from '../../../to-do/repositories/synced-projects.repository';
+import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -83,7 +83,7 @@ describe('UserService', () => {
         AdminAccessRequestRepository,
         CompletedActivityService,
         OpenAIService,
-        SyncedProjectsRepository,
+        PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -126,8 +126,8 @@ describe('UserService', () => {
       .useValue(CompletedActivityServiceMock)
       .overrideProvider(OpenAIService)
       .useValue(OpenAIServiceMock)
-      .overrideProvider(SyncedProjectsRepository)
-      .useValue(SyncedProjectsRepositoryMock)
+      .overrideProvider(PlatformIntegrationsService)
+      .useValue(PlatformIntegrationsServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
 
@@ -200,11 +200,10 @@ describe('UserService', () => {
     it('positive: getUserDetails should be called', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce({ email: auth0UserDummy.email });
-      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([
-        { platform: 'zoho' },
-        { platform: 'zoho' },
-        { platform: 'jira' },
-      ]);
+      PlatformIntegrationsServiceMock.getUserSyncedPlatforms({
+        zoho: true,
+        jira: false,
+      });
 
       await userService.getUserDetails(id);
 
@@ -834,27 +833,6 @@ describe('UserService', () => {
       expect(AdminAccessRequestRepositoryMock.create).toBeCalledWith(
         new AdminAccessRequest({ admin_user_id: userDummy.id, access_reason: accessReasonDummy }),
       );
-    });
-  });
-
-  describe('getAllSyncedPlatforms', () => {
-    it('positive: should return an array of all platforms user has synced with', async () => {
-      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([
-        { platform: 'zoho' },
-        { platform: 'zoho' },
-        { platform: 'jira' },
-      ]);
-
-      const response = await userService.getAllSyncedPlatforms(userDummy.id);
-
-      expect(response).toEqual({
-        zoho: true,
-        jira: true,
-        click_up: false,
-        trello: false,
-        asana: false,
-        monday: false,
-      });
     });
   });
 });

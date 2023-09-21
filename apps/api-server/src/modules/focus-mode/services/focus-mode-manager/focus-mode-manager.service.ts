@@ -164,6 +164,7 @@ export class FocusModeManagerService {
       const updateCompletingFocusBlock = {
         ...completingFocusBlock,
         ...finishFocusBlockDto,
+        to_dos: completingFocusBlock?.to_dos,
         focus_duration_seconds: durationToUse,
         tags: focusModeTags,
       };

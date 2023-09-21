@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { ToDo } from './to-do.entity';
+import { ExternalTaskStatus } from '../domain/external-task-status.model';
 
 @Entity('synced_projects')
 export class SyncedProject extends BaseEntity {
@@ -39,7 +40,7 @@ export class SyncedProject extends BaseEntity {
   external_portal_id?: string;
 
   @Column({ type: 'jsonb', default: null, nullable: true })
-  available_statuses?: any;
+  available_statuses?: ExternalTaskStatus[];
 
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

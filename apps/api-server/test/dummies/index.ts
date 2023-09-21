@@ -1689,5 +1689,5 @@ export const ToDoDBResponseDummy = new ToDo({
 
 export const syncedProjectDummy = new SyncedProject({
   user_id: userDummy.id,
-  available_statuses: { label: 'Open', status_id: 'test-id' },
+  available_statuses: [{ label: 'Open', status_id: 'test-id', should_complete_task: true }],
 });

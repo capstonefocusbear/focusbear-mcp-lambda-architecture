@@ -57,7 +57,7 @@ export class TimeLogsConsumer {
           portalId,
           projectId,
           taskId,
-          timeLog?.external_status?.status_id,
+          timeLog?.status,
         );
         await Promise.all([addTimeEntryPromise, updateTaskStatusPromise]);
       }

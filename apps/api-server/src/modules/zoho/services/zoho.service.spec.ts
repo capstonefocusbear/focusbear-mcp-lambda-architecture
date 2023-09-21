@@ -114,7 +114,9 @@ describe('ZohoService', () => {
           user_id: userDummy.id,
           external_project_id: projectId,
           external_portal_id: portalId,
-          available_statuses: [{ label: incomingStatusDummy.name, status_id: incomingStatusDummy.id }],
+          available_statuses: [
+            { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
+          ],
           platform: IntegrationPlatforms.ZOHO,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
@@ -141,7 +143,9 @@ describe('ZohoService', () => {
         const syncedProjectDBResponseDummy = new SyncedProject({
           user_id: userDummy.id,
           external_project_id: projectId,
-          available_statuses: [{ label: existingStatusDummy.name, status_id: existingStatusDummy.id }],
+          available_statuses: [
+            { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
+          ],
           platform: IntegrationPlatforms.ZOHO,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
@@ -156,8 +160,8 @@ describe('ZohoService', () => {
           new SyncedProject({
             ...syncedProjectDBResponseDummy,
             available_statuses: [
-              { label: existingStatusDummy.name, status_id: existingStatusDummy.id },
-              { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id },
+              { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
+              { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
             ],
           }),
         );

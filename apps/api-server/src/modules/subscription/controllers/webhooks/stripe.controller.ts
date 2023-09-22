@@ -17,8 +17,15 @@ export class StripeController {
   constructor(private readonly stripeService: StripeService) {}
 
   @Post('create-checkout-session')
-  async createCheckoutSession(@Body() { price_id }: CreateStripeCheckoutSessionDto, @AuthContext() { user }: Passport) {
-    const session = await this.stripeService.createCheckoutSession(price_id, user.stripeCustomerId);
+  async createCheckoutSession(
+    @Body() { price_id, is_team_subscription }: CreateStripeCheckoutSessionDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    const session = await this.stripeService.createCheckoutSession(
+      price_id,
+      user.stripeCustomerId,
+      is_team_subscription,
+    );
     return { url: session.url };
   }
 

@@ -101,6 +101,7 @@ export const SendGridServiceMock = {
 export const StripeServiceMock = {
   registerNewCustomer: jest.fn(),
   getStripeCustomerId: jest.fn(),
+  updateSubscription: jest.fn(),
 };
 
 export const ActivityTemplateServiceMock = {

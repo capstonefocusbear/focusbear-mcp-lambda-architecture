@@ -10,7 +10,7 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  async createCheckoutSession(price: string, customer: string) {
+  async createCheckoutSession(price: string, customer: string, isTeamSubscription = false) {
     const { success_url, cancel_url } = this.options.checkout;
     return this.checkout.sessions
       .create({
@@ -18,12 +18,42 @@ export class StripeService extends Stripe {
         cancel_url,
         allow_promotion_codes: true,
         customer,
-        line_items: [{ price, quantity: 1 }],
+
+        line_items: [
+          {
+            price,
+            quantity: 1,
+
+            adjustable_quantity: {
+              enabled: isTeamSubscription,
+              minimum: 1,
+              maximum: 100,
+            },
+          },
+        ],
+
         mode: 'subscription',
       })
       .catch((err) => {
         throw new BadRequestException(err.message);
       });
+  }
+
+  async getUserSubscriptions() {
+    const data = await this.customers.retrieve('cus_OdjcZc2vq631t4', { expand: ['subscriptions'] });
+    return data;
+  }
+
+  async updateSubscription(subId: string, subItemId: string, quantity: number) {
+    const subscription = await this.subscriptions.update(subId, {
+      items: [
+        {
+          id: subItemId,
+          quantity,
+        },
+      ],
+    });
+    return subscription;
   }
 
   async createPortalSession(customer: string) {

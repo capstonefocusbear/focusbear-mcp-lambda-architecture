@@ -6,6 +6,7 @@ import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-h
 import { Headers } from '../../../../shared/decorators/headers.decorator';
 import { SubscriptionProvider } from '../../domain/subscription-provider.enum';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { TeamManagementService } from '../../../team/services/team-management/team-management.service';
 
 @Controller('subscription/webhooks')
 export class WebhooksController {
@@ -14,6 +15,7 @@ export class WebhooksController {
     private readonly stripeService: StripeService,
     private readonly revenueCatService: RevenueCatService,
     private readonly userRepository: UserRepository,
+    private readonly teamManagementService: TeamManagementService,
   ) {}
 
   private readonly rcLogger: Logger = new Logger('RevenueCatWebhooks');
@@ -37,6 +39,9 @@ export class WebhooksController {
       const user = await this.userRepository.orm.findOne({
         where: { stripe_customer_id: payload.customer },
       });
+      if (payload.plan.product === process.env.STRIPE_TEAM_PLAN_PRODUCT_ID) {
+        await this.teamManagementService.registerTeam(payload);
+      }
       this.rcLogger.warn(JSON.stringify(user || 'empty'));
       const purchaseData = { app_user_id: user.id, fetch_token: payload.id };
       this.rcLogger.warn(purchaseData);

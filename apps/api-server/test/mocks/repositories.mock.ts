@@ -112,7 +112,7 @@ export const CompletedFocusBlockRepositoryMock = {
 
 export const TeamRepositoryMock = {
   ...BaseRepositoryMock,
-  findActiveTeamWithMembersByOwnerId: jest.fn(),
+  findActiveTeamWithMembers: jest.fn(),
 };
 
 export const HabitPackRepositoryMock = {

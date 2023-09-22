@@ -1108,18 +1108,20 @@ export const CompletedSequenceLogDummy = new CompletedActivitySequence({
 });
 
 export const TeamWithMembersDummy = new Team({
+  id: randomUUID(),
   owner_id: userDummy.id,
   owner: userDummy,
   is_active: true,
   team_size: 5,
   members: [userDummy],
+  admin_members: [userDummy],
+  stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });
 
 export const TeamMemberDummy = new User({
   ...userDummy,
   id: randomUUID(),
-  member_of_team_id: TeamWithMembersDummy.id,
-  member_of_team: TeamWithMembersDummy,
+  member_of_teams: [TeamWithMembersDummy],
 });
 
 TeamWithMembersDummy.members.push(TeamMemberDummy);

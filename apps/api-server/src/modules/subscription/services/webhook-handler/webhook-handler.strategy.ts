@@ -5,6 +5,7 @@ import { Queue } from 'bull';
 import { Team } from '../../../team/entities/team.entity';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
+import { Entitlement } from '../../domain/entitlement.enum';
 
 @Injectable()
 export class WebhookHandlerStrategy {
@@ -58,7 +59,7 @@ export class WebhookHandlerStrategy {
     team.is_active = true;
     team.expires_date = new Date(event.expiration_at_ms);
     const membersIds = this.extractMemberIds(team);
-    const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembership(id);
+    const grantMemberAccess = (id) => this.revenueCatService.grantTeamMembership(id, Entitlement.team_member);
     const bulkGrantMembersAccess = Promise.all(membersIds.map(grantMemberAccess));
     const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkGrantMembersAccess]);
     return updatedTeam;
@@ -73,7 +74,7 @@ export class WebhookHandlerStrategy {
       const team = await this.teamRepository.orm.findOne({ where: { owner_id }, relations: ['members'] });
       team.is_active = false;
       const membersIds = this.extractMemberIds(team);
-      const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembership(id);
+      const revokeMemberAccess = (id) => this.revenueCatService.revokeTeamMembership(id, Entitlement.team_member);
       const bulkRevokeMembersAccess = Promise.all(membersIds.map(revokeMemberAccess));
       const [updatedTeam] = await Promise.all([this.teamRepository.orm.save(team), bulkRevokeMembersAccess]);
       return updatedTeam;

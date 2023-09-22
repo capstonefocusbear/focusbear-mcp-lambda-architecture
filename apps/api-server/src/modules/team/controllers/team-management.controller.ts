@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
-import { BulckDeleteQueryDto } from '../../focus-mode/dto/bulck-delete-query.dto';
+import { BulkDeleteQueryDto } from '../../focus-mode/dto/bulck-delete-query.dto';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
 import {
   HasSubscription,
@@ -24,12 +24,12 @@ export class TeamManagementController {
 
   @Post('/add-member')
   @UseGuards(HasSubscription)
-  @RequireEntitlements([Entitlement.team_owner])
+  @RequireEntitlements([Entitlement.team_admin])
   addTeamMember(
-    @Body() { member_id }: AddTeamMemberDto,
-    @AuthContext() { user: { id: owner_id } }: Passport,
+    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @AuthContext() { user: { id: admin_id } }: Passport,
   ): Promise<User> {
-    return this.teamManagementService.addTeamMember(member_id, owner_id);
+    return this.teamManagementService.addTeamMember(member_id, admin_id, team_id);
   }
 
   @Delete('bulk-delete-members')
@@ -37,28 +37,31 @@ export class TeamManagementController {
   @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_owner])
   bulkDeleteTeamMembers(
-    @Query() { id }: BulckDeleteQueryDto,
+    @Query() { id, team_id }: BulkDeleteQueryDto,
     @AuthContext() { user: { id: owner_id } }: Passport,
   ): Promise<any> {
     const ids = Array.isArray(id) ? id : [id];
-    return this.teamManagementService.bulkDeleteTeamMembers(ids, owner_id);
+    return this.teamManagementService.bulkDeleteTeamMembers(ids, owner_id, team_id);
   }
 
-  @Post('/disassociate-self')
+  @Post('/remove-member')
   @UseGuards(HasSubscription)
-  @RequireEntitlements([Entitlement.team_member])
-  disassociateSelf(@AuthContext() { user: { id: member_id } }: Passport): Promise<User> {
-    return this.teamManagementService.disassociateSelf(member_id);
+  @RequireEntitlements([Entitlement.team_admin])
+  removeMember(
+    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<User> {
+    return this.teamManagementService.removeMember(adminId, member_id, team_id);
   }
 
   @Post('/invite-member')
   @UseGuards(HasSubscription)
-  @RequireEntitlements([Entitlement.team_owner])
+  @RequireEntitlements([Entitlement.team_admin])
   async inviteTeamMember(
-    @Body() { email }: InviteTeamMemberDto,
-    @AuthContext() { user: { id: owner_id } }: Passport,
+    @Body() { email, team_id }: InviteTeamMemberDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
   ): Promise<any> {
-    return this.teamManagementService.inviteTeamMember(email, owner_id);
+    return this.teamManagementService.inviteTeamMember(email, adminId, team_id);
   }
 
   @Post('/accept-invitation')
@@ -67,5 +70,38 @@ export class TeamManagementController {
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
     return this.teamManagementService.acceptInvitation(token, user_id);
+  }
+
+  @Post('/assign-admin')
+  @RequireEntitlements([Entitlement.team_owner])
+  async assignAdmin(
+    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @AuthContext() { user: { id: user_id } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.assignMemberAsAdmin(user_id, member_id, team_id);
+  }
+
+  @Post('/remove-admin')
+  @RequireEntitlements([Entitlement.team_owner])
+  async removeAdmin(
+    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @AuthContext() { user: { id: user_id } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.removeMemberAsAdmin(user_id, member_id, team_id);
+  }
+
+  @Post('/update-team-size')
+  @RequireEntitlements([Entitlement.team_owner])
+  async updateTeamSize(
+    @Body() { team_id, team_size }: { team_id: string; team_size: number },
+    @AuthContext() { user: { id: user_id } }: Passport,
+  ) {
+    return this.teamManagementService.updateTeamSize(user_id, team_id, team_size);
+  }
+
+  @Get('/all-members')
+  @RequireEntitlements([Entitlement.team_admin])
+  async getAllMembers(@Query() { team_id }: { team_id: string }, @AuthContext() { user: { id: adminId } }: Passport) {
+    return this.teamManagementService.getAllTeamMembers(adminId, team_id);
   }
 }

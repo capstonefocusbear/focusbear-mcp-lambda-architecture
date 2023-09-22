@@ -15,6 +15,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { ToDoResponse } from '../dto/to-do-response.dto';
 import { ZohoService } from '../../zoho/services/zoho.service';
+import { ToDoStatus } from '../domain/to-do-status.enum';
 
 @Injectable()
 export class ToDoService {
@@ -90,8 +91,22 @@ export class ToDoService {
   }
 
   async updateTasksStatuses(tasks: ToDoTimeLogDto[]) {
+    const DEFAULT_STATUSES: string[] = [ToDoStatus.NOT_STARTED, ToDoStatus.IN_PROGRESS, ToDoStatus.COMPLETED];
     for await (const task of tasks) {
-      await this.toDoRepository.update(task.id, { status: task.status });
+      // Check if task uses a default status
+      if (DEFAULT_STATUSES.includes(task.status)) {
+        await this.toDoRepository.update(task.id, { status: task.status });
+      } else {
+        // External status is used, check whether status should mark task as completed
+        const toDo = await this.toDoRepository.orm.findOneBy({ id: task.id });
+        const { available_statuses } = await this.syncedProjectsRepository.orm.findOneBy({
+          id: toDo.synced_project_id,
+        });
+        const selectedStatus = available_statuses.find((externalStatus) => externalStatus.status_id === task.status);
+        if (selectedStatus.should_complete_task) {
+          await this.toDoRepository.update(task.id, { status: ToDoStatus.COMPLETED });
+        }
+      }
     }
   }
 

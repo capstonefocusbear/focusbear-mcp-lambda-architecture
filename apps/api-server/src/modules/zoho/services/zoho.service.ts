@@ -209,11 +209,20 @@ export class ZohoService {
       // eslint-disable-next-line no-continue
       if (!projects.length) continue;
       projects.forEach((project) => {
+        const isSynced = userSyncedProjectsExternalIds.includes(project.id_string);
+        let externalStatuses = [];
+        if (isSynced) {
+          const linkedSyncedProject = userSyncedProjects.find(
+            (syncedProject) => syncedProject.external_project_id === project.id_string,
+          );
+          externalStatuses = linkedSyncedProject.available_statuses;
+        }
         const projectData = {
           name: project.name,
           project_id: project.id_string,
           portal_id: portal.id,
-          is_synced: userSyncedProjectsExternalIds.includes(project.id_string),
+          is_synced: isSynced,
+          external_statuses: externalStatuses,
         };
         projectsResponse.push(projectData);
       });
@@ -328,7 +337,7 @@ export class ZohoService {
       headers,
     });
     const availableStatuses = data?.status_details?.map((details) => {
-      return { label: details.name, status_id: details.id };
+      return { label: details.name, status_id: details.id, should_complete_task: false };
     });
     return availableStatuses;
   }

@@ -122,27 +122,6 @@ export class ZohoAuthService {
     }
   }
 
-  async login(userId: string, query: Record<string, any>) {
-    const existingUser = await this.getUser(userId);
-    if (!existingUser) {
-      throw new NotFoundException(`User with ID: ${userId} not found!`);
-    }
-    const updatePayload = {
-      ...(query.api_domain && { api_domain: query.api_domain }),
-      ...(query.location && { zoho_location: query.location }),
-      ...(query['accounts-server'] && {
-        zoho_account_server: query['accounts-server'],
-      }),
-    };
-    await this.userRepository.update(existingUser.id, {
-      ...updatePayload,
-    });
-    const payload = { sub: existingUser.id };
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-    };
-  }
-
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
   }

@@ -66,8 +66,8 @@ export class ToDo extends BaseEntity {
   @Column({ type: 'smallint', default: 1, nullable: true })
   eisenhower_quadrant: number;
 
-  @Column({ type: 'enum', enum: ToDoStatus, default: ToDoStatus.NOT_STARTED })
-  status: ToDoStatus;
+  @Column({ type: 'varchar', default: ToDoStatus.NOT_STARTED })
+  status: string;
 
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

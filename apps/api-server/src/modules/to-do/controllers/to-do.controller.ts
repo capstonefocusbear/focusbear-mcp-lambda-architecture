@@ -23,10 +23,10 @@ export class TodoController {
 
   @Get()
   async getUserToDos(
-    @Query() { page_num, status, eisenhower_quadrant }: GetToDosQueryDto,
+    @Query() { page_num, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<ToDoResponse[]> {
-    return this.toDoService.getToDos(user.id, { page_num, status, eisenhower_quadrant });
+    return this.toDoService.getToDos(user.id, { page_num, status, eisenhower_quadrant, should_use_cache });
   }
 
   @Delete()

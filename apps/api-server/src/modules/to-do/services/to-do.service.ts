@@ -49,17 +49,16 @@ export class ToDoService {
 
   async getToDos(
     user_id: string,
-    { page_num, status, eisenhower_quadrant }: GetToDosQueryDto,
+    { page_num, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
   ): Promise<ToDoResponse[]> {
     const toDos = await this.toDoRepository.getUserToDos(user_id, { page_num, status, eisenhower_quadrant });
+    if (should_use_cache) {
+      return this.addCachedStatusesToToDos(toDos, user_id);
+    }
     return this.addProjectStatusesToToDos(toDos, user_id);
   }
 
-  async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
-    const userZohoTasks = await this.zohoService.getAllUserTasks(userId);
-    const findTask = (taskId: string, zohoTasks: any[]) => {
-      return zohoTasks.find((task) => task.id_string === taskId);
-    };
+  async addCachedStatusesToToDos(toDos: ToDo[], userId: string) {
     const toDosWithAvailableStatuses = await Promise.all(
       toDos.map(async (toDo) => {
         if (toDo?.external_task_metadata) {
@@ -67,10 +66,9 @@ export class ToDoService {
           const syncedProject = await this.syncedProjectsRepository.orm.findOne({
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
-          const linkedTask = findTask(toDo.external_task_id, userZohoTasks);
           const availableStatuses = syncedProject.available_statuses;
-          const externalStatusLabel = linkedTask?.status?.name;
-          const externalStatusId = linkedTask?.status?.id;
+          const externalStatusLabel = toDo.external_task_metadata?.task_data?.status?.name;
+          const externalStatusId = toDo.external_task_metadata?.task_data?.status?.id;
           const externalStatus = { label: externalStatusLabel, id: externalStatusId };
           const toDoCopy = { ...toDo };
           // Remove to do external metadata to clean up response data
@@ -84,6 +82,49 @@ export class ToDoService {
         return toDo;
       }),
     );
+    return toDosWithAvailableStatuses;
+  }
+
+  async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
+    const userZohoTasks = await this.zohoService.getAllUserTasks(userId);
+    const findTask = (taskId: string, zohoTasks: any[]) => {
+      return zohoTasks.find((task) => task.id_string === taskId);
+    };
+    const updatedToDos = [];
+    const toDosWithAvailableStatuses = await Promise.all(
+      toDos.map(async (toDo) => {
+        if (toDo?.external_task_metadata) {
+          const toDoProjectId = toDo.external_task_metadata.task_data?.project?.id_string;
+          const syncedProject = await this.syncedProjectsRepository.orm.findOne({
+            where: { user_id: userId, external_project_id: toDoProjectId },
+          });
+          const linkedTask = findTask(toDo.external_task_id, userZohoTasks);
+          const availableStatuses = syncedProject.available_statuses;
+          const externalStatusLabel = linkedTask?.status?.name;
+          const externalStatusId = linkedTask?.status?.id;
+          const currentExternalStatus = { label: externalStatusLabel, id: externalStatusId };
+          const toDoCopy = { ...toDo };
+          const toDoToSave = new ToDo({
+            ...toDo,
+            external_task_metadata: {
+              ...toDo.external_task_metadata,
+              task_data: findTask(toDo.external_task_id, userZohoTasks),
+            },
+          });
+          updatedToDos.push(toDoToSave);
+          // Remove to do external metadata to clean up response data
+          delete toDoCopy?.external_task_metadata;
+          return {
+            ...toDoCopy,
+            current_external_status: currentExternalStatus,
+            external_statuses: availableStatuses,
+          };
+        }
+        return toDo;
+      }),
+    );
+    // Update to dos external metadata with newly fetched data
+    await this.toDoRepository.orm.save(updatedToDos);
     return toDosWithAvailableStatuses;
   }
 

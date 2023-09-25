@@ -42,6 +42,13 @@ export class TaskTimeLog extends BaseEntity {
   })
   duration_logged_seconds?: number;
 
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    transformer: BaseEntity.encryptField('note'),
+  })
+  note?: string;
+
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

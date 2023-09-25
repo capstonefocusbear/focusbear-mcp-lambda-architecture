@@ -113,16 +113,20 @@ describe('toDoService', () => {
     });
 
     it('positive: if to do is linked to an external project, its available statuses should be added to response', async () => {
+      const toDoId = 'test-id';
       ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([
         {
           ...ToDoDBResponseDummy,
           external_task_metadata: {
             platform: IntegrationPlatforms.ZOHO,
           },
+          external_task_id: toDoId,
         },
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
-      ZohoServiceMock.getTaskDetails.mockResolvedValueOnce({ status: { id: 'test-id', name: 'status-name' } });
+      ZohoServiceMock.getAllUserTasks.mockResolvedValueOnce([
+        { id_string: toDoId, status: { id: toDoId, name: 'status-name' } },
+      ]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,

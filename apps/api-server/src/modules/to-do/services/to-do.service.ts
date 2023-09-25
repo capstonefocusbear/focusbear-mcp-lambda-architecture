@@ -127,6 +127,7 @@ export class ToDoService {
           task_id: toDo.id,
           duration_logged_seconds: toDo.duration,
           completed_focus_block_id: completedFocusBlockId,
+          note: toDo.note,
         }),
     );
     await this.updateTasksStatuses(toDosToUpdate);

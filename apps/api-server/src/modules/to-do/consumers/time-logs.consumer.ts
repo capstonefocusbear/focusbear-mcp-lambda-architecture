@@ -43,7 +43,7 @@ export class TimeLogsConsumer {
           date,
           bill_status: billStatus,
           hours: secondsToHHMM(timeLog.duration),
-          notes: '',
+          notes: timeLog?.note,
         };
         const addTimeEntryPromise = this.zohoService.addTimeEntry(
           userId,

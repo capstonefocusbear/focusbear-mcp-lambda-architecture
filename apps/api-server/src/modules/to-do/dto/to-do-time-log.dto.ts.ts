@@ -16,4 +16,8 @@ export class ToDoTimeLogDto {
   @IsOptional()
   @IsBoolean()
   is_billable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }

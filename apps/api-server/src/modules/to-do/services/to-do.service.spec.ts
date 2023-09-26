@@ -107,6 +107,7 @@ describe('toDoService', () => {
         status: ToDoStatus.NOT_STARTED,
         page_num: 1,
         eisenhower_quadrant: 2,
+        should_use_cache: true,
       });
 
       expect(response).toBeArray();
@@ -132,6 +133,7 @@ describe('toDoService', () => {
         status: ToDoStatus.NOT_STARTED,
         page_num: 1,
         eisenhower_quadrant: 2,
+        should_use_cache: false,
       });
 
       expect(response[0].external_statuses).toEqual(syncedProjectDummy.available_statuses);

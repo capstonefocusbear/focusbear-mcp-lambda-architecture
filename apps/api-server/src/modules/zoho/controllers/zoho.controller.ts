@@ -5,7 +5,7 @@ import { CreateTimeLog } from '../dto/create-time-log.dto';
 import { TaskParamsQueryDto } from '../dto/task-params-query.dto';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
-import { UserZohoProject } from '../dto/user-zoho-project.dto';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 
 @Controller('zoho')
 export class ZohoController {
@@ -24,7 +24,7 @@ export class ZohoController {
 
   @Get('user-projects')
   @UseGuards(IsAuth)
-  async getAllUserProjects(@AuthContext() { user }: Passport): Promise<UserZohoProject[]> {
+  async getAllUserProjects(@AuthContext() { user }: Passport): Promise<SyncedProjectDto[]> {
     return this.zohoService.getAllUserProjects(user.id);
   }
 

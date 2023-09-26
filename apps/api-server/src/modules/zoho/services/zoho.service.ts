@@ -16,7 +16,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import { UserZohoProject } from '../dto/user-zoho-project.dto';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -167,7 +167,7 @@ export class ZohoService {
     return projectsResponse;
   }
 
-  async getAllUserProjects(userId: string): Promise<UserZohoProject[]> {
+  async getAllUserProjects(userId: string): Promise<SyncedProjectDto[]> {
     const portals: any = await this.getPortals(userId);
     const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const userSyncedProjectsExternalIds = userSyncedProjects.map((syncedProject) => syncedProject.external_project_id);

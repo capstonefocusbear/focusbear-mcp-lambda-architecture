@@ -254,4 +254,14 @@ export class TeamManagementService {
     await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
     await this.teamRepository.update(teamId, { name });
   }
+
+  async getAdminUserTeams(adminId: string) {
+    const user = await this.userRepository.orm.findOne({
+      where: { id: adminId },
+      relations: ['admin_of_teams'],
+    });
+    return user.admin_of_teams.map(({ id, name, team_size, owner_id }) => {
+      return { id, name, team_size, owner_id };
+    });
+  }
 }

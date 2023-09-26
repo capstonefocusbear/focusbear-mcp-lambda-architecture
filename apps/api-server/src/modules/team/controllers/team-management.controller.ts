@@ -110,4 +110,9 @@ export class TeamManagementController {
   async updateTeamName(@Body() { name, team_id }: UpdateTeamNameDto, @AuthContext() { user }: Passport) {
     return this.teamManagementService.updateTeamName(user.id, team_id, name);
   }
+
+  @Get('/admin-teams')
+  async getAdminUserTeams(@AuthContext() { user }: Passport) {
+    return this.teamManagementService.getAdminUserTeams(user.id);
+  }
 }

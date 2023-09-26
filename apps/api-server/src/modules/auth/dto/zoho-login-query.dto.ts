@@ -1,16 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsOptional } from 'class-validator';
 
-export class ZohoAuthorizeQuery {
-  @IsOptional()
-  code?: string;
-
-  @IsOptional()
-  location?: string;
-
-  @IsOptional()
-  ['accounts-server']?: string;
-
+export class ZohoLoginQuery {
   @IsOptional()
   @Transform(({ obj, key }) => {
     const value = obj[key];

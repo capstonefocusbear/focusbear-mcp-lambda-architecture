@@ -115,6 +115,7 @@ $ STAGING_SERVER_URL =
 
 #Get these from Zoho
 $ ZOHO_CALLBACK_URL = should be URL of callback path for dashboard zoho login
+$ ZOHO_CALLBACK_URL_DEVELOPMENT = https://dashboard.local.dev:3000/zohocallback
 $ ZOHO_CLIENT_ID =
 $ ZOHO_CLIENT_SECRET =
 

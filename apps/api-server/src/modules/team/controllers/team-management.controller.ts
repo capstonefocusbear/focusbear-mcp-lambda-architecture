@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -14,6 +14,7 @@ import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
 import { AddTeamMemberDto } from '../dto/add-team-member.dto';
 import { InviteTeamMemberDto } from '../dto/invite-team-member.dto';
 import { TeamManagementService } from '../services/team-management/team-management.service';
+import { UpdateTeamNameDto } from '../dto/update-team-name.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -103,5 +104,10 @@ export class TeamManagementController {
   @RequireEntitlements([Entitlement.team_admin])
   async getAllMembers(@Query() { team_id }: { team_id: string }, @AuthContext() { user: { id: adminId } }: Passport) {
     return this.teamManagementService.getAllTeamMembers(adminId, team_id);
+  }
+
+  @Put('/name')
+  async updateTeamName(@Body() { name, team_id }: UpdateTeamNameDto, @AuthContext() { user }: Passport) {
+    return this.teamManagementService.updateTeamName(user.id, team_id, name);
   }
 }

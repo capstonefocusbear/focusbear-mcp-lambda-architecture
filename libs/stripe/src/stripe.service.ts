@@ -10,7 +10,7 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  async createCheckoutSession(price: string, customer: string, isTeamSubscription = false) {
+  async createCheckoutSession(price: string, customer: string) {
     const { success_url, cancel_url } = this.options.checkout;
     return this.checkout.sessions
       .create({
@@ -23,12 +23,6 @@ export class StripeService extends Stripe {
           {
             price,
             quantity: 1,
-
-            adjustable_quantity: {
-              enabled: isTeamSubscription,
-              minimum: 1,
-              maximum: 100,
-            },
           },
         ],
 
@@ -37,11 +31,6 @@ export class StripeService extends Stripe {
       .catch((err) => {
         throw new BadRequestException(err.message);
       });
-  }
-
-  async getUserSubscriptions() {
-    const data = await this.customers.retrieve('cus_OdjcZc2vq631t4', { expand: ['subscriptions'] });
-    return data;
   }
 
   async updateSubscription(subId: string, subItemId: string, quantity: number) {

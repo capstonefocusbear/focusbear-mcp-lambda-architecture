@@ -36,13 +36,18 @@ export class Team extends BaseEntity {
   })
   expires_date?: string | Date;
 
-  // TODO: encrypt field
   @Column({
     type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('stripe_data'),
   })
   stripe_data?: any;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  name?: string;
 
   @ManyToOne(() => User, (user) => user.owned_teams, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })

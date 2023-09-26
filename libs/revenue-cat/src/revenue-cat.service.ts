@@ -70,7 +70,10 @@ export class RevenueCatService {
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement}/revoke_promotionals`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
-    return this.httpService.post(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
+    return this.httpService
+      .post(callUrl, {}, { headers })
+      .then(({ data }: AxiosResponse<unknown, any>): any => data)
+      .catch((e) => console.error(e?.response));
   }
 
   async createPurchase(provider: SubscriptionProvider, { app_user_id, fetch_token }) {

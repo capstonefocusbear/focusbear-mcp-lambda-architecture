@@ -91,45 +91,6 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
-      const owner_id = randomUUID();
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(null);
-      const errorMessage = `The Team with owner_id: ${owner_id} does not exist or is inactive!`;
-      let exception: any;
-
-      try {
-        await teamManagementService.addTeamMember(TeamMemberDummy.id, owner_id, TeamWithMembersDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('negative: if team has no free spots, throw the BadRequestException', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
-      const teamWithNoFreeSpots = { ...TeamWithMembersDummy, team_size: TeamWithMembersDummy.members.length };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(teamWithNoFreeSpots);
-      let exception: any;
-
-      try {
-        await teamManagementService.addTeamMember(newMember.id, teamWithNoFreeSpots.owner_id, TeamWithMembersDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      const errorMessage = 'The Team has no free spots to add a new member!';
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
     it('negative: if user already participates that team, throw the BadRequestException', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
@@ -154,14 +115,28 @@ describe('TeamManagementService', () => {
 
     it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID() };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...newMember, member_of_teams: [] });
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue(TeamWithMembersDummy);
 
       await teamManagementService.addTeamMember(newMember.id, TeamWithMembersDummy.owner_id, TeamWithMembersDummy.id);
 
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...newMember, member_of_teams: [TeamWithMembersDummy] });
       expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(newMember.id, Entitlement.team_member);
+    });
+
+    it('positive: Stripe subscription should be updated to increment team size', async () => {
+      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...newMember, member_of_teams: [] });
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ ...TeamWithMembersDummy, members: [userDummy] });
+      const {
+        stripe_data: { subscriptionId, subscriptionItemId },
+      } = TeamWithMembersDummy;
+
+      await teamManagementService.addTeamMember(newMember.id, TeamWithMembersDummy.owner_id, TeamWithMembersDummy.id);
+
+      expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 2);
     });
   });
 
@@ -186,7 +161,8 @@ describe('TeamManagementService', () => {
 
     it('positive: user should be disassociated from the team in the DB and the membership entitlement needs to be revoked via RevenueCat', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue(TeamWithMembersDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
       await teamManagementService.bulkDeleteTeamMembers(
         [TeamMemberDummy.id],
@@ -271,11 +247,28 @@ describe('TeamManagementService', () => {
         ...TeamMemberDummy,
         member_of_teams: [TeamWithMembersDummy],
       });
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(TeamWithMembersDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue(TeamWithMembersDummy);
 
       await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
 
       expect(UserRepositoryMock.orm.save).toBeCalledWith({ ...TeamMemberDummy, member_of_teams: [] });
+    });
+
+    it('positive: stripe subscription should be updated to decrease team size', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamMemberDummy,
+        member_of_teams: [TeamWithMembersDummy],
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue(TeamWithMembersDummy);
+      const {
+        stripe_data: { subscriptionId, subscriptionItemId },
+      } = TeamWithMembersDummy;
+
+      await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+
+      expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 1);
     });
   });
 

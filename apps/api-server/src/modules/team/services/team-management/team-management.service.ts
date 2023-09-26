@@ -223,9 +223,13 @@ export class TeamManagementService {
     if (!team) {
       throw new NotFoundException(`Team with ID: ${teamId} does not exist!`);
     }
-    const { subscriptionId, subscriptionItemId } = team?.stripe_data;
+    const subId = team?.stripe_data?.subscriptionId;
+    const subItemId = team?.stripe_data?.subscriptionItemId;
+    if (!subId || !subItemId) {
+      throw new Error(`Missing stripe data for team with ID: ${teamId}`);
+    }
     await Promise.all([
-      this.stripeService.updateSubscription(subscriptionId, subscriptionItemId, teamSize),
+      this.stripeService.updateSubscription(subId, subItemId, teamSize),
       this.teamRepository.update(teamId, { team_size: teamSize }),
     ]);
   }

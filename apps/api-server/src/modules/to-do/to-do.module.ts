@@ -11,6 +11,7 @@ import { ZohoModule } from '../zoho/zoho.module';
 import { SyncedProjectsRepository } from './repositories/synced-projects.repository';
 import { SyncedProjectsController } from './controllers/synced-projects.controller';
 import { SyncedProjectsService } from './services/synced-projects.service';
+import { FocusModeModule } from '../focus-mode/focus-mode.module';
 
 @Module({
   providers: [
@@ -33,6 +34,7 @@ import { SyncedProjectsService } from './services/synced-projects.service';
     BullModule.registerQueue({
       name: 'time-logs',
     }),
+    forwardRef(() => FocusModeModule),
   ],
   controllers: [TodoController, SyncedProjectsController],
 })

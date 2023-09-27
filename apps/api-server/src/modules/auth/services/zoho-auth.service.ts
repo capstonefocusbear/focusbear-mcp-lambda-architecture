@@ -27,7 +27,9 @@ export class ZohoAuthService {
 
   private zohoCallbackUrl = this.configService.get('zoho.ZOHO_CALLBACK_URL');
 
-  getZohoLoginUrl() {
+  private zohoCallbackUrlDevelopment = this.configService.get('zoho.ZOHO_CALLBACK_URL_DEVELOPMENT');
+
+  getZohoLoginUrl(isDevelopment = false) {
     const scopes = [
       'AaaServer.profile.Read',
       'ZohoProjects.tasks.ALL',
@@ -41,7 +43,7 @@ export class ZohoAuthService {
       scope: scopes.join(','),
       client_id: this.zohoClientId,
       client_secret: this.zohoClientSecret,
-      redirect_uri: this.zohoCallbackUrl,
+      redirect_uri: isDevelopment ? this.zohoCallbackUrlDevelopment : this.zohoCallbackUrl,
       response_type: 'code',
       access_type: 'offline',
       prompt: 'consent',
@@ -102,8 +104,12 @@ export class ZohoAuthService {
 
   async authorize(userId: string, zohoAuthorizeQuery: ZohoAuthorizeQuery) {
     try {
-      const { code, location, 'accounts-server': accountServer } = zohoAuthorizeQuery;
-      const url = `${accountServer}/oauth/v2/token?client_id=${this.zohoClientId}&grant_type=authorization_code&client_secret=${this.zohoClientSecret}&redirect_uri=${this.zohoCallbackUrl}&code=${code}`;
+      const { code, location, 'accounts-server': accountServer, is_development } = zohoAuthorizeQuery;
+      const url = `${accountServer}/oauth/v2/token?client_id=${
+        this.zohoClientId
+      }&grant_type=authorization_code&client_secret=${this.zohoClientSecret}&redirect_uri=${
+        is_development ? this.zohoCallbackUrlDevelopment : this.zohoCallbackUrl
+      }&code=${code}`;
       const { data } = await axios.post(url);
       await this.saveUserZohoData(userId, {
         zoho_access_token: data.access_token,

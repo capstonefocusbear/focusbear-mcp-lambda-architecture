@@ -6,6 +6,7 @@ import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../domain/passport.model';
 import { IsAuth } from '../guards/is-auth/is-auth.guard';
 import { ZohoAuthorizeQuery } from '../dto/zoho-authorize-query.dto';
+import { ZohoLoginQuery } from '../dto/zoho-login-query.dto';
 
 @Controller('zoho-auth')
 @ApiTags('zoho-auth')
@@ -14,8 +15,8 @@ export class ZohoAuthController {
   constructor(private readonly zohoAuthService: ZohoAuthService) {}
 
   @Get('zoho')
-  zohoLogin() {
-    return this.zohoAuthService.getZohoLoginUrl();
+  zohoLogin(@Query() { is_development }: ZohoLoginQuery) {
+    return this.zohoAuthService.getZohoLoginUrl(is_development);
   }
 
   @Get('zoho/callback')

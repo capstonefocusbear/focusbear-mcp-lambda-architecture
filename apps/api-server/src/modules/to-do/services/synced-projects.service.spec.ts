@@ -1,23 +1,34 @@
 import { Test } from '@nestjs/testing';
 import { syncedProjectDummy, userDummy } from '../../../../test/dummies';
-import { SyncedProjectsRepositoryMock, ZohoServiceMock } from '../../../../test/mocks';
+import {
+  FocusModeTagRepositoryMock,
+  SyncedProjectsRepositoryMock,
+  ToDoRepositoryMock,
+  ZohoServiceMock,
+} from '../../../../test/mocks';
 
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { SyncedProjectsService } from './synced-projects.service';
 import { ZohoService } from '../../zoho/services/zoho.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { ToDoRepository } from '../repositories/to-do.repository';
+import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 
 describe('SyncedProjectsService', () => {
   let service: SyncedProjectsService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [SyncedProjectsService, SyncedProjectsRepository, ZohoService],
+      providers: [SyncedProjectsService, SyncedProjectsRepository, ZohoService, ToDoRepository, FocusModeTagRepository],
     })
       .overrideProvider(SyncedProjectsRepository)
       .useValue(SyncedProjectsRepositoryMock)
       .overrideProvider(ZohoService)
       .useValue(ZohoServiceMock)
+      .overrideProvider(ToDoRepository)
+      .useValue(ToDoRepositoryMock)
+      .overrideProvider(FocusModeTagRepository)
+      .useValue(FocusModeTagRepositoryMock)
       .compile();
 
     service = moduleRef.get<SyncedProjectsService>(SyncedProjectsService);

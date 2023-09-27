@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -8,6 +8,7 @@ import { SyncedProjectsService } from '../services/synced-projects.service';
 import { GetSyncedProjectsQueryDto } from '../dto/get-synced-projects-query.dto';
 import { SyncedProjectDto } from '../dto/synced-project.dto';
 import { SyncProjectDto } from '../dto/sync-project.dto';
+import { UnSyncProjectQueryDto } from '../dto/un-sync-project-query.dto';
 
 @Controller('synced-projects')
 @ApiTags('synced-projects')
@@ -35,5 +36,10 @@ export class SyncedProjectsController {
   @Post()
   async syncProject(@Body() syncProjectData: SyncProjectDto, @AuthContext() { user }: Passport) {
     return this.syncedProjectsService.syncProject(user.id, syncProjectData);
+  }
+
+  @Delete()
+  async unSyncProject(@Query() { project_id }: UnSyncProjectQueryDto, @AuthContext() { user }: Passport) {
+    return this.syncedProjectsService.unSyncProject(user.id, project_id);
   }
 }

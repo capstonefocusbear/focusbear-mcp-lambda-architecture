@@ -115,4 +115,10 @@ export class TeamManagementController {
   async getAdminUserTeams(@AuthContext() { user }: Passport) {
     return this.teamManagementService.getAdminUserTeams(user.id);
   }
+
+  @Delete()
+  @RequireEntitlements([Entitlement.team_owner])
+  async deleteTeam(@Query() { team_id }: { team_id: string }, @AuthContext() { user }: Passport) {
+    return this.teamManagementService.deleteTeam(user.id, team_id);
+  }
 }

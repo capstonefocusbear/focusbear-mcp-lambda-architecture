@@ -47,6 +47,12 @@ export class Team extends BaseEntity {
     type: 'varchar',
     nullable: true,
   })
+  stripe_subscription_id?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
   name?: string;
 
   @ManyToOne(() => User, (user) => user.owned_teams, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })

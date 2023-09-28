@@ -52,6 +52,7 @@ export class UpdateTableTeamsAddNewColumns1695009253292 implements MigrationInte
       'ALTER TABLE "teams" ADD CONSTRAINT "FK_03655bd3d01df69022646faffd5" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE',
     );
     await queryRunner.query('ALTER TABLE "teams" ADD "name" character varying');
+    await queryRunner.query('ALTER TABLE "teams" ADD "stripe_subscription_id" character varying');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -91,5 +92,6 @@ export class UpdateTableTeamsAddNewColumns1695009253292 implements MigrationInte
       'ALTER TABLE "teams" ADD CONSTRAINT "FK_03655bd3d01df69022646faffd5" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION',
     );
     await queryRunner.query('ALTER TABLE "teams" DROP COLUMN "name"');
+    await queryRunner.query('ALTER TABLE "teams" DROP COLUMN "stripe_subscription_id"');
   }
 }

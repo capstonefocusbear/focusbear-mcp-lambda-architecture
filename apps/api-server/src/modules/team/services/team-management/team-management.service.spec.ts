@@ -336,6 +336,7 @@ describe('TeamManagementService', () => {
           created_at: expect.toBeDateString(),
           updated_at: expect.toBeDateString(),
           owner_id: userDummy.id,
+          stripe_subscription_id: 'id',
           stripe_data: {
             subscriptionId: createSubscriptionPayloadDummy.id,
             customerId: userDummy.stripe_customer_id,
@@ -409,6 +410,173 @@ describe('TeamManagementService', () => {
 
       expect(response.admin).toHaveLength(1);
       expect(response.members).toHaveLength(2);
+    });
+  });
+
+  describe('revokeTeamMembersEntitlements', () => {
+    it('positive: should revoke members team_member entitlements in revenue cat if member is part of only one team', async () => {
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      const teamOneId = randomUUID();
+      const teamTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [
+          { id: memberOneId, member_of_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+          { id: memberTwoId, member_of_teams: [{ id: teamOneId }] },
+        ],
+      });
+
+      await teamManagementService.revokeTeamMembersEntitlements('sub_1234');
+
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_member);
+    });
+  });
+
+  describe('revokeAdminMembersEntitlements', () => {
+    it('positive: should revoke members team_admin entitlements in revenue cat if member is part of only one team', async () => {
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      const teamOneId = randomUUID();
+      const teamTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [
+          { id: memberOneId, admin_of_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+          { id: memberTwoId, admin_of_teams: [{ id: teamOneId }] },
+        ],
+      });
+
+      await teamManagementService.revokeAdminMembersEntitlements('sub_1234');
+
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_admin);
+    });
+  });
+
+  describe('revokeOwnerEntitlement', () => {
+    it("positive: should revoke owner of team's team_owner entitlement in revenue cat if member is owner of only one team", async () => {
+      const ownerId = randomUUID();
+      const teamOneId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        owner: { id: ownerId, owned_teams: [{ id: teamOneId }] },
+      });
+
+      await teamManagementService.revokeOwnerEntitlement('sub_1234');
+
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(ownerId, Entitlement.team_owner);
+    });
+
+    it("positive: should NOT revoke owner of team's team_owner entitlement in revenue cat if member is owner of multiple teams", async () => {
+      const ownerId = randomUUID();
+      const teamOneId = randomUUID();
+      const teamTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        owner: { id: ownerId, owned_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+      });
+
+      await teamManagementService.revokeOwnerEntitlement('sub_1234');
+
+      expect(RevenueCatServiceMock.revokeTeamMembership).not.toBeCalled();
+    });
+  });
+
+  describe('reassignTeamMembersEntitlements', () => {
+    it('positive: should assign team member entitlements for team members in revenue cat', async () => {
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [{ id: memberOneId }, { id: memberTwoId }],
+      });
+
+      await teamManagementService.reassignTeamMembersEntitlements('sub_1234');
+
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberOneId, Entitlement.team_member);
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_member);
+    });
+  });
+
+  describe('handleTeamResubscription', () => {
+    it('positive: team new stripe data should be saved if team is re activated with new subscription', async () => {
+      const createSubscriptionPayloadDummy = {
+        id: 'id',
+        quantity: 5,
+        customer: userDummy.stripe_customer_id,
+        current_period_end: 1676874600,
+        items: { data: [{ id: 'sub_id_1' }] },
+      };
+      const stripeDataDummy = {
+        subscriptionId: createSubscriptionPayloadDummy.id,
+        customerId: userDummy.stripe_customer_id,
+        subscriptionItemId: createSubscriptionPayloadDummy.items.data[0].id,
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [{ id: memberOneId }, { id: memberTwoId }],
+      });
+
+      await teamManagementService.handleTeamResubscription(TeamWithMembersDummy.id, createSubscriptionPayloadDummy);
+
+      expect(TeamRepositoryMock.orm.save).toBeCalledWith(
+        new Team({
+          ...TeamWithMembersDummy,
+          is_active: true,
+          stripe_subscription_id: createSubscriptionPayloadDummy.id,
+          stripe_data: stripeDataDummy,
+        }),
+      );
+    });
+  });
+
+  describe('handleTeamSubscriptionCancelled', () => {
+    it('positive: team stripe data should be removed if subscription is cancelled', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      const teamOneId = randomUUID();
+      const teamTwoId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [
+          { id: memberOneId, member_of_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+          { id: memberTwoId, member_of_teams: [{ id: teamOneId }] },
+        ],
+      });
+
+      await teamManagementService.handleTeamSubscriptionCancelled('sub_123');
+
+      expect(TeamRepositoryMock.orm.save).toBeCalledWith(
+        new Team({ ...TeamWithMembersDummy, is_active: false, stripe_subscription_id: null, stripe_data: null }),
+      );
+    });
+  });
+
+  describe('deleteTeam', () => {
+    it('positive: owner and members entitlements should be revoked and team should be deleted', async () => {
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce(TeamWithMembersDummy);
+      const memberOneId = randomUUID();
+      const memberTwoId = randomUUID();
+      const teamOneId = randomUUID();
+      const teamTwoId = randomUUID();
+      const ownerId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [
+          { id: memberOneId, member_of_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+          { id: memberTwoId, member_of_teams: [{ id: teamOneId }] },
+        ],
+      });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        members: [
+          { id: memberOneId, admin_of_teams: [{ id: teamOneId }, { id: teamTwoId }] },
+          { id: memberTwoId, admin_of_teams: [{ id: teamOneId }] },
+        ],
+      });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        owner: { id: ownerId, owned_teams: [{ id: teamOneId }] },
+      });
+
+      await teamManagementService.deleteTeam(userDummy.id, TeamWithMembersDummy.id);
+
+      expect(TeamRepositoryMock.orm.delete).toBeCalledWith({ id: TeamWithMembersDummy.id });
+      expect(StripeServiceMock.cancelSubscription).toBeCalledWith(TeamWithMembersDummy.stripe_subscription_id);
     });
   });
 });

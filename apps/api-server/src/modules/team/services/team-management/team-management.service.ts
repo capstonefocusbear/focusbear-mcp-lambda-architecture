@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { RevenueCatService } from '@app/revenue-cat';
 import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
 import { StripeService } from '@app/stripe';
+import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
@@ -94,6 +95,69 @@ export class TeamManagementService {
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
+    }
+  }
+
+  async revokeTeamMembersEntitlements(stripeSubId: string) {
+    try {
+      const { members } = await this.teamRepository.orm.findOne({
+        where: { stripe_subscription_id: stripeSubId },
+        relations: ['members', 'members.member_of_teams'],
+      });
+      const revokeEntitlementsPromises = [];
+      for (const member of members) {
+        // check if user is part of more than one team
+        const teamsLinkedTo = member.member_of_teams.length;
+        // user is only linked to this team, so remove team membership entitlement
+        if (teamsLinkedTo === 1) {
+          revokeEntitlementsPromises.push(
+            this.revenueCatService.revokeTeamMembership(member.id, Entitlement.team_member),
+          );
+        }
+      }
+      await Promise.all(revokeEntitlementsPromises);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async revokeAdminMembersEntitlements(stripeSubId: string) {
+    const { members } = await this.teamRepository.orm.findOne({
+      where: { stripe_subscription_id: stripeSubId },
+      relations: ['members', 'members.admin_of_teams'],
+    });
+    const revokeEntitlementsPromises = [];
+    for (const member of members) {
+      // check if user is part of more than one team
+      const teamsAdminTo = member.admin_of_teams.length;
+      // user is only linked to this team, so remove team membership entitlement
+      if (teamsAdminTo === 1) {
+        revokeEntitlementsPromises.push(this.revenueCatService.revokeTeamMembership(member.id, Entitlement.team_admin));
+      }
+    }
+    await Promise.all(revokeEntitlementsPromises);
+  }
+
+  async revokeOwnerEntitlement(stripeSubId: string) {
+    const { owner } = await this.teamRepository.orm.findOne({
+      where: { stripe_subscription_id: stripeSubId },
+      relations: ['owner', 'owner.owned_teams'],
+    });
+    const ownedTeams = owner.owned_teams.length;
+    if (ownedTeams === 1) {
+      await this.revenueCatService.revokeTeamMembership(owner.id, Entitlement.team_owner);
+    }
+  }
+
+  async reassignTeamMembersEntitlements(stripeSubId: string) {
+    const { members } = await this.teamRepository.orm.findOne({
+      where: { stripe_subscription_id: stripeSubId },
+      relations: ['members'],
+    });
+    const reassignEntitlementsPromises = [];
+    for (const member of members) {
+      reassignEntitlementsPromises.push(this.revenueCatService.grantTeamMembership(member.id, Entitlement.team_member));
     }
   }
 
@@ -209,6 +273,7 @@ export class TeamManagementService {
       admin_members: [user],
       members: [user],
       expires_date: expiresDate,
+      stripe_subscription_id: subscriptionId,
     });
     await this.teamRepository.orm.save(team);
     await this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_admin);
@@ -263,5 +328,72 @@ export class TeamManagementService {
     return user.admin_of_teams.map(({ id, name, team_size, owner_id }) => {
       return { id, name, team_size, owner_id };
     });
+  }
+
+  async handleChangeInTeamSubscription(eventType: string, payload: any) {
+    const subscriptionId = payload.id;
+    const { metadata } = payload;
+    if (eventType === StripeEvents.CREATED && !metadata?.team_id) {
+      await this.registerTeam(payload);
+    } else if (eventType === StripeEvents.CREATED && metadata?.team_id) {
+      await this.handleTeamResubscription(metadata?.team_id, payload);
+    } else if (eventType === StripeEvents.RESUMED) {
+      await this.reassignTeamMembersEntitlements(subscriptionId);
+    } else if (eventType === StripeEvents.PAUSED) {
+      await this.revokeTeamMembersEntitlements(subscriptionId);
+    } else if (eventType === StripeEvents.DELETED) {
+      await this.handleTeamSubscriptionCancelled(subscriptionId);
+    }
+  }
+
+  async handleTeamResubscription(teamId: string, payload: any) {
+    const team = await this.teamRepository.orm.findOne({ where: { id: teamId } });
+    const subscriptionId = payload.id;
+    const customerId = payload.customer;
+    const subscriptionItemId = payload.items.data[0].id;
+    const stripeData = { subscriptionId, customerId, subscriptionItemId };
+    const updatedTeam = new Team({
+      ...team,
+      is_active: true,
+      stripe_subscription_id: payload.id,
+      stripe_data: stripeData,
+    });
+    await this.teamRepository.orm.save(updatedTeam);
+    await this.reassignTeamMembersEntitlements(subscriptionId);
+  }
+
+  async handleTeamSubscriptionCancelled(subscriptionId: string) {
+    const team = await this.teamRepository.orm.findOne({ where: { stripe_subscription_id: subscriptionId } });
+    const updatedTeam = new Team({ ...team, stripe_subscription_id: null, stripe_data: null, is_active: false });
+    await Promise.all([
+      this.teamRepository.orm.save(updatedTeam),
+      this.revokeTeamMembersEntitlements(team.stripe_subscription_id),
+    ]);
+  }
+
+  async deleteTeam(ownerId: string, teamId: string) {
+    try {
+      const team = await this.teamRepository.findActiveTeamWithMembers(teamId, ownerId);
+      if (team.owner_id !== ownerId) {
+        throw new UnauthorizedException(
+          `User with ID: ${ownerId} can't delete team with ID: ${teamId}, only the owner of a team can delete the team!`,
+        );
+      }
+      const revokeMemberEntitlementsPromise = this.revokeTeamMembersEntitlements(teamId);
+      const revokeAdminEntitlementsPromise = this.revokeAdminMembersEntitlements(teamId);
+      const revokeOwnerEntitlementPromise = this.revokeOwnerEntitlement(teamId);
+      const deleteTeamPromise = this.teamRepository.orm.delete({ id: teamId });
+      const cancelSubscriptionPromise = this.stripeService.cancelSubscription(team.stripe_subscription_id);
+      await Promise.all([
+        revokeMemberEntitlementsPromise,
+        revokeAdminEntitlementsPromise,
+        revokeOwnerEntitlementPromise,
+        deleteTeamPromise,
+        cancelSubscriptionPromise,
+      ]);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 }

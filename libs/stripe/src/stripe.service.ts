@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
+import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
@@ -10,7 +11,7 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  async createCheckoutSession(price: string, customer: string) {
+  async createCheckoutSession(customer: string, { price_id, team_id, team_size = 1 }: CreateStripeCheckoutSessionDto) {
     const { success_url, cancel_url } = this.options.checkout;
     return this.checkout.sessions
       .create({
@@ -21,12 +22,12 @@ export class StripeService extends Stripe {
 
         line_items: [
           {
-            price,
-            quantity: 1,
+            price: price_id,
+            quantity: team_size,
           },
         ],
-
         mode: 'subscription',
+        subscription_data: { metadata: { team_id } },
       })
       .catch((err) => {
         throw new BadRequestException(err.message);
@@ -133,5 +134,9 @@ export class StripeService extends Stripe {
     if (!invoiceId) return 0;
     const invoice = await this.invoices.retrieve(invoiceId);
     return invoice.amount_paid;
+  }
+
+  async cancelSubscription(subscriptionId: string) {
+    await this.subscriptions.del(subscriptionId);
   }
 }

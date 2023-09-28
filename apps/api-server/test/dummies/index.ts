@@ -1115,6 +1115,7 @@ export const TeamWithMembersDummy = new Team({
   team_size: 5,
   members: [userDummy],
   admin_members: [userDummy],
+  stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });
 

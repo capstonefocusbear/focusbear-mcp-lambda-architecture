@@ -31,11 +31,11 @@ export class WebhooksController {
   @Post('stripe')
   @HttpCode(200)
   async handleStripeWebhooks(@Req() req: RawBodyRequest<FastifyRequest>, @Headers() headers: unknown) {
-    const body = req.rawBody;
-    const event = await this.stripeService.decodeWebhookEvent(body, headers);
-    const payload = JSON.parse(JSON.stringify(event.data.object));
-    this.rcLogger.warn(event.type);
     try {
+      const body = req.rawBody;
+      const event = await this.stripeService.decodeWebhookEvent(body, headers);
+      const payload = JSON.parse(JSON.stringify(event.data.object));
+      this.rcLogger.warn(event.type);
       // check if event is for team plan
       if (payload.plan.product === process.env.STRIPE_TEAM_PLAN_PRODUCT_ID) {
         await this.teamManagementService.handleChangeInTeamSubscription(event.type, payload);

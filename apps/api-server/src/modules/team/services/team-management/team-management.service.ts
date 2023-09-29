@@ -159,6 +159,7 @@ export class TeamManagementService {
     for (const member of members) {
       reassignEntitlementsPromises.push(this.revenueCatService.grantTeamMembership(member.id, Entitlement.team_member));
     }
+    await Promise.all([reassignEntitlementsPromises]);
   }
 
   private disassociateMemberFromTheTeam(member: User, ownerId: string, teamId: string) {

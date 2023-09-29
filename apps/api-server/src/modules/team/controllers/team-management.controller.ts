@@ -107,11 +107,13 @@ export class TeamManagementController {
   }
 
   @Put('/name')
+  @RequireEntitlements([Entitlement.team_admin])
   async updateTeamName(@Body() { name, team_id }: UpdateTeamNameDto, @AuthContext() { user }: Passport) {
     return this.teamManagementService.updateTeamName(user.id, team_id, name);
   }
 
   @Get('/admin-teams')
+  @RequireEntitlements([Entitlement.team_admin])
   async getAdminUserTeams(@AuthContext() { user }: Passport) {
     return this.teamManagementService.getAdminUserTeams(user.id);
   }

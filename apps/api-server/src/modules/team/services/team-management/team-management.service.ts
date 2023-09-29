@@ -275,8 +275,11 @@ export class TeamManagementService {
       expires_date: expiresDate,
       stripe_subscription_id: subscriptionId,
     });
-    await this.teamRepository.orm.save(team);
-    await this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_admin);
+    await Promise.all([
+      this.teamRepository.orm.save(team),
+      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_admin),
+      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_owner),
+    ]);
   }
 
   async updateTeamSize(userId: string, teamId: string, teamSize: number) {

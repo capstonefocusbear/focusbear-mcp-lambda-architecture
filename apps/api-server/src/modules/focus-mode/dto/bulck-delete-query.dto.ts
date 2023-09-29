@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsOptional } from 'class-validator';
 
-export class BulckDeleteQueryDto {
+export class BulkDeleteQueryDto {
   @IsNotEmpty()
   @ApiProperty()
   id: string;
+
+  @IsOptional()
+  @ApiProperty()
+  team_id: string;
 }

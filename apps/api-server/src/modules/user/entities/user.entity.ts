@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index, ManyToMany, JoinTable } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
@@ -179,18 +179,6 @@ export class User extends BaseEntity {
     type: 'timestamptz',
   })
   current_sequence_started_at?: Date;
-
-  @Index()
-  @Column({
-    type: 'uuid',
-  })
-  member_of_team_id?: string;
-
-  @Index()
-  @Column({
-    type: 'uuid',
-  })
-  owner_of_team_id?: string;
 
   @Column({
     type: 'jsonb',
@@ -427,13 +415,16 @@ export class User extends BaseEntity {
   @OneToMany(() => PlatformIntegration, (platformIntegration) => platformIntegration.user)
   platform_integrations?: PlatformIntegration[];
 
-  @OneToOne(() => Team, (team) => team.owner)
-  @JoinColumn({ name: 'owner_of_team_id' })
-  owner_of_team?: Team;
+  @OneToMany(() => Team, (team) => team.owner)
+  owned_teams?: Team[];
 
-  @ManyToOne(() => Team, (team) => team.members, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'member_of_team_id' })
-  member_of_team?: Team;
+  @ManyToMany(() => Team, (team) => team.admin_members, { cascade: true })
+  @JoinTable()
+  admin_of_teams?: Team[];
+
+  @ManyToMany(() => Team, (team) => team.members, { cascade: true })
+  @JoinTable()
+  member_of_teams?: Team[];
 
   @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'signed_up_via_habit_pack' })
@@ -462,8 +453,4 @@ export class User extends BaseEntity {
   @OneToOne(() => FocusMode, (mode) => mode.user)
   @JoinColumn({ name: 'current_focus_mode_id' })
   current_focus_mode?: FocusMode;
-
-  nullifyTeamMembership?() {
-    this.member_of_team_id = null;
-  }
 }

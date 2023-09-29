@@ -12,7 +12,7 @@ import { FocusModeService } from '../../services/focus-mode/focus-mode.service';
 import { FocusMode } from '../../entities/focus-mode.entity';
 import { CreateFocusModeDto } from '../../dto/create-focus-mode.dto';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
-import { BulckDeleteQueryDto } from '../../dto/bulck-delete-query.dto';
+import { BulkDeleteQueryDto } from '../../dto/bulck-delete-query.dto';
 import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
 import { DeleteFocusModeTagQuery } from '../../dto/delete-focus-mode-tag-query.dto';
 
@@ -58,7 +58,7 @@ export class FocusModeController {
 
   @Delete()
   @HttpCode(204)
-  async bulkDeleteFocusModes(@Query() { id }: BulckDeleteQueryDto) {
+  async bulkDeleteFocusModes(@Query() { id }: BulkDeleteQueryDto) {
     return this.focusModeService.deleteFocusMode(id);
   }
 

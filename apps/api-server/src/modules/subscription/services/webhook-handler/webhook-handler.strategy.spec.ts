@@ -7,6 +7,7 @@ import { UserRepositoryMock, TeamRepositoryMock, RevenueCatServiceMock } from '.
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { WebhookHandlerStrategy } from './webhook-handler.strategy';
+import { Entitlement } from '../../domain/entitlement.enum';
 
 describe('WebhookHandlerStrategy', () => {
   let webhookHandlerStrategy: WebhookHandlerStrategy;
@@ -94,7 +95,7 @@ describe('WebhookHandlerStrategy', () => {
         is_active: true,
         expires_date: new Date(testEventWithTeamEntitlement.expiration_at_ms),
       });
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(id);
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(id, Entitlement.team_member);
     });
   });
 
@@ -113,7 +114,7 @@ describe('WebhookHandlerStrategy', () => {
       await webhookHandlerStrategy.EXPIRATION(testEventWithTeamEntitlement);
 
       expect(TeamRepositoryMock.orm.save).toBeCalledWith({ ...TeamWithMembersDummy, is_active: false });
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(id);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(id, Entitlement.team_member);
     });
   });
 

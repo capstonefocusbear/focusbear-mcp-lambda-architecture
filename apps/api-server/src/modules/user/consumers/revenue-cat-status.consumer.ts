@@ -119,6 +119,7 @@ export class RevenueCatStatusConsumer {
       plan_currency: USD,
       effective_date: effectiveDate,
       status: subscriptionStatus,
+      data_provider_user_id: stripe_customer_id,
     });
 
     const { data: profitWellUser } = await axios.post(PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, profitWellData, {
@@ -187,6 +188,7 @@ export class RevenueCatStatusConsumer {
         renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(user.stripe_customer_id);
       }
 
+      // user had trial that's expired now
       if (user.last_status_synced_with_profitwell === Entitlement.trial && !userActiveSubscription) {
         await this.churnTrial(user.profitwell_registration_date, user.stripe_customer_id);
         await this.userRepository.update(job.data.user_id, {
@@ -196,6 +198,7 @@ export class RevenueCatStatusConsumer {
         return;
       }
 
+      // has been registered in profitwell, but subscription changed
       if (
         user.last_status_synced_with_profitwell &&
         user.last_status_synced_with_profitwell !== userActiveSubscription

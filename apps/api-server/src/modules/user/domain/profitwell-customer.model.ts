@@ -9,6 +9,7 @@ export class ProfitWellCustomer {
     plan_currency,
     effective_date,
     status,
+    data_provider_user_id,
   }: ProfitWellCustomer) {
     this.user_alias = user_alias;
     this.subscription_alias = subscription_alias;
@@ -19,6 +20,7 @@ export class ProfitWellCustomer {
     this.plan_currency = plan_currency;
     this.effective_date = effective_date;
     this.status = status;
+    this.data_provider_user_id = data_provider_user_id;
   }
 
   user_alias: string;
@@ -38,4 +40,6 @@ export class ProfitWellCustomer {
   effective_date: number;
 
   status: string;
+
+  data_provider_user_id: string;
 }

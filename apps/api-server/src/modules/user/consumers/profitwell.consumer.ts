@@ -74,6 +74,7 @@ export class ProfitWellConsumer {
         plan_currency: USD,
         effective_date: effectiveDate,
         status: subscriptionStatus,
+        data_provider_user_id: stripe_id,
       });
 
       const { data: profitWellUser } = await axios.post(PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, dataForProfitWell, {

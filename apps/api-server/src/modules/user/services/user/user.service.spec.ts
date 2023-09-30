@@ -665,7 +665,7 @@ describe('UserService', () => {
     it('positive: should NOT add item to ProfitWell queue for existing user if they are already registered', async () => {
       UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
       StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
-      mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: dummyStripeId }] });
 
       await userService.updateOrCreateUser(
         { auth0_id: 'some_id', email: 'someone@email.com' },

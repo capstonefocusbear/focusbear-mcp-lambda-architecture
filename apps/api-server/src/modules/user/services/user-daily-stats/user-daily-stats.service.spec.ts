@@ -424,7 +424,7 @@ describe('UserDailyStatsService', () => {
         hasInstalledMobileApp: false,
       });
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
-        morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 300, SUN: 0 },
+        morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 0, SUN: 300 },
         eveningRoutineDailyDurations: routineDurationsDummy,
       });
 

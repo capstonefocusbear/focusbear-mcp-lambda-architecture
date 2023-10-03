@@ -10,7 +10,6 @@ import { User } from '../../user/entities/user.entity';
 import { MondayAuthorizeQuery } from '../dto/monday-authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
-import * as querystring from 'querystring';
 
 @Injectable()
 export class MondayAuthService {

@@ -75,10 +75,7 @@ export class MondayService {
         });
         return response.data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-        } else {
-          throw error;
-        }
+        throw error;
       }
     }
     throw new Error('Failed to add Zoho task time entry after trying to get new access token.');
@@ -146,10 +143,7 @@ export class MondayService {
         const data = response.data.data.workspaces
         return data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-        } else {
-          throw error;
-        }
+        throw error;
       }
     }
   }
@@ -318,10 +312,7 @@ export class MondayService {
         });
         return tasksWithPortalIds;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-        } else {
-          throw error;
-        }
+        throw error;
       }
     }
   }
@@ -363,10 +354,7 @@ export class MondayService {
         });
         return response.data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-        } else {
-          throw error;
-        }
+        throw error;
       }
     }
     throw new Error('Failed to update task status after trying to get new access token.');

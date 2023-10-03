@@ -414,6 +414,7 @@ describe('UserDailyStatsService', () => {
     it("positive: user streak should not be reset if they didn't do a routine because they don't have activities for that day", async () => {
       // in this test the user has no activities in their morning routine for Sundays and there are stats for Sat and Mon
       // current date is Mocked to be the Mon, so streak should be 2 for Sat and Mon
+      Settings.now = () => new Date('2023-02-12T20:30:00+0000').valueOf();
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
         ...userDummy,
         onboarding_progress: null,
@@ -427,7 +428,10 @@ describe('UserDailyStatsService', () => {
         morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 0, SUN: 300 },
         eveningRoutineDailyDurations: routineDurationsDummy,
       });
-
+      // eslint-disable-next-line no-console
+      console.log('Values for failing test');
+      // eslint-disable-next-line no-console
+      console.log({ dailyStatsArrayDummyWithSkippedDay });
       const response = await service.CalculateUserStatsResponse(userDummy.id);
 
       expect(response.morning_routine_completion_streak_days).toBe(2);

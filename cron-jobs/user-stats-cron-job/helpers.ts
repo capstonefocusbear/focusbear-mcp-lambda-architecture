@@ -75,6 +75,12 @@ export function calculateStreakForRoutine(
     return 0;
   }
   const { latestStatStartTime, startOfPreviousDay } = getLatestStatAndStartOfPrevDay(userDailyStats, timeZone);
+  // eslint-disable-next-line no-console
+  console.log({
+    latestStatStartTime,
+    startOfPreviousDay,
+    isLess: latestStatStartTime.valueOf() < startOfPreviousDay.valueOf(),
+  });
   let streak = 0;
   if (latestStatStartTime.valueOf() < startOfPreviousDay.valueOf()) {
     return 0;
@@ -89,6 +95,15 @@ export function calculateStreakForRoutine(
   while (currentStat) {
     const startOfCheckedDay = nextExpectedDate.startOf('day');
     const endOfCheckedDay = nextExpectedDate.endOf('day');
+    // eslint-disable-next-line no-console
+    console.log({
+      currentStat,
+      nextExpectedDate: nextExpectedDate.toJSDate(),
+      prevDayOfWeek,
+      doesDayHaveActivities,
+      startOfCheckedDay: startOfCheckedDay.toJSDate(),
+      endOfCheckedDay: endOfCheckedDay.toJSDate(),
+    });
     if (
       (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
         currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||

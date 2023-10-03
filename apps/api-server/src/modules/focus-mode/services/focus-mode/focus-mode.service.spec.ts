@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { NotFoundException } from '@nestjs/common';
+import { HttpException, NotFoundException } from '@nestjs/common';
 import {
   FocusModeDummy,
   UpsertFocusModeDummy,
@@ -77,6 +77,8 @@ describe('FocusModeService', () => {
     const user_id = userDummy.id;
 
     it('positive: repository create should be called', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
       expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
@@ -85,6 +87,8 @@ describe('FocusModeService', () => {
     });
 
     it('positive: if focus mode IS NOT default created when installing apps, onboarding progress should be updated', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
       expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
@@ -94,6 +98,8 @@ describe('FocusModeService', () => {
     });
 
     it('positive: if focus mode IS default created when installing apps, onboarding progress should NOT be updated', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
       await focusModeService.createFocusMode(user_id, { ...createFocusModeDto, metadata: { isDefault: true } });
 
       expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledTimes(0);
@@ -129,6 +135,8 @@ describe('FocusModeService', () => {
 
     it('positive: repository update should be called', async () => {
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
       await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
 
       expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
@@ -226,6 +234,35 @@ describe('FocusModeService', () => {
       await focusModeService.deleteRemovedFocusModeTags(userDummy.id, existingTags, incomingTags);
 
       expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({ id: tagIdTwo, user_id: userDummy.id });
+    });
+  });
+
+  describe('validateFocusModeName', () => {
+    const dummyName = 'Study Focus Mode';
+    it('negative: should throw an error if user already has focus mode with same name', async () => {
+      const errorMessage = `Focus mode with name: ${dummyName} already exists for user with ID: ${userDummy.id}!`;
+      let exception;
+
+      try {
+        await focusModeService.validateFocusModeName(dummyName, userDummy.id, [{ name: dummyName }]);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(HttpException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: if focus mode name is unique for user not error should be thrown', async () => {
+      let exception;
+
+      try {
+        await focusModeService.validateFocusModeName('New Mode Name', userDummy.id, [{ name: dummyName }]);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).not.toBeDefined();
     });
   });
 });

@@ -2,6 +2,7 @@ import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
 import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-project.model';
+import { MondayProject } from '../../apps/api-server/src/modules/monday/domain/monday-project.model';
 
 export function getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) {
   const zohoTasksIds = zohoTasks.map((task) => task.id_string);
@@ -55,7 +56,7 @@ export function createNewToDos(
       user_id: userId,
       title: task.name,
       details: task.description,
-      external_task_id: task.id_string,
+      external_task_id: task.id,
       external_task_metadata: { platform, task_data: task },
       tags: [...(project ? [project] : [])],
     });

@@ -15,6 +15,8 @@ import { UserRepository } from '../user/repositories/user.repository';
 import { IsAdmin } from './guards/is-admin/is-admin.guard';
 import { ZohoAuthService } from './services/zoho-auth.service';
 import { ZohoAuthController } from './controllers/zoho-auth.controller';
+import { MondayAuthService } from './services/monday-auth.service';
+import { MondayAuthController } from './controllers/monday-auth.controller';
 import { ZohoModule } from '../zoho/zoho.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 
@@ -27,9 +29,10 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     UserRepository,
     IsAdmin,
     ZohoAuthService,
+    MondayAuthService
   ],
-  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService],
-  controllers: [PusherAuthController, ZohoAuthController],
+  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService, MondayAuthService],
+  controllers: [PusherAuthController, ZohoAuthController, MondayAuthController],
   imports: [
     Auth0Module.registerAsync({
       imports: [ConfigModule],

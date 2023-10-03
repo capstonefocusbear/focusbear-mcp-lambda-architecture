@@ -89,8 +89,13 @@ export class ProfitWellConsumer {
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      console.log('Error in ProfitWell queued job: ', error);
-      console.log('Error Data: ', error?.response?.data);
+      console.log(
+        'Error in ProfitWell queued job: ',
+        'Req: ',
+        error?.request?.config?.data,
+        'Res: ',
+        error?.response?.data,
+      );
     }
   }
 }

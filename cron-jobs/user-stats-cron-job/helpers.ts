@@ -56,7 +56,8 @@ export function determineUserLevel(
 
 function getLatestStatAndStartOfPrevDay(userDailyStats: DailyStats[], timeZone: string) {
   // sort stats in reverse-chronological order
-  const orderedStats = userDailyStats.sort((precedingStat, followingStat) => {
+  const orderedStats = userDailyStats;
+  orderedStats.sort((precedingStat, followingStat) => {
     const precedingCompletedDate = DateTime.fromJSDate(precedingStat.date_completed).valueOf();
     const followingCompletedDate = DateTime.fromJSDate(followingStat.date_completed).valueOf();
     return followingCompletedDate - precedingCompletedDate;

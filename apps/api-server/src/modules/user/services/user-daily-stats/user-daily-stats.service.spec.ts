@@ -425,13 +425,10 @@ describe('UserDailyStatsService', () => {
         hasInstalledMobileApp: false,
       });
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
-        morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 0, SUN: 300 },
+        morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 300, SUN: 0 },
         eveningRoutineDailyDurations: routineDurationsDummy,
       });
-      // eslint-disable-next-line no-console
-      console.log('Values for failing test');
-      // eslint-disable-next-line no-console
-      console.log({ dailyStatsArrayDummyWithSkippedDay });
+
       const response = await service.CalculateUserStatsResponse(userDummy.id);
 
       expect(response.morning_routine_completion_streak_days).toBe(2);

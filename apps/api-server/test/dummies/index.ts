@@ -1462,7 +1462,7 @@ export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
   ],
 };
 
-const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).startOf('day');
+const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).setZone('UTC').startOf('day');
 
 export const dailyStatsArrayDummy = [
   {

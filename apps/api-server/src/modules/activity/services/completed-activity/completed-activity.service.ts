@@ -268,7 +268,8 @@ export class CompletedActivityService {
         data: { user_id: user.id },
       });
       const { startup_time, shutdown_time, timezone } = user;
-      const activitiesSortedChronologically = completedActivities.sort(
+      const activitiesSortedChronologically = completedActivities;
+      activitiesSortedChronologically.sort(
         (precedingActivity, followingActivity) =>
           precedingActivity.start_time.getTime() - followingActivity.start_time.getTime(),
       );
@@ -379,7 +380,7 @@ export class CompletedActivityService {
           }
         }),
       );
-      // await this.updateActivityPropsForOfflineSync(completedActivities, user);
+      await this.updateActivityPropsForOfflineSync(completedActivities, user);
       return failedActivities;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

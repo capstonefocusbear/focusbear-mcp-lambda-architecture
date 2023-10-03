@@ -45,8 +45,8 @@ export class MondayController {
 
   @Get(':portalId/projects/:projectId/tasks')
   @UseGuards(IsAuth)
-  async getTasks(@Param() { portalId, projectId }: TaskParamsQueryDto, @AuthContext() { user }: Passport) {
-    return this.mondayService.getTasks(user.id, portalId, projectId);
+  async getTasks(@Param() { projectId }: TaskParamsQueryDto, @AuthContext() { user }: Passport) {
+    return this.mondayService.getTasks(user.id, projectId);
   }
 
   @Post(':portalId/projects/:projectId/tasks/:taskId/logs')

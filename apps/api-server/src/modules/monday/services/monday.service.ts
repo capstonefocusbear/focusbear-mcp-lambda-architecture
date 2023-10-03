@@ -75,13 +75,14 @@ export class MondayService {
         });
         return response.data;
       } catch (error) {
+        console.log(error);
         throw error;
       }
     }
     throw new Error('Failed to add Zoho task time entry after trying to get new access token.');
   }
 
-  async getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
+  async getTasks(userId: string, projectId: string): Promise<any> {
     try {
       const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
         IntegrationPlatforms.MONDAY,
@@ -143,6 +144,7 @@ export class MondayService {
         const data = response.data.data.workspaces
         return data;
       } catch (error) {
+        console.log(error)
         throw error;
       }
     }
@@ -201,7 +203,7 @@ export class MondayService {
   }
 
   async upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string) {
-    const available_statuses = await this.getProjectStatuses(userId, portalId, projectId);
+    const available_statuses = await this.getProjectStatuses(userId, projectId);
     const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const syncedProjectsExternalIds = syncedProjects.map((project) => project.external_project_id);
     const hasProjectBeenSynced = syncedProjectsExternalIds.includes(projectId);
@@ -312,12 +314,13 @@ export class MondayService {
         });
         return tasksWithPortalIds;
       } catch (error) {
+        console.log(error);
         throw error;
       }
     }
   }
 
-  async getProjectStatuses(userId: string, portalId: string, projectId: string) {
+  async getProjectStatuses(userId: string, projectId: string) {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
       IntegrationPlatforms.MONDAY,
       userId,
@@ -335,7 +338,7 @@ export class MondayService {
     return availableStatuses;
   }
 
-  async updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string) {
+  async updateTaskStatus(userId: string, taskId: string, statusId: string) {
     const MAX_RETRY = 2;
     let retryCount = 0;
 
@@ -354,6 +357,7 @@ export class MondayService {
         });
         return response.data;
       } catch (error) {
+        console.log(error);
         throw error;
       }
     }

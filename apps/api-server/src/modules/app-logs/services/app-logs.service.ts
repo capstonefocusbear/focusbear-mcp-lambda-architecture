@@ -4,6 +4,7 @@ import { R2Service } from '@app/r2';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
+import { maskEmail } from '../../../shared/utils/helpers';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UninstallFeedback } from '../domain/uninstall-feedback.model';
@@ -39,7 +40,7 @@ export class AppLogsService {
         app_platform,
         app_version,
         feedback_message,
-        email: auth0User.email,
+        email: maskEmail(auth0User.email),
         log_url: presignedUrl,
       });
       await axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {

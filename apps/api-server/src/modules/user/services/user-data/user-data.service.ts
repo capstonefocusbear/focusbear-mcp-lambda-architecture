@@ -10,6 +10,7 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import { UserRepository } from '../../repositories/user.repository';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
+import { maskEmail } from '../../../../shared/utils/helpers';
 
 @Injectable()
 export class UserDataService {
@@ -62,7 +63,7 @@ export class UserDataService {
       const brevoPromise = this.brevoService.deleteContactFromBrevo(auth0user.email);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
       const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: `Account deleted for user with email: ${auth0user?.email} and ID: ${user_id} \n\n Message: ${
+        text: `Account deleted for user with email: ${maskEmail(auth0user?.email)} and ID: ${user_id} \n\n Message: ${
           message ?? ''
         } \n\n Can contact: ${can_contact ?? false}`,
       });

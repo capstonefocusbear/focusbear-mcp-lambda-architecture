@@ -68,3 +68,12 @@ export function maskEmail(email: string): string {
 
   return `${firstTwoChars}${maskedChars}${lastTwoChars}@${domain}`;
 }
+
+export function findNonZeroTotal(invoices: any[]): number {
+  for (const invoice of invoices) {
+    if (invoice.total !== 0) {
+      return invoice.total;
+    }
+  }
+  return 0;
+}

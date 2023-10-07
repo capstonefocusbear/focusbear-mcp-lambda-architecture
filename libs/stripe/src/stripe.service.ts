@@ -4,6 +4,7 @@ import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/mod
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
+import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
 
 @Injectable()
 export class StripeService extends Stripe {
@@ -132,8 +133,8 @@ export class StripeService extends Stripe {
     const stripeUser: any = await this.customers.retrieve(stripeCustomerId, { expand: ['subscriptions'] });
     const invoiceId = stripeUser.subscriptions?.data[0]?.latest_invoice ?? null;
     if (!invoiceId) return 0;
-    const invoice = await this.invoices.retrieve(invoiceId);
-    return invoice.amount_paid;
+    const userInvoices = await this.invoices.list({ customer: stripeCustomerId });
+    return findNonZeroTotal(userInvoices.data);
   }
 
   async cancelSubscription(subscriptionId: string) {

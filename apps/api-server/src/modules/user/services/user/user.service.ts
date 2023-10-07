@@ -173,7 +173,7 @@ export class UserService {
       renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripeId);
     }
     const effectiveDate = revenue_cat_data?.hasActiveSubscription
-      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus].purchase_date).getTime() / 1000)
+      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus]?.purchase_date).getTime() / 1000)
       : Math.round(new Date().getTime() / 1000);
     await this.profitwellQueue.add(
       'register-profitwell-user',

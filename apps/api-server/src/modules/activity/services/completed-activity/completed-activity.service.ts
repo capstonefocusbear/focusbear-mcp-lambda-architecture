@@ -11,6 +11,9 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
+import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { I18nService } from 'nestjs-i18n';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
@@ -73,6 +76,7 @@ export class CompletedActivityService {
     private readonly activityRepository: ActivityRepository,
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly pusher: PusherService,
+    private readonly pusherBeams: PusherBeamsService,
     private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
     private readonly userSettingsService: UserSettingsService,
     @InjectSentry() private readonly sentryService: SentryService,
@@ -83,6 +87,7 @@ export class CompletedActivityService {
     private readonly logQuantityQuestionRepository: LogQuantityQuestionsRepository,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    private readonly i18nService: I18nService,
   ) {}
 
   async completeActivity(
@@ -151,7 +156,13 @@ export class CompletedActivityService {
         user,
         createdItem,
       );
-      await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
+      await this.broadcastCompletionEvent(
+        user_id,
+        createdItem.completed_activity_log.id,
+        { ...completedActivity },
+        activity,
+        user.language,
+      );
       this.logJeremyData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
@@ -977,6 +988,8 @@ export class CompletedActivityService {
     user_id: string,
     completed_activity_id: string,
     completedActivity: CreateCompletedActivityDto,
+    activity: Activity,
+    language: string,
   ): Promise<void> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -989,6 +1002,16 @@ export class CompletedActivityService {
     });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
+    const title = this.i18nService.t('common.activity_completed', { lang: language });
+    const body = this.i18nService.t('common.activity_completed_message', {
+      lang: language,
+      args: { activity_name: activity.activity_data.name },
+    });
+    const publishRequest = new BeamsPublishRequest({
+      apns: { aps: { alert: { title, body } }, data: pushData },
+      fcm: { notification: { title, body }, data: pushData },
+    });
+    await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
   async getStatsByActivityPerDay(

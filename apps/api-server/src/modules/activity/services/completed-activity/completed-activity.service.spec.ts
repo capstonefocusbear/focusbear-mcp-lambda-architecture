@@ -4,6 +4,9 @@ import { randomInt, randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { Settings } from 'luxon';
 import { PusherService } from '@app/pusher';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
 import {
   ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
@@ -19,6 +22,7 @@ import {
   LogQuantityAnswersRepositoryMock,
   LogQuantityQuestionsRepositoryMock,
   UserServiceMock,
+  PusherBeamsServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -79,6 +83,7 @@ import { UTC_TO_IANA_MAP } from '../../../../shared/utils/constants';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
+  const i18nServiceMock = mockDeep<I18nService>();
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -99,6 +104,11 @@ describe('CompletedActivityService', () => {
         LogQuantityAnswersRepository,
         LogQuantityQuestionsRepository,
         UserService,
+        PusherBeamsService,
+        {
+          provide: I18nService,
+          useValue: i18nServiceMock,
+        },
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -131,6 +141,8 @@ describe('CompletedActivityService', () => {
       .useValue(LogQuantityQuestionsRepositoryMock)
       .overrideProvider(UserService)
       .useValue(UserServiceMock)
+      .overrideProvider(PusherBeamsService)
+      .useValue(PusherBeamsServiceMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -541,8 +553,9 @@ describe('CompletedActivityService', () => {
         finish_time: new Date(Date.now() - 1),
         metadata: { is_skipped: false },
       };
+      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceWithHighPriorityActivitiesDummy);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
         ...userDummy,
         cutoff_time_for_non_high_priority_activities: '18:00',
@@ -586,10 +599,11 @@ describe('CompletedActivityService', () => {
         finish_time: new Date(Date.now() - 1),
         metadata: { is_skipped: false },
       };
+      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
         ActivitySequenceWithoutHighPriorityActivitiesDummy,
       );
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
         ...userDummy,
         cutoff_time_for_non_high_priority_activities: '18:00',
@@ -636,8 +650,9 @@ describe('CompletedActivityService', () => {
         start_time: new Date(Date.now() - 60),
         finish_time: new Date(Date.now() - 1),
       };
+      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();
@@ -678,8 +693,9 @@ describe('CompletedActivityService', () => {
         start_time: new Date(Date.now() - 60),
         finish_time: new Date(Date.now() - 1),
       };
+      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();
@@ -805,8 +821,9 @@ describe('CompletedActivityService', () => {
         start_time: new Date(Date.now() - 60),
         finish_time: new Date(Date.now() - 1),
       };
+      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();

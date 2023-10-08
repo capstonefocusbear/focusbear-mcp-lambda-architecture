@@ -4,5 +4,7 @@
   "resume_habits_title": "NEEDSTRANSLATION Resume your habits",
   "resume_habits_body": "NEEDSTRANSLATION Your break is over and it's time to get back into doing your habits!",
   "resume_focus_mode_title": "NEEDSTRANSLATION Resume your focus session",
-  "resume_focus_mode_body": "NEEDSTRANSLATION Your break is over and it's time to get back into your session!"
+  "resume_focus_mode_body": "NEEDSTRANSLATION Your break is over and it's time to get back into your session!",
+  "activity_completed": "NEEDSTRANSLATION Activity Completed!",
+  "activity_completed_message": "NEEDSTRANSLATION You have completed {activity_name}."
 }

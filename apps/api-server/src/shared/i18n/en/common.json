@@ -4,5 +4,7 @@
   "resume_habits_title": "Resume your habits",
   "resume_habits_body": "Your break is over and it's time to get back into doing your habits!",
   "resume_focus_mode_title": "Resume your focus session",
-  "resume_focus_mode_body": "Your break is over and it's time to get back into your focus session!"
+  "resume_focus_mode_body": "Your break is over and it's time to get back into your focus session!",
+  "activity_completed": "Activity Completed!",
+  "activity_completed_message": "You have completed {activity_name}."
 }

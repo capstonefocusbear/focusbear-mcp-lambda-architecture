@@ -158,7 +158,7 @@ export class ZohoService {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         // eslint-disable-next-line no-param-reassign
         project.portal_id = portal.id_string;
@@ -178,7 +178,7 @@ export class ZohoService {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         const isSynced = userSyncedProjectsExternalIds.includes(project.id_string);
         let externalStatuses = [];

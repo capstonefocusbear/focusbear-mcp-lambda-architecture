@@ -111,6 +111,9 @@ export class ZohoAuthService {
         is_development ? this.zohoCallbackUrlDevelopment : this.zohoCallbackUrl
       }&code=${code}`;
       const { data } = await axios.post(url);
+      if (!data.access_token) {
+        throw new Error(`Failed to authenticate user with ID: ${userId} with Zoho, no access token returned`);
+      }
       await this.saveUserZohoData(userId, {
         zoho_access_token: data.access_token,
         zoho_refresh_token: data.refresh_token,

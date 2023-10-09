@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -8,6 +8,7 @@ import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
 import { DeleteToDoQuery } from '../dto/delete-todo-query.dto';
 import { ToDoResponse } from '../dto/to-do-response.dto';
+import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -32,5 +33,10 @@ export class TodoController {
   @Delete()
   async deleteToDo(@Query() { todo_id }: DeleteToDoQuery, @AuthContext() { user }: Passport) {
     return this.toDoService.deleteToDo(user.id, todo_id);
+  }
+
+  @Post('/generate-subtasks')
+  async generateSubtasks(@Body() { task, language }: GenerateSubtasksDto) {
+    return this.toDoService.generateSubtasks({ task, language });
   }
 }

@@ -14,6 +14,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
+import { SubtaskDto } from './subtask.dto';
 
 export class CreateToDoDto {
   @IsOptional()
@@ -51,4 +52,6 @@ export class CreateToDoDto {
   @IsOptional()
   @IsArray()
   tags?: CreateFocusModeTagDto[];
+
+  subtasks?: SubtaskDto[];
 }

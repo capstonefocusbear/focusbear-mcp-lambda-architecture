@@ -3,7 +3,9 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { getQueueToken } from '@nestjs/bull';
+import { OpenAIService } from '@app/openai';
 import {
+  OpenAIServiceMock,
   SentryServiceMock,
   SyncedProjectsRepositoryMock,
   TaskTimeLogsRepositoryMock,
@@ -39,6 +41,7 @@ describe('toDoService', () => {
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
         ZohoService,
+        OpenAIService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -57,6 +60,8 @@ describe('toDoService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .overrideProvider(ZohoService)
       .useValue(ZohoServiceMock)
+      .overrideProvider(OpenAIService)
+      .useValue(OpenAIServiceMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);

@@ -3,6 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
+import { OpenAIService } from '@app/openai';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
@@ -25,6 +26,7 @@ export class ToDoService {
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
     private readonly zohoService: ZohoService,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
@@ -187,5 +189,9 @@ export class ToDoService {
       });
     }
     return timeLogs;
+  }
+
+  async generateSubtasks(task: string) {
+    return this.openAIService.createSubtasks(task);
   }
 }

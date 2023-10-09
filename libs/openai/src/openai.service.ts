@@ -346,4 +346,24 @@ export class OpenAIService {
     const { content } = newMessage;
     return JSON.parse(content);
   }
+
+  async createSubtasks(task: string) {
+    const config = new Configuration({ ...this.options });
+    const openai = new OpenAIApi(config);
+    const defaultChat: ChatCompletionRequestMessage = {
+      role: 'system',
+      content: `Given the following task, break the task into a couple smaller steps it could take to accomplish the task. Return each subtask as a JSON object in the format: { "name": "name of subtask(should be capitalized)", is_completed: false }. The final output should be in the format { "task": name of task, "subtasks": array of subtasks }\n\n
+      Task: ${task}\n\n
+      JSON output:`,
+    };
+    const completions = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [defaultChat],
+      temperature: 0,
+      n: 1,
+    });
+    const newMessage = completions.data.choices[0].message;
+    const { content } = newMessage;
+    return JSON.parse(content);
+  }
 }

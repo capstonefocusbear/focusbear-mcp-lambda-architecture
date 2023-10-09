@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -32,5 +32,10 @@ export class TodoController {
   @Delete()
   async deleteToDo(@Query() { todo_id }: DeleteToDoQuery, @AuthContext() { user }: Passport) {
     return this.toDoService.deleteToDo(user.id, todo_id);
+  }
+
+  @Post('/subtasks')
+  async generateSubtasks(@Body() { task }: { task: string }) {
+    return this.toDoService.generateSubtasks(task);
   }
 }

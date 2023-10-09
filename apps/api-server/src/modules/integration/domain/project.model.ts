@@ -1,5 +1,5 @@
-export class ZohoProject {
-  id_string: string;
+export class Project {
+  id: string;
 
   name: string;
 

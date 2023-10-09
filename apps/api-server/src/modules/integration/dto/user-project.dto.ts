@@ -1,4 +1,4 @@
-export class UserMondayProject {
+export class UserProject {
     name: string;
   
     project_id: string;

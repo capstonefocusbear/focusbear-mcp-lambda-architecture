@@ -17,7 +17,6 @@ import { ZohoAuthService } from './services/zoho-auth.service';
 import { ZohoAuthController } from './controllers/zoho-auth.controller';
 import { MondayAuthService } from './services/monday-auth.service';
 import { MondayAuthController } from './controllers/monday-auth.controller';
-import { ZohoModule } from '../zoho/zoho.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 
 @Module({
@@ -57,7 +56,6 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     HelperModule,
     ConfigModule,
     PlatformIntegrationsModule,
-    forwardRef(() => ZohoModule),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

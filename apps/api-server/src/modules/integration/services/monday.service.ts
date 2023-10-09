@@ -1,39 +1,33 @@
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-console */
+import { BaseService } from "./base.service";
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
-import { IsNull, Not } from 'typeorm';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
-import { ZohoProject } from '../domain/zoho-project.model';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
-import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
-import { createNewTags, createNewToDos } from '../../../../../../cron-jobs/zoho/helpers';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import { UserZohoProject } from '../dto/user-zoho-project.dto';
+import { Project } from '../domain/project.model';
+import { UserProject } from '../dto/user-project.dto';
+import { createNewTags, createNewToDos } from "cron-jobs/zoho/helpers";
 
 @Injectable()
 @UseGuards(IsAuth)
-export class ZohoService {
-  private readonly baseUrl = 'https://projectsapi.zoho.com.location/restapi';
-
+export class MondayService implements BaseService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
     private readonly toDoRepository: ToDoRepository,
-    @Inject(forwardRef(() => ZohoAuthService))
-    private readonly zohoAuthService: ZohoAuthService,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
   ) {}
 
   private httpService = axios;
+  private readonly base_url = 'https://api.monday.com/v2';
 
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
@@ -52,15 +46,15 @@ export class ZohoService {
     while (retryCount < MAX_RETRY) {
       try {
         const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.ZOHO,
+          IntegrationPlatforms.MONDAY,
           userId,
         );
         if (!platformIntegrationRecord) return;
-        const { data: zohoData } = platformIntegrationRecord;
+        const { data: mondayData } = platformIntegrationRecord;
         const url = `${
-          getDataCenterUrl(zohoData.zoho_location).api
+          getDataCenterUrl(mondayData.monday_location).api
         }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
         const [year, month, day] = timeEntry.date.split('-');
         const formData = new FormData();
         formData.append('date', `${month}-${day}-${year}`);
@@ -75,48 +69,46 @@ export class ZohoService {
         });
         return response.data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          throw error;
-        }
+        console.log(error);
+        throw error;
       }
     }
-    throw new Error('Failed to add Zoho task time entry after trying to get new access token.');
-  }
-
-  async getTasks(userId: string, portalId: string, projectId: string): Promise<any> {
+    throw new Error('Failed to add monday task time entry after trying to get new access token.');
+  }  
+  async getTasks(userId: string, projectId: string): Promise<any> {
     try {
       const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-        IntegrationPlatforms.ZOHO,
+        IntegrationPlatforms.MONDAY,
         userId,
       );
       if (!platformIntegrationRecord) return;
-      const { data: zohoData } = platformIntegrationRecord;
-      const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
-      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-      const response = await this.httpService.get(url, {
+      const { data: mondayData } = platformIntegrationRecord;
+      const query = `query {boards(ids: ${projectId}) {items {id name }}}`;
+      const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+      const response = await this.httpService.post(this.base_url, {query}, {
         headers,
       });
-      return response.data?.tasks ?? [];
+      return response.data ?? [];
     } catch (e) {
       throw new BadRequestException(e.response?.data);
     }
   }
 
-  async getProjects(userId: string, portalId: any): Promise<ZohoProject[]> {
+  async getProjects(userId: string, portalId: any): Promise<Project[]> {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-      IntegrationPlatforms.ZOHO,
+      IntegrationPlatforms.MONDAY,
       userId,
     );
     if (!platformIntegrationRecord) return;
-    const { data: zohoData } = platformIntegrationRecord;
-    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/`;
-    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-    const response = await this.httpService.get(url, {
+    const { data } = platformIntegrationRecord;
+    
+    const headers = { Authorization: `Bearer ${data.monday_access_token}` };
+    const query = `query { boards ( workspace_ids: ${portalId} ) {name state id permissions }}`;
+    const response = await this.httpService.post(this.base_url, {query}, {
       headers,
     });
-    return response.data.projects;
+
+    return response.data.data.boards;
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
@@ -126,30 +118,32 @@ export class ZohoService {
     while (retryCount < MAX_RETRY) {
       try {
         const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.ZOHO,
+          IntegrationPlatforms.MONDAY,
           userId,
         );
         if (!platformIntegrationRecord) {
-          throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Zoho!`);
+          throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Monday!`);
         }
-        const { data: zohoData } = platformIntegrationRecord;
-        const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
-        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-        const response = await this.httpService.get(url, {
+        const { data: mondayData } = platformIntegrationRecord;
+        const headers = { 
+          Authorization: `Bearer ${mondayData.monday_access_token}`,
+          'Content-Type': 'application/json' 
+        };
+        const query = 'query {workspaces{id name kind description state }}';
+
+        const response = await this.httpService.post(this.base_url, {query}, {
           headers,
         });
-        return response.data?.portals;
+        const data = response.data.data.workspaces
+        return data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          throw error;
-        }
+        console.log(error)
+        throw error;
       }
     }
   }
 
-  async getAllProjects(userId: string): Promise<ZohoProject[]> {
+  async getAllProjects(userId: string): Promise<Project[]> {
     const portals: any = await this.getPortals(userId);
     let projectsResponse = [];
     if (!portals) return projectsResponse;
@@ -167,7 +161,7 @@ export class ZohoService {
     return projectsResponse;
   }
 
-  async getAllUserProjects(userId: string): Promise<UserZohoProject[]> {
+  async getAllUserProjects(userId: string): Promise<UserProject[]> {
     const portals: any = await this.getPortals(userId);
     const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const userSyncedProjectsExternalIds = userSyncedProjects.map((syncedProject) => syncedProject.external_project_id);
@@ -176,20 +170,21 @@ export class ZohoService {
     for (const portal of portals) {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
+      
       // eslint-disable-next-line no-continue
       if (!projects.length) continue;
       projects.forEach((project) => {
-        const isSynced = userSyncedProjectsExternalIds.includes(project.id_string);
+        const isSynced = userSyncedProjectsExternalIds.includes(project.id);
         let externalStatuses = [];
         if (isSynced) {
           const linkedSyncedProject = userSyncedProjects.find(
-            (syncedProject) => syncedProject.external_project_id === project.id_string,
+            (syncedProject) => syncedProject.external_project_id === project.id,
           );
           externalStatuses = linkedSyncedProject.available_statuses;
         }
         const projectData = {
           name: project.name,
-          project_id: project.id_string,
+          project_id: project.id,
           portal_id: portal.id,
           is_synced: isSynced,
           external_statuses: externalStatuses,
@@ -201,7 +196,7 @@ export class ZohoService {
   }
 
   async upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string) {
-    const available_statuses = await this.getProjectStatuses(userId, portalId, projectId);
+    const available_statuses = await this.getProjectStatuses(userId, projectId);
     const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const syncedProjectsExternalIds = syncedProjects.map((project) => project.external_project_id);
     const hasProjectBeenSynced = syncedProjectsExternalIds.includes(projectId);
@@ -211,7 +206,7 @@ export class ZohoService {
         external_project_id: projectId,
         external_portal_id: portalId,
         available_statuses,
-        platform: IntegrationPlatforms.ZOHO,
+        platform: IntegrationPlatforms.MONDAY,
       });
       await this.syncedProjectsRepository.orm.save(newProject);
     } else {
@@ -222,60 +217,35 @@ export class ZohoService {
     }
   }
 
-  async getZohoTasksToSync(zohoTasks: any[], userId: string) {
-    const syncedTasks = await this.toDoRepository.orm.find({
-      where: { user_id: userId, external_task_id: Not(IsNull()) },
-      select: [
-        'id',
-        'external_task_id',
-        'external_task_metadata',
-        'status',
-        'title',
-        'eisenhower_quadrant',
-        'status',
-        'due_date',
-        'details',
-        'focus_type',
-        'updated_at',
-        'created_at',
-      ],
-    });
-    const syncedZohoTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'zoho');
-    const syncedZohoTasksIds = syncedZohoTasks.map((task) => task.external_task_id);
-    const tasksToSync = zohoTasks.filter((task) => !syncedZohoTasksIds.includes(task.id_string));
-    return { tasksToSync, syncedZohoTasks };
-  }
-
   async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string) {
     const project = await this.getProject(userId, portalId, projectId);
-    const allUserTasks = await this.getTasksOwnedByUser(userId, portalId);
-    const tasksFromProject = allUserTasks.filter((task) => task?.project?.id_string === projectId);
-    const [projectAsFocusModeTag] = createNewTags([project], userId, IntegrationPlatforms.ZOHO);
-    const tasksAsToDos = createNewToDos(tasksFromProject, userId, [projectAsFocusModeTag], IntegrationPlatforms.ZOHO);
-    await this.upsertSyncedProjectRecord(userId, portalId, project.id_string);
+    const tasksFromProject = await this.getTasksOwnedByUser(userId, projectId);
+    const [projectAsFocusModeTag] = createNewTags([project], userId, IntegrationPlatforms.MONDAY);
+    const tasksAsToDos = createNewToDos(tasksFromProject, userId, [projectAsFocusModeTag], IntegrationPlatforms.MONDAY);
+    await this.upsertSyncedProjectRecord(userId, portalId, projectId);
     // Save new projects and tasks
     await this.toDoRepository.orm.save(tasksAsToDos);
     await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
   }
 
-  async getProject(userId: string, portalId: string, projectId: string) {
+  async getProject(userId: string, portalId: string, projectId: string): Promise<Project> {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-      IntegrationPlatforms.ZOHO,
+      IntegrationPlatforms.MONDAY,
       userId,
     );
     if (!platformIntegrationRecord) return;
-    const { data: zohoData } = platformIntegrationRecord;
-    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/`;
-    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-    const { data } = await this.httpService.get(url, {
+    const { data: mondayData } = platformIntegrationRecord;
+    const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+    const query = `query { boards ( workspace_ids: ${portalId} ids: ${projectId}) {name state id permissions}}`;
+    const { data } = await this.httpService.post(this.base_url, { query}, {
       headers,
     });
-    return data.projects[0];
+    return data.data.boards[0];
   }
 
   async getAllUserTasks(userId: string) {
     const syncedProjects = await this.syncedProjectsRepository.orm.find({
-      where: { user_id: userId, platform: IntegrationPlatforms.ZOHO },
+      where: { user_id: userId, platform: IntegrationPlatforms.MONDAY },
     });
     const tasks = [];
     for await (const project of syncedProjects) {
@@ -288,86 +258,74 @@ export class ZohoService {
     return tasks;
   }
 
-  async getTasksOwnedByUser(userId: string, portalId: string) {
+  async getTasksOwnedByUser(userId: string, projectId: string) {
     const MAX_RETRY = 2;
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
         const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.ZOHO,
+          IntegrationPlatforms.MONDAY,
           userId,
         );
         if (!platformIntegrationRecord) return;
-        const { data: zohoData } = platformIntegrationRecord;
-        const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/mytasks/?owner=${
-          zohoData.zoho_user_id
-        }`;
-        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-        const response = await this.httpService.get(url, {
+        const { data: mondayData } = platformIntegrationRecord;
+        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+        const query = `query {boards (ids: ${projectId}) {items {id name state}}}`;
+        const response = await this.httpService.post(this.base_url, { query }, {
           headers,
         });
-        const tasks = response.data?.tasks ?? [];
+        const tasks = response.data.data.boards[0].items ?? [];
         const tasksWithPortalIds = tasks.map((task) => {
-          return { ...task, portal_id: portalId };
+          return { ...task, project_id: projectId };
         });
         return tasksWithPortalIds;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          throw error;
-        }
+        console.log(error);
+        throw error;
       }
     }
   }
 
-  async getProjectStatuses(userId: string, portalId: string, projectId: string) {
+  async getProjectStatuses(userId: string, projectId: string) {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-      IntegrationPlatforms.ZOHO,
+      IntegrationPlatforms.MONDAY,
       userId,
     );
     if (!platformIntegrationRecord) return;
-    const { data: zohoData } = platformIntegrationRecord;
-    const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
-    const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-    const { data } = await this.httpService.get(url, {
+    const { data: mondayData } = platformIntegrationRecord;
+    const query = `query { boards (ids: ${parseInt(projectId)}) { groups { title id }}}`
+    const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+    const { data } = await this.httpService.post(this.base_url, {query}, {
       headers,
     });
-    const availableStatuses = data?.status_details?.map((details) => {
-      return { label: details.name, status_id: details.id, should_complete_task: false };
+    const availableStatuses = data?.data.boards[0]?.groups.map((details) => {
+      return { label: details.title, status_id: details.id, should_complete_task: false };
     });
     return availableStatuses;
   }
 
-  async updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string) {
+  async updateTaskStatus(userId: string, taskId: string, statusId: string) {
     const MAX_RETRY = 2;
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
         const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.ZOHO,
+          IntegrationPlatforms.MONDAY,
           userId,
         );
         if (!platformIntegrationRecord) return;
-        const { data: zohoData } = platformIntegrationRecord;
-        const url = `${
-          getDataCenterUrl(zohoData.zoho_location).api
-        }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
-        const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-        const formData = new FormData();
-        formData.append('custom_status', statusId);
-        const response = await this.httpService.post(url, formData, {
+        const { data: mondayData } = platformIntegrationRecord;
+        const query = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`
+        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+        const response = await this.httpService.post(this.base_url, {query}, {
           headers,
         });
         return response.data;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.zohoAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          throw error;
-        }
+        console.log(error);
+        throw error;
       }
     }
     throw new Error('Failed to update task status after trying to get new access token.');

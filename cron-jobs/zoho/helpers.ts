@@ -1,8 +1,7 @@
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
-import { ZohoProject } from '../../apps/api-server/src/modules/zoho/domain/zoho-project.model';
-import { MondayProject } from '../../apps/api-server/src/modules/monday/domain/monday-project.model';
+import { Project } from 'apps/api-server/src/modules/integration/domain/project.model';
 
 export function getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) {
   const zohoTasksIds = zohoTasks.map((task) => task.id_string);
@@ -16,8 +15,8 @@ export function getZohoTasksToDelete(zohoTasks: any[], syncedZohoTasks: ToDo[]) 
     .filter((taskId) => taskId);
 }
 
-export function getZohoProjectsToDelete(zohoProjects: ZohoProject[], syncedZohoProjects: FocusModeTag[]) {
-  const zohoProjectsIds = zohoProjects.map((project) => project.id_string);
+export function getZohoProjectsToDelete(zohoProjects: Project[], syncedZohoProjects: FocusModeTag[]) {
+  const zohoProjectsIds = zohoProjects.map((project) => project.id);
   return syncedZohoProjects
     .map((syncedProject) => {
       if (!zohoProjectsIds.includes(syncedProject.external_project_id)) {
@@ -32,13 +31,13 @@ export function getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | n
   return tags.find((tag) => tag.external_project_id === task?.project?.id_string);
 }
 
-export function createNewTags(projectsToSync: ZohoProject[], userId: string, platform: IntegrationPlatforms) {
+export function createNewTags(projectsToSync: Project[], userId: string, platform: IntegrationPlatforms) {
   return projectsToSync.map(
     (project) =>
       new FocusModeTag({
         user_id: userId,
         text: project.name,
-        external_project_id: project.id_string,
+        external_project_id: project.id,
         external_project_metadata: { platform, project_data: project },
       }),
   );

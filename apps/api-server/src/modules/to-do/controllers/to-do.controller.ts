@@ -8,6 +8,7 @@ import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
 import { DeleteToDoQuery } from '../dto/delete-todo-query.dto';
 import { ToDoResponse } from '../dto/to-do-response.dto';
+import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -35,7 +36,7 @@ export class TodoController {
   }
 
   @Post('/subtasks')
-  async generateSubtasks(@Body() { task }: { task: string }) {
-    return this.toDoService.generateSubtasks(task);
+  async generateSubtasks(@Body() { task, language }: GenerateSubtasksDto) {
+    return this.toDoService.generateSubtasks({ task, language });
   }
 }

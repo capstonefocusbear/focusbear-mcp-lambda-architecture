@@ -17,6 +17,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { ToDoResponse } from '../dto/to-do-response.dto';
 import { ZohoService } from '../../zoho/services/zoho.service';
 import { ToDoStatus } from '../domain/to-do-status.enum';
+import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 
 @Injectable()
 export class ToDoService {
@@ -191,7 +192,7 @@ export class ToDoService {
     return timeLogs;
   }
 
-  async generateSubtasks(task: string) {
-    return this.openAIService.createSubtasks(task);
+  async generateSubtasks({ task, language }: GenerateSubtasksDto) {
+    return this.openAIService.createSubtasks({ task, language });
   }
 }

@@ -35,7 +35,7 @@ export class TodoController {
     return this.toDoService.deleteToDo(user.id, todo_id);
   }
 
-  @Post('/subtasks')
+  @Post('/generate-subtasks')
   async generateSubtasks(@Body() { task, language }: GenerateSubtasksDto) {
     return this.toDoService.generateSubtasks({ task, language });
   }

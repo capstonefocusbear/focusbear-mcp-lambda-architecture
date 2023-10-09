@@ -31,11 +31,10 @@ export class RevenueCatService {
       .then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
-  async grantTeamMembership(app_user_id: string) {
+  async grantTeamMembership(app_user_id: string, entitlement: Entitlement) {
     await this.getOrCreateSubscriber(app_user_id);
-    const access = Entitlement.team_member;
     const duration = 'lifetime';
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/promotional`;
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement}/promotional`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
     return this.httpService
@@ -67,12 +66,14 @@ export class RevenueCatService {
     return isEntitlementValid;
   }
 
-  async revokeTeamMembership(app_user_id: string) {
-    const access = Entitlement.team_member;
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${access}/revoke_promotionals`;
+  async revokeTeamMembership(app_user_id: string, entitlement: Entitlement) {
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement}/revoke_promotionals`;
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization };
-    return this.httpService.post(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
+    return this.httpService
+      .post(callUrl, {}, { headers })
+      .then(({ data }: AxiosResponse<unknown, any>): any => data)
+      .catch((e) => console.error(e?.response));
   }
 
   async createPurchase(provider: SubscriptionProvider, { app_user_id, fetch_token }) {

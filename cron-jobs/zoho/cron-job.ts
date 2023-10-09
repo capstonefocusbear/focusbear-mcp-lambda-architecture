@@ -189,10 +189,15 @@ async function syncUserTasks(userId: string) {
     if (isTaskFromSyncedProject) return true;
     return false;
   });
+  const externalIdToIdMap = userSyncedZohoProjects.reduce((map, project) => {
+    const newMap = { ...map };
+    newMap[project.external_project_id] = project.id;
+    return newMap;
+  }, {});
   const { tasksToSync, syncedZohoTasks } = await getZohoTasksToSync(tasksFromSyncedProjects, userId);
   const tasksToRemoveIds = getZohoTasksToDelete(tasksFromSyncedProjects, syncedZohoTasks);
   const tags = await getTagsLinkedToProject(userId, externalProjectIds);
-  const newZohoToDos = createNewToDos(tasksToSync, userId, tags, IntegrationPlatforms.ZOHO);
+  const newZohoToDos = createNewToDos(tasksToSync, userId, tags, IntegrationPlatforms.ZOHO, externalIdToIdMap);
   // Save new tasks
   const savedToDos = await CronJobDataSource.manager.save(ToDo, newZohoToDos);
   // Delete removed tasks

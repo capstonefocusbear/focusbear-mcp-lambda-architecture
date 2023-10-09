@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToMany, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 
@@ -12,12 +12,12 @@ export class Team extends BaseEntity {
   @Column({
     type: 'uuid',
     nullable: false,
-    unique: true,
+    unique: false,
   })
   owner_id?: string;
 
   @Column({
-    type: 'inet',
+    type: 'integer',
     nullable: false,
     default: 1,
   })
@@ -36,10 +36,32 @@ export class Team extends BaseEntity {
   })
   expires_date?: string | Date;
 
-  @OneToOne(() => User, (user) => user.owner_of_team)
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    transformer: BaseEntity.encryptJSONField('stripe_data'),
+  })
+  stripe_data?: any;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  stripe_subscription_id?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  name?: string;
+
+  @ManyToOne(() => User, (user) => user.owned_teams, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner?: User;
 
-  @OneToMany(() => User, (user) => user.member_of_team)
+  @ManyToMany(() => User, (user) => user.member_of_teams)
   members?: User[];
+
+  @ManyToMany(() => User, (user) => user.admin_of_teams)
+  admin_members?: User[];
 }

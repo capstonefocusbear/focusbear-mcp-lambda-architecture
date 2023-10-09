@@ -4,6 +4,7 @@ import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { IJwtOptions } from '@app/jwt/interfaces';
 import { JwtModule } from '@app/jwt';
+import { IStripeOptions, StripeModule } from '@app/stripe';
 import { UserModule } from '../user/user.module';
 import { TeamManagementController } from './controllers/team-management.controller';
 import { TeamRepository } from './repositories/team.repository';
@@ -12,7 +13,7 @@ import { Auth0Module } from '../../../../../libs/auth0/src';
 
 @Module({
   providers: [TeamRepository, TeamManagementService],
-  exports: [TeamRepository],
+  exports: [TeamRepository, TeamManagementService],
   controllers: [TeamManagementController],
   imports: [
     forwardRef(() => UserModule),
@@ -36,6 +37,11 @@ import { Auth0Module } from '../../../../../libs/auth0/src';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('auth0'),
+    }),
+    StripeModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
   ],
 })

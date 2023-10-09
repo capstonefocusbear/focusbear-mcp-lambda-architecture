@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { OpenAIModule } from '@app/openai';
 import { UserModule } from '../user/user.module';
 import { TodoController } from './controllers/to-do.controller';
 import { ToDoService } from './services/to-do.service';
@@ -11,6 +12,7 @@ import { SyncedProjectsRepository } from './repositories/synced-projects.reposit
 import { SyncedProjectsController } from './controllers/synced-projects.controller';
 import { SyncedProjectsService } from './services/synced-projects.service';
 import { IntegrationModule } from '../integration/integration.module';
+import { FocusModeModule } from '../focus-mode/focus-mode.module';
 
 @Module({
   providers: [
@@ -33,6 +35,12 @@ import { IntegrationModule } from '../integration/integration.module';
     BullModule.registerQueue({
       name: 'time-logs',
     }),
+    OpenAIModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('openai'),
+    }),
+    forwardRef(() => FocusModeModule),
   ],
   controllers: [TodoController, SyncedProjectsController],
 })

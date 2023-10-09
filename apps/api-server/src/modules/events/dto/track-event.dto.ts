@@ -12,6 +12,7 @@ export class TrackEventDto {
   event_data?: {
     data?: {
       quantity?: number;
+      quitReason?: string;
     };
   };
 }

@@ -7,6 +7,7 @@ import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
 import { TaskTimeLog } from './tasks-time-logs.entity';
 import { SyncedProject } from './synced-project.entity';
+import { SubtaskDto } from '../dto/subtask.dto';
 
 @Entity('to_do')
 export class ToDo extends BaseEntity {
@@ -59,6 +60,9 @@ export class ToDo extends BaseEntity {
 
   @Column({ type: 'jsonb', default: null, nullable: true, select: false })
   external_task_metadata?: any;
+
+  @Column({ type: 'jsonb', default: null, nullable: true })
+  subtasks?: SubtaskDto[];
 
   @Column({ type: 'timestamptz', default: null, nullable: true })
   due_date?: Date;

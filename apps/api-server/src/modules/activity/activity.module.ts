@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { IStripeOptions, StripeModule } from '@app/stripe';
+import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
@@ -60,6 +61,11 @@ import { LogQuantityQuestionsRepository } from './repositories/log-quantity-ques
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherOptions => configService.get('pusher'),
+    }),
+    PusherBeamsModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],

@@ -1,8 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
+import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
+import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
 
 @Injectable()
 export class StripeService extends Stripe {
@@ -10,7 +12,7 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  async createCheckoutSession(price: string, customer: string) {
+  async createCheckoutSession(customer: string, { price_id, team_id, team_size = 1 }: CreateStripeCheckoutSessionDto) {
     const { success_url, cancel_url } = this.options.checkout;
     return this.checkout.sessions
       .create({
@@ -18,12 +20,31 @@ export class StripeService extends Stripe {
         cancel_url,
         allow_promotion_codes: true,
         customer,
-        line_items: [{ price, quantity: 1 }],
+
+        line_items: [
+          {
+            price: price_id,
+            quantity: team_size,
+          },
+        ],
         mode: 'subscription',
+        subscription_data: { metadata: { team_id } },
       })
       .catch((err) => {
         throw new BadRequestException(err.message);
       });
+  }
+
+  async updateSubscription(subId: string, subItemId: string, quantity: number) {
+    const subscription = await this.subscriptions.update(subId, {
+      items: [
+        {
+          id: subItemId,
+          quantity,
+        },
+      ],
+    });
+    return subscription;
   }
 
   async createPortalSession(customer: string) {
@@ -112,7 +133,11 @@ export class StripeService extends Stripe {
     const stripeUser: any = await this.customers.retrieve(stripeCustomerId, { expand: ['subscriptions'] });
     const invoiceId = stripeUser.subscriptions?.data[0]?.latest_invoice ?? null;
     if (!invoiceId) return 0;
-    const invoice = await this.invoices.retrieve(invoiceId);
-    return invoice.amount_paid;
+    const userInvoices = await this.invoices.list({ customer: stripeCustomerId });
+    return findNonZeroTotal(userInvoices.data);
+  }
+
+  async cancelSubscription(subscriptionId: string) {
+    await this.subscriptions.del(subscriptionId);
   }
 }

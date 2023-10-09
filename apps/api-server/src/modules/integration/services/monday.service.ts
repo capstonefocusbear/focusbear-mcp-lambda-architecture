@@ -14,6 +14,7 @@ import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
 import { UserProject } from '../dto/user-project.dto';
 import { createNewTags, createNewToDos } from "cron-jobs/zoho/helpers";
+import { ToDo } from "../../to-do/entities/to-do.entity";
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -208,12 +209,12 @@ export class MondayService implements BaseService {
         available_statuses,
         platform: IntegrationPlatforms.MONDAY,
       });
-      await this.syncedProjectsRepository.orm.save(newProject);
+      return await this.syncedProjectsRepository.orm.save(newProject);
     } else {
       // if project has already been synced, update statuses
       const linkedProject = syncedProjects.find((syncedProject) => syncedProject.external_project_id === projectId);
       linkedProject.available_statuses = available_statuses;
-      await this.syncedProjectsRepository.orm.save(linkedProject);
+      return await this.syncedProjectsRepository.orm.save(linkedProject);
     }
   }
 
@@ -221,8 +222,18 @@ export class MondayService implements BaseService {
     const project = await this.getProject(userId, portalId, projectId);
     const tasksFromProject = await this.getTasksOwnedByUser(userId, projectId);
     const [projectAsFocusModeTag] = createNewTags([project], userId, IntegrationPlatforms.MONDAY);
-    const tasksAsToDos = createNewToDos(tasksFromProject, userId, [projectAsFocusModeTag], IntegrationPlatforms.MONDAY);
-    await this.upsertSyncedProjectRecord(userId, portalId, projectId);
+    const syncedProject = await this.upsertSyncedProjectRecord(userId, portalId, project.id);
+    const tasksAsToDos = tasksFromProject.map((task) => {
+      return new ToDo({
+        user_id: userId,
+        title: task.name,
+        details: task.description,
+        external_task_id: task.id_string,
+        external_task_metadata: { platform: IntegrationPlatforms.MONDAY, task_data: task },
+        synced_project_id: syncedProject.id,
+        tags: [...(projectAsFocusModeTag ? [projectAsFocusModeTag] : [])],
+      });
+    });
     // Save new projects and tasks
     await this.toDoRepository.orm.save(tasksAsToDos);
     await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);

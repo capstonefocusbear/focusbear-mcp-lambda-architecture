@@ -7,6 +7,7 @@ import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 
 @Controller('integration')
 export class IntegrationController {
@@ -35,7 +36,7 @@ export class IntegrationController {
   @UseGuards(IsAuth)
   async getAllUserProjects(
     @Param('platform') platform: IntegrationPlatforms,         
-    @AuthContext() { user }: Passport): Promise<any[]> {
+    @AuthContext() { user }: Passport): Promise<SyncedProjectDto[]> {
     const service = this.integrationFactory.get(platform);
     return service.getAllUserProjects(user.id);
   }

@@ -3,6 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
+import { OpenAIService } from '@app/openai';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
@@ -16,6 +17,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { ToDoResponse } from '../dto/to-do-response.dto';
 import { ZohoService } from '../../integration/services/zoho.service';
 import { ToDoStatus } from '../domain/to-do-status.enum';
+import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 
 @Injectable()
 export class ToDoService {
@@ -24,7 +26,8 @@ export class ToDoService {
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
-    private readonly zohoService: ZohoService
+    private readonly zohoService: ZohoService,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
@@ -187,5 +190,9 @@ export class ToDoService {
       });
     }
     return timeLogs;
+  }
+
+  async generateSubtasks({ task, language }: GenerateSubtasksDto) {
+    return this.openAIService.createSubtasks({ task, language });
   }
 }

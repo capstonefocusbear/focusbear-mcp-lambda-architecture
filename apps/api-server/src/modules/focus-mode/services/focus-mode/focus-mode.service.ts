@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
@@ -113,6 +113,8 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       if (tags?.length) {
         focusModeTags = await this.saveFocusModeTags(user_id, tags);
       }
+      const existingFocusModes = await this.focusModeRepository.orm.find({ where: { user_id } });
+      await this.validateFocusModeName(focusModeDto.name, user_id, existingFocusModes);
       const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
       // check that focus mode is not one created by default when installing one of the apps
@@ -129,6 +131,13 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
+    }
+  }
+
+  async validateFocusModeName(name: string, userId: string, existingFocusModes: FocusMode[]) {
+    const focusModeNames = existingFocusModes.map((focusMode) => focusMode.name.toLowerCase());
+    if (focusModeNames.includes(name.toLowerCase())) {
+      throw new HttpException(`Focus mode with name: ${name} already exists for user with ID: ${userId}!`, 422);
     }
   }
 
@@ -151,6 +160,8 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         throw new NotFoundException(`Focus mode with ID: ${focus_mode_id} does not exist`);
       }
       const { tags } = updateFocusModeDto;
+      const existingFocusModes = await this.focusModeRepository.orm.find({ where: { user_id } });
+      await this.validateFocusModeName(updateFocusModeDto.name, user_id, existingFocusModes);
       await this.deleteRemovedFocusModeTags(user_id, focusMode?.tags, tags);
       let focusModeTags = [];
       if (tags?.length) {

@@ -101,6 +101,8 @@ export const SendGridServiceMock = {
 export const StripeServiceMock = {
   registerNewCustomer: jest.fn(),
   getStripeCustomerId: jest.fn(),
+  updateSubscription: jest.fn(),
+  cancelSubscription: jest.fn(),
 };
 
 export const ActivityTemplateServiceMock = {
@@ -183,6 +185,8 @@ export const ZohoAuthServiceMock = {
 export const ZohoServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
   getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
 };
 
 export const PlatformIntegrationsServiceMock = {

@@ -858,6 +858,18 @@ export const MorningActivitySequenceDummy = new ActivitySequence(
   { generateId: false },
 );
 
+export const BreakActivitySequenceDummy = new ActivitySequence(
+  {
+    type: ActivityType.break,
+    activity_ids: ['856eb9fb-8c12-418d-b12c-fec0f2dae49d', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
+    activities: ActivitiesArrayDummy.morning_activities,
+    user_id: userDummy.id,
+    total_duration_seconds: 360,
+    id: randomUUID(),
+  },
+  { generateId: false },
+);
+
 export const sequenceWithActivitiesForDifferentDays = new ActivitySequence(
   {
     type: ActivityType.morning,
@@ -1108,18 +1120,21 @@ export const CompletedSequenceLogDummy = new CompletedActivitySequence({
 });
 
 export const TeamWithMembersDummy = new Team({
+  id: randomUUID(),
   owner_id: userDummy.id,
   owner: userDummy,
   is_active: true,
   team_size: 5,
   members: [userDummy],
+  admin_members: [userDummy],
+  stripe_subscription_id: 'sub_123',
+  stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });
 
 export const TeamMemberDummy = new User({
   ...userDummy,
   id: randomUUID(),
-  member_of_team_id: TeamWithMembersDummy.id,
-  member_of_team: TeamWithMembersDummy,
+  member_of_teams: [TeamWithMembersDummy],
 });
 
 TeamWithMembersDummy.members.push(TeamMemberDummy);
@@ -1459,7 +1474,7 @@ export const focusModeTemplateDBResponseDummy: FocusModeTemplate = {
   ],
 };
 
-const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).startOf('day');
+const latestDateInStatsStreak = DateTime.fromMillis(1676254469000).setZone('UTC').startOf('day');
 
 export const dailyStatsArrayDummy = [
   {

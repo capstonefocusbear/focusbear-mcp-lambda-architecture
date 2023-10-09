@@ -48,6 +48,7 @@ export function createNewToDos(
   userId: string,
   tags: FocusModeTag[],
   platform: IntegrationPlatforms,
+  externalIdToIdMap: any,
 ) {
   return tasksToSync.map((task) => {
     const project = getTagForTodo(task, tags);
@@ -57,6 +58,7 @@ export function createNewToDos(
       details: task.description,
       external_task_id: task.id,
       external_task_metadata: { platform, task_data: task },
+      synced_project_id: externalIdToIdMap[task?.project?.id_string],
       tags: [...(project ? [project] : [])],
     });
   });

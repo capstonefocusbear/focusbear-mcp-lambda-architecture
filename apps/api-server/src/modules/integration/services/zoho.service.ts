@@ -9,18 +9,19 @@ import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
-import { createNewTags, createNewToDos } from '../../../../../../cron-jobs/zoho/helpers';
+import { createNewTags } from '../../../../../../cron-jobs/zoho/helpers';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
-import { UserProject } from '../dto/user-project.dto';
 
 const projectAdapter = (project) => ({
   id: project.id_string,
   ...project
 });
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
+import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -162,7 +163,7 @@ export class ZohoService implements BaseService {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         // eslint-disable-next-line no-param-reassign
         project.portal_id = portal.id_string;
@@ -172,7 +173,7 @@ export class ZohoService implements BaseService {
     return projectsResponse;
   }
 
-  async getAllUserProjects(userId: string): Promise<UserProject[]> {
+  async getAllUserProjects(userId: string): Promise<SyncedProjectDto[]> {
     const portals: any = await this.getPortals(userId);
     const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const userSyncedProjectsExternalIds = userSyncedProjects.map((syncedProject) => syncedProject.external_project_id);
@@ -182,7 +183,7 @@ export class ZohoService implements BaseService {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         const isSynced = userSyncedProjectsExternalIds.includes(project.id);
         let externalStatuses = [];
@@ -218,13 +219,12 @@ export class ZohoService implements BaseService {
         available_statuses,
         platform: IntegrationPlatforms.ZOHO,
       });
-      await this.syncedProjectsRepository.orm.save(newProject);
-    } else {
-      // if project has already been synced, update statuses
-      const linkedProject = syncedProjects.find((syncedProject) => syncedProject.external_project_id === projectId);
-      linkedProject.available_statuses = available_statuses;
-      await this.syncedProjectsRepository.orm.save(linkedProject);
+      return this.syncedProjectsRepository.orm.save(newProject);
     }
+    // if project has already been synced, update statuses
+    const linkedProject = syncedProjects.find((syncedProject) => syncedProject.external_project_id === projectId);
+    linkedProject.available_statuses = available_statuses;
+    return this.syncedProjectsRepository.orm.save(linkedProject);
   }
 
   async getZohoTasksToSync(zohoTasks: any[], userId: string) {
@@ -256,8 +256,18 @@ export class ZohoService implements BaseService {
     const allUserTasks = await this.getTasksOwnedByUser(userId, portalId);
     const tasksFromProject = allUserTasks.filter((task) => task?.project?.id_string === projectId);
     const [projectAsFocusModeTag] = createNewTags([project], userId, IntegrationPlatforms.ZOHO);
-    const tasksAsToDos = createNewToDos(tasksFromProject, userId, [projectAsFocusModeTag], IntegrationPlatforms.ZOHO);
-    await this.upsertSyncedProjectRecord(userId, portalId, project.id_string);
+    const syncedProject = await this.upsertSyncedProjectRecord(userId, portalId, project.id_string);
+    const tasksAsToDos = tasksFromProject.map((task) => {
+      return new ToDo({
+        user_id: userId,
+        title: task.name,
+        details: task.description,
+        external_task_id: task.id_string,
+        external_task_metadata: { platform: IntegrationPlatforms.ZOHO, task_data: task },
+        synced_project_id: syncedProject.id,
+        tags: [...(projectAsFocusModeTag ? [projectAsFocusModeTag] : [])],
+      });
+    });
     // Save new projects and tasks
     await this.toDoRepository.orm.save(tasksAsToDos);
     await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);

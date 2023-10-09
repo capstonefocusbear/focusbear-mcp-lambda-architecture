@@ -9,6 +9,7 @@ import { load } from 'cheerio';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import axios from 'axios';
+import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
@@ -334,6 +335,26 @@ export class OpenAIService {
       the output should be in the format:
       { allowed: boolean }
       username: ${username}
+      JSON output:`,
+    };
+    const completions = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [defaultChat],
+      temperature: 0,
+      n: 1,
+    });
+    const newMessage = completions.data.choices[0].message;
+    const { content } = newMessage;
+    return JSON.parse(content);
+  }
+
+  async createSubtasks({ task, language = 'english' }: GenerateSubtasksDto) {
+    const config = new Configuration({ ...this.options });
+    const openai = new OpenAIApi(config);
+    const defaultChat: ChatCompletionRequestMessage = {
+      role: 'system',
+      content: `Given the following task, break the task into a couple smaller steps it could take to accomplish the task. Return each subtask as a JSON object in the format: { "name": "name of subtask(should be capitalized)", is_completed: false }. The name should be in the language of ${language}. The final output should be in the format { "task": name of task, "subtasks": array of subtasks }\n\n
+      Task: ${task}\n\n
       JSON output:`,
     };
     const completions = await openai.createChatCompletion({

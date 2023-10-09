@@ -56,7 +56,8 @@ export function determineUserLevel(
 
 function getLatestStatAndStartOfPrevDay(userDailyStats: DailyStats[], timeZone: string) {
   // sort stats in reverse-chronological order
-  const orderedStats = userDailyStats.sort((precedingStat, followingStat) => {
+  const orderedStats = userDailyStats;
+  orderedStats.sort((precedingStat, followingStat) => {
     const precedingCompletedDate = DateTime.fromJSDate(precedingStat.date_completed).valueOf();
     const followingCompletedDate = DateTime.fromJSDate(followingStat.date_completed).valueOf();
     return followingCompletedDate - precedingCompletedDate;
@@ -76,31 +77,40 @@ export function calculateStreakForRoutine(
   }
   const { latestStatStartTime, startOfPreviousDay } = getLatestStatAndStartOfPrevDay(userDailyStats, timeZone);
   let streak = 0;
-  // start counting from current day or prev day if no tasks have been done for current day
-  // if user hasn't completed routine last 2 days streak is 0
   if (latestStatStartTime.valueOf() < startOfPreviousDay.valueOf()) {
     return 0;
   }
-  const ONE_DAY_AS_MILLIS = 86400000;
   let index = 0;
   let currentStat = userDailyStats[index];
-  let nextExpectedDate = currentStat.date_completed.valueOf();
-  // gets day number ranging from 1 for Mon to 7 for Sun
-  let dayBeingCheckedNumber = DateTime.fromMillis(nextExpectedDate).setZone(timeZone).weekday;
+  let nextExpectedDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+  let dayBeingCheckedNumber = nextExpectedDate.weekday;
   let prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
   let doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
-  // for this loop we loop backwards chronologically over the daily stat records to count the user's streak
-  // if a day is encountered where the user has no activities we don't reset the streak, but simply hold the count
-  while (currentStat && (currentStat.date_completed.valueOf() === nextExpectedDate || !doesDayHaveActivities)) {
-    if (currentStat.date_completed.valueOf() === nextExpectedDate) {
-      streak += 1;
-      currentStat = userDailyStats[index + 1];
-      index += 1;
+
+  while (currentStat) {
+    const startOfCheckedDay = nextExpectedDate.startOf('day');
+    const endOfCheckedDay = nextExpectedDate.endOf('day');
+    if (
+      (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
+        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||
+      !doesDayHaveActivities
+    ) {
+      if (
+        currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
+        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()
+      ) {
+        streak += 1;
+        currentStat = userDailyStats[index + 1];
+        index += 1;
+      }
+
+      nextExpectedDate = nextExpectedDate.minus({ days: 1 });
+      dayBeingCheckedNumber = nextExpectedDate.weekday;
+      prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
+      doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
+    } else {
+      break;
     }
-    nextExpectedDate -= ONE_DAY_AS_MILLIS;
-    dayBeingCheckedNumber = DateTime.fromMillis(nextExpectedDate).weekday;
-    prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
-    doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
   }
   return streak;
 }
@@ -120,31 +130,43 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   if (userDailyStats.length === 0) {
     return 0;
   }
+
   const { latestStatStartTime, startOfPreviousDay } = getLatestStatAndStartOfPrevDay(userDailyStats, timeZone);
   const startOfPrevWorkDay = getStartOfPrevWeekDay(startOfPreviousDay);
-  // start counting from current day or prev day if no tasks have been done for current day
-  // if user hasn't completed routine last 2 days streak is 0
+
   if (latestStatStartTime.valueOf() < startOfPrevWorkDay.valueOf()) {
     return 0;
   }
-  const ONE_DAY_AS_MILLIS = 86400000;
+
   let streak = 0;
   let index = 0;
   let currentStat = userDailyStats[index];
-  let nextExpectedDate = currentStat.date_completed.valueOf();
-  let nextExpectedDayOfWeek = DateTime.fromMillis(nextExpectedDate).weekday;
-  while (
-    currentStat &&
-    (currentStat.date_completed.valueOf() === nextExpectedDate || !LUXON_WEEK_DAYS.includes(nextExpectedDayOfWeek))
-  ) {
-    if (currentStat.date_completed.valueOf() === nextExpectedDate) {
-      streak += 1;
-      currentStat = userDailyStats[index + 1];
-      index += 1;
+  let nextExpectedDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+
+  while (currentStat) {
+    const startOfCheckedDay = nextExpectedDate.startOf('day');
+    const endOfCheckedDay = nextExpectedDate.endOf('day');
+
+    if (
+      (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
+        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||
+      !LUXON_WEEK_DAYS.includes(nextExpectedDate.weekday)
+    ) {
+      if (
+        currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
+        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()
+      ) {
+        streak += 1;
+        currentStat = userDailyStats[index + 1];
+        index += 1;
+      }
+
+      nextExpectedDate = nextExpectedDate.minus({ days: 1 });
+    } else {
+      break;
     }
-    nextExpectedDate -= ONE_DAY_AS_MILLIS;
-    nextExpectedDayOfWeek = DateTime.fromMillis(nextExpectedDate).weekday;
   }
+
   return streak;
 }
 

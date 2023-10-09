@@ -74,6 +74,7 @@ export class ProfitWellConsumer {
         plan_currency: USD,
         effective_date: effectiveDate,
         status: subscriptionStatus,
+        data_provider_user_id: stripe_id,
       });
 
       const { data: profitWellUser } = await axios.post(PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT, dataForProfitWell, {
@@ -88,8 +89,13 @@ export class ProfitWellConsumer {
       });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      console.log('Error in ProfitWell queued job: ', error);
-      console.log('Error Data: ', error?.response?.data);
+      console.log(
+        'Error in ProfitWell queued job: ',
+        'Req: ',
+        error?.request?.config?.data,
+        'Res: ',
+        error?.response?.data,
+      );
     }
   }
 }

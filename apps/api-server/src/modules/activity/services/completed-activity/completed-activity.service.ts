@@ -11,6 +11,9 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
+import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { I18nService } from 'nestjs-i18n';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
@@ -73,6 +76,7 @@ export class CompletedActivityService {
     private readonly activityRepository: ActivityRepository,
     private readonly completedActivitySequenceService: CompletedActivitySequenceService,
     private readonly pusher: PusherService,
+    private readonly pusherBeams: PusherBeamsService,
     private readonly completedFocusModesRepository: CompletedFocusBlockRepository,
     private readonly userSettingsService: UserSettingsService,
     @InjectSentry() private readonly sentryService: SentryService,
@@ -83,6 +87,7 @@ export class CompletedActivityService {
     private readonly logQuantityQuestionRepository: LogQuantityQuestionsRepository,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    private readonly i18nService: I18nService,
   ) {}
 
   async completeActivity(
@@ -151,7 +156,13 @@ export class CompletedActivityService {
         user,
         createdItem,
       );
-      await this.broadcastCompletionEvent(user_id, createdItem.completed_activity_log.id, { ...completedActivity });
+      await this.broadcastCompletionEvent(
+        user_id,
+        createdItem.completed_activity_log.id,
+        { ...completedActivity },
+        activity,
+        user.language,
+      );
       this.logJeremyData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
@@ -256,6 +267,79 @@ export class CompletedActivityService {
     throw error;
   }
 
+  async updateActivityPropsForOfflineSync(
+    completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
+    user: User,
+  ) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating activity props for offline sync',
+        data: { user_id: user.id },
+      });
+      const { startup_time, shutdown_time, timezone } = user;
+      const activitiesSortedChronologically = completedActivities;
+      activitiesSortedChronologically.sort(
+        (precedingActivity, followingActivity) =>
+          precedingActivity.start_time.getTime() - followingActivity.start_time.getTime(),
+      );
+      const latestActivity = activitiesSortedChronologically[activitiesSortedChronologically.length - 1];
+      const latestActivityDate = DateTime.fromJSDate(new Date(latestActivity.start_time)).setZone(timezone);
+      const latestActivitySequenceId = latestActivity.activity_sequence_id;
+      const currentTime = DateTime.local().setZone(timezone);
+      // latest activity is from different day, no need to update activity props
+      if (!currentTime.hasSame(latestActivityDate, 'day')) return;
+      const userSequences = await this.activitySequenceRepository.orm.find({
+        where: { user_id: user.id },
+        relations: ['activities'],
+      });
+      const morningSequence = userSequences.find((sequence) => sequence.type === ActivityType.morning);
+      const eveningSequence = userSequences.find((sequence) => sequence.type === ActivityType.evening);
+      const breakSequenceId = userSequences.find((sequence) => sequence.type === ActivityType.break).id;
+      const completedActivitySequence = userSequences.find(
+        (sequence) => sequence.id === latestActivity.activity_sequence_id,
+      );
+      // don't update activity props for break activities
+      if (latestActivitySequenceId === breakSequenceId) return;
+      const startUpTime = DateTime.fromFormat(startup_time, 'hh:mm', {
+        zone: timezone,
+      });
+      const shutDownTime = DateTime.fromFormat(shutdown_time, 'hh:mm', {
+        zone: timezone,
+      });
+      const isTimeForMorningRoutine = currentTime >= startUpTime && currentTime < shutDownTime;
+      const isTimeForEveningRoutine = currentTime >= shutDownTime && currentTime < startUpTime.plus({ days: 1 });
+      const completingSequenceLog = await this.getOrCreateCompletingSequenceLog(
+        user,
+        latestActivitySequenceId,
+        latestActivity.start_time,
+      );
+      const { currentState, nextActivityId } = await this.defineNextCurrentActivity(
+        completedActivitySequence,
+        latestActivity.activity_id,
+        user,
+        completingSequenceLog.id,
+        latestActivity,
+      );
+      const isCurrentlyDoingMorningSequence =
+        isTimeForMorningRoutine && latestActivitySequenceId === morningSequence.id;
+      const isCurrentlyDoingEveningRoutine = isTimeForEveningRoutine && latestActivitySequenceId === eveningSequence.id;
+      const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
+      if (isCurrentlyDoingMorningSequence || isCurrentlyDoingEveningRoutine) {
+        await this.userRepository.orm.update(user.id, {
+          ...currentState,
+          current_completing_sequence_log_id,
+        });
+        if (!nextActivityId) {
+          await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user.id);
+        }
+      }
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    }
+  }
+
   async completeMultipleActivities(
     completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
     { user_id }: GetUserSettingsDto,
@@ -280,7 +364,10 @@ export class CompletedActivityService {
             let sequence: ActivitySequence;
             let allActivitiesFromSequence: Activity[];
             if (!Object.keys(activitySequenceCache).includes(sequenceId)) {
-              sequence = await this.activitySequenceRepository.orm.findOneBy({ id: sequenceId });
+              sequence = await this.activitySequenceRepository.orm.findOne({
+                where: { id: sequenceId },
+                relations: ['activities'],
+              });
               activitySequenceCache[sequenceId] = sequence;
               allActivitiesFromSequence = await this.activityRepository.orm.find({
                 where: { activity_sequence_id: sequenceId, user_id },
@@ -304,6 +391,7 @@ export class CompletedActivityService {
           }
         }),
       );
+      await this.updateActivityPropsForOfflineSync(completedActivities, user);
       return failedActivities;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -900,6 +988,8 @@ export class CompletedActivityService {
     user_id: string,
     completed_activity_id: string,
     completedActivity: CreateCompletedActivityDto,
+    activity: Activity,
+    language: string,
   ): Promise<void> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -912,6 +1002,16 @@ export class CompletedActivityService {
     });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
+    const title = this.i18nService.t('common.activity_completed', { lang: language });
+    const body = this.i18nService.t('common.activity_completed_message', {
+      lang: language,
+      args: { activity_name: activity.activity_data.name },
+    });
+    const publishRequest = new BeamsPublishRequest({
+      apns: { aps: { alert: { title, body } }, data: pushData },
+      fcm: { notification: { title, body }, data: pushData },
+    });
+    await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
   async getStatsByActivityPerDay(

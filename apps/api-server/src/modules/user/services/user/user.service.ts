@@ -173,7 +173,7 @@ export class UserService {
       renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripeId);
     }
     const effectiveDate = revenue_cat_data?.hasActiveSubscription
-      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus].purchase_date).getTime() / 1000)
+      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus]?.purchase_date).getTime() / 1000)
       : Math.round(new Date().getTime() / 1000);
     await this.profitwellQueue.add(
       'register-profitwell-user',
@@ -682,13 +682,17 @@ export class UserService {
 
   async doesUserExistInProfitWell(stripeId: string) {
     try {
-      const response = await this.httpService.get(`https://api.profitwell.com/v2/customers/${stripeId}/`, {
+      const response = await this.httpService.get(`https://api.profitwell.com/v2/customers?email=${stripeId}`, {
         headers: {
           Authorization: process.env.PROFITWELL_API_KEY,
         },
       });
-      console.log(response.data);
-      if (response.status === 200) return true;
+      // email field in profitwell can be used to store any string
+      // we want to avoid storing the user's email, so saved the stripe ID in this field
+      const userStripeId = response?.data[0]?.email;
+      if (userStripeId.toLowerCase() === stripeId.toLowerCase()) {
+        return true;
+      }
       return false;
     } catch (error) {
       return false;

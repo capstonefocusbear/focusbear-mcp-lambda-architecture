@@ -1,7 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { User } from '../../user/entities/user.entity';
 
-export interface BaseService {
+export interface BaseIntegrationService {
   getUser(userId: string): Promise<User>;
 
   addTimeEntry(

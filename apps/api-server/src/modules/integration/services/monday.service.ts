@@ -1,4 +1,4 @@
-import { BaseService } from "./base.service";
+import { BaseIntegrationService } from "./base.service";
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
@@ -18,7 +18,7 @@ import { ToDo } from "../../to-do/entities/to-do.entity";
 
 @Injectable()
 @UseGuards(IsAuth)
-export class MondayService implements BaseService {
+export class MondayService implements BaseIntegrationService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
@@ -152,7 +152,7 @@ export class MondayService implements BaseService {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         // eslint-disable-next-line no-param-reassign
         project.portal_id = portal.id_string;
@@ -173,7 +173,7 @@ export class MondayService implements BaseService {
       const projects = await this.getProjects(userId, portal.id);
       
       // eslint-disable-next-line no-continue
-      if (!projects.length) continue;
+      if (!projects?.length) continue;
       projects.forEach((project) => {
         const isSynced = userSyncedProjectsExternalIds.includes(project.id);
         let externalStatuses = [];

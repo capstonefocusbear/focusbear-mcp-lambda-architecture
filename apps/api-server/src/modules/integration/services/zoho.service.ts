@@ -1,4 +1,4 @@
-import { BaseService } from './base.service';
+import { BaseIntegrationService } from './base.service';
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { IsNull, Not } from 'typeorm';
@@ -25,7 +25,7 @@ import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Injectable()
 @UseGuards(IsAuth)
-export class ZohoService implements BaseService {
+export class ZohoService implements BaseIntegrationService {
   private readonly baseUrl = 'https://projectsapi.zoho.com.location/restapi';
 
   constructor(

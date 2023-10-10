@@ -56,7 +56,7 @@ export function createNewToDos(
       user_id: userId,
       title: task.name,
       details: task.description,
-      external_task_id: task.id,
+      external_task_id: task.id_string,
       external_task_metadata: { platform, task_data: task },
       synced_project_id: externalIdToIdMap[task?.project?.id_string],
       tags: [...(project ? [project] : [])],

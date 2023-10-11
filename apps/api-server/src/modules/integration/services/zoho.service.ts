@@ -207,7 +207,7 @@ export class ZohoService implements BaseIntegrationService {
   }
 
   async upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string) {
-    const available_statuses = await this.getProjectStatuses(userId, portalId, projectId);
+    const available_statuses = await this.getProjectStatuses(userId, projectId, portalId);
     const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
     const syncedProjectsExternalIds = syncedProjects.map((project) => project.external_project_id);
     const hasProjectBeenSynced = syncedProjectsExternalIds.includes(projectId);

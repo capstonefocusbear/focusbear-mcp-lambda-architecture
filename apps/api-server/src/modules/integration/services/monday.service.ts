@@ -1,5 +1,5 @@
 import { BaseIntegrationService } from "./base.service";
-import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UseGuards, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -41,40 +41,34 @@ export class MondayService implements BaseIntegrationService {
     taskId: string,
     timeEntry: any,
   ): Promise<AxiosResponse<any>> {
-    const MAX_RETRY = 2;
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.MONDAY,
-          userId,
-        );
-        if (!platformIntegrationRecord) return;
-        const { data: mondayData } = platformIntegrationRecord;
-        const url = `${
-          getDataCenterUrl(mondayData.monday_location).api
-        }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-        const [year, month, day] = timeEntry.date.split('-');
-        const formData = new FormData();
-        formData.append('date', `${month}-${day}-${year}`);
-        formData.append('bill_status', timeEntry.bill_status);
-        formData.append('hours', timeEntry.hours || '00:00');
-        formData.append('notes', timeEntry.notes || '');
-        const response = await this.httpService.post(url, formData, {
-          headers: {
-            ...headers,
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        return response.data;
-      } catch (error) {
-        console.log(error);
-        throw error;
-      }
+    try {
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: mondayData } = platformIntegrationRecord;
+      const url = `${
+        getDataCenterUrl(mondayData.monday_location).api
+      }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
+      const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+      const [year, month, day] = timeEntry.date.split('-');
+      const formData = new FormData();
+      formData.append('date', `${month}-${day}-${year}`);
+      formData.append('bill_status', timeEntry.bill_status);
+      formData.append('hours', timeEntry.hours || '00:00');
+      formData.append('notes', timeEntry.notes || '');
+      const response = await this.httpService.post(url, formData, {
+        headers: {
+          ...headers,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw new Error('Failed to add monday task time entry after trying to get new access token.');
     }
-    throw new Error('Failed to add monday task time entry after trying to get new access token.');
   }  
   async getTasks(userId: string, projectId: string): Promise<any> {
     try {
@@ -113,34 +107,29 @@ export class MondayService implements BaseIntegrationService {
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
-    const MAX_RETRY = 2;
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.MONDAY,
-          userId,
-        );
-        if (!platformIntegrationRecord) {
-          throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Monday!`);
-        }
-        const { data: mondayData } = platformIntegrationRecord;
-        const headers = { 
-          Authorization: `Bearer ${mondayData.monday_access_token}`,
-          'Content-Type': 'application/json' 
-        };
-        const query = 'query {workspaces{id name kind description state }}';
-
-        const response = await this.httpService.post(this.base_url, {query}, {
-          headers,
-        });
-        const data = response.data.data.workspaces
-        return data;
-      } catch (error) {
-        console.log(error)
-        throw error;
+    try {
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      if (!platformIntegrationRecord) {
+        throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Monday!`);
       }
+      const { data: mondayData } = platformIntegrationRecord;
+      const headers = { 
+        Authorization: `Bearer ${mondayData.monday_access_token}`,
+        'Content-Type': 'application/json' 
+      };
+      const query = 'query {workspaces{id name kind description state }}';
+
+      const response = await this.httpService.post(this.base_url, {query}, {
+        headers,
+      });
+      const data = response.data.data.workspaces
+      return data;
+    } catch (error) {
+      console.log(error)
+      throw error;
     }
   }
 
@@ -270,31 +259,26 @@ export class MondayService implements BaseIntegrationService {
   }
 
   async getTasksOwnedByUser(userId: string, projectId: string) {
-    const MAX_RETRY = 2;
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.MONDAY,
-          userId,
-        );
-        if (!platformIntegrationRecord) return;
-        const { data: mondayData } = platformIntegrationRecord;
-        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-        const query = `query {boards (ids: ${projectId}) {items {id name state}}}`;
-        const response = await this.httpService.post(this.base_url, { query }, {
-          headers,
-        });
-        const tasks = response.data.data.boards[0].items ?? [];
-        const tasksWithPortalIds = tasks.map((task) => {
-          return { ...task, project_id: projectId };
-        });
-        return tasksWithPortalIds;
-      } catch (error) {
-        console.log(error);
-        throw error;
-      }
+    try {
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: mondayData } = platformIntegrationRecord;
+      const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+      const query = `query {boards (ids: ${projectId}) {items {id name state}}}`;
+      const response = await this.httpService.post(this.base_url, { query }, {
+        headers,
+      });
+      const tasks = response.data.data.boards[0].items ?? [];
+      const tasksWithPortalIds = tasks.map((task) => {
+        return { ...task, project_id: projectId };
+      });
+      return tasksWithPortalIds;
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
   }
 
@@ -317,28 +301,22 @@ export class MondayService implements BaseIntegrationService {
   }
 
   async updateTaskStatus(userId: string, taskId: string, statusId: string) {
-    const MAX_RETRY = 2;
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-          IntegrationPlatforms.MONDAY,
-          userId,
-        );
-        if (!platformIntegrationRecord) return;
-        const { data: mondayData } = platformIntegrationRecord;
-        const query = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`
-        const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-        const response = await this.httpService.post(this.base_url, {query}, {
-          headers,
-        });
-        return response.data;
-      } catch (error) {
-        console.log(error);
-        throw error;
-      }
+    try {
+      const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      if (!platformIntegrationRecord) return;
+      const { data: mondayData } = platformIntegrationRecord;
+      const query = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`
+      const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
+      const response = await this.httpService.post(this.base_url, {query}, {
+        headers,
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw new Error('Failed to update task status after trying to get new access token.');
     }
-    throw new Error('Failed to update task status after trying to get new access token.');
   }
 }

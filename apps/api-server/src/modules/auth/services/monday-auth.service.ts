@@ -3,8 +3,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { MondayAuthorizeQuery } from '../dto/monday-authorize-query.dto';
@@ -17,7 +15,6 @@ export class MondayAuthService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
-    @InjectQueue('time-logs') private timeLogsQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 

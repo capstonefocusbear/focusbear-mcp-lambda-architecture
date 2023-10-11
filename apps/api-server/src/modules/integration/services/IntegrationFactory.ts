@@ -2,7 +2,7 @@ import { IntegrationPlatforms } from "../../platform-integrations/domain/integra
 import { ZohoService } from "./zoho.service";
 import { BaseIntegrationService } from "./base.service";
 import { MondayService } from "./monday.service";
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class IntegrationFactory {

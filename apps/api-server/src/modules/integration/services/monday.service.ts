@@ -13,7 +13,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
 import { UserProject } from '../dto/user-project.dto';
-import { createNewTags, createNewToDos } from "cron-jobs/zoho/helpers";
+import { createNewTags } from "cron-jobs/zoho/helpers";
 import { ToDo } from "../../to-do/entities/to-do.entity";
 
 @Injectable()

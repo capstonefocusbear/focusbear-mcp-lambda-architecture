@@ -14,7 +14,6 @@ export class IntegrationFactory {
     ) {
     IntegrationFactory.register(IntegrationPlatforms.MONDAY, mondayService);
     IntegrationFactory.register(IntegrationPlatforms.ZOHO, zohoService);
-    console.log('platform registered');
   }
   
   static register(platform: IntegrationPlatforms, service: BaseIntegrationService) {

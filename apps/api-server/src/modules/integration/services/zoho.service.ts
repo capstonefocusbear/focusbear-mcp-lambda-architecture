@@ -26,7 +26,6 @@ import { ToDo } from '../../to-do/entities/to-do.entity';
 @Injectable()
 @UseGuards(IsAuth)
 export class ZohoService implements BaseIntegrationService {
-  private readonly baseUrl = 'https://projectsapi.zoho.com.location/restapi';
 
   constructor(
     private readonly userRepository: UserRepository,

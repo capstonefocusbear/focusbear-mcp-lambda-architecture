@@ -286,7 +286,7 @@ export class MondayService implements BaseIntegrationService {
     );
     if (!platformIntegrationRecord) return;
     const { data: mondayData } = platformIntegrationRecord;
-    const query = `query { boards (ids: ${parseInt(projectId)}) { groups { title id }}}`
+    const query = `query { boards (ids: ${parseInt(projectId, 10)}) { groups { title id }}}`
     const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
     const { data } = await this.httpService.post(this.base_url, {query}, {
       headers,
@@ -307,10 +307,10 @@ export class MondayService implements BaseIntegrationService {
       const { data: mondayData } = platformIntegrationRecord;
       const query = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`
       const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-      const response = await this.httpService.post(this.base_url, {query}, {
+      const { data } = await this.httpService.post(this.base_url, {query}, {
         headers,
       });
-      return response.data;
+      return data;
     } catch (error) {
       throw new Error('Failed to update task status after trying to get new access token.');
     }

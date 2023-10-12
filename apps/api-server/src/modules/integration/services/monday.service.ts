@@ -66,7 +66,6 @@ export class MondayService implements BaseIntegrationService {
       });
       return response.data;
     } catch (error) {
-      console.log(error);
       throw new Error('Failed to add monday task time entry after trying to get new access token.');
     }
   }  
@@ -128,8 +127,7 @@ export class MondayService implements BaseIntegrationService {
       const data = response.data.data.workspaces
       return data;
     } catch (error) {
-      console.log(error)
-      throw error;
+      throw new Error('Failed to update task status after trying to get new access token.');
     }
   }
 
@@ -277,8 +275,7 @@ export class MondayService implements BaseIntegrationService {
       });
       return tasksWithPortalIds;
     } catch (error) {
-      console.log(error);
-      throw error;
+      throw new Error('Failed to update task status after trying to get new access token.');
     }
   }
 
@@ -315,7 +312,6 @@ export class MondayService implements BaseIntegrationService {
       });
       return response.data;
     } catch (error) {
-      console.log(error);
       throw new Error('Failed to update task status after trying to get new access token.');
     }
   }

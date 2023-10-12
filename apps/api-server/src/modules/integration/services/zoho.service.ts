@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { BaseIntegrationService } from './base.service';
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';

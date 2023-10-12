@@ -32,3 +32,18 @@ export const savedZohoTaskDummy = new ToDo({
   external_task_id: zohoTaskDummy.id_string,
   external_task_metadata: { platform: 'zoho', task_data: zohoTaskDummy },
 });
+
+export const mondayTaskDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  key: 'test-key',
+  description: 'test-description',
+};
+
+export const savedMondayTaskDummy = new ToDo({
+  user_id: userDummy.id,
+  title: mondayTaskDummy.name,
+  details: mondayTaskDummy.description,
+  external_task_id: mondayTaskDummy.id,
+  external_task_metadata: { platform: 'monday', task_data: mondayTaskDummy },
+});

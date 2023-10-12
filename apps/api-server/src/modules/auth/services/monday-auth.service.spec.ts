@@ -1,0 +1,95 @@
+import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { getQueueToken } from '@nestjs/bull';
+import axios from 'axios';
+import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayServiceMock } from '../../../../test/mocks';
+import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { MondayAuthService } from './monday-auth.service';
+import { MondayService } from '../../integration/services/monday.service';
+import { QueueMock, userDummy } from '../../../../test/dummies';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+
+// Mock axios and set the type
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+describe('MondayService', () => {
+  let mondayAuthService: MondayAuthService;
+
+  beforeEach(async () => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        MondayAuthService,
+        UserRepository,
+        JwtService,
+        ConfigService,
+        MondayService,
+        PlatformIntegrationsService,
+        {
+          provide: SENTRY_TOKEN,
+          useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('time-logs'),
+          useValue: QueueMock,
+        },
+      ],
+    })
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
+      .overrideProvider(MondayService)
+      .useValue(MondayServiceMock)
+      .overrideProvider(PlatformIntegrationsService)
+      .useValue(PlatformIntegrationsServiceMock)
+      .compile();
+    mondayAuthService = moduleRef.get<MondayAuthService>(MondayAuthService);
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('positive: should be defined', () => {
+    expect(mondayAuthService).toBeDefined();
+  });
+
+  describe('authorize', () => {
+    it('positive: should create platform integration record saving users monday credentials', async () => {
+      const locationDummy = 'usa';
+      const accountServerDummy = 'https://auth.monday.com';
+      const authorizationResponseDummy = {
+        access_token: 'token',
+        expires_in: new Date().valueOf(),
+      };
+      const userInfoResponseDummy = { account_id: 12345 };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      mockedAxios.post.mockResolvedValueOnce({
+        data: authorizationResponseDummy,
+      }).mockResolvedValueOnce({ 
+        data: userInfoResponseDummy 
+      });
+
+      await mondayAuthService.authorize(userDummy.id, { location: locationDummy, 'accounts-server': accountServerDummy });
+
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+        userDummy.id,
+        IntegrationPlatforms.MONDAY,
+        {
+          monday_access_token: authorizationResponseDummy.access_token,
+          monday_user_id: userInfoResponseDummy.account_id,
+          monday_location: locationDummy,
+          monday_account_server: accountServerDummy,
+        },
+        userInfoResponseDummy.account_id,
+      );
+    });
+  });
+});

@@ -33,12 +33,11 @@ export class MondayAuthService {
     userId: string,
     data: {
         monday_access_token: string;
-        monday_refresh_token: string;
         monday_location: string;
         monday_account_server: string;
     },
   ): Promise<any> {
-    const { monday_access_token, monday_refresh_token, monday_location, monday_account_server } = data;
+    const { monday_access_token, monday_location, monday_account_server } = data;
     const existingUser = await this.getUser(userId);
     if (!existingUser) {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
@@ -51,10 +50,9 @@ export class MondayAuthService {
     };
     const query = "query { me { id } }";
     const response = await axios.post(profileUrl, JSON.stringify({query: query}), { headers });
-    const id = response.data.account_id;
+    const id = response?.data?.account_id;
     // Save user MONDAY info needed for requests to MONDAY Projects API
     const mondayData = {
-        monday_refresh_token: monday_refresh_token || '',
         monday_access_token: monday_access_token || '',
         monday_user_id: id || '',
         monday_location: monday_location || '',
@@ -78,7 +76,6 @@ export class MondayAuthService {
       const { data } = await axios.post(url, null, {params: params});
       await this.saveUserMondayData(userId, {
         monday_access_token: data.access_token,
-        monday_refresh_token: data.refresh_token,
         monday_location: location,
         monday_account_server: accountServer,
       });

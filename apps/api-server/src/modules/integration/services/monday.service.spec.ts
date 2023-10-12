@@ -2,20 +2,20 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { savedZohoTaskDummy, zohoTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { savedMondayTaskDummy, mondayTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
-import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
+import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
   SyncedProjectsRepositoryMock,
   ToDoRepositoryMock,
   UserRepositoryMock,
 } from '../../../../test/mocks/repositories.mock';
-import { ZohoService } from './zoho.service';
+import { MondayService } from './monday.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
-import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
+import { MondayAuthService } from '../../auth/services/monday-auth.service';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
@@ -26,17 +26,17 @@ import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ZohoService', () => {
-  let zohoService: ZohoService;
+describe('mondayService', () => {
+  let mondayService: MondayService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
-        ZohoService,
+        MondayService,
         UserRepository,
         FocusModeTagRepository,
         ToDoRepository,
-        ZohoAuthService,
+        MondayAuthService,
         PlatformIntegrationsService,
         SyncedProjectsRepository,
         {
@@ -51,14 +51,14 @@ describe('ZohoService', () => {
       .useValue(FocusModeTagRepositoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
-      .overrideProvider(ZohoAuthService)
-      .useValue(ZohoAuthServiceMock)
+      .overrideProvider(MondayAuthService)
+      .useValue(MondayAuthServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .overrideProvider(SyncedProjectsRepository)
       .useValue(SyncedProjectsRepositoryMock)
       .compile();
-    zohoService = moduleRef.get<ZohoService>(ZohoService);
+    mondayService = moduleRef.get<MondayService>(MondayService);
   });
 
   afterEach(() => {
@@ -66,37 +66,37 @@ describe('ZohoService', () => {
   });
 
   it('positive: should be defined', () => {
-    expect(zohoService).toBeDefined();
+    expect(mondayService).toBeDefined();
   });
 
   describe('getUser', () => {
     it('positive: user should be fetched from DB', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedMondayTaskDummy]);
 
-      await zohoService.getUser(userDummy.id);
+      await mondayService.getUser(userDummy.id);
 
       expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
     });
   });
 
-  describe('getZohoTasksToSync', () => {
+  describe('getMondayTasksToSync', () => {
     it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedMondayTaskDummy]);
 
-      const result = await zohoService.getZohoTasksToSync([zohoTaskDummy], userDummy.id);
+      const result = await mondayService.getMondayTasksToSync([mondayTaskDummy], userDummy.id);
 
       expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedZohoTasks.length).toBe(1);
+      expect(result.syncedMondayTasks.length).toBe(1);
     });
   });
 
   describe('getPortals', () => {
     it('negative: if no integration record is found error should be thrown', async () => {
       let exception = null;
-      const errorMessage = `User with ID: ${userDummy.id} has not authenticated with Zoho!`;
+      const errorMessage = `User with ID: ${userDummy.id} has not authenticated with Monday!`;
 
       try {
-        await zohoService.getPortals(userDummy.id);
+        await mondayService.getPortals(userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -109,24 +109,24 @@ describe('ZohoService', () => {
       it('positive: if no record exists for project, new synced project record should be saved', async () => {
         const portalId = 'portal-dummy-id';
         const projectId = 'project-dummy-id';
-        const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
+        const incomingStatusDummy = { title: 'In Progress', id: 'test-id' };
         const syncedProjectDBResponseDummy = new SyncedProject({
           user_id: userDummy.id,
           external_project_id: projectId,
           external_portal_id: portalId,
           available_statuses: [
-            { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
+            { label: incomingStatusDummy.title, status_id: incomingStatusDummy.id, should_complete_task: false },
           ],
-          platform: IntegrationPlatforms.ZOHO,
+          platform: IntegrationPlatforms.MONDAY,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
-          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
+          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.MONDAY, data: {} }),
         );
-        mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [incomingStatusDummy] } });
+        mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards: [ { groups: [incomingStatusDummy] } ] } } });
         // mock no existing projects
         SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
-        await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
+        await mondayService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
 
         expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
           new SyncedProject({
@@ -135,33 +135,33 @@ describe('ZohoService', () => {
         );
       });
 
-      it('positive: if new statuses are returned from Zoho, they should be saved to existing synced project record', async () => {
+      it('positive: if new statuses are returned from Monday, they should be saved to existing synced project record', async () => {
         const portalId = 'portal-dummy-id';
         const projectId = 'project-dummy-id';
-        const existingStatusDummy = { name: 'Done', id: 'test-id' };
-        const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
+        const existingStatusDummy = { title: 'Done', id: 'test-id' };
+        const incomingStatusDummy = { title: 'In Progress', id: 'test-id' };
         const syncedProjectDBResponseDummy = new SyncedProject({
           user_id: userDummy.id,
           external_project_id: projectId,
           available_statuses: [
-            { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
+            { label: existingStatusDummy.title, status_id: existingStatusDummy.id, should_complete_task: false },
           ],
-          platform: IntegrationPlatforms.ZOHO,
+          platform: IntegrationPlatforms.MONDAY,
         });
         PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
-          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
+          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.MONDAY, data: {} }),
         );
-        mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [existingStatusDummy, incomingStatusDummy] } });
+        mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards: [ { groups: [existingStatusDummy, incomingStatusDummy] } ] } } });
         SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([syncedProjectDBResponseDummy]);
 
-        await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
+        await mondayService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
 
         expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
           new SyncedProject({
             ...syncedProjectDBResponseDummy,
             available_statuses: [
-              { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
-              { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
+              { label: existingStatusDummy.title, status_id: existingStatusDummy.id, should_complete_task: false },
+              { label: incomingStatusDummy.title, status_id: incomingStatusDummy.id, should_complete_task: false },
             ],
           }),
         );

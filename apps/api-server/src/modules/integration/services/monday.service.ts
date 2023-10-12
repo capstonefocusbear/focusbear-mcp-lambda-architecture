@@ -13,8 +13,9 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
 import { UserProject } from '../dto/user-project.dto';
-import { createNewTags } from "cron-jobs/zoho/helpers";
+import { createNewTags } from '../../../../../../cron-jobs/zoho/helpers';
 import { ToDo } from "../../to-do/entities/to-do.entity";
+import { IsNull, Not } from "typeorm";
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -127,7 +128,7 @@ export class MondayService implements BaseIntegrationService {
       const data = response.data.data.workspaces
       return data;
     } catch (error) {
-      throw new Error('Failed to update task status after trying to get new access token.');
+      throw new UnauthorizedException(`User with ID: ${userId} has not authenticated with Monday!`);
     }
   }
 
@@ -288,10 +289,10 @@ export class MondayService implements BaseIntegrationService {
     const { data: mondayData } = platformIntegrationRecord;
     const query = `query { boards (ids: ${parseInt(projectId, 10)}) { groups { title id }}}`
     const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-    const { data } = await this.httpService.post(this.base_url, {query}, {
+    const response = await this.httpService.post(this.base_url, {query}, {
       headers,
     });
-    const availableStatuses = data?.data.boards[0]?.groups.map((details) => {
+    const availableStatuses = response.data?.data.boards[0]?.groups.map((details) => {
       return { label: details.title, status_id: details.id, should_complete_task: false };
     });
     return availableStatuses;
@@ -314,5 +315,29 @@ export class MondayService implements BaseIntegrationService {
     } catch (error) {
       throw new Error('Failed to update task status after trying to get new access token.');
     }
+  }
+
+  async getMondayTasksToSync(mondayTasks: any[], userId: string) {
+    const syncedTasks = await this.toDoRepository.orm.find({
+      where: { user_id: userId, external_task_id: Not(IsNull()) },
+      select: [
+        'id',
+        'external_task_id',
+        'external_task_metadata',
+        'status',
+        'title',
+        'eisenhower_quadrant',
+        'status',
+        'due_date',
+        'details',
+        'focus_type',
+        'updated_at',
+        'created_at',
+      ],
+    });
+    const syncedMondayTasks = syncedTasks.filter((task) => task.external_task_metadata.platform === 'monday');
+    const syncedMondayTasksIds = syncedMondayTasks.map((task) => task.external_task_id);
+    const tasksToSync = mondayTasks.filter((task) => !syncedMondayTasksIds.includes(task.id));
+    return { tasksToSync, syncedMondayTasks };
   }
 }

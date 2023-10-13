@@ -443,12 +443,13 @@ describe('UserDailyStatsService', () => {
       const finishTime = new Date();
       const startOfDate = DateTime.fromJSDate(finishTime).setZone('UTC').startOf('day').toJSDate();
 
-      await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC');
+      await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC', 100);
 
       expect(DailyStatsRepositoryMock.create).toBeCalledWith({
         user_id: userDummy.id,
         date_completed: startOfDate,
         focus_modes_completed: 1,
+        seconds_spent_in_focus_sessions: 100,
       });
     });
 
@@ -459,11 +460,12 @@ describe('UserDailyStatsService', () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
       const finishTime = new Date();
 
-      await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC');
+      await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC', 1200);
 
       expect(DailyStatsRepositoryMock.orm.save).toBeCalledWith({
         ...dailyStatDummy,
         focus_modes_completed: dailyStatDummy.focus_modes_completed + 1,
+        seconds_spent_in_focus_sessions: 1200,
       });
     });
   });

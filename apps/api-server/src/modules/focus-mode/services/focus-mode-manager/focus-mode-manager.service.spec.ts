@@ -422,5 +422,30 @@ describe('FocusModeManagerService', () => {
         CompletedFocusBlockDummy.id,
       );
     });
+
+    it('positive: after completing focus block, user daily stat focus block count should be incremented and duration spent in focus sessions should be updated', async () => {
+      const current_focus_mode_id = FocusModeDummy.id;
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+      const finishTime = new Date('2023-02-07T05:10:00.000Z');
+      const finishedFocusModeData: FinishFocusModeDto = {
+        achievements: CompletedFocusBlockDummy.achievements,
+        finish_time: finishTime,
+      };
+      const completedFocusBlock = { ...CompletedFocusBlockDummy, start_time: new Date('2023-02-07T05:00:00.000Z') };
+      const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completedFocusBlock);
+
+      await focusModeManagerService.finishCurrentFocusMode(finishedFocusModeData, { focus_mode_id }, user_id);
+
+      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toBeCalledWith(
+        user_id,
+        finishTime,
+        userDummy.timezone,
+        // start and end time are 10 minutes apart (600 seconds)
+        600,
+      );
+    });
   });
 });

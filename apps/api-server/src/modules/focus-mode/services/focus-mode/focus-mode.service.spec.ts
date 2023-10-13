@@ -265,4 +265,37 @@ describe('FocusModeService', () => {
       expect(exception).not.toBeDefined();
     });
   });
+
+  describe('getUserFocusTags', () => {
+    it('positive: should get user focus mode tags', async () => {
+      await focusModeService.getUserFocusTags(userDummy.id);
+
+      expect(FocusModeTagRepositoryMock.orm.find).toBeCalledWith({
+        where: { user_id: userDummy.id },
+        select: ['id', 'text'],
+      });
+    });
+  });
+
+  describe('upsertFocusModeTag', () => {
+    it('positive: should get user focus mode tags', async () => {
+      const focusTagDummy = { id: randomUUID(), text: 'Tag Name' };
+      await focusModeService.upsertFocusModeTag(focusTagDummy, userDummy.id);
+
+      expect(FocusModeTagRepositoryMock.upsert).toBeCalledWith(
+        new FocusModeTag({ ...focusTagDummy, user_id: userDummy.id }),
+        ['id'],
+      );
+    });
+  });
+
+  describe('deleteFocusModeTag', () => {
+    it('positive: should get user focus mode tags', async () => {
+      const dummyTagId = randomUUID();
+
+      await focusModeService.deleteFocusModeTag(dummyTagId, userDummy.id);
+
+      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({ id: dummyTagId, user_id: userDummy.id });
+    });
+  });
 });

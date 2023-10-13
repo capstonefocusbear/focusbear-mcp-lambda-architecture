@@ -85,6 +85,48 @@ export class UserDailyStatsService {
     }
   }
 
+  async updateDistractionBlockCount(userId: string, timezone: string) {
+    const startOfDate = DateTime.fromJSDate(new Date()).setZone(timezone).startOf('day').toJSDate();
+    const dailyStats = await this.dailyStatsRepository.orm.findOne({
+      where: { user_id: userId, date_completed: Equal(startOfDate) },
+    });
+    if (dailyStats) {
+      await this.dailyStatsRepository.orm.save({
+        ...dailyStats,
+        number_of_distractions_blocked: dailyStats.number_of_distractions_blocked + 1,
+      });
+    } else {
+      const newDailyStats = new DailyStats({
+        user_id: userId,
+        date_completed: startOfDate,
+        number_of_distractions_blocked: 1,
+        focus_modes_completed: 0,
+      });
+      await this.dailyStatsRepository.create(newDailyStats);
+    }
+  }
+
+  async updateTimeSpentInBreaks(userId: string, date: Date, timezone: string, durationSeconds: number) {
+    const startOfDate = DateTime.fromJSDate(date).setZone(timezone).startOf('day').toJSDate();
+    const dailyStats = await this.dailyStatsRepository.orm.findOne({
+      where: { user_id: userId, date_completed: Equal(startOfDate) },
+    });
+    if (dailyStats) {
+      await this.dailyStatsRepository.orm.save({
+        ...dailyStats,
+        seconds_spent_doing_breaks: dailyStats.seconds_spent_doing_breaks + durationSeconds,
+      });
+    } else {
+      const newDailyStats = new DailyStats({
+        user_id: userId,
+        date_completed: startOfDate,
+        seconds_spent_doing_breaks: durationSeconds,
+        focus_modes_completed: 0,
+      });
+      await this.dailyStatsRepository.create(newDailyStats);
+    }
+  }
+
   async calculateRoutineCompletionPercentage(user_id: string, completed_activity_log_id: string): Promise<number> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -225,7 +267,12 @@ export class UserDailyStatsService {
     }
   }
 
-  async updateDailyStatsFocusModesCompleted(user_id: string, finishTime: Date, timeZone: string) {
+  async updateDailyStatsFocusModesCompleted(
+    user_id: string,
+    finishTime: Date,
+    timeZone: string,
+    durationSeconds: number,
+  ) {
     try {
       const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -246,9 +293,15 @@ export class UserDailyStatsService {
         await this.dailyStatsRepository.orm.save({
           ...dailyStats,
           focus_modes_completed: dailyStats.focus_modes_completed + 1,
+          seconds_spent_in_focus_sessions: dailyStats?.seconds_spent_in_focus_sessions + durationSeconds,
         });
       } else {
-        const newDailyStats = new DailyStats({ user_id, date_completed: startOfDate, focus_modes_completed: 1 });
+        const newDailyStats = new DailyStats({
+          user_id,
+          date_completed: startOfDate,
+          focus_modes_completed: 1,
+          seconds_spent_in_focus_sessions: durationSeconds,
+        });
         await this.dailyStatsRepository.create(newDailyStats);
       }
     } catch (error) {
@@ -352,7 +405,7 @@ export class UserDailyStatsService {
   }
 
   findDayStat(stats: DailyStats[], date: Date) {
-    return stats.find((stat) => stat.date_completed.toISOString().slice(0, 10) === date.toISOString().slice(0, 10));
+    return stats.find((stat) => stat.date_completed.toISOString().startsWith(date.toISOString().slice(0, 10)));
   }
 
   getWeekStartAndEndDates(zone: string) {

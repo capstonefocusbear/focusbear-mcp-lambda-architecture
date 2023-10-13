@@ -11,6 +11,7 @@ import {
   BrevoServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
+  UserDailyStatsServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -20,6 +21,7 @@ import { EventsRepository } from '../repositories/events.repository';
 import { ImpactEvent } from '../entities/impact-event.entity';
 import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
+import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -35,6 +37,7 @@ describe('EventService', () => {
         UserRepository,
         Auth0ManagementService,
         EventsRepository,
+        UserDailyStatsService,
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
@@ -53,6 +56,8 @@ describe('EventService', () => {
       .useValue(Auth0ManagementServiceMock)
       .overrideProvider(EventsRepository)
       .useValue(EventsRepositoryMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);
@@ -148,6 +153,18 @@ describe('EventService', () => {
           impact_category: ImpactCategory.MINUTES_SPENT_POSTPONING_APP_BLOCKS,
         }),
       );
+    });
+
+    it('positive: if event is distraction block event, daily stats distraction block count should be incremented', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      const dummyEvent: TrackEventDto = {
+        event_type: EventTypes.BLOCK_DISTRACTING_URL,
+      };
+
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+
+      expect(UserDailyStatsServiceMock.updateDistractionBlockCount).toBeCalledWith(userDummy.id, userDummy.timezone);
     });
   });
 

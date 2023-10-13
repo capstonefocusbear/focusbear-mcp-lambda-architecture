@@ -177,7 +177,12 @@ export class FocusModeManagerService {
       delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
-      await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(user_id, finish_time, user.timezone);
+      await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
+        user_id,
+        finish_time,
+        user.timezone,
+        durationToUse,
+      );
       await this.userRepository.update(user.id, {
         last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
         updated_at: new Date().toISOString(),

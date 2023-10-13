@@ -122,7 +122,14 @@ export class CompletedActivityService {
       let completingSequenceLog = null;
 
       if (activity.type === ActivityType.break) {
-        return await this.handleBreakActivity(completedActivity, activity, choice, user_id, startTimeToUse);
+        return await this.handleBreakActivity(
+          completedActivity,
+          activity,
+          choice,
+          user_id,
+          startTimeToUse,
+          user.timezone,
+        );
       }
 
       if (!completedActivity.should_not_update_current_activity) {
@@ -245,8 +252,9 @@ export class CompletedActivityService {
     choice: any,
     user_id: string,
     startTimeToUse: Date,
+    timeZone: string,
   ): Promise<CompletedActivityResponse> {
-    const { device_id, log_quantity_answers } = completedActivity;
+    const { device_id, log_quantity_answers, duration_logged } = completedActivity;
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
@@ -259,6 +267,7 @@ export class CompletedActivityService {
     if (log_quantity_answers?.length > 0) {
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
+    await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
     return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
   }
 
@@ -445,6 +454,14 @@ export class CompletedActivityService {
 
       if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
         await this.updateDailyStats(user, activity, createdItem, start_time);
+      }
+      if (activity.type === ActivityType.break) {
+        await this.userDailyStatsService.updateTimeSpentInBreaks(
+          user.id,
+          start_time,
+          user.timezone,
+          completedActivity.duration_logged,
+        );
       }
 
       return true;
@@ -1292,7 +1309,7 @@ export class CompletedActivityService {
       message: 'Counting summary AVG',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => {
       const average =
         items.reduce((acc, { quantity_logged = 0, answers }) => {
@@ -1316,7 +1333,7 @@ export class CompletedActivityService {
       message: 'Counting summary SUM',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => {
       const sum = items.reduce((acc, { quantity_logged = 0, answers }) => {
         // use value of log quantity answer if any
@@ -1339,7 +1356,7 @@ export class CompletedActivityService {
       message: 'Getting summary duration',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => ({
       name,
       duration: items.reduce((acc, { duration_logged = 0 }) => acc + Number(duration_logged), 0),

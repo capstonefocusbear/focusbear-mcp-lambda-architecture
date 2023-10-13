@@ -42,16 +42,9 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import {
-  INTERNAL_TEST,
-  ONE_MINUTE,
-  TRIAL,
-  TRIAL_COST_CENTS,
-  USERNAME_VALIDATION_TIMEOUT,
-} from '../../../../shared/utils/constants';
+import { INTERNAL_TEST, ONE_MINUTE, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
-import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 
@@ -147,47 +140,39 @@ export class UserService {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
+        console.log('HAS REGISTERED USER');
         const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
-        const isUserRegisteredInProfitWell = await this.doesUserExistInProfitWell(stripeId);
-        if (!isTestUser && !isUserRegisteredInProfitWell) {
-          await this.handleRegisterUserInProfitWell(registeredUser, stripeId);
+        if (!isTestUser) {
+          await this.profitwellQueue.add(
+            'register-profitwell-user',
+            {
+              user_id: registeredUser.id,
+              stripe_id: stripeId,
+            },
+            {
+              delay: ONE_MINUTE,
+            },
+          );
         }
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
       const newlySavedUser = await this.userRepository.create(newUser);
-      await this.handleRegisterUserInProfitWell(newlySavedUser, stripeId);
+      await this.profitwellQueue.add(
+        'register-profitwell-user',
+        {
+          user_id: newlySavedUser.id,
+          stripe_id: stripeId,
+        },
+        {
+          delay: ONE_MINUTE,
+        },
+      );
       return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
-  }
-
-  async handleRegisterUserInProfitWell(user: User | null, stripeId: string) {
-    const { revenue_cat_data, revenue_cat_status } = user;
-    const revenueCatStatus = revenue_cat_status ?? TRIAL;
-    let renewalAmountCents = TRIAL_COST_CENTS;
-    const hasPersonalSubscription = revenue_cat_data?.activeEntitlements?.includes(Entitlement.personal);
-    if (hasPersonalSubscription) {
-      renewalAmountCents = await this.stripeService.getCustomerSubscriptionRate(stripeId);
-    }
-    const effectiveDate = revenue_cat_data?.hasActiveSubscription
-      ? Math.round(new Date(revenue_cat_data?.expirations[revenueCatStatus]?.purchase_date).getTime() / 1000)
-      : Math.round(new Date().getTime() / 1000);
-    await this.profitwellQueue.add(
-      'register-profitwell-user',
-      {
-        user_id: user.id,
-        stripe_id: stripeId,
-        plan_id: revenueCatStatus,
-        renewalAmountCents,
-        effectiveDate,
-      },
-      {
-        delay: ONE_MINUTE,
-      },
-    );
   }
 
   private async handleInitialRegistration(id: string): Promise<void> {

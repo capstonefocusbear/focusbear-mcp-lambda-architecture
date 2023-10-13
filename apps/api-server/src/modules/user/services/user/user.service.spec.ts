@@ -9,7 +9,6 @@ import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
-import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -53,13 +52,9 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { ONE_MINUTE, TRIAL_COST_CENTS } from '../../../../shared/utils/constants';
+import { ONE_MINUTE } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
-
-// Mock axios and set the type
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserService', () => {
   let userService: UserService;
@@ -618,7 +613,7 @@ describe('UserService', () => {
 
   describe('updateOrCreateUser', () => {
     const dummyStripeId = 'some_id';
-    it('positive: should add item to ProfitWell queue for new user', async () => {
+    it('positive: should add item to ProfitWell queue', async () => {
       UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
       StripeServiceMock.registerNewCustomer.mockResolvedValueOnce({ id: dummyStripeId });
 
@@ -629,50 +624,11 @@ describe('UserService', () => {
         {
           user_id: userDummy.id,
           stripe_id: dummyStripeId,
-          effectiveDate: expect.toBeNumber(),
-          plan_id: 'trial',
-          renewalAmountCents: TRIAL_COST_CENTS,
         },
         {
           delay: ONE_MINUTE,
         },
       );
-    });
-
-    it('positive: should add item to ProfitWell queue for existing user without profitwell_id saved', async () => {
-      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
-
-      await userService.updateOrCreateUser(
-        { auth0_id: 'some_id', email: 'someone@email.com' },
-        { ...userDummy, revenue_cat_data: null, revenue_cat_status: null },
-      );
-
-      expect(QueueMock.add).toBeCalledWith(
-        'register-profitwell-user',
-        {
-          user_id: userDummy.id,
-          stripe_id: dummyStripeId,
-          effectiveDate: expect.toBeNumber(),
-          plan_id: 'trial',
-          renewalAmountCents: TRIAL_COST_CENTS,
-        },
-        {
-          delay: ONE_MINUTE,
-        },
-      );
-    });
-
-    it('positive: should NOT add item to ProfitWell queue for existing user if they are already registered', async () => {
-      UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
-      StripeServiceMock.getStripeCustomerId.mockResolvedValueOnce(dummyStripeId);
-      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: dummyStripeId }] });
-
-      await userService.updateOrCreateUser(
-        { auth0_id: 'some_id', email: 'someone@email.com' },
-        { ...userDummy, profitwell_id: 'some_id' },
-      );
-
-      expect(QueueMock.add).not.toBeCalled();
     });
   });
 

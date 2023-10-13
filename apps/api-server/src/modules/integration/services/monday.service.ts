@@ -69,7 +69,7 @@ export class MondayService implements BaseIntegrationService {
     } catch (error) {
       throw new Error('Failed to add monday task time entry after trying to get new access token.');
     }
-  }  
+  }
   async getTasks(userId: string, projectId: string): Promise<any> {
     try {
       const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
@@ -308,10 +308,10 @@ export class MondayService implements BaseIntegrationService {
       const { data: mondayData } = platformIntegrationRecord;
       const query = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`
       const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
-      const { data } = await this.httpService.post(this.base_url, {query}, {
+      const response = await this.httpService.post(this.base_url, {query}, {
         headers,
       });
-      return data;
+      return response.data.data;
     } catch (error) {
       throw new Error('Failed to update task status after trying to get new access token.');
     }

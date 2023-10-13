@@ -90,6 +90,133 @@ describe('mondayService', () => {
     });
   });
 
+  describe('updateTaskStatus', () => {
+    it('positive: should call httpService.post with the correct arguments', async () => {
+      const userId = 'user123';
+      const taskId = 'task123';
+      const statusId = 'status123';
+      const monday_access_token = 'token123';
+  
+      const platformIntegrationRecord = {
+        data: {
+            monday_access_token,
+        },
+      };
+  
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(
+        platformIntegrationRecord,
+      );
+  
+      const expectedQuery = `mutation  { move_item_to_group ( item_id: ${taskId}, group_id: ${statusId}) { id }  }`;
+      const expectedHeaders = { Authorization: `Bearer ${monday_access_token}` };
+      const expectedUrl = 'https://api.monday.com/v2';
+      
+      const mockResponse = {
+        data: {
+          data: { id: 'task123' },
+        },
+      };
+  
+      mockedAxios.post.mockResolvedValue(mockResponse);
+  
+      const result = await mondayService.updateTaskStatus(userId, taskId, statusId);
+  
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expectedUrl,
+        { query: expectedQuery },
+        { headers: expectedHeaders },
+      );
+      expect(result).toEqual({ id: 'task123' });
+    });
+  
+    it('negative: should throw an error if platformIntegrationRecord is not found', async () => {
+      const userId = 'user123';
+      const taskId = 'task123';
+      const statusId = 'status123';
+  
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
+  
+      const result = await mondayService.updateTaskStatus(userId, taskId, statusId);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getTaskOwnedByUser', () => {
+    it('positive: should call httpService.post with the correct arguments', async () => {
+      const userId = 'user123';
+      const projectId = 'project123';
+      const monday_access_token = 'token123';
+
+      const platformIntegrationRecord = {
+        data: {
+          monday_access_token,
+        },
+      };
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(
+        platformIntegrationRecord,
+      );
+      const expectedUrl = 'https://api.monday.com/v2';
+      const expectedQuery = `query {boards (ids: ${projectId}) {items {id name state}}}`;
+      const expectedHeaders = { Authorization: `Bearer ${monday_access_token}` };
+
+      const mockResponse = {
+        data: {
+          data: {
+            boards: [
+              {
+                items: [
+                  { id: 'task1', name: 'Task 1', state: 'done' },
+                  { id: 'task2', name: 'Task 2', state: 'in progress' },
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      mockedAxios.post.mockResolvedValue(mockResponse);
+      const expectedTasks = [
+        { id: 'task1', name: 'Task 1', state: 'done', project_id: projectId },
+        { id: 'task2', name: 'Task 2', state: 'in progress', project_id: projectId },
+      ];
+
+      const tasks = await mondayService.getTasksOwnedByUser(userId, projectId);
+      expect (PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expectedUrl,
+        { query: expectedQuery },
+        { headers: expectedHeaders },
+      );
+
+      expect(tasks).toEqual(expectedTasks);
+
+    });
+
+    it('negative: should return an empty array if platformIntegrationRecord is not found', async () => {
+      const userId = 'user123';
+      const projectId = 'project123';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
+
+      const tasks = await mondayService.getTasksOwnedByUser(userId, projectId);
+
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+      expect(tasks).toBeUndefined();
+    })
+  })
+
   describe('getPortals', () => {
     it('negative: if no integration record is found error should be thrown', async () => {
       let exception = null;
@@ -165,6 +292,49 @@ describe('mondayService', () => {
             ],
           }),
         );
+      });
+    });
+  });
+  describe('getTasks: when platform integration record is not found', () => {
+    it('should return undefined', async () => {
+      const userId = 'user123';
+      const projectId = 'project123';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+
+      const result = await mondayService.getTasks(userId, projectId);
+
+      expect(result).toBeUndefined();
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getTasks: when platform integration record is found', () => {
+    it('should return tasks data', async () => {
+      const userId = 'user123';
+      const projectId = 'project123';
+      const tasksData = [{ id: 'task1', name: 'Task 1' }, { id: 'task2', name: 'Task 2' }];
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+        data: {
+          monday_access_token: 'token123',
+        },
+      });
+      mockedAxios.post.mockResolvedValueOnce({ data: tasksData });
+
+      const result = await mondayService.getTasks(userId, projectId);
+
+      expect(result).toEqual(tasksData);
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.MONDAY,
+        userId,
+      );
+      expect(mockedAxios.post).toHaveBeenCalledWith('https://api.monday.com/v2', { query: expect.any(String) }, {
+        headers: { Authorization: 'Bearer token123' },
       });
     });
   });

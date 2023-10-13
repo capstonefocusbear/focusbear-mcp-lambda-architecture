@@ -93,4 +93,53 @@ describe('ZohoService', () => {
       );
     });
   });
+
+  describe('refresh_token: when platform integration record is not found', () => {
+    it('negative: should return undefined', async () => {
+      const userId = 'user123';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+
+      const result = await zohoAuthService.refreshToken(userId);
+
+      expect(result).toBeUndefined();
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refresh_token: when platform integration record is found', () => {
+    it('positive: should refresh token and update integration data', async () => {
+      const userId = 'user123';
+      const authorizationResponseDummy = {
+        zoho_account_server: 'https://accounts.zoho.com',
+        zoho_refresh_token: 'refresh-token-123',
+        zohoClientId: '12312',
+        zohoClientSecret: 'qw123',
+      };
+      const newAccessToken = 'new-access-token';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+        data: authorizationResponseDummy,
+      });
+      mockedAxios.post.mockResolvedValueOnce({ data: { access_token: newAccessToken } });
+
+      const result = await zohoAuthService.refreshToken(userId);
+
+      expect(result).toEqual({ access_token: newAccessToken });
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userId,
+      );
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
+        userId,
+        IntegrationPlatforms.ZOHO,
+        { zoho_access_token: newAccessToken },
+      );
+    });
+  });
 });

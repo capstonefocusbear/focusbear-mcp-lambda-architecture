@@ -16,6 +16,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
+import FormData from 'form-data';
 
 const projectAdapter = (project) => ({
   id: project.id_string,

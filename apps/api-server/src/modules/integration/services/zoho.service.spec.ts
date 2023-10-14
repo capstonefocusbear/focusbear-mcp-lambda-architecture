@@ -21,6 +21,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import FormData from 'form-data';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -384,7 +385,7 @@ describe('ZohoService', () => {
   });
 
   describe('getProject', () => {
-    it('should return undefined if the platform integration record is not found', async () => {
+    it('negative: should return undefined if the platform integration record is not found', async () => {
       const portalId = 'portalId';
       const projectId = 'projectId';
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
@@ -394,8 +395,7 @@ describe('ZohoService', () => {
       expect(result).toBeUndefined();
     });
   
-    it('should return the project data correctly', async () => {
-      const userId = 'userId';
+    it('positive: should return the project data correctly', async () => {
       const portalId = 'portalId';
       const projectId = 'projectId';
       const platformIntegrationRecord = { data: { zoho_location: 'us', zoho_access_token: 'access_token' } };
@@ -404,7 +404,7 @@ describe('ZohoService', () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
       mockedAxios.get.mockResolvedValueOnce({ data: projectData });
   
-      const result = await zohoService.getProject(userId, portalId, projectId);
+      const result = await zohoService.getProject(userDummy.id, portalId, projectId);
   
       expect(result).toEqual(expectedProject);
     });

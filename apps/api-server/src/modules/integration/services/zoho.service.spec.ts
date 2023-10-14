@@ -21,7 +21,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import * as FormData from 'form-data';
+import { default as FormData } from "form-data";
 
 // Mock axios and set the type
 jest.mock('axios');

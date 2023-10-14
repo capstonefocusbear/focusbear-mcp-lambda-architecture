@@ -170,7 +170,6 @@ describe('ZohoService', () => {
   });
   describe('addTimeEntry', () => {
     it('positive: should call httpService.post with the correct arguments', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
       const projectId = 'project123';
       const taskId = 'task123';
@@ -206,11 +205,11 @@ describe('ZohoService', () => {
   
       mockedAxios.post.mockResolvedValue(mockResponse);
   
-      const result = await zohoService.addTimeEntry(userId, portalId, projectId, taskId, timeEntry);
+      const result = await zohoService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
   
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(expectedUrl, expectedFormData, {
         headers: {
@@ -222,7 +221,6 @@ describe('ZohoService', () => {
     });
   
     it('negative: should throw an error if all retries fail', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
       const projectId = 'project123';
       const taskId = 'task123';
@@ -235,7 +233,7 @@ describe('ZohoService', () => {
   
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
   
-      const result = await zohoService.addTimeEntry(userId, portalId, projectId, taskId, timeEntry);
+      const result = await zohoService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
 
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalled();
       expect(result).toBeUndefined();
@@ -243,25 +241,23 @@ describe('ZohoService', () => {
   });
   describe('getTasks: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
       const portalId = 'portal123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
-      const result = await zohoService.getTasks(userId, projectId, portalId);
+      const result = await zohoService.getTasks(userDummy.id, projectId, portalId);
 
       expect(result).toBeUndefined();
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
   });
   describe('getTasks: when platform integration record is found', () => {
     it('positive: should return tasks data', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
       const portalId = 'portal123';
       const tasksData = [{ id: 'task1' }, { id: 'task2' }];
@@ -274,12 +270,12 @@ describe('ZohoService', () => {
       });
       mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
 
-      const result = await zohoService.getTasks(userId, projectId, portalId);
+      const result = await zohoService.getTasks(userDummy.id, projectId, portalId);
 
       expect(result).toEqual(tasksData);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.get).toHaveBeenCalledWith(
         `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/`,
@@ -292,17 +288,16 @@ describe('ZohoService', () => {
 
   describe('getProjects: when platform integration record is not found', () => {
     it('should return undefined', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
-      const result = await zohoService.getProjects(userId, portalId);
+      const result = await zohoService.getProjects(userDummy.id, portalId);
 
       expect(result).toBeUndefined();
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
@@ -310,7 +305,6 @@ describe('ZohoService', () => {
 
   describe('getProjects: when platform integration record is found', () => {
     it('should return projects data', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
       const projectsData = [{ id: 'project1', name: 'Project 1' }, { id: 'project2', name: 'Project 2' }];
 
@@ -322,12 +316,12 @@ describe('ZohoService', () => {
       });
       mockedAxios.get.mockResolvedValueOnce({ data: { projects: projectsData } });
 
-      const result = await zohoService.getProjects(userId, portalId);
+      const result = await zohoService.getProjects(userDummy.id, portalId);
 
       expect(result).toEqual(projectsData);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.get).toHaveBeenCalledWith(`https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/`, {
         headers: { Authorization: 'Bearer token123' },
@@ -337,7 +331,6 @@ describe('ZohoService', () => {
 
   describe('updateTaskStatus: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
       const projectId = 'project123';
       const taskId = 'task123';
@@ -345,12 +338,12 @@ describe('ZohoService', () => {
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
-      const result = await zohoService.updateTaskStatus(userId, portalId, projectId, taskId, statusId);
+      const result = await zohoService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
 
       expect(result).toBeUndefined();
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).not.toHaveBeenCalled();
     });
@@ -358,7 +351,6 @@ describe('ZohoService', () => {
 
   describe('updateTaskStatus: when platform integration record is found', () => {
     it('positive: should update task status and return response data', async () => {
-      const userId = 'user123';
       const portalId = 'portal123';
       const projectId = 'project123';
       const taskId = 'task123';
@@ -374,12 +366,12 @@ describe('ZohoService', () => {
       });
       mockedAxios.post.mockResolvedValueOnce({ data: responseData });
 
-      const result = await zohoService.updateTaskStatus(userId, portalId, projectId, taskId, statusId);
+      const result = await zohoService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
 
       expect(result).toEqual(responseData);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
         `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`,
@@ -390,4 +382,32 @@ describe('ZohoService', () => {
       );
     });
   });
+
+  describe('getProject', () => {
+    it('should return undefined if the platform integration record is not found', async () => {
+      const portalId = 'portalId';
+      const projectId = 'projectId';
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+  
+      const result = await zohoService.getProject(userDummy.id, portalId, projectId);
+  
+      expect(result).toBeUndefined();
+    });
+  
+    it('should return the project data correctly', async () => {
+      const userId = 'userId';
+      const portalId = 'portalId';
+      const projectId = 'projectId';
+      const platformIntegrationRecord = { data: { zoho_location: 'us', zoho_access_token: 'access_token' } };
+      const projectData = { projects: [{ id: projectId, name: 'Project 1' }] };
+      const expectedProject = { id: projectId, name: 'Project 1' };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
+      mockedAxios.get.mockResolvedValueOnce({ data: projectData });
+  
+      const result = await zohoService.getProject(userId, portalId, projectId);
+  
+      expect(result).toEqual(expectedProject);
+    });
+  });
+  
 });

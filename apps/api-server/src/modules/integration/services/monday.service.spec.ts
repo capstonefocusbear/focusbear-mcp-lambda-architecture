@@ -92,7 +92,6 @@ describe('mondayService', () => {
 
   describe('updateTaskStatus', () => {
     it('positive: should call httpService.post with the correct arguments', async () => {
-      const userId = 'user123';
       const taskId = 'task123';
       const statusId = 'status123';
       const monday_access_token = 'token123';
@@ -119,11 +118,11 @@ describe('mondayService', () => {
   
       mockedAxios.post.mockResolvedValue(mockResponse);
   
-      const result = await mondayService.updateTaskStatus(userId, taskId, statusId);
+      const result = await mondayService.updateTaskStatus(userDummy.id, taskId, statusId);
   
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expectedUrl,
@@ -134,20 +133,18 @@ describe('mondayService', () => {
     });
   
     it('negative: should throw an error if platformIntegrationRecord is not found', async () => {
-      const userId = 'user123';
       const taskId = 'task123';
       const statusId = 'status123';
   
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
   
-      const result = await mondayService.updateTaskStatus(userId, taskId, statusId);
+      const result = await mondayService.updateTaskStatus(userDummy.id, taskId, statusId);
       expect(result).toBeUndefined();
     });
   });
 
   describe('getTaskOwnedByUser', () => {
     it('positive: should call httpService.post with the correct arguments', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
       const monday_access_token = 'token123';
 
@@ -185,10 +182,10 @@ describe('mondayService', () => {
         { id: 'task2', name: 'Task 2', state: 'in progress', project_id: projectId },
       ];
 
-      const tasks = await mondayService.getTasksOwnedByUser(userId, projectId);
+      const tasks = await mondayService.getTasksOwnedByUser(userDummy.id, projectId);
       expect (PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expectedUrl,
@@ -201,16 +198,15 @@ describe('mondayService', () => {
     });
 
     it('negative: should return an empty array if platformIntegrationRecord is not found', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
 
-      const tasks = await mondayService.getTasksOwnedByUser(userId, projectId);
+      const tasks = await mondayService.getTasksOwnedByUser(userDummy.id, projectId);
 
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).not.toHaveBeenCalled();
       expect(tasks).toBeUndefined();
@@ -297,17 +293,16 @@ describe('mondayService', () => {
   });
   describe('getTasks: when platform integration record is not found', () => {
     it('should return undefined', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
-      const result = await mondayService.getTasks(userId, projectId);
+      const result = await mondayService.getTasks(userDummy.id, projectId);
 
       expect(result).toBeUndefined();
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).not.toHaveBeenCalled();
     });
@@ -315,7 +310,6 @@ describe('mondayService', () => {
 
   describe('getTasks: when platform integration record is found', () => {
     it('should return tasks data', async () => {
-      const userId = 'user123';
       const projectId = 'project123';
       const tasksData = [{ id: 'task1', name: 'Task 1' }, { id: 'task2', name: 'Task 2' }];
 
@@ -326,16 +320,74 @@ describe('mondayService', () => {
       });
       mockedAxios.post.mockResolvedValueOnce({ data: tasksData });
 
-      const result = await mondayService.getTasks(userId, projectId);
+      const result = await mondayService.getTasks(userDummy.id, projectId);
 
       expect(result).toEqual(tasksData);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).toHaveBeenCalledWith('https://api.monday.com/v2', { query: expect.any(String) }, {
         headers: { Authorization: 'Bearer token123' },
       });
     });
   });
+
+  describe('getProjects', () => {
+    it('negative: should return undefined if no platform integration data is found', async () => {
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(null);
+  
+      const result = await mondayService.getProjects(userDummy.id, 'portalId');
+  
+      expect(result).toBeUndefined();
+    });
+  
+    it('positive: should return an empty array if no boards are found', async () => {
+      const data = { data: { monday_access_token: 'accessToken' } };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(data);
+      mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards: [] } } });
+  
+      const result = await mondayService.getProjects(userDummy.id, 'portalId');
+  
+      expect(result).toEqual([]);
+    });
+  
+    it('positive: should return an array of boards if boards are found', async () => {
+      const data = { data: { monday_access_token: 'accessToken' } };
+      const boards = [{ id: 'board1', name: 'Board 1', state: 'active', permissions: [] }];
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(data);
+      mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards } } });
+  
+      const result = await mondayService.getProjects(userDummy.id, 'portalId');
+  
+      expect(result).toEqual(boards);
+    });
+  });
+  
+  describe('getProject', () => {
+    it('negative: should return undefined if the platform integration record is not found', async () => {
+      const portalId = 'portalId';
+      const projectId = 'projectId';
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+  
+      const result = await mondayService.getProject(userDummy.id, portalId, projectId);
+  
+      expect(result).toBeUndefined();
+    });
+  
+    it('positive: should return the project data correctly', async () => {
+      const portalId = 'portalId';
+      const projectId = 'projectId';
+      const data = { data: { monday_access_token: 'access_token' } };
+      const boards = [{ id: projectId, name: 'Project 1' }];
+      const expectedProject = { id: projectId, name: 'Project 1' };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(data);
+      mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards } } });
+  
+      const result = await mondayService.getProject(userDummy.id, portalId, projectId);
+  
+      expect(result).toEqual(expectedProject);
+    });
+  });
+  
 });

@@ -96,16 +96,15 @@ describe('ZohoService', () => {
 
   describe('refresh_token: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
-      const userId = 'user123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
-      const result = await zohoAuthService.refreshToken(userId);
+      const result = await zohoAuthService.refreshToken(userDummy.id);
 
       expect(result).toBeUndefined();
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(mockedAxios.post).not.toHaveBeenCalled();
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).not.toHaveBeenCalled();
@@ -114,12 +113,11 @@ describe('ZohoService', () => {
 
   describe('refresh_token: when platform integration record is found', () => {
     it('positive: should refresh token and update integration data', async () => {
-      const userId = 'user123';
       const authorizationResponseDummy = {
         zoho_account_server: 'https://accounts.zoho.com',
         zoho_refresh_token: 'refresh-token-123',
-        zohoClientId: '12312',
-        zohoClientSecret: 'qw123',
+        zohoClientId: 'zoho-client-id',
+        zohoClientSecret: 'zoho-client-secret',
       };
       const newAccessToken = 'new-access-token';
 
@@ -128,15 +126,15 @@ describe('ZohoService', () => {
       });
       mockedAxios.post.mockResolvedValueOnce({ data: { access_token: newAccessToken } });
 
-      const result = await zohoAuthService.refreshToken(userId);
+      const result = await zohoAuthService.refreshToken(userDummy.id);
 
       expect(result).toEqual({ access_token: newAccessToken });
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
-        userId,
+        userDummy.id,
       );
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
-        userId,
+        userDummy.id,
         IntegrationPlatforms.ZOHO,
         { zoho_access_token: newAccessToken },
       );

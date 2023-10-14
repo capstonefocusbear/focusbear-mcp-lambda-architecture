@@ -232,14 +232,15 @@ export class MondayService implements BaseIntegrationService {
       IntegrationPlatforms.MONDAY,
       userId,
     );
+
     if (!platformIntegrationRecord) return;
     const { data: mondayData } = platformIntegrationRecord;
     const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
     const query = `query { boards ( workspace_ids: ${portalId} ids: ${projectId}) {name state id permissions}}`;
-    const { data } = await this.httpService.post(this.base_url, { query}, {
+    const response = await this.httpService.post(this.base_url, { query }, {
       headers,
     });
-    return data.data.boards[0];
+    return response.data.data.boards[0];
   }
 
   async getAllUserTasks(userId: string) {

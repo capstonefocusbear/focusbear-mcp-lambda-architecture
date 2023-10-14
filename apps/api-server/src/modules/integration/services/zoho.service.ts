@@ -16,7 +16,6 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
-import FormData from 'form-data';
 
 const projectAdapter = (project) => ({
   id: project.id_string,
@@ -68,11 +67,13 @@ export class ZohoService implements BaseIntegrationService {
         }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
         const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
         const [year, month, day] = timeEntry.date.split('-');
-        const formData = new FormData();
-        formData.append('date', `${month}-${day}-${year}`);
-        formData.append('bill_status', timeEntry.bill_status);
-        formData.append('hours', timeEntry.hours || '00:00');
-        formData.append('notes', timeEntry.notes || '');
+        const formData = {
+          date: `${month}-${day}-${year}`,
+          bill_status: timeEntry.bill_status,
+          hours: timeEntry.hours || '00:00',
+          notes: timeEntry.notes || '',
+        };
+
         const response = await this.httpService.post(url, formData, {
           headers: {
             ...headers,
@@ -372,8 +373,9 @@ export class ZohoService implements BaseIntegrationService {
           getDataCenterUrl(zohoData.zoho_location).api
         }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
         const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
-        const formData = new FormData();
-        formData.append('custom_status', statusId);
+        const formData = {
+          custom_status: statusId
+        }
         const response = await this.httpService.post(url, formData, {
           headers,
         });

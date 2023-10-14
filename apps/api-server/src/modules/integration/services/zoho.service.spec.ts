@@ -21,7 +21,6 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import { default as FormData } from "form-data";
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -194,11 +193,12 @@ describe('ZohoService', () => {
   
       const expectedUrl = `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
       const expectedHeaders = { Authorization: `Bearer token123` };
-      const expectedFormData = new FormData();
-      expectedFormData.append('date', '10-13-2023');
-      expectedFormData.append('bill_status', 'billed');
-      expectedFormData.append('hours', '2:00');
-      expectedFormData.append('notes', 'test note');
+      const expectedFormData = {
+        date: '10-13-2023',
+        bill_status: 'billed',
+        hours: '2:00',
+        notes: 'test note',
+      };
   
       const mockResponse = {
         data: { id: 'timeEntry123' },
@@ -374,9 +374,12 @@ describe('ZohoService', () => {
         IntegrationPlatforms.ZOHO,
         userDummy.id,
       );
+      const expectedFormData = {
+        custom_status: statusId
+      }
       expect(mockedAxios.post).toHaveBeenCalledWith(
         `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`,
-        expect.any(FormData),
+        expectedFormData,
         {
           headers: { Authorization: `Bearer ${zohoData.zoho_access_token}` },
         },

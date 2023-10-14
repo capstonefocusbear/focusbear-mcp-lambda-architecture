@@ -54,11 +54,12 @@ export class MondayService implements BaseIntegrationService {
       }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
       const headers = { Authorization: `Bearer ${mondayData.monday_access_token}` };
       const [year, month, day] = timeEntry.date.split('-');
-      const formData = new FormData();
-      formData.append('date', `${month}-${day}-${year}`);
-      formData.append('bill_status', timeEntry.bill_status);
-      formData.append('hours', timeEntry.hours || '00:00');
-      formData.append('notes', timeEntry.notes || '');
+      const formData = {
+        date: `${month}-${day}-${year}`,
+        bill_status: timeEntry.bill_status,
+        hours: timeEntry.hours || '00:00',
+        notes: timeEntry.notes || '',
+      }
       const response = await this.httpService.post(url, formData, {
         headers: {
           ...headers,

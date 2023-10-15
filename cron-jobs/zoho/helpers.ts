@@ -31,18 +31,6 @@ export function getTagForTodo(task: any, tags: FocusModeTag[]): FocusModeTag | n
   return tags.find((tag) => tag.external_project_id === task?.project?.id_string);
 }
 
-export function createNewTags(projectsToSync: Project[], userId: string, platform: IntegrationPlatforms) {
-  return projectsToSync.map(
-    (project) =>
-      new FocusModeTag({
-        user_id: userId,
-        text: project.name,
-        external_project_id: project.id,
-        external_project_metadata: { platform, project_data: project },
-      }),
-  );
-}
-
 export function createNewToDos(
   tasksToSync: any[],
   userId: string,

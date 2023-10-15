@@ -8,10 +8,7 @@ import { Injectable } from "@nestjs/common";
 export class IntegrationFactory {
   private static services: Map<IntegrationPlatforms, BaseIntegrationService> = new Map<IntegrationPlatforms, BaseIntegrationService>;
   
-  constructor(
-    private readonly mondayService: MondayService,
-    private readonly zohoService: ZohoService
-    ) {
+  constructor(private readonly mondayService: MondayService, private readonly zohoService: ZohoService) {
     IntegrationFactory.register(IntegrationPlatforms.MONDAY, mondayService);
     IntegrationFactory.register(IntegrationPlatforms.ZOHO, zohoService);
   }

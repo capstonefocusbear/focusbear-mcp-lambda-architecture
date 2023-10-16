@@ -6,6 +6,8 @@ import { DateTime, Settings } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { In } from 'typeorm';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -43,6 +45,7 @@ import { ToDoService } from '../../../to-do/services/to-do.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
+  const i18nServiceMock = mockDeep<I18nService>();
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -60,6 +63,10 @@ describe('FocusModeManagerService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: I18nService,
+          useValue: i18nServiceMock,
         },
       ],
     })

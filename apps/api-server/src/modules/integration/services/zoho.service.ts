@@ -10,7 +10,7 @@ import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { ZohoAuthService } from '../../auth/services/zoho-auth.service';
-import { createNewTags } from '../../../../../../cron-jobs/util';
+import { createNewTags } from '../../../../../../cron-jobs/helpers';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';

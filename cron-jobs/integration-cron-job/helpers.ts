@@ -1,6 +1,6 @@
-import { IntegrationPlatforms } from '../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
-import { FocusModeTag } from '../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
-import { ToDo } from '../apps/api-server/src/modules/to-do/entities/to-do.entity';
+import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
+import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
+import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
 import { Project } from 'apps/api-server/src/modules/integration/domain/project.model';
 
 export function getTasksToDelete(tasks: any[], syncedTasks: ToDo[]) {

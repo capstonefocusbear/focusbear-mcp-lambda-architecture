@@ -5,7 +5,7 @@ import { getDataCenterUrl } from '../../apps/api-server/src/shared/utils/helpers
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
 import { CronJobDataSource } from '../data-source';
-import { createNewToDos, getTasksToDelete } from '../helpers';
+import { createNewToDos, getTasksToDelete } from './helpers';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/synced-project.entity';
@@ -227,6 +227,6 @@ async function getUsersToSyncWithZoho() {
     await Promise.all(syncUserPromises);
     process.exit();
   } catch (error) {
-    console.error('Error in Zoho cron-job: ', error, error?.response);
+    console.error('Error in integration cron-job: ', error, error?.response);
   }
 })();

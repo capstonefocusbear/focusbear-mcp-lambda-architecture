@@ -13,7 +13,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
 import { UserProject } from '../dto/user-project.dto';
-import { createNewTags } from '../../../../../../cron-jobs/helpers';
+import { createNewTags } from '../../../../../../cron-jobs/integration-cron-job/helpers';
 import { ToDo } from "../../to-do/entities/to-do.entity";
 import { IsNull, Not } from "typeorm";
 

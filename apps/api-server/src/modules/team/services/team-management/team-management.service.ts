@@ -202,7 +202,8 @@ export class TeamManagementService {
     try {
       await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
       const payload = new MemberInvitationPayload({ admin_id: adminId, email, team_id: teamId });
-      const token = await this.jwtService.asyncSign({ ...payload });
+      const secretKey = this.configService.get('tokens.secret');
+      const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
       const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
       await this.emailService.sendEmail({
         to: email,

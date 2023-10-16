@@ -11,7 +11,6 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
-import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
@@ -1024,10 +1023,7 @@ export class CompletedActivityService {
       lang: language,
       args: { activity_name: activity.activity_data.name },
     });
-    const publishRequest = new BeamsPublishRequest({
-      apns: { aps: { alert: { title, body } }, data: pushData },
-      fcm: { notification: { title, body }, data: pushData },
-    });
+    const publishRequest = this.pusherBeams.createBeamsPublishRequest(title, body, pushData);
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 

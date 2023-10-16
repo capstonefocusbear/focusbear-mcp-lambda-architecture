@@ -6,5 +6,9 @@
   "resume_focus_mode_title": "Resume your focus session",
   "resume_focus_mode_body": "Your break is over and it's time to get back into your focus session!",
   "activity_completed": "Activity Completed!",
-  "activity_completed_message": "You have completed {activity_name}."
+  "activity_completed_message": "You have completed {activity_name}.",
+  "focus_mode_started": "Focus mode started!",
+  "focus_mode_completed": "Focus mode completed!",
+  "focus_mode_started_message": "{focus_mode_name} has been started.",
+  "focus_mode_completed_message": "Good job on completing {focus_mode_name}!"
 }

@@ -4,7 +4,6 @@ import { Job } from 'bull';
 import axios from 'axios';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
-import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
@@ -80,10 +79,7 @@ export class EventsConsumer {
           : 'common.resume_focus_mode_body',
         { lang: language },
       );
-      const publishRequest = new BeamsPublishRequest({
-        apns: { aps: { alert: { title, body } } },
-        fcm: { notification: { title, body } },
-      });
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       console.error('Error in resume-habits-notification queued job:', error);

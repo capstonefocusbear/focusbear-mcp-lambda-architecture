@@ -5,6 +5,7 @@ import { CompletedFocusBlock } from 'apps/api-server/src/modules/focus-mode/enti
 import { BeamsPublishRequest } from './domains/pusher-beams-publish-request.model';
 import { IPusherBeamsOptions } from './interfaces';
 import { PUSHER_BEAMS_MODULE_OPTIONS } from './pusher-beams.constants';
+import { ApsOverwrite } from './interfaces/aps-overwrite';
 
 @Injectable()
 export class PusherBeamsService extends PusherBeams {
@@ -12,19 +13,17 @@ export class PusherBeamsService extends PusherBeams {
     super({ ...options });
   }
 
-  createBeamsPublishRequest(pushData?: ActivityCompletedPush | CompletedFocusBlock): PusherBeams.PublishRequest {
+  createBeamsPublishRequest(
+    title: string,
+    body: string,
+    pushData?: ActivityCompletedPush | CompletedFocusBlock,
+  ): PusherBeams.PublishRequest {
     const data: PusherBeams.PublishRequestWithApnsAndFcm = {
       apns: {
-        aps: {},
-        data: {
-          pushData,
-        },
+        aps: { alert: { title, body }, 'mutable-content': 1 } as ApsOverwrite,
+        data: pushData,
       },
-      fcm: {
-        data: {
-          pushData,
-        },
-      },
+      fcm: { notification: { title, body }, data: pushData },
     };
     const beamsPublishRequest = new BeamsPublishRequest(data);
     return beamsPublishRequest;

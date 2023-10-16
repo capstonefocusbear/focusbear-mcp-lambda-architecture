@@ -17,6 +17,7 @@ import {
   UserRepositoryMock,
   Auth0ManagementServiceMock,
   StripeServiceMock,
+  ConfigServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
@@ -28,6 +29,7 @@ import { Team } from '../../entities/team.entity';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
+  process.env = { JWT_INVITATION_SECRET: 'test-secret' };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -61,6 +63,8 @@ describe('TeamManagementService', () => {
       .useValue(Auth0ManagementServiceMock)
       .overrideProvider(StripeService)
       .useValue(StripeServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
       .compile();
 
     jest.clearAllMocks();
@@ -181,14 +185,18 @@ describe('TeamManagementService', () => {
     it('positive: jwt should be created with email and owner_id in payload', async () => {
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue(TeamWithMembersDummy);
       Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
+      ConfigServiceMock.get.mockReturnValueOnce('test-secret');
 
       await teamManagementService.inviteTeamMember(email, userDummy.id, TeamWithMembersDummy.id);
 
-      expect(JwtServiceMock.asyncSign).toBeCalledWith({
-        email,
-        admin_id: userDummy.id,
-        team_id: TeamWithMembersDummy.id,
-      });
+      expect(JwtServiceMock.asyncSign).toBeCalledWith(
+        {
+          email,
+          admin_id: userDummy.id,
+          team_id: TeamWithMembersDummy.id,
+        },
+        'test-secret',
+      );
     });
 
     it('positive: email should be sent with invitation link inside', async () => {

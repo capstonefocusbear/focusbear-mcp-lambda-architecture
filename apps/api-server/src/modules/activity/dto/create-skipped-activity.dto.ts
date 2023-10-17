@@ -25,7 +25,7 @@ export class CreateSkippedActivityDto {
   note_logged?: string;
 
   @IsNotEmpty()
-  @IsUUID('4')
+  @IsUUID()
   device_id: string;
 
   @IsNotEmpty()

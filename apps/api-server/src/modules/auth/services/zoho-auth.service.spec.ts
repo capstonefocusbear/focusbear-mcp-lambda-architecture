@@ -8,7 +8,7 @@ import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoServiceMock } f
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoAuthService } from './zoho-auth.service';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
@@ -90,6 +90,53 @@ describe('ZohoService', () => {
           zoho_account_server: accountServerDummy,
         },
         userInfoResponseDummy.ZUID,
+      );
+    });
+  });
+
+  describe('refresh_token: when platform integration record is not found', () => {
+    it('negative: should return undefined', async () => {
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+
+      const result = await zohoAuthService.refreshToken(userDummy.id);
+
+      expect(result).toBeUndefined();
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+      );
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refresh_token: when platform integration record is found', () => {
+    it('positive: should refresh token and update integration data', async () => {
+      const authorizationResponseDummy = {
+        zoho_account_server: 'https://accounts.zoho.com',
+        zoho_refresh_token: 'refresh-token-123',
+        zohoClientId: 'zoho-client-id',
+        zohoClientSecret: 'zoho-client-secret',
+      };
+      const newAccessToken = 'new-access-token';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+        data: authorizationResponseDummy,
+      });
+      mockedAxios.post.mockResolvedValueOnce({ data: { access_token: newAccessToken } });
+
+      const result = await zohoAuthService.refreshToken(userDummy.id);
+
+      expect(result).toEqual({ access_token: newAccessToken });
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+      );
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
+        userDummy.id,
+        IntegrationPlatforms.ZOHO,
+        { zoho_access_token: newAccessToken },
       );
     });
   });

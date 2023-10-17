@@ -33,7 +33,9 @@ describe('PusherBeamsService', () => {
 
   describe('createBeamsPublishRequest', () => {
     it('should return a pusher beams publishRequest object', () => {
-      const result = service.createBeamsPublishRequest(pusherBeamsPublishRequestFocusBlockDummy);
+      const dummyTitle = 'New Notification';
+      const dummyBody = 'You have recevied a notification.';
+      const result = service.createBeamsPublishRequest(dummyTitle, dummyBody, pusherBeamsPublishRequestFocusBlockDummy);
       expect(result).toBeInstanceOf(BeamsPublishRequest);
       expect(result).toMatchSnapshot();
     });

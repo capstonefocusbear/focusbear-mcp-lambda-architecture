@@ -3,10 +3,10 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import { DateTime } from 'luxon';
 import { secondsToHHMM } from '../../../shared/utils/helpers';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { ToDo } from '../entities/to-do.entity';
-import { BillingStatus } from '../../zoho/domain/billing-status.enum';
+import { BillingStatus } from '../../integration/domain/billing-status.enum';
 
 @Processor('time-logs')
 export class TimeLogsConsumer {

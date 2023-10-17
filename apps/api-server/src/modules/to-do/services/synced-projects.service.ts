@@ -4,7 +4,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { ExternalTaskStatus } from '../domain/external-task-status.model';
 import { GetSyncedProjectsQueryDto } from '../dto/get-synced-projects-query.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 import { SyncProjectDto } from '../dto/sync-project.dto';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';

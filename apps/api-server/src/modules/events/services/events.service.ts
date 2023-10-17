@@ -10,12 +10,14 @@ import { EventTypes } from '../domain/event-types.enum';
 import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
 import {
+  DISTRACTION_BLOCK_EVENTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
   EVENT_TYPES_TO_ALERT_IN_SLACK,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_MINUTE,
   WORDS_TO_LOG_FOR,
 } from '../../../shared/utils/constants';
+import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 
 @Injectable()
 export class EventsService {
@@ -25,6 +27,7 @@ export class EventsService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly eventsRepository: EventsRepository,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {}
 
   async handleIncomingEvent(trackEventDto: TrackEventDto, user_id: string) {
@@ -53,6 +56,9 @@ export class EventsService {
       }
       if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
         await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.quantity);
+      }
+      if (DISTRACTION_BLOCK_EVENTS.includes(event_type as EventTypes)) {
+        await this.userDailyStatsService.updateDistractionBlockCount(user_id, user.timezone);
       }
       await this.eventsQueue.add('track-event', {
         user_id,

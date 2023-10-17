@@ -540,6 +540,25 @@ describe('CompletedActivityService', () => {
       );
     });
 
+    it('positive: if target activity is break type the daily stat time spent in breaks should be updated', async () => {
+      ActivityDummy.type = ActivityType.break;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+
+      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toBeCalledWith(
+        userDummy.id,
+        completedActivity.start_time,
+        userDummy.timezone,
+        completedActivity.duration_logged,
+      );
+    });
+
     it('positive: if user cut off time has been reached, set the next activity to be the next high priority activity in sequence when marking activity as completed', async () => {
       Settings.now = () => 1665081000000;
       const activity: CreateCompletedActivityDto = {

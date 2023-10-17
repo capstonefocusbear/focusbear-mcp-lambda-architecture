@@ -6,6 +6,8 @@ import { DateTime, Settings } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { In } from 'typeorm';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
 import {
   CompletedFocusBlockDummy,
   FocusModeDummy,
@@ -43,6 +45,7 @@ import { ToDoService } from '../../../to-do/services/to-do.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
+  const i18nServiceMock = mockDeep<I18nService>();
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -60,6 +63,10 @@ describe('FocusModeManagerService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: I18nService,
+          useValue: i18nServiceMock,
         },
       ],
     })
@@ -420,6 +427,31 @@ describe('FocusModeManagerService', () => {
         toDoTimeLogDummies,
         userDummy.id,
         CompletedFocusBlockDummy.id,
+      );
+    });
+
+    it('positive: after completing focus block, user daily stat focus block count should be incremented and duration spent in focus sessions should be updated', async () => {
+      const current_focus_mode_id = FocusModeDummy.id;
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+      const finishTime = new Date('2023-02-07T05:10:00.000Z');
+      const finishedFocusModeData: FinishFocusModeDto = {
+        achievements: CompletedFocusBlockDummy.achievements,
+        finish_time: finishTime,
+      };
+      const completedFocusBlock = { ...CompletedFocusBlockDummy, start_time: new Date('2023-02-07T05:00:00.000Z') };
+      const userWithCurrentFocusMode: User = { ...userDummy, current_focus_mode_id, current_completing_focus_block_id };
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completedFocusBlock);
+
+      await focusModeManagerService.finishCurrentFocusMode(finishedFocusModeData, { focus_mode_id }, user_id);
+
+      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toBeCalledWith(
+        user_id,
+        finishTime,
+        userDummy.timezone,
+        // start and end time are 10 minutes apart (600 seconds)
+        600,
       );
     });
   });

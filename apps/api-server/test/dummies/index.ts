@@ -1487,6 +1487,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   // this stat is mocked to fall over a weekend and has no completed focus modes
   // to test streak not being reset if FM not done over weekend
@@ -1500,6 +1501,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1511,6 +1513,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1522,6 +1525,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1533,6 +1537,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1544,6 +1549,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1555,6 +1561,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1566,6 +1573,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1577,6 +1585,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1588,6 +1597,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
   {
     id: randomUUID(),
@@ -1599,6 +1609,7 @@ export const dailyStatsArrayDummy = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    seconds_spent_in_focus_sessions: 0,
   },
 ];
 

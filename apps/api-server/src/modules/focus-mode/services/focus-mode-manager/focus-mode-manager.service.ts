@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { In } from 'typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
@@ -32,6 +33,7 @@ export class FocusModeManagerService {
     private readonly focusModeService: FocusModeService,
     private readonly toDoRepository: ToDoRepository,
     private readonly toDoService: ToDoService,
+    private readonly i18nService: I18nService,
   ) {}
 
   async startCurrentFocusMode(
@@ -52,7 +54,7 @@ export class FocusModeManagerService {
       });
       // using incoming focus mode's starting time for possible incomplete mode's finish time
       // by passing start_time here for finish_time argument of validateStartingFocusMode
-      await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
+      const [{ name }, { language }] = await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
       const scheduled_finish_time = finish_time;
       const toDoIds = to_dos?.map((todo) => todo.id);
       let toDosToLink = [];
@@ -70,9 +72,20 @@ export class FocusModeManagerService {
       const completedMode = await this.completedFocusBlockRepository.orm.save(completedFocusBlock);
       const completed_mode_id = completedMode.id;
       const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
+      const pushNotificationTitle = this.i18nService.t('common.focus_mode_started', {
+        lang: language,
+      });
+      const pushNotificationBody = this.i18nService.t('common.focus_mode_started_message', {
+        lang: language,
+        args: { focus_mode_name: name },
+      });
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(
+        pushNotificationTitle,
+        pushNotificationBody,
+        completedMode,
+      );
       await this.userRepository.orm.update(user_id, userDataToUpdate);
-      // Pusher throwing error about data exceeding size limit,  removing to dos
+      // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
@@ -148,7 +161,7 @@ export class FocusModeManagerService {
         },
       });
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
-      const [, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
+      const [{ name }, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
         id: user.current_completing_focus_block_id,
       });
@@ -172,12 +185,28 @@ export class FocusModeManagerService {
         this.nullifyCurrentFocusModeForUser(user_id),
         this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(completedMode);
+      const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
+        lang: user.language,
+      });
+      const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
+        lang: user.language,
+        args: { focus_mode_name: name },
+      });
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(
+        pushNotificationTitle,
+        pushNotificationBody,
+        completedMode,
+      );
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
-      await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(user_id, finish_time, user.timezone);
+      await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
+        user_id,
+        finish_time,
+        user.timezone,
+        durationToUse,
+      );
       await this.userRepository.update(user.id, {
         last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
         updated_at: new Date().toISOString(),

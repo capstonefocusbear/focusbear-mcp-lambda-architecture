@@ -9,7 +9,7 @@ import {
 
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { SyncedProjectsService } from './synced-projects.service';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';

@@ -5,6 +5,7 @@ import PushNotifications = require('@pusher/push-notifications-server');
 import { OpenAIApi, Configuration } from 'openai';
 // eslint-disable-next-line import/extensions
 import * as S3 from 'aws-sdk/clients/s3.js';
+import { ApsOverwrite } from '../../libs/pusher-beams/src/interfaces/aps-overwrite';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
@@ -200,7 +201,9 @@ function publishToUsersByLanguage(
   if (userIDs.length !== 0) {
     const { title, message } = translationData[language][routine];
     const publishRequest = new BeamsPublishRequest({
-      apns: { aps: { alert: { title, body: message } } },
+      apns: {
+        aps: { alert: { title, body: message }, 'mutable-content': 1 } as ApsOverwrite,
+      },
       fcm: { notification: { title, body: message } },
     });
     return beamsClient.publishToUsers(userIDs, publishRequest);

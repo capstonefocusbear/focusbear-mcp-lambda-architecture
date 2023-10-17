@@ -61,6 +61,27 @@ export class DailyStats extends BaseEntity {
   })
   evening_sequence_log_id?: string;
 
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  number_of_distractions_blocked?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  seconds_spent_doing_breaks?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  seconds_spent_in_focus_sessions?: number;
+
   @OneToOne(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.completed_morning_sequence)
   @JoinColumn({ name: 'morning_sequence_log_id' })
   morning_sequence_log?: CompletedActivitySequence;

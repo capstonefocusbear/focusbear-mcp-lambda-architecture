@@ -9,6 +9,7 @@ import { EventsController } from './controllers/events.controller';
 import { EventsService } from './services/events.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { EventsRepository } from './repositories/events.repository';
+import { UserModule } from '../user/user.module';
 
 @Module({
   providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository],
@@ -32,6 +33,7 @@ import { EventsRepository } from './repositories/events.repository';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
+    UserModule,
   ],
   controllers: [EventsController],
 })

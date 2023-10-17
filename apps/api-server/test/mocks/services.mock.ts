@@ -169,6 +169,8 @@ export const UserDailyStatsServiceMock = {
   updateUserOnboardingProgress: jest.fn(),
   updateDailyStatsFocusModesCompleted: jest.fn(),
   updateDailyStatsRoutineCompletion: jest.fn(),
+  updateDistractionBlockCount: jest.fn(),
+  updateTimeSpentInBreaks: jest.fn(),
 };
 
 export const OpenAIServiceMock = {
@@ -187,6 +189,20 @@ export const ZohoAuthServiceMock = {
 };
 
 export const ZohoServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const MondayAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getMondayLoginUrl: jest.fn(),
+};
+
+export const MondayServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
   getAllUserTasks: jest.fn(),
   getAllUserProjects: jest.fn(),

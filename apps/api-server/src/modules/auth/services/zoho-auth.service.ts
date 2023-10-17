@@ -21,13 +21,13 @@ export class ZohoAuthService {
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
-  private zohoClientId = this.configService.get('zoho.ZOHO_CLIENT_ID');
+  private zohoClientId = this.configService.get('ZOHO_CLIENT_ID');
 
-  private zohoClientSecret = this.configService.get('zoho.ZOHO_CLIENT_SECRET');
+  private zohoClientSecret = this.configService.get('ZOHO_CLIENT_SECRET');
 
-  private zohoCallbackUrl = this.configService.get('zoho.ZOHO_CALLBACK_URL');
+  private zohoCallbackUrl = this.configService.get('ZOHO_CALLBACK_URL');
 
-  private zohoCallbackUrlDevelopment = this.configService.get('zoho.ZOHO_CALLBACK_URL_DEVELOPMENT');
+  private zohoCallbackUrlDevelopment = this.configService.get('ZOHO_CALLBACK_URL_DEVELOPMENT');
 
   getZohoLoginUrl(isDevelopment = false) {
     const scopes = [

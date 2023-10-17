@@ -11,7 +11,6 @@ import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
-import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
 import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
@@ -122,7 +121,14 @@ export class CompletedActivityService {
       let completingSequenceLog = null;
 
       if (activity.type === ActivityType.break) {
-        return await this.handleBreakActivity(completedActivity, activity, choice, user_id, startTimeToUse);
+        return await this.handleBreakActivity(
+          completedActivity,
+          activity,
+          choice,
+          user_id,
+          startTimeToUse,
+          user.timezone,
+        );
       }
 
       if (!completedActivity.should_not_update_current_activity) {
@@ -245,8 +251,9 @@ export class CompletedActivityService {
     choice: any,
     user_id: string,
     startTimeToUse: Date,
+    timeZone: string,
   ): Promise<CompletedActivityResponse> {
-    const { device_id, log_quantity_answers } = completedActivity;
+    const { device_id, log_quantity_answers, duration_logged } = completedActivity;
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
@@ -259,6 +266,7 @@ export class CompletedActivityService {
     if (log_quantity_answers?.length > 0) {
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
+    await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
     return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
   }
 
@@ -445,6 +453,14 @@ export class CompletedActivityService {
 
       if (activity.type === ActivityType.morning || activity.type === ActivityType.evening) {
         await this.updateDailyStats(user, activity, createdItem, start_time);
+      }
+      if (activity.type === ActivityType.break) {
+        await this.userDailyStatsService.updateTimeSpentInBreaks(
+          user.id,
+          start_time,
+          user.timezone,
+          completedActivity.duration_logged,
+        );
       }
 
       return true;
@@ -1007,10 +1023,7 @@ export class CompletedActivityService {
       lang: language,
       args: { activity_name: activity.activity_data.name },
     });
-    const publishRequest = new BeamsPublishRequest({
-      apns: { aps: { alert: { title, body } }, data: pushData },
-      fcm: { notification: { title, body }, data: pushData },
-    });
+    const publishRequest = this.pusherBeams.createBeamsPublishRequest(title, body, pushData);
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
@@ -1292,7 +1305,7 @@ export class CompletedActivityService {
       message: 'Counting summary AVG',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => {
       const average =
         items.reduce((acc, { quantity_logged = 0, answers }) => {
@@ -1316,7 +1329,7 @@ export class CompletedActivityService {
       message: 'Counting summary SUM',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => {
       const sum = items.reduce((acc, { quantity_logged = 0, answers }) => {
         // use value of log quantity answer if any
@@ -1339,7 +1352,7 @@ export class CompletedActivityService {
       message: 'Getting summary duration',
     });
     const groupedItems = this.groupByName(logs);
-    const entries = Object.entries(groupedItems) as Array<[string, Array<any>]>;
+    const entries: Array<[string, Array<any>]> = Object.entries(groupedItems);
     return entries.map(([name, items]) => ({
       name,
       duration: items.reduce((acc, { duration_logged = 0 }) => acc + Number(duration_logged), 0),

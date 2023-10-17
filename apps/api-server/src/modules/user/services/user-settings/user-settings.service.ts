@@ -67,14 +67,14 @@ export class UserSettingsService {
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
-      return await this.serializeSettings(userSettings);
+      return this.serializeSettings(userSettings);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  private async serializeSettings({ activity_sequences, ...user }: User): Promise<UpdateUserSettingsDto> {
+  private serializeSettings({ activity_sequences, ...user }: User): UpdateUserSettingsDto {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -430,5 +430,24 @@ export class UserSettingsService {
         zone: timezone,
       });
     return userCutOffTime && userCurrentTime >= userCutOffTime;
+  }
+
+  async addActivityToRoutine(userId: string, data: any) {
+    const activity: UpdateActivityDto = {
+      id: randomUUID(),
+      name: data?.name,
+      duration_seconds: data?.duration,
+      days_of_week: data?.days_of_week ?? ['ALL'],
+      allowed_urls: data?.allowed_urls ?? [],
+      allowed_apps: data?.allowed_apps ?? [],
+    };
+    const routineToAddTo = data.routine ?? 'morning';
+    const userSettings = await this.getSettings({ user_id: userId });
+    console.log({ userSettings });
+    const updatedSettings = {
+      ...userSettings,
+      [`${routineToAddTo}_activities`]: [...userSettings[`${routineToAddTo}_activities`], activity],
+    };
+    await this.updateSettings({ user_id: userId }, updatedSettings, false);
   }
 }

@@ -88,3 +88,122 @@ export const EVENTS_TO_IMPACT_CATEGORIES_MAP = {
 export const INTERNAL_TEST = 'internaltest';
 
 export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
+
+export const createActivityFunction = {
+  name: 'createActivity',
+  description: 'Creates a new activity from users specifications of activity',
+  parameters: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the activity, e.g. Reading',
+      },
+      duration: { type: 'number', description: 'Duration of the activity in seconds, e.g. 600' },
+      routine: {
+        type: 'string',
+        enum: ['morning', 'break', 'evening'],
+        description: 'The routine the activity will be part of.',
+      },
+      days_of_week: {
+        type: 'array',
+        items: { type: 'string', enum: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'ALL'] },
+        description: 'The days of the week that the activity should be completed on.',
+        default: ['ALL'],
+      },
+      allowed_urls: {
+        type: 'array',
+        title: 'allowed_urls',
+        description: 'Allowed URLs to access during this focus mode',
+        default: [],
+        examples: [['https://www.youtube.com/watch?v=BWk_hqFGxfE', 'https://www.youtube.com/watch?v=W1I9M7g6VK8']],
+        additionalItems: true,
+        items: {
+          anyOf: [
+            {
+              type: 'string',
+              title: 'allowed_urls',
+              description: 'A URL that can be accessed during this focus mode.',
+              default: '',
+              examples: ['https://www.youtube.com/watch?v=BWk_hqFGxfE', 'https://www.youtube.com/watch?v=W1I9M7g6VK8'],
+            },
+          ],
+        },
+      },
+      allowed_apps: {
+        type: 'array',
+        title: 'allowed_apps',
+        description: 'Allowed apps to access during this focus mode',
+        default: [],
+        examples: [['Xcode', 'Safari']],
+        additionalItems: true,
+        items: {
+          anyOf: [
+            {
+              type: 'string',
+              title: 'app',
+              description: 'An app that can be accessed during this focus mode',
+              default: '',
+              examples: ['Xcode', 'Safari'],
+            },
+          ],
+        },
+      },
+    },
+    required: ['name', 'duration', 'routine'],
+  },
+};
+
+export const createFocusModeFunction = {
+  name: 'createFocusMode',
+  description: 'Creates a new focus mode with specified allowed apps and URLs if user asks to create a focus mode',
+  parameters: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the focus mode, e.g. Coding Time',
+        examples: ['COding Time', 'Marketing Work'],
+      },
+      allowed_urls: {
+        type: 'array',
+        title: 'allowed_urls',
+        description: 'Allowed URLs to access during this focus mode',
+        default: [],
+        examples: [['https://www.youtube.com/watch?v=BWk_hqFGxfE', 'https://www.youtube.com/watch?v=W1I9M7g6VK8']],
+        additionalItems: true,
+        items: {
+          anyOf: [
+            {
+              type: 'string',
+              title: 'allowed_urls',
+              description: 'A URL that can be accessed during this focus mode.',
+              default: '',
+              examples: ['https://www.youtube.com/watch?v=BWk_hqFGxfE', 'https://www.youtube.com/watch?v=W1I9M7g6VK8'],
+            },
+          ],
+        },
+      },
+      allowed_apps: {
+        type: 'array',
+        title: 'allowed_apps',
+        description: 'Allowed apps to access during this focus mode',
+        default: [],
+        examples: [['Xcode', 'Safari']],
+        additionalItems: true,
+        items: {
+          anyOf: [
+            {
+              type: 'string',
+              title: 'app',
+              description: 'An app that can be accessed during this focus mode',
+              default: '',
+              examples: ['Xcode', 'Safari'],
+            },
+          ],
+        },
+      },
+    },
+    required: ['name', 'allowed_apps', 'allowed_urls'],
+  },
+};

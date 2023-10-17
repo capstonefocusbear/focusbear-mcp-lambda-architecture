@@ -34,6 +34,7 @@ export const Auth0ManagementServiceMock = {
   getUser: jest.fn(),
   getAuth0User: jest.fn(),
   getAuth0UserWithEmail: jest.fn(),
+  deleteAuth0User: jest.fn(),
 };
 
 export const UserServiceMock = {
@@ -79,6 +80,7 @@ export const RevenueCatServiceMock = {
   revokeTeamMembership: jest.fn(),
   grantTrialAccess: jest.fn(),
   checkSubscriptionStatus: jest.fn(),
+  deleteUserFromRevenueCat: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {
@@ -103,6 +105,7 @@ export const StripeServiceMock = {
   getStripeCustomerId: jest.fn(),
   updateSubscription: jest.fn(),
   cancelSubscription: jest.fn(),
+  deleteStripeCustomer: jest.fn(),
 };
 
 export const ActivityTemplateServiceMock = {
@@ -141,6 +144,7 @@ export const InstalledPackServiceMock = {
 
 export const BrevoServiceMock = {
   registerBrevoEvent: jest.fn(),
+  deleteContactFromBrevo: jest.fn(),
 };
 
 const mockSentryInstance = {

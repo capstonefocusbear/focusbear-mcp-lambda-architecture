@@ -534,4 +534,35 @@ describe('UserSettingsService', () => {
       expect(response).toBeTrue();
     });
   });
+
+  describe('addActivityToRoutine', () => {
+    it("positive: should save incoming activity to user's settings", async () => {
+      const activityDataDummy = {
+        name: 'New Activity',
+        duration: 200,
+        days_of_week: ['ALL'],
+        allowed_urls: [],
+        allowed_apps: [],
+      };
+      UserRepositoryMock.getUserSettings.mockResolvedValueOnce({
+        ...userSettingsDBResponseDummy,
+        cutoff_time_for_non_high_priority_activities: '20:30',
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({
+        isVerboseLoggingAllowed: false,
+        user: userDummy,
+      });
+      ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummy);
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: [],
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+
+      await userSettingsService.addActivityToRoutine(userDummy.id, activityDataDummy);
+
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalled();
+    });
+  });
 });

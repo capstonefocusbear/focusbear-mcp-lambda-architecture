@@ -17,7 +17,7 @@ describe('Auth0', () => {
     }).compile();
 
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-
+    jest.setTimeout(20000);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });
@@ -36,7 +36,7 @@ describe('Auth0', () => {
   describe('Get accessToken with UserAuthMetadata', () => {
     it('positive: should return access token with user-auth-metadata inside', async () => {
       const tokenData = await auth0LoginUser(testUser.email, testUser.password);
-
+      console.log(tokenData);
       const payload = jwt.decode(tokenData.access_token);
 
       expect(tokenData).toBeDefined();

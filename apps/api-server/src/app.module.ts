@@ -31,6 +31,7 @@ import { SavedWebsiteModule } from './modules/saved-website/saved-website.module
 import { ToDoModule } from './modules/to-do/to-do.module';
 import { ZohoModule } from './modules/zoho/zoho.module';
 import { PlatformIntegrationsModule } from './modules/platform-integrations/platform-integrations.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { PlatformIntegrationsModule } from './modules/platform-integrations/plat
     ToDoModule,
     ZohoModule,
     PlatformIntegrationsModule,
+    AiModule,
   ],
   controllers: [AppController],
 })

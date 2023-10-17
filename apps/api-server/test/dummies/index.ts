@@ -313,7 +313,7 @@ export const serializedActivityDummy: SerializedActivity = {
       include_in_every_break: false,
       allowed_apps: [],
       video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
-      log_quantity: true,
+      log_quantity: false,
       name: 'test ',
       log_quantity_question: '',
       is_default: true,

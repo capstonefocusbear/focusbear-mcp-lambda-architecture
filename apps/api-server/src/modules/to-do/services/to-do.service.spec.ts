@@ -28,7 +28,7 @@ import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;

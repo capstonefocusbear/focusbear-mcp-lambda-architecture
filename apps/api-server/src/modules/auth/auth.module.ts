@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
@@ -15,7 +15,8 @@ import { UserRepository } from '../user/repositories/user.repository';
 import { IsAdmin } from './guards/is-admin/is-admin.guard';
 import { ZohoAuthService } from './services/zoho-auth.service';
 import { ZohoAuthController } from './controllers/zoho-auth.controller';
-import { ZohoModule } from '../zoho/zoho.module';
+import { MondayAuthService } from './services/monday-auth.service';
+import { MondayAuthController } from './controllers/monday-auth.controller';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 
 @Module({
@@ -27,9 +28,10 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     UserRepository,
     IsAdmin,
     ZohoAuthService,
+    MondayAuthService
   ],
-  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService],
-  controllers: [PusherAuthController, ZohoAuthController],
+  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService, MondayAuthService],
+  controllers: [PusherAuthController, ZohoAuthController, MondayAuthController],
   imports: [
     Auth0Module.registerAsync({
       imports: [ConfigModule],
@@ -54,7 +56,6 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     HelperModule,
     ConfigModule,
     PlatformIntegrationsModule,
-    forwardRef(() => ZohoModule),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

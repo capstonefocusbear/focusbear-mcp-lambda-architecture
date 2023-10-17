@@ -191,6 +191,20 @@ export const ZohoServiceMock = {
   syncProjectAndChildTasks: jest.fn(),
 };
 
+export const MondayAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getMondayLoginUrl: jest.fn(),
+};
+
+export const MondayServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
 export const PlatformIntegrationsServiceMock = {
   getPlatformIntegrationData: jest.fn(),
   updatePlatformIntegration: jest.fn(),

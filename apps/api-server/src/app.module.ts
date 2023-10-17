@@ -29,8 +29,8 @@ import { TabKeywordsModule } from './modules/tab-keywords/tab-keywords.module';
 import { AppLogsModule } from './modules/app-logs/app-logs.module';
 import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
 import { ToDoModule } from './modules/to-do/to-do.module';
-import { ZohoModule } from './modules/zoho/zoho.module';
 import { PlatformIntegrationsModule } from './modules/platform-integrations/platform-integrations.module';
+import { IntegrationModule } from './modules/integration/integration.module';
 
 @Module({
   imports: [
@@ -80,8 +80,8 @@ import { PlatformIntegrationsModule } from './modules/platform-integrations/plat
     AppLogsModule,
     SavedWebsiteModule,
     ToDoModule,
-    ZohoModule,
     PlatformIntegrationsModule,
+    IntegrationModule
   ],
   controllers: [AppController],
 })

@@ -15,7 +15,7 @@ import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repositor
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { ToDoResponse } from '../dto/to-do-response.dto';
-import { ZohoService } from '../../zoho/services/zoho.service';
+import { ZohoService } from '../../integration/services/zoho.service';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 

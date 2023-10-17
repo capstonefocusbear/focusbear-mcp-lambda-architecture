@@ -5,7 +5,7 @@ import { getDataCenterUrl } from '../../apps/api-server/src/shared/utils/helpers
 import { FocusModeTag } from '../../apps/api-server/src/modules/focus-mode/entities/focus-mode-tags';
 import { ToDo } from '../../apps/api-server/src/modules/to-do/entities/to-do.entity';
 import { CronJobDataSource } from '../data-source';
-import { createNewToDos, getZohoTasksToDelete } from './helpers';
+import { createNewToDos, getTasksToDelete } from './helpers';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/synced-project.entity';
@@ -195,7 +195,7 @@ async function syncUserTasks(userId: string) {
     return newMap;
   }, {});
   const { tasksToSync, syncedZohoTasks } = await getZohoTasksToSync(tasksFromSyncedProjects, userId);
-  const tasksToRemoveIds = getZohoTasksToDelete(tasksFromSyncedProjects, syncedZohoTasks);
+  const tasksToRemoveIds = getTasksToDelete(tasksFromSyncedProjects, syncedZohoTasks);
   const tags = await getTagsLinkedToProject(userId, externalProjectIds);
   const newZohoToDos = createNewToDos(tasksToSync, userId, tags, IntegrationPlatforms.ZOHO, externalIdToIdMap);
   // Save new tasks
@@ -227,6 +227,6 @@ async function getUsersToSyncWithZoho() {
     await Promise.all(syncUserPromises);
     process.exit();
   } catch (error) {
-    console.error('Error in Zoho cron-job: ', error, error?.response);
+    console.error('Error in integration cron-job: ', error, error?.response);
   }
 })();

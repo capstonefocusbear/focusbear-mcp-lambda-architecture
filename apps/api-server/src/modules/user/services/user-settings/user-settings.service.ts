@@ -29,8 +29,7 @@ import { ActivitySequenceService } from '../../../activity/services/activity-seq
 import { UserService } from '../user/user.service';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../../domain/language-options.enum';
-
-const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+import { ActivitySequence } from '../../../activity/entities/activity-sequence.entity';
 
 @Injectable()
 export class UserSettingsService {
@@ -276,7 +275,7 @@ export class UserSettingsService {
     }
     if (language) {
       await this.userRepository.update(user_id, {
-        ...(language && { language }),
+        language,
       });
     }
   }
@@ -339,7 +338,7 @@ export class UserSettingsService {
       const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
       // check if user current activity is not included in incoming activities
       // if so - recalculate current activity
-      if (current_activity_id && !activityIds.includes(current_activity_id)) {
+      if (this.isCurrentActivityDeleted(current_activity_id, activityIds)) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
           level: 'debug',
@@ -354,43 +353,9 @@ export class UserSettingsService {
           relations: ['activities'],
         });
         if (sequence) {
-          const { sequenceActivityIds, id: activity_sequence_id, activities } = sequence;
-          const currentActivityIndex = sequenceActivityIds.indexOf(current_activity_id);
-          // find eligible next activities
-          const activitiesAfterCurrentActivity = sequenceActivityIds.slice(currentActivityIndex + 1);
-          // remove following activities in sequence that were also deleted
-          let possibleNextActivities = activities.filter(
-            (activity) => activityIds.includes(activity.id) && activitiesAfterCurrentActivity.includes(activity.id),
-          );
-          // remove standard priority activities if cut off time has been reached
-          const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
-          if (hasCutoffTimeBeenReached) {
-            possibleNextActivities = possibleNextActivities.filter(
-              (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
-            );
-          }
-          // get activities for current day of week
-          const currentDay = this.helperCommonService.getDayOfWeek(timezone);
-          const possibleActivitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(
-            currentDay,
-            possibleNextActivities,
-          );
-          // sort IDs of leftover activities in execution order
-          const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
-            sequenceActivityIds,
-            possibleActivitiesForToday,
-          );
-          const [nextId] = sortedIdsForCurrentDayActivities;
-          if (!nextId) {
-            if (user.id === JEREMYS_USER_ID) {
-              console.log('Completing sequence - updateUserIfCurrentActivityDeleted');
-              console.log({ current_activity_id, activityIds });
-            }
-            await this.completedActivitySequenceService.completeActivitySequence(
-              current_completing_sequence_log_id,
-              user.id,
-            );
-          }
+          const { id: activity_sequence_id } = sequence;
+          const nextId = this.getNextActivityId(sequence, current_activity_id, cutOffTime, timezone, activityIds);
+          await this.handleRoutineBeingCompleted(nextId, current_completing_sequence_log_id, user.id);
           current_completing_sequence_log_id = nextId ? current_completing_sequence_log_id : null;
           current_activity_sequence_id = nextId ? activity_sequence_id : null;
           current_activity_id = nextId ?? null;
@@ -410,6 +375,57 @@ export class UserSettingsService {
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
+    }
+  }
+
+  private isCurrentActivityDeleted(current_activity_id: string, activityIds: string[]) {
+    return current_activity_id && !activityIds.includes(current_activity_id);
+  }
+
+  private getNextActivityId(
+    sequence: ActivitySequence,
+    current_activity_id: string,
+    cutOffTime: string,
+    timezone: string,
+    activityIds: string[],
+  ) {
+    const { sequenceActivityIds, activities } = sequence;
+    const currentActivityIndex = sequenceActivityIds.indexOf(current_activity_id);
+    // find eligible next activities
+    const activitiesAfterCurrentActivity = sequenceActivityIds.slice(currentActivityIndex + 1);
+    // remove following activities in sequence that were also deleted
+    let possibleNextActivities = activities.filter(
+      (activity) => activityIds.includes(activity.id) && activitiesAfterCurrentActivity.includes(activity.id),
+    );
+    // remove standard priority activities if cut off time has been reached
+    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    if (hasCutoffTimeBeenReached) {
+      possibleNextActivities = possibleNextActivities.filter(
+        (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+      );
+    }
+    // get activities for current day of week
+    const currentDay = this.helperCommonService.getDayOfWeek(timezone);
+    const possibleActivitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(
+      currentDay,
+      possibleNextActivities,
+    );
+    // sort IDs of leftover activities in execution order
+    const sortedIdsForCurrentDayActivities = this.activitySequenceService.sortActivityIdsByExecutionSequence(
+      sequenceActivityIds,
+      possibleActivitiesForToday,
+    );
+    const [nextId] = sortedIdsForCurrentDayActivities;
+    return nextId;
+  }
+
+  private async handleRoutineBeingCompleted(
+    nextId: string,
+    current_completing_sequence_log_id: string,
+    userId: string,
+  ) {
+    if (!nextId) {
+      await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, userId);
     }
   }
 

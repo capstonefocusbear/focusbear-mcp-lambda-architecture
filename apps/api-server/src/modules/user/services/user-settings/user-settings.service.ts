@@ -30,6 +30,9 @@ import { UserService } from '../user/user.service';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { ActivitySequence } from '../../../activity/entities/activity-sequence.entity';
+import { FunctionCallParametersDto } from '../../../ai/dto/function-call-parameters.dto';
+import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
+import { ActivityType } from '../../../activity/domain/activity-type.enum';
 
 @Injectable()
 export class UserSettingsService {
@@ -448,16 +451,16 @@ export class UserSettingsService {
     return userCutOffTime && userCurrentTime >= userCutOffTime;
   }
 
-  async addActivityToRoutine(userId: string, data: any) {
+  async addActivityToRoutine(userId: string, data: FunctionCallParametersDto) {
     const activity: UpdateActivityDto = {
       id: randomUUID(),
       name: data?.name,
       duration_seconds: data?.duration,
-      days_of_week: data?.days_of_week ?? ['ALL'],
+      days_of_week: data?.days_of_week ?? [DaysOfWeek.ALL],
       allowed_urls: data?.allowed_urls ?? [],
       allowed_apps: data?.allowed_apps ?? [],
     };
-    const routineToAddTo = data.routine ?? 'morning';
+    const routineToAddTo = data.routine ?? ActivityType.morning;
     const userSettings = await this.getSettings({ user_id: userId });
     console.log({ userSettings });
     const updatedSettings = {

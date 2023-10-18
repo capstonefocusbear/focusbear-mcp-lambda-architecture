@@ -1,15 +1,16 @@
-/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/return-await */
-import { Injectable } from '@nestjs/common';
-import { Stream } from 'stream';
+import { BadRequestException, Injectable, ValidationError } from '@nestjs/common';
+import internal, { Stream } from 'stream';
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from 'openai';
 import { FastifyReply } from 'fastify';
 import { randomUUID } from 'crypto';
+import { plainToClass } from 'class-transformer';
+import { validate } from 'class-validator';
 import { createActivityFunction, createFocusModeFunction } from '../../../shared/utils/constants';
 import { UserSettingsService } from '../../user/services/user-settings/user-settings.service';
 import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
 import { CreateFocusModeDto } from '../../focus-mode/dto/create-focus-mode.dto';
+import { FunctionCallParametersDto } from '../dto/function-call-parameters.dto';
 
 @Injectable()
 export class AiService {
@@ -18,11 +19,22 @@ export class AiService {
     private readonly focusModeService: FocusModeService,
   ) {}
 
-  async createActivity(userId: string, data: any) {
+  async createActivity(userId: string, data: FunctionCallParametersDto) {
     await this.userSettingsService.addActivityToRoutine(userId, data);
   }
 
-  async createFocusMode(userId: string, data: any) {
+  async validateFunctionCallParameters(functionCallParams: FunctionCallParametersDto) {
+    const dto = plainToClass(FunctionCallParametersDto, functionCallParams);
+    let validationErrors: ValidationError[] = [];
+    validationErrors = await validate(dto, {
+      validationError: { target: true, value: true },
+    });
+    if (validationErrors.length > 0) {
+      throw new BadRequestException({ validationErrors });
+    }
+  }
+
+  async createFocusMode(userId: string, data: FunctionCallParametersDto) {
     const focusMode: CreateFocusModeDto = {
       id: randomUUID(),
       name: data?.name,
@@ -42,10 +54,6 @@ export class AiService {
     const openai = new OpenAIApi(config);
     const chatHistory = this.getChatHistory(messages, language);
     let retryCount = 0;
-
-    const handleError = (error: any) => {
-      fastifyResponse.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
-    };
 
     while (retryCount < 3) {
       try {
@@ -77,41 +85,7 @@ export class AiService {
           });
 
           response.data.on('end', async () => {
-            if (isFunctionCallMode && functionName) {
-              const generatedFunctionCall = JSON.parse(functionCall);
-              const functionParameters = generatedFunctionCall;
-              await this[functionName](user_id, functionParameters);
-
-              const postSavePrompt = `Send the user a message saying their ${functionName} has been saved.`;
-
-              openai
-                .createChatCompletion(
-                  {
-                    model: 'gpt-3.5-turbo',
-                    messages: [
-                      {
-                        role: 'system',
-                        content: postSavePrompt,
-                      },
-                    ],
-                    temperature: 0.7,
-                    n: 1,
-                    stream: true,
-                  },
-                  { responseType: 'stream' },
-                )
-                .then((responseTwo: any) => {
-                  responseTwo.data.on('data', (chunk: any) => {
-                    stream.write(chunk.toString());
-                  });
-                  responseTwo.data.on('end', () => {
-                    stream.end();
-                  });
-                })
-                .catch(handleError);
-            } else if (!isFunctionCallMode) {
-              stream.end();
-            }
+            await this.handleStreamEnd(stream, functionName, functionCall, isFunctionCallMode, user_id, openai);
           });
         };
 
@@ -136,6 +110,48 @@ export class AiService {
     }
   }
 
+  async handleStreamEnd(
+    stream: internal.PassThrough,
+    functionName: string,
+    functionCall: string,
+    isFunctionCallMode: boolean,
+    user_id: string,
+    openai: OpenAIApi,
+  ) {
+    if (isFunctionCallMode && functionName) {
+      const functionParameters = JSON.parse(functionCall);
+      // call function to save activity or focus mode
+      await this.validateFunctionCallParameters(functionParameters);
+      await this[functionName](user_id, functionParameters);
+
+      const responseTwo: any = await openai.createChatCompletion(
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: this.getPostFunctionCallPrompt(functionName, functionParameters),
+            },
+          ],
+          temperature: 0.7,
+          n: 1,
+          stream: true,
+        },
+        { responseType: 'stream' },
+      );
+
+      responseTwo.data.on('data', (chunk: any) => {
+        stream.write(chunk.toString());
+      });
+
+      responseTwo.data.on('end', () => {
+        stream.end();
+      });
+    } else if (!isFunctionCallMode) {
+      stream.end();
+    }
+  }
+
   getChatHistory(messages: ChatCompletionRequestMessage[], language: string): ChatCompletionRequestMessage[] {
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
@@ -148,5 +164,11 @@ export class AiService {
       For function calls, if any required arguments aren't received, ask the user for the missing arguments, don't pick defaults by yourself`,
     };
     return [defaultChat, ...messages];
+  }
+
+  getPostFunctionCallPrompt(functionName: string, { name, routine }: { name: string; routine: string }) {
+    const createActivityPrompt = `Send the user a message saying their activity named ${name} has been saved to their ${routine} routine.`;
+    const createFocusModePrompt = `Send the user a message saying their focus mode named ${name} has been saved.`;
+    return functionName === 'createActivity' ? createActivityPrompt : createFocusModePrompt;
   }
 }

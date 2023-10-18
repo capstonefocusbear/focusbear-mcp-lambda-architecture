@@ -540,7 +540,7 @@ describe('UserSettingsService', () => {
       const activityDataDummy = {
         name: 'New Activity',
         duration: 200,
-        days_of_week: ['ALL'],
+        days_of_week: [DaysOfWeek.ALL],
         allowed_urls: [],
         allowed_apps: [],
       };

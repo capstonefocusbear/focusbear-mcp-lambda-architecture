@@ -79,7 +79,9 @@ export class EventsConsumer {
           : 'common.resume_focus_mode_body',
         { lang: language },
       );
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body);
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body, {
+        id: event_type,
+      });
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       console.error('Error in resume-habits-notification queued job:', error);

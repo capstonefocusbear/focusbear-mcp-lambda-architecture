@@ -89,6 +89,7 @@ export const UserSettingsServiceMock = {
   getSettings: jest.fn(),
   clearUserActivities: jest.fn(),
   updateUserTimezoneAndLanguage: jest.fn(),
+  addActivityToRoutine: jest.fn(),
 };
 
 export const JwtServiceMock = {
@@ -159,6 +160,7 @@ export const SentryServiceMock = {
 export const FocusModeServiceMock = {
   create: jest.fn(),
   saveFocusModeTags: jest.fn(),
+  createFocusMode: jest.fn(),
 };
 
 export const R2ServiceMock = {

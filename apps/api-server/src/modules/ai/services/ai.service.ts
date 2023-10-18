@@ -166,7 +166,7 @@ export class AiService {
     return [defaultChat, ...messages];
   }
 
-  getPostFunctionCallPrompt(functionName: string, { name, routine }: { name: string; routine: string }) {
+  getPostFunctionCallPrompt(functionName: string, { name, routine }: { name: string; routine?: string }) {
     const createActivityPrompt = `Send the user a message saying their activity named ${name} has been saved to their ${routine} routine.`;
     const createFocusModePrompt = `Send the user a message saying their focus mode named ${name} has been saved.`;
     return functionName === 'createActivity' ? createActivityPrompt : createFocusModePrompt;

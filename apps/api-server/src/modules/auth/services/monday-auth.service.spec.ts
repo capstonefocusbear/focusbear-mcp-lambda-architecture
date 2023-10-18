@@ -71,13 +71,18 @@ describe('MondayService', () => {
       };
       const userInfoResponseDummy = { account_id: 12345 };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      mockedAxios.post.mockResolvedValueOnce({
-        data: authorizationResponseDummy,
-      }).mockResolvedValueOnce({ 
-        data: userInfoResponseDummy 
-      });
+      mockedAxios.post
+        .mockResolvedValueOnce({
+          data: authorizationResponseDummy,
+        })
+        .mockResolvedValueOnce({
+          data: userInfoResponseDummy,
+        });
 
-      await mondayAuthService.authorize(userDummy.id, { location: locationDummy, 'accounts-server': accountServerDummy });
+      await mondayAuthService.authorize(userDummy.id, {
+        location: locationDummy,
+        'accounts-server': accountServerDummy,
+      });
 
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
         userDummy.id,

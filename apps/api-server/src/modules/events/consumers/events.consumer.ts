@@ -6,7 +6,7 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
-import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
+import { IMPACT_MEASUREMENT_EVENT_TYPES, RESUME_HABITS_NOTIFICATION } from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsService } from '../services/events.service';
 
@@ -79,7 +79,9 @@ export class EventsConsumer {
           : 'common.resume_focus_mode_body',
         { lang: language },
       );
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body);
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body, {
+        id: RESUME_HABITS_NOTIFICATION,
+      });
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       console.error('Error in resume-habits-notification queued job:', error);

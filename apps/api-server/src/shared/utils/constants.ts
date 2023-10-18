@@ -94,3 +94,5 @@ export const EVENTS_TO_IMPACT_CATEGORIES_MAP = {
 export const INTERNAL_TEST = 'internaltest';
 
 export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
+
+export const RESUME_HABITS_NOTIFICATION = 'postpone_habits_from_mobile';

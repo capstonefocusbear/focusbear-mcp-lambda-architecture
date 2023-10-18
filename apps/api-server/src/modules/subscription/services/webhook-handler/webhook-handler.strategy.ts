@@ -6,6 +6,7 @@ import { Team } from '../../../team/entities/team.entity';
 import { TeamRepository } from '../../../team/repositories/team.repository';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { Entitlement } from '../../domain/entitlement.enum';
+import { isUUID } from '../../../../shared/utils/helpers';
 
 @Injectable()
 export class WebhookHandlerStrategy {
@@ -17,6 +18,7 @@ export class WebhookHandlerStrategy {
   ) {}
 
   async updateUserRevenueCatCache(user_id: string) {
+    if (!isUUID(user_id)) return;
     await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
   }
 

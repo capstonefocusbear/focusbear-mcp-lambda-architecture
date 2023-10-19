@@ -180,8 +180,6 @@ describe('toDoService', () => {
       expect(QueueMock.add).not.toBeCalled();
     });
 
-    // Commented out until Zoho integration is continued
-    //
     it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
       const toDoId = ToDoDBResponseDummy.id;
       const toDoTimeLogDummy: ToDoTimeLogDto = {

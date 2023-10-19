@@ -5,6 +5,7 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
 import { BrevoService } from '@app/brevo/brevo.service';
+import axios from 'axios';
 import {
   Auth0ManagementServiceMock,
   BrevoServiceMock,
@@ -18,8 +19,16 @@ import { UserDataService } from './user-data.service';
 import { QueueMock, userDummy } from '../../../../../test/dummies';
 import { LanguageOptions } from '../../domain/language-options.enum';
 
+// Mock axios and set the type
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
 describe('UserDataService', () => {
   let service: UserDataService;
+
+  process.env = {
+    SLACK_BACKEND_ALERTS_WEBHOOK: 'test-url',
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -66,6 +75,28 @@ describe('UserDataService', () => {
       expect(QueueMock.add).toBeCalledWith('get-user-personal-data', {
         user_id: userDummy.id,
         language: LanguageOptions.ENGLISH,
+      });
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('positive: user should be deleted from DB and third -party services', async () => {
+      const dummyEmail = 'test@mail.com';
+      const dummyStripeId = 'cus_12345';
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...userDummy, stripe_customer_id: dummyStripeId });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: dummyEmail });
+
+      await service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' });
+
+      expect(RevenueCatServiceMock.deleteUserFromRevenueCat).toBeCalledWith(userDummy.id);
+      expect(Auth0ManagementServiceMock.deleteAuth0User).toBeCalledWith(userDummy.auth0_id);
+      expect(BrevoServiceMock.deleteContactFromBrevo).toBeCalledWith(dummyEmail);
+      expect(UserRepositoryMock.orm.delete).toBeCalledWith({ id: userDummy.id });
+      expect(StripeServiceMock.deleteStripeCustomer).toBeCalledWith(dummyStripeId);
+      expect(mockedAxios.post).toBeCalledWith('test-url', {
+        text: `Account deleted for user with email: ${dummyEmail} and ID: ${
+          userDummy.id
+        } \n\n Message: some text \n\n Can contact: ${false}`,
       });
     });
   });

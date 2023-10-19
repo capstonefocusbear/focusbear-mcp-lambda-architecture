@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -9,6 +9,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
+import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -55,6 +56,10 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { ONE_MINUTE } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
+
+// Mock axios and set the type
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserService', () => {
   let userService: UserService;
@@ -597,6 +602,24 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: if username is already in use, error should be thrown', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const userWIthSameUserName = { ...userDummy, id: randomUUID() };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWIthSameUserName);
+      const username = 'randomusername';
+      const errorMessage = `Username: ${username} already taken by user with ID: ${userWIthSameUserName.id}`;
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(ConflictException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: username should be saved if valid', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
       const username = 'randomusername';
@@ -789,6 +812,64 @@ describe('UserService', () => {
       expect(AdminAccessRequestRepositoryMock.create).toBeCalledWith(
         new AdminAccessRequest({ admin_user_id: userDummy.id, access_reason: accessReasonDummy }),
       );
+    });
+  });
+
+  describe('doesUserExistInProfitWell', () => {
+    it('positive: if user is returned from profitwell, true should be returned', async () => {
+      const dummyStripeId = 'cus_12345';
+      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: dummyStripeId }] });
+
+      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
+
+      expect(response).toBeTrue();
+    });
+
+    it('positive: if stripe IDs do not match, false should be returned', async () => {
+      const dummyStripeId = 'cus_12345';
+      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: 'cus_9876' }] });
+
+      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
+
+      expect(response).toBeFalse();
+    });
+
+    it('positive: if user is NOT returned from profitwell, false should be returned', async () => {
+      const dummyStripeId = 'cus_12345';
+      mockedAxios.get.mockResolvedValueOnce({ data: [] });
+
+      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
+
+      expect(response).toBeFalse();
+    });
+  });
+
+  describe('updateLongTermGoals', () => {
+    it('negative: if user is not found, error should be thrown', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const longTermGoalsDummy = ['Finish task x'];
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.updateLongTermGoals(userDummy.id, { goals: longTermGoalsDummy });
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: user long term goals should be updated in DB', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const longTermGoalsDummy = ['Finish task x'];
+      await userService.updateLongTermGoals(userDummy.id, { goals: longTermGoalsDummy });
+
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+        long_term_goals: longTermGoalsDummy,
+        updated_at: expect.toBeDateString(),
+        has_received_inactivity_warning: false,
+      });
     });
   });
 });

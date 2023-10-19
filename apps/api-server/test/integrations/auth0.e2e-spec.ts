@@ -4,12 +4,13 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { auth0LoginUser } from '../utils/auth0-login';
 
+const testUser = {
+  email: 'backendtestuser@mail.com',
+  password: process.env.AUTH0_TEST_USER_PASSWORD,
+};
+
 describe('Auth0', () => {
   let app: NestFastifyApplication;
-  const testUser = {
-    email: 'backendtestuser@mail.com',
-    password: 'Passw0rd!',
-  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -17,7 +18,7 @@ describe('Auth0', () => {
     }).compile();
 
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-
+    jest.setTimeout(20000);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });

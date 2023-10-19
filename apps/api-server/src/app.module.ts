@@ -30,6 +30,7 @@ import { AppLogsModule } from './modules/app-logs/app-logs.module';
 import { SavedWebsiteModule } from './modules/saved-website/saved-website.module';
 import { ToDoModule } from './modules/to-do/to-do.module';
 import { PlatformIntegrationsModule } from './modules/platform-integrations/platform-integrations.module';
+import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 
 @Module({
@@ -81,7 +82,8 @@ import { IntegrationModule } from './modules/integration/integration.module';
     SavedWebsiteModule,
     ToDoModule,
     PlatformIntegrationsModule,
-    IntegrationModule
+    AiModule,
+    IntegrationModule,
   ],
   controllers: [AppController],
 })

@@ -93,7 +93,7 @@ export class AiService {
           {
             model: 'gpt-3.5-turbo',
             messages: chatHistory,
-            temperature: 0.5,
+            temperature: 0.2,
             n: 1,
             function_call: 'auto',
             functions: [createActivityFunction, createFocusModeFunction],
@@ -133,7 +133,7 @@ export class AiService {
               content: this.getPostFunctionCallPrompt(functionName, functionParameters),
             },
           ],
-          temperature: 0.7,
+          temperature: 0.2,
           n: 1,
           stream: true,
         },
@@ -155,13 +155,13 @@ export class AiService {
   getChatHistory(messages: ChatCompletionRequestMessage[], language: string): ChatCompletionRequestMessage[] {
     const defaultChat: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `You are a ${language} speaking chatbot(don't mention that you are a chatbot) 
-      named Focus Bear helping people to be productive and achieve 
-      the goals they set out to achieve. You are part of an app that has features 
-      like allowing users to block apps and websites they find distracting and letting them 
-       practice habits they set out to do as part of their daily routines. You are restricted to 
-      talking about productivity and habits and should limit responses to 100 words. Please greet the user briefly.
-      For function calls, if any required arguments aren't received, ask the user for the missing arguments, don't pick defaults by yourself`,
+      content: `
+      You are a ${language}-speaking assistant named Focus Bear. 
+      Your purpose is to help users improve productivity and establish good habits. 
+      Within an app, users can block distracting apps and websites and practice daily routines they've set. 
+      Your discussions should center on productivity and habits. Responses should be under 100 words. 
+      Please begin with a brief greeting. If a function call misses any required arguments, ask for the missing information without repeating phrases. 
+      Do not assume defaults on your own.`,
     };
     return [defaultChat, ...messages];
   }

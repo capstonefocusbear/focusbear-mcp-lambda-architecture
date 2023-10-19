@@ -43,7 +43,7 @@ describe('AiService', () => {
   });
 
   describe('createActivity', () => {
-    it('positive: funciton should be called to add activity to user settings', async () => {
+    it('positive: function should be called to add activity to user settings', async () => {
       const activityDataDummy = {
         name: 'Test Activity',
         duration: 300,

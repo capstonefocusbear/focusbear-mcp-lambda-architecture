@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
@@ -148,7 +148,12 @@ export class ToDoService {
           id: toDo.synced_project_id,
         });
         const selectedStatus = available_statuses.find((externalStatus) => externalStatus.status_id === task.status);
-        if (selectedStatus.should_complete_task) {
+        if (!selectedStatus) {
+          throw new BadRequestException(
+            `Error while updating task external status. No external status found with ID: ${task.status} for task with ID: ${task.id}`,
+          );
+        }
+        if (selectedStatus?.should_complete_task) {
           await this.toDoRepository.update(task.id, { status: ToDoStatus.COMPLETED });
         }
       }

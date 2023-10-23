@@ -77,4 +77,11 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     const hasInstalledMobileApp = mobileDevices.length > 0;
     return { hasInstalledDesktopApp, hasInstalledMobileApp };
   }
+
+  async updateDeviceAppVersion(deviceId: string, appVersion: string) {
+    if (!deviceId || !appVersion) return;
+    const device = await this.deviceRepository.orm.findOneBy({ id: deviceId });
+    device.app_version = appVersion;
+    await this.deviceRepository.orm.save(device);
+  }
 }

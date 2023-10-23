@@ -11,6 +11,7 @@ import { EventsService } from './services/events.service';
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { EventsRepository } from './repositories/events.repository';
 import { UserModule } from '../user/user.module';
+import { DeviceModule } from '../device/device.module';
 
 @Module({
   providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository],
@@ -40,6 +41,7 @@ import { UserModule } from '../user/user.module';
       useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     UserModule,
+    DeviceModule,
   ],
   controllers: [EventsController],
 })

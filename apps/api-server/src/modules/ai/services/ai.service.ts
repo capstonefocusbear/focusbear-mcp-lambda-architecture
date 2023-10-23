@@ -63,30 +63,37 @@ export class AiService {
         let functionCall = '';
 
         const processResponse = async (response: any) => {
-          response.data.on('data', (chunk: any) => {
-            const lines = chunk
-              .toString()
-              .split('\n')
-              .filter((line: string) => line.trim() !== '');
-            for (const line of lines) {
-              const message = line.replace(/^data: /, '');
-              if (message !== '[DONE]') {
-                const parsedMessage = JSON.parse(message);
-                const isFunctionCall = !!parsedMessage.choices[0]?.delta?.function_call;
-                if (isFunctionCall) {
-                  isFunctionCallMode = true;
-                  functionName += parsedMessage.choices[0]?.delta?.function_call?.name || '';
-                  functionCall += parsedMessage.choices[0]?.delta?.function_call?.arguments || '';
-                } else if (!isFunctionCall && !isFunctionCallMode) {
-                  stream.write(chunk.toString());
+          try {
+            response.data.on('data', (chunk: any) => {
+              let isFunctionCall = false;
+              const lines = chunk
+                .toString()
+                .split('\n')
+                .filter((line: string) => line.trim() !== '');
+              for (const line of lines) {
+                const message = line.replace(/^data: /, '');
+                if (message !== '[DONE]') {
+                  const parsedMessage = JSON.parse(message);
+                  isFunctionCall = !!parsedMessage.choices[0]?.delta?.function_call;
+                  if (isFunctionCall) {
+                    isFunctionCallMode = true;
+                    functionName += parsedMessage.choices[0]?.delta?.function_call?.name || '';
+                    functionCall += parsedMessage.choices[0]?.delta?.function_call?.arguments || '';
+                  }
                 }
               }
-            }
-          });
+              if (!isFunctionCall && !isFunctionCallMode) {
+                stream.write(chunk.toString());
+              }
+            });
 
-          response.data.on('end', async () => {
-            await this.handleStreamEnd(stream, functionName, functionCall, isFunctionCallMode, user_id, openai);
-          });
+            response.data.on('end', async () => {
+              await this.handleStreamEnd(stream, functionName, functionCall, isFunctionCallMode, user_id, openai);
+            });
+          } catch (getStreamResponseError) {
+            console.error('Error reading stream response: ', getStreamResponseError);
+            throw getStreamResponseError;
+          }
         };
 
         const response = await openai.createChatCompletion(

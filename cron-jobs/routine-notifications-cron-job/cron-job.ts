@@ -206,6 +206,7 @@ function publishToUsersByLanguage(
       },
       fcm: { notification: { title, body: message } },
     });
+    console.log('Users to receive routine push notifications: ', userIDs);
     return beamsClient.publishToUsers(userIDs, publishRequest);
   }
 }
@@ -235,10 +236,13 @@ function createFileName(routine: string, language: string) {
     };
     const startupUsers = await getUsersForStartup();
     const shutdownUsers = await getUsersForShutdown();
-    await Promise.all([
+    const [beamsResponseOne, beamsResponseTwo] = await Promise.all([
       publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData),
       publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData),
     ]);
+    console.log('Routine push notification response One: ', beamsResponseOne);
+    console.log('Routine push notification response Two: ', beamsResponseTwo);
+
     await Promise.all([
       updateUsersMorningRoutineNotification(startupUsers),
       updateUsersEveningRoutineNotification(shutdownUsers),

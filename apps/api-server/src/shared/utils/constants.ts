@@ -13,6 +13,7 @@ export const FOCUS_BEAR_EMAILS = {
 };
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
+  APP_UNINSTALL_FEEDBACK: 'App Uninstall Feedback',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;

@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
+import { SendGridService } from '@app/send-grid';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -12,6 +13,7 @@ import {
   SentryServiceMock,
   UserRepositoryMock,
   UserDailyStatsServiceMock,
+  SendGridServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -38,6 +40,7 @@ describe('EventService', () => {
         Auth0ManagementService,
         EventsRepository,
         UserDailyStatsService,
+        SendGridService,
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
@@ -58,6 +61,8 @@ describe('EventService', () => {
       .useValue(EventsRepositoryMock)
       .overrideProvider(UserDailyStatsService)
       .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);

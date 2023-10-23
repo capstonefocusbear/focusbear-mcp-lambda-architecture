@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
+import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { UserRepository } from '../user/repositories/user.repository';
 import { EventsConsumer } from './consumers/events.consumer';
 import { EventsController } from './controllers/events.controller';
@@ -32,6 +33,11 @@ import { UserModule } from '../user/user.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
+    }),
+    SendGridModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     UserModule,
   ],

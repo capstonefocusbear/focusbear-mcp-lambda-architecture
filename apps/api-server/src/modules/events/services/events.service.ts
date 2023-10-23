@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bull';
 import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
@@ -11,8 +12,10 @@ import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
 import {
   DISTRACTION_BLOCK_EVENTS,
+  EMAIL_SUBJECTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
   EVENT_TYPES_TO_ALERT_IN_SLACK,
+  FOCUS_BEAR_TEAM_EMAIL,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_MINUTE,
   WORDS_TO_LOG_FOR,
@@ -28,6 +31,7 @@ export class EventsService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly eventsRepository: EventsRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly emailService: SendGridService,
   ) {}
 
   async handleIncomingEvent(trackEventDto: TrackEventDto, user_id: string) {
@@ -83,6 +87,15 @@ export class EventsService {
     return false;
   }
 
+  async emailQuitFeedback(event: TrackEventDto) {
+    await this.emailService.sendEmail({
+      to: FOCUS_BEAR_TEAM_EMAIL,
+      from: FOCUS_BEAR_TEAM_EMAIL,
+      text: JSON.stringify(event),
+      subject: EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK,
+    });
+  }
+
   async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {
     // Convert minutes to postpone to milliseconds
     const durationMilliseconds = durationMinutes * ONE_MINUTE;
@@ -117,6 +130,9 @@ export class EventsService {
       }
       if (event_type === EventTypes.APP_QUIT) {
         message = `*User quit app:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``;
+      }
+      if (event_type === EventTypes.APP_QUIT) {
+        await this.emailQuitFeedback(event);
       }
       await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, {
         text: message,

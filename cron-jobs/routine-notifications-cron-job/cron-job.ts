@@ -190,7 +190,7 @@ async function updateUsersEveningRoutineNotification(users: User[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
-function publishToUsersByLanguage(
+async function publishToUsersByLanguage(
   users: User[],
   language: string,
   routine: string,
@@ -206,7 +206,9 @@ function publishToUsersByLanguage(
       },
       fcm: { notification: { title, body: message } },
     });
-    return beamsClient.publishToUsers(userIDs, publishRequest);
+    const res = await beamsClient.publishToUsers(userIDs, publishRequest);
+    console.log('Users to receive routine push notifications: ', userIDs);
+    console.log('Routine push notification response: ', res);
   }
 }
 

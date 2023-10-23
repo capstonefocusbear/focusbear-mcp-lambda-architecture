@@ -121,4 +121,20 @@ describe('DeviceService', () => {
       expect(response.hasInstalledMobileApp).toBeFalse();
     });
   });
+
+  describe('updateDeviceAppVersion', () => {
+    it('positive: device app version should be saved', async () => {
+      const desktopDeviceDummy = new Device({
+        id: randomUUID(),
+        user_id: userDummy.id,
+        operating_system: OperatingSystem.MacOS,
+        is_leader: true,
+      });
+      DeviceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(desktopDeviceDummy);
+
+      await deviceService.updateDeviceAppVersion(desktopDeviceDummy.id, '1.0.2');
+
+      expect(DeviceRepositoryMock.orm.save).toBeCalledWith({ ...desktopDeviceDummy, app_version: '1.0.2' });
+    });
+  });
 });

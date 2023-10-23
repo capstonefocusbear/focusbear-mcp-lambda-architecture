@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -15,7 +15,11 @@ export class EventsController {
 
   @Post()
   @HttpCode(204)
-  logEvent(@Body() trackEventDto: TrackEventDto, @AuthContext() { user }: Passport) {
-    return this.eventsService.handleIncomingEvent(trackEventDto, user.id);
+  logEvent(
+    @Body() trackEventDto: TrackEventDto,
+    @AuthContext() { user }: Passport,
+    @Headers() { device_id, 'app-version': app_version }: any,
+  ) {
+    return this.eventsService.handleIncomingEvent(trackEventDto, user.id, { device_id, app_version });
   }
 }

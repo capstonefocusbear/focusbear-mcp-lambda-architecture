@@ -47,6 +47,7 @@ export const UserServiceMock = {
 export const DeviceServiceMock = {
   markAsLeader: jest.fn(),
   getUserInstalledDevices: jest.fn(),
+  updateDeviceAppVersion: jest.fn(),
 };
 
 export const ActivitySequenceServiceMock = {

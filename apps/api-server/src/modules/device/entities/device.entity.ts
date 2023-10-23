@@ -33,6 +33,12 @@ export class Device extends BaseEntity {
   is_leader?: boolean;
 
   @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  app_version?: string;
+
+  @Column({
     type: 'jsonb',
     transformer: BaseEntity.encryptJSONField('metadata'),
   })

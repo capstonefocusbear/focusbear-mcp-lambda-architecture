@@ -3,6 +3,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bull';
 import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SendGridService } from '@app/send-grid';
+import { maskEmail } from '../../../shared/utils/helpers';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
@@ -11,8 +13,10 @@ import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
 import {
   DISTRACTION_BLOCK_EVENTS,
+  EMAIL_SUBJECTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
   EVENT_TYPES_TO_ALERT_IN_SLACK,
+  FOCUS_BEAR_TEAM_EMAIL,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_MINUTE,
   WORDS_TO_LOG_FOR,
@@ -30,6 +34,7 @@ export class EventsService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly eventsRepository: EventsRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly emailService: SendGridService,
     private readonly deviceService: DeviceService,
   ) {}
 
@@ -54,6 +59,9 @@ export class EventsService {
       const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
       if (shouldLogEvent) {
         await this.logEventInSlack(user_id, trackEventDto);
+      }
+      if (event_type === EventTypes.APP_QUIT) {
+        await this.emailQuitFeedback(trackEventDto, userAuth0Data.email);
       }
       if (
         event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE ||
@@ -89,6 +97,15 @@ export class EventsService {
       }
     }
     return false;
+  }
+
+  async emailQuitFeedback(event: TrackEventDto, email: string) {
+    await this.emailService.sendEmail({
+      to: FOCUS_BEAR_TEAM_EMAIL,
+      from: FOCUS_BEAR_TEAM_EMAIL,
+      text: JSON.stringify(event),
+      subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(email)}`,
+    });
   }
 
   async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {

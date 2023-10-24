@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
+import { randomUUID } from 'crypto';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -12,6 +13,7 @@ import {
   SentryServiceMock,
   UserRepositoryMock,
   UserDailyStatsServiceMock,
+  DeviceServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -22,6 +24,7 @@ import { ImpactEvent } from '../entities/impact-event.entity';
 import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
+import { DeviceService } from '../../device/services/device/device.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -38,6 +41,7 @@ describe('EventService', () => {
         Auth0ManagementService,
         EventsRepository,
         UserDailyStatsService,
+        DeviceService,
         {
           provide: getQueueToken('events'),
           useValue: QueueMock,
@@ -58,6 +62,8 @@ describe('EventService', () => {
       .useValue(EventsRepositoryMock)
       .overrideProvider(UserDailyStatsService)
       .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(DeviceService)
+      .useValue(DeviceServiceMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);
@@ -71,6 +77,8 @@ describe('EventService', () => {
     expect(eventsService).toBeDefined();
   });
 
+  const headersDummy = { app_version: '1.0.0', device_id: randomUUID() };
+
   describe('handleIncomingEvent', () => {
     it('negative: should return a not found exception if user is not found in DB', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
@@ -78,7 +86,7 @@ describe('EventService', () => {
       let exception: any;
 
       try {
-        await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id);
+        await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
       } catch (error) {
         exception = error;
       }
@@ -92,7 +100,7 @@ describe('EventService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
 
-      await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id);
+      await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
 
       expect(QueueMock.add).toBeCalledWith('track-event', {
         user_id: userDummy.id,
@@ -107,7 +115,7 @@ describe('EventService', () => {
       const dummyEvent = { event_type: EventTypes.APP_QUIT, event_data: { data: { quitReason: 'App is broken' } } };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
 
-      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(mockedAxios.post).toBeCalledWith('some-url', {
         text: message,
@@ -123,7 +131,7 @@ describe('EventService', () => {
         event_data: { data: { quantity: minutesToPostpone } },
       };
 
-      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(QueueMock.add).toBeCalledWith(
         'resume-notification',
@@ -144,7 +152,7 @@ describe('EventService', () => {
         event_data: { data: { quantity: 5 } },
       };
 
-      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(EventsRepositoryMock.orm.save).toBeCalledWith(
         new ImpactEvent({
@@ -162,7 +170,7 @@ describe('EventService', () => {
         event_type: EventTypes.BLOCK_DISTRACTING_URL,
       };
 
-      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id);
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(UserDailyStatsServiceMock.updateDistractionBlockCount).toBeCalledWith(userDummy.id, userDummy.timezone);
     });

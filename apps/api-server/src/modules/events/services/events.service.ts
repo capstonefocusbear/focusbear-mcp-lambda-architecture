@@ -18,6 +18,8 @@ import {
   WORDS_TO_LOG_FOR,
 } from '../../../shared/utils/constants';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
+import { DeviceService } from '../../device/services/device/device.service';
+import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 
 @Injectable()
 export class EventsService {
@@ -28,9 +30,14 @@ export class EventsService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly eventsRepository: EventsRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly deviceService: DeviceService,
   ) {}
 
-  async handleIncomingEvent(trackEventDto: TrackEventDto, user_id: string) {
+  async handleIncomingEvent(
+    trackEventDto: TrackEventDto,
+    user_id: string,
+    { device_id, app_version }: UpdateAppVersionDto,
+  ) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -65,6 +72,7 @@ export class EventsService {
         email: userAuth0Data.email,
         trackEventDto,
       });
+      await this.deviceService.updateDeviceAppVersion(device_id, app_version);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

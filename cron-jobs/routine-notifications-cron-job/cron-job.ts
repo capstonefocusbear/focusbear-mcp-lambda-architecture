@@ -126,16 +126,18 @@ async function getMessage(routine: string, fileName: string, language: string): 
 
 async function getUsersForStartup() {
   const currentTime = DateTime.local();
-  const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
-  const oneMinuteAfterNow = currentTime.minus({ minute: 1 });
+  const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
-  const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
   const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
+  const timeStrings: string[] = [];
+  for (let i = 0; i <= 30; i++) {
+    timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
+  }
   const users = await CronJobDataSource.manager.find(User, {
     where: [
       { utc_startup_time: timeStamp },
-      { utc_startup_time: timeStampMinusMinute },
       { utc_startup_time: timeStampPlusMinute },
+      ...timeStrings.map((ts) => ({ utc_startup_time: ts })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {
@@ -150,16 +152,18 @@ async function getUsersForStartup() {
 
 async function getUsersForShutdown() {
   const currentTime = DateTime.local();
-  const oneMinuteBeforeNow = currentTime.minus({ minute: 1 });
-  const oneMinuteAfterNow = currentTime.minus({ minute: 1 });
+  const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
-  const timeStampMinusMinute = oneMinuteBeforeNow.toFormat('HH:mm');
   const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
+  const timeStrings: string[] = [];
+  for (let i = 0; i <= 30; i++) {
+    timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
+  }
   const users = await CronJobDataSource.manager.find(User, {
     where: [
       { utc_shutdown_time: timeStamp },
-      { utc_shutdown_time: timeStampMinusMinute },
       { utc_shutdown_time: timeStampPlusMinute },
+      ...timeStrings.map((ts) => ({ utc_shutdown_time: ts })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {

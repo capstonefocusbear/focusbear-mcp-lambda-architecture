@@ -4,6 +4,7 @@ import { Queue } from 'bull';
 import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '@app/send-grid';
+import { maskEmail } from '../../../shared/utils/helpers';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
@@ -59,6 +60,9 @@ export class EventsService {
       if (shouldLogEvent) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
+      if (event_type === EventTypes.APP_QUIT) {
+        await this.emailQuitFeedback(trackEventDto, userAuth0Data.email);
+      }
       if (
         event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE ||
         event_type === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE
@@ -95,12 +99,12 @@ export class EventsService {
     return false;
   }
 
-  async emailQuitFeedback(event: TrackEventDto) {
+  async emailQuitFeedback(event: TrackEventDto, email: string) {
     await this.emailService.sendEmail({
       to: FOCUS_BEAR_TEAM_EMAIL,
       from: FOCUS_BEAR_TEAM_EMAIL,
       text: JSON.stringify(event),
-      subject: EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK,
+      subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(email)}`,
     });
   }
 
@@ -138,9 +142,6 @@ export class EventsService {
       }
       if (event_type === EventTypes.APP_QUIT) {
         message = `*User quit app:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``;
-      }
-      if (event_type === EventTypes.APP_QUIT) {
-        await this.emailQuitFeedback(event);
       }
       await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, {
         text: message,

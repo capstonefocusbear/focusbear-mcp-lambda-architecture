@@ -16,7 +16,7 @@ export class R2Service {
     const url = await this.s3.getSignedUrlPromise('getObject', {
       Bucket: bucket,
       Key: key,
-      Expires: 86400,
+      Expires: 604800,
     });
     return url;
   }

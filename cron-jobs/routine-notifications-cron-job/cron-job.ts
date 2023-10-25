@@ -147,6 +147,9 @@ async function getUsersForStartup() {
     const hasReceivedNotificationToday = lastMorningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
   });
+  const usersMatchingMorningTimestamp = users.map((user) => user.id);
+  const usersThatDidNotReceiveMorningNotificationToday = usersToReceiveNotification.map((user) => user.id);
+  console.log({ usersMatchingMorningTimestamp, usersThatDidNotReceiveMorningNotificationToday });
   return usersToReceiveNotification;
 }
 
@@ -173,6 +176,9 @@ async function getUsersForShutdown() {
     const hasReceivedNotificationToday = lastEveningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
   });
+  const usersMatchingEveningTimestamp = users.map((user) => user.id);
+  const usersThatDidNotReceiveEveningNotificationToday = usersToReceiveNotification.map((user) => user.id);
+  console.log({ usersMatchingEveningTimestamp, usersThatDidNotReceiveEveningNotificationToday });
   return usersToReceiveNotification;
 }
 

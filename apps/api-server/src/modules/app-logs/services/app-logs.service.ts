@@ -28,13 +28,17 @@ export class AppLogsService {
         throw new BadRequestException('Invalid file type. Please upload a .txt file.');
       }
       const fileBuffer = await fileData.toBuffer();
+      const date = new Date().toISOString();
       await this.r2Service.uploadFileToBucket(
         'app-usage-logs',
-        `${user_id}-${new Date().toISOString()}-${fileData.filename}`,
+        `${user_id}-${date}-${fileData.filename}`,
         fileBuffer,
         fileData.mimetype,
       );
-      const presignedUrl = await this.r2Service.getPresignedUrl('app-usage-logs', `${user_id}-${fileData.filename}`);
+      const presignedUrl = await this.r2Service.getPresignedUrl(
+        'app-usage-logs',
+        `${user_id}-${date}-${fileData.filename}`,
+      );
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const uninstallFeedback = new UninstallFeedback({
         app_platform,

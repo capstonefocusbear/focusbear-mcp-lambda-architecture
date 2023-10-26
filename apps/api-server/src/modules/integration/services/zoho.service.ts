@@ -1,8 +1,8 @@
 /* eslint-disable no-await-in-loop */
-import { BaseIntegrationService } from './base.service';
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { IsNull, Not } from 'typeorm';
+import { BaseIntegrationService } from './base.service';
 import { getDataCenterUrl } from '../../../shared/utils/helpers';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
@@ -16,18 +16,17 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
+import { ToDo } from '../../to-do/entities/to-do.entity';
 
 const projectAdapter = (project) => ({
   id: project.id_string,
-  ...project
+  ...project,
 });
-import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
-import { ToDo } from '../../to-do/entities/to-do.entity';
 
 @Injectable()
 @UseGuards(IsAuth)
 export class ZohoService implements BaseIntegrationService {
-
   constructor(
     private readonly userRepository: UserRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
@@ -123,8 +122,8 @@ export class ZohoService implements BaseIntegrationService {
     const response = await this.httpService.get(url, {
       headers,
     });
-    
-    return response.data.projects.map(project => projectAdapter(project));
+
+    return response.data.projects.map((project) => projectAdapter(project));
   }
 
   async getPortals(userId: string): Promise<AxiosResponse<any>> {
@@ -193,7 +192,7 @@ export class ZohoService implements BaseIntegrationService {
           const linkedSyncedProject = userSyncedProjects.find(
             (syncedProject) => syncedProject.external_project_id === project.id,
           );
-          externalStatuses = linkedSyncedProject.available_statuses;
+          externalStatuses = linkedSyncedProject?.available_statuses;
         }
         const projectData = {
           name: project.name,
@@ -374,8 +373,8 @@ export class ZohoService implements BaseIntegrationService {
         }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
         const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
         const formData = {
-          custom_status: statusId
-        }
+          custom_status: statusId,
+        };
         const response = await this.httpService.post(url, formData, {
           headers,
         });

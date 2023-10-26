@@ -124,7 +124,7 @@ async function getMessage(routine: string, fileName: string, language: string): 
   return existingMessage.message;
 }
 
-async function getUsersForStartup() {
+async function getUsersForStartup(language: string) {
   const currentTime = DateTime.local();
   const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
@@ -135,9 +135,9 @@ async function getUsersForStartup() {
   }
   const users = await CronJobDataSource.manager.find(User, {
     where: [
-      { utc_startup_time: timeStamp },
-      { utc_startup_time: timeStampPlusMinute },
-      ...timeStrings.map((ts) => ({ utc_startup_time: ts })),
+      { utc_startup_time: timeStamp, language },
+      { utc_startup_time: timeStampPlusMinute, language },
+      ...timeStrings.map((ts) => ({ utc_startup_time: ts, language })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {
@@ -153,7 +153,7 @@ async function getUsersForStartup() {
   return usersToReceiveNotification;
 }
 
-async function getUsersForShutdown() {
+async function getUsersForShutdown(language: string) {
   const currentTime = DateTime.local();
   const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
   const timeStamp = currentTime.toFormat('HH:mm');
@@ -164,9 +164,9 @@ async function getUsersForShutdown() {
   }
   const users = await CronJobDataSource.manager.find(User, {
     where: [
-      { utc_shutdown_time: timeStamp },
-      { utc_shutdown_time: timeStampPlusMinute },
-      ...timeStrings.map((ts) => ({ utc_shutdown_time: ts })),
+      { utc_shutdown_time: timeStamp, language },
+      { utc_shutdown_time: timeStampPlusMinute, language },
+      ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {
@@ -206,8 +206,8 @@ function publishToUsersByLanguage(
   routine: string,
   translationData: TranslationDataType,
 ) {
-  const usersMatchingLanguage = users.filter((user) => user.language === language);
-  const userIDs = usersMatchingLanguage.map((user) => user.id);
+  const userIDs = users.map((user) => user.id);
+  console.log('USER-IDS:', userIDs);
   if (userIDs.length !== 0) {
     const { title, message } = translationData[language][routine];
     const publishRequest = new BeamsPublishRequest({
@@ -244,8 +244,8 @@ function createFileName(routine: string, language: string) {
       morning: { title: MORNING_ROUTINE_TITLES[language], message: morningMessage },
       evening: { title: EVENING_ROUTINE_TITLES[language], message: eveningMessage },
     };
-    const startupUsers = await getUsersForStartup();
-    const shutdownUsers = await getUsersForShutdown();
+    const startupUsers = await getUsersForStartup(language);
+    const shutdownUsers = await getUsersForShutdown(language);
     const [beamsResponseOne, beamsResponseTwo] = await Promise.all([
       publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData),
       publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData),

@@ -69,7 +69,7 @@ export class ToDoService {
           const syncedProject = await this.syncedProjectsRepository.orm.findOne({
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
-          const availableStatuses = syncedProject.available_statuses;
+          const availableStatuses = syncedProject?.available_statuses;
           const externalStatusLabel = toDo.external_task_metadata?.task_data?.status?.name;
           const externalStatusId = toDo.external_task_metadata?.task_data?.status?.id;
           const externalStatus = { label: externalStatusLabel, id: externalStatusId };
@@ -102,7 +102,7 @@ export class ToDoService {
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
           const linkedTask = findTask(toDo.external_task_id, userZohoTasks);
-          const availableStatuses = syncedProject.available_statuses;
+          const availableStatuses = syncedProject?.available_statuses;
           const externalStatusLabel = linkedTask?.status?.name;
           const externalStatusId = linkedTask?.status?.id;
           const currentExternalStatus = { label: externalStatusLabel, id: externalStatusId };

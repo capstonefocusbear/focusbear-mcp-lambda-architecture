@@ -43,21 +43,21 @@ export class CompletedFocusBlock extends BaseEntity {
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 400,
     transformer: BaseEntity.encryptField('intention'),
   })
   intention?: string;
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 400,
     transformer: BaseEntity.encryptField('achievements'),
   })
   achievements?: string;
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 400,
     transformer: BaseEntity.encryptField('distractions'),
   })
   distractions?: string;

@@ -13,6 +13,7 @@ export class TrackEventDto {
     data?: {
       quantity?: number;
       quitReason?: string;
+      feedback?: string;
     };
   };
 }

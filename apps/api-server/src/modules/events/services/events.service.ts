@@ -57,10 +57,11 @@ export class EventsService {
       const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
       const { event_type, event_data } = trackEventDto;
       const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
+      const hasFeedback = !!event_data?.data?.feedback;
       if (shouldLogEvent) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
-      if (event_type === EventTypes.APP_QUIT) {
+      if (event_type === EventTypes.APP_QUIT && hasFeedback) {
         await this.emailQuitFeedback(trackEventDto, userAuth0Data.email);
       }
       if (

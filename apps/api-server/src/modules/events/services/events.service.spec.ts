@@ -27,6 +27,8 @@ import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_TEAM_EMAIL } from '../../../shared/utils/constants';
+import { maskEmail } from '../../../shared/utils/helpers';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -178,6 +180,24 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(UserDailyStatsServiceMock.updateDistractionBlockCount).toBeCalledWith(userDummy.id, userDummy.timezone);
+    });
+
+    it('positive: if event type is app-quit and feedback is sent, email should be sent to customer support channel', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      const dummyEvent = {
+        event_type: EventTypes.APP_QUIT,
+        event_data: { data: { quitReason: 'App is broken', feedback: 'Test feedback' } },
+      };
+
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
+
+      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        to: FOCUS_BEAR_TEAM_EMAIL,
+        from: FOCUS_BEAR_TEAM_EMAIL,
+        text: JSON.stringify(dummyEvent),
+        subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(auth0UserDummy.email)}`,
+      });
     });
   });
 

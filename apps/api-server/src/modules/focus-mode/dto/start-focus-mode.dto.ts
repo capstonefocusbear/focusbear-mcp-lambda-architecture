@@ -1,28 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsDate, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CreateToDoDto } from '../../to-do/dto/create-to-do.dto';
-// import { IsTimestampLesserThanNow } from '../../activity/dto/create-completed-activity.dto';
-
-// export function IsTimestampGreaterThanNow(property: string, validationOptions?: ValidationOptions) {
-//   return function (object: any, propertyName: string) {
-//     registerDecorator({
-//       target: object.constructor,
-//       propertyName,
-//       constraints: [property],
-//       options: validationOptions,
-//       validator: {
-//         validate(value: any) {
-//           const now = new Date();
-//           return value >= now;
-//         },
-//       },
-//     });
-//   };
-// }
 
 export class StartFocusModeDto {
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   intention?: string;
 
   @IsNotEmpty()

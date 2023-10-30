@@ -14,7 +14,7 @@ export interface BaseIntegrationService {
 
   getTasks(userId: string, projectId: string, portalId: string): Promise<any>;
 
-  getProjects(userId: string, portalId: any): Promise<any[]>;
+  getProjects(userId: string, portalId: string): Promise<any[]>;
 
   getPortals(userId: string): Promise<AxiosResponse<any>>;
 
@@ -30,15 +30,9 @@ export interface BaseIntegrationService {
 
   getAllUserTasks(userId: string);
 
-  getTasksOwnedByUser(userId: string, projectId: string);
+  getTasksOwnedByUser(userId: string, portalId: string, projectId: string);
 
   getProjectStatuses(userId: string, projectId: string, portalId: string);
 
-  updateTaskStatus(
-    userId: string,
-    portalId: string,
-    projectId: string,
-    taskId: string,
-    statusId: string,
-  );
+  updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string);
 }

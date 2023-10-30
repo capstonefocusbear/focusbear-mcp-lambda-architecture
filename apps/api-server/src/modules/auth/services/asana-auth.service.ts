@@ -6,14 +6,16 @@ import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
-import { AuthorizeQuery } from '../dto/authorize-query.dto';
 
 @Injectable()
-export class ZohoAuthService extends BaseIntegrationAuthService {
-  protected readonly loginURL = 'https://accounts.zoho.com.au/oauth/v2/auth';
+export class AsanaAuthService extends BaseIntegrationAuthService {
+  protected readonly loginURL = 'https://app.asana.com/-/oauth_authorize';
+
+  protected readonly accountServerURL = 'https://app.asana.com/-/oauth_token';
 
   constructor(
     protected readonly configService: ConfigService,
@@ -28,58 +30,60 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
       jwtService,
       timeLogsQueue,
       platformIntegrationsService,
-      IntegrationPlatforms.ZOHO,
+      IntegrationPlatforms.ASANA,
     );
   }
 
-  getQueryParams() {
-    const scopes = [
-      'AaaServer.profile.Read',
-      'ZohoProjects.tasks.ALL',
-      'ZohoProjects.projects.ALL',
-      'ZohoProjects.portals.ALL',
-      'ZohoProjects.timesheets.ALL',
-      'ZohoProjects.users.ALL',
-    ];
+  protected getQueryParams() {
+    const scope = 'default';
 
     const queryParams: any = {
-      scope: scopes.join(','),
       client_id: this.clientId,
-      client_secret: this.clientSecret,
       redirect_uri: this.callbackUrl,
       response_type: 'code',
-      access_type: 'offline',
-      prompt: 'consent',
+      scope,
     };
     return queryParams;
   }
 
-  async getAccountId(data: any) {
-    const profileUrl = `${data.accountServer}/oauth/user/info`;
-    const headers = { Authorization: `Zoho-oauthtoken ${data.access_token}` };
-    const {
-      data: { ZUID },
-    } = await axios.get(profileUrl, { headers });
-    return ZUID;
+  getAccountId(data: any) {
+    return data.data.gid;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
-    const { code, 'accounts-server': accountServerURL } = authorizeQuery;
-    const url = `${accountServerURL}/oauth/v2/token?client_id=${this.clientId}&grant_type=authorization_code&client_secret=${this.clientSecret}&redirect_uri=${this.callbackUrl}&code=${code}`;
-    const { data } = await axios.post(url);
+  protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+    const { code } = authorizeQuery;
+    const body = {
+      grant_type: 'authorization_code',
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      code,
+      redirect_uri: this.callbackUrl,
+    };
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    const { data } = await axios.post(this.accountServerURL, body, { headers });
     return data;
   }
 
   async refreshToken(userId: string) {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
-      IntegrationPlatforms.ZOHO,
+      IntegrationPlatforms.ASANA,
       userId,
     );
     if (!platformIntegrationRecord) return;
     const { data: record } = platformIntegrationRecord;
-    const url = `${record.account_server}/oauth/v2/token?client_id=${this.clientId}&grant_type=refresh_token&client_secret=${this.clientSecret}&refresh_token=${record.refresh_token}`;
-    const { data } = await axios.post(url);
-    await this.platformIntegrationsService.updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, {
+    const body = {
+      grant_type: 'refresh_token',
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      refresh_token: record.refresh_token,
+    };
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    const { data } = await axios.post(this.accountServerURL, body, { headers });
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, IntegrationPlatforms.ASANA, {
       access_token: data?.access_token || '',
     });
     return data;

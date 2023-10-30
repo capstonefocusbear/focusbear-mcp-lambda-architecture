@@ -60,9 +60,9 @@ async function updatePlatformIntegration(
 async function refreshToken(userId: string) {
   const zohoData = await getZohoData(userId);
   if (!zohoData) return;
-  const url = `${zohoData.zoho_account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${zohoData.zoho_refresh_token}`;
+  const url = `${zohoData.account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${zohoData.refresh_token}`;
   const { data } = await axios.post(url);
-  await updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, { zoho_access_token: data?.access_token || '' });
+  await updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, { access_token: data?.access_token || '' });
   return data;
 }
 
@@ -82,8 +82,8 @@ async function getPortals(userId: string) {
     try {
       const zohoData = await getZohoData(userId);
       if (!zohoData) return;
-      const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portals/`;
-      const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+      const url = `${getDataCenterUrl(zohoData.location).api}/portals/`;
+      const headers = { Authorization: `Bearer ${zohoData.access_token}` };
       const response = await axios.get(url, {
         headers,
       });
@@ -101,10 +101,10 @@ async function getPortals(userId: string) {
 async function getTasksOwnedByUser(userId: string, portalId: string) {
   const zohoData = await getZohoData(userId);
   if (!zohoData) return;
-  const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/mytasks/?owner=${
-    zohoData.zoho_user_id
+  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/mytasks/?owner=${
+    zohoData.accountId
   }`;
-  const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+  const headers = { Authorization: `Bearer ${zohoData.access_token}` };
   const response = await axios.get(url, {
     headers,
   });
@@ -159,8 +159,8 @@ async function getTagsLinkedToProject(userId: string, externalProjectIds: string
 async function getProjectStatuses(userId: string, portalId: string, projectId: string) {
   const zohoData = await getZohoData(userId);
   if (!zohoData) return;
-  const url = `${getDataCenterUrl(zohoData.zoho_location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
-  const headers = { Authorization: `Bearer ${zohoData.zoho_access_token}` };
+  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
+  const headers = { Authorization: `Bearer ${zohoData.access_token}` };
   const { data } = await axios.get(url, {
     headers,
   });
@@ -213,7 +213,7 @@ async function getUsersToSyncWithZoho() {
     where: { platform: IntegrationPlatforms.ZOHO },
   });
   const recordsWithAccessAndRefreshTokens = zohoIntegrationRecords.filter(
-    (integration) => integration.data.zoho_access_token && integration.data.zoho_refresh_token,
+    (integration) => integration.data.access_token && integration.data.refresh_token,
   );
   const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => integrationRecord.user_id);
   return idsOfUsersToSync;

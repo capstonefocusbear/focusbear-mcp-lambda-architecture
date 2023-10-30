@@ -2,17 +2,16 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import { DateTime } from 'luxon';
-import { secondsToHHMM } from '../../../shared/utils/helpers';
-import { ZohoService } from '../../integration/services/zoho.service';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { ToDo } from '../entities/to-do.entity';
 import { BillingStatus } from '../../integration/domain/billing-status.enum';
+import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 
 @Processor('time-logs')
 export class TimeLogsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
-    private readonly zohoService: ZohoService,
+    private readonly integrationFactory: IntegrationFactory,
   ) {}
 
   @Process('save-task-time-log')
@@ -34,31 +33,21 @@ export class TimeLogsConsumer {
           continue;
         }
         const portalId = toDoRecord.external_task_metadata.task_data.portal_id;
-        const projectId = toDoRecord.external_task_metadata.task_data?.project?.id_string;
-        const taskId = toDoRecord.external_task_metadata.task_data.id_string;
+        const projectId = toDoRecord.external_task_metadata.task_data.project_id;
+        const taskId = toDoRecord.external_task_metadata.task_data.id;
         const billStatus = timeLog.is_billable ? BillingStatus.BILLABLE : BillingStatus.NON_BILLABLE;
         const currentTime = DateTime.local();
         const date = currentTime.toFormat('yyyy-MM-dd');
         const createdTaskTimeEntry = {
           date,
           bill_status: billStatus,
-          hours: secondsToHHMM(timeLog.duration),
-          notes: timeLog?.note,
+          seconds: timeLog.duration,
+          note: timeLog?.note,
         };
-        const addTimeEntryPromise = this.zohoService.addTimeEntry(
-          userId,
-          portalId,
-          projectId,
-          taskId,
-          createdTaskTimeEntry,
-        );
-        const updateTaskStatusPromise = this.zohoService.updateTaskStatus(
-          userId,
-          portalId,
-          projectId,
-          taskId,
-          timeLog?.status,
-        );
+
+        const service = this.integrationFactory.get(toDoRecord.external_task_metadata?.platform);
+        const addTimeEntryPromise = service.addTimeEntry(userId, portalId, projectId, taskId, createdTaskTimeEntry);
+        const updateTaskStatusPromise = service.updateTaskStatus(userId, portalId, projectId, taskId, timeLog?.status);
         await Promise.all([addTimeEntryPromise, updateTaskStatusPromise]);
       }
     } catch (error) {

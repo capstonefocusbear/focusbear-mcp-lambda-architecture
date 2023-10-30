@@ -179,35 +179,33 @@ describe('ZohoService', () => {
         hours: '2:00',
         notes: 'test note',
       };
-  
+
       const platformIntegrationRecord = {
         data: {
-            zoho_location: 'us',
-            zoho_access_token: 'token123',
+          location: 'us',
+          access_token: 'token123',
         },
       };
-  
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(
-        platformIntegrationRecord,
-      );
-  
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
+
       const expectedUrl = `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
-      const expectedHeaders = { Authorization: `Bearer token123` };
+      const expectedHeaders = { Authorization: 'Bearer token123' };
       const expectedFormData = {
         date: '10-13-2023',
         bill_status: 'billed',
         hours: '2:00',
         notes: 'test note',
       };
-  
+
       const mockResponse = {
         data: { id: 'timeEntry123' },
       };
-  
+
       mockedAxios.post.mockResolvedValue(mockResponse);
-  
+
       const result = await zohoService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
-  
+
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
         userDummy.id,
@@ -220,7 +218,7 @@ describe('ZohoService', () => {
       });
       expect(result).toEqual({ id: 'timeEntry123' });
     });
-  
+
     it('negative: should throw an error if all retries fail', async () => {
       const portalId = 'portal123';
       const projectId = 'project123';
@@ -231,9 +229,9 @@ describe('ZohoService', () => {
         hours: '2:00',
         notes: 'test note',
       };
-  
+
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
-  
+
       const result = await zohoService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
 
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalled();
@@ -265,8 +263,8 @@ describe('ZohoService', () => {
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
         data: {
-          zoho_location: 'us',
-          zoho_access_token: 'token123',
+          location: 'us',
+          access_token: 'token123',
         },
       });
       mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
@@ -307,12 +305,15 @@ describe('ZohoService', () => {
   describe('getProjects: when platform integration record is found', () => {
     it('should return projects data', async () => {
       const portalId = 'portal123';
-      const projectsData = [{ id: 'project1', name: 'Project 1' }, { id: 'project2', name: 'Project 2' }];
+      const projectsData = [
+        { id: 'project1', name: 'Project 1' },
+        { id: 'project2', name: 'Project 2' },
+      ];
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
         data: {
-          zoho_location: 'us',
-          zoho_access_token: 'token123',
+          location: 'us',
+          access_token: 'token123',
         },
       });
       mockedAxios.get.mockResolvedValueOnce({ data: { projects: projectsData } });
@@ -324,9 +325,12 @@ describe('ZohoService', () => {
         IntegrationPlatforms.ZOHO,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/`, {
-        headers: { Authorization: 'Bearer token123' },
-      });
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/`,
+        {
+          headers: { Authorization: 'Bearer token123' },
+        },
+      );
     });
   });
 
@@ -357,8 +361,8 @@ describe('ZohoService', () => {
       const taskId = 'task123';
       const statusId = 'status123';
       const zohoData = {
-        zoho_location: 'us',
-        zoho_access_token: 'token123',
+        location: 'us',
+        access_token: 'token123',
       };
       const responseData = { id: taskId, custom_status: statusId };
 
@@ -375,13 +379,13 @@ describe('ZohoService', () => {
         userDummy.id,
       );
       const expectedFormData = {
-        custom_status: statusId
-      }
+        custom_status: statusId,
+      };
       expect(mockedAxios.post).toHaveBeenCalledWith(
         `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`,
         expectedFormData,
         {
-          headers: { Authorization: `Bearer ${zohoData.zoho_access_token}` },
+          headers: { Authorization: `Bearer ${zohoData.access_token}` },
         },
       );
     });
@@ -392,25 +396,24 @@ describe('ZohoService', () => {
       const portalId = 'portalId';
       const projectId = 'projectId';
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
-  
+
       const result = await zohoService.getProject(userDummy.id, portalId, projectId);
-  
+
       expect(result).toBeUndefined();
     });
-  
+
     it('positive: should return the project data correctly', async () => {
       const portalId = 'portalId';
       const projectId = 'projectId';
-      const platformIntegrationRecord = { data: { zoho_location: 'us', zoho_access_token: 'access_token' } };
+      const platformIntegrationRecord = { data: { location: 'us', access_token: 'access_token' } };
       const projectData = { projects: [{ id: projectId, name: 'Project 1' }] };
       const expectedProject = { id: projectId, name: 'Project 1' };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
       mockedAxios.get.mockResolvedValueOnce({ data: projectData });
-  
+
       const result = await zohoService.getProject(userDummy.id, portalId, projectId);
-  
+
       expect(result).toEqual(expectedProject);
     });
   });
-  
 });

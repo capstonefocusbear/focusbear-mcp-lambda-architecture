@@ -164,7 +164,12 @@ describe('toDoService', () => {
         status: ToDoStatus.COMPLETED,
         is_billable: false,
       };
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([{ ...ToDoDBResponseDummy, external_task_metadata: {} }]);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          ...ToDoDBResponseDummy,
+          external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+        },
+      ]);
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
@@ -177,7 +182,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).not.toBeCalled();
+      expect(QueueMock.add).toBeCalled();
     });
 
     it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {

@@ -2,20 +2,22 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import axios from 'axios';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
-import { AuthorizeQuery } from '../dto/authorize-query.dto';
 
 @Injectable()
-export class MondayAuthService extends BaseIntegrationAuthService {
-  protected readonly loginURL = 'https://auth.monday.com/oauth2/authorize';
+export class TrelloAuthService extends BaseIntegrationAuthService {
+  protected readonly loginURL = 'https://trello.com/1/authorize';
 
-  protected readonly accountServerURL = 'https://auth.monday.com/oauth2/token';
+  protected readonly accountServerURL = 'https://api.trello.com/1';
+
+  private appName = this.configService.get('TRELLO_APP_NAME');
 
   constructor(
     protected readonly configService: ConfigService,
@@ -30,38 +32,44 @@ export class MondayAuthService extends BaseIntegrationAuthService {
       jwtService,
       timeLogsQueue,
       platformIntegrationsService,
-      IntegrationPlatforms.MONDAY,
+      IntegrationPlatforms.TRELLO,
     );
   }
 
-  protected getQueryParams() {
+  getQueryParams() {
+    const scope = 'read,write,account';
+
     const queryParams: any = {
-      client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      key: this.clientId,
+      return_url: this.callbackUrl,
+      name: this.appName,
+      response_type: 'token',
+      scope,
+      expiration: 'never',
     };
     return queryParams;
   }
 
   async getAccountId(data: any) {
     const headers = {
-      Authorization: data.access_token,
       'Content-Type': 'application/json',
     };
-    const query = 'query { me { id } }';
-    const { data: accountId } = await axios.post('https://api.monday.com/v2', JSON.stringify({ query }), { headers });
+    const { data: account } = await axios.get(
+      `${this.accountServerURL}/members/me?key=${this.clientId}&token=${data.access_token}`,
+      { headers },
+    );
 
-    return accountId.account_id;
+    return account.id;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  requestAuthorize(authorizeQuery: AuthorizeQuery) {
     const { code } = authorizeQuery;
-    const params = {
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
-      code,
-      redirect_uri: this.callbackUrl,
+    const data = {
+      access_token: code,
     };
-    const { data } = await axios.post(this.accountServerURL, null, { params });
-    return data;
+    return {
+      ...data,
+      expires_in: 'never',
+    };
   }
 }

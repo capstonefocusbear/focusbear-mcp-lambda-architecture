@@ -83,11 +83,11 @@ describe('ZohoService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         {
-          zoho_refresh_token: authorizationResponseDummy.refresh_token,
-          zoho_access_token: authorizationResponseDummy.access_token,
-          zoho_user_id: userInfoResponseDummy.ZUID,
-          zoho_location: locationDummy,
-          zoho_account_server: accountServerDummy,
+          refresh_token: authorizationResponseDummy.refresh_token,
+          access_token: authorizationResponseDummy.access_token,
+          accountId: userInfoResponseDummy.ZUID,
+          location: locationDummy,
+          account_server: accountServerDummy,
         },
         userInfoResponseDummy.ZUID,
       );
@@ -96,7 +96,6 @@ describe('ZohoService', () => {
 
   describe('refresh_token: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
-
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
       const result = await zohoAuthService.refreshToken(userDummy.id);
@@ -114,8 +113,8 @@ describe('ZohoService', () => {
   describe('refresh_token: when platform integration record is found', () => {
     it('positive: should refresh token and update integration data', async () => {
       const authorizationResponseDummy = {
-        zoho_account_server: 'https://accounts.zoho.com',
-        zoho_refresh_token: 'refresh-token-123',
+        account_server: 'https://accounts.zoho.com',
+        refresh_token: 'refresh-token-123',
         zohoClientId: 'zoho-client-id',
         zohoClientSecret: 'zoho-client-secret',
       };
@@ -136,7 +135,7 @@ describe('ZohoService', () => {
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.ZOHO,
-        { zoho_access_token: newAccessToken },
+        { access_token: newAccessToken },
       );
     });
   });

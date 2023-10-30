@@ -88,10 +88,10 @@ describe('MondayService', () => {
         userDummy.id,
         IntegrationPlatforms.MONDAY,
         {
-          monday_access_token: authorizationResponseDummy.access_token,
-          monday_user_id: userInfoResponseDummy.account_id,
-          monday_location: locationDummy,
-          monday_account_server: accountServerDummy,
+          access_token: authorizationResponseDummy.access_token,
+          accountId: userInfoResponseDummy.account_id,
+          location: locationDummy,
+          account_server: accountServerDummy,
         },
         userInfoResponseDummy.account_id,
       );

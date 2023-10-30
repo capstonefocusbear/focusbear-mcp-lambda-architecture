@@ -12,12 +12,12 @@ import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repository';
-import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { ToDoResponse } from '../dto/to-do-response.dto';
-import { ZohoService } from '../../integration/services/zoho.service';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 
 @Injectable()
 export class ToDoService {
@@ -26,7 +26,7 @@ export class ToDoService {
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
-    private readonly zohoService: ZohoService,
+    private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
   ) {}
 
@@ -65,7 +65,7 @@ export class ToDoService {
     const toDosWithAvailableStatuses = await Promise.all(
       toDos.map(async (toDo) => {
         if (toDo?.external_task_metadata) {
-          const toDoProjectId = toDo.external_task_metadata.task_data?.project?.id_string;
+          const toDoProjectId = toDo.external_task_metadata.task_data?.project_id;
           const syncedProject = await this.syncedProjectsRepository.orm.findOne({
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
@@ -88,10 +88,21 @@ export class ToDoService {
     return toDosWithAvailableStatuses;
   }
 
+  async getAllUserTasks(userId) {
+    const platforms = Object.entries(IntegrationPlatforms).map(([, value]) => value);
+
+    return Promise.all(
+      platforms.map((platform) => {
+        const service = this.integrationFactory.get(platform);
+        return service.getAllUserTasks(userId).catch(() => []);
+      }),
+    );
+  }
+
   async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
-    const userZohoTasks = await this.zohoService.getAllUserTasks(userId);
-    const findTask = (taskId: string, zohoTasks: any[]) => {
-      return zohoTasks.find((task) => task.id_string === taskId);
+    const userTasks = await this.getAllUserTasks(userId);
+    const findTask = (taskId: string, tasks: any[]) => {
+      return tasks.find((task) => task.id === taskId);
     };
     const updatedToDos = [];
     const toDosWithAvailableStatuses = await Promise.all(
@@ -101,7 +112,7 @@ export class ToDoService {
           const syncedProject = await this.syncedProjectsRepository.orm.findOne({
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
-          const linkedTask = findTask(toDo.external_task_id, userZohoTasks);
+          const linkedTask = findTask(toDo.external_task_id, userTasks);
           const availableStatuses = syncedProject?.available_statuses;
           const externalStatusLabel = linkedTask?.status?.name;
           const externalStatusId = linkedTask?.status?.id;
@@ -111,7 +122,7 @@ export class ToDoService {
             ...toDo,
             external_task_metadata: {
               ...toDo.external_task_metadata,
-              task_data: findTask(toDo.external_task_id, userZohoTasks),
+              task_data: findTask(toDo.external_task_id, userTasks),
             },
           });
           updatedToDos.push(toDoToSave);
@@ -183,15 +194,11 @@ export class ToDoService {
     await this.updateTasksStatuses(toDosToUpdate);
     await this.taskTimeLogsRepository.orm.save(timeLogs);
 
-    const toDosFromZoho = existingToDos.filter(
-      (toDo) => toDo.external_task_metadata?.platform === IntegrationPlatforms.ZOHO,
-    );
-
-    if (toDosFromZoho.length) {
+    if (existingToDos.length) {
       await this.timeLogsQueue.add('save-task-time-log', {
         userId,
         toDoTimeLogs,
-        toDos: toDosFromZoho,
+        toDos: existingToDos,
       });
     }
     return timeLogs;

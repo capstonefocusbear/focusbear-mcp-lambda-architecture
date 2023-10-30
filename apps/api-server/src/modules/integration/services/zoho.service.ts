@@ -2,7 +2,7 @@
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import { IsNull, Not } from 'typeorm';
-import { getDataCenterUrl } from '../../../shared/utils/helpers';
+import { getDataCenterUrl, secondsToHHMM } from '../../../shared/utils/helpers';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -18,6 +18,7 @@ import { Project } from '../domain/project.model';
 import { Task } from '../domain/task.model';
 import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 import { ToDo } from '../../to-do/entities/to-do.entity';
+import { BaseIntegrationService } from './base.service';
 
 const taskAdapter = (task) => ({
   ...task,

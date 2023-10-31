@@ -12,4 +12,6 @@ export class Task {
   portal_id?: string;
 
   status: any;
+
+  external_metadata: any;
 }

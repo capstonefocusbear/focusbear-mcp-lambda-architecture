@@ -105,13 +105,14 @@ export class ClickupService extends BaseIntegrationService {
     });
   }
 
-  protected async tryGetProject({ accessToken, projectId }): Promise<Project> {
+  protected async tryGetProject({ accessToken, portalId, projectId }): Promise<Project> {
     const url = `${this.base_url}list/${projectId}`;
     const headers = { Authorization: `Bearer ${accessToken}` };
     const response = await this.httpService.get(url, {
       headers,
     });
-    return response.data;
+    const { id, name } = response.data;
+    return { id, name, key: name, description: '', portal_id: portalId };
   }
 
   protected async tryGetPortals({ accessToken }): Promise<Portal[]> {

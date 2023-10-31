@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
-import { MAX_RETRY } from 'apps/api-server/src/shared/utils/constants';
+import { MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
@@ -102,6 +102,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         }
       }
     }
+    throw Error(`Failed to ${this.platform} get projects after trying to get new access token.`);
   }
 
   protected abstract tryGetProjects({ accessToken, userId, portalId }): Promise<Project[]>;
@@ -122,6 +123,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         }
       }
     }
+    throw new Error(`Failed to ${this.platform} get portals after trying to get new access token.`);
   }
 
   protected abstract tryGetPortals({ accessToken, userId }): Promise<Portal[]>;
@@ -260,6 +262,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         }
       }
     }
+    throw new Error(`Failed to ${this.platform} get task owned by user after trying to get new access token.`);
   }
 
   protected abstract tryGetTasksOwnedByUser({ accessToken, userId, portalId, projectId }): Promise<Task[]>;

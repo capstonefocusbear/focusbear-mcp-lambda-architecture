@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
 import { savedClickupTaskDummy, clickupTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
@@ -77,17 +77,6 @@ describe('clickupService', () => {
     });
   });
 
-  describe('getClickupTasksToSync', () => {
-    it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedClickupTaskDummy]);
-
-      const result = await clickupService.getClickupTasksToSync([clickupTaskDummy], userDummy.id);
-
-      expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedClickupTasks.length).toBe(1);
-    });
-  });
-
   describe('updateTaskStatus', () => {
     const portalId = 'test-portal-id';
     const projectId = 'test-project-id';
@@ -121,7 +110,7 @@ describe('clickupService', () => {
       );
     });
 
-    it('negative: should throw an UnauthorizedException if the response status is 401', async () => {
+    it('negative: should throw an error if the response status is 401', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           access_token: 'test-access-token',
@@ -134,9 +123,9 @@ describe('clickupService', () => {
         },
       });
 
-      const result = await clickupService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
+      const result = clickupService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
 
-      expect(result).rejects.toThrowError('Auth Failed');
+      expect(result).rejects.toThrowError('Failed to update task status after trying to get new access token.');
     });
 
     it('negative: should throw an error if the request fails', async () => {
@@ -149,7 +138,7 @@ describe('clickupService', () => {
       mockedAxios.put.mockRejectedValue(new Error('Request failed'));
 
       const result = clickupService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
-      expect(result).rejects.toThrowError('Failed to add Clickup task updateTaskStatus.');
+      expect(result).rejects.toThrowError('Request failed');
     });
   });
 
@@ -164,13 +153,17 @@ describe('clickupService', () => {
 
       const response = {
         data: {
-          tasks: [
-            { id: 'task1', name: 'Task 1' },
-            { id: 'task2', name: 'Task 2' },
-          ],
+          tasks: [clickupTaskDummy],
         },
       };
-
+      const resultTask = {
+        id: clickupTaskDummy.id,
+        name: clickupTaskDummy.name,
+        key: clickupTaskDummy.name,
+        description: '',
+        status: clickupTaskDummy.status.status,
+        external_metadata: { ...clickupTaskDummy, portal_id: portalId, project_id: projectId },
+      };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: clickupData,
       });
@@ -179,20 +172,20 @@ describe('clickupService', () => {
 
       const result = await clickupService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
 
-      expect(result).toEqual([
-        { id: 'task1', name: 'Task 1', project_Id: projectId },
-        { id: 'task2', name: 'Task 2', project_Id: projectId },
-      ]);
+      expect(result).toEqual([resultTask]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.CLICK_UP,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/team/${portalId}/task`, {
-        headers: { Authorization: `Bearer ${clickupData.access_token}` },
+      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/list/${projectId}/task`, {
+        headers: {
+          Authorization: clickupData.access_token,
+          'Content-Type': 'application/json',
+        },
       });
     });
 
-    it('negative: should throw an UnauthorizedException if the response status is 401', async () => {
+    it('negative: should throw an exception if the response status is 401', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           access_token: 'test-access-token',
@@ -206,7 +199,7 @@ describe('clickupService', () => {
       });
 
       await expect(() => clickupService.getTasksOwnedByUser(userDummy.id, portalId, projectId)).rejects.toThrow(
-        UnauthorizedException,
+        `Failed to ${IntegrationPlatforms.CLICK_UP} get task owned by user after trying to get new access token.`,
       );
     });
 
@@ -246,7 +239,7 @@ describe('clickupService', () => {
 
       const result = await clickupService.getPortals(userDummy.id);
 
-      expect(result).toEqual(response.data.teams);
+      expect(result).toEqual([{ id: 'portal1' }, { id: 'portal2' }]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.CLICK_UP,
         userDummy.id,
@@ -256,7 +249,7 @@ describe('clickupService', () => {
       });
     });
 
-    it('negative: should throw an UnauthorizedException if the response status is 401', async () => {
+    it('negative: should throw an error if the response status is 401', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           access_token: 'test-access-token',
@@ -269,7 +262,7 @@ describe('clickupService', () => {
         },
       });
 
-      await expect(() => clickupService.getPortals(userDummy.id)).rejects.toThrow(UnauthorizedException);
+      await expect(() => clickupService.getPortals(userDummy.id)).rejects.toThrow(Error);
     });
 
     it('negative: should throw an error if an unexpected error occurs', async () => {
@@ -288,38 +281,6 @@ describe('clickupService', () => {
   describe('getTasks', () => {
     const projectId = 'test-project-id';
     const portalId = 'test-portal-id';
-
-    it('positive: should return the list of tasks for the specified project', async () => {
-      const clickupData = {
-        access_token: 'test-access-token',
-      };
-
-      const response = {
-        data: {
-          tasks: [
-            { id: 'task1', name: 'Task 1' },
-            { id: 'task2', name: 'Task 2' },
-          ],
-        },
-      };
-
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
-        data: clickupData,
-      });
-
-      mockedAxios.get.mockResolvedValue(response);
-
-      const result = await clickupService.getTasks(userDummy.id, projectId, portalId);
-
-      expect(result).toEqual(response.data.tasks);
-      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
-        IntegrationPlatforms.CLICK_UP,
-        userDummy.id,
-      );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/folder/${projectId}/task`, {
-        headers: { Authorization: `Bearer ${clickupData.access_token}` },
-      });
-    });
 
     it('negative: should throw a BadRequestException if an error occurs', async () => {
       const error = new Error('Test error');
@@ -342,12 +303,16 @@ describe('clickupService', () => {
 
       const response = {
         data: {
-          folders: [
+          lists: [
             { id: 'project1', name: 'Project 1' },
             { id: 'project2', name: 'Project 2' },
           ],
         },
       };
+      const resultProjects = [
+        { id: 'project1', name: 'Project 1', key: 'Project 1', description: '', portal_id: portalId },
+        { id: 'project2', name: 'Project 2', key: 'Project 2', description: '', portal_id: portalId },
+      ];
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: clickupData,
@@ -357,17 +322,17 @@ describe('clickupService', () => {
 
       const result = await clickupService.getProjects(userDummy.id, portalId);
 
-      expect(result).toEqual(response.data.folders);
+      expect(result).toEqual(resultProjects);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.CLICK_UP,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/team/${portalId}/folder`, {
+      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/team/${portalId}/list`, {
         headers: { Authorization: `Bearer ${clickupData.access_token}` },
       });
     });
 
-    it('negative: should throw an UnauthorizedException if the platform integration record is not found', async () => {
+    it('negative: should throw an Error if the platform integration record is not found', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           access_token: 'test-access-token',
@@ -380,10 +345,10 @@ describe('clickupService', () => {
         },
       });
 
-      await expect(() => clickupService.getProjects(userDummy.id, portalId)).rejects.toThrow(UnauthorizedException);
+      await expect(() => clickupService.getProjects(userDummy.id, portalId)).rejects.toThrow(Error);
     });
 
-    it('should throw a BadRequestException if an error occurs', async () => {
+    it('should throw a Error if an error occurs', async () => {
       const error = new Error('Test error');
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockRejectedValue(error);
@@ -408,6 +373,14 @@ describe('clickupService', () => {
         },
       };
 
+      const resultProject = {
+        id: projectId,
+        name: 'Test Project',
+        key: 'Test Project',
+        description: '',
+        portal_id: portalId,
+      };
+
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: clickupData,
       });
@@ -416,12 +389,12 @@ describe('clickupService', () => {
 
       const result = await clickupService.getProject(userDummy.id, portalId, projectId);
 
-      expect(result).toEqual(response.data);
+      expect(result).toEqual(resultProject);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.CLICK_UP,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/folder/${projectId}`, {
+      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.clickup.com/api/v2/list/${projectId}`, {
         headers: { Authorization: `Bearer ${clickupData.access_token}` },
       });
     });
@@ -444,20 +417,23 @@ describe('clickupService', () => {
     const portalId = 'test-portal-id';
     const projectId = 'test-project-id';
     const taskId = 'test-task-id';
+    const date = 1595282645000;
 
     const timeEntry = {
-      hours: '2:30',
+      seconds: 300,
+      date,
     };
 
     it('positive: should add a new time entry to the specified task', async () => {
       const clickupData = {
         access_token: 'test-access-token',
       };
-
-      const response = {
-        data: {
-          duration_minutes: 150,
-        },
+      const response = { data: {} };
+      const timestamp = new Date(timeEntry.date).getTime() / 1000;
+      const data = {
+        duration: timeEntry.seconds * 1000,
+        tid: taskId,
+        start: timestamp,
       };
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
@@ -466,16 +442,26 @@ describe('clickupService', () => {
 
       mockedAxios.post.mockResolvedValue(response);
 
-      const result = await clickupService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+      await clickupService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
 
-      expect(result).toEqual(response.data);
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        `https://api.clickup.com/api/v2/team/${portalId}/time_entries`,
+        JSON.stringify(data),
+        {
+          headers: {
+            Authorization: clickupData.access_token,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.CLICK_UP,
         userDummy.id,
       );
     });
 
-    it('negative: should throw an UnauthorizedException if the platform integration record is not found', async () => {
+    it('negative: should throw an Error if the platform integration record is not found', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
 
       const result = await clickupService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
-import { savedJiraTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { jiraIssueDummy, savedJiraTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, JiraAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -82,15 +82,23 @@ describe('jiraService', () => {
     const projectId = 'project123';
     const taskId = 'task123';
     const statusId = 'status123';
+    const transition = {
+      id: 'transitionId1',
+      to: { id: statusId },
+    };
     const jiraData = { access_token: 'access_token' };
     const platformIntegrationRecord = { data: jiraData };
     const url = `https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/issue/${taskId}/transitions`;
     const headers = { Authorization: `Bearer ${jiraData.access_token}` };
-    const formData = { transition: { id: statusId } };
-    const response = { data: { success: true } };
+    const formData = { transition: { id: transition.id } };
+    const transitions = {
+      data: { transitions: [transition] },
+    };
+    const response = { data: {} };
 
     it('positive: should update the task status when the request is successful', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
+      mockedAxios.get.mockResolvedValueOnce(transitions);
       mockedAxios.post.mockResolvedValueOnce(response);
 
       const result = await jiraService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
@@ -105,6 +113,7 @@ describe('jiraService', () => {
 
     it('positive: should retry the request if a 401 response is received', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
+      mockedAxios.get.mockResolvedValue(transitions);
       mockedAxios.post.mockRejectedValueOnce({ response: { status: 401 } }).mockResolvedValueOnce(response);
       JiraAuthServiceMock.handleUnauthorizedError.mockResolvedValueOnce(1);
 
@@ -133,9 +142,30 @@ describe('jiraService', () => {
     const projectId = 'project123';
     const jiraData = { access_token: 'access_token', user_id: 'user123' };
     const platformIntegrationRecord = { data: jiraData };
-    const url = `https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/search?jql=project=${projectId}&accountId=${jiraData.user_id}`;
+    const url = `https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/search`;
     const headers = { Authorization: `Bearer ${jiraData.access_token}` };
-    const response = { data: { issues: [{ id: 'task123' }] } };
+
+    const response = {
+      data: {
+        issues: [jiraIssueDummy],
+      },
+    };
+    const tasksOwnedByUser = [
+      {
+        id: jiraIssueDummy.id,
+        name: jiraIssueDummy.fields.summary,
+        key: jiraIssueDummy.key,
+        description: jiraIssueDummy.fields.description.type,
+        project_id: projectId,
+        portal_id: portalId,
+        status: jiraIssueDummy.fields.status.id,
+        external_metadata: { ...jiraIssueDummy, portal_id: portalId, project_id: projectId },
+      },
+    ];
+    const params = {
+      jql: `project=${projectId}`,
+      fields: 'status, description, summary',
+    };
 
     it('positive: should retrieve tasks owned by the user when the request is successful', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
@@ -146,8 +176,8 @@ describe('jiraService', () => {
         IntegrationPlatforms.JIRA,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers });
-      expect(result).toEqual([{ id: 'task123', portal_id: portalId }]);
+      expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers, params });
+      expect(result).toEqual(tasksOwnedByUser);
     });
 
     it('positive: should retry the request if a 401 response is received', async () => {
@@ -162,8 +192,19 @@ describe('jiraService', () => {
         userDummy.id,
       );
       expect(mockedAxios.get).toHaveBeenCalledTimes(2);
-      expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers });
-      expect(result).toEqual([{ id: 'task123', portal_id: portalId }]);
+      expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers, params });
+      expect(result).toEqual(tasksOwnedByUser);
+    });
+
+    it('positive: should return an empty array when platform integration record does not exist', async () => {
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(null);
+      const result = await jiraService.getTasks(userDummy.id, projectId, portalId);
+
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.JIRA,
+        userDummy.id,
+      );
+      expect(result).toBeUndefined();
     });
   });
 
@@ -231,54 +272,18 @@ describe('jiraService', () => {
     });
   });
 
-  describe('getTasks', () => {
-    const projectId = 'project123';
-    const portalId = 'portal123';
-    const jiraData = { access_token: 'token123' };
-    const issues = [
-      { id: 'task1', summary: 'Task 1' },
-      { id: 'task2', summary: 'Task 2' },
-    ];
-
-    it('positve: should return an array of issues when platform integration record exists', async () => {
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: jiraData });
-      mockedAxios.get.mockResolvedValueOnce({ data: { issues } });
-
-      const result = await jiraService.getTasks(userDummy.id, projectId, portalId);
-
-      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
-        IntegrationPlatforms.JIRA,
-        userDummy.id,
-      );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/search`, {
-        headers: { Authorization: `Bearer ${jiraData.access_token}` },
-        params: {
-          jql: `project=${projectId}`,
-          fields: 'creator, status, project, priority, summary',
-        },
-      });
-      expect(result).toEqual(issues);
-    });
-
-    it('positive: should return an empty array when platform integration record does not exist', async () => {
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(null);
-      const result = await jiraService.getTasks(userDummy.id, projectId, portalId);
-
-      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
-        IntegrationPlatforms.JIRA,
-        userDummy.id,
-      );
-      expect(result).toBeUndefined();
-    });
-  });
-
   describe('getProjects', () => {
     const portalId = 'portal123';
     const jiraData = { access_token: 'token123' };
     const projects = [
-      { id: 'project1', name: 'Project 1' },
-      { id: 'project2', name: 'Project 2' },
+      { id: 'project1', key: 'key1', name: 'Project 1' },
+      { id: 'project2', key: 'key2', name: 'Project 2' },
     ];
+    const resultProjects = [
+      { id: 'project1', key: 'key1', name: 'Project 1', description: '', portal_id: portalId },
+      { id: 'project2', key: 'key2', name: 'Project 2', description: '', portal_id: portalId },
+    ];
+    const headers = { Authorization: `Bearer ${jiraData.access_token}` };
 
     it('positive: should return an array of projects when platform integration record exists', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: jiraData });
@@ -291,9 +296,9 @@ describe('jiraService', () => {
         userDummy.id,
       );
       expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/project`, {
-        headers: { Authorization: `Bearer ${jiraData.access_token}` },
+        headers,
       });
-      expect(result).toEqual(projects);
+      expect(result).toEqual(resultProjects);
     });
 
     it('positive: should retry when a 401 error occurs', async () => {
@@ -311,7 +316,7 @@ describe('jiraService', () => {
       expect(mockedAxios.get).toHaveBeenCalledWith(`https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/project`, {
         headers: { Authorization: `Bearer ${jiraData.access_token}` },
       });
-      expect(result).toEqual(projects);
+      expect(result).toEqual(resultProjects);
     });
   });
 
@@ -319,7 +324,8 @@ describe('jiraService', () => {
     const portalId = 'portal123';
     const projectId = 'project123';
     const jiraData = { access_token: 'token123' };
-    const project = { id: 'project1', name: 'Project 1' };
+    const project = { id: 'project1', key: 'key1', name: 'Project 1' };
+    const resultProject = { id: 'project1', key: 'key1', name: 'Project 1', portal_id: portalId, description: '' };
 
     it('positive: should return the project when platform integration record exists', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: jiraData });
@@ -336,7 +342,7 @@ describe('jiraService', () => {
           headers: { Authorization: `Bearer ${jiraData.access_token}` },
         },
       );
-      expect(result).toEqual(project);
+      expect(result).toEqual(resultProject);
     });
 
     it('positive: should return undefined when platform integration record does not exist', async () => {

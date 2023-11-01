@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { MAX_RETRY } from '../../../shared/utils/constants';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
@@ -103,5 +104,13 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
 
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
+  }
+
+  async handleUnauthorizedError(userId: string, retryCount: number): Promise<number> {
+    // Don't try again in case there is no refresh_token by default
+    if (retryCount === 0) {
+      return MAX_RETRY;
+    }
+    throw new Error('Unauthorized after retry');
   }
 }

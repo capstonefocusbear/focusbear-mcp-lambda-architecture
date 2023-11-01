@@ -3,6 +3,21 @@ import { Project } from '../../src/modules/integration/domain/project.model';
 import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { userDummy } from '.';
 
+export const taskDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  key: 'test-key',
+  description: 'test-description',
+};
+
+export const savedTaskDummy = new ToDo({
+  user_id: userDummy.id,
+  title: taskDummy.name,
+  details: taskDummy.description,
+  external_task_id: taskDummy.id,
+  external_task_metadata: { platform: 'jira', task_data: taskDummy },
+});
+
 export const zohoProjectDummy: Project = {
   id: 'test-id',
   name: 'test-name',
@@ -68,6 +83,7 @@ export const clickupTaskDummy = {
   name: 'test-name',
   key: 'test-key',
   description: 'test-description',
+  status: { status: 'status1' },
 };
 
 export const savedClickupTaskDummy = new ToDo({
@@ -107,3 +123,13 @@ export const savedTrelloTaskDummy = new ToDo({
   external_task_id: trelloTaskDummy.id,
   external_task_metadata: { platform: 'trello', task_data: mondayTaskDummy },
 });
+
+export const jiraIssueDummy = {
+  id: 'task123',
+  key: 'key1',
+  fields: {
+    summary: 'new task 1',
+    status: { id: 'status1' },
+    description: { type: 'test task' },
+  },
+};

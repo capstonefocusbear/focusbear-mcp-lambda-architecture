@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { savedZohoTaskDummy, zohoTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { zohoProjectDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -71,29 +71,16 @@ describe('ZohoService', () => {
 
   describe('getUser', () => {
     it('positive: user should be fetched from DB', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
-
       await zohoService.getUser(userDummy.id);
 
       expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
     });
   });
 
-  describe('getZohoTasksToSync', () => {
-    it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedZohoTaskDummy]);
-
-      const result = await zohoService.getZohoTasksToSync([zohoTaskDummy], userDummy.id);
-
-      expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedZohoTasks.length).toBe(1);
-    });
-  });
-
   describe('getPortals', () => {
     it('negative: if no integration record is found error should be thrown', async () => {
       let exception = null;
-      const errorMessage = `User with ID: ${userDummy.id} has not authenticated with Zoho!`;
+      const errorMessage = `User with ID: ${userDummy.id} is not is not authorized to access portals`;
 
       try {
         await zohoService.getPortals(userDummy.id);
@@ -104,70 +91,77 @@ describe('ZohoService', () => {
       expect(exception).toBeInstanceOf(UnauthorizedException);
       expect(exception.message).toEqual(errorMessage);
     });
+  });
 
-    describe('upsertSyncedProjectRecord', () => {
-      it('positive: if no record exists for project, new synced project record should be saved', async () => {
-        const portalId = 'portal-dummy-id';
-        const projectId = 'project-dummy-id';
-        const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
-        const syncedProjectDBResponseDummy = new SyncedProject({
-          user_id: userDummy.id,
-          external_project_id: projectId,
-          external_portal_id: portalId,
-          available_statuses: [
-            { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
-          ],
-          platform: IntegrationPlatforms.ZOHO,
-        });
-        PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
-          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
-        );
-        mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [incomingStatusDummy] } });
-        // mock no existing projects
-        SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([]);
-
-        await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
-
-        expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
-          new SyncedProject({
-            ...syncedProjectDBResponseDummy,
-          }),
-        );
+  describe('upsertSyncedProjectRecord', () => {
+    it('positive: if no record exists for project, new synced project record should be saved', async () => {
+      const portalId = 'portal-dummy-id';
+      const projectId = 'project-dummy-id';
+      const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
+      const syncedProjectDBResponseDummy = new SyncedProject({
+        user_id: userDummy.id,
+        external_project_id: projectId,
+        external_portal_id: portalId,
+        available_statuses: [
+          { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
+        ],
+        platform: IntegrationPlatforms.ZOHO,
       });
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
+        user_id: userDummy.id,
+        platform: IntegrationPlatforms.ZOHO,
+        data: { access_token: 'test-token' },
+      });
+      mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [incomingStatusDummy] } });
+      // mock no existing projects
+      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
-      it('positive: if new statuses are returned from Zoho, they should be saved to existing synced project record', async () => {
-        const portalId = 'portal-dummy-id';
-        const projectId = 'project-dummy-id';
-        const existingStatusDummy = { name: 'Done', id: 'test-id' };
-        const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
-        const syncedProjectDBResponseDummy = new SyncedProject({
+      await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
+
+      expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
+        new SyncedProject({
+          ...syncedProjectDBResponseDummy,
+        }),
+      );
+    });
+
+    it('positive: if new statuses are returned from Zoho, they should be saved to existing synced project record', async () => {
+      const portalId = 'portal-dummy-id';
+      const projectId = 'project-dummy-id';
+      const existingStatusDummy = { name: 'Done', id: 'test-id' };
+      const incomingStatusDummy = { name: 'In Progress', id: 'test-id' };
+      const syncedProjectDBResponseDummy = new SyncedProject({
+        user_id: userDummy.id,
+        external_project_id: projectId,
+        available_statuses: [
+          { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
+        ],
+        platform: IntegrationPlatforms.ZOHO,
+      });
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(
+        new PlatformIntegration({
           user_id: userDummy.id,
-          external_project_id: projectId,
+          platform: IntegrationPlatforms.ZOHO,
+          data: { access_token: 'test-token' },
+        }),
+      );
+      mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [existingStatusDummy, incomingStatusDummy] } });
+      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([syncedProjectDBResponseDummy]);
+
+      await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
+
+      expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
+        new SyncedProject({
+          ...syncedProjectDBResponseDummy,
           available_statuses: [
             { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
+            { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
           ],
-          platform: IntegrationPlatforms.ZOHO,
-        });
-        PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(
-          new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
-        );
-        mockedAxios.get.mockResolvedValueOnce({ data: { status_details: [existingStatusDummy, incomingStatusDummy] } });
-        SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([syncedProjectDBResponseDummy]);
-
-        await zohoService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
-
-        expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
-          new SyncedProject({
-            ...syncedProjectDBResponseDummy,
-            available_statuses: [
-              { label: existingStatusDummy.name, status_id: existingStatusDummy.id, should_complete_task: false },
-              { label: incomingStatusDummy.name, status_id: incomingStatusDummy.id, should_complete_task: false },
-            ],
-          }),
-        );
-      });
+        }),
+      );
     });
   });
+
   describe('addTimeEntry', () => {
     it('positive: should call httpService.post with the correct arguments', async () => {
       const portalId = 'portal123';
@@ -176,8 +170,8 @@ describe('ZohoService', () => {
       const timeEntry = {
         date: '2023-10-13',
         bill_status: 'billed',
-        hours: '2:00',
-        notes: 'test note',
+        seconds: 7200,
+        note: 'test note',
       };
 
       const platformIntegrationRecord = {
@@ -194,7 +188,7 @@ describe('ZohoService', () => {
       const expectedFormData = {
         date: '10-13-2023',
         bill_status: 'billed',
-        hours: '2:00',
+        hours: '02:00',
         notes: 'test note',
       };
 
@@ -255,13 +249,42 @@ describe('ZohoService', () => {
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
   });
+
   describe('getTasks: when platform integration record is found', () => {
     it('positive: should return tasks data', async () => {
       const projectId = 'project123';
       const portalId = 'portal123';
-      const tasksData = [{ id: 'task1' }, { id: 'task2' }];
+      const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
+      const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
+      const tasksData = [task1, task2];
+      const taskResult = [
+        {
+          id: 'task1',
+          status: 'status',
+          key: 'key1',
+          name: undefined,
+          descrption: undefined,
+          external_metadata: {
+            ...task1,
+            portal_id: portalId,
+            project_id: projectId,
+          },
+        },
+        {
+          id: 'task2',
+          status: 'status',
+          key: 'key2',
+          name: undefined,
+          descrption: undefined,
+          external_metadata: {
+            ...task2,
+            portal_id: portalId,
+            project_id: projectId,
+          },
+        },
+      ];
 
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           location: 'us',
           access_token: 'token123',
@@ -271,7 +294,7 @@ describe('ZohoService', () => {
 
       const result = await zohoService.getTasks(userDummy.id, projectId, portalId);
 
-      expect(result).toEqual(tasksData);
+      expect(result).toEqual(taskResult);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
         userDummy.id,
@@ -289,7 +312,7 @@ describe('ZohoService', () => {
     it('should return undefined', async () => {
       const portalId = 'portal123';
 
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
 
       const result = await zohoService.getProjects(userDummy.id, portalId);
 
@@ -305,12 +328,10 @@ describe('ZohoService', () => {
   describe('getProjects: when platform integration record is found', () => {
     it('should return projects data', async () => {
       const portalId = 'portal123';
-      const projectsData = [
-        { id: 'project1', name: 'Project 1' },
-        { id: 'project2', name: 'Project 2' },
-      ];
+      const projectsData = [zohoProjectDummy];
+      const resultProject = [{ ...zohoProjectDummy, portal_id: portalId }];
 
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
           location: 'us',
           access_token: 'token123',
@@ -320,7 +341,7 @@ describe('ZohoService', () => {
 
       const result = await zohoService.getProjects(userDummy.id, portalId);
 
-      expect(result).toEqual(projectsData);
+      expect(result).toEqual(resultProject);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ZOHO,
         userDummy.id,
@@ -366,7 +387,7 @@ describe('ZohoService', () => {
       };
       const responseData = { id: taskId, custom_status: statusId };
 
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: zohoData,
       });
       mockedAxios.post.mockResolvedValueOnce({ data: responseData });
@@ -407,8 +428,8 @@ describe('ZohoService', () => {
       const projectId = 'projectId';
       const platformIntegrationRecord = { data: { location: 'us', access_token: 'access_token' } };
       const projectData = { projects: [{ id: projectId, name: 'Project 1' }] };
-      const expectedProject = { id: projectId, name: 'Project 1' };
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
+      const expectedProject = { id: projectId, name: 'Project 1', key: undefined, portal_id: portalId };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
       mockedAxios.get.mockResolvedValueOnce({ data: projectData });
 
       const result = await zohoService.getProject(userDummy.id, portalId, projectId);

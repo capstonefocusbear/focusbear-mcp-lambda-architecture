@@ -231,7 +231,8 @@ export const ClickupAuthServiceMock = {
   getUser: jest.fn(),
   login: jest.fn(),
   authorize: jest.fn(),
-  getMondayLoginUrl: jest.fn(),
+  getLoginUrl: jest.fn(),
+  handleUnauthorizedError: jest.fn(),
 };
 
 export const ClickupServiceMock = {

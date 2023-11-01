@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { BadRequestException, Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
@@ -52,7 +52,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       try {
         const accessToken = await this.getAccessToken(this.platform, userId);
         if (!accessToken) return;
-        return await this.tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry });
+        return await this.tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry, userId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -73,7 +73,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     return platformIntegrationRecord?.data?.access_token;
   }
 
-  protected abstract tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry }): Promise<any>;
+  protected abstract tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry, userId }): Promise<any>;
 
   async getTasks(userId: string, projectId: string, portalId: string): Promise<Task[]> {
     try {
@@ -93,6 +93,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     while (retryCount < MAX_RETRY) {
       try {
         const accessToken = await this.getAccessToken(this.platform, userId);
+        if (!accessToken) return;
         return await this.tryGetProjects({ accessToken, userId, portalId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
@@ -113,7 +114,10 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     while (retryCount < MAX_RETRY) {
       try {
         const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) return;
+        if (!accessToken) {
+          throw new UnauthorizedException(`User with ID: ${userId} is not is not authorized to access portals`);
+        }
+
         return await this.tryGetPortals({ accessToken, userId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
@@ -226,10 +230,10 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     const accessToken = await this.getAccessToken(this.platform, userId);
     if (!accessToken) return;
     // eslint-disable-next-line @typescript-eslint/return-await
-    return await this.tryGetProject({ accessToken, portalId, projectId });
+    return await this.tryGetProject({ accessToken, portalId, projectId, userId });
   }
 
-  protected abstract tryGetProject({ accessToken, portalId, projectId }): Promise<Project>;
+  protected abstract tryGetProject({ accessToken, portalId, projectId, userId }): Promise<Project>;
 
   async getAllUserTasks(userId: string): Promise<Task[]> {
     const syncedProjects = await this.syncedProjectsRepository.orm.find({

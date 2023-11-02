@@ -13,17 +13,31 @@ export class PusherBeamsService extends PusherBeams {
     super({ ...options });
   }
 
-  createBeamsPublishRequest(
-    title: string,
-    body: string,
-    pushData?: ActivityCompletedPush | CompletedFocusBlock,
-  ): PusherBeams.PublishRequest {
+  createBeamsPublishRequest({
+    title,
+    body,
+    pushData,
+    should_send_only_data_for_android = false,
+  }: {
+    title?: string;
+    body?: string;
+    pushData?: ActivityCompletedPush | CompletedFocusBlock;
+    // we use push notification to trigger a state update for the mobile app, was requested
+    // that we exclude title and body for Android
+    should_send_only_data_for_android?: boolean;
+  }): PusherBeams.PublishRequest {
     const data: PusherBeams.PublishRequestWithApnsAndFcm = {
       apns: {
         aps: { alert: { title, body }, 'mutable-content': 1 } as ApsOverwrite,
         data: pushData,
       },
-      fcm: { notification: { title, body }, data: pushData },
+      fcm: {
+        notification: {
+          title: should_send_only_data_for_android ? undefined : title,
+          body: should_send_only_data_for_android ? undefined : body,
+        },
+        data: pushData,
+      },
     };
     const beamsPublishRequest = new BeamsPublishRequest(data);
     return beamsPublishRequest;

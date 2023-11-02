@@ -1023,7 +1023,12 @@ export class CompletedActivityService {
       lang: language,
       args: { activity_name: activity.activity_data.name },
     });
-    const publishRequest = this.pusherBeams.createBeamsPublishRequest(title, body, pushData);
+    const publishRequest = this.pusherBeams.createBeamsPublishRequest({
+      title,
+      body,
+      pushData,
+      should_send_only_data_for_android: true,
+    });
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 

@@ -79,8 +79,12 @@ export class EventsConsumer {
           : 'common.resume_focus_mode_body',
         { lang: language },
       );
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(title, body, {
-        id: event_type,
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+        title,
+        body,
+        pushData: {
+          id: event_type,
+        },
       });
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {

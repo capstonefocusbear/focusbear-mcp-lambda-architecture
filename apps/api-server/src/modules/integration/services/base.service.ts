@@ -89,6 +89,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       if (!integrationRecord) return;
       return await this.tryGetTasks({ integrationRecord, userId, projectId, portalId });
     } catch (e) {
+      console.log('error', e);
       throw new BadRequestException(e.response?.data);
     }
   }
@@ -123,7 +124,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       try {
         const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
         if (!integrationRecord) {
-          throw new UnauthorizedException(`User with ID: ${userId} is not is not authorized to access portals`);
+          throw new UnauthorizedException(`User with ID: ${userId} is not authorized to access portals`);
         }
 
         return await this.tryGetPortals({ integrationRecord, userId });

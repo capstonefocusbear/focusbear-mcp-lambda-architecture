@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { savedMondayTaskDummy, mondayTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { mondayTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -71,22 +71,9 @@ describe('mondayService', () => {
 
   describe('getUser', () => {
     it('positive: user should be fetched from DB', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedMondayTaskDummy]);
-
       await mondayService.getUser(userDummy.id);
 
       expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
-    });
-  });
-
-  describe('getMondayTasksToSync', () => {
-    it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedMondayTaskDummy]);
-
-      const result = await mondayService.getMondayTasksToSync([mondayTaskDummy], userDummy.id);
-
-      expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedMondayTasks.length).toBe(1);
     });
   });
 
@@ -154,7 +141,7 @@ describe('mondayService', () => {
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
       const expectedUrl = 'https://api.monday.com/v2';
-      const expectedQuery = `query {boards (ids: ${projectId}) {items {id name state}}}`;
+      const expectedQuery = `query { boards(ids: ${projectId}) {items { id name group { id } }}}`;
       const expectedHeaders = { Authorization: `Bearer ${access_token}` };
 
       const mockResponse = {
@@ -162,10 +149,7 @@ describe('mondayService', () => {
           data: {
             boards: [
               {
-                items: [
-                  { id: 'task1', name: 'Task 1', state: 'done' },
-                  { id: 'task2', name: 'Task 2', state: 'in progress' },
-                ],
+                items: [mondayTaskDummy],
               },
             ],
           },
@@ -174,8 +158,14 @@ describe('mondayService', () => {
 
       mockedAxios.post.mockResolvedValue(mockResponse);
       const expectedTasks = [
-        { id: 'task1', name: 'Task 1', state: 'done', portalId: null },
-        { id: 'task2', name: 'Task 2', state: 'in progress', portalId: null },
+        {
+          id: 'task1',
+          name: 'Task 1',
+          status: 'group1',
+          key: '',
+          description: '',
+          external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: null },
+        },
       ];
 
       const tasks = await mondayService.getTasksOwnedByUser(userDummy.id, null, projectId);
@@ -192,7 +182,7 @@ describe('mondayService', () => {
       expect(tasks).toEqual(expectedTasks);
     });
 
-    it('negative: should return an empty array if platformIntegrationRecord is not found', async () => {
+    it('negative: should return an undefined if platformIntegrationRecord is not found', async () => {
       const projectId = 'project123';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(undefined);
@@ -211,7 +201,7 @@ describe('mondayService', () => {
   describe('getPortals', () => {
     it('negative: if no integration record is found error should be thrown', async () => {
       let exception = null;
-      const errorMessage = `User with ID: ${userDummy.id} has not authenticated with Monday!`;
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access portals`;
 
       try {
         await mondayService.getPortals(userDummy.id);
@@ -307,22 +297,28 @@ describe('mondayService', () => {
 
   describe('getTasks: when platform integration record is found', () => {
     it('should return tasks data', async () => {
+      const portalId = 'portal123';
       const projectId = 'project123';
-      const tasksData = [
-        { id: 'task1', name: 'Task 1' },
-        { id: 'task2', name: 'Task 2' },
-      ];
+      const tasksData = [mondayTaskDummy];
+      const resultTask = {
+        id: 'task1',
+        name: 'Task 1',
+        status: 'group1',
+        key: '',
+        description: '',
+        external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: portalId },
+      };
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
         data: {
           access_token: 'token123',
         },
       });
-      mockedAxios.post.mockResolvedValueOnce({ data: tasksData });
+      mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards: [{ items: tasksData }] } } });
 
-      const result = await mondayService.getTasks(userDummy.id, projectId, null);
+      const result = await mondayService.getTasks(userDummy.id, projectId, portalId);
 
-      expect(result).toEqual(tasksData);
+      expect(result).toEqual([resultTask]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.MONDAY,
         userDummy.id,
@@ -359,12 +355,13 @@ describe('mondayService', () => {
     it('positive: should return an array of boards if boards are found', async () => {
       const data = { data: { access_token: 'accessToken' } };
       const boards = [{ id: 'board1', name: 'Board 1', state: 'active', permissions: [] }];
+      const expectedBoards = [{ id: 'board1', name: 'Board 1', key: '', description: '' }];
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(data);
       mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards } } });
 
       const result = await mondayService.getProjects(userDummy.id, 'portalId');
 
-      expect(result).toEqual(boards);
+      expect(result).toEqual(expectedBoards);
     });
   });
 
@@ -384,7 +381,7 @@ describe('mondayService', () => {
       const projectId = 'projectId';
       const data = { data: { access_token: 'access_token' } };
       const boards = [{ id: projectId, name: 'Project 1' }];
-      const expectedProject = { id: projectId, name: 'Project 1' };
+      const expectedProject = { id: projectId, name: 'Project 1', key: '', description: '' };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(data);
       mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards } } });
 

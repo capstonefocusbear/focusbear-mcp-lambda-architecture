@@ -20,6 +20,7 @@ import { Task } from '../domain/task.model';
 import { BaseIntegrationAuthService } from '../../auth/services/base-integration.auth.service';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -50,9 +51,9 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
 
     while (retryCount < MAX_RETRY) {
       try {
-        const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) return;
-        return await this.tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry, userId });
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        return await this.tryAddTimeEntry({ integrationRecord, portalId, projectId, taskId, timeEntry, userId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -64,37 +65,44 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw new Error(`Failed to add ${this.platform} task time entry after trying to get new access token.`);
   }
 
-  protected async getAccessToken(platform, userId): Promise<string | null> {
+  protected async getPlatformIntegrationRecord(platform, userId): Promise<PlatformIntegration | null> {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
       platform,
       userId,
     );
 
-    return platformIntegrationRecord?.data?.access_token;
+    return platformIntegrationRecord?.data;
   }
 
-  protected abstract tryAddTimeEntry({ accessToken, portalId, projectId, taskId, timeEntry, userId }): Promise<any>;
+  protected abstract tryAddTimeEntry({
+    integrationRecord,
+    portalId,
+    projectId,
+    taskId,
+    timeEntry,
+    userId,
+  }): Promise<any>;
 
   async getTasks(userId: string, projectId: string, portalId: string): Promise<Task[]> {
     try {
-      const accessToken = await this.getAccessToken(this.platform, userId);
-      if (!accessToken) return;
-      return await this.tryGetTasks({ accessToken, userId, projectId, portalId });
+      const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+      if (!integrationRecord) return;
+      return await this.tryGetTasks({ integrationRecord, userId, projectId, portalId });
     } catch (e) {
       throw new BadRequestException(e.response?.data);
     }
   }
 
-  protected abstract tryGetTasks({ accessToken, userId, projectId, portalId }): Promise<Task[]>;
+  protected abstract tryGetTasks({ integrationRecord, userId, projectId, portalId }): Promise<Task[]>;
 
   async getProjects(userId: string, portalId: string): Promise<Project[]> {
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
-        const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) return;
-        return await this.tryGetProjects({ accessToken, userId, portalId });
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        return await this.tryGetProjects({ integrationRecord, userId, portalId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -106,19 +114,19 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw Error(`Failed to ${this.platform} get projects after trying to get new access token.`);
   }
 
-  protected abstract tryGetProjects({ accessToken, userId, portalId }): Promise<Project[]>;
+  protected abstract tryGetProjects({ integrationRecord, userId, portalId }): Promise<Project[]>;
 
   async getPortals(userId: string): Promise<Portal[]> {
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
-        const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) {
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) {
           throw new UnauthorizedException(`User with ID: ${userId} is not is not authorized to access portals`);
         }
 
-        return await this.tryGetPortals({ accessToken, userId });
+        return await this.tryGetPortals({ integrationRecord, userId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -130,7 +138,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw new Error(`Failed to ${this.platform} get portals after trying to get new access token.`);
   }
 
-  protected abstract tryGetPortals({ accessToken, userId }): Promise<Portal[]>;
+  protected abstract tryGetPortals({ integrationRecord, userId }): Promise<Portal[]>;
 
   async getAllProjects(userId: string): Promise<Project[]> {
     const portals: any = await this.getPortals(userId);
@@ -227,13 +235,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   }
 
   async getProject(userId: string, portalId: string, projectId: string): Promise<Project> {
-    const accessToken = await this.getAccessToken(this.platform, userId);
-    if (!accessToken) return;
+    const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+    if (!integrationRecord) return;
     // eslint-disable-next-line @typescript-eslint/return-await
-    return await this.tryGetProject({ accessToken, portalId, projectId, userId });
+    return await this.tryGetProject({ integrationRecord, portalId, projectId, userId });
   }
 
-  protected abstract tryGetProject({ accessToken, portalId, projectId, userId }): Promise<Project>;
+  protected abstract tryGetProject({ integrationRecord, portalId, projectId, userId }): Promise<Project>;
 
   async getAllUserTasks(userId: string): Promise<Task[]> {
     const syncedProjects = await this.syncedProjectsRepository.orm.find({
@@ -255,9 +263,9 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
 
     while (retryCount < MAX_RETRY) {
       try {
-        const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) return;
-        return await this.tryGetTasksOwnedByUser({ accessToken, userId, portalId, projectId });
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        return await this.tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -269,25 +277,30 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw new Error(`Failed to ${this.platform} get task owned by user after trying to get new access token.`);
   }
 
-  protected abstract tryGetTasksOwnedByUser({ accessToken, userId, portalId, projectId }): Promise<Task[]>;
+  protected abstract tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId }): Promise<Task[]>;
 
   async getProjectStatuses(userId: string, projectId: string, portalId: string) {
-    const accessToken = await this.getAccessToken(this.platform, userId);
-    if (!accessToken) return;
-    const statuses = await this.tryGetProjectStatuses({ accessToken, userId, projectId, portalId });
+    const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+    if (!integrationRecord) return;
+    const statuses = await this.tryGetProjectStatuses({ integrationRecord, userId, projectId, portalId });
     return statuses;
   }
 
-  protected abstract tryGetProjectStatuses({ accessToken, userId, projectId, portalId }): Promise<ExternalTaskStatus[]>;
+  protected abstract tryGetProjectStatuses({
+    integrationRecord,
+    userId,
+    projectId,
+    portalId,
+  }): Promise<ExternalTaskStatus[]>;
 
   async updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string) {
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
-        const accessToken = await this.getAccessToken(this.platform, userId);
-        if (!accessToken) return;
-        return await this.tryUpdateTaskStatus({ accessToken, userId, portalId, projectId, taskId, statusId });
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        return await this.tryUpdateTaskStatus({ integrationRecord, userId, portalId, projectId, taskId, statusId });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
@@ -299,5 +312,12 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw new Error('Failed to update task status after trying to get new access token.');
   }
 
-  protected abstract tryUpdateTaskStatus({ accessToken, userId, portalId, projectId, taskId, statusId }): Promise<any>;
+  protected abstract tryUpdateTaskStatus({
+    integrationRecord,
+    userId,
+    portalId,
+    projectId,
+    taskId,
+    statusId,
+  }): Promise<any>;
 }

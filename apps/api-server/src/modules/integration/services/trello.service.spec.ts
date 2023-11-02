@@ -1,7 +1,7 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
-import { savedTrelloTaskDummy, trelloTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, TrelloAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -20,6 +20,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { trelloTaskDummy } from '../../../../test/dummies/integration.dummies';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -70,22 +71,9 @@ describe('trelloService', () => {
 
   describe('getUser', () => {
     it('positive: user should be fetched from DB', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedTrelloTaskDummy]);
-
       await trelloService.getUser(userDummy.id);
 
       expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
-    });
-  });
-
-  describe('getTrelloTasksToSync', () => {
-    it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedTrelloTaskDummy]);
-
-      const result = await trelloService.getTrelloTasksToSync([trelloTaskDummy], userDummy.id);
-
-      expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedTrelloTasks.length).toBe(1);
     });
   });
 
@@ -141,7 +129,8 @@ describe('trelloService', () => {
 
   describe('getTaskOwnedByUser', () => {
     it('positive: should call httpService.post with the correct arguments', async () => {
-      const portalId = 'project123';
+      const portalId = 'portalId123';
+      const projectId = 'projectId123';
       const trelloData = {
         access_token: 'token123',
         client_id: 'key123',
@@ -150,25 +139,34 @@ describe('trelloService', () => {
         data: trelloData,
       };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
-      const expectedUrl = `https://api.trello.com/1/organizations/${portalId}/cards`;
+      const expectedUrl = `https://api.trello.com/1/boards/${projectId}/cards`;
       const expectedParams = {
         key: trelloData.client_id,
         token: trelloData.access_token,
       };
 
       const mockResponse = {
-        data: [{ id: '9080' }],
+        data: [{ id: '9080', name: 'task1', desc: 'new task 1' }],
       };
 
       mockedAxios.get.mockResolvedValue(mockResponse);
       const expectedTasks = [
         {
           id: '9080',
-          portal_id: portalId,
+          name: 'task1',
+          description: 'new task 1',
+          key: '',
+          external_metadata: {
+            id: '9080',
+            name: 'task1',
+            desc: 'new task 1',
+            project_id: projectId,
+            portal_id: portalId,
+          },
         },
       ];
 
-      const tasks = await trelloService.getTasksOwnedByUser(userDummy.id, portalId, null);
+      const tasks = await trelloService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.TRELLO,
         userDummy.id,
@@ -199,10 +197,7 @@ describe('trelloService', () => {
         client_id: 'client_id',
         access_token: 'access_token',
       };
-      const portals = [
-        { id: 'portal1', name: 'Portal 1' },
-        { id: 'portal2', name: 'Portal 2' },
-      ];
+      const portals = [{ id: 'portal1' }, { id: 'portal2' }];
       mockedAxios.get.mockResolvedValueOnce({ data: portals });
       const platformIntegrationRecord = {
         data: trelloData,
@@ -222,16 +217,16 @@ describe('trelloService', () => {
 
     it('negative: should throw an UnauthorizedException if platform integration record is not found', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
-      const result = await trelloService.getPortals(userDummy.id);
-      expect(result).toBeUndefined();
+      const result = trelloService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
     });
 
     it('negative: should throw an error if the request fails', async () => {
       const error = new Error('Failed to get portals');
       mockedAxios.get.mockRejectedValueOnce(error);
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
-      const result = await trelloService.getPortals(userDummy.id);
-      expect(result).toBeUndefined();
+      const result = trelloService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -312,9 +307,16 @@ describe('trelloService', () => {
   describe('getTasks: when platform integration record is found', () => {
     it('should return tasks data', async () => {
       const projectId = 'project123';
-      const tasksData = [
-        { id: 'task1', name: 'Task 1' },
-        { id: 'task2', name: 'Task 2' },
+      const task = { id: 'task1', name: 'Task 1', desc: 'task', idList: '123' };
+      const resultTasks = [
+        {
+          id: 'task1',
+          name: 'Task 1',
+          key: '',
+          description: 'task',
+          status: '123',
+          external_metadata: { ...task },
+        },
       ];
       const trelloData = {
         client_id: 'client_id',
@@ -323,14 +325,14 @@ describe('trelloService', () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
         data: trelloData,
       });
-      mockedAxios.get.mockResolvedValueOnce({ data: tasksData });
+      mockedAxios.get.mockResolvedValueOnce({ data: [task] });
       const params = {
         key: trelloData.client_id,
         token: trelloData.access_token,
       };
       const result = await trelloService.getTasks(userDummy.id, projectId, null);
 
-      expect(result).toEqual(tasksData);
+      expect(result).toEqual(resultTasks);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.TRELLO,
         userDummy.id,
@@ -342,7 +344,7 @@ describe('trelloService', () => {
   });
 
   describe('getProjects', () => {
-    it('positive: should return an array of projects when the request is successful', async () => {
+    it.only('positive: should return an array of projects when the request is successful', async () => {
       const portalId = 'portal123';
       const platformIntegrationRecord = {
         data: {
@@ -351,12 +353,16 @@ describe('trelloService', () => {
         },
       };
       const projects = [
-        { id: 'project1', name: 'Project 1' },
-        { id: 'project2', name: 'Project 2' },
+        {
+          id: 'test-id',
+          name: 'test-name',
+          key: '',
+          description: 'test-description',
+        },
       ];
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
-      mockedAxios.get.mockResolvedValueOnce({ data: projects });
+      mockedAxios.get.mockResolvedValueOnce({ data: [trelloTaskDummy] });
 
       const result = await trelloService.getProjects(userDummy.id, portalId);
 

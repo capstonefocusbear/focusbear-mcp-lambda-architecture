@@ -44,11 +44,11 @@ export class ClickupService extends BaseIntegrationService {
     return this.userRepository.orm.findOneBy({ id: userId });
   }
 
-  protected async tryAddTimeEntry({ accessToken, portalId, taskId, timeEntry }): Promise<any> {
+  protected async tryAddTimeEntry({ integrationRecord, portalId, taskId, timeEntry }): Promise<any> {
     const url = `${this.base_url}team/${portalId}/time_entries`;
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: accessToken,
+      Authorization: integrationRecord.access_token,
     };
     const timestamp = new Date(timeEntry.date).getTime() / 1000;
     const data = {
@@ -62,11 +62,11 @@ export class ClickupService extends BaseIntegrationService {
     return response.data;
   }
 
-  protected async tryGetTasks({ accessToken, projectId, portalId }): Promise<Task[]> {
+  protected async tryGetTasks({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const url = `${this.base_url}list/${projectId}/task`;
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: accessToken,
+      Authorization: integrationRecord.access_token,
     };
 
     const response = await this.httpService.get(url, {
@@ -86,9 +86,9 @@ export class ClickupService extends BaseIntegrationService {
     });
   }
 
-  protected async tryGetProjects({ accessToken, portalId }): Promise<Project[]> {
+  protected async tryGetProjects({ integrationRecord, portalId }): Promise<Project[]> {
     const url = `${this.base_url}team/${portalId}/list`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
@@ -105,9 +105,9 @@ export class ClickupService extends BaseIntegrationService {
     });
   }
 
-  protected async tryGetProject({ accessToken, portalId, projectId }): Promise<Project> {
+  protected async tryGetProject({ integrationRecord, portalId, projectId }): Promise<Project> {
     const url = `${this.base_url}list/${projectId}`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
@@ -115,10 +115,10 @@ export class ClickupService extends BaseIntegrationService {
     return { id, name, key: name, description: '', portal_id: portalId };
   }
 
-  protected async tryGetPortals({ accessToken }): Promise<Portal[]> {
+  protected async tryGetPortals({ integrationRecord }): Promise<Portal[]> {
     const url = `${this.base_url}team`;
     const headers = {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${integrationRecord.access_token}`,
     };
     const response = await axios.get(url, {
       headers,
@@ -128,14 +128,14 @@ export class ClickupService extends BaseIntegrationService {
     }));
   }
 
-  protected async tryGetTasksOwnedByUser({ accessToken, projectId, portalId }): Promise<Task[]> {
-    const tasks = await this.tryGetTasks({ accessToken, projectId, portalId });
+  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
+    const tasks = await this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }
 
-  protected async tryGetProjectStatuses({ accessToken, projectId }): Promise<ExternalTaskStatus[]> {
+  protected async tryGetProjectStatuses({ integrationRecord, projectId }): Promise<ExternalTaskStatus[]> {
     const url = `${this.base_url}list/${projectId}`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
@@ -146,10 +146,10 @@ export class ClickupService extends BaseIntegrationService {
     return availableStatuses;
   }
 
-  protected async tryUpdateTaskStatus({ accessToken, taskId, statusId }): Promise<any> {
+  protected async tryUpdateTaskStatus({ integrationRecord, taskId, statusId }): Promise<any> {
     const url = `${this.base_url}task/${taskId}`;
     const headers = {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${integrationRecord.access_token}`,
     };
     const formData = {
       list_id: statusId,

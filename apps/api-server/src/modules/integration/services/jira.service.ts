@@ -39,9 +39,9 @@ export class JiraService extends BaseIntegrationService {
 
   private readonly base_url = 'https://api.atlassian.com/ex/jira/';
 
-  protected async tryAddTimeEntry({ accessToken, portalId, taskId, timeEntry }): Promise<any> {
+  protected async tryAddTimeEntry({ integrationRecord, portalId, taskId, timeEntry }): Promise<any> {
     const url = `${this.base_url}${portalId}/rest/api/3/issue/${taskId}/worklog`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
 
     const data = {
       version: 1,
@@ -70,9 +70,9 @@ export class JiraService extends BaseIntegrationService {
     return response.data;
   }
 
-  protected async tryGetTasks({ accessToken, projectId, portalId }): Promise<Task[]> {
+  protected async tryGetTasks({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const url = `${this.base_url}${portalId}/rest/api/3/search`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const params = {
       jql: `project=${projectId}`,
       fields: 'status, description, summary',
@@ -100,9 +100,9 @@ export class JiraService extends BaseIntegrationService {
     });
   }
 
-  protected async tryGetProjects({ accessToken, portalId }): Promise<Project[]> {
+  protected async tryGetProjects({ integrationRecord, portalId }): Promise<Project[]> {
     const url = `${this.base_url}${portalId}/rest/api/3/project`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
@@ -120,10 +120,10 @@ export class JiraService extends BaseIntegrationService {
     });
   }
 
-  protected async tryGetPortals({ accessToken }): Promise<Portal[]> {
+  protected async tryGetPortals({ integrationRecord }): Promise<Portal[]> {
     const url = 'https://api.atlassian.com/oauth/token/accessible-resources';
     const headers = {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${integrationRecord.access_token}`,
       Accept: 'appication/json',
     };
     const response = await this.httpService.get(url, { headers });
@@ -132,9 +132,9 @@ export class JiraService extends BaseIntegrationService {
     return portals.map((portal) => ({ id: portal.id }));
   }
 
-  protected async tryGetProject({ accessToken, portalId, projectId }): Promise<Project> {
+  protected async tryGetProject({ integrationRecord, portalId, projectId }): Promise<Project> {
     const url = `${this.base_url}${portalId}/rest/api/3/project/${projectId}`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
@@ -154,14 +154,14 @@ export class JiraService extends BaseIntegrationService {
     } as Project;
   }
 
-  protected async tryGetTasksOwnedByUser({ accessToken, portalId, projectId }): Promise<Task[]> {
-    const tasks = await this.tryGetTasks({ accessToken, portalId, projectId });
+  protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+    const tasks = await this.tryGetTasks({ integrationRecord, portalId, projectId });
     return tasks;
   }
 
-  protected async tryGetProjectStatuses({ accessToken, projectId, portalId }): Promise<ExternalTaskStatus[]> {
+  protected async tryGetProjectStatuses({ integrationRecord, projectId, portalId }): Promise<ExternalTaskStatus[]> {
     const url = `${this.base_url}${portalId}/rest/api/3/project/${projectId}/statuses`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const { data } = await this.httpService.get(url, {
       headers,
     });
@@ -177,9 +177,9 @@ export class JiraService extends BaseIntegrationService {
     return availableStatuses;
   }
 
-  protected async tryUpdateTaskStatus({ accessToken, portalId, taskId, statusId }): Promise<any> {
+  protected async tryUpdateTaskStatus({ integrationRecord, portalId, taskId, statusId }): Promise<any> {
     const url = `${this.base_url}${portalId}/rest/api/3/issue/${taskId}/transitions`;
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
 
     const { transitions } = (await this.httpService.get(url, { headers })).data;
     const transition = transitions.find((item: any) => item.to.id === statusId);

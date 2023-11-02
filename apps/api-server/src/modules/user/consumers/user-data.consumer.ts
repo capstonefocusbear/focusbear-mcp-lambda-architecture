@@ -8,7 +8,7 @@ import { R2Service } from '@app/r2/services/r2.service';
 import { SendGridService } from '@app/send-grid';
 import { UserRepository } from '../repositories/user.repository';
 import { LanguageOptions } from '../domain/language-options.enum';
-import { FOCUS_BEAR_TEAM_EMAIL } from '../../../shared/utils/constants';
+import { FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 
 @Processor('user-data')
 export class UserPersonalDataConsumer {
@@ -56,7 +56,7 @@ export class UserPersonalDataConsumer {
       const downloadLink = await this.r2Service.getPresignedUrl('user-data', `${user_id}.json`);
       await this.emailService.sendEmail({
         to: userAuth0Data.email,
-        from: FOCUS_BEAR_TEAM_EMAIL,
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
         text: this.i18nService.t('common.user_data_email_body', { lang: language, args: { link: downloadLink } }),
         subject: this.i18nService.t('common.user_data_email_header', { lang: language }),
       });

@@ -66,7 +66,7 @@ async function sendInactivityWarningEmails(users: { email: string; user: User }[
     i18next.changeLanguage(user.user.language);
     const message = {
       to: user.email,
-      from: FOCUS_BEAR_EMAILS.TEAM,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
       subject: i18next.t('inactivity_email_subject'),
       text: i18next.t('inactivity_warning_email_content'),
     };

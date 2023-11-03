@@ -89,7 +89,6 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       if (!integrationRecord) return;
       return await this.tryGetTasks({ integrationRecord, userId, projectId, portalId });
     } catch (e) {
-      console.log('error', e);
       throw new BadRequestException(e.response?.data);
     }
   }

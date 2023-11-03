@@ -48,35 +48,18 @@ export const savedZohoTaskDummy = new ToDo({
   external_task_metadata: { platform: 'zoho', task_data: zohoTaskDummy },
 });
 
-export const mondayTaskDummy = {
-  id: 'test-id',
-  name: 'test-name',
-  key: 'test-key',
-  description: 'test-description',
-};
-
-export const savedMondayTaskDummy = new ToDo({
-  user_id: userDummy.id,
-  title: mondayTaskDummy.name,
-  details: mondayTaskDummy.description,
-  external_task_id: mondayTaskDummy.id,
-  external_task_metadata: { platform: 'monday', task_data: mondayTaskDummy },
-});
+export const mondayTaskDummy = { id: 'task1', name: 'Task 1', group: { id: 'group1' } };
 
 export const asanaTaskDummy = {
-  id: 'test-id',
+  gid: 'test-id',
   name: 'test-name',
-  key: 'test-key',
-  description: 'test-description',
+  notes: 'test-notes',
+  membership: {
+    section: {
+      gid: 'section-id',
+    },
+  },
 };
-
-export const savedAsanaTaskDummy = new ToDo({
-  user_id: userDummy.id,
-  title: asanaTaskDummy.name,
-  details: asanaTaskDummy.description,
-  external_task_id: asanaTaskDummy.id,
-  external_task_metadata: { platform: 'asana', task_data: mondayTaskDummy },
-});
 
 export const clickupTaskDummy = {
   id: 'test-id',
@@ -112,17 +95,14 @@ export const savedJiraTaskDummy = new ToDo({
 export const trelloTaskDummy = {
   id: 'test-id',
   name: 'test-name',
-  key: 'test-key',
-  description: 'test-description',
+  desc: 'test-description',
 };
 
-export const savedTrelloTaskDummy = new ToDo({
-  user_id: userDummy.id,
-  title: trelloTaskDummy.name,
-  details: trelloTaskDummy.description,
-  external_task_id: trelloTaskDummy.id,
-  external_task_metadata: { platform: 'trello', task_data: mondayTaskDummy },
-});
+export const trelloProjectDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  desc: 'test-descriptoin',
+};
 
 export const jiraIssueDummy = {
   id: 'task123',

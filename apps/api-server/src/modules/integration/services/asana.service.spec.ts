@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
-import { savedAsanaTaskDummy, asanaTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { asanaTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, AsanaAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -68,22 +68,9 @@ describe('asanaService', () => {
 
   describe('getUser', () => {
     it('positive: user should be fetched from DB', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedAsanaTaskDummy]);
-
       await asanaService.getUser(userDummy.id);
 
       expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
-    });
-  });
-
-  describe('getAsanaTasksToSync', () => {
-    it('positive: returns tasks already saved and ones that need to be synced', async () => {
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([savedAsanaTaskDummy]);
-
-      const result = await asanaService.getAsanaTasksToSync([asanaTaskDummy], userDummy.id);
-
-      expect(result.tasksToSync.length).toBe(0);
-      expect(result.syncedAsanaTasks.length).toBe(1);
     });
   });
 
@@ -148,10 +135,7 @@ describe('asanaService', () => {
 
       const response = {
         data: {
-          data: [
-            { id: 'task-1', name: 'Task 1' },
-            { id: 'task-2', name: 'Task 2' },
-          ],
+          data: [asanaTaskDummy],
         },
       };
 
@@ -164,21 +148,31 @@ describe('asanaService', () => {
       const result = await asanaService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
 
       expect(result).toEqual([
-        { id: 'task-1', name: 'Task 1', project_id: projectId },
-        { id: 'task-2', name: 'Task 2', project_id: projectId },
+        {
+          id: 'test-id',
+          name: 'test-name',
+          description: 'test-notes',
+          key: '',
+          status: 'section-id',
+          external_metadata: {
+            ...asanaTaskDummy,
+            project_id: projectId,
+            portal_id: portalId,
+          },
+        },
       ]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ASANA,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        `https://app.asana.com/api/1.0/workspaces/${portalId}/tasks/search?assignee.any=${asanaData.accountId}&project=${projectId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${asanaData.access_token}`,
-          },
+      expect(mockedAxios.get).toHaveBeenCalledWith(`https://app.asana.com/api/1.0/projects/${projectId}/tasks`, {
+        headers: {
+          Authorization: `Bearer ${asanaData.access_token}`,
         },
-      );
+        params: {
+          opt_fields: 'name,notes,memebership.section',
+        },
+      });
     });
 
     it('positive: should handle unauthorized error and retry if response status is 401', async () => {
@@ -219,8 +213,8 @@ describe('asanaService', () => {
       const response = {
         data: {
           data: [
-            { id: 'portal-1', name: 'Portal 1' },
-            { id: 'portal-2', name: 'Portal 2' },
+            { gid: 'portal-1', name: 'Portal 1' },
+            { gid: 'portal-2', name: 'Portal 2' },
           ],
         },
       };
@@ -233,7 +227,7 @@ describe('asanaService', () => {
 
       const result = await asanaService.getPortals(userDummy.id);
 
-      expect(result).toEqual(response.data?.data);
+      expect(result).toEqual([{ id: 'portal-1' }, { id: 'portal-2' }]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ASANA,
         userDummy.id,
@@ -241,48 +235,6 @@ describe('asanaService', () => {
       expect(mockedAxios.get).toHaveBeenCalledWith('https://app.asana.com/api/1.0/workspaces', {
         headers: {
           Authorization: `Bearer ${asanaData.access_token}`,
-        },
-      });
-    });
-  });
-
-  describe('getTasks', () => {
-    const projectId = 'test-project-id';
-    const portalId = 'test-portal-id';
-
-    it('positive: should return tasks for a given project', async () => {
-      const asanaData = {
-        access_token: 'test-access-token',
-      };
-
-      const response = {
-        data: {
-          data: [
-            { id: 'task-1', name: 'Task 1', completed: false, due_on: null, actual_time_minutes: null },
-            { id: 'task-2', name: 'Task 2', completed: true, due_on: '2023-10-30', actual_time_minutes: 120 },
-          ],
-        },
-      };
-
-      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
-        data: asanaData,
-      });
-
-      mockedAxios.get.mockResolvedValue(response);
-
-      const result = await asanaService.getTasks(userDummy.id, projectId, portalId);
-
-      expect(result).toEqual(response.data?.data ?? []);
-      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
-        IntegrationPlatforms.ASANA,
-        userDummy.id,
-      );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://app.asana.com/api/1.0/projects/${projectId}/tasks`, {
-        headers: {
-          Authorization: `Bearer ${asanaData.access_token}`,
-        },
-        params: {
-          opt_fields: 'name,completed,due_on,actual_time_minutes',
         },
       });
     });
@@ -299,8 +251,8 @@ describe('asanaService', () => {
       const response = {
         data: {
           data: [
-            { id: 'project-1', name: 'Project 1' },
-            { id: 'project-2', name: 'Project 2' },
+            { gid: 'project-1', name: 'Project 1' },
+            { gid: 'project-2', name: 'Project 2' },
           ],
         },
       };
@@ -313,14 +265,21 @@ describe('asanaService', () => {
 
       const result = await asanaService.getProjects(userDummy.id, portalId);
 
-      expect(result).toEqual(response.data?.data ?? []);
+      expect(result).toEqual([
+        { id: 'project-1', name: 'Project 1', description: undefined, key: '' },
+        { id: 'project-2', name: 'Project 2', description: undefined, key: '' },
+      ]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ASANA,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledWith(`https://app.asana.com/api/1.0/projects?workspace=${portalId}`, {
+      expect(mockedAxios.get).toHaveBeenCalledWith('https://app.asana.com/api/1.0/projects', {
         headers: {
           Authorization: `Bearer ${asanaData.access_token}`,
+        },
+        params: {
+          workspace: 'test-portal-id',
+          opt_fields: 'name,notes',
         },
       });
     });
@@ -338,7 +297,7 @@ describe('asanaService', () => {
       const response = {
         data: {
           data: {
-            id: projectId,
+            gid: projectId,
             name: 'Test Project',
             // Additional project properties...
           },
@@ -353,7 +312,12 @@ describe('asanaService', () => {
 
       const result = await asanaService.getProject(userDummy.id, portalId, projectId);
 
-      expect(result).toEqual(response.data?.data);
+      expect(result).toEqual({
+        id: projectId,
+        name: 'Test Project',
+        key: '',
+        description: undefined,
+      });
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
         IntegrationPlatforms.ASANA,
         userDummy.id,

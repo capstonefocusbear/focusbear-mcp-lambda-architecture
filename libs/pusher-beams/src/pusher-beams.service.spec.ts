@@ -35,7 +35,11 @@ describe('PusherBeamsService', () => {
     it('should return a pusher beams publishRequest object', () => {
       const dummyTitle = 'New Notification';
       const dummyBody = 'You have recevied a notification.';
-      const result = service.createBeamsPublishRequest(dummyTitle, dummyBody, pusherBeamsPublishRequestFocusBlockDummy);
+      const result = service.createBeamsPublishRequest({
+        title: dummyTitle,
+        body: dummyBody,
+        pushData: pusherBeamsPublishRequestFocusBlockDummy,
+      });
       expect(result).toBeInstanceOf(BeamsPublishRequest);
       expect(result).toMatchSnapshot();
     });

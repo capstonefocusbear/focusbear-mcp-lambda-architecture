@@ -79,11 +79,11 @@ export class FocusModeManagerService {
         lang: language,
         args: { focus_mode_name: name },
       });
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(
-        pushNotificationTitle,
-        pushNotificationBody,
-        completedMode,
-      );
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+        title: pushNotificationTitle,
+        body: pushNotificationBody,
+        pushData: completedMode,
+      });
       await this.userRepository.orm.update(user_id, userDataToUpdate);
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
@@ -192,11 +192,11 @@ export class FocusModeManagerService {
         lang: user.language,
         args: { focus_mode_name: name },
       });
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest(
-        pushNotificationTitle,
-        pushNotificationBody,
-        completedMode,
-      );
+      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+        title: pushNotificationTitle,
+        body: pushNotificationBody,
+        pushData: completedMode,
+      });
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);

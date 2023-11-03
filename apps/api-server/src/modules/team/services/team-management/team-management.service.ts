@@ -11,7 +11,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
-import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 
@@ -208,8 +208,8 @@ export class TeamManagementService {
       await this.emailService.sendEmail({
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
-        text: inviteUrl,
-        subject: 'You were invited to a join team in Focus Bear.',
+        templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
+        dynamicTemplateData: { invite_url: inviteUrl },
       });
       return inviteUrl;
     } catch (error) {

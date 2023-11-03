@@ -11,6 +11,9 @@ export const FOCUS_BEAR_EMAILS = {
   TEAM: 'team@focusbear.io',
   MARKETING: 'marketing@focusbear.io',
 };
+export const EMAIL_TEMPLATE_IDS = {
+  TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
+};
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
   APP_UNINSTALL_FEEDBACK: 'App Uninstall Feedback',

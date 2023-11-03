@@ -16,7 +16,7 @@ import {
   EMAIL_SUBJECTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
   EVENT_TYPES_TO_ALERT_IN_SLACK,
-  FOCUS_BEAR_TEAM_EMAIL,
+  FOCUS_BEAR_EMAILS,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_MINUTE,
   WORDS_TO_LOG_FOR,
@@ -102,8 +102,8 @@ export class EventsService {
 
   async emailQuitFeedback(event: TrackEventDto, email: string) {
     await this.emailService.sendEmail({
-      to: FOCUS_BEAR_TEAM_EMAIL,
-      from: FOCUS_BEAR_TEAM_EMAIL,
+      to: FOCUS_BEAR_EMAILS.SUPPORT,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
       text: JSON.stringify(event),
       subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(email)}`,
     });

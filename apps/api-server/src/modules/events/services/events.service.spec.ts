@@ -27,7 +27,7 @@ import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
-import { EMAIL_SUBJECTS, FOCUS_BEAR_TEAM_EMAIL } from '../../../shared/utils/constants';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { maskEmail } from '../../../shared/utils/helpers';
 
 // Mock axios and set the type
@@ -193,8 +193,8 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: FOCUS_BEAR_TEAM_EMAIL,
-        from: FOCUS_BEAR_TEAM_EMAIL,
+        to: FOCUS_BEAR_EMAILS.SUPPORT,
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
         text: JSON.stringify(dummyEvent),
         subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(auth0UserDummy.email)}`,
       });

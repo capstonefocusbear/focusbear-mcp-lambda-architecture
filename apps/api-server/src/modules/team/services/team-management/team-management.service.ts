@@ -11,7 +11,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
-import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { A_TEAM, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 
@@ -200,7 +200,7 @@ export class TeamManagementService {
 
   async inviteTeamMember(email: string, adminId: string, teamId: string): Promise<any> {
     try {
-      await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+      const team = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
       const payload = new MemberInvitationPayload({ admin_id: adminId, email, team_id: teamId });
       const secretKey = this.configService.get('tokens.secret');
       const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
@@ -209,7 +209,7 @@ export class TeamManagementService {
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
-        dynamicTemplateData: { invite_url: inviteUrl },
+        dynamicTemplateData: { invite_url: inviteUrl, team_name: team.name ?? A_TEAM },
       });
       return inviteUrl;
     } catch (error) {

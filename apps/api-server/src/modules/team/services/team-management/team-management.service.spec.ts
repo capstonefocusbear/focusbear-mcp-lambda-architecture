@@ -211,7 +211,10 @@ describe('TeamManagementService', () => {
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
-        dynamicTemplateData: { invite_url: expect.toInclude(`?token=${singedJwt}`) },
+        dynamicTemplateData: {
+          invite_url: expect.toInclude(`?token=${singedJwt}`),
+          team_name: TeamWithMembersDummy.name,
+        },
       });
     });
   });

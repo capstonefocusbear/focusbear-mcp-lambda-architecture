@@ -4,7 +4,12 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
-import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayServiceMock } from '../../../../test/mocks';
+import {
+  PlatformIntegrationsServiceMock,
+  SentryServiceMock,
+  MondayServiceMock,
+  ConfigServiceMock,
+} from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { MondayAuthService } from './monday-auth.service';
@@ -26,10 +31,10 @@ describe('MondayService', () => {
 
     const moduleRef = await Test.createTestingModule({
       providers: [
+        ConfigService,
         MondayAuthService,
         UserRepository,
         JwtService,
-        ConfigService,
         MondayService,
         PlatformIntegrationsService,
         {
@@ -44,11 +49,14 @@ describe('MondayService', () => {
     })
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
       .overrideProvider(MondayService)
       .useValue(MondayServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
+    ConfigServiceMock.get.mockReturnValueOnce('monday-client-id');
     mondayAuthService = moduleRef.get<MondayAuthService>(MondayAuthService);
   });
 
@@ -88,6 +96,8 @@ describe('MondayService', () => {
         userDummy.id,
         IntegrationPlatforms.MONDAY,
         {
+          client_id: undefined,
+          refresh_token: '',
           access_token: authorizationResponseDummy.access_token,
           accountId: userInfoResponseDummy.account_id,
           location: locationDummy,

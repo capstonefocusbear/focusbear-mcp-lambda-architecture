@@ -80,7 +80,7 @@ describe('ZohoService', () => {
   describe('getPortals', () => {
     it('negative: if no integration record is found error should be thrown', async () => {
       let exception = null;
-      const errorMessage = `User with ID: ${userDummy.id} is not is not authorized to access portals`;
+      const errorMessage = `User with ID: ${userDummy.id} is not authorized to access portals`;
 
       try {
         await zohoService.getPortals(userDummy.id);

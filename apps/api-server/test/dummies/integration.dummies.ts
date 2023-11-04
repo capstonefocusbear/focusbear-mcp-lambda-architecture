@@ -54,11 +54,13 @@ export const asanaTaskDummy = {
   gid: 'test-id',
   name: 'test-name',
   notes: 'test-notes',
-  membership: {
-    section: {
-      gid: 'section-id',
+  memberships: [
+    {
+      section: {
+        gid: 'section-id',
+      },
     },
-  },
+  ],
 };
 
 export const clickupTaskDummy = {

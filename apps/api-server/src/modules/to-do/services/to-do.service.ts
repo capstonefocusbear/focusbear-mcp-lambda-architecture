@@ -18,10 +18,12 @@ import { ToDoStatus } from '../domain/to-do-status.enum';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
+import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 
 @Injectable()
 export class ToDoService {
   constructor(
+    private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
     private readonly toDoRepository: ToDoRepository,
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue('time-logs') private timeLogsQueue: Queue,
@@ -89,14 +91,21 @@ export class ToDoService {
   }
 
   async getAllUserTasks(userId) {
-    const platforms = Object.entries(IntegrationPlatforms).map(([, value]) => value);
+    const records = await this.platformIntegrationsRepository.orm.find({
+      where: { user_id: userId },
+      select: ['platform'],
+    });
 
-    return Promise.all(
-      platforms.map((platform) => {
+    const platforms = records.map(({ platform }) => platform);
+
+    const tasksDeck = Promise.all(
+      platforms.map((platform: IntegrationPlatforms) => {
         const service = this.integrationFactory.get(platform);
         return service.getAllUserTasks(userId).catch(() => []);
       }),
     );
+
+    return (await tasksDeck).flat();
   }
 
   async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
@@ -108,15 +117,14 @@ export class ToDoService {
     const toDosWithAvailableStatuses = await Promise.all(
       toDos.map(async (toDo) => {
         if (toDo?.external_task_metadata) {
-          const toDoProjectId = toDo.external_task_metadata.task_data?.project?.id_string;
+          const toDoProjectId = toDo.external_task_metadata.task_data?.project_id;
           const syncedProject = await this.syncedProjectsRepository.orm.findOne({
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
           const linkedTask = findTask(toDo.external_task_id, userTasks);
           const availableStatuses = syncedProject?.available_statuses;
-          const externalStatusLabel = linkedTask?.status?.name;
-          const externalStatusId = linkedTask?.status?.id;
-          const currentExternalStatus = { label: externalStatusLabel, id: externalStatusId };
+          const externalStatusId = linkedTask?.status;
+          const currentExternalStatus = availableStatuses.find((status) => status.status_id === externalStatusId);
           const toDoCopy = { ...toDo };
           const toDoToSave = new ToDo({
             ...toDo,

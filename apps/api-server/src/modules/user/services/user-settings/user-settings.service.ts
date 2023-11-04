@@ -462,7 +462,6 @@ export class UserSettingsService {
     };
     const routineToAddTo = data.routine ?? ActivityType.morning;
     const userSettings = await this.getSettings({ user_id: userId });
-    console.log({ userSettings });
     const updatedSettings = {
       ...userSettings,
       [`${routineToAddTo}_activities`]: [...userSettings[`${routineToAddTo}_activities`], activity],

@@ -4,7 +4,12 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
-import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoServiceMock } from '../../../../test/mocks';
+import {
+  ConfigServiceMock,
+  PlatformIntegrationsServiceMock,
+  SentryServiceMock,
+  ZohoServiceMock,
+} from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoAuthService } from './zoho-auth.service';
@@ -46,6 +51,8 @@ describe('ZohoService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ZohoService)
       .useValue(ZohoServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
@@ -83,6 +90,7 @@ describe('ZohoService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         {
+          client_id: undefined,
           refresh_token: authorizationResponseDummy.refresh_token,
           access_token: authorizationResponseDummy.access_token,
           accountId: userInfoResponseDummy.ZUID,

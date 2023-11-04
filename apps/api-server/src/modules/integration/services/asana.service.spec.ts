@@ -155,6 +155,7 @@ describe('asanaService', () => {
           key: '',
           status: 'section-id',
           external_metadata: {
+            id: 'test-id',
             ...asanaTaskDummy,
             project_id: projectId,
             portal_id: portalId,
@@ -170,7 +171,7 @@ describe('asanaService', () => {
           Authorization: `Bearer ${asanaData.access_token}`,
         },
         params: {
-          opt_fields: 'name,notes,memebership.section',
+          opt_fields: 'name,notes,memberships.section',
         },
       });
     });

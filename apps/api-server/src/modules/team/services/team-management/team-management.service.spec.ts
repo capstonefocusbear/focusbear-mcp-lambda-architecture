@@ -22,7 +22,7 @@ import {
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
 import { TeamManagementService } from './team-management.service';
-import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Auth0ManagementService } from '../../../../../../../libs/auth0/src';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { Team } from '../../entities/team.entity';
@@ -210,8 +210,11 @@ describe('TeamManagementService', () => {
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
-        text: expect.toInclude(`?token=${singedJwt}`),
-        subject: 'You were invited to a join team in Focus Bear.',
+        templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
+        dynamicTemplateData: {
+          invite_url: expect.toInclude(`?token=${singedJwt}`),
+          team_name: TeamWithMembersDummy.name,
+        },
       });
     });
   });

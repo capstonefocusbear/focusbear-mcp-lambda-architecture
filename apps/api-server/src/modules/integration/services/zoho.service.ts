@@ -17,7 +17,7 @@ import { BaseIntegrationService } from './base.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
-  id: task.id_string,
+  id: task.id,
   key: task.key,
   name: task.name,
   description: task.description,
@@ -129,10 +129,7 @@ export class ZohoService extends BaseIntegrationService {
       headers,
     });
     const tasks = response.data?.tasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
-    const tasksWithPortalIds = tasks.map((task) => {
-      return { ...task, portal_id: portalId, project_id: projectId, id: task.id_string };
-    });
-    return tasksWithPortalIds;
+    return tasks;
   }
 
   protected async tryGetProjectStatuses({ integrationRecord, projectId, portalId }): Promise<ExternalTaskStatus[]> {

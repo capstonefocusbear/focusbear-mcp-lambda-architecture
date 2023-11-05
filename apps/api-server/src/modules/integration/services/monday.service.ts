@@ -64,7 +64,7 @@ export class MondayService extends BaseIntegrationService {
 
   protected async tryAddTimeEntry({ integrationRecord, projectId, taskId, timeEntry }): Promise<any> {
     const headers = {
-      Authorization: integrationRecord.access_token,
+      Authorization: `Bearer ${integrationRecord.access_token}`,
       'Content-Type': 'application/json',
     };
 

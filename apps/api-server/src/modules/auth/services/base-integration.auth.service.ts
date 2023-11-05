@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import { NotFoundException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -24,7 +23,6 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    protected readonly jwtService: JwtService,
     @InjectQueue('time-logs') protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly platform: IntegrationPlatforms,
@@ -89,12 +87,6 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
         location: location || '',
         accountId,
       });
-      const payload = { sub: userId };
-      return {
-        access_token: await this.jwtService.signAsync(payload, {
-          expiresIn: data.expires_in,
-        }),
-      };
     } catch (error) {
       console.error(error);
     }

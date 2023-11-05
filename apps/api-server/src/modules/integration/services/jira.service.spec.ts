@@ -357,4 +357,62 @@ describe('jiraService', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('addTimeEntry', () => {
+    const portalId = 'test-portal-id';
+    const projectId = 'test-project-id';
+    const taskId = 'test-task-id';
+    const timeEntry = {
+      note: 'milestone',
+      seconds: '2:30',
+    };
+
+    it('positive: should add a time entry for a given user, portal, project, task, and time entry data', async () => {
+      const jiraData = {
+        access_token: 'test-access-token',
+      };
+      const response = {
+        data: {},
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
+        data: jiraData,
+      });
+      const data = {
+        version: 1,
+        type: 'doc',
+        timeSpentSeconds: timeEntry.seconds,
+        content: [
+          {
+            content: [
+              {
+                text: timeEntry.note,
+                type: 'text',
+              },
+            ],
+            type: 'paragraph',
+          },
+        ],
+      };
+
+      mockedAxios.post.mockResolvedValue(response);
+
+      const result = await jiraService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+
+      expect(result).toEqual(response.data);
+
+      const url = `https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/issue/${taskId}/worklog`;
+      expect(mockedAxios.post).toBeCalledWith(url, data, {
+        headers: {
+          Authorization: `Bearer ${jiraData.access_token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      });
+
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.JIRA,
+        userDummy.id,
+      );
+    });
+  });
 });

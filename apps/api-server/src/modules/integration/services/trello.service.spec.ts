@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
+import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, TrelloAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -20,7 +21,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import { trelloTaskDummy } from '../../../../test/dummies/integration.dummies';
+import { taskDummy, trelloTaskDummy } from '../../../../test/dummies/integration.dummies';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -93,18 +94,18 @@ describe('trelloService', () => {
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
 
-      const expectedUrl = `https://api.trello.com/1/cards/${taskId}/idList`;
+      const expectedUrl = `https://api.trello.com/1/cards/${taskId}`;
       const expectedParams = {
         key: client_id,
         token: access_token,
-        value: statusId,
+        idList: statusId,
       };
 
       const mockResponse = {
         data: { id: 'task123' },
       };
 
-      mockedAxios.post.mockResolvedValue(mockResponse);
+      mockedAxios.put.mockResolvedValue(mockResponse);
 
       const result = await trelloService.updateTaskStatus(userDummy.id, null, null, taskId, statusId);
 
@@ -112,7 +113,7 @@ describe('trelloService', () => {
         IntegrationPlatforms.TRELLO,
         userDummy.id,
       );
-      expect(mockedAxios.post).toHaveBeenCalledWith(expectedUrl, null, { params: expectedParams });
+      expect(mockedAxios.put).toHaveBeenCalledWith(expectedUrl, null, { params: expectedParams });
       expect(result).toEqual({ id: 'task123' });
     });
 
@@ -315,7 +316,7 @@ describe('trelloService', () => {
           key: '',
           description: 'task',
           status: '123',
-          external_metadata: { ...task },
+          external_metadata: { ...task, project_id: projectId, portal_id: null },
         },
       ];
       const trelloData = {
@@ -344,7 +345,7 @@ describe('trelloService', () => {
   });
 
   describe('getProjects', () => {
-    it.only('positive: should return an array of projects when the request is successful', async () => {
+    it('positive: should return an array of projects when the request is successful', async () => {
       const portalId = 'portal123';
       const platformIntegrationRecord = {
         data: {
@@ -378,6 +379,231 @@ describe('trelloService', () => {
         },
       });
       expect(result).toEqual(projects);
+    });
+  });
+
+  describe('addTimeEntry', () => {
+    it('positive: add time log if Worklog and Total fields are available', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const taskId = 'task-id';
+      const timeEntry = {
+        seconds: 300,
+        note: 'milestone',
+      };
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      const headers = {
+        Accept: 'application/json',
+      };
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+      };
+      mockedAxios.get
+        .mockResolvedValueOnce({
+          data: [
+            { name: FIELD_NAME_WORKLOG, id: 'worklog-id' },
+            { name: FIELD_NAME_TOTAL, id: 'total-id' },
+          ],
+        })
+        .mockResolvedValueOnce({
+          data: [
+            { idCustomField: 'worklog-id', value: { text: 'milestone-1: 0h 5m' } },
+            { idCustomField: 'total-id', value: { text: '0h 5m' } },
+          ],
+        });
+
+      await trelloService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+
+      const updateUrl = `https://api.trello.com/1/cards/${taskId}/customFields`;
+      const body = {
+        customFieldItems: [
+          {
+            idCustomField: 'worklog-id',
+            value: {
+              text: 'milestone-1: 0h 5m milestone: 0h 5m',
+            },
+          },
+          {
+            idCustomField: 'total-id',
+            value: {
+              text: '0h 10m',
+            },
+          },
+        ],
+      };
+
+      expect(mockedAxios.put).toHaveBeenCalledWith(updateUrl, body, { headers, params });
+    });
+
+    it('positive: add custom fields and add worklog if Worklog and Total fields are not available', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const taskId = 'task-id';
+      const timeEntry = {
+        seconds: 300,
+        note: 'milestone',
+      };
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      const headers = {
+        Accept: 'application/json',
+      };
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+      };
+      mockedAxios.get.mockResolvedValueOnce({
+        data: [],
+      });
+      mockedAxios.post
+        .mockResolvedValueOnce({ data: { id: 'worklog-id' } })
+        .mockResolvedValueOnce({ data: { id: 'total-id' } });
+
+      await trelloService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+
+      const updateUrl = `https://api.trello.com/1/cards/${taskId}/customFields`;
+      const body = {
+        customFieldItems: [
+          {
+            idCustomField: 'worklog-id',
+            value: {
+              text: 'milestone: 0h 5m',
+            },
+          },
+          {
+            idCustomField: 'total-id',
+            value: {
+              text: '0h 5m',
+            },
+          },
+        ],
+      };
+
+      expect(mockedAxios.put).toHaveBeenCalledWith(updateUrl, body, { headers, params });
+    });
+  });
+
+  describe('getPortals', () => {
+    it('positive: ', async () => {
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      mockedAxios.get.mockResolvedValueOnce({ data: {} });
+
+      await trelloService.getPortals(userDummy.id);
+
+      const url = 'https://api.trello.com/1/members/me/organizations';
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+      };
+      expect(mockedAxios.get).toHaveBeenCalledWith(url, { params });
+    });
+  });
+
+  describe('getProject', () => {
+    it('positive: ', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          id: projectId,
+          name: 'project-name',
+          desc: 'desc',
+        },
+      });
+
+      const project = await trelloService.getProject(userDummy.id, portalId, projectId);
+
+      const url = `https://api.trello.com/1/boards/${projectId}`;
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+      };
+      expect(project).toEqual({
+        id: projectId,
+        name: 'project-name',
+        key: '',
+        description: 'desc',
+      });
+      expect(mockedAxios.get).toHaveBeenCalledWith(url, { params });
+    });
+  });
+
+  describe('getProjectStatuses', () => {
+    it('positive: ', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      mockedAxios.get.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'list-id-1',
+            name: 'list-name-1',
+          },
+        ],
+      });
+
+      const statuses = await trelloService.getProjectStatuses(userDummy.id, projectId, portalId);
+
+      const url = `https://api.trello.com/1/boards/${projectId}/lists`;
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+      };
+      expect(statuses).toEqual([
+        {
+          status_id: 'list-id-1',
+          label: 'list-name-1',
+          should_complete_task: false,
+        },
+      ]);
+      expect(mockedAxios.get).toHaveBeenCalledWith(url, { params });
+    });
+  });
+
+  describe('updateTaskStatus', () => {
+    it('positive: ', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const statusId = 'status-id';
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      mockedAxios.put.mockResolvedValueOnce({
+        data: {},
+      });
+
+      await trelloService.updateTaskStatus(userDummy.id, portalId, projectId, taskDummy.id, statusId);
+
+      const url = `https://api.trello.com/1/cards/${taskDummy.id}`;
+      const params = {
+        key: integrationRecord.client_id,
+        token: integrationRecord.access_token,
+        idList: statusId,
+      };
+      expect(mockedAxios.put).toHaveBeenCalledWith(url, null, { params });
     });
   });
 });

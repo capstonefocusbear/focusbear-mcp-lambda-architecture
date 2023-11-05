@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { mondayTaskDummy } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayAuthServiceMock } from '../../../../test/mocks';
@@ -388,6 +389,196 @@ describe('mondayService', () => {
       const result = await mondayService.getProject(userDummy.id, portalId, projectId);
 
       expect(result).toEqual(expectedProject);
+    });
+  });
+
+  describe('addTimeEntry', () => {
+    it('positive: add time log if Worklog and Total fields are available', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const taskId = 'task-id';
+      const timeEntry = {
+        seconds: 300,
+        note: 'milestone',
+      };
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      const headers = {
+        Authorization: `Bearer ${integrationRecord.access_token}`,
+        'Content-Type': 'application/json',
+      };
+
+      mockedAxios.post
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              boards: [
+                {
+                  columns: [
+                    { title: FIELD_NAME_WORKLOG, id: 'worklog-id' },
+                    { title: FIELD_NAME_TOTAL, id: 'total-id' },
+                  ],
+                },
+              ],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              items: [
+                {
+                  column_values: [
+                    { id: 'worklog-id', value: '{ "text": "milestone-1: 0h 5m" }' },
+                    { id: 'total-id', value: '{ "text": "0h 5m" }' },
+                  ],
+                },
+              ],
+            },
+          },
+        })
+        .mockResolvedValueOnce({ data: { data: {} } });
+
+      await mondayService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+
+      const baseUrl = 'https://api.monday.com/v2';
+      const query = `
+      mutation {
+        change_worklog: change_simple_column_value (board_id: ${projectId}, item_id: ${taskId}, column_id: worklog-id, value: "milestone-1: 0h 5m milestone: 0h 5m") {
+          id
+        },
+        change_total: change_simple_column_value (board_id: ${projectId}, item_id: ${taskId}, column_id: total-id, value: "0h 10m") {
+          id
+        }
+      }
+    `;
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(baseUrl, { query }, { headers });
+    });
+
+    it('positive: add custom fields and add worklog if Worklog and Total fields are not available', async () => {
+      const portalId = 'portal-id';
+      const projectId = 'project-id';
+      const taskId = 'task-id';
+      const timeEntry = {
+        seconds: 300,
+        note: 'milestone',
+      };
+      const integrationRecord = {
+        access_token: 'access-token',
+        client_id: 'client-id',
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({ data: integrationRecord });
+      const headers = {
+        Authorization: `Bearer ${integrationRecord.access_token}`,
+        'Content-Type': 'application/json',
+      };
+
+      mockedAxios.post
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              boards: [
+                {
+                  columns: [],
+                },
+              ],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              create_worklog: {
+                id: 'worklog-id',
+                title: 'Worklog',
+              },
+              create_total: {
+                id: 'total-id',
+                title: 'Total',
+              },
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            data: {
+              items: [
+                {
+                  column_values: [
+                    { id: 'worklog-id', value: '{ "text": "" }' },
+                    { id: 'total-id', value: '{ "text": "" }' },
+                  ],
+                },
+              ],
+            },
+          },
+        })
+        .mockResolvedValueOnce({ data: { data: {} } });
+
+      await mondayService.addTimeEntry(userDummy.id, portalId, projectId, taskId, timeEntry);
+
+      const baseUrl = 'https://api.monday.com/v2';
+      const mutation = `
+      mutation {
+        change_worklog: change_simple_column_value (board_id: ${projectId}, item_id: ${taskId}, column_id: worklog-id, value: "milestone: 0h 5m") {
+          id
+        },
+        change_total: change_simple_column_value (board_id: ${projectId}, item_id: ${taskId}, column_id: total-id, value: "0h 5m") {
+          id
+        }
+      }
+    `;
+      expect(mockedAxios.post).toHaveBeenLastCalledWith(baseUrl, { query: mutation }, { headers });
+    });
+  });
+
+  describe('getPortals', () => {
+    it('positive: should return the list of portals', async () => {
+      const mondayData = {
+        client_id: 'client_id',
+        access_token: 'access_token',
+      };
+      const headers = {
+        Authorization: `Bearer ${mondayData.access_token}`,
+        'Content-Type': 'application/json',
+      };
+      const portals = [{ id: 'portal1' }, { id: 'portal2' }];
+      mockedAxios.post.mockResolvedValueOnce({ data: { data: { workspaces: portals } } });
+      const platformIntegrationRecord = {
+        data: mondayData,
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
+
+      const result = await mondayService.getPortals(userDummy.id);
+
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.monday.com/v2',
+        {
+          query: 'query {workspaces{id name kind description state }}',
+        },
+        {
+          headers,
+        },
+      );
+      expect(result).toEqual(portals);
+    });
+
+    it('negative: should throw an UnauthorizedException if platform integration record is not found', async () => {
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
+      const result = mondayService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('negative: should throw an error if the request fails', async () => {
+      const error = new Error('Failed to get portals');
+      mockedAxios.get.mockRejectedValueOnce(error);
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
+      const result = mondayService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
     });
   });
 });

@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import { Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
@@ -18,18 +17,10 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    protected readonly jwtService: JwtService,
     @InjectQueue('time-logs') protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
-    super(
-      configService,
-      userRepository,
-      jwtService,
-      timeLogsQueue,
-      platformIntegrationsService,
-      IntegrationPlatforms.ZOHO,
-    );
+    super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.ZOHO);
   }
 
   getQueryParams() {

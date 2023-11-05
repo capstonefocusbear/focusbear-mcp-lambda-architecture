@@ -232,6 +232,7 @@ describe('ZohoService', () => {
       expect(result).toBeUndefined();
     });
   });
+
   describe('getTasks: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
       const projectId = 'project123';
@@ -254,8 +255,8 @@ describe('ZohoService', () => {
     it('positive: should return tasks data', async () => {
       const projectId = 'project123';
       const portalId = 'portal123';
-      const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
-      const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
+      const task1 = { id: 'task1', key: 'key1', status: { id: 'status' } };
+      const task2 = { id: 'task2', key: 'key2', status: { id: 'status' } };
       const tasksData = [task1, task2];
       const taskResult = [
         {
@@ -436,5 +437,116 @@ describe('ZohoService', () => {
 
       expect(result).toEqual(expectedProject);
     });
+  });
+
+  describe('getPortals', () => {
+    it('positive: should return the list of portals', async () => {
+      const zohoData = {
+        location: 'us',
+        access_token: 'access_token',
+      };
+      const portals = [{ id: 'portal1' }, { id: 'portal2' }];
+      mockedAxios.get.mockResolvedValueOnce({ data: { portals } });
+      const platformIntegrationRecord = {
+        data: zohoData,
+      };
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
+
+      const result = await zohoService.getPortals(userDummy.id);
+
+      expect(axios.get).toHaveBeenCalledWith('https://projectsapi.zoho.com/restapi/portals/', {
+        headers: { Authorization: `Bearer ${zohoData.access_token}` },
+      });
+      expect(result).toEqual(portals);
+    });
+
+    it('negative: should throw an UnauthorizedException if platform integration record is not found', async () => {
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
+      const result = zohoService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('negative: should throw an error if the request fails', async () => {
+      const error = new Error('Failed to get portals');
+      mockedAxios.get.mockRejectedValueOnce(error);
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(null);
+      const result = zohoService.getPortals(userDummy.id);
+      expect(result).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('getTasksOwnedByUser', () => {
+    it('negative: should return undefined if platform integration record is not found', async () => {
+      const projectId = 'project123';
+      const portalId = 'portal123';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
+
+      const result = await zohoService.getTasks(userDummy.id, projectId, portalId);
+
+      expect(result).toBeUndefined();
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+      );
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+  });
+
+  it('positive: should return tasks data', async () => {
+    const projectId = 'project123';
+    const portalId = 'portal123';
+    const task1 = { id: 'task1', key: 'key1', status: { id: 'status' } };
+    const task2 = { id: 'task2', key: 'key2', status: { id: 'status' } };
+    const tasksData = [task1, task2];
+    const taskResult = [
+      {
+        id: 'task1',
+        status: 'status',
+        key: 'key1',
+        name: undefined,
+        description: undefined,
+        external_metadata: {
+          ...task1,
+          portal_id: portalId,
+          project_id: projectId,
+        },
+      },
+      {
+        id: 'task2',
+        status: 'status',
+        key: 'key2',
+        name: undefined,
+        description: undefined,
+        external_metadata: {
+          ...task2,
+          portal_id: portalId,
+          project_id: projectId,
+        },
+      },
+    ];
+
+    PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
+      data: {
+        location: 'us',
+        access_token: 'token123',
+        accountId: 'account-id',
+      },
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
+
+    const result = await zohoService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
+
+    expect(result).toEqual(taskResult);
+    expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+      IntegrationPlatforms.ZOHO,
+      userDummy.id,
+    );
+    expect(mockedAxios.get).toHaveBeenCalledWith(
+      `https://projectsapi.zoho.com/restapi/portal/${portalId}/mytasks/?owner=account-id`,
+      {
+        headers: { Authorization: 'Bearer token123' },
+      },
+    );
   });
 });

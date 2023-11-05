@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { JwtService } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
@@ -24,12 +24,20 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('ZohoService', () => {
   let zohoAuthService: ZohoAuthService;
+  process.env = { JWT_SECRET: 'test-secret' };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     jest.clearAllMocks();
 
     const moduleRef = await Test.createTestingModule({
+      imports: [
+        JwtModule.register({
+          global: true,
+          secret: process.env.secret,
+          signOptions: { expiresIn: '60s' },
+        }),
+      ],
       providers: [
         ZohoAuthService,
         UserRepository,

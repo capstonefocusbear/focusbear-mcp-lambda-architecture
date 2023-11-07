@@ -2,29 +2,36 @@ import { Test } from '@nestjs/testing';
 import { syncedProjectDummy, userDummy } from '../../../../test/dummies';
 import {
   FocusModeTagRepositoryMock,
+  IntegrationFactoryMock,
+  ServiceMock,
   SyncedProjectsRepositoryMock,
   ToDoRepositoryMock,
-  ZohoServiceMock,
 } from '../../../../test/mocks';
 
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { SyncedProjectsService } from './synced-projects.service';
-import { ZohoService } from '../../integration/services/zoho.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
+import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 
 describe('SyncedProjectsService', () => {
   let service: SyncedProjectsService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [SyncedProjectsService, SyncedProjectsRepository, ZohoService, ToDoRepository, FocusModeTagRepository],
+      providers: [
+        IntegrationFactory,
+        SyncedProjectsService,
+        SyncedProjectsRepository,
+        ToDoRepository,
+        FocusModeTagRepository,
+      ],
     })
       .overrideProvider(SyncedProjectsRepository)
       .useValue(SyncedProjectsRepositoryMock)
-      .overrideProvider(ZohoService)
-      .useValue(ZohoServiceMock)
+      .overrideProvider(IntegrationFactory)
+      .useValue(IntegrationFactoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
       .overrideProvider(FocusModeTagRepository)
@@ -59,8 +66,7 @@ describe('SyncedProjectsService', () => {
   describe('getUserSyncedProjects', () => {
     it('positive: should fetch projects from platform specified in query param', async () => {
       await service.getUserSyncedProjects(userDummy.id, { platform: IntegrationPlatforms.ZOHO });
-
-      expect(ZohoServiceMock.getAllUserProjects).toBeCalledWith(userDummy.id);
+      expect(ServiceMock.getAllUserProjects).toBeCalledWith(userDummy.id);
     });
   });
 
@@ -69,7 +75,7 @@ describe('SyncedProjectsService', () => {
       const dummyData = { platform: IntegrationPlatforms.ZOHO, portal_id: 'dummy-id', project_id: 'dummy-id-2' };
       await service.syncProject(userDummy.id, dummyData);
 
-      expect(ZohoServiceMock.syncProjectAndChildTasks).toBeCalledWith(
+      expect(ServiceMock.syncProjectAndChildTasks).toBeCalledWith(
         userDummy.id,
         dummyData.portal_id,
         dummyData.project_id,

@@ -5,12 +5,14 @@ import { randomUUID } from 'crypto';
 import { getQueueToken } from '@nestjs/bull';
 import { OpenAIService } from '@app/openai';
 import {
+  IntegrationFactoryMock,
   OpenAIServiceMock,
+  PlatformIntegrationsRepositoryMock,
   SentryServiceMock,
+  ServiceMock,
   SyncedProjectsRepositoryMock,
   TaskTimeLogsRepositoryMock,
   ToDoRepositoryMock,
-  ZohoServiceMock,
 } from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -28,7 +30,8 @@ import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
-import { ZohoService } from '../../integration/services/zoho.service';
+import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
+import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -36,11 +39,12 @@ describe('toDoService', () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
+        PlatformIntegrationRepository,
+        IntegrationFactory,
         ToDoService,
         ToDoRepository,
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
-        ZohoService,
         OpenAIService,
         {
           provide: SENTRY_TOKEN,
@@ -52,14 +56,16 @@ describe('toDoService', () => {
         },
       ],
     })
+      .overrideProvider(IntegrationFactory)
+      .useValue(IntegrationFactoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
+      .overrideProvider(PlatformIntegrationRepository)
+      .useValue(PlatformIntegrationsRepositoryMock)
       .overrideProvider(TaskTimeLogsRepository)
       .useValue(TaskTimeLogsRepositoryMock)
       .overrideProvider(SyncedProjectsRepository)
       .useValue(SyncedProjectsRepositoryMock)
-      .overrideProvider(ZohoService)
-      .useValue(ZohoServiceMock)
       .overrideProvider(OpenAIService)
       .useValue(OpenAIServiceMock)
       .compile();
@@ -120,6 +126,7 @@ describe('toDoService', () => {
 
     it('positive: if to do is linked to an external project, its available statuses should be added to response', async () => {
       const toDoId = 'test-id';
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([{ platform: IntegrationPlatforms.ZOHO }]);
       ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([
         {
           ...ToDoDBResponseDummy,
@@ -130,9 +137,7 @@ describe('toDoService', () => {
         },
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
-      ZohoServiceMock.getAllUserTasks.mockResolvedValueOnce([
-        { id_string: toDoId, status: { id: toDoId, name: 'status-name' } },
-      ]);
+      ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, status: 'test-id' }]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,
@@ -142,7 +147,11 @@ describe('toDoService', () => {
       });
 
       expect(response[0].external_statuses).toEqual(syncedProjectDummy.available_statuses);
-      expect(response[0].current_external_status).toEqual({ label: 'status-name', id: 'test-id' });
+      expect(response[0].current_external_status).toEqual({
+        label: 'Open',
+        status_id: 'test-id',
+        should_complete_task: true,
+      });
     });
   });
 
@@ -164,7 +173,12 @@ describe('toDoService', () => {
         status: ToDoStatus.COMPLETED,
         is_billable: false,
       };
-      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([{ ...ToDoDBResponseDummy, external_task_metadata: {} }]);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          ...ToDoDBResponseDummy,
+          external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+        },
+      ]);
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
@@ -177,7 +191,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).not.toBeCalled();
+      expect(QueueMock.add).toBeCalled();
     });
 
     it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {

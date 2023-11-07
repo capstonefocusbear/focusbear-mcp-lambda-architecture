@@ -1,20 +1,18 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
 import {
   PlatformIntegrationsServiceMock,
   SentryServiceMock,
-  MondayServiceMock,
+  ClickUpServiceMock,
   ConfigServiceMock,
-  JwtServiceMock,
 } from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { MondayAuthService } from './monday-auth.service';
-import { MondayService } from '../../integration/services/monday.service';
+import { ClickUpAuthService } from './clickup-auth.service';
+import { ClickUpService } from '../../integration/services/clickup.service';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
@@ -23,8 +21,8 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('MondayService', () => {
-  let mondayAuthService: MondayAuthService;
+describe('ClickUpService', () => {
+  let clickUpAuthService: ClickUpAuthService;
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -33,10 +31,9 @@ describe('MondayService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,
-        MondayAuthService,
+        ClickUpAuthService,
         UserRepository,
-        JwtService,
-        MondayService,
+        ClickUpService,
         PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
@@ -52,56 +49,55 @@ describe('MondayService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ConfigService)
       .useValue(ConfigServiceMock)
-      .overrideProvider(JwtService)
-      .useValue(JwtServiceMock)
-      .overrideProvider(MondayService)
-      .useValue(MondayServiceMock)
+      .overrideProvider(ClickUpService)
+      .useValue(ClickUpServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
-    ConfigServiceMock.get.mockReturnValueOnce('monday-client-id');
-    mondayAuthService = moduleRef.get<MondayAuthService>(MondayAuthService);
+    ConfigServiceMock.get.mockReturnValueOnce('clickup-client-id');
+    clickUpAuthService = moduleRef.get<ClickUpAuthService>(ClickUpAuthService);
   });
 
   it('positive: should be defined', () => {
-    expect(mondayAuthService).toBeDefined();
+    expect(clickUpAuthService).toBeDefined();
   });
 
   describe('authorize', () => {
-    it('positive: should create platform integration record saving users monday credentials', async () => {
-      const locationDummy = 'usa';
-      const accountServerDummy = 'https://auth.monday.com';
+    it('positive: should create platform integration record saving users clickUp credentials', async () => {
       const authorizationResponseDummy = {
         access_token: 'token',
         expires_in: new Date().valueOf(),
+        refresh_token: 'refresh-token',
       };
-      const userInfoResponseDummy = { account_id: 12345 };
+      const userResponseDummy = {
+        user: {
+          id: 'account-id',
+        },
+      };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      mockedAxios.post
-        .mockResolvedValueOnce({
-          data: authorizationResponseDummy,
-        })
-        .mockResolvedValueOnce({
-          data: userInfoResponseDummy,
-        });
+      mockedAxios.post.mockResolvedValueOnce({
+        data: authorizationResponseDummy,
+      });
+      mockedAxios.get.mockResolvedValueOnce({
+        data: userResponseDummy,
+      });
 
-      await mondayAuthService.authorize(userDummy.id, {
-        location: locationDummy,
-        'accounts-server': accountServerDummy,
+      await clickUpAuthService.authorize(userDummy.id, {
+        code: 'code',
       });
 
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
         userDummy.id,
-        IntegrationPlatforms.MONDAY,
+        IntegrationPlatforms.CLICK_UP,
         {
           client_id: undefined,
-          refresh_token: '',
+          refresh_token: authorizationResponseDummy.refresh_token,
           access_token: authorizationResponseDummy.access_token,
-          accountId: userInfoResponseDummy.account_id,
-          location: locationDummy,
-          account_server: accountServerDummy,
+          accountId: userResponseDummy.user.id,
+          location: '',
+          account_server: '',
         },
-        userInfoResponseDummy.account_id,
+        userResponseDummy.user.id,
       );
     });
   });

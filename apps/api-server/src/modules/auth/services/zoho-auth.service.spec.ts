@@ -1,10 +1,15 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { JwtService } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
-import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoServiceMock } from '../../../../test/mocks';
+import {
+  ConfigServiceMock,
+  PlatformIntegrationsServiceMock,
+  SentryServiceMock,
+  ZohoServiceMock,
+} from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { ZohoAuthService } from './zoho-auth.service';
@@ -19,12 +24,20 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('ZohoService', () => {
   let zohoAuthService: ZohoAuthService;
+  process.env = { JWT_SECRET: 'test-secret' };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     jest.clearAllMocks();
 
     const moduleRef = await Test.createTestingModule({
+      imports: [
+        JwtModule.register({
+          global: true,
+          secret: process.env.secret,
+          signOptions: { expiresIn: '60s' },
+        }),
+      ],
       providers: [
         ZohoAuthService,
         UserRepository,
@@ -46,15 +59,12 @@ describe('ZohoService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ZohoService)
       .useValue(ZohoServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
     zohoAuthService = moduleRef.get<ZohoAuthService>(ZohoAuthService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
   });
 
   it('positive: should be defined', () => {
@@ -83,11 +93,12 @@ describe('ZohoService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         {
-          zoho_refresh_token: authorizationResponseDummy.refresh_token,
-          zoho_access_token: authorizationResponseDummy.access_token,
-          zoho_user_id: userInfoResponseDummy.ZUID,
-          zoho_location: locationDummy,
-          zoho_account_server: accountServerDummy,
+          client_id: undefined,
+          refresh_token: authorizationResponseDummy.refresh_token,
+          access_token: authorizationResponseDummy.access_token,
+          accountId: userInfoResponseDummy.ZUID,
+          location: locationDummy,
+          account_server: accountServerDummy,
         },
         userInfoResponseDummy.ZUID,
       );
@@ -96,7 +107,6 @@ describe('ZohoService', () => {
 
   describe('refresh_token: when platform integration record is not found', () => {
     it('negative: should return undefined', async () => {
-
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(undefined);
 
       const result = await zohoAuthService.refreshToken(userDummy.id);
@@ -114,8 +124,8 @@ describe('ZohoService', () => {
   describe('refresh_token: when platform integration record is found', () => {
     it('positive: should refresh token and update integration data', async () => {
       const authorizationResponseDummy = {
-        zoho_account_server: 'https://accounts.zoho.com',
-        zoho_refresh_token: 'refresh-token-123',
+        account_server: 'https://accounts.zoho.com',
+        refresh_token: 'refresh-token-123',
         zohoClientId: 'zoho-client-id',
         zohoClientSecret: 'zoho-client-secret',
       };
@@ -136,7 +146,7 @@ describe('ZohoService', () => {
       expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.ZOHO,
-        { zoho_access_token: newAccessToken },
+        { access_token: newAccessToken },
       );
     });
   });

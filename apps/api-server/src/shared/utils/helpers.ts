@@ -51,6 +51,20 @@ export const secondsToHHMM = (seconds: number) => {
   return `${hoursStr}:${minutesStr}`;
 };
 
+export const secondsTohhmm = (seconds: number) => {
+  const hours = Math.floor(seconds / ONE_HOUR_SECONDS);
+  const minutes = Math.floor((seconds % ONE_HOUR_SECONDS) / ONE_MINUTE_SECONDS);
+  return `${hours}h ${minutes}m`;
+};
+
+export const hhmmToSeconds = (duration: string) => {
+  const [hour, min]: string[] = duration.split(' ');
+  const hours = parseInt(hour.replace('h', ''), 10);
+  const mins = parseInt(min.replace('m', ''), 10);
+
+  return hours * ONE_HOUR_SECONDS + mins * ONE_MINUTE_SECONDS;
+};
+
 export function maskEmail(email: string): string {
   const [username, domain] = email.split('@');
 

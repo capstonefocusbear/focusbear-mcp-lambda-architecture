@@ -1,3 +1,4 @@
+import { IntegrationPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
 
 export const AuthServiceMock = {
@@ -198,6 +199,18 @@ export const ZohoServiceMock = {
   syncProjectAndChildTasks: jest.fn(),
 };
 
+export const ServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const IntegrationFactoryMock = {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  get: jest.fn((platform: IntegrationPlatforms) => ServiceMock),
+};
+
 export const MondayAuthServiceMock = {
   getUser: jest.fn(),
   login: jest.fn(),
@@ -206,6 +219,65 @@ export const MondayAuthServiceMock = {
 };
 
 export const MondayServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const AsanaAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getMondayLoginUrl: jest.fn(),
+  handleUnauthorizedError: jest.fn(),
+};
+
+export const AsanaServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const ClickUpAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getLoginUrl: jest.fn(),
+  handleUnauthorizedError: jest.fn(),
+};
+
+export const ClickUpServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(() => {}),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const JiraAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getMondayLoginUrl: jest.fn(),
+  handleUnauthorizedError: jest.fn(),
+};
+
+export const JiraServiceMock = {
+  syncUserProjectsAndTasks: jest.fn(),
+  getAllUserTasks: jest.fn(),
+  getAllUserProjects: jest.fn(),
+  syncProjectAndChildTasks: jest.fn(),
+};
+
+export const TrelloAuthServiceMock = {
+  getUser: jest.fn(),
+  login: jest.fn(),
+  authorize: jest.fn(),
+  getMondayLoginUrl: jest.fn(),
+};
+
+export const TrelloServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
   getAllUserTasks: jest.fn(),
   getAllUserProjects: jest.fn(),

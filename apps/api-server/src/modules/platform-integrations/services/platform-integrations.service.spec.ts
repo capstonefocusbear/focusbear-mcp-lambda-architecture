@@ -36,9 +36,9 @@ describe('PlatformIntegrationsService', () => {
 
   describe('updatePlatformIntegration', () => {
     const dummyZohoData = {
-      zoho_access_token: 'some-text',
-      zoho_refresh_token: 'some-more-text',
-      zoho_user_id: 'dummy-id',
+      access_token: 'some-text',
+      refresh_token: 'some-more-text',
+      accountId: 'dummy-id',
     };
 
     it('positive: if no existing record is found, a new one should be created', async () => {
@@ -48,26 +48,26 @@ describe('PlatformIntegrationsService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         dummyZohoData,
-        dummyZohoData.zoho_user_id,
+        dummyZohoData.accountId,
       );
 
       expect(PlatformIntegrationsRepositoryMock.orm.save).toBeCalledWith(
         new PlatformIntegration({
           user_id: userDummy.id,
           platform: IntegrationPlatforms.ZOHO,
-          external_user_id: dummyZohoData.zoho_user_id,
+          external_user_id: dummyZohoData.accountId,
           data: dummyZohoData,
         }),
       );
     });
 
     it('positive: if existing integration is found for same user and platform, it should be updated', async () => {
-      const updatedZohoDataDummy = { ...dummyZohoData, zoho_access_token: 'updated-token' };
+      const updatedZohoDataDummy = { ...dummyZohoData, access_token: 'updated-token' };
       PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
         new PlatformIntegration({
           user_id: userDummy.id,
           platform: IntegrationPlatforms.ZOHO,
-          external_user_id: dummyZohoData.zoho_user_id,
+          external_user_id: dummyZohoData.accountId,
           data: dummyZohoData,
         }),
       );
@@ -76,14 +76,14 @@ describe('PlatformIntegrationsService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         updatedZohoDataDummy,
-        dummyZohoData.zoho_user_id,
+        dummyZohoData.accountId,
       );
 
       expect(PlatformIntegrationsRepositoryMock.orm.save).toBeCalledWith(
         new PlatformIntegration({
           user_id: userDummy.id,
           platform: IntegrationPlatforms.ZOHO,
-          external_user_id: dummyZohoData.zoho_user_id,
+          external_user_id: dummyZohoData.accountId,
           data: updatedZohoDataDummy,
         }),
       );
@@ -103,7 +103,7 @@ describe('PlatformIntegrationsService', () => {
       expect(response).toEqual({
         zoho: true,
         jira: true,
-        click_up: false,
+        clickup: false,
         trello: false,
         asana: false,
         monday: false,

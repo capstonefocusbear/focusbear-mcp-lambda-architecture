@@ -14,10 +14,14 @@ import { PusherBeamsAuthService } from './services/pusher-beams-auth.service';
 import { UserRepository } from '../user/repositories/user.repository';
 import { IsAdmin } from './guards/is-admin/is-admin.guard';
 import { ZohoAuthService } from './services/zoho-auth.service';
-import { ZohoAuthController } from './controllers/zoho-auth.controller';
+import { AuthController } from './controllers/auth.controller';
 import { MondayAuthService } from './services/monday-auth.service';
-import { MondayAuthController } from './controllers/monday-auth.controller';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
+import { JiraAuthService } from './services/jira-auth.service';
+import { AsanaAuthService } from './services/asana-auth.service';
+import { ClickUpAuthService } from './services/clickup-auth.service';
+import { TrelloAuthService } from './services/trello-auth.service';
+import { AuthServiceFactory } from './services/auth.service.factory';
 
 @Module({
   providers: [
@@ -28,10 +32,26 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     UserRepository,
     IsAdmin,
     ZohoAuthService,
-    MondayAuthService
+    MondayAuthService,
+    JiraAuthService,
+    AsanaAuthService,
+    ClickUpAuthService,
+    TrelloAuthService,
+    AuthServiceFactory,
   ],
-  exports: [IsAuth, IsAdmin, AuthService, HasAuth0ActionSecret, ZohoAuthService, MondayAuthService],
-  controllers: [PusherAuthController, ZohoAuthController, MondayAuthController],
+  exports: [
+    IsAuth,
+    IsAdmin,
+    AuthService,
+    HasAuth0ActionSecret,
+    ZohoAuthService,
+    MondayAuthService,
+    JiraAuthService,
+    AsanaAuthService,
+    ClickUpAuthService,
+    TrelloAuthService,
+  ],
+  controllers: [PusherAuthController, AuthController],
   imports: [
     Auth0Module.registerAsync({
       imports: [ConfigModule],

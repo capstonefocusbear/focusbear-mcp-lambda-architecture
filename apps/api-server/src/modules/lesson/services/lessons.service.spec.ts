@@ -23,6 +23,9 @@ describe('LessonsService', () => {
   let lessonsService: LessonsService;
 
   beforeEach(async () => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         LessonsService,
@@ -37,10 +40,6 @@ describe('LessonsService', () => {
       .useValue(LessonsRepositoryMock)
       .compile();
     lessonsService = moduleRef.get<LessonsService>(LessonsService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
   });
 
   it('positive: should be defined', () => {

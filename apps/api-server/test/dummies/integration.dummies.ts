@@ -3,6 +3,21 @@ import { Project } from '../../src/modules/integration/domain/project.model';
 import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { userDummy } from '.';
 
+export const taskDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  key: 'test-key',
+  description: 'test-description',
+};
+
+export const savedTaskDummy = new ToDo({
+  user_id: userDummy.id,
+  title: taskDummy.name,
+  details: taskDummy.description,
+  external_task_id: taskDummy.id,
+  external_task_metadata: { platform: 'jira', task_data: taskDummy },
+});
+
 export const zohoProjectDummy: Project = {
   id: 'test-id',
   name: 'test-name',
@@ -33,17 +48,70 @@ export const savedZohoTaskDummy = new ToDo({
   external_task_metadata: { platform: 'zoho', task_data: zohoTaskDummy },
 });
 
-export const mondayTaskDummy = {
+export const mondayTaskDummy = { id: 'task1', name: 'Task 1', group: { id: 'group1' } };
+
+export const asanaTaskDummy = {
+  gid: 'test-id',
+  name: 'test-name',
+  notes: 'test-notes',
+  memberships: [
+    {
+      section: {
+        gid: 'section-id',
+      },
+    },
+  ],
+};
+
+export const clickUpTaskDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  key: 'test-key',
+  description: 'test-description',
+  status: { status: 'status1' },
+};
+
+export const savedClickUpTaskDummy = new ToDo({
+  user_id: userDummy.id,
+  title: clickUpTaskDummy.name,
+  details: clickUpTaskDummy.description,
+  external_task_id: clickUpTaskDummy.id,
+  external_task_metadata: { platform: 'clickup', task_data: mondayTaskDummy },
+});
+
+export const jiraTaskDummy = {
   id: 'test-id',
   name: 'test-name',
   key: 'test-key',
   description: 'test-description',
 };
 
-export const savedMondayTaskDummy = new ToDo({
+export const savedJiraTaskDummy = new ToDo({
   user_id: userDummy.id,
-  title: mondayTaskDummy.name,
-  details: mondayTaskDummy.description,
-  external_task_id: mondayTaskDummy.id,
-  external_task_metadata: { platform: 'monday', task_data: mondayTaskDummy },
+  title: jiraTaskDummy.name,
+  details: jiraTaskDummy.description,
+  external_task_id: jiraTaskDummy.id,
+  external_task_metadata: { platform: 'jira', task_data: mondayTaskDummy },
 });
+
+export const trelloTaskDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  desc: 'test-description',
+};
+
+export const trelloProjectDummy = {
+  id: 'test-id',
+  name: 'test-name',
+  desc: 'test-descriptoin',
+};
+
+export const jiraIssueDummy = {
+  id: 'task123',
+  key: 'key1',
+  fields: {
+    summary: 'new task 1',
+    status: { id: 'status1' },
+    description: { type: 'test task' },
+  },
+};

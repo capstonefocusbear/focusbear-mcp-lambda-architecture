@@ -3,17 +3,16 @@ import { In } from 'typeorm';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
 import { ExternalTaskStatus } from '../domain/external-task-status.model';
 import { GetSyncedProjectsQueryDto } from '../dto/get-synced-projects-query.dto';
-import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
-import { ZohoService } from '../../integration/services/zoho.service';
 import { SyncProjectDto } from '../dto/sync-project.dto';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
+import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 
 @Injectable()
 export class SyncedProjectsService {
   constructor(
+    private readonly integrationFactory: IntegrationFactory,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
-    private readonly zohoService: ZohoService,
     private readonly toDoRepository: ToDoRepository,
     private readonly focusModeTagRepository: FocusModeTagRepository,
   ) {}
@@ -27,16 +26,15 @@ export class SyncedProjectsService {
   }
 
   async getUserSyncedProjects(userId: string, { platform }: GetSyncedProjectsQueryDto) {
-    if (platform === IntegrationPlatforms.ZOHO) {
-      return this.zohoService.getAllUserProjects(userId);
-    }
+    const service = this.integrationFactory.get(platform);
+    const projects = await service.getAllUserProjects(userId);
+    return projects;
   }
 
   async syncProject(userId: string, syncProjectData: SyncProjectDto) {
     const { platform, portal_id, project_id } = syncProjectData;
-    if (platform === IntegrationPlatforms.ZOHO) {
-      return this.zohoService.syncProjectAndChildTasks(userId, portal_id, project_id);
-    }
+    const service = this.integrationFactory.get(platform);
+    await service.syncProjectAndChildTasks(userId, portal_id, project_id);
   }
 
   async unSyncProject(userId: string, projectId: string) {

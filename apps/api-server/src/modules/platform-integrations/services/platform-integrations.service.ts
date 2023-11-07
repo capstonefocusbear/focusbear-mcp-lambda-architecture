@@ -42,7 +42,7 @@ export class PlatformIntegrationsService {
     return {
       zoho: platforms.includes(IntegrationPlatforms.ZOHO),
       jira: platforms.includes(IntegrationPlatforms.JIRA),
-      click_up: platforms.includes(IntegrationPlatforms.CLICK_UP),
+      clickup: platforms.includes(IntegrationPlatforms.CLICK_UP),
       trello: platforms.includes(IntegrationPlatforms.TRELLO),
       asana: platforms.includes(IntegrationPlatforms.ASANA),
       monday: platforms.includes(IntegrationPlatforms.MONDAY),

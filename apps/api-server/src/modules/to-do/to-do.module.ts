@@ -13,10 +13,12 @@ import { SyncedProjectsController } from './controllers/synced-projects.controll
 import { SyncedProjectsService } from './services/synced-projects.service';
 import { IntegrationModule } from '../integration/integration.module';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
+import { PlatformIntegrationRepository } from '../platform-integrations/repositories/platform-integration.repository';
 
 @Module({
   providers: [
     ToDoService,
+    PlatformIntegrationRepository,
     ToDoRepository,
     TaskTimeLogsRepository,
     TimeLogsConsumer,

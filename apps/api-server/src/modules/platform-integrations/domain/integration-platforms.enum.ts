@@ -1,6 +1,6 @@
 export enum IntegrationPlatforms {
   ZOHO = 'zoho',
-  CLICK_UP = 'click_up',
+  CLICK_UP = 'clickup',
   TRELLO = 'trello',
   JIRA = 'jira',
   ASANA = 'asana',

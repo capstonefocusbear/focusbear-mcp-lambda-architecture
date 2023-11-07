@@ -99,6 +99,10 @@ export const INTERNAL_TEST = 'internaltest';
 
 export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
 
+export const FIELD_NAME_WORKLOG = 'Worklog';
+export const FIELD_NAME_TOTAL = 'Total';
+export const MAX_RETRY = 2;
+
 export const createActivityFunction = {
   name: 'createActivity',
   description: 'Creates a new activity from users specifications of activity',

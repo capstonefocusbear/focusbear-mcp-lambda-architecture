@@ -30,6 +30,9 @@ describe('ZohoService', () => {
   let zohoService: ZohoService;
 
   beforeEach(async () => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         ZohoService,
@@ -59,10 +62,6 @@ describe('ZohoService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .compile();
     zohoService = moduleRef.get<ZohoService>(ZohoService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
   });
 
   it('positive: should be defined', () => {

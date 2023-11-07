@@ -63,11 +63,6 @@ describe('MondayService', () => {
     mondayAuthService = moduleRef.get<MondayAuthService>(MondayAuthService);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('positive: should be defined', () => {
     expect(mondayAuthService).toBeDefined();
   });

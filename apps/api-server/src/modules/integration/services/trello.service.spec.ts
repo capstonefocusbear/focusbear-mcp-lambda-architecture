@@ -31,6 +31,9 @@ describe('trelloService', () => {
   let trelloService: TrelloService;
 
   beforeEach(async () => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         TrelloService,
@@ -60,10 +63,6 @@ describe('trelloService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .compile();
     trelloService = moduleRef.get<TrelloService>(TrelloService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
   });
 
   it('positive: should be defined', () => {

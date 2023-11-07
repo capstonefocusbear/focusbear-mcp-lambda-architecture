@@ -12,16 +12,16 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { Project } from '../domain/project.model';
 import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
-import { ClickupAuthService } from '../../auth/services/clickup-auth.service';
+import { ClickUpAuthService } from '../../auth/services/clickup-auth.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 
-export class ClickupService extends BaseIntegrationService {
+export class ClickUpService extends BaseIntegrationService {
   constructor(
     protected readonly userRepository: UserRepository,
     protected readonly focusModeTagRepository: FocusModeTagRepository,
     protected readonly toDoRepository: ToDoRepository,
-    @Inject(forwardRef(() => ClickupAuthService))
-    protected readonly integrationAuthService: ClickupAuthService,
+    @Inject(forwardRef(() => ClickUpAuthService))
+    protected readonly integrationAuthService: ClickUpAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
   ) {

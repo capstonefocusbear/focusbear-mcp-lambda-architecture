@@ -63,7 +63,7 @@ export const asanaTaskDummy = {
   ],
 };
 
-export const clickupTaskDummy = {
+export const clickUpTaskDummy = {
   id: 'test-id',
   name: 'test-name',
   key: 'test-key',
@@ -71,11 +71,11 @@ export const clickupTaskDummy = {
   status: { status: 'status1' },
 };
 
-export const savedClickupTaskDummy = new ToDo({
+export const savedClickUpTaskDummy = new ToDo({
   user_id: userDummy.id,
-  title: clickupTaskDummy.name,
-  details: clickupTaskDummy.description,
-  external_task_id: clickupTaskDummy.id,
+  title: clickUpTaskDummy.name,
+  details: clickUpTaskDummy.description,
+  external_task_id: clickUpTaskDummy.id,
   external_task_metadata: { platform: 'clickup', task_data: mondayTaskDummy },
 });
 

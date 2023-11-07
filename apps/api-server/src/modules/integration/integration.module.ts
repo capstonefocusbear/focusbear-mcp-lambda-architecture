@@ -10,12 +10,12 @@ import { ZohoService } from './services/zoho.service';
 import { MondayService } from './services/monday.service';
 import { JiraService } from './services/jira.service';
 import { AsanaService } from './services/asana.service';
-import { ClickupService } from './services/clickup.service';
+import { ClickUpService } from './services/clickup.service';
 import { TrelloService } from './services/trello.service';
 
 @Module({
-  providers: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickupService, TrelloService],
-  exports: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickupService, TrelloService],
+  providers: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickUpService, TrelloService],
+  exports: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickUpService, TrelloService],
   imports: [
     forwardRef(() => UserModule),
     forwardRef(() => FocusModeModule),

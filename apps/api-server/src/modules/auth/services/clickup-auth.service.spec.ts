@@ -6,13 +6,13 @@ import axios from 'axios';
 import {
   PlatformIntegrationsServiceMock,
   SentryServiceMock,
-  ClickupServiceMock,
+  ClickUpServiceMock,
   ConfigServiceMock,
 } from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { ClickupAuthService } from './clickup-auth.service';
-import { ClickupService } from '../../integration/services/clickup.service';
+import { ClickUpAuthService } from './clickup-auth.service';
+import { ClickUpService } from '../../integration/services/clickup.service';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
@@ -21,8 +21,8 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ClickupService', () => {
-  let clickupAuthService: ClickupAuthService;
+describe('ClickUpService', () => {
+  let clickUpAuthService: ClickUpAuthService;
 
   beforeEach(async () => {
     jest.resetAllMocks();
@@ -31,9 +31,9 @@ describe('ClickupService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,
-        ClickupAuthService,
+        ClickUpAuthService,
         UserRepository,
-        ClickupService,
+        ClickUpService,
         PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
@@ -49,26 +49,21 @@ describe('ClickupService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ConfigService)
       .useValue(ConfigServiceMock)
-      .overrideProvider(ClickupService)
-      .useValue(ClickupServiceMock)
+      .overrideProvider(ClickUpService)
+      .useValue(ClickUpServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
     ConfigServiceMock.get.mockReturnValueOnce('clickup-client-id');
-    clickupAuthService = moduleRef.get<ClickupAuthService>(ClickupAuthService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
+    clickUpAuthService = moduleRef.get<ClickUpAuthService>(ClickUpAuthService);
   });
 
   it('positive: should be defined', () => {
-    expect(clickupAuthService).toBeDefined();
+    expect(clickUpAuthService).toBeDefined();
   });
 
   describe('authorize', () => {
-    it('positive: should create platform integration record saving users clickup credentials', async () => {
+    it('positive: should create platform integration record saving users clickUp credentials', async () => {
       const authorizationResponseDummy = {
         access_token: 'token',
         expires_in: new Date().valueOf(),
@@ -87,7 +82,7 @@ describe('ClickupService', () => {
         data: userResponseDummy,
       });
 
-      await clickupAuthService.authorize(userDummy.id, {
+      await clickUpAuthService.authorize(userDummy.id, {
         code: 'code',
       });
 

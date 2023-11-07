@@ -67,11 +67,6 @@ describe('ZohoService', () => {
     zohoAuthService = moduleRef.get<ZohoAuthService>(ZohoAuthService);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('positive: should be defined', () => {
     expect(zohoAuthService).toBeDefined();
   });

@@ -58,11 +58,6 @@ describe('AsanaService', () => {
     asanaAuthService = moduleRef.get<AsanaAuthService>(AsanaAuthService);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('positive: should be defined', () => {
     expect(asanaAuthService).toBeDefined();
   });
@@ -123,7 +118,7 @@ describe('AsanaService', () => {
 
   describe('getLoginUrl', () => {
     it('positive: should return redirect url', async () => {
-      const redirect = asanaAuthService.getLoginUrl();
+      const result = asanaAuthService.getLoginUrl();
 
       const scope = 'default';
       const queryParams: any = {
@@ -136,7 +131,7 @@ describe('AsanaService', () => {
         .map((key) => `${key}=${queryParams[key]}`)
         .join('&');
 
-      expect(redirect).toEqual({
+      expect(result).toEqual({
         redirect_url: `https://app.asana.com/-/oauth_authorize?${queryParamsStr}`,
       });
     });

@@ -240,7 +240,7 @@ export const AsanaServiceMock = {
   syncProjectAndChildTasks: jest.fn(),
 };
 
-export const ClickupAuthServiceMock = {
+export const ClickUpAuthServiceMock = {
   getUser: jest.fn(),
   login: jest.fn(),
   authorize: jest.fn(),
@@ -248,7 +248,7 @@ export const ClickupAuthServiceMock = {
   handleUnauthorizedError: jest.fn(),
 };
 
-export const ClickupServiceMock = {
+export const ClickUpServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
   getAllUserTasks: jest.fn(() => {}),
   getAllUserProjects: jest.fn(),

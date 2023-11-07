@@ -58,11 +58,6 @@ describe('JiraService', () => {
     jiraAuthService = moduleRef.get<JiraAuthService>(JiraAuthService);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('positive: should be defined', () => {
     expect(jiraAuthService).toBeDefined();
   });

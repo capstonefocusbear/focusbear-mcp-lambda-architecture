@@ -6,7 +6,7 @@ import { MondayService } from './monday.service';
 import { JiraService } from './jira.service';
 import { TrelloService } from './trello.service';
 import { AsanaService } from './asana.service';
-import { ClickupService } from './clickup.service';
+import { ClickUpService } from './clickup.service';
 
 @Injectable()
 export class IntegrationFactory {
@@ -21,14 +21,14 @@ export class IntegrationFactory {
     private readonly jiraService: JiraService,
     private readonly trelloService: TrelloService,
     private readonly asanaService: AsanaService,
-    private readonly clickupService: ClickupService,
+    private readonly clickUpService: ClickUpService,
   ) {
     IntegrationFactory.register(IntegrationPlatforms.MONDAY, mondayService);
     IntegrationFactory.register(IntegrationPlatforms.ZOHO, zohoService);
     IntegrationFactory.register(IntegrationPlatforms.TRELLO, trelloService);
     IntegrationFactory.register(IntegrationPlatforms.JIRA, jiraService);
     IntegrationFactory.register(IntegrationPlatforms.ASANA, asanaService);
-    IntegrationFactory.register(IntegrationPlatforms.CLICK_UP, clickupService);
+    IntegrationFactory.register(IntegrationPlatforms.CLICK_UP, clickUpService);
   }
 
   static register(platform: IntegrationPlatforms, service: BaseIntegrationService) {

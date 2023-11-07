@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Controller, Get, UseGuards, Query, Param } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
@@ -31,7 +30,6 @@ export class AuthController {
       const service = this.authSerivceFactory.get(platform);
       return await service.authorize(user.id, authorizeQuery);
     } catch (error) {
-      console.log(error);
       return error;
     }
   }

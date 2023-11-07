@@ -28,6 +28,9 @@ describe('jiraService', () => {
   let jiraService: JiraService;
 
   beforeEach(async () => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         JiraService,
@@ -57,10 +60,6 @@ describe('jiraService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .compile();
     jiraService = moduleRef.get<JiraService>(JiraService);
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
   });
 
   it('positive: should be defined', () => {

@@ -58,11 +58,6 @@ describe('TrelloAuthService', () => {
     trelloAuthService = moduleRef.get<TrelloAuthService>(TrelloAuthService);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('positive: should be defined', () => {
     expect(trelloAuthService).toBeDefined();
   });

@@ -11,7 +11,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
 
 @Injectable()
-export class ClickupAuthService extends BaseIntegrationAuthService {
+export class ClickUpAuthService extends BaseIntegrationAuthService {
   protected readonly loginURL = 'https://app.clickup.com/api';
 
   protected readonly accountServerURL = 'https://api.clickup.com/api/v2';

@@ -19,7 +19,7 @@ import { MondayAuthService } from './services/monday-auth.service';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 import { JiraAuthService } from './services/jira-auth.service';
 import { AsanaAuthService } from './services/asana-auth.service';
-import { ClickupAuthService } from './services/clickup-auth.service';
+import { ClickUpAuthService } from './services/clickup-auth.service';
 import { TrelloAuthService } from './services/trello-auth.service';
 import { AuthServiceFactory } from './services/auth.service.factory';
 
@@ -35,7 +35,7 @@ import { AuthServiceFactory } from './services/auth.service.factory';
     MondayAuthService,
     JiraAuthService,
     AsanaAuthService,
-    ClickupAuthService,
+    ClickUpAuthService,
     TrelloAuthService,
     AuthServiceFactory,
   ],
@@ -48,7 +48,7 @@ import { AuthServiceFactory } from './services/auth.service.factory';
     MondayAuthService,
     JiraAuthService,
     AsanaAuthService,
-    ClickupAuthService,
+    ClickUpAuthService,
     TrelloAuthService,
   ],
   controllers: [PusherAuthController, AuthController],

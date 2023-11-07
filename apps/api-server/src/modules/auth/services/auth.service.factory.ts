@@ -5,7 +5,7 @@ import { AsanaAuthService } from './asana-auth.service';
 import { MondayAuthService } from './monday-auth.service';
 import { TrelloAuthService } from './trello-auth.service';
 import { JiraAuthService } from './jira-auth.service';
-import { ClickupAuthService } from './clickup-auth.service';
+import { ClickUpAuthService } from './clickup-auth.service';
 
 @Injectable()
 export class AuthServiceFactory {
@@ -15,7 +15,7 @@ export class AuthServiceFactory {
     private readonly asanaAuthService: AsanaAuthService,
     private readonly trelloAuthService: TrelloAuthService,
     private readonly jiraAuthService: JiraAuthService,
-    private readonly clickupAuthService: ClickupAuthService,
+    private readonly clickUpAuthService: ClickUpAuthService,
   ) {}
 
   get(platform: IntegrationPlatforms) {
@@ -31,7 +31,7 @@ export class AuthServiceFactory {
       case IntegrationPlatforms.JIRA:
         return this.jiraAuthService;
       case IntegrationPlatforms.CLICK_UP:
-        return this.clickupAuthService;
+        return this.clickUpAuthService;
       default:
         throw Error(`${platform} Platform Service Not Found`);
     }

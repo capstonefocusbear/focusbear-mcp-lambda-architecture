@@ -337,6 +337,7 @@ describe('TeamManagementService', () => {
         customer: userDummy.stripe_customer_id,
         current_period_end: 1676874600,
         items: { data: [{ id: 'sub_id_1' }] },
+        metadata: { team_name: 'Test Name' },
       };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
@@ -357,6 +358,7 @@ describe('TeamManagementService', () => {
           owner: userDummy,
           admin_members: [userDummy],
           members: [userDummy],
+          name: 'Test Name',
           expires_date: new Date(createSubscriptionPayloadDummy.current_period_end * 1000),
         }),
       );

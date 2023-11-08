@@ -13,4 +13,8 @@ export class CreateStripeCheckoutSessionDto {
   @IsNumber()
   @Min(1)
   team_size?: number;
+
+  @IsOptional()
+  @IsString()
+  team_name?: string;
 }

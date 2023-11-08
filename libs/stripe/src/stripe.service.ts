@@ -12,7 +12,10 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  async createCheckoutSession(customer: string, { price_id, team_id, team_size = 1 }: CreateStripeCheckoutSessionDto) {
+  async createCheckoutSession(
+    customer: string,
+    { price_id, team_id, team_size = 1, team_name }: CreateStripeCheckoutSessionDto,
+  ) {
     const { success_url, cancel_url } = this.options.checkout;
     return this.checkout.sessions
       .create({
@@ -28,7 +31,7 @@ export class StripeService extends Stripe {
           },
         ],
         mode: 'subscription',
-        subscription_data: { metadata: { team_id } },
+        subscription_data: { metadata: { team_id, team_name } },
       })
       .catch((err) => {
         throw new BadRequestException(err.message);

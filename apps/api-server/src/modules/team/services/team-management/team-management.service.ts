@@ -260,6 +260,7 @@ export class TeamManagementService {
     const customerId = payload.customer;
     const subscriptionItemId = payload.items.data[0].id;
     const expiresDate = new Date(payload.current_period_end * 1000);
+    const teamName = payload?.metadata?.team_name;
     const user = await this.userRepository.orm.findOneBy({ stripe_customer_id: customerId });
     if (!user) {
       throw new NotFoundException(`User with Stripe ID: ${customerId} does not exist!`);
@@ -271,6 +272,7 @@ export class TeamManagementService {
       owner_id: user.id,
       stripe_data: stripeData,
       team_size: teamSize,
+      name: teamName,
       owner: user,
       admin_members: [user],
       members: [user],

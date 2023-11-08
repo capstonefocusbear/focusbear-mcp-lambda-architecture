@@ -18,13 +18,14 @@ export class StripeController {
 
   @Post('create-checkout-session')
   async createCheckoutSession(
-    @Body() { price_id, team_id, team_size }: CreateStripeCheckoutSessionDto,
+    @Body() { price_id, team_id, team_size, team_name }: CreateStripeCheckoutSessionDto,
     @AuthContext() { user }: Passport,
   ) {
     const session = await this.stripeService.createCheckoutSession(user.stripeCustomerId, {
       price_id,
       team_id,
       team_size,
+      team_name,
     });
     return { url: session.url };
   }

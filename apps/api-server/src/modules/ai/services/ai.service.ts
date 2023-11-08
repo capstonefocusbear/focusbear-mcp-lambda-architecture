@@ -1,11 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import { BadRequestException, Injectable, ValidationError } from '@nestjs/common';
 import internal, { Stream } from 'stream';
-import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { FastifyReply } from 'fastify';
 import { randomUUID } from 'crypto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
+import { ChatCompletionChunk, ChatCompletionMessageParam } from 'openai/resources';
 import { createActivityFunction, createFocusModeFunction } from '../../../shared/utils/constants';
 import { UserSettingsService } from '../../user/services/user-settings/user-settings.service';
 import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
@@ -47,11 +48,10 @@ export class AiService {
   async streamChatReply(
     fastifyResponse: FastifyReply,
     user_id: string,
-    messages: ChatCompletionRequestMessage[],
+    messages: ChatCompletionMessageParam[],
     language = 'English',
   ) {
-    const config = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
-    const openai = new OpenAIApi(config);
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const chatHistory = this.getChatHistory(messages, language);
     let retryCount = 0;
 
@@ -64,52 +64,47 @@ export class AiService {
 
         const processResponse = async (response: any) => {
           try {
-            response.data.on('data', (chunk: any) => {
-              let isFunctionCall = false;
-              const lines = chunk
-                .toString()
-                .split('\n')
-                .filter((line: string) => line.trim() !== '');
-              for (const line of lines) {
-                const message = line.replace(/^data: /, '');
-                if (message !== '[DONE]') {
-                  const parsedMessage = JSON.parse(message);
-                  isFunctionCall = !!parsedMessage.choices[0]?.delta?.function_call;
-                  if (isFunctionCall) {
-                    isFunctionCallMode = true;
-                    functionName += parsedMessage.choices[0]?.delta?.function_call?.name || '';
-                    functionCall += parsedMessage.choices[0]?.delta?.function_call?.arguments || '';
-                  }
-                }
+            const { choices }: ChatCompletionChunk = response;
+            const {
+              finish_reason,
+              delta: { content, function_call },
+            } = choices[0];
+            let isFunctionCall = false;
+            if (!finish_reason) {
+              isFunctionCall = !!function_call;
+              if (isFunctionCall) {
+                isFunctionCallMode = true;
+                functionName += function_call?.name || '';
+                functionCall += function_call?.arguments || '';
               }
-              if (!isFunctionCall && !isFunctionCallMode) {
-                stream.write(chunk.toString());
-              }
-            });
+            }
+            if (!isFunctionCall && !isFunctionCallMode) {
+              stream.write(`data: ${content ?? '[DONE]'}\n\n`);
+            }
 
-            response.data.on('end', async () => {
+            if (finish_reason) {
               await this.handleStreamEnd(stream, functionName, functionCall, isFunctionCallMode, user_id, openai);
-            });
+            }
           } catch (getStreamResponseError) {
             console.error('Error reading stream response: ', getStreamResponseError);
             throw getStreamResponseError;
           }
         };
 
-        const response = await openai.createChatCompletion(
-          {
-            model: 'gpt-3.5-turbo',
-            messages: chatHistory,
-            temperature: 0.2,
-            n: 1,
-            function_call: 'auto',
-            functions: [createActivityFunction, createFocusModeFunction],
-            stream: true,
-          },
-          { responseType: 'stream' },
-        );
+        const chatCompletionStream = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: chatHistory,
+          temperature: 0.2,
+          n: 1,
+          function_call: 'auto',
+          functions: [createActivityFunction, createFocusModeFunction],
+          stream: true,
+        });
 
-        processResponse(response);
+        for await (const part of chatCompletionStream) {
+          processResponse(part);
+        }
+
         return await fastifyResponse.send(stream);
       } catch (error) {
         retryCount++;
@@ -123,7 +118,7 @@ export class AiService {
     functionCall: string,
     isFunctionCallMode: boolean,
     user_id: string,
-    openai: OpenAIApi,
+    openai: OpenAI,
   ) {
     if (isFunctionCallMode && functionName) {
       const functionParameters = JSON.parse(functionCall);
@@ -131,7 +126,7 @@ export class AiService {
       await this.validateFunctionCallParameters(functionParameters);
       await this[functionName](user_id, functionParameters);
 
-      const responseTwo: any = await openai.createChatCompletion(
+      const chatCompletionStreamTwo = await openai.chat.completions.create(
         {
           model: 'gpt-3.5-turbo',
           messages: [
@@ -144,23 +139,27 @@ export class AiService {
           n: 1,
           stream: true,
         },
-        { responseType: 'stream' },
+        { stream: true },
       );
 
-      responseTwo.data.on('data', (chunk: any) => {
-        stream.write(chunk.toString());
-      });
-
-      responseTwo.data.on('end', () => {
-        stream.end();
-      });
+      for await (const part of chatCompletionStreamTwo) {
+        const { choices } = part;
+        const {
+          finish_reason,
+          delta: { content },
+        } = choices[0];
+        stream.write(`data: ${!finish_reason ? content : '[DONE]'}\n\n`);
+        if (finish_reason) {
+          stream.end();
+        }
+      }
     } else if (!isFunctionCallMode) {
       stream.end();
     }
   }
 
-  getChatHistory(messages: ChatCompletionRequestMessage[], language: string): ChatCompletionRequestMessage[] {
-    const defaultChat: ChatCompletionRequestMessage = {
+  getChatHistory(messages: ChatCompletionMessageParam[], language: string): ChatCompletionMessageParam[] {
+    const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `
       You are a ${language}-speaking assistant named Focus Bear. 

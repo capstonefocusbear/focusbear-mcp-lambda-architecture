@@ -9,7 +9,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
-import { ChatCompletionRequestMessage } from 'openai';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
@@ -18,6 +17,7 @@ import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import axios from 'axios';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
@@ -597,7 +597,7 @@ export class UserService {
   async generateChatReply(
     response: FastifyReply,
     user_id: string,
-    messages: ChatCompletionRequestMessage[],
+    messages: ChatCompletionMessageParam[],
     language: string,
   ) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });

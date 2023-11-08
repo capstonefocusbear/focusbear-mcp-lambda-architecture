@@ -1,26 +1,26 @@
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum, OpenAIApi, Configuration } from 'openai';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Observable } from 'rxjs';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
 import { load } from 'cheerio';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import axios from 'axios';
+import { ChatCompletionMessageParam } from 'openai/resources';
+import OpenAI, { ClientOptions } from 'openai';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
-import { HabitOption, IOpenAIOptions } from './interfaces';
+import { HabitOption } from './interfaces';
 import { OPENAI_MODULE_OPTIONS } from './openai.constants';
 import { AiToneOptions } from './domain/ai-tones.enum';
 
 @Injectable()
 export class OpenAIService {
   constructor(
-    @Inject(OPENAI_MODULE_OPTIONS) private options: IOpenAIOptions,
+    @Inject(OPENAI_MODULE_OPTIONS) private options: ClientOptions,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -81,52 +81,39 @@ export class OpenAIService {
         .split(' ')
         .filter((word) => word !== '')
         .join(' ');
-      const messages: ChatCompletionRequestMessage[] = [
+      const messages: ChatCompletionMessageParam[] = [
         {
           content: prompt,
-          role: ChatCompletionRequestMessageRoleEnum.System,
+          role: 'system',
         },
       ];
-      const config = new Configuration({ ...this.options });
-      const openai = new OpenAIApi(config);
+      const openai = new OpenAI({ ...this.options });
       const stream = new Stream.PassThrough();
-      const observable = new Observable((observer) => {
-        openai
-          .createChatCompletion(
-            {
-              model: 'gpt-3.5-turbo',
-              messages,
-              temperature: 0.7,
-              n: 1,
-              stream: true,
-            },
-            { responseType: 'stream' },
-          )
-          .then((res: any) => {
-            res.data.on('data', (chunk: any) => {
-              observer.next(chunk.toString());
-            });
-            res.data.on('end', () => {
-              observer.complete();
-            });
-          })
-          .catch((error) => {
-            observer.error(error);
-          });
-      });
 
-      observable.subscribe({
-        next: (chunk: string) => {
-          stream.write(chunk);
+      const chatCompletionStream = await openai.chat.completions.create(
+        {
+          model: 'gpt-3.5-turbo',
+          messages,
+          temperature: 0.7,
+          n: 1,
+          stream: true,
         },
-        error: (error: any) => {
-          response.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
-        },
-        complete: () => {
+        { stream: true },
+      );
+
+      for await (const chunk of chatCompletionStream) {
+        const { choices } = chunk;
+        const {
+          finish_reason,
+          delta: { content },
+        } = choices[0];
+        stream.write(`data: ${!finish_reason ? content : '[DONE]'}\n\n`);
+        if (finish_reason) {
           stream.write(`data: PROMPT: ${formattedPrompt}\n\n`);
           stream.end();
-        },
-      });
+        }
+      }
+
       return await response.send(stream);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -134,10 +121,9 @@ export class OpenAIService {
     }
   }
 
-  async streamChatReply(res: FastifyReply, messages: ChatCompletionRequestMessage[], language = 'English') {
-    const config = new Configuration({ ...this.options });
-    const openai = new OpenAIApi(config);
-    const defaultChat: ChatCompletionRequestMessage = {
+  async streamChatReply(res: FastifyReply, messages: ChatCompletionMessageParam[], language = 'English') {
+    const openai = new OpenAI({ ...this.options });
+    const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `You are a ${language} speaking chatbot(don't mention that you are a chatbot) 
       named Focus Bear helping people to be productive and achieve 
@@ -146,47 +132,33 @@ export class OpenAIService {
        practice habits they set out to do as part of their daily routines. You are restricted to 
       talking about productivity and habits and should limit responses to 100 words. Please greet the user briefly.`,
     };
-    const chatHistory: ChatCompletionRequestMessage[] = [defaultChat, ...messages];
+    const chatHistory: ChatCompletionMessageParam[] = [defaultChat, ...messages];
     let retryCount = 0;
     while (retryCount < 3) {
       try {
         const stream = new Stream.PassThrough();
-        const observable = new Observable((observer) => {
-          openai
-            .createChatCompletion(
-              {
-                model: 'gpt-3.5-turbo',
-                messages: chatHistory,
-                temperature: 0.7,
-                n: 1,
-                stream: true,
-              },
-              { responseType: 'stream' },
-            )
-            .then((response: any) => {
-              response.data.on('data', (chunk: any) => {
-                observer.next(chunk.toString());
-              });
-              response.data.on('end', () => {
-                observer.complete();
-              });
-            })
-            .catch((error) => {
-              observer.error(error);
-            });
-        });
+        const chatCompletionStream = await openai.chat.completions.create(
+          {
+            model: 'gpt-3.5-turbo',
+            messages: chatHistory,
+            temperature: 0.7,
+            n: 1,
+            stream: true,
+          },
+          { stream: true },
+        );
 
-        observable.subscribe({
-          next: (chunk: string) => {
-            stream.write(chunk);
-          },
-          error: (error: any) => {
-            res.status(500).send(`Error occurred while streaming data: ${JSON.stringify(error)}`);
-          },
-          complete: () => {
+        for await (const chunk of chatCompletionStream) {
+          const { choices } = chunk;
+          const {
+            finish_reason,
+            delta: { content },
+          } = choices[0];
+          stream.write(`data: ${!finish_reason ? content : '[DONE]'}\n\n`);
+          if (finish_reason) {
             stream.end();
-          },
-        });
+          }
+        }
         return await res.send(stream);
       } catch (error) {
         retryCount++;
@@ -198,8 +170,7 @@ export class OpenAIService {
     if (!isUrlSafeDto?.url || !this.isValidURL(isUrlSafeDto?.url)) {
       return null;
     }
-    const config = new Configuration({ ...this.options });
-    const openai = new OpenAIApi(config);
+    const openai = new OpenAI({ ...this.options });
     let metaDescriptionToUse = isUrlSafeDto.meta_description;
     let titleToUse = isUrlSafeDto.tab_title;
     if (!metaDescriptionToUse || !titleToUse) {
@@ -207,7 +178,7 @@ export class OpenAIService {
       metaDescriptionToUse = description;
       titleToUse = title;
     }
-    const defaultChat: ChatCompletionRequestMessage = {
+    const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Please provide a JSON response indicating whether the following website is related to the user's Focus Mode:
     JSON response format:
@@ -232,13 +203,13 @@ export class OpenAIService {
     let retryCount = 0;
     while (retryCount < 3) {
       try {
-        const completions = await openai.createChatCompletion({
+        const completions = await openai.chat.completions.create({
           model: 'gpt-3.5-turbo',
           messages: [defaultChat],
           temperature: 0,
           n: 1,
         });
-        const newMessage = completions.data.choices[0].message;
+        const newMessage = completions.choices[0].message;
         const { content } = newMessage;
         // extract JSON string from generated content to avoid having extra text
         const openingBracketIndex = content.indexOf('{');
@@ -326,9 +297,8 @@ export class OpenAIService {
   }
 
   async checkIfUsernameIsValid(username: string): Promise<{ allowed: boolean }> {
-    const config = new Configuration({ ...this.options });
-    const openai = new OpenAIApi(config);
-    const defaultChat: ChatCompletionRequestMessage = {
+    const openai = new OpenAI({ ...this.options });
+    const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Given the following username, determine whether it uses curse words, sexual language, or could be offensive to anyone, if it is deemed fine, return true, if offensive, return false.
       Examples of inappropriate usernames for which false should be returned: sexymommee, hitler 
@@ -337,33 +307,32 @@ export class OpenAIService {
       username: ${username}
       JSON output:`,
     };
-    const completions = await openai.createChatCompletion({
+    const completions = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [defaultChat],
       temperature: 0,
       n: 1,
     });
-    const newMessage = completions.data.choices[0].message;
+    const newMessage = completions.choices[0].message;
     const { content } = newMessage;
     return JSON.parse(content);
   }
 
   async createSubtasks({ task, language = 'english' }: GenerateSubtasksDto) {
-    const config = new Configuration({ ...this.options });
-    const openai = new OpenAIApi(config);
-    const defaultChat: ChatCompletionRequestMessage = {
+    const openai = new OpenAI({ ...this.options });
+    const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Given the following task, break the task into a couple smaller steps it could take to accomplish the task. Return each subtask as a JSON object in the format: { "name": "name of subtask(should be capitalized)", is_completed: false }. The name should be in the language of ${language}. The final output should be in the format { "task": name of task, "subtasks": array of subtasks }\n\n
       Task: ${task}\n\n
       JSON output:`,
     };
-    const completions = await openai.createChatCompletion({
+    const completions = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [defaultChat],
       temperature: 0,
       n: 1,
     });
-    const newMessage = completions.data.choices[0].message;
+    const newMessage = completions.choices[0].message;
     const { content } = newMessage;
     return JSON.parse(content);
   }

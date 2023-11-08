@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
-import { OpenAIApi, Configuration } from 'openai';
+import OpenAI from 'openai';
 // eslint-disable-next-line import/extensions
 import * as S3 from 'aws-sdk/clients/s3.js';
 import { ApsOverwrite } from '../../libs/pusher-beams/src/interfaces/aps-overwrite';
@@ -43,8 +43,7 @@ interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
 
-const openAiConfig = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
-const openAiAPI = new OpenAIApi(openAiConfig);
+const openAiAPI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function getPrompt(routine: string, language: string) {
   return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
@@ -81,14 +80,14 @@ async function generateRoutineNotification(routine: string, fileName: string, la
   const TEN_SECONDS = 10000;
   for (let i = 0; i <= maxRetries; i++) {
     try {
-      const response = await openAiAPI.createChatCompletion({
+      const response = await openAiAPI.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'system', content: getPrompt(routine, language) }],
         temperature: 0.5,
         max_tokens: 100,
         n: 1,
       });
-      const message = response.data.choices[0].message.content.trim();
+      const message = response.choices[0].message.content.trim();
       const messageObj = {
         message,
         timestamp: DateTime.utc().toISO(),

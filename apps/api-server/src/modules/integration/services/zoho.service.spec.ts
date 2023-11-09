@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { zohoProjectDummy } from '../../../../test/dummies/integration.dummies';
+import { zohoProjectDummy, zohoProjectDummyToReturn } from '../../../../test/dummies/integration.dummies';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -254,8 +254,8 @@ describe('ZohoService', () => {
     it('positive: should return tasks data', async () => {
       const projectId = 'project123';
       const portalId = 'portal123';
-      const task1 = { id: 'task1', key: 'key1', status: { id: 'status' } };
-      const task2 = { id: 'task2', key: 'key2', status: { id: 'status' } };
+      const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
+      const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
       const tasksData = [task1, task2];
       const taskResult = [
         {
@@ -329,7 +329,8 @@ describe('ZohoService', () => {
     it('should return projects data', async () => {
       const portalId = 'portal123';
       const projectsData = [zohoProjectDummy];
-      const resultProject = [{ ...zohoProjectDummy, portal_id: portalId }];
+
+      const resultProject = [{ ...zohoProjectDummyToReturn, portal_id: portalId }];
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
         data: {
@@ -427,7 +428,7 @@ describe('ZohoService', () => {
       const portalId = 'portalId';
       const projectId = 'projectId';
       const platformIntegrationRecord = { data: { location: 'us', access_token: 'access_token' } };
-      const projectData = { projects: [{ id: projectId, name: 'Project 1' }] };
+      const projectData = { projects: [{ id_string: projectId, name: 'Project 1' }] };
       const expectedProject = { id: projectId, name: 'Project 1', key: undefined, portal_id: portalId };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue(platformIntegrationRecord);
       mockedAxios.get.mockResolvedValueOnce({ data: projectData });
@@ -495,8 +496,8 @@ describe('ZohoService', () => {
   it('positive: should return tasks data', async () => {
     const projectId = 'project123';
     const portalId = 'portal123';
-    const task1 = { id: 'task1', key: 'key1', status: { id: 'status' } };
-    const task2 = { id: 'task2', key: 'key2', status: { id: 'status' } };
+    const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
+    const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
     const tasksData = [task1, task2];
     const taskResult = [
       {

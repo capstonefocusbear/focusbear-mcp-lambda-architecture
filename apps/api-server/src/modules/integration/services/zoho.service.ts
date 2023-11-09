@@ -17,7 +17,7 @@ import { BaseIntegrationService } from './base.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
-  id: task.id,
+  id: task.id_string,
   key: task.key,
   name: task.name,
   description: task.description,
@@ -26,7 +26,7 @@ const taskAdapter = ({ task, portalId, projectId }) => ({
 });
 
 const projectAdapter = ({ project, portalId }) => ({
-  id: project.id,
+  id: project.id_string,
   key: project.key,
   name: project.name,
   description: project.description,

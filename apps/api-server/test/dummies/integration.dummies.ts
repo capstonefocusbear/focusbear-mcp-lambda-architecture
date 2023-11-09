@@ -1,5 +1,4 @@
 import { FocusModeTag } from '../../src/modules/focus-mode/entities/focus-mode-tags';
-import { Project } from '../../src/modules/integration/domain/project.model';
 import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { userDummy } from '.';
 
@@ -18,7 +17,16 @@ export const savedTaskDummy = new ToDo({
   external_task_metadata: { platform: 'jira', task_data: taskDummy },
 });
 
-export const zohoProjectDummy: Project = {
+export const zohoProjectDummy = {
+  id: 'test-id',
+  id_string: 'test-id',
+  name: 'test-name',
+  key: 'test-key',
+  description: 'test-description',
+  portal_id: 'test-portal-id',
+};
+
+export const zohoProjectDummyToReturn = {
   id: 'test-id',
   name: 'test-name',
   key: 'test-key',

@@ -314,7 +314,7 @@ describe('trelloService', () => {
           name: 'Task 1',
           key: '',
           description: 'task',
-          status: '123',
+          external_status: '123',
           external_metadata: { ...task, project_id: projectId, portal_id: null },
         },
       ];

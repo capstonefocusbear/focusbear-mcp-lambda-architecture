@@ -161,7 +161,7 @@ describe('mondayService', () => {
         {
           id: 'task1',
           name: 'Task 1',
-          status: 'group1',
+          external_status: 'group1',
           key: '',
           description: '',
           external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: null },
@@ -303,7 +303,7 @@ describe('mondayService', () => {
       const resultTask = {
         id: 'task1',
         name: 'Task 1',
-        status: 'group1',
+        external_status: 'group1',
         key: '',
         description: '',
         external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: portalId },

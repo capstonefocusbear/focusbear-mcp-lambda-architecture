@@ -152,7 +152,7 @@ describe('asanaService', () => {
           name: 'test-name',
           description: 'test-notes',
           key: '',
-          status: 'section-id',
+          external_status: 'section-id',
           external_metadata: {
             id: 'test-id',
             ...asanaTaskDummy,

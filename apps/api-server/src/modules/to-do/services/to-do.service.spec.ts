@@ -137,7 +137,7 @@ describe('toDoService', () => {
         },
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
-      ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, status: 'test-id' }]);
+      ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, external_status: 'test-id' }]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,

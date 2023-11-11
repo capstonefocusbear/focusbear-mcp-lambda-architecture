@@ -21,7 +21,7 @@ const taskAdapter = ({ task, portalId, projectId }) => ({
   key: task.key,
   name: task.name,
   description: task.description,
-  status: task.status.id,
+  external_status: task.status.id,
   external_metadata: { ...task, portal_id: portalId, project_id: projectId },
 });
 

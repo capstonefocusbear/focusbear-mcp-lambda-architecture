@@ -19,6 +19,7 @@ import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
+import { Task } from '../../integration/domain/task.model';
 
 @Injectable()
 export class ToDoService {
@@ -90,7 +91,7 @@ export class ToDoService {
     return toDosWithAvailableStatuses;
   }
 
-  async getAllUserTasks(userId) {
+  async getAllUserTasks(userId: string): Promise<Task[]> {
     const records = await this.platformIntegrationsRepository.orm.find({
       where: { user_id: userId },
       select: ['platform'],
@@ -110,7 +111,7 @@ export class ToDoService {
 
   async addProjectStatusesToToDos(toDos: ToDo[], userId: string): Promise<ToDoResponse[]> {
     const userTasks = await this.getAllUserTasks(userId);
-    const findTask = (taskId: string, tasks: any[]) => {
+    const findTask = (taskId: string, tasks: Task[]) => {
       return tasks.find((task) => task.id === taskId);
     };
     const updatedToDos = [];
@@ -123,7 +124,7 @@ export class ToDoService {
           });
           const linkedTask = findTask(toDo.external_task_id, userTasks);
           const availableStatuses = syncedProject?.available_statuses;
-          const externalStatusId = linkedTask?.status;
+          const externalStatusId = linkedTask?.external_status;
           const currentExternalStatus = availableStatuses.find((status) => status.status_id === externalStatusId);
           const toDoCopy = { ...toDo };
           const toDoToSave = new ToDo({

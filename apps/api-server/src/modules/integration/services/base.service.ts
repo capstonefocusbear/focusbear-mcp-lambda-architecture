@@ -21,6 +21,7 @@ import { BaseIntegrationAuthService } from '../../auth/services/base-integration
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
+import { ToDoStatus } from '../../to-do/domain/to-do-status.enum';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -222,7 +223,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         user_id: userId,
         title: task.name,
         details: task.description ?? '',
-        status: task.status,
+        status: ToDoStatus.NOT_STARTED,
         external_task_id: task.id,
         external_task_metadata: { platform: this.platform, task_data: task.external_metadata },
         synced_project_id: syncedProject.id,

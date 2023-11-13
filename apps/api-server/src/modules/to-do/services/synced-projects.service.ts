@@ -34,7 +34,7 @@ export class SyncedProjectsService {
   async syncProject(userId: string, syncProjectData: SyncProjectDto) {
     const { platform, portal_id, project_id } = syncProjectData;
     const service = this.integrationFactory.get(platform);
-    await service.syncProjectAndChildTasks(userId, portal_id, project_id);
+    await service.syncProjectAndChildTasks(userId, portal_id, project_id, platform);
   }
 
   async unSyncProject(userId: string, projectId: string) {
@@ -50,5 +50,17 @@ export class SyncedProjectsService {
       this.focusModeTagRepository.orm.delete({ external_project_id: projectId }),
       this.syncedProjectsRepository.orm.delete({ external_project_id: projectId }),
     ]);
+  }
+
+  async getSyncedProject(externalProjectId: string) {
+    return this.syncedProjectsRepository.orm.findOneBy({
+      external_project_id: externalProjectId,
+    });
+  }
+
+  async markSyncedProjectTasksAsSynced(syncedProjectRecordId: string) {
+    const syncedProject = await this.syncedProjectsRepository.orm.findOneBy({ id: syncedProjectRecordId });
+    syncedProject.have_tasks_been_synced = true;
+    await this.syncedProjectsRepository.orm.save(syncedProject);
   }
 }

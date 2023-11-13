@@ -79,6 +79,7 @@ describe('SyncedProjectsService', () => {
         userDummy.id,
         dummyData.portal_id,
         dummyData.project_id,
+        IntegrationPlatforms.ZOHO,
       );
     });
   });

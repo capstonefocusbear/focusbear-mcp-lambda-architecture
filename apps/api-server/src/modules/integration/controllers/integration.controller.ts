@@ -45,7 +45,7 @@ export class IntegrationController {
     @AuthContext() { user }: Passport,
   ) {
     const service = this.integrationFactory.get(platform);
-    return service.syncProjectAndChildTasks(user.id, portal_id, project_id);
+    return service.syncProjectAndChildTasks(user.id, portal_id, project_id, platform);
   }
 
   @Get(':platform/:portalId/projects')

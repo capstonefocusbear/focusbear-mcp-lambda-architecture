@@ -1,8 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
+import { getQueueToken } from '@nestjs/bull';
 import { asanaTaskDummy } from '../../../../test/dummies/integration.dummies';
-import { userDummy } from '../../../../test/dummies';
+import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, AsanaAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
@@ -42,6 +43,10 @@ describe('asanaService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('sync-tasks'),
+          useValue: QueueMock,
         },
       ],
     })

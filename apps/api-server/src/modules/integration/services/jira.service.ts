@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
@@ -23,6 +25,7 @@ export class JiraService extends BaseIntegrationService {
     protected readonly integrationAuthService: JiraAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
+    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
   ) {
     super(
       userRepository,
@@ -32,6 +35,7 @@ export class JiraService extends BaseIntegrationService {
       platformIntegrationsService,
       syncedProjectsRepository,
       IntegrationPlatforms.JIRA,
+      syncTasksQueue,
     );
   }
 

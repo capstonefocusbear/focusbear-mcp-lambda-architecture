@@ -25,7 +25,7 @@ import { PlatformIntegrationRepository } from '../platform-integrations/reposito
     SyncedProjectsRepository,
     SyncedProjectsService,
   ],
-  exports: [ToDoRepository, ToDoService, SyncedProjectsRepository],
+  exports: [ToDoRepository, ToDoService, SyncedProjectsRepository, SyncedProjectsService],
   imports: [
     forwardRef(() => UserModule),
     forwardRef(() => IntegrationModule),

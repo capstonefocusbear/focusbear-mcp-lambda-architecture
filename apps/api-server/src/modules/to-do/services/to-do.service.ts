@@ -188,6 +188,7 @@ export class ToDoService {
       select: ['id', 'external_task_id', 'external_task_metadata', 'status', 'title'],
     });
     const existingToDoIds = existingToDos.map((toDo) => toDo.id);
+    const tasksFromExternalPlatforms = existingToDos.filter((toDo) => !!toDo.external_task_metadata);
     // filter out to dos that don't belong to user
     const toDosToUpdate = toDoTimeLogs.filter((toDoTimeLog) => existingToDoIds.includes(toDoTimeLog.id));
     const timeLogs = toDosToUpdate.map(
@@ -203,11 +204,11 @@ export class ToDoService {
     await this.updateTasksStatuses(toDosToUpdate);
     await this.taskTimeLogsRepository.orm.save(timeLogs);
 
-    if (existingToDos.length) {
+    if (tasksFromExternalPlatforms.length) {
       await this.timeLogsQueue.add('save-task-time-log', {
         userId,
         toDoTimeLogs,
-        toDos: existingToDos,
+        toDos: tasksFromExternalPlatforms,
       });
     }
     return timeLogs;

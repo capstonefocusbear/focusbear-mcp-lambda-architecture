@@ -94,7 +94,7 @@ describe('UserDataService', () => {
       expect(UserRepositoryMock.orm.delete).toBeCalledWith({ id: userDummy.id });
       expect(StripeServiceMock.deleteStripeCustomer).toBeCalledWith(dummyStripeId);
       expect(mockedAxios.post).toBeCalledWith('test-url', {
-        text: `Account deleted for user with email: ${dummyEmail} and ID: ${
+        text: `Account deleted for user with email: te**@mail.com and ID: ${
           userDummy.id
         } \n\n Message: some text \n\n Can contact: ${false}`,
       });

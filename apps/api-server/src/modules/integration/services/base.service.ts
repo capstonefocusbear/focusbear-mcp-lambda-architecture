@@ -173,17 +173,20 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       projects.forEach((project) => {
         const isSynced = userSyncedProjectsExternalIds.includes(project.id);
         let externalStatuses = [];
+        let haveTasksBeenSynced = false;
         if (isSynced) {
           const linkedSyncedProject = userSyncedProjects.find(
             (syncedProject) => syncedProject.external_project_id === project.id,
           );
           externalStatuses = linkedSyncedProject.available_statuses;
+          haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
         }
         const projectData = {
           name: project.name,
           project_id: project.id,
           portal_id: portal.id,
           is_synced: isSynced,
+          have_tasks_been_synced: haveTasksBeenSynced,
           external_statuses: externalStatuses,
         };
         projectsResponse.push(projectData);

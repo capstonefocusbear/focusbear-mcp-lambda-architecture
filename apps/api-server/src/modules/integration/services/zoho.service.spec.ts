@@ -2,8 +2,9 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { getQueueToken } from '@nestjs/bull';
 import { zohoProjectDummy, zohoProjectDummyToReturn } from '../../../../test/dummies/integration.dummies';
-import { userDummy } from '../../../../test/dummies';
+import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, ZohoAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
@@ -45,6 +46,10 @@ describe('ZohoService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('sync-tasks'),
+          useValue: QueueMock,
         },
       ],
     })

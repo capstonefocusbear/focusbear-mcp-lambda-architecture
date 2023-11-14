@@ -42,6 +42,12 @@ export class SyncedProject extends BaseEntity {
   @Column({ type: 'jsonb', default: null, nullable: true })
   available_statuses?: ExternalTaskStatus[];
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  have_tasks_been_synced?: boolean;
+
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

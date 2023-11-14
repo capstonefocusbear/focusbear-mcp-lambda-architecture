@@ -1,6 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { User } from '../../user/entities/user.entity';
 import { Portal } from '../domain/portal.model';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 export interface IBaseIntegrationService {
   getUser(userId: string): Promise<User>;
@@ -25,7 +26,7 @@ export interface IBaseIntegrationService {
 
   upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string);
 
-  syncProjectAndChildTasks(userId: string, portalId: string, projectId: string);
+  syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms);
 
   getProject(userId: string, portalId: string, projectId: string);
 

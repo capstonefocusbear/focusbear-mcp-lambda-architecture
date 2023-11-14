@@ -67,20 +67,13 @@ export const hhmmToSeconds = (duration: string) => {
 
 export function maskEmail(email: string): string {
   const [username, domain] = email.split('@');
-
   if (!username || !domain) {
     return email;
   }
-
-  if (username.length <= 4) {
-    return email; // Return the original email if username has 4 or fewer characters
-  }
-
-  const firstTwoChars = username.substring(0, 2);
-  const lastTwoChars = username.slice(-2);
-  const maskedChars = '*'.repeat(username.length - 4);
-
-  return `${firstTwoChars}${maskedChars}${lastTwoChars}@${domain}`;
+  const midPoint = Math.ceil(username.length / 2);
+  const unmaskedPart = username.substring(0, midPoint);
+  const maskedPart = '*'.repeat(username.length - midPoint);
+  return `${unmaskedPart}${maskedPart}@${domain}`;
 }
 
 export function findNonZeroTotal(invoices: any[]): number {

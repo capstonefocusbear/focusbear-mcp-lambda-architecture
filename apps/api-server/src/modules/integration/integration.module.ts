@@ -1,4 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
 import { UserModule } from '../user/user.module';
 import { IntegrationController } from './controllers/integration.controller';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
@@ -12,9 +14,19 @@ import { JiraService } from './services/jira.service';
 import { AsanaService } from './services/asana.service';
 import { ClickUpService } from './services/clickup.service';
 import { TrelloService } from './services/trello.service';
+import { SyncTasksConsumer } from './consumers/sync-tasks.consumer';
 
 @Module({
-  providers: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickUpService, TrelloService],
+  providers: [
+    IntegrationFactory,
+    ZohoService,
+    MondayService,
+    JiraService,
+    AsanaService,
+    ClickUpService,
+    TrelloService,
+    SyncTasksConsumer,
+  ],
   exports: [IntegrationFactory, ZohoService, MondayService, JiraService, AsanaService, ClickUpService, TrelloService],
   imports: [
     forwardRef(() => UserModule),
@@ -22,6 +34,14 @@ import { TrelloService } from './services/trello.service';
     forwardRef(() => ToDoModule),
     forwardRef(() => AuthModule),
     forwardRef(() => PlatformIntegrationsModule),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => config.get('bull'),
+    }),
+    BullModule.registerQueue({
+      name: 'sync-tasks',
+    }),
   ],
   controllers: [IntegrationController],
 })

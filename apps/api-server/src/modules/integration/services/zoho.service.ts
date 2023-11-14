@@ -1,7 +1,10 @@
 /* eslint-disable no-await-in-loop */
-import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
+import { Inject, Injectable, UseGuards, forwardRef } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { getDataCenterUrl, secondsToHHMM } from '../../../shared/utils/helpers';
+import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
@@ -13,8 +16,8 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { Project } from '../domain/project.model';
 import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
-import { BaseIntegrationService } from './base.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
   id: task.id_string,
@@ -33,6 +36,8 @@ const projectAdapter = ({ project, portalId }) => ({
   portal_id: portalId,
 });
 
+@Injectable()
+@UseGuards(IsAuth)
 export class ZohoService extends BaseIntegrationService {
   constructor(
     protected readonly userRepository: UserRepository,
@@ -42,6 +47,7 @@ export class ZohoService extends BaseIntegrationService {
     protected readonly integrationAuthService: ZohoAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
+    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
   ) {
     super(
       userRepository,
@@ -51,6 +57,7 @@ export class ZohoService extends BaseIntegrationService {
       platformIntegrationsService,
       syncedProjectsRepository,
       IntegrationPlatforms.ZOHO,
+      syncTasksQueue,
     );
   }
 

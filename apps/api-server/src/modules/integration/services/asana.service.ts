@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
+import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bull';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -48,6 +50,7 @@ export class AsanaService extends BaseIntegrationService {
     protected readonly asanaAuthService: AsanaAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
+    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
   ) {
     super(
       userRepository,
@@ -57,6 +60,7 @@ export class AsanaService extends BaseIntegrationService {
       platformIntegrationsService,
       syncedProjectsRepository,
       IntegrationPlatforms.ASANA,
+      syncTasksQueue,
     );
   }
 

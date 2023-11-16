@@ -1,14 +1,46 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { google } from 'googleapis';
+import { calendar_v3, google } from 'googleapis';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { NotificationRepository } from '../../notification/repository/notification.repository';
+import { Notification } from '../../notification/entities/notification.entity';
+import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
+
+const notificationAdapter = ({
+  event,
+  userId,
+  calendarId,
+}: {
+  event: calendar_v3.Schema$Event;
+  userId: string;
+  calendarId: string;
+}) => {
+  const { id, summary, description, start, end } = event;
+  const { date, dateTime: event_begins } = start;
+  const { dateTime: event_ends } = end;
+  if (date) {
+    return;
+  }
+  return new Notification({
+    user_id: userId,
+    platform: CalendarPlatforms.GOOGLE,
+    calendar_id: calendarId,
+    external_id: id,
+    summary,
+    description,
+    event_begins: new Date(event_begins),
+    event_ends: new Date(event_ends),
+    external_metadata: event,
+  });
+};
 
 @Injectable()
 export class GoogleCalendarService {
   constructor(
     protected readonly configService: ConfigService,
     private readonly platformIntegrationService: PlatformIntegrationsService,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async getEvents(userId) {
@@ -22,15 +54,31 @@ export class GoogleCalendarService {
     oauth2Client.setCredentials(record.data);
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-    const res = await calendar.events.list({
-      calendarId: 'primary',
+    const { data: calendarList } = await calendar.calendarList.list();
+    const calendarIds = calendarList.items.map((item) => item.id);
+    const events = await Promise.all(
+      calendarIds.map(async (calendarId) => this.getEvent({ userId, calendarId, calendar })),
+    );
+
+    return events.flat().filter((event) => !!event);
+  }
+
+  private async getEvent({
+    userId,
+    calendarId,
+    calendar,
+  }: {
+    userId: string;
+    calendarId: string;
+    calendar: calendar_v3.Calendar;
+  }) {
+    const { data } = await calendar.events.list({
+      calendarId,
       timeMin: new Date().toISOString(),
-      maxResults: 10,
       singleEvents: true,
       orderBy: 'startTime',
     });
-    const events = res.data.items;
 
-    return events;
+    return data.items.map((event) => notificationAdapter({ event, userId, calendarId }));
   }
 }

@@ -40,6 +40,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
       redirect_uri: this.callbackUrl,
       response_mode: 'query',
       scope,
+      prompt: 'login',
     };
     return queryParams;
   }

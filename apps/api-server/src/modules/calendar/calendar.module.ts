@@ -6,11 +6,13 @@ import { PlatformIntegrationsService } from '../platform-integrations/services/p
 import { PlatformIntegrationRepository } from '../platform-integrations/repositories/platform-integration.repository';
 import { GoogleCalendarService } from './services/google-calendar.service';
 import { MicrosoftCalendarService } from './services/microsoft-calendar.service';
+import { NotificationRepository } from '../notification/repository/notification.repository';
 
 @Module({
   imports: [],
   controllers: [CalendarController],
   providers: [
+    NotificationRepository,
     CalendarServiceFactory,
     GoogleCalendarService,
     MicrosoftCalendarService,

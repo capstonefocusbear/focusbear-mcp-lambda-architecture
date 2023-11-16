@@ -313,11 +313,11 @@ export class TeamManagementService {
     const adminData = [];
     for await (const member of members) {
       const { email } = await this.auth0ManagementService.getAuth0User(member.auth0_id);
-      membersData.push({ id: member.id, email });
+      membersData.push({ id: member.id, email, last_active_date: member.updated_at });
     }
     for await (const adminMember of admin_members) {
       const { email } = await this.auth0ManagementService.getAuth0User(adminMember.auth0_id);
-      adminData.push({ id: adminMember.id, email });
+      adminData.push({ id: adminMember.id, email, last_active_date: adminMember.updated_at });
     }
     return { members: membersData, admin: adminData };
   }

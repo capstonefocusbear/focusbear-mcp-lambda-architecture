@@ -9,6 +9,7 @@ import { TrackEventDto } from '../dto/track-event.dto';
 import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsService } from '../services/events.service';
+import { UserRepository } from '../../user/repositories/user.repository';
 
 @Processor('events')
 export class EventsConsumer {
@@ -18,6 +19,7 @@ export class EventsConsumer {
     private readonly pusherBeamsService: PusherBeamsService,
     private readonly i18nService: I18nService,
     private readonly eventsService: EventsService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   @Process('track-event')
@@ -51,6 +53,8 @@ export class EventsConsumer {
           trackEventDto.event_data?.data?.quantity,
         );
       }
+      // update user updated_at field to indicate activity
+      await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {

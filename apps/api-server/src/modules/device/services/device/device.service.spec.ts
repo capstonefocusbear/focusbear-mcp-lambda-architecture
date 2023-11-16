@@ -1,15 +1,22 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { DeviceDummy, userDummy } from '../../../../../test/dummies';
-import { DeviceRepositoryMock, SentryServiceMock, UserServiceMock } from '../../../../../test/mocks';
+import {
+  DeviceRepositoryMock,
+  SentryServiceMock,
+  UserRepositoryMock,
+  UserServiceMock,
+} from '../../../../../test/mocks';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
 import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
+import { UserRepository } from '../../../user/repositories/user.repository';
+import { UserTypes } from '../../../user/domain/user-types.enum';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
@@ -20,6 +27,7 @@ describe('DeviceService', () => {
         DeviceService,
         DeviceRepository,
         UserService,
+        UserRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -30,6 +38,8 @@ describe('DeviceService', () => {
       .useValue(DeviceRepositoryMock)
       .overrideProvider(UserService)
       .useValue(UserServiceMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     deviceService = moduleRef.get<DeviceService>(DeviceService);
@@ -135,6 +145,32 @@ describe('DeviceService', () => {
       await deviceService.updateDeviceAppVersion(desktopDeviceDummy.id, '1.0.2');
 
       expect(DeviceRepositoryMock.orm.save).toBeCalledWith({ ...desktopDeviceDummy, app_version: '1.0.2' });
+    });
+  });
+
+  describe('getDevicesForAdmin', () => {
+    it("negative: unauthorized exception should be thrown if standard user tries to access other users' devices", async () => {
+      const userId = randomUUID();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.STANDARD });
+      const errorMessage = `User with ID: ${userDummy.id} is not admin!`;
+      let exception;
+      try {
+        await deviceService.getDevicesForAdmin(userDummy.id, userId);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception.message).toEqual(errorMessage);
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('positive: should fetch devices for admin', async () => {
+      const userId = randomUUID();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, user_type: UserTypes.ADMIN });
+
+      await deviceService.getDevicesForAdmin(userDummy.id, userId);
+
+      expect(DeviceRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userId } });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Get, UseGuards, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
@@ -8,6 +8,8 @@ import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { UpdateDeviceDto } from '../../dto/update-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceService } from '../../services/device/device.service';
+import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
+import { GetDevicesQueryDto } from '../../dto/get-devices-query.dto';
 
 @Controller('device')
 @ApiTags('device')
@@ -24,5 +26,11 @@ export class DeviceController {
   @Patch(':device_id')
   async updateDevice(@Body() updateDeviceDto: UpdateDeviceDto, @Param() { device_id }): Promise<FocusMode> {
     return this.deviceService.update(device_id, { ...updateDeviceDto });
+  }
+
+  @Get('/admin')
+  @UseGuards(IsAdmin)
+  async getDevicesForAdmin(@Query() { user_id }: GetDevicesQueryDto, @AuthContext() { user: admin }: Passport) {
+    return this.deviceService.getDevicesForAdmin(admin.id, user_id);
   }
 }

@@ -267,7 +267,7 @@ export class UserService {
 
   private async recalculateActivityProps(partialUser: User) {
     const { activity, shouldRefetchUser } = await this.completedActivityService.recalculateCurrentActivity(partialUser);
-    let updatedUser = partialUser;
+    let updatedUser: Partial<User> = partialUser;
     if (partialUser.id === JEREMYS_USER_ID) {
       console.log("Jeremy's values for recalculateActivityProps: ");
       console.log({ activity, shouldRefetchUser });

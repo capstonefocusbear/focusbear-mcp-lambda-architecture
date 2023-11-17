@@ -1,6 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToMany, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { TeamToMember } from './team-to-member.entity';
+import { TeamToAdmin } from './team-to-admin.entity';
 
 @Entity('teams')
 export class Team extends BaseEntity {
@@ -59,9 +61,9 @@ export class Team extends BaseEntity {
   @JoinColumn({ name: 'owner_id' })
   owner?: User;
 
-  @ManyToMany(() => User, (user) => user.member_of_teams)
-  members?: User[];
+  @OneToMany(() => TeamToMember, (teamToMember) => teamToMember.team)
+  teamToMember?: TeamToMember[];
 
-  @ManyToMany(() => User, (user) => user.admin_of_teams)
-  admin_members?: User[];
+  @OneToMany(() => TeamToAdmin, (teamToAdmin) => teamToAdmin.team)
+  teamToAdmin?: TeamToAdmin[];
 }

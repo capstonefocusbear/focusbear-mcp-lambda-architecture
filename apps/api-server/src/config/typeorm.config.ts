@@ -36,6 +36,8 @@ import { UserFeedback } from '../modules/user/entities/user-feedback.entity';
 import { TaskTimeLog } from '../modules/to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../modules/platform-integrations/entities/platform-integration.entity';
 import { SyncedProject } from '../modules/to-do/entities/synced-project.entity';
+import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
+import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -85,6 +87,8 @@ export const typeormConfig = registerAs(
       TaskTimeLog,
       PlatformIntegration,
       SyncedProject,
+      TeamToMember,
+      TeamToAdmin,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

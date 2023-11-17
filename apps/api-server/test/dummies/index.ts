@@ -1125,9 +1125,7 @@ export const TeamWithMembersDummy = new Team({
   owner: userDummy,
   is_active: true,
   team_size: 5,
-  members: [userDummy],
   name: 'Team Name',
-  admin_members: [userDummy],
   stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });
@@ -1135,10 +1133,7 @@ export const TeamWithMembersDummy = new Team({
 export const TeamMemberDummy = new User({
   ...userDummy,
   id: randomUUID(),
-  member_of_teams: [TeamWithMembersDummy],
 });
-
-TeamWithMembersDummy.members.push(TeamMemberDummy);
 
 export const pusherBeamsPublishRequestDummy = {
   apns: {

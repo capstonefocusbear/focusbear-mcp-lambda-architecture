@@ -9,7 +9,6 @@ import {
   HasSubscription,
   RequireEntitlements,
 } from '../../subscription/guards/has-subscription/has-subscription.guard';
-import { User } from '../../user/entities/user.entity';
 import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
 import { AddTeamMemberDto } from '../dto/add-team-member.dto';
 import { InviteTeamMemberDto } from '../dto/invite-team-member.dto';
@@ -22,16 +21,6 @@ import { UpdateTeamNameDto } from '../dto/update-team-name.dto';
 @ApiSecurity('Auth0AccessToken')
 export class TeamManagementController {
   constructor(private readonly teamManagementService: TeamManagementService) {}
-
-  @Post('/add-member')
-  @UseGuards(HasSubscription)
-  @RequireEntitlements([Entitlement.team_admin])
-  addTeamMember(
-    @Body() { member_id, team_id }: AddTeamMemberDto,
-    @AuthContext() { user: { id: admin_id } }: Passport,
-  ): Promise<User> {
-    return this.teamManagementService.addTeamMember(member_id, admin_id, team_id);
-  }
 
   @Delete('bulk-delete-members')
   @HttpCode(204)
@@ -51,7 +40,7 @@ export class TeamManagementController {
   removeMember(
     @Body() { member_id, team_id }: AddTeamMemberDto,
     @AuthContext() { user: { id: adminId } }: Passport,
-  ): Promise<User> {
+  ): Promise<void> {
     return this.teamManagementService.removeMember(adminId, member_id, team_id);
   }
 
@@ -59,10 +48,10 @@ export class TeamManagementController {
   @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   async inviteTeamMember(
-    @Body() { email, team_id }: InviteTeamMemberDto,
+    @Body() inviteMemberDto: InviteTeamMemberDto,
     @AuthContext() { user: { id: adminId } }: Passport,
   ): Promise<any> {
-    return this.teamManagementService.inviteTeamMember(email, adminId, team_id);
+    return this.teamManagementService.inviteTeamMember(adminId, inviteMemberDto);
   }
 
   @Post('/accept-invitation')

@@ -702,4 +702,50 @@ describe('TeamManagementService', () => {
       expect(StripeServiceMock.cancelSubscription).toBeCalledWith(TeamWithMembersDummy.stripe_subscription_id);
     });
   });
+
+  describe('updateMemberExpiryDate', () => {
+    it('negative: should throw bad request exception if member is not linked to team', async () => {
+      const newExpiryDate = new Date('2023-11-18');
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
+      // mock no linked member record to be found
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      let exception;
+      const errorMessage = `User with ID: ${TeamMemberDummy.id} is not a member of team with ID: ${TeamWithMembersDummy.id}!`;
+
+      try {
+        await teamManagementService.updateMemberExpiryDate(userDummy.id, {
+          team_id: TeamWithMembersDummy.id,
+          member_id: TeamMemberDummy.id,
+          expiry_date: newExpiryDate,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should save linked member record with new expiry date', async () => {
+      const newExpiryDate = new Date('2023-11-18');
+      const linkedMemberRecordDummy = new TeamToMember({
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.id,
+        member_expiry_date: new Date('2023-11-15'),
+      });
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(linkedMemberRecordDummy);
+
+      await teamManagementService.updateMemberExpiryDate(userDummy.id, {
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.id,
+        expiry_date: newExpiryDate,
+      });
+
+      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith({
+        ...linkedMemberRecordDummy,
+        member_expiry_date: newExpiryDate,
+      });
+    });
+  });
 });

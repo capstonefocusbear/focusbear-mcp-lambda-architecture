@@ -20,6 +20,7 @@ import { TeamToMemberRepository } from '../../repositories/team-to-member.reposi
 import { TeamToAdminRepository } from '../../repositories/team-to-admin.repository';
 import { TeamToMember } from '../../entities/team-to-member.entity';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
+import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
 
 @Injectable()
 export class TeamManagementService {
@@ -451,5 +452,17 @@ export class TeamManagementService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async updateMemberExpiryDate(adminId: string, { team_id, member_id, expiry_date }: UpdateMemberExpiryDateDto) {
+    await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
+    const linkedMemberRecord = await this.teamToMemberRepository.orm.findOne({
+      where: { team_id, member_id },
+    });
+    if (!linkedMemberRecord) {
+      throw new BadRequestException(`User with ID: ${member_id} is not a member of team with ID: ${team_id}!`);
+    }
+    linkedMemberRecord.member_expiry_date = expiry_date;
+    await this.teamToMemberRepository.orm.save(linkedMemberRecord);
   }
 }

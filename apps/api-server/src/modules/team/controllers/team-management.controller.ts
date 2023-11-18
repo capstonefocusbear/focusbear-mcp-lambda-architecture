@@ -14,6 +14,7 @@ import { AddTeamMemberDto } from '../dto/add-team-member.dto';
 import { InviteTeamMemberDto } from '../dto/invite-team-member.dto';
 import { TeamManagementService } from '../services/team-management/team-management.service';
 import { UpdateTeamNameDto } from '../dto/update-team-name.dto';
+import { UpdateMemberExpiryDateDto } from '../dto/update-member-expiry-date.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -111,5 +112,13 @@ export class TeamManagementController {
   @RequireEntitlements([Entitlement.team_owner])
   async deleteTeam(@Query() { team_id }: { team_id: string }, @AuthContext() { user }: Passport) {
     return this.teamManagementService.deleteTeam(user.id, team_id);
+  }
+
+  @Put('/member-expiry')
+  async updateMemberExpiryDate(
+    @Body() updateExpiryDateData: UpdateMemberExpiryDateDto,
+    @AuthContext() { user: adminUser }: Passport,
+  ) {
+    return this.teamManagementService.updateMemberExpiryDate(adminUser.id, updateExpiryDateData);
   }
 }

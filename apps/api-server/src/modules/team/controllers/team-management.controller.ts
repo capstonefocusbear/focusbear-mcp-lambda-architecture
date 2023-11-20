@@ -69,7 +69,7 @@ export class TeamManagementController {
     @Body() { member_id, team_id }: AddTeamMemberDto,
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
-    return this.teamManagementService.assignMemberAsAdmin(user_id, member_id, team_id);
+    return this.teamManagementService.assignExistingMemberAsAdmin(user_id, member_id, team_id);
   }
 
   @Post('/remove-admin')

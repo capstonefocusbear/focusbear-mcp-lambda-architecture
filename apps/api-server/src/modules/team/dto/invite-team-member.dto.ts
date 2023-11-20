@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class InviteTeamMemberDto {
   @IsNotEmpty()
@@ -22,4 +22,12 @@ export class InviteTeamMemberDto {
   @Type(() => Date)
   @IsDate()
   member_expiry_date?: Date;
+
+  @IsNotEmpty()
+  @IsBoolean()
+  is_admin: boolean;
+
+  @IsNotEmpty()
+  @IsBoolean()
+  is_member: boolean;
 }

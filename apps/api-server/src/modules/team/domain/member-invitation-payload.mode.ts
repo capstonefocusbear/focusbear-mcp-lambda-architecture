@@ -14,4 +14,8 @@ export class MemberInvitationPayload {
   last_name?: string;
 
   member_expiry_date?: Date;
+
+  is_admin: boolean;
+
+  is_member: boolean;
 }

@@ -20,10 +20,10 @@ export class TeamToAdmin extends BaseEntity {
   @Column({ type: 'uuid', nullable: false, unique: false })
   admin_id: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: false })
+  @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('first_name') })
   first_name?: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: false })
+  @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('last_name') })
   last_name?: string;
 
   @ManyToOne(() => User, (admin) => admin.teamToAdmin, { onDelete: 'CASCADE' })

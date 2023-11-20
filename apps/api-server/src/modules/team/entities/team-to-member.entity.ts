@@ -24,10 +24,10 @@ export class TeamToMember extends BaseEntity {
   })
   member_id: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: false })
+  @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('first_name') })
   first_name?: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: false })
+  @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('last_name') })
   last_name?: string;
 
   @Column({ type: 'timestamptz', nullable: true, unique: false })

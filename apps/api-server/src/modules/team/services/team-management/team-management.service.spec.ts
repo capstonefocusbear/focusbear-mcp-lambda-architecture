@@ -260,6 +260,8 @@ describe('TeamManagementService', () => {
         first_name: firstName,
         last_name: lastName,
         member_expiry_date: expiryDate,
+        is_admin: false,
+        is_member: true,
       });
 
       expect(JwtServiceMock.asyncSign).toBeCalledWith(
@@ -270,6 +272,8 @@ describe('TeamManagementService', () => {
           first_name: firstName,
           last_name: lastName,
           member_expiry_date: expiryDate,
+          is_admin: false,
+          is_member: true,
         },
         'test-secret',
       );
@@ -287,6 +291,8 @@ describe('TeamManagementService', () => {
         first_name: firstName,
         last_name: lastName,
         member_expiry_date: expiryDate,
+        is_admin: false,
+        is_member: true,
       });
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
@@ -313,7 +319,11 @@ describe('TeamManagementService', () => {
       const errorMessage = `User with ID: ${TeamMemberDummy.id} is already an admin member of team with ID: ${TeamWithMembersDummy.id}!`;
 
       try {
-        await teamManagementService.assignMemberAsAdmin(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+        await teamManagementService.assignExistingMemberAsAdmin(
+          userDummy.id,
+          TeamMemberDummy.id,
+          TeamWithMembersDummy.id,
+        );
       } catch (error) {
         exception = error;
       }
@@ -330,7 +340,11 @@ describe('TeamManagementService', () => {
         admins: [userDummy],
       });
 
-      await teamManagementService.assignMemberAsAdmin(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+      await teamManagementService.assignExistingMemberAsAdmin(
+        userDummy.id,
+        TeamMemberDummy.id,
+        TeamWithMembersDummy.id,
+      );
 
       expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(TeamMemberDummy.id, Entitlement.team_admin);
       expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
@@ -411,7 +425,10 @@ describe('TeamManagementService', () => {
       await teamManagementService.removeMemberAsAdmin(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
 
       expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(TeamMemberDummy.id, Entitlement.team_admin);
-      expect(TeamToAdminRepositoryMock.orm.delete).toBeCalled();
+      expect(TeamToAdminRepositoryMock.orm.delete).toBeCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        admin_id: TeamMemberDummy.id,
+      });
     });
   });
 
@@ -746,6 +763,44 @@ describe('TeamManagementService', () => {
         ...linkedMemberRecordDummy,
         member_expiry_date: newExpiryDate,
       });
+    });
+  });
+
+  describe('assignNewMemberAsAdmin', () => {
+    it('negative, should throw bad request exception if user is already admin member of team', async () => {
+      const memberId = TeamMemberDummy.id;
+      const teamId = TeamWithMembersDummy.id;
+      // mock new member to already be an admin of this team
+      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: userDummy.id }, { id: memberId }]);
+      let exception;
+      const errorMessage = `User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`;
+
+      try {
+        await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should create TeamToAdmin record indicating user is connected to team as admin', async () => {
+      const memberId = TeamMemberDummy.id;
+      const teamId = TeamWithMembersDummy.id;
+      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: userDummy.id }]);
+
+      await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
+
+      expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
+        new TeamToAdmin({
+          team_id: teamId,
+          admin_id: memberId,
+          first_name: firstName,
+          last_name: lastName,
+        }),
+      );
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberId, Entitlement.team_admin);
     });
   });
 });

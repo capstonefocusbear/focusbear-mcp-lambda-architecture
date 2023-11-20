@@ -547,6 +547,21 @@ describe('TeamManagementService', () => {
         members: [userDummy, TeamMemberDummy],
         admins: [userDummy],
       });
+      TeamToMemberRepositoryMock.orm.findOne
+        .mockResolvedValueOnce({
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+        })
+        .mockResolvedValueOnce({
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+        });
+      TeamToAdminRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        first_name: firstName,
+        last_name: lastName,
+      });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({ email: 'test@mail.com' });
 
       const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);

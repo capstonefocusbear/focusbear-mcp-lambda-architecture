@@ -1,6 +1,6 @@
 export class MemberInvitationPayload {
-  constructor({ email, admin_id, team_id }: MemberInvitationPayload) {
-    Object.assign(this, { email, admin_id, team_id });
+  constructor(invitePayload: MemberInvitationPayload) {
+    Object.assign(this, { ...invitePayload });
   }
 
   email: string;
@@ -8,4 +8,14 @@ export class MemberInvitationPayload {
   admin_id: string;
 
   team_id: string;
+
+  first_name?: string;
+
+  last_name?: string;
+
+  member_expiry_date?: Date;
+
+  is_admin: boolean;
+
+  is_member: boolean;
 }

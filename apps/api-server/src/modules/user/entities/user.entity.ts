@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index, ManyToMany, JoinTable } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
@@ -32,6 +32,8 @@ import { UserFeedback } from './user-feedback.entity';
 import { TaskTimeLog } from '../../to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { TeamToMember } from '../../team/entities/team-to-member.entity';
+import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -418,13 +420,11 @@ export class User extends BaseEntity {
   @OneToMany(() => Team, (team) => team.owner)
   owned_teams?: Team[];
 
-  @ManyToMany(() => Team, (team) => team.admin_members, { cascade: true })
-  @JoinTable()
-  admin_of_teams?: Team[];
+  @OneToMany(() => TeamToMember, (teamToMember) => teamToMember.member)
+  teamToMember?: TeamToMember[];
 
-  @ManyToMany(() => Team, (team) => team.members, { cascade: true })
-  @JoinTable()
-  member_of_teams?: Team[];
+  @OneToMany(() => TeamToAdmin, (teamToAdmin) => teamToAdmin.admin)
+  teamToAdmin?: TeamToAdmin[];
 
   @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'signed_up_via_habit_pack' })

@@ -326,7 +326,7 @@ export class TeamManagementService {
     const subscriptionItemId = payload.items.data[0].id;
     const expiresDate = new Date(payload.current_period_end * 1000);
     const teamName = payload?.metadata?.team_name;
-    const user = await this.userRepository.orm.findOneBy({ stripe_customer_id: 'cus_Nj9H342KvxDgbj' });
+    const user = await this.userRepository.orm.findOneBy({ stripe_customer_id: customerId });
     if (!user) {
       throw new NotFoundException(`User with Stripe ID: ${customerId} does not exist!`);
     }
@@ -481,15 +481,15 @@ export class TeamManagementService {
       const revokeMemberEntitlementsPromise = this.revokeTeamMembersEntitlements(teamId);
       const revokeAdminEntitlementsPromise = this.revokeAdminMembersEntitlements(teamId);
       const revokeOwnerEntitlementPromise = this.revokeOwnerEntitlement(teamId);
-      const deleteTeamPromise = this.teamRepository.orm.delete({ id: teamId });
       const cancelSubscriptionPromise = this.stripeService.cancelSubscription(team.stripe_subscription_id);
       await Promise.all([
         revokeMemberEntitlementsPromise,
         revokeAdminEntitlementsPromise,
         revokeOwnerEntitlementPromise,
-        deleteTeamPromise,
         cancelSubscriptionPromise,
       ]);
+      // delete team after other promises returned because team record needs to be queried for their logic
+      await this.teamRepository.orm.delete({ id: teamId });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

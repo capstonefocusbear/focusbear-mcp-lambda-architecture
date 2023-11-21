@@ -80,6 +80,12 @@ export class HabitPackService {
     }
   }
 
+  async getUserHabitPacks(userId: string): Promise<HabitPack[]> {
+    const userHabitPacks = await this.habitPackRepository.fetchUserHabitPacks(userId);
+    const formattedHabitPacks = userHabitPacks.map((pack) => this.serializeHabitPack(pack));
+    return formattedHabitPacks;
+  }
+
   serializeHabitPack({ activity_templates, pack_type, ...packData }: HabitPack): HabitPack {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',

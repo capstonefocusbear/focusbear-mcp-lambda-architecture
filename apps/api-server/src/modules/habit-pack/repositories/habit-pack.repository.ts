@@ -255,4 +255,77 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     const fetchedPacks = await query.getMany();
     return fetchedPacks;
   }
+
+  async fetchUserHabitPacks(userId: string): Promise<HabitPack[]> {
+    const query = this.orm
+      .createQueryBuilder('habit_packs')
+      .leftJoinAndSelect('habit_packs.activity_templates', 'activity_templates')
+      .orderBy('activity_templates.sequence_index', 'ASC')
+      .leftJoinAndSelect('activity_templates.choices', 'choices')
+      .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
+      .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
+      .select([
+        'habit_packs.id',
+        'habit_packs.pack_name',
+        'habit_packs.user_id',
+        'habit_packs.creator_name',
+        'habit_packs.pack_type',
+        'habit_packs.description',
+        'habit_packs.description_plain_text',
+        'habit_packs.description_video_url',
+        'habit_packs.welcome_message',
+        'habit_packs.welcome_message_plain_text',
+        'habit_packs.welcome_video_url',
+        'habit_packs.marketplace_approval_status',
+        'habit_packs.marketplace_request',
+        'habit_packs.featured_for_onboarding',
+        'habit_packs.is_featured',
+        'habit_packs.duration',
+        'habit_packs.morning_routine_duration_seconds',
+        'habit_packs.evening_routine_duration_seconds',
+        'habit_packs.breaks_only',
+        'habit_packs.language',
+        'activity_templates.id',
+        'activity_templates.log_quantity',
+        'activity_templates.duration_seconds',
+        'activity_templates.completion_requirements',
+        'activity_templates.log_summary_type',
+        'activity_templates.activity_type',
+        'activity_templates.activity_data',
+        'activity_templates.parent_id',
+        'activity_templates.pack_id',
+        'activity_templates.linked_activity_template_id',
+        'activity_templates.check_list',
+        'activity_templates.impact_category',
+        'choices.id',
+        'choices.log_quantity',
+        'choices.duration_seconds',
+        'choices.completion_requirements',
+        'choices.log_summary_type',
+        'choices.activity_type',
+        'choices.activity_data',
+        'choices.linked_activity_template_id',
+        'log_quantity_questions.id',
+        'log_quantity_questions.question',
+        'log_quantity_questions.min_value',
+        'log_quantity_questions.max_value',
+        'log_quantity_questions.min_value_description',
+        'log_quantity_questions.max_value_description',
+        'log_quantity_questions.log_summary_type',
+        'log_quantity_questions.linked_question_id',
+        'choices_log_quantity_questions.id',
+        'choices_log_quantity_questions.question',
+        'choices_log_quantity_questions.min_value',
+        'choices_log_quantity_questions.max_value',
+        'choices_log_quantity_questions.min_value_description',
+        'choices_log_quantity_questions.max_value_description',
+        'choices_log_quantity_questions.log_summary_type',
+        'choices_log_quantity_questions.linked_question_id',
+      ])
+      .orderBy('habit_packs.pack_name', 'ASC')
+      .where('habit_packs.user_id = :user_id', { user_id: userId });
+
+    const fetchedPacks = await query.getMany();
+    return fetchedPacks;
+  }
 }

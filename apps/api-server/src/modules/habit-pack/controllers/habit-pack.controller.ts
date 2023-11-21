@@ -35,6 +35,12 @@ export class HabitPackController {
     return this.habitPackService.getMultipleHabitPacks(getPacksQuery);
   }
 
+  @Get('user')
+  @UseGuards(IsAuth)
+  getUserHabitPacks(@AuthContext() { user }: Passport): Promise<HabitPack[]> {
+    return this.habitPackService.getUserHabitPacks(user.id);
+  }
+
   @Put()
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')

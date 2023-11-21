@@ -242,6 +242,15 @@ export class FocusModeTemplatesService {
     }
   }
 
+  async getUserFocusModeTemplates(userId: string): Promise<FocusModeTemplate[]> {
+    try {
+      return await this.focusModeTemplateRepository.fetchUserTemplates(userId);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
   async getUserInstalledTemplates(user_id: string): Promise<FocusModeTemplate[]> {
     try {
       this.sentryService.instance().addBreadcrumb({

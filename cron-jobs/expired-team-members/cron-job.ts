@@ -8,12 +8,12 @@ import { Team } from '../../apps/api-server/src/modules/team/entities/team.entit
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
-async function getMembersWhoseTrialExpiresToday() {
-  const startOfCurrentDay = DateTime.local().startOf('day').toJSDate();
+async function getMembersWhoseTrialExpired() {
+  const sevenDaysAgo = DateTime.local().minus({ days: 7 }).toJSDate();
   const endOfCurrentDay = DateTime.local().endOf('day').toJSDate();
   // get users whose team membership expires on current date
   const expiredMembers = await CronJobDataSource.manager.find(TeamToMember, {
-    where: { member_expiry_date: Between(startOfCurrentDay, endOfCurrentDay) },
+    where: { member_expiry_date: Between(sevenDaysAgo, endOfCurrentDay) },
   });
   return expiredMembers;
 }
@@ -81,7 +81,7 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
 (async () => {
   try {
     await CronJobDataSource.initialize();
-    const expiringMembers = await getMembersWhoseTrialExpiresToday();
+    const expiringMembers = await getMembersWhoseTrialExpired();
     for await (const member of expiringMembers) {
       await disassociateMemberFromTeam(member);
     }

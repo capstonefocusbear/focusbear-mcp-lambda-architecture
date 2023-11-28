@@ -7,9 +7,10 @@ import { PlatformIntegrationRepository } from '../platform-integrations/reposito
 import { GoogleCalendarService } from './services/google-calendar.service';
 import { MicrosoftCalendarService } from './services/microsoft-calendar.service';
 import { NotificationRepository } from '../notification/repository/notification.repository';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [],
+  imports: [NotificationModule],
   controllers: [CalendarController],
   providers: [
     NotificationRepository,

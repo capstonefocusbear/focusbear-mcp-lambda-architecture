@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { MoreThan } from 'typeorm';
+import { DateTime } from 'luxon';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { Notification } from '../../notification/entities/notification.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { MicrosoftCalendarEventDto } from '../dto/microsoft-calendar-event.dto';
+import { NotificationRepository } from '../../notification/repository/notification.repository';
+import { NotificationService } from '../../notification/services/notification.service';
 
 const notificationAdapter = ({
   event,
@@ -51,11 +55,38 @@ export class MicrosoftCalendarService {
   constructor(
     protected readonly configService: ConfigService,
     private readonly platformIntegrationService: PlatformIntegrationsService,
+    private readonly notificationRepository: NotificationRepository,
+    private readonly notificationService: NotificationService,
   ) {
     this.tenantId = configService.get('MICROSOFT_TENANT_ID');
     this.clientId = configService.get('MICROSOFT_CLIENT_ID');
     this.clientSecret = configService.get('MICROSOFT_CLIENT_SECRET');
     this.callbackUrl = configService.get('MICROSOFT_CALLBACK_URL');
+  }
+
+  async updateEvents(userId) {
+    const events = await this.getEvents(userId);
+    const eventIds = await events.map((calEvent) => {
+      return calEvent.external_id;
+    });
+    const eventsInDb = await this.notificationRepository.orm.find({
+      where: { user_id: userId, event_begins: MoreThan(DateTime.local().toJSDate()) },
+    });
+    const eventIdsInDb = await eventsInDb.map((eventInDb) => {
+      return eventInDb.external_id;
+    });
+
+    await eventIdsInDb.map((eventId) => {
+      if (!eventIds.includes(eventId)) this.notificationService.deleteCalendarEvent(eventId);
+      return true;
+    });
+
+    await events.map((calendarEvent) => {
+      this.notificationService.updateOrCreateCalendarEvent(calendarEvent, userId);
+      return true;
+    });
+
+    return events;
   }
 
   async getEvents(userId) {

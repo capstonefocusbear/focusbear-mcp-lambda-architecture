@@ -310,7 +310,10 @@ export class TeamManagementService {
   }
 
   async removeMemberAsAdmin(adminId: string, memberId: string, teamId: string) {
-    await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+    const { team } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+    if (memberId === team.owner_id) {
+      throw new BadRequestException(`Can't remove owner from team with ID: ${teamId}. Owner ID: ${team.owner_id}`);
+    }
     const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: memberId } });
     const isAdminOfMultipleTeams = teamsAdminOf.length > 1;
     if (isAdminOfMultipleTeams) {

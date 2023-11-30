@@ -43,13 +43,13 @@ export class GoogleAuthService implements IIntegrationAuthService {
       scope: scopes,
       include_granted_scopes: true,
       response_type: 'code',
+      prompt: 'login',
     });
 
     return { redirect_url: authorizationUrl };
   }
 
-  async saveUserData(userId: string, data: any): Promise<any> {
-    const { accountId } = data;
+  async saveUserData(userId: string, data: any, accountId: string): Promise<any> {
     const existingUser = await this.getUser(userId);
     if (!existingUser) {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
@@ -70,7 +70,9 @@ export class GoogleAuthService implements IIntegrationAuthService {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }
 
-      await this.saveUserData(userId, data);
+      const { email } = await this.oauth2Client.getTokenInfo(data.access_token);
+
+      await this.saveUserData(userId, data, email);
     } catch (error) {
       console.error(error);
     }

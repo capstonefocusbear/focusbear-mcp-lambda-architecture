@@ -391,7 +391,7 @@ export class TeamManagementService {
     const membersData = [];
     const adminData = [];
     for await (const member of members) {
-      const [{ email }, { first_name, last_name, member_expiry_date }] = await Promise.all([
+      const [{ email }, { first_name, last_name, member_expiry_date, created_at }] = await Promise.all([
         this.auth0ManagementService.getAuth0User(member.auth0_id),
         this.teamToMemberRepository.orm.findOne({
           where: { team_id: teamId, member_id: member.id },
@@ -404,16 +404,24 @@ export class TeamManagementService {
         first_name,
         last_name,
         member_expiry_date,
+        created_at,
       });
     }
     for await (const adminMember of admins) {
-      const [{ email }, { first_name, last_name }] = await Promise.all([
+      const [{ email }, { first_name, last_name, created_at }] = await Promise.all([
         this.auth0ManagementService.getAuth0User(adminMember.auth0_id),
         this.teamToAdminRepository.orm.findOne({
           where: { team_id: teamId, admin_id: adminMember.id },
         }),
       ]);
-      adminData.push({ id: adminMember.id, email, last_active_date: adminMember.updated_at, first_name, last_name });
+      adminData.push({
+        id: adminMember.id,
+        email,
+        last_active_date: adminMember.updated_at,
+        first_name,
+        last_name,
+        created_at,
+      });
     }
     return { members: membersData, admin: adminData };
   }

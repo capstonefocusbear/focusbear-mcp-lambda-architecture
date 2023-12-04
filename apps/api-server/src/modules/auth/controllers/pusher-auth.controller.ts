@@ -21,7 +21,7 @@ export class PusherAuthController {
 
   @Post('user-auth')
   pusherAuth(@Body() { socket_id }: PusherAuthDto, @AuthContext() { user }: Passport): AuthResponse {
-    return this.pusher.authenticate(socket_id, `private-${user.id}`, { user_id: user.id });
+    return this.pusher.authenticateUser(socket_id, { id: user.id });
   }
 
   @Get('beams-auth')

@@ -110,7 +110,7 @@ export class HabitPackManagerService {
       logQuantityQuestionsNewIdsMap,
     });
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, true);
+    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, false, true);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 

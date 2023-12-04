@@ -87,7 +87,7 @@ export class FocusModeManagerService {
       await this.userRepository.orm.update(user_id, userDataToUpdate);
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
+      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -199,7 +199,7 @@ export class FocusModeManagerService {
       });
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
+      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', completedMode);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
         user_id,

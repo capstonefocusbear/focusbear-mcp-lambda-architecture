@@ -9,6 +9,8 @@ import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { R2Module } from '@app/r2/r2.module';
 import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { BrevoModule } from '@app/brevo/brevo.module';
+import { IPusherOptions, PusherModule } from '@app/pusher';
+import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
@@ -110,6 +112,16 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
+    }),
+    PusherModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IPusherOptions => configService.get('pusher'),
+    }),
+    PusherBeamsModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
     ActivityModule,
     forwardRef(() => AuthModule),

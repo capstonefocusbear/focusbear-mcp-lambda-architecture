@@ -189,7 +189,7 @@ export class UserService {
       const defaultSettings = settingsConfig.generateDefault();
       await Promise.all([
         this.revenueCatService.grantTrialAccess(id),
-        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
+        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, true),
       ]);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

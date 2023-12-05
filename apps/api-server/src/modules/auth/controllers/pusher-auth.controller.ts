@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { AuthResponse } from 'pusher';
 import { PusherService } from '@app/pusher';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../domain/passport.model';
@@ -20,8 +19,8 @@ export class PusherAuthController {
   ) {}
 
   @Post('user-auth')
-  pusherAuth(@Body() { socket_id }: PusherAuthDto, @AuthContext() { user }: Passport): AuthResponse {
-    return this.pusher.authenticateUser(socket_id, { id: user.id });
+  pusherAuth(@Body() { socket_id }: PusherAuthDto, @AuthContext() { user }: Passport) {
+    return this.pusher.generateAuthKey(user.id, socket_id);
   }
 
   @Get('beams-auth')

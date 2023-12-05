@@ -168,7 +168,7 @@ describe('FocusModeManagerService', () => {
 
       expect(PusherServiceMock.trigger).toBeCalledWith(
         `private-${user_id}`,
-        'focus_mode-started',
+        'focus-mode-started',
         CompletedFocusBlockDummy,
       );
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
@@ -361,7 +361,7 @@ describe('FocusModeManagerService', () => {
 
       expect(PusherServiceMock.trigger).toBeCalledWith(
         `private-${user_id}`,
-        'focus_mode-finished',
+        'focus-mode-finished',
         CompletedFocusBlockDummy,
       );
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);

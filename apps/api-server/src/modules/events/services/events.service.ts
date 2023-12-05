@@ -105,7 +105,7 @@ export class EventsService {
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
       text: JSON.stringify(event),
-      subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK}`,
+      subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
     });
   }
 

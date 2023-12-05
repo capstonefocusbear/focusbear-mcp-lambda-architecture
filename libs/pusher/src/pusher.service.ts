@@ -13,8 +13,7 @@ export class PusherService extends Pusher {
   generateAuthKey(userId: string, socketId: string) {
     const pusherKey = this.options.key;
     const pusherSecret = this.options.secret;
-    const userData = JSON.stringify({ id: userId });
-    const signature = createHmac('sha256', pusherSecret).update(`${socketId}::user::${userData}`).digest('hex');
-    return { auth: `${pusherKey}:${signature}`, user_data: userData };
+    const signature = createHmac('sha256', pusherSecret).update(`${socketId}:private-${userId}`).digest('hex');
+    return { auth: `${pusherKey}:${signature}` };
   }
 }

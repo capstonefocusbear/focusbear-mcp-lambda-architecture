@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
@@ -47,5 +48,19 @@ export class PlatformIntegrationsService {
       asana: platforms.includes(IntegrationPlatforms.ASANA),
       monday: platforms.includes(IntegrationPlatforms.MONDAY),
     };
+  }
+
+  async getPlatformAccounts(platform: IntegrationPlatforms, userId: string) {
+    const data = await this.platformIntegrationsRepository.orm.find({
+      where: { platform, user_id: userId },
+    });
+    const accountInfos = await data.map((account) => {
+      return {
+        email: account.external_user_id,
+        expired: account.data.expiry_date < DateTime.local().toISO() + 1000,
+        date: account.data.expiry_date,
+      };
+    });
+    return accountInfos;
   }
 }

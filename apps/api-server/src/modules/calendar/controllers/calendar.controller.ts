@@ -19,4 +19,11 @@ export class CalendarController {
     const events = await service.getEvents(user.id);
     return events;
   }
+
+  @Get(':platform/accounts')
+  async getAccounts(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
+    const service = this.calendarServiceFactory.get(platform);
+    const accounts = await service.getAccounts(platform, user.id);
+    return accounts;
+  }
 }

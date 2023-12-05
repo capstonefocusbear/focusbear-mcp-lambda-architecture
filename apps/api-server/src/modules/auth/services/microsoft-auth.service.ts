@@ -18,8 +18,6 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
 
   protected readonly tokenURL;
 
-  verfier: string;
-
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,

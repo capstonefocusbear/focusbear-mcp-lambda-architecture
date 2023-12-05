@@ -16,7 +16,8 @@ export const EMAIL_TEMPLATE_IDS = {
 export const A_TEAM = 'a team';
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
-  APP_UNINSTALL_FEEDBACK: 'App Uninstall Feedback',
+  APP_QUIT_FEEDBACK: 'App Quit Feedback',
+  USER_FEEDBACK_AND_APP_LOGS: 'User Feedback Add App Logs',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;

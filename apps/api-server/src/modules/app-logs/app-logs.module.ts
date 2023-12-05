@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { R2Module } from '@app/r2';
 import { Auth0Module } from '@app/auth0';
+import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { AppLogsController } from './controllers/app-logs.controller';
 import { AppLogsService } from './services/app-logs.service';
 import { UserModule } from '../user/user.module';
@@ -19,6 +20,11 @@ import { UserModule } from '../user/user.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('auth0'),
+    }),
+    SendGridModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     UserModule,
   ],

@@ -38,6 +38,7 @@ import { ActivitySequence } from '../../../activity/entities/activity-sequence.e
 import { FunctionCallParametersDto } from '../../../ai/dto/function-call-parameters.dto';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
+import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 
 @Injectable()
 export class UserSettingsService {
@@ -102,7 +103,7 @@ export class UserSettingsService {
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
     should_update_has_edited_settings: boolean,
-    isOnboarding = false,
+    { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ): Promise<UpdateUserSettingsDto> {
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
@@ -142,7 +143,7 @@ export class UserSettingsService {
         shutdown_time,
         user.timezone,
       );
-      const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !isOnboarding);
+      const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const updatedUser = new User({
         startup_time,
         shutdown_time,
@@ -190,7 +191,7 @@ export class UserSettingsService {
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          this.sendSettingsUpdatedBroadcast(user_id, user.language),
+          this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id),
         ]);
       }
       return await this.getSettings({ user_id });
@@ -201,8 +202,8 @@ export class UserSettingsService {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async sendSettingsUpdatedBroadcast(userId: string, language: string) {
-    await this.pusher.trigger(`private-${userId}`, 'settings-updated', {});
+  async sendSettingsUpdatedBroadcast(userId: string, language: string, deviceId: string) {
+    await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
     // NOTE: comment out until implemented in mobile app
     // const title = this.i18nService.t('common.settings_updated', { lang: language });
     // const body = this.i18nService.t('common.settings_updated_message', {
@@ -263,7 +264,7 @@ export class UserSettingsService {
     newSettings.morning_activities = userSettings.morning_activities.filter((activity) => !activity.is_default);
     newSettings.break_activities = userSettings.break_activities.filter((activity) => !activity.is_default);
     newSettings.evening_activities = userSettings.evening_activities.filter((activity) => !activity.is_default);
-    await this.updateSettings({ user_id }, newSettings, false);
+    await this.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });
   }
 
   async updateUserTimezoneAndLanguage(
@@ -495,6 +496,6 @@ export class UserSettingsService {
       ...userSettings,
       [`${routineToAddTo}_activities`]: [...userSettings[`${routineToAddTo}_activities`], activity],
     };
-    await this.updateSettings({ user_id: userId }, updatedSettings, false);
+    await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
 }

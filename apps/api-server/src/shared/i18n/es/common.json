@@ -10,5 +10,7 @@
   "focus_mode_started": "¡Modo de enfoque iniciado!",
   "focus_mode_completed": "¡Modo de enfoque completado!",
   "focus_mode_started_message": "{focus_mode_name} ha iniciado.",
-  "focus_mode_completed_message": "¡Felicidades por completar {focus_mode_name}!"
+  "focus_mode_completed_message": "¡Felicidades por completar {focus_mode_name}!",
+  "settings_updated": "NEEDSTRANSLATION Settings updated!",
+  "settings_updated_message": "NEEDSTRANSLATION Your settings have been saved."
 }

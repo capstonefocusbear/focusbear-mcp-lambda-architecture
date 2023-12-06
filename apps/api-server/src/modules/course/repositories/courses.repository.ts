@@ -62,14 +62,11 @@ export class CoursesRepository {
     await this.ormCourse
       .createQueryBuilder()
       .insert()
-      .into(User)
+      .into(Course)
       .values({
         name,
         description,
         author_id,
-      })
-      .orUpdate(['name', 'description', 'author_id'], ['name', 'description'], {
-        skipUpdateIfNoValuesChanged: true,
       })
       .execute();
   }
@@ -84,9 +81,6 @@ export class CoursesRepository {
         course_id,
         user_id,
         review,
-      })
-      .orUpdate(['course_id', 'user_id', 'rating'], ['review'], {
-        skipUpdateIfNoValuesChanged: true,
       })
       .execute();
   }

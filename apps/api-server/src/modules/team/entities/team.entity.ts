@@ -3,6 +3,7 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { TeamToMember } from './team-to-member.entity';
 import { TeamToAdmin } from './team-to-admin.entity';
+import { PaymentType } from '../domain/payment-type.enum';
 
 @Entity('teams')
 export class Team extends BaseEntity {
@@ -67,6 +68,7 @@ export class Team extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: true,
+    default: PaymentType.STRIPE,
   })
   payment_type?: string;
 

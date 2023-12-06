@@ -150,7 +150,7 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: if team payment type is OFFLINE and maximum capacity has been reached, error should be thrown to avoid user form being added to team', async () => {
+    it('negative: if team payment type is OFFLINE and maximum capacity has been reached, error should be thrown to avoid user from being added to team', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({

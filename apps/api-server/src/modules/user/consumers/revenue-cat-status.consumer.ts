@@ -243,7 +243,8 @@ export class RevenueCatStatusConsumer {
   getEffectiveDate(subscriptionInfo: any, userActiveSubscription: string): number {
     return subscriptionInfo.hasActiveSubscription
       ? Math.round(
-          new Date(subscriptionInfo.expirations[userActiveSubscription].purchase_date).getTime() / ONE_SECOND_AS_MILLIS,
+          new Date(subscriptionInfo.expirations[userActiveSubscription]?.purchase_date).getTime() /
+            ONE_SECOND_AS_MILLIS,
         )
       : Math.round(new Date().getTime() / ONE_SECOND_AS_MILLIS);
   }

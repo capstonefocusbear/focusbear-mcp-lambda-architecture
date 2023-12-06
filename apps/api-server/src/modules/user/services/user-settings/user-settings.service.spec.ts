@@ -169,7 +169,7 @@ describe('UserSettingsService', () => {
       let exception: any;
 
       try {
-        await userSettingsService.updateSettings({ user_id }, userSettingsDummy, false);
+        await userSettingsService.updateSettings({ user_id }, userSettingsDummy, false, { is_onboarding: false });
       } catch (error) {
         exception = error;
       }
@@ -201,7 +201,9 @@ describe('UserSettingsService', () => {
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
 
-      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true, {
+        is_onboarding: false,
+      });
 
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
         {
@@ -233,6 +235,7 @@ describe('UserSettingsService', () => {
           sleep_time: '21:00',
         },
         true,
+        { is_onboarding: true },
       );
 
       expect(ActivityParserServiceMock.deserialize).toBeCalledWith(

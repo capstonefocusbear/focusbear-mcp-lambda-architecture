@@ -16,6 +16,7 @@ import { randomUUID } from 'crypto';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
 import { I18nService } from 'nestjs-i18n';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
@@ -199,20 +200,22 @@ export class UserSettingsService {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async sendSettingsUpdatedBroadcast(userId: string, language: string) {
     await this.pusher.trigger(`private-${userId}`, 'settings-updated', {});
-    const title = this.i18nService.t('common.settings_updated', { lang: language });
-    const body = this.i18nService.t('common.settings_updated_message', {
-      lang: language,
-    });
-    const pushData = { event: NotificationEvents.UPDATED_SETTINGS };
-    const publishRequest = this.pusherBeams.createBeamsPublishRequest({
-      title,
-      body,
-      should_send_only_data_for_android: true,
-      pushData,
-    });
-    await this.pusherBeams.publishToUsers([userId], publishRequest);
+    // NOTE: comment out until implemented in mobile app
+    // const title = this.i18nService.t('common.settings_updated', { lang: language });
+    // const body = this.i18nService.t('common.settings_updated_message', {
+    //   lang: language,
+    // });
+    // const pushData = { event: NotificationEvents.UPDATED_SETTINGS };
+    // const publishRequest = this.pusherBeams.createBeamsPublishRequest({
+    //   title,
+    //   body,
+    //   should_send_only_data_for_android: true,
+    //   pushData,
+    // });
+    // await this.pusherBeams.publishToUsers([userId], publishRequest);
   }
 
   calculateRelaxActivityDuration(sleepTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {

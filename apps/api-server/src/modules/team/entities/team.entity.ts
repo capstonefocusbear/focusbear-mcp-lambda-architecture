@@ -26,6 +26,13 @@ export class Team extends BaseEntity {
   team_size?: number;
 
   @Column({
+    type: 'integer',
+    nullable: true,
+    default: 1,
+  })
+  team_size_limit?: number;
+
+  @Column({
     type: 'boolean',
     nullable: false,
     default: true,
@@ -56,6 +63,12 @@ export class Team extends BaseEntity {
     nullable: true,
   })
   name?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  payment_type?: string;
 
   @ManyToOne(() => User, (user) => user.owned_teams, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })

@@ -29,6 +29,7 @@ import { FocusModeTag } from '../../src/modules/focus-mode/entities/focus-mode-t
 import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { IntegrationPlatforms } from '../../src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../src/modules/to-do/entities/synced-project.entity';
+import { PaymentType } from '../../src/modules/team/domain/payment-type.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1125,7 +1126,9 @@ export const TeamWithMembersDummy = new Team({
   owner: userDummy,
   is_active: true,
   team_size: 5,
+  team_size_limit: 0,
   name: 'Team Name',
+  payment_type: PaymentType.STRIPE,
   stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });

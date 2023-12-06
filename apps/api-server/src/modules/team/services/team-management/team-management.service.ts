@@ -21,6 +21,7 @@ import { TeamToAdminRepository } from '../../repositories/team-to-admin.reposito
 import { TeamToMember } from '../../entities/team-to-member.entity';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
+import { PaymentType } from '../../domain/payment-type.enum';
 
 @Injectable()
 export class TeamManagementService {
@@ -56,13 +57,18 @@ export class TeamManagementService {
           adminId,
         },
       });
-      const [user, { members }] = await Promise.all([
+      const [user, { members, team }] = await Promise.all([
         this.userRepository.orm.findOne({
           where: { id: memberId },
         }),
         this.teamRepository.findActiveTeamWithMembers(teamId, adminId),
       ]);
-      this.validateTeamMembership(user, members, { member_id: memberId, owner_id: adminId, teamId });
+      this.validateTeamMembership(user, members, {
+        member_id: memberId,
+        owner_id: adminId,
+        teamId,
+        team,
+      });
       // Save user as part of team
       const connectedMemberRecord = new TeamToMember({
         member_id: memberId,
@@ -82,7 +88,7 @@ export class TeamManagementService {
     }
   }
 
-  private validateTeamMembership(user: User, members: User[], { member_id, owner_id, teamId }): void | never {
+  private validateTeamMembership(user: User, members: User[], { member_id, owner_id, teamId, team }): void | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -97,6 +103,12 @@ export class TeamManagementService {
     const isUserAlreadyInTeam = teamMemberIds.includes(member_id);
     if (isUserAlreadyInTeam) {
       throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
+    }
+    const { team_size, team_size_limit, payment_type } = team;
+    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+      throw new BadRequestException(
+        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
+      );
     }
   }
 
@@ -229,6 +241,13 @@ export class TeamManagementService {
         is_admin,
         is_member,
       });
+      // check whether team has available space if offline payment type
+      const { team_size_limit, team_size, payment_type } = team;
+      if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+        throw new BadRequestException(
+          `Unable to invite more members to team with ID: ${team.id}, maximum capacity reached!`,
+        );
+      }
       const secretKey = this.configService.get('tokens.secret');
       const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
       const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
@@ -344,6 +363,7 @@ export class TeamManagementService {
       owner: user,
       expires_date: expiresDate,
       stripe_subscription_id: subscriptionId,
+      payment_type: PaymentType.STRIPE,
     });
     const [savedTeam] = await Promise.all([
       this.teamRepository.orm.save(team),
@@ -379,10 +399,10 @@ export class TeamManagementService {
     if (!subId || !subItemId) {
       throw new Error(`Missing stripe data for team with ID: ${teamId}`);
     }
-    await Promise.all([
-      this.stripeService.updateSubscription(subId, subItemId, teamSize),
-      this.teamRepository.update(teamId, { team_size: teamSize }),
-    ]);
+    await this.teamRepository.update(teamId, { team_size: teamSize });
+    if (team.payment_type === PaymentType.STRIPE) {
+      await this.stripeService.updateSubscription(subId, subItemId, teamSize);
+    }
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {

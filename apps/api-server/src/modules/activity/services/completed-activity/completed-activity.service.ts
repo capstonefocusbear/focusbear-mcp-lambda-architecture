@@ -568,6 +568,13 @@ export class CompletedActivityService {
         false,
         completingSequenceLog,
       );
+      await this.broadcastCompletionEvent(
+        user_id,
+        createdItem.completed_activity_log.id,
+        { ...skippedActivity },
+        activity,
+        user.language,
+      );
       return createdItem;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -1003,7 +1010,7 @@ export class CompletedActivityService {
   private async broadcastCompletionEvent(
     user_id: string,
     completed_activity_id: string,
-    completedActivity: CreateCompletedActivityDto,
+    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto,
     activity: Activity,
     language: string,
   ): Promise<void> {

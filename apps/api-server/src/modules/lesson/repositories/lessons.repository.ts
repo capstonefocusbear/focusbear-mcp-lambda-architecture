@@ -52,9 +52,6 @@ export class LessonsRepository {
           course_id,
         })),
       ])
-      .orUpdate(['title', 'content', 'url', 'course_id'], ['title', 'content', 'url'], {
-        skipUpdateIfNoValuesChanged: true,
-      })
       .execute();
   }
 
@@ -69,9 +66,6 @@ export class LessonsRepository {
         rating,
         review,
       })
-      .orUpdate(['rating', 'lesson_id', 'course_id'], ['review'], {
-        skipUpdateIfNoValuesChanged: true,
-      })
       .execute();
   }
 
@@ -85,13 +79,10 @@ export class LessonsRepository {
         course_id,
         user_id,
       })
-      .orUpdate(['user_id', 'lesson_id', 'course_id'], [], {
-        skipUpdateIfNoValuesChanged: true,
-      })
       .execute();
   }
 
-  async updateCourseLessons({ lesson_id, course_id, title, content, url }: UpdateLessonDto) {
+  async updateCourseLessons({ course_id, lesson_id, title, content, url }: UpdateLessonDto) {
     await this.ormLesson.update(
       {
         id: lesson_id,

@@ -36,7 +36,7 @@ export class LessonsController {
     return this.lessonsService.getLessonRatings(course_id, lesson_id);
   }
 
-  @Post('/rating')
+  @Post('rating')
   createLessonRating(@Body() createLessonRatingDto: CreateLessonRatingDto, user: UserAuthContext) {
     this.lessonsService.createLessonRating(createLessonRatingDto, user.id);
   }

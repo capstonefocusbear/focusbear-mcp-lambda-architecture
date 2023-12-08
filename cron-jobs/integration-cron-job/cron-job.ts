@@ -101,9 +101,7 @@ async function getPortals(userId: string) {
 async function getTasksOwnedByUser(userId: string, portalId: string) {
   const zohoData = await getZohoData(userId);
   if (!zohoData) return;
-  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/mytasks/?owner=${
-    zohoData.accountId
-  }`;
+  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/mytasks/?owner=${zohoData.accountId}`;
   const headers = { Authorization: `Bearer ${zohoData.access_token}` };
   const response = await axios.get(url, {
     headers,

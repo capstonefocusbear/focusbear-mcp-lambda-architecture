@@ -15,7 +15,7 @@ export abstract class BaseCalendarService implements ICalendarService {
 
   async updateEvents(userId) {
     const events = await this.getEvents(userId);
-    const eventIds = await events.map((calEvent) => {
+    const eventIds = events.map((calEvent) => {
       return calEvent.external_id;
     });
     const eventsInDb = await this.notificationRepository.orm.find({

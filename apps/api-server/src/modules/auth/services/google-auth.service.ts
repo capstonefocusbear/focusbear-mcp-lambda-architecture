@@ -56,7 +56,6 @@ export class GoogleAuthService implements IIntegrationAuthService {
     }
 
     await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, data, accountId);
-    return existingUser;
   }
 
   async getUser(userId: string): Promise<User> {
@@ -70,9 +69,9 @@ export class GoogleAuthService implements IIntegrationAuthService {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }
 
-      const { email } = await this.oauth2Client.getTokenInfo(data.access_token);
+      const { email: accountId } = await this.oauth2Client.getTokenInfo(data.access_token);
 
-      await this.saveUserData(userId, data, email);
+      await this.saveUserData(userId, data, accountId);
     } catch (error) {
       console.error(error);
     }

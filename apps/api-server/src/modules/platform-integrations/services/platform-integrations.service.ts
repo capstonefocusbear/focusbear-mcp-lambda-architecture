@@ -8,15 +8,22 @@ import { PlatformIntegration } from '../entities/platform-integration.entity';
 export class PlatformIntegrationsService {
   constructor(private readonly platformIntegrationsRepository: PlatformIntegrationRepository) {}
 
-  async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string) {
-    const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+  async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
+    let platformRecord;
+    if (platform === IntegrationPlatforms.GOOGLE) {
+      platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+        where: { user_id: userId, platform, external_user_id: userExternalId },
+      });
+      return platformRecord;
+    }
+    platformRecord = await this.platformIntegrationsRepository.orm.findOne({
       where: { user_id: userId, platform },
     });
     return platformRecord;
   }
 
   async updatePlatformIntegration(userId: string, platform: IntegrationPlatforms, data: any, userExternalId?: string) {
-    const existingRecord = await this.getPlatformIntegrationData(platform, userId);
+    const existingRecord = await this.getPlatformIntegrationData(platform, userId, userExternalId);
     if (existingRecord) {
       const platformIntegration = new PlatformIntegration({
         ...existingRecord,
@@ -51,15 +58,16 @@ export class PlatformIntegrationsService {
   }
 
   async getPlatformAccounts(platform: IntegrationPlatforms, userId: string) {
-    const data = await this.platformIntegrationsRepository.orm.find({
+    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
       where: { platform, user_id: userId },
     });
-    const accountInfos = await data.map((account) => {
-      return {
+    const accountInfos = await integartionRecords.map((account) => {
+      const data = {
         email: account.external_user_id,
-        expired: account.data.expiry_date < DateTime.local().toISO() + 1000,
+        expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
         date: account.data.expiry_date,
       };
+      return JSON.stringify(data);
     });
     return accountInfos;
   }

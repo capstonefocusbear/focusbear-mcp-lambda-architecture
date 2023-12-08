@@ -7,7 +7,7 @@ import { MicrosoftCalendarService } from './microsoft-calendar.service';
 export class CalendarServiceFactory {
   constructor(
     private readonly googleCalendarService: GoogleCalendarService,
-    private readonly microsoftCalendarervice: MicrosoftCalendarService,
+    private readonly microsoftCalendarService: MicrosoftCalendarService,
   ) {}
 
   get(platform: IntegrationPlatforms) {
@@ -15,7 +15,7 @@ export class CalendarServiceFactory {
       case IntegrationPlatforms.GOOGLE:
         return this.googleCalendarService;
       case IntegrationPlatforms.MICROSOFT:
-        return this.microsoftCalendarervice;
+        return this.microsoftCalendarService;
       default:
         throw Error(`${platform} Platform Service Not Found`);
     }

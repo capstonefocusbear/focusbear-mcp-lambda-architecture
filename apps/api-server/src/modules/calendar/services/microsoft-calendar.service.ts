@@ -66,10 +66,13 @@ export class MicrosoftCalendarService extends BaseCalendarService {
 
   async getEvents(userId) {
     const platform = IntegrationPlatforms.MICROSOFT;
-    const record = await this.platformIntegrationService.getPlatformIntegrationData(platform, userId);
+    const microsoftIntegrationRecord = await this.platformIntegrationService.getPlatformIntegrationData(
+      platform,
+      userId,
+    );
 
     const headers = {
-      Authorization: `Bearer ${record.data.access_token}`,
+      Authorization: `Bearer ${microsoftIntegrationRecord.data.access_token}`,
     };
 
     const { data: calendarData } = await axios.get(`${this.baseUrl}/me/calendars`, { headers });

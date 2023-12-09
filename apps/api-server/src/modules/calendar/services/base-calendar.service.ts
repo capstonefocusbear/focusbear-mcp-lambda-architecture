@@ -25,7 +25,7 @@ export abstract class BaseCalendarService implements ICalendarService {
       return eventInDb.external_id;
     });
 
-    await eventIdsInDb.map((eventId) => {
+    eventIdsInDb.map((eventId) => {
       if (!eventIds.includes(eventId)) this.notificationService.deleteCalendarEvent(eventId);
       return true;
     });

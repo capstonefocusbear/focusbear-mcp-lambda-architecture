@@ -30,7 +30,7 @@ export abstract class BaseCalendarService implements ICalendarService {
       return true;
     });
 
-    await events.map((calendarEvent) => {
+    events.map((calendarEvent) => {
       this.notificationService.updateOrCreateCalendarEvent(calendarEvent, userId);
       return true;
     });

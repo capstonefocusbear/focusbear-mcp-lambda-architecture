@@ -2,16 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarDto } from '../dto/calendar.dto';
-import { CalendarKeyword } from '../entities/calendar-keywords.entity';
+import { CalendarExcludedKeyword } from '../entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../entities/calendar.entity';
-import { CalendarKeywordRepository } from '../repositories/calendar-keyword.repository';
+import { CalendarExcluededKeywordRepository } from '../repositories/calendar-excluded-keyword.repository';
 import { CalendarRepository } from '../repositories/calendar.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
 
 @Injectable()
 export class CalendarService {
   constructor(
-    private readonly calendarKeywordRepository: CalendarKeywordRepository,
+    private readonly calendarExcludedKeywordRepository: CalendarExcluededKeywordRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
@@ -29,11 +29,11 @@ export class CalendarService {
           platform_account,
         },
       });
-      const data = await this.calendarRepository.orm.find({
+      const calendarDatas = await this.calendarRepository.orm.find({
         where: { user_id: userId, platform, platform_account },
       });
-      const stringdata = await data.map((e) => JSON.stringify(e));
-      return stringdata;
+      const calendarData_toString = await calendarDatas.map((e) => JSON.stringify(e));
+      return calendarData_toString;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -109,7 +109,7 @@ export class CalendarService {
     }
   }
 
-  async getCalendarKeywords(platform: CalendarPlatforms, userId: string) {
+  async getCalendarExcludedKeywords(platform: CalendarPlatforms, userId: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -117,17 +117,17 @@ export class CalendarService {
         message: 'Getting all calendar keywords',
         data: { userId },
       });
-      const keywords = await this.calendarKeywordRepository.orm.find({
+      const excludedKeywords = await this.calendarExcludedKeywordRepository.orm.find({
         where: { user_id: userId, platform },
       });
-      return keywords;
+      return excludedKeywords;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  async updateCalendarKeyword(userId: string, param: string) {
+  async updateCalendarExcludedKeyword(userId: string, param: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -137,9 +137,9 @@ export class CalendarService {
       });
       const { id, keyword, platform, title, description } = JSON.parse(param);
       if (id) {
-        const existingRecord = await this.calendarKeywordRepository.orm.findOneBy({ id });
+        const existingRecord = await this.calendarExcludedKeywordRepository.orm.findOneBy({ id });
         if (existingRecord) {
-          await this.calendarKeywordRepository.update(id, {
+          await this.calendarExcludedKeywordRepository.update(id, {
             keyword,
             intitle: title,
             indescription: description,
@@ -147,22 +147,22 @@ export class CalendarService {
         }
         return;
       }
-      const calendarKeyword = new CalendarKeyword({
+      const newExcludedCalendarKeyword = new CalendarExcludedKeyword({
         user_id: userId,
         keyword,
         platform,
         intitle: title,
         indescription: description,
       });
-      await this.calendarKeywordRepository.create(calendarKeyword);
-      return calendarKeyword;
+      await this.calendarExcludedKeywordRepository.create(newExcludedCalendarKeyword);
+      return;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
   }
 
-  async deleteCalendarKeyword(user_id: string, id: string) {
+  async deleteCalendarExcludedKeyword(user_id: string, id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -174,9 +174,9 @@ export class CalendarService {
       if (!user) {
         throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       }
-      const exist = await this.calendarKeywordRepository.orm.findOneBy({ id });
-      if (!exist) throw new NotFoundException(`CalendarKeyword with ID: ${id} does not exist`);
-      await this.calendarKeywordRepository.orm.delete({ id });
+      const existingRecord = await this.calendarExcludedKeywordRepository.orm.findOneBy({ id });
+      if (!existingRecord) throw new NotFoundException(`CalendarKeyword with ID: ${id} does not exist`);
+      await this.calendarExcludedKeywordRepository.orm.delete({ id });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

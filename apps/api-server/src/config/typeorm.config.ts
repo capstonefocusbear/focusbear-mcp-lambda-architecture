@@ -36,7 +36,7 @@ import { UserFeedback } from '../modules/user/entities/user-feedback.entity';
 import { TaskTimeLog } from '../modules/to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../modules/platform-integrations/entities/platform-integration.entity';
 import { SyncedProject } from '../modules/to-do/entities/synced-project.entity';
-import { CalendarKeyword } from '../modules/calendar/entities/calendar-keywords.entity';
+import { CalendarExcludedKeyword } from '../modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../modules/calendar/entities/calendar.entity';
 
 export const typeormConfig = registerAs(
@@ -87,7 +87,7 @@ export const typeormConfig = registerAs(
       TaskTimeLog,
       PlatformIntegration,
       SyncedProject,
-      CalendarKeyword,
+      CalendarExcludedKeyword,
       Calendar,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],

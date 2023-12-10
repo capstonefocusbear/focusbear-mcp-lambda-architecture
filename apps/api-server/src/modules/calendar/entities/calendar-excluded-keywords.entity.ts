@@ -3,9 +3,9 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { User } from '../../user/entities/user.entity';
 
-@Entity('calendar_keywords')
-export class CalendarKeyword extends BaseEntity {
-  constructor({ id, ...event }: Partial<CalendarKeyword> = {}, options = { generateId: false }) {
+@Entity('calendar_excluded_keywords')
+export class CalendarExcludedKeyword extends BaseEntity {
+  constructor({ id, ...event }: Partial<CalendarExcludedKeyword> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...event });
   }

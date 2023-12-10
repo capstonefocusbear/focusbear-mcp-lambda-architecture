@@ -32,7 +32,7 @@ import { UserFeedback } from './user-feedback.entity';
 import { TaskTimeLog } from '../../to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
-import { CalendarKeyword } from '../../calendar/entities/calendar-keywords.entity';
+import { CalendarExcludedKeyword } from '../../calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../calendar/entities/calendar.entity';
 
 @Entity('users')
@@ -420,8 +420,8 @@ export class User extends BaseEntity {
   @OneToMany(() => Team, (team) => team.owner)
   owned_teams?: Team[];
 
-  @OneToMany(() => CalendarKeyword, (calendarKeyword) => calendarKeyword.user)
-  calendar_keywords?: CalendarKeyword[];
+  @OneToMany(() => CalendarExcludedKeyword, (calendarKeyword) => calendarKeyword.user)
+  calendar_keywords?: CalendarExcludedKeyword[];
 
   @OneToMany(() => Calendar, (calendar) => calendar.user)
   calendars?: Calendar[];

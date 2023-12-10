@@ -46,23 +46,23 @@ export class CalendarController {
   }
 
   @Get(':platform/keywords')
-  async getCalendarKeywords(@Param('platform') platform: CalendarPlatforms, @AuthContext() { user }: Passport) {
-    const keywords = await this.calendarService.getCalendarKeywords(platform, user.id);
+  async getExcludedCalendarKeywords(@Param('platform') platform: CalendarPlatforms, @AuthContext() { user }: Passport) {
+    const keywords = await this.calendarService.getCalendarExcludedKeywords(platform, user.id);
     return keywords;
   }
 
   @Put('/keyword-create')
   async createKeyword(@Body() { body }: any, @AuthContext() { user }: Passport) {
-    return this.calendarService.updateCalendarKeyword(user.id, JSON.stringify(body));
+    return this.calendarService.updateCalendarExcludedKeyword(user.id, JSON.stringify(body));
   }
 
   @Put('/keyword-update')
-  async updateKeyword(@Body() { body }: any, @AuthContext() { user }: Passport) {
-    return this.calendarService.updateCalendarKeyword(user.id, JSON.stringify(body));
+  async updateExcludedKeyword(@Body() { body }: any, @AuthContext() { user }: Passport) {
+    return this.calendarService.updateCalendarExcludedKeyword(user.id, JSON.stringify(body));
   }
 
   @Delete('/keyword-delete')
-  async deleteKeyword(@Query() { id }: DeleteKeyWordQuery, @AuthContext() { user }: Passport) {
-    return this.calendarService.deleteCalendarKeyword(user.id, id);
+  async deleteExcludedKeyword(@Query() { id }: DeleteKeyWordQuery, @AuthContext() { user }: Passport) {
+    return this.calendarService.deleteCalendarExcludedKeyword(user.id, id);
   }
 }

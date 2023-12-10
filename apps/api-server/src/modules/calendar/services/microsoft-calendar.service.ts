@@ -90,6 +90,7 @@ export class MicrosoftCalendarService extends BaseCalendarService {
     const { data: eventData } = await axios.get(`${this.baseUrl}/me/calendars/${calendarId}/events`, {
       headers,
       params: {
+        // ge means greater than equal
         $filter: `start/dateTime ge '${new Date().toISOString()}'`,
         $orderby: 'start/dateTime',
       },

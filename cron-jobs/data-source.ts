@@ -34,6 +34,8 @@ import { UserFeedback } from '../apps/api-server/src/modules/user/entities/user-
 import { PlatformIntegration } from '../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { TaskTimeLog } from '../apps/api-server/src/modules/to-do/entities/tasks-time-logs.entity';
 import { SyncedProject } from '../apps/api-server/src/modules/to-do/entities/synced-project.entity';
+import { TeamToAdmin } from '../apps/api-server/src/modules/team/entities/team-to-admin.entity';
+import { TeamToMember } from '../apps/api-server/src/modules/team/entities/team-to-member.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -80,6 +82,8 @@ export const CronJobDataSource = new DataSource({
     TaskTimeLog,
     PlatformIntegration,
     SyncedProject,
+    TeamToAdmin,
+    TeamToMember,
   ],
   subscribers: [],
   migrations: [],

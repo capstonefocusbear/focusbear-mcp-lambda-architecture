@@ -137,7 +137,7 @@ describe('toDoService', () => {
         },
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
-      ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, status: 'test-id' }]);
+      ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, external_status: 'test-id' }]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,
@@ -165,6 +165,11 @@ describe('toDoService', () => {
   });
 
   describe('logToDosTime', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      jest.resetAllMocks();
+    });
+
     it('positive: todo statuses should be updated in Focus Bear DB', async () => {
       const toDoId = ToDoDBResponseDummy.id;
       const toDoTimeLogDummy: ToDoTimeLogDto = {
@@ -221,6 +226,26 @@ describe('toDoService', () => {
         toDoTimeLogs: [toDoTimeLogDummy],
         toDos: [ToDoDBResponseDummy],
       });
+    });
+
+    it('positive: if none of the tasks are from an external platform, no tasks should be added to queued job', async () => {
+      const toDoTimeLogDummy: ToDoTimeLogDto = {
+        id: ToDoDBResponseDummy.id,
+        duration: 60,
+        status: ToDoStatus.COMPLETED,
+        is_billable: false,
+      };
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          ...ToDoDBResponseDummy,
+          external_task_id: null,
+          external_task_metadata: null,
+        },
+      ]);
+
+      await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
+
+      expect(QueueMock.add).not.toBeCalled();
     });
   });
 });

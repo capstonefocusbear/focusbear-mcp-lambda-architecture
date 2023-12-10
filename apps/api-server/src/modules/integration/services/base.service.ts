@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
+import { Queue } from 'bull';
 import { MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -15,7 +16,6 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
 import { Project } from '../domain/project.model';
 import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
-import { ToDo } from '../../to-do/entities/to-do.entity';
 import { Task } from '../domain/task.model';
 import { BaseIntegrationAuthService } from '../../auth/services/base-integration.auth.service';
 import { Portal } from '../domain/portal.model';
@@ -34,6 +34,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
     protected readonly platform: IntegrationPlatforms,
+    protected readonly syncTasksQueue: Queue,
   ) {}
 
   async getUser(userId: string): Promise<User> {
@@ -172,17 +173,20 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       projects.forEach((project) => {
         const isSynced = userSyncedProjectsExternalIds.includes(project.id);
         let externalStatuses = [];
+        let haveTasksBeenSynced = false;
         if (isSynced) {
           const linkedSyncedProject = userSyncedProjects.find(
             (syncedProject) => syncedProject.external_project_id === project.id,
           );
           externalStatuses = linkedSyncedProject.available_statuses;
+          haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
         }
         const projectData = {
           name: project.name,
           project_id: project.id,
           portal_id: portal.id,
           is_synced: isSynced,
+          have_tasks_been_synced: haveTasksBeenSynced,
           external_statuses: externalStatuses,
         };
         projectsResponse.push(projectData);
@@ -212,33 +216,37 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     return this.syncedProjectsRepository.orm.save(linkedProject);
   }
 
-  async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string) {
+  async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
     const project = await this.getProject(userId, portalId, projectId);
-    const tasksFromProject = await this.getTasksOwnedByUser(userId, portalId, projectId);
     const [projectAsFocusModeTag] = createNewTags([project], userId, this.platform);
-    const syncedProject = await this.upsertSyncedProjectRecord(userId, portalId, project.id);
-    const tasksAsToDos = tasksFromProject.map((task) => {
-      return new ToDo({
-        user_id: userId,
-        title: task.name,
-        details: task.description ?? '',
-        status: task.status,
-        external_task_id: task.id,
-        external_task_metadata: { platform: this.platform, task_data: task.external_metadata },
-        synced_project_id: syncedProject.id,
-        tags: [...(projectAsFocusModeTag ? [projectAsFocusModeTag] : [])],
-      });
-    });
-    // Save new projects and tasks
-    await this.toDoRepository.orm.save(tasksAsToDos);
+    await this.upsertSyncedProjectRecord(userId, portalId, project.id);
     await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
+    await this.syncTasksQueue.add('sync-project-tasks', {
+      userId,
+      portalId,
+      projectId,
+      projectAsFocusModeTag,
+      platform,
+    });
   }
 
   async getProject(userId: string, portalId: string, projectId: string): Promise<Project> {
-    const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
-    if (!integrationRecord) return;
-    // eslint-disable-next-line @typescript-eslint/return-await
-    return await this.tryGetProject({ integrationRecord, portalId, projectId, userId });
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        return await this.tryGetProject({ integrationRecord, portalId, projectId, userId });
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error(`Failed to get project owned by user with ID: ${userId} after trying to get new access token.`);
   }
 
   protected abstract tryGetProject({ integrationRecord, portalId, projectId, userId }): Promise<Project>;

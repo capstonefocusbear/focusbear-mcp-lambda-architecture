@@ -2,8 +2,9 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
+import { getQueueToken } from '@nestjs/bull';
 import { savedClickUpTaskDummy, clickUpTaskDummy } from '../../../../test/dummies/integration.dummies';
-import { userDummy } from '../../../../test/dummies';
+import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, ClickUpAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
@@ -43,6 +44,10 @@ describe('ClickUpService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('sync-tasks'),
+          useValue: QueueMock,
         },
       ],
     })

@@ -1,5 +1,7 @@
 import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
 import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';
@@ -22,7 +24,7 @@ const taskAdapter = ({ task, projectId, portalId }) => {
     name,
     key: '',
     description: '',
-    status: group.id,
+    external_status: group.id,
     external_metadata: { ...task, project_id: projectId, portal_id: portalId },
   };
 };
@@ -46,6 +48,7 @@ export class MondayService extends BaseIntegrationService {
     protected readonly integrationAuthService: MondayAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
+    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
   ) {
     super(
       userRepository,
@@ -55,6 +58,7 @@ export class MondayService extends BaseIntegrationService {
       platformIntegrationsService,
       syncedProjectsRepository,
       IntegrationPlatforms.MONDAY,
+      syncTasksQueue,
     );
   }
 

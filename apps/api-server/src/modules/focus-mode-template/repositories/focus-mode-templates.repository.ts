@@ -45,4 +45,14 @@ export class FocusModeTemplatesRepository extends BaseRepository<FocusModeTempla
     const fetchedTemplates = await query.getMany();
     return fetchedTemplates;
   }
+
+  async fetchUserTemplates(userId: string): Promise<FocusModeTemplate[]> {
+    const query = this.orm
+      .createQueryBuilder('focus_mode_templates')
+      .leftJoinAndSelect('focus_mode_templates.tags', 'tags')
+      .where('focus_mode_templates.author = :author_id', { author_id: userId });
+
+    const fetchedTemplates = await query.getMany();
+    return fetchedTemplates;
+  }
 }

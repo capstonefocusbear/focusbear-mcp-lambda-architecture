@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
 import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';
@@ -24,7 +26,7 @@ const taskAdapter = ({ task, projectId, portalId }) => {
     name,
     key: '',
     description: desc,
-    status: idList,
+    external_status: idList,
     external_metadata: { ...task, project_id: projectId, portal_id: portalId },
   };
 };
@@ -50,6 +52,7 @@ export class TrelloService extends BaseIntegrationService {
     protected readonly integrationAuthService: TrelloAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
+    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
   ) {
     super(
       userRepository,
@@ -59,6 +62,7 @@ export class TrelloService extends BaseIntegrationService {
       platformIntegrationsService,
       syncedProjectsRepository,
       IntegrationPlatforms.TRELLO,
+      syncTasksQueue,
     );
   }
 

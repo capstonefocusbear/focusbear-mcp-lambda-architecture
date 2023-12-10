@@ -107,7 +107,7 @@ export class UserDailyStatsService {
   }
 
   async updateTimeSpentInBreaks(userId: string, date: Date, timezone: string, durationSeconds: number) {
-    const startOfDate = DateTime.fromJSDate(date).setZone(timezone).startOf('day').toJSDate();
+    const startOfDate = DateTime.fromJSDate(new Date(date)).setZone(timezone).startOf('day').toJSDate();
     const dailyStats = await this.dailyStatsRepository.orm.findOne({
       where: { user_id: userId, date_completed: Equal(startOfDate) },
     });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { OperatingSystem } from '../../domain/operating-system.enum';
@@ -6,12 +6,15 @@ import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
 import { UserService } from '../../../user/services/user/user.service';
+import { UserRepository } from '../../../user/repositories/user.repository';
+import { UserTypes } from '../../../user/domain/user-types.enum';
 
 @Injectable()
 export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
   constructor(
     private readonly deviceRepository: DeviceRepository,
     private readonly userService: UserService,
+    private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {
     super(deviceRepository);
@@ -83,5 +86,14 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     const device = await this.deviceRepository.orm.findOneBy({ id: deviceId });
     device.app_version = appVersion;
     await this.deviceRepository.orm.save(device);
+  }
+
+  async getDevicesForAdmin(adminId: string, userId: string) {
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
+    const isAdmin = adminUser.user_type === UserTypes.ADMIN;
+    if (!isAdmin) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not admin!`);
+    }
+    return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 }

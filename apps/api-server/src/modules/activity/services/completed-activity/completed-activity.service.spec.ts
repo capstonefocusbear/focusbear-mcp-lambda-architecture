@@ -918,6 +918,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -941,6 +942,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -973,6 +975,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -1009,6 +1012,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       const updatedCompletedActivity = {
         id: undefined,
         activity_id: completedActivity.activity_id,

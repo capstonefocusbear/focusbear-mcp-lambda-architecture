@@ -1,14 +1,16 @@
 {
   "user_data_email_header": "Tus datos de Focus Bear",
-  "user_data_email_body": "Descargue una copia de sus datos registrados por Focus Bear en\n\n{link}\n\nTenga en cuenta que este enlace vence después de 7 días.\n\n\nPrivacy & Support\n\nYour privacy is important to us. This email and any files transmitted with it are confidential and intended solely for the use of the individual or entity to whom they are addressed.\n\nFor support or any questions, please email us at: support@focusbear.io\n\nFor more information, visit https://www.focusbear.io/en/privacy-policy",
-  "resume_habits_title": "NEEDSTRANSLATION Resume your habits",
-  "resume_habits_body": "NEEDSTRANSLATION Your break is over and it's time to get back into doing your habits!",
-  "resume_focus_mode_title": "NEEDSTRANSLATION Resume your focus session",
-  "resume_focus_mode_body": "NEEDSTRANSLATION Your break is over and it's time to get back into your session!",
-  "activity_completed": "NEEDSTRANSLATION Activity Completed!",
-  "activity_completed_message": "NEEDSTRANSLATION You have completed {activity_name}.",
-  "focus_mode_started": "NEEDSTRANSLATION Focus mode started!",
-  "focus_mode_completed": "NEEDSTRANSLATION Focus mode completed!",
-  "focus_mode_started_message": "NEEDSTRANSLATION {focus_mode_name} has been started.",
-  "focus_mode_completed_message": "NEEDSTRANSLATION Good job on completing {focus_mode_name}!"
+  "user_data_email_body": "Descarga una copia de tus datos registrados por Focus Bear en\n\n{link}\n\nTen en cuenta que este enlace vence después de 7 días.\n\n\nPrivacidad & Soporte\n\nTu privacidad es importante para nosotros. Este correo electrónico y cualquier archivo transmitido con él son confidenciales y están destinados exclusivamente al uso de la persona o entidad a la que van dirigidos.\n\nSi necesitas ayuda o tienes alguna pregunta, envíanos un correo electrónico a: support@focusbear.io\n\nPara más información, visita https://www.focusbear.io/en/privacy-policy",
+  "resume_habits_title": "Retoma tus hábitos",
+  "resume_habits_body": "¡Se acabó tu descanso y es hora de retomar tus hábitos!",
+  "resume_focus_mode_title": "Retoma tu sesión de enfoque",
+  "resume_focus_mode_body": "¡Se acabó tu descanso y es hora de volver a tu sesión!",
+  "activity_completed": "¡Actividad completada!",
+  "activity_completed_message": "Has completado {activity_name}.",
+  "focus_mode_started": "¡Modo de enfoque iniciado!",
+  "focus_mode_completed": "¡Modo de enfoque completado!",
+  "focus_mode_started_message": "{focus_mode_name} ha iniciado.",
+  "focus_mode_completed_message": "¡Felicidades por completar {focus_mode_name}!",
+  "settings_updated": "¡Configuración actualizada!",
+  "settings_updated_message": "Tu configuración se ha guardado."
 }

@@ -7,6 +7,10 @@ import { Settings } from 'luxon';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { PusherService } from '@app/pusher';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
@@ -30,6 +34,8 @@ import {
   UserDailyStatsServiceMock,
   ActivitySequenceServiceMock,
   UserServiceMock,
+  PusherBeamsServiceMock,
+  PusherServiceMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -46,6 +52,7 @@ import { LanguageOptions } from '../../domain/language-options.enum';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
+  const i18nServiceMock = mockDeep<I18nService>();
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -63,9 +70,15 @@ describe('UserSettingsService', () => {
         HelperCommonService,
         ActivitySequenceService,
         UserService,
+        PusherService,
+        PusherBeamsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: I18nService,
+          useValue: i18nServiceMock,
         },
       ],
     })
@@ -89,6 +102,10 @@ describe('UserSettingsService', () => {
       .useValue(ActivitySequenceServiceMock)
       .overrideProvider(UserService)
       .useValue(UserServiceMock)
+      .overrideProvider(PusherBeamsService)
+      .useValue(PusherBeamsServiceMock)
+      .overrideProvider(PusherService)
+      .useValue(PusherServiceMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
@@ -152,7 +169,7 @@ describe('UserSettingsService', () => {
       let exception: any;
 
       try {
-        await userSettingsService.updateSettings({ user_id }, userSettingsDummy, false);
+        await userSettingsService.updateSettings({ user_id }, userSettingsDummy, false, { is_onboarding: false });
       } catch (error) {
         exception = error;
       }
@@ -184,7 +201,9 @@ describe('UserSettingsService', () => {
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
 
-      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true);
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true, {
+        is_onboarding: false,
+      });
 
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
         {
@@ -216,6 +235,7 @@ describe('UserSettingsService', () => {
           sleep_time: '21:00',
         },
         true,
+        { is_onboarding: true },
       );
 
       expect(ActivityParserServiceMock.deserialize).toBeCalledWith(

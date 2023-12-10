@@ -38,6 +38,8 @@ import { PlatformIntegration } from '../modules/platform-integrations/entities/p
 import { SyncedProject } from '../modules/to-do/entities/synced-project.entity';
 import { CalendarExcludedKeyword } from '../modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../modules/calendar/entities/calendar.entity';
+import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
+import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -89,6 +91,8 @@ export const typeormConfig = registerAs(
       SyncedProject,
       CalendarExcludedKeyword,
       Calendar,
+      TeamToMember,
+      TeamToAdmin,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

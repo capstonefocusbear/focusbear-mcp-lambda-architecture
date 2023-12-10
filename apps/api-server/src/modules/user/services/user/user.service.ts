@@ -189,7 +189,7 @@ export class UserService {
       const defaultSettings = settingsConfig.generateDefault();
       await Promise.all([
         this.revenueCatService.grantTrialAccess(id),
-        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
+        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }),
       ]);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -267,7 +267,7 @@ export class UserService {
 
   private async recalculateActivityProps(partialUser: User) {
     const { activity, shouldRefetchUser } = await this.completedActivityService.recalculateCurrentActivity(partialUser);
-    let updatedUser = partialUser;
+    let updatedUser: Partial<User> = partialUser;
     if (partialUser.id === JEREMYS_USER_ID) {
       console.log("Jeremy's values for recalculateActivityProps: ");
       console.log({ activity, shouldRefetchUser });

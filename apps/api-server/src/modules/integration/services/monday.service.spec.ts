@@ -2,9 +2,10 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { getQueueToken } from '@nestjs/bull';
 import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { mondayTaskDummy } from '../../../../test/dummies/integration.dummies';
-import { userDummy } from '../../../../test/dummies';
+import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, MondayAuthServiceMock } from '../../../../test/mocks';
 import {
   FocusModeTagRepositoryMock,
@@ -46,6 +47,10 @@ describe('mondayService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken('sync-tasks'),
+          useValue: QueueMock,
         },
       ],
     })
@@ -161,7 +166,7 @@ describe('mondayService', () => {
         {
           id: 'task1',
           name: 'Task 1',
-          status: 'group1',
+          external_status: 'group1',
           key: '',
           description: '',
           external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: null },
@@ -303,7 +308,7 @@ describe('mondayService', () => {
       const resultTask = {
         id: 'task1',
         name: 'Task 1',
-        status: 'group1',
+        external_status: 'group1',
         key: '',
         description: '',
         external_metadata: { ...mondayTaskDummy, project_id: projectId, portal_id: portalId },

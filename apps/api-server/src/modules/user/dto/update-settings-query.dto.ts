@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class UpdateSettingsQueryDto {
   @IsOptional()
@@ -12,4 +12,8 @@ export class UpdateSettingsQueryDto {
     return value;
   })
   is_onboarding?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  device_id?: string;
 }

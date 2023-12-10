@@ -4,7 +4,6 @@ import { Queue } from 'bull';
 import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '@app/send-grid';
-import { maskEmail } from '../../../shared/utils/helpers';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
@@ -104,8 +103,9 @@ export class EventsService {
     await this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
+      replyTo: email,
       text: JSON.stringify(event),
-      subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(email)}`,
+      subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
     });
   }
 

@@ -28,7 +28,6 @@ import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
-import { maskEmail } from '../../../shared/utils/helpers';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -195,8 +194,9 @@ describe('EventService', () => {
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
         to: FOCUS_BEAR_EMAILS.SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
+        replyTo: auth0UserDummy.email,
         text: JSON.stringify(dummyEvent),
-        subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK} - ${maskEmail(auth0UserDummy.email)}`,
+        subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
       });
     });
   });

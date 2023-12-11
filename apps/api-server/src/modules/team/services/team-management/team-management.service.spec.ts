@@ -32,6 +32,7 @@ import { TeamToMemberRepository } from '../../repositories/team-to-member.reposi
 import { TeamToAdminRepository } from '../../repositories/team-to-admin.repository';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { TeamToMember } from '../../entities/team-to-member.entity';
+import { PaymentType } from '../../domain/payment-type.enum';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
@@ -149,6 +150,34 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: if team payment type is OFFLINE and maximum capacity has been reached, error should be thrown to avoid user from being added to team', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 2, team_size_limit: 2 },
+        members: [userDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.addTeamMember(
+          TeamMemberDummy.id,
+          TeamWithMembersDummy.owner_id,
+          TeamWithMembersDummy.id,
+          firstName,
+          lastName,
+          expiryDate,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Unable to invite more members to team with ID: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID() };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
@@ -202,6 +231,28 @@ describe('TeamManagementService', () => {
 
       expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 2);
     });
+
+    it('positive: if team payment_type is OFFLINE and team has open spaces, team size should be updated in DB, but not in Stripe', async () => {
+      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...newMember, member_of_teams: [] });
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 10 },
+        members: [userDummy],
+      });
+
+      await teamManagementService.addTeamMember(
+        newMember.id,
+        TeamWithMembersDummy.owner_id,
+        TeamWithMembersDummy.id,
+        firstName,
+        lastName,
+        expiryDate,
+      );
+
+      expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
+      expect(StripeServiceMock.updateSubscription).not.toBeCalled();
+    });
   });
 
   describe('bulkDeleteTeamMembers', () => {
@@ -249,6 +300,33 @@ describe('TeamManagementService', () => {
   describe('inviteTeamMember', () => {
     const email = 'test@gamil.com';
 
+    it('negative: if team payment_type is OFFLINE and capacity is full, error should be thrown', async () => {
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
+      });
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
+      ConfigServiceMock.get.mockReturnValueOnce('test-secret');
+      let exception;
+      const errorMessage = `Unable to invite more members to team with ID: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
+
+      try {
+        await teamManagementService.inviteTeamMember(userDummy.id, {
+          email,
+          team_id: TeamWithMembersDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+          is_admin: false,
+          is_member: true,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: jwt should be created with email and owner_id in payload', async () => {
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
       Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
@@ -282,6 +360,35 @@ describe('TeamManagementService', () => {
     it('positive: email should be sent with invitation link inside', async () => {
       const singedJwt = 'some.test.jwt.string';
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
+      JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
+
+      await teamManagementService.inviteTeamMember(userDummy.id, {
+        email,
+        team_id: TeamWithMembersDummy.id,
+        first_name: firstName,
+        last_name: lastName,
+        member_expiry_date: expiryDate,
+        is_admin: false,
+        is_member: true,
+      });
+
+      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        to: email,
+        from: FOCUS_BEAR_EMAILS.MARKETING,
+        templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
+        dynamicTemplateData: {
+          invite_url: expect.toInclude(`?token=${singedJwt}`),
+          team_name: TeamWithMembersDummy.name,
+        },
+      });
+    });
+
+    it('positive: member invitation should be sent if team payment_type if OFFLINE and team has available capacity', async () => {
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 2 },
+      });
+      const singedJwt = 'some.test.jwt.string';
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
       Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
 
@@ -405,6 +512,23 @@ describe('TeamManagementService', () => {
       await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
 
       expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 1);
+    });
+
+    it('positive: if team payment_type if OFFLINE, team size should be updated in DB, but not in Stripe', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamMemberDummy,
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE },
+        members: [userDummy, TeamMemberDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy]);
+
+      await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+
+      expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+      expect(StripeServiceMock.updateSubscription).not.toBeCalled();
     });
   });
 

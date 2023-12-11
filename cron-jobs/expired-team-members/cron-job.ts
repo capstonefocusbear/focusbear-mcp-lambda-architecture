@@ -5,6 +5,7 @@ import { CronJobDataSource } from '../data-source';
 import { Entitlement } from '../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { TeamToMember } from '../../apps/api-server/src/modules/team/entities/team-to-member.entity';
 import { Team } from '../../apps/api-server/src/modules/team/entities/team.entity';
+import { PaymentType } from '../../apps/api-server/src/modules/team/domain/payment-type.enum';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -71,8 +72,12 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
     if (isMemberOfSingleTeam) {
       await revokeMemberTeamEntitlement(member_id);
     }
-    // decrease team size in Stripe
-    await updateTeamSubscriptionQuantity(team, linkedMemberRecords);
+    // decrease team size in Stripe if team payment_type is 'stripe'
+    if (team.payment_type === PaymentType.STRIPE) {
+      await updateTeamSubscriptionQuantity(team, linkedMemberRecords);
+    }
+    // delete record linking member to team
+    await CronJobDataSource.manager.delete(TeamToMember, { member_id, team_id });
   } catch (error) {
     console.error('Error removing member from team in cron job: ', error);
   }
@@ -85,6 +90,7 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
     for await (const member of expiringMembers) {
       await disassociateMemberFromTeam(member);
     }
+    process.exit();
   } catch (error) {
     console.error('Error in expired-team-member cron job: ', error);
   }

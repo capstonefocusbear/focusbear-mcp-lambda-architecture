@@ -12,7 +12,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'uuid',
     nullable: false,
-    unique: true,
+    unique: false,
   })
   user_id?: string;
 

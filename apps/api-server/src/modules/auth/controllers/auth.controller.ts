@@ -11,11 +11,11 @@ import { AuthServiceFactory } from '../services/auth.service.factory';
 @ApiTags('auth')
 @ApiSecurity('Auth0AccessToken')
 export class AuthController {
-  constructor(private readonly authSerivceFactory: AuthServiceFactory) {}
+  constructor(private readonly authServiceFactory: AuthServiceFactory) {}
 
   @Get(':platform')
   login(@Param('platform') platform: IntegrationPlatforms) {
-    const service = this.authSerivceFactory.get(platform);
+    const service = this.authServiceFactory.get(platform);
     return service.getLoginUrl();
   }
 
@@ -27,7 +27,7 @@ export class AuthController {
     @AuthContext() { user }: Passport,
   ) {
     try {
-      const service = this.authSerivceFactory.get(platform);
+      const service = this.authServiceFactory.get(platform);
       return await service.authorize(user.id, authorizeQuery);
     } catch (error) {
       return error;

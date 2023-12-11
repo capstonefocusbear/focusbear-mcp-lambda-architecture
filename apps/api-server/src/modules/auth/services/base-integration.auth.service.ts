@@ -69,27 +69,23 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
   protected abstract getAccountId(data: any);
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
-    try {
-      const data = await this.requestAuthorize(authorizeQuery);
-      if (!data.access_token) {
-        throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
-      }
-      const { location, 'accounts-server': accountServer } = authorizeQuery;
-      const accountId = await this.getAccountId({
-        ...data,
-        accountServer,
-      });
-      await this.saveUserData(userId, {
-        client_id: this.clientId,
-        access_token: data.access_token || '',
-        refresh_token: data.refresh_token || '',
-        account_server: accountServer || '',
-        location: location || '',
-        accountId,
-      });
-    } catch (error) {
-      console.error(error);
+    const data = await this.requestAuthorize(authorizeQuery);
+    if (!data.access_token) {
+      throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
     }
+    const { location, 'accounts-server': accountServer } = authorizeQuery;
+    const accountId = await this.getAccountId({
+      ...data,
+      accountServer,
+    });
+    await this.saveUserData(userId, {
+      client_id: this.clientId,
+      access_token: data.access_token || '',
+      refresh_token: data.refresh_token || '',
+      account_server: accountServer || '',
+      location: location || '',
+      accountId,
+    });
   }
 
   protected abstract requestAuthorize(authorizeQuery: AuthorizeQuery);

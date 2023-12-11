@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
+import { CalendarPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { CreateFocusModeTagDto } from '../../src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
@@ -1713,3 +1714,63 @@ export const syncedProjectDummy = new SyncedProject({
   user_id: userDummy.id,
   available_statuses: [{ label: 'Open', status_id: 'test-id', should_complete_task: true }],
 });
+
+export const DummyCalendarOne = {
+  id: '7678080d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  platform: 'google',
+  account: 'account',
+  calendar_id: 'CalendarId',
+  summary: 'Summary1',
+  is_selected: true,
+};
+
+export const DummyCalendarTwo = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  platform: 'google',
+  account: 'account',
+  calendar_id: 'CalendarId2',
+  summary: 'Summary4',
+  is_selected: false,
+};
+
+export const DummyCalendarDto = {
+  platform: CalendarPlatforms.GOOGLE,
+  platform_account: 'account',
+  calendar_id: 'CalenarId',
+  summary: 'Summary',
+};
+
+export const DummyCalendarKeywordOne = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  keyowrd: 'busy',
+  intitle: true,
+  indescription: true,
+  platform: 'google',
+};
+
+export const DummyCalendarKeywordTwo = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f823',
+  user_id: userDummy.id,
+  keyowrd: 'not busy',
+  intitle: false,
+  indescription: true,
+  platform: 'google',
+};
+
+export const DummyCalendarUpdateDto = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f823',
+  keyowrd: 'not busy',
+  intitle: false,
+  indescription: true,
+  platform: 'google',
+};
+
+export const DummyCalendarCreateDto = {
+  keyowrd: 'not busy',
+  intitle: false,
+  indescription: true,
+  platform: CalendarPlatforms.GOOGLE,
+};

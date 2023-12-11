@@ -8,6 +8,7 @@ import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-p
 import { BaseCalendarService } from './base-calendar.service';
 import { NotificationService } from '../../notification/services/notification.service';
 import { NotificationRepository } from '../../notification/repository/notification.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 
 const notificationAdapter = ({
   event,
@@ -44,8 +45,9 @@ export class GoogleCalendarService extends BaseCalendarService {
     protected readonly platformIntegrationService: PlatformIntegrationsService,
     protected readonly notificationRepository: NotificationRepository,
     protected readonly notificationService: NotificationService,
+    protected readonly userRepository: UserRepository,
   ) {
-    super(notificationRepository, notificationService, platformIntegrationService);
+    super(notificationRepository, notificationService, platformIntegrationService, userRepository);
   }
 
   async getEvents(userId) {

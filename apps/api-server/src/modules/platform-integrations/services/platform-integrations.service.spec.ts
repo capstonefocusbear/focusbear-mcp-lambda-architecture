@@ -110,4 +110,32 @@ describe('PlatformIntegrationsService', () => {
       });
     });
   });
+
+  describe('getPlatformAccounts', () => {
+    it('positive: should return an array of all calendar accounts user has connected', async () => {
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          external_user_id: 'firstgmail@gmail.com',
+          platform: 'google',
+          data: {
+            expiry_date: '1700903125447',
+          },
+        },
+        {
+          external_user_id: 'secondgmail@gmail.com',
+          platform: 'google',
+          data: {
+            expiry_date: '1700903125448',
+          },
+        },
+      ]);
+
+      const response = await platformIntegrationsService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userDummy.id);
+
+      expect(response).toEqual([
+        JSON.stringify({ email: 'firstgmail@gmail.com', expired: true }),
+        JSON.stringify({ email: 'secondgmail@gmail.com', expired: true }),
+      ]);
+    });
+  });
 });

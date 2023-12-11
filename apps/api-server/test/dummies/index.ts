@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { User as Auth0User } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
-import { CalendarPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
+import { CalendarPlatforms } from '../../src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { CreateFocusModeTagDto } from '../../src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';

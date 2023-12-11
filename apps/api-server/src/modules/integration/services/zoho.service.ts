@@ -101,7 +101,6 @@ export class ZohoService extends BaseIntegrationService {
     });
     // get only tasks owned by user
     const ownerId = integrationRecord.accountId.toString();
-    console.log({ response }, response.data?.tasks, ownerId);
     const ownedTasks = this.filterTasksByOwnerId(response.data?.tasks, ownerId);
     return ownedTasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
   }

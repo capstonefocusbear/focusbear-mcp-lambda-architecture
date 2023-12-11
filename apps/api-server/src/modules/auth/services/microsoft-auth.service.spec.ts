@@ -8,7 +8,7 @@ import {
   MicrosoftCalendarServiceMock,
   PlatformIntegrationsServiceMock,
   SentryServiceMock,
-} from 'apps/api-server/test/mocks';
+} from '../../../../test/mocks';
 import { UserRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { QueueMock, userDummy } from '../../../../test/dummies';

@@ -1,8 +1,8 @@
-import { NotFoundException } from '@nestjs/common/exceptions';
+import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { userDummy } from 'apps/api-server/test/dummies';
 import { ConfigService } from '@nestjs/config';
+import { userDummy } from '../../../../test/dummies';
 import {
   ConfigServiceMock,
   NotificationRepositoryMock,

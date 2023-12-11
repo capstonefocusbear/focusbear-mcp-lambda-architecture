@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { NotFoundException } from '@nestjs/common';
 import {
   userDummy,
   DummyCalendarOne,
@@ -9,8 +10,7 @@ import {
   DummyCalendarKeywordTwo,
   DummyCalendarUpdateDto,
   DummyCalendarCreateDto,
-} from 'apps/api-server/test/dummies';
-import { NotFoundException } from '@nestjs/common';
+} from '../../../../test/dummies';
 import { SentryServiceMock } from '../../../../test/mocks';
 import { CalendarRepository } from '../repositories/calendar.repository';
 import { CalendarExcluededKeywordRepository } from '../repositories/calendar-excluded-keyword.repository';

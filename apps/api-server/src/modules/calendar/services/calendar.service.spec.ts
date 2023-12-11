@@ -130,18 +130,18 @@ describe('CalendarService', () => {
       });
       await calendarService.updateCalendarExcludedKeyword(userDummy.id, JSON.stringify(DummyCalendarUpdateDto));
       expect(CalendarExcluededKeywordRepositoryMock.update).toBeCalledWith(DummyCalendarUpdateDto.id, {
-        keyword: DummyCalendarUpdateDto.keyowrd,
-        intitle: DummyCalendarUpdateDto.intitle,
-        indescription: DummyCalendarUpdateDto.indescription,
+        keyword: DummyCalendarUpdateDto.keyword,
+        intitle: DummyCalendarUpdateDto.title,
+        indescription: DummyCalendarUpdateDto.description,
       });
     });
 
     it('positive: should create calendar keyword', async () => {
       const newExcludedCalendarKeyword = new CalendarExcludedKeyword({
         user_id: userDummy.id,
-        keyword: DummyCalendarCreateDto.keyowrd,
-        intitle: DummyCalendarCreateDto.intitle,
-        indescription: DummyCalendarCreateDto.indescription,
+        keyword: DummyCalendarCreateDto.keyword,
+        intitle: DummyCalendarCreateDto.title,
+        indescription: DummyCalendarCreateDto.description,
         platform: DummyCalendarCreateDto.platform,
       });
       await calendarService.updateCalendarExcludedKeyword(userDummy.id, JSON.stringify(DummyCalendarCreateDto));

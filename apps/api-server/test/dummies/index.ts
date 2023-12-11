@@ -1762,15 +1762,15 @@ export const DummyCalendarKeywordTwo = {
 
 export const DummyCalendarUpdateDto = {
   id: '7678970d-463d-4c1a-b8cc-9526edd2f823',
-  keyowrd: 'not busy',
-  intitle: false,
-  indescription: true,
+  keyword: 'not busy',
+  title: false,
+  description: true,
   platform: 'google',
 };
 
 export const DummyCalendarCreateDto = {
-  keyowrd: 'not busy',
-  intitle: false,
-  indescription: true,
+  keyword: 'not busy',
+  title: false,
+  description: true,
   platform: CalendarPlatforms.GOOGLE,
 };

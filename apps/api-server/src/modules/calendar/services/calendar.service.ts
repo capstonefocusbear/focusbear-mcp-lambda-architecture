@@ -175,7 +175,7 @@ export class CalendarService {
         throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       }
       const existingRecord = await this.calendarExcludedKeywordRepository.orm.findOneBy({ id });
-      if (!existingRecord) throw new NotFoundException(`CalendarKeyword with ID: ${id} does not exist`);
+      if (!existingRecord) throw new NotFoundException(`CalendarKeyword with ID: ${id} does not exist!`);
       await this.calendarExcludedKeywordRepository.orm.delete({ id });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

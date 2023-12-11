@@ -6,6 +6,7 @@ import { userDummy } from '../../../../test/dummies';
 import {
   ConfigServiceMock,
   NotificationRepositoryMock,
+  NotificationServiceMock,
   PlatformIntegrationsServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
@@ -14,6 +15,7 @@ import { NotificationRepository } from '../../notification/repository/notificati
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { GoogleCalendarService } from './google-calendar.service';
+import { NotificationService } from '../../notification/services/notification.service';
 
 describe('GoogleCalendarService', () => {
   let googleCalendarService: GoogleCalendarService;
@@ -25,6 +27,7 @@ describe('GoogleCalendarService', () => {
         ConfigService,
         PlatformIntegrationsService,
         NotificationRepository,
+        NotificationService,
         UserRepository,
         {
           provide: SENTRY_TOKEN,
@@ -38,6 +41,8 @@ describe('GoogleCalendarService', () => {
       .useValue(PlatformIntegrationsServiceMock)
       .overrideProvider(NotificationRepository)
       .useValue(NotificationRepositoryMock)
+      .overrideProvider(NotificationService)
+      .useValue(NotificationServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .compile();

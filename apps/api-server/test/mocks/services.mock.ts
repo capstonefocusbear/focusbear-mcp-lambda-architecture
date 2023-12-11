@@ -307,3 +307,8 @@ export const MicrosoftCalendarServiceMock = {
   updateEvents: jest.fn(),
   getAccounts: jest.fn(),
 };
+
+export const NotificationServiceMock = {
+  updateOrCreateCalendarEvent: jest.fn(),
+  deleteCalendarEvent: jest.fn(),
+};

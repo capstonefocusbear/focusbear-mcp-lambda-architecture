@@ -21,6 +21,7 @@ describe('MicrosoftCalendarService', () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
+        MicrosoftCalendarService,
         ConfigService,
         PlatformIntegrationsService,
         NotificationRepository,

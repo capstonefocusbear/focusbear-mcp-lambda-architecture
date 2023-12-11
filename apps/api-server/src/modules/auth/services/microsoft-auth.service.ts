@@ -44,7 +44,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
   }
 
   async getAccountId(data: any) {
-    return data;
+    return data.accountId;
   }
 
   protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {

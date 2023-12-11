@@ -73,7 +73,7 @@ describe('CalendarService', () => {
       };
       CalendarRepositoryMock.orm.findOne.mockResolvedValueOnce(existingRecord);
       await calendarService.updateCalendar(userDummy.id, DummyCalendarDto);
-      expect(CalendarRepositoryMock.orm.update).toBeCalledWith(existingRecord.id, {
+      expect(CalendarRepositoryMock.update).toBeCalledWith(existingRecord.id, {
         summary: DummyCalendarDto.summary,
       });
     });
@@ -129,7 +129,7 @@ describe('CalendarService', () => {
         id: DummyCalendarUpdateDto.id,
       });
       await calendarService.updateCalendarExcludedKeyword(userDummy.id, JSON.stringify(DummyCalendarUpdateDto));
-      expect(CalendarExcluededKeywordRepositoryMock.update).toBeCalledWith({
+      expect(CalendarExcluededKeywordRepositoryMock.update).toBeCalledWith(DummyCalendarUpdateDto.id, {
         keyword: DummyCalendarUpdateDto.keyowrd,
         intitle: DummyCalendarUpdateDto.intitle,
         indescription: DummyCalendarUpdateDto.indescription,
@@ -139,7 +139,10 @@ describe('CalendarService', () => {
     it('positive: should create calendar keyword', async () => {
       const newExcludedCalendarKeyword = new CalendarExcludedKeyword({
         user_id: userDummy.id,
-        ...DummyCalendarCreateDto,
+        keyword: DummyCalendarCreateDto.keyowrd,
+        intitle: DummyCalendarCreateDto.intitle,
+        indescription: DummyCalendarCreateDto.indescription,
+        platform: DummyCalendarCreateDto.platform,
       });
       await calendarService.updateCalendarExcludedKeyword(userDummy.id, JSON.stringify(DummyCalendarCreateDto));
       expect(CalendarExcluededKeywordRepositoryMock.create).toBeCalledWith(newExcludedCalendarKeyword);
@@ -164,7 +167,7 @@ describe('CalendarService', () => {
     it('negative: should return that the user was not found', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       CalendarExcluededKeywordRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const errorMessage = `CalendarExcludedKeyword with ID: ${DummyCalendarKeywordOne.id} does not exist!`;
+      const errorMessage = `CalendarKeyword with ID: ${DummyCalendarKeywordOne.id} does not exist!`;
       let exception: any;
       try {
         await calendarService.deleteCalendarExcludedKeyword(userDummy.id, DummyCalendarKeywordOne.id);

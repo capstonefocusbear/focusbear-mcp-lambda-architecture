@@ -21,6 +21,7 @@ describe('GoogleCalendarService', () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
+        GoogleCalendarService,
         ConfigService,
         PlatformIntegrationsService,
         NotificationRepository,

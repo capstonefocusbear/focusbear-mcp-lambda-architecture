@@ -37,10 +37,7 @@ export class SyncTasksConsumer {
     } = job;
     try {
       const service = this.integrationFactory.get(platform);
-      const allTasksFromPlatform = await service.getTasksOwnedByUser(userId, portalId, projectId);
-      const tasksFromProject = allTasksFromPlatform.filter(
-        (externalTask) => externalTask.external_metadata.project.id_string === projectId,
-      );
+      const tasksFromProject = await service.getTasksOwnedByUser(userId, portalId, projectId);
       const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId);
       const tasksAsToDos = tasksFromProject.map((task) => {
         return new ToDo({
@@ -83,17 +80,16 @@ export class SyncTasksConsumer {
         select: ['id', 'external_task_id', 'external_task_metadata'],
       });
       const allTasksFromPlatform = await this.getTasksFromSyncedProjects(userId, platform);
-
       for await (const syncedProject of syncedProjects) {
         // Filter out tasks not belonging to this project
         const tasksFromProject = allTasksFromPlatform.filter(
-          (externalTask) => externalTask.external_metadata.project.id_string === syncedProject.external_project_id,
+          (externalTask) => externalTask.external_metadata.project_id === syncedProject.external_project_id,
         );
         // Get local tasks that are from this project only
         const syncedTasksFromProject = allUserExternalTasks.filter(({ external_task_metadata }) => {
           return (
             external_task_metadata?.platform === platform &&
-            external_task_metadata?.task_data?.project?.id_string === syncedProject.external_project_id
+            external_task_metadata?.task_data?.project_id === syncedProject.external_project_id
           );
         });
         await Promise.all([
@@ -103,23 +99,14 @@ export class SyncTasksConsumer {
       }
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      console.error('Error in sync-project-tasks queued job: ', JSON.stringify(error));
+      console.error('Error in manually-sync-platform-tasks queued job: ', error);
     }
   }
 
   async getTasksFromSyncedProjects(userId: string, platform: IntegrationPlatforms) {
     const service = this.integrationFactory.get(platform);
     const tasks = await service.getAllUserTasks(userId);
-    // Filter out duplicates based on the "id" field
-    const uniqueTaskIds = {};
-    const allTasksFromPlatform = tasks.filter((task: Task) => {
-      if (!uniqueTaskIds[task.id]) {
-        uniqueTaskIds[task.id] = true;
-        return true;
-      }
-      return false;
-    });
-    return allTasksFromPlatform;
+    return tasks;
   }
 
   async deleteRemovedTasks(userId: string, tasksFromProject: Task[], syncedTasksFromProject: ToDo[]) {
@@ -151,7 +138,7 @@ export class SyncTasksConsumer {
       details: task.description,
       external_task_id: task.id,
       external_task_metadata: { platform, task_data: task.external_metadata },
-      synced_project_id: projectExternalIdToLocalIdMap[task.external_metadata.project.id_string],
+      synced_project_id: projectExternalIdToLocalIdMap[task.external_metadata.project_id],
       tags: [],
     });
   }

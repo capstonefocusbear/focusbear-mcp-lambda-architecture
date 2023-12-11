@@ -261,7 +261,11 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     });
     const tasks = [];
     for await (const project of syncedProjects) {
-      const projectTasks = await this.getTasksOwnedByUser(userId, project.external_portal_id, project.id);
+      const projectTasks = await this.getTasksOwnedByUser(
+        userId,
+        project.external_portal_id,
+        project.external_project_id,
+      );
       for (const task of projectTasks) {
         task.portal_id = project.external_portal_id;
         tasks.push(task);

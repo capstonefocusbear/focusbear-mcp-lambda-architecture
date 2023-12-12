@@ -36,6 +36,8 @@ import { TaskTimeLog } from '../apps/api-server/src/modules/to-do/entities/tasks
 import { SyncedProject } from '../apps/api-server/src/modules/to-do/entities/synced-project.entity';
 import { TeamToAdmin } from '../apps/api-server/src/modules/team/entities/team-to-admin.entity';
 import { TeamToMember } from '../apps/api-server/src/modules/team/entities/team-to-member.entity';
+import { CalendarExcludedKeyword } from '../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
+import { Calendar } from '../apps/api-server/src/modules/calendar/entities/calendar.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -84,6 +86,8 @@ export const CronJobDataSource = new DataSource({
     SyncedProject,
     TeamToAdmin,
     TeamToMember,
+    CalendarExcludedKeyword,
+    Calendar
   ],
   subscribers: [],
   migrations: [],

@@ -455,8 +455,8 @@ export class TeamManagementService {
     const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: adminId } });
     const teamIds = teamsAdminOf.map((team) => team.team_id);
     const teams = await this.teamRepository.orm.find({ where: { id: In(teamIds) } });
-    return teams.map(({ id, name, team_size, owner_id }) => {
-      return { id, name, team_size, owner_id };
+    return teams.map(({ id, name, team_size, team_size_limit, owner_id, payment_type, expires_date }) => {
+      return { id, name, team_size, owner_id, payment_type, team_size_limit, expires_date };
     });
   }
 

@@ -5,8 +5,8 @@ export class CreateTableCalendar1702304047162 implements MigrationInterface {
     await queryRunner.query(`
           CREATE TABLE "calendar_excluded_keywords" (
               "id" uuid NOT NULL DEFAULT uuid_generate_v4(), 
-              "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, 
-              "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, 
+              "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), 
+              "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), 
               "user_id" uuid NOT NULL, 
               "keyword" character varying(255) NOT NULL, 
               "platform" character varying(255) NOT NULL, 
@@ -19,8 +19,8 @@ export class CreateTableCalendar1702304047162 implements MigrationInterface {
     await queryRunner.query(`
           CREATE TABLE "calendars" (
               "id" uuid NOT NULL DEFAULT uuid_generate_v4(), 
-              "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, 
-              "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, 
+              "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), 
+              "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), 
               "user_id" uuid NOT NULL, 
               "platform_account" character varying(255) NOT NULL, 
               "platform" character varying(255) NOT NULL, 
@@ -38,8 +38,9 @@ export class CreateTableCalendar1702304047162 implements MigrationInterface {
     );
 
     await queryRunner.query('ALTER TABLE "notifications" DROP CONSTRAINT "FK_9a8a82462cab47c73d25f49261f"');
-    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "created_at" DROP DEFAULT');
-    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "updated_at" DROP DEFAULT');
+
+    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "updated_at" SET DEFAULT now()');
+    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "created_at" SET DEFAULT now()');
     await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "user_id" SET NOT NULL');
     await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "platform" SET NOT NULL');
     await queryRunner.query(
@@ -94,8 +95,8 @@ export class CreateTableCalendar1702304047162 implements MigrationInterface {
     await queryRunner.query('ALTER TABLE "notifications" DROP CONSTRAINT "UQ_65bd4afcb9043001c3f90facd78"');
     await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "platform" DROP NOT NULL');
     await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "user_id" DROP NOT NULL');
-    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "updated_at" SET DEFAULT now()');
-    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "created_at" SET DEFAULT now()');
+    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "created_at" DROP DEFAULT');
+    await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "updated_at" DROP DEFAULT');
     await queryRunner.query(
       'ALTER TABLE "notifications" ADD CONSTRAINT "FK_9a8a82462cab47c73d25f49261f" FOREIGN KEY ("user_id", "user_id") REFERENCES "users"("id","id") ON DELETE CASCADE ON UPDATE CASCADE',
     );

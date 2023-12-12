@@ -3,6 +3,7 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
+import { DateTime } from 'luxon';
 import {
   ConfigServiceMock,
   MicrosoftCalendarServiceMock,
@@ -64,7 +65,7 @@ describe('MicrosfotService', () => {
     it('positive: should create platform integration record saving users google credentials', async () => {
       const authorizationResponseDummy = {
         access_token: 'token',
-        expires_in: new Date().valueOf(),
+        expires_in: 0,
         refresh_token: 'refresh-token',
       };
 
@@ -72,7 +73,12 @@ describe('MicrosfotService', () => {
       mockedAxios.post.mockResolvedValueOnce({
         data: authorizationResponseDummy,
       });
-
+      const mail = 'mail@gmail.com';
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          mail,
+        },
+      });
       await microsoftAuthService.authorize(userDummy.id, {
         code: 'code',
       });
@@ -84,11 +90,12 @@ describe('MicrosfotService', () => {
           client_id: undefined,
           refresh_token: authorizationResponseDummy.refresh_token,
           access_token: authorizationResponseDummy.access_token,
-          accountId: undefined,
+          expiry_date: DateTime.local().toMillis(),
+          accountId: mail,
           location: '',
           account_server: '',
         },
-        undefined,
+        mail,
       );
     });
   });

@@ -259,8 +259,19 @@ describe('ZohoService', () => {
     it('positive: should return tasks data', async () => {
       const projectId = 'project123';
       const portalId = 'portal123';
-      const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
-      const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
+      const accountId = '12345';
+      const task1 = {
+        id_string: 'task1',
+        key: 'key1',
+        status: { id: 'status' },
+        details: { owners: [{ id: accountId }] },
+      };
+      const task2 = {
+        id_string: 'task2',
+        key: 'key2',
+        status: { id: 'status' },
+        details: { owners: [{ id: accountId }] },
+      };
       const tasksData = [task1, task2];
       const taskResult = [
         {
@@ -293,6 +304,7 @@ describe('ZohoService', () => {
         data: {
           location: 'us',
           access_token: 'token123',
+          accountId: Number(accountId),
         },
       });
       mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
@@ -501,8 +513,19 @@ describe('ZohoService', () => {
   it('positive: should return tasks data', async () => {
     const projectId = 'project123';
     const portalId = 'portal123';
-    const task1 = { id_string: 'task1', key: 'key1', status: { id: 'status' } };
-    const task2 = { id_string: 'task2', key: 'key2', status: { id: 'status' } };
+    const accountId = '12345';
+    const task1 = {
+      id_string: 'task1',
+      key: 'key1',
+      status: { id: 'status' },
+      details: { owners: [{ id: accountId }] },
+    };
+    const task2 = {
+      id_string: 'task2',
+      key: 'key2',
+      status: { id: 'status' },
+      details: { owners: [{ id: accountId }] },
+    };
     const tasksData = [task1, task2];
     const taskResult = [
       {
@@ -535,7 +558,7 @@ describe('ZohoService', () => {
       data: {
         location: 'us',
         access_token: 'token123',
-        accountId: 'account-id',
+        accountId: Number(accountId),
       },
     });
     mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
@@ -548,7 +571,7 @@ describe('ZohoService', () => {
       userDummy.id,
     );
     expect(mockedAxios.get).toHaveBeenCalledWith(
-      `https://projectsapi.zoho.com/restapi/portal/${portalId}/mytasks/?owner=account-id`,
+      `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/`,
       {
         headers: { Authorization: 'Bearer token123' },
       },

@@ -101,9 +101,7 @@ async function getPortals(userId: string) {
 async function getTasksOwnedByUser(userId: string, portalId: string) {
   const zohoData = await getZohoData(userId);
   if (!zohoData) return;
-  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/mytasks/?owner=${
-    zohoData.accountId
-  }`;
+  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/mytasks/?owner=${zohoData.accountId}`;
   const headers = { Authorization: `Bearer ${zohoData.access_token}` };
   const response = await axios.get(url, {
     headers,
@@ -157,17 +155,30 @@ async function getTagsLinkedToProject(userId: string, externalProjectIds: string
 }
 
 async function getProjectStatuses(userId: string, portalId: string, projectId: string) {
-  const zohoData = await getZohoData(userId);
-  if (!zohoData) return;
-  const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
-  const headers = { Authorization: `Bearer ${zohoData.access_token}` };
-  const { data } = await axios.get(url, {
-    headers,
-  });
-  const availableStatuses = data?.status_details?.map((details) => {
-    return { label: details.name, status_id: details.id };
-  });
-  return availableStatuses;
+  const MAX_RETRY = 2;
+  let retryCount = 0;
+
+  while (retryCount < MAX_RETRY) {
+    try {
+      const zohoData = await getZohoData(userId);
+      if (!zohoData) return;
+      const url = `${getDataCenterUrl(zohoData.location).api}/portal/${portalId}/projects/${projectId}/tasklayouts`;
+      const headers = { Authorization: `Bearer ${zohoData.access_token}` };
+      const { data } = await axios.get(url, {
+        headers,
+      });
+      const availableStatuses = data?.status_details?.map((details) => {
+        return { label: details.name, status_id: details.id };
+      });
+      return availableStatuses;
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        retryCount = await handleUnauthorizedError(userId, retryCount);
+      } else {
+        throw error;
+      }
+    }
+  }
 }
 
 async function updateSyncedProjectsStatuses(userId: string, syncedProjects: SyncedProject[]) {

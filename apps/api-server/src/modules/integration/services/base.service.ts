@@ -216,6 +216,10 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     return this.syncedProjectsRepository.orm.save(linkedProject);
   }
 
+  async manuallySyncTasks(userId: string) {
+    await this.syncTasksQueue.add('manually-sync-platform-tasks', { userId, platform: this.platform });
+  }
+
   async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
     const project = await this.getProject(userId, portalId, projectId);
     const [projectAsFocusModeTag] = createNewTags([project], userId, this.platform);
@@ -257,7 +261,11 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     });
     const tasks = [];
     for await (const project of syncedProjects) {
-      const projectTasks = await this.getTasksOwnedByUser(userId, project.external_portal_id, project.id);
+      const projectTasks = await this.getTasksOwnedByUser(
+        userId,
+        project.external_portal_id,
+        project.external_project_id,
+      );
       for (const task of projectTasks) {
         task.portal_id = project.external_portal_id;
         tasks.push(task);

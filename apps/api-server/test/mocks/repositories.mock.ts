@@ -167,7 +167,7 @@ export const FocusModeTemplatesRepositoryMock = {
 };
 
 export const CoursesRepositoryMock = {
-  getAllAuthoredCourses: jest.fn(),
+  getAllAuthorCourses: jest.fn(),
   getAllEnrolledCourses: jest.fn(),
   getRatings: jest.fn(),
   createCourseContent: jest.fn(),
@@ -180,6 +180,8 @@ export const CoursesRepositoryMock = {
   checkForeignKeyUserIdExist: jest.fn(),
   checkForeignKeyCourseIdExist: jest.fn(),
   checkUserCourseEnrolment: jest.fn(),
+  getAllCourses: jest.fn(),
+  getUserNotEnrolledCourses: jest.fn(),
 };
 
 export const LessonsRepositoryMock = {

@@ -7,6 +7,9 @@ import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CoursesRepository } from '../repositories/courses.repository';
+import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
+import { DeleteCourseDto } from '../dto/delete-course.dto';
+import { PageOptionsDto } from '../dto/page-options.dto';
 
 @Injectable()
 export class CoursesService {
@@ -15,19 +18,15 @@ export class CoursesService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
-  async getAllCourses(user_id: string) {
+  async getAllCourses(pageOptionsDto: PageOptionsDto) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
         level: 'debug',
         message: 'Getting All Courses',
-        data: {
-          user_id,
-        },
+        data: pageOptionsDto,
       });
-      const ownedCourses = await this.coursesRepository.getAllAuthoredCourses(user_id);
-      const enrolledCourses = await this.coursesRepository.getAllEnrolledCourses(user_id);
-      return [...ownedCourses, ...enrolledCourses];
+      return await this.coursesRepository.getAllCourses(pageOptionsDto);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
     }
@@ -81,7 +80,7 @@ export class CoursesService {
     }
   }
 
-  async deleteCourse(course_id: string, deleted: boolean, roles: string[]) {
+  async deleteCourse(course_id: string, { deleted }: DeleteCourseDto, roles: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
@@ -106,7 +105,7 @@ export class CoursesService {
     }
   }
 
-  async hideCourse(course_id: string, hidden: boolean, roles: string[]) {
+  async hideCourse(course_id: string, { hidden }: UpdateCourseHideDto, roles: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
@@ -229,6 +228,54 @@ export class CoursesService {
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
+    }
+  }
+
+  async getEnrolledCourses(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Getting Enrolled Courses',
+        data: {
+          user_id,
+        },
+      });
+      return await this.coursesRepository.getAllEnrolledCourses(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    }
+  }
+
+  async getUserCreatedCourses(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Getting User Created Courses',
+        data: {
+          user_id,
+        },
+      });
+      return await this.coursesRepository.getAllAuthorCourses(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    }
+  }
+
+  async getUserNotEnrolledCourses(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Getting User Created Courses',
+        data: {
+          user_id,
+        },
+      });
+      return await this.coursesRepository.getUserNotEnrolledCourses(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Patch, Delete, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Patch, Delete, UseGuards, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Passport } from '../../auth/domain/passport.model';
 import { CoursesService } from '../services/courses.service';
@@ -11,6 +11,11 @@ import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { CreateCourseEnrolmentDto } from '../dto/create-course-enrolment.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
+import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
+import { DeleteCourseDto } from '../dto/delete-course.dto';
+import { PageOptionsDto } from '../dto/page-options.dto';
+import { PageDto } from '../dto/page.dto';
+import { Course } from '../entities/course.entity';
 
 @Controller('course')
 @UseGuards(IsAuth)
@@ -19,9 +24,10 @@ import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorato
 export class CoursesController {
   constructor(private coursesService: CoursesService) {}
 
-  @Get()
-  getAllCourses(@AuthContext() { user }: Passport) {
-    return this.coursesService.getAllCourses(user.id);
+  @UseGuards(IsAdmin)
+  @Get('admin')
+  getAllCourses(@Query() pageOptionsDto: PageOptionsDto): Promise<PageDto<Course>> {
+    return this.coursesService.getAllCourses(pageOptionsDto);
   }
 
   @Post()
@@ -42,17 +48,21 @@ export class CoursesController {
   @UseGuards(IsAdmin)
   @Delete(':course_id')
   deleteCourse(
-    @Body('deleted') deleted: boolean,
+    @Body() deleteCourseDto: DeleteCourseDto,
     @Param('course_id') course_id: string,
     @GetUserRoles() roles: string[],
   ) {
-    return this.coursesService.deleteCourse(course_id, deleted, roles);
+    return this.coursesService.deleteCourse(course_id, deleteCourseDto, roles);
   }
 
   @UseGuards(IsAdmin)
   @Patch(':course_id/hide')
-  hideCourse(@Body('hidden') hidden: boolean, @Param('course_id') course_id: string, @GetUserRoles() roles: string[]) {
-    return this.coursesService.hideCourse(course_id, hidden, roles);
+  hideCourse(
+    @Body() updateCourseHideDto: UpdateCourseHideDto,
+    @Param('course_id') course_id: string,
+    @GetUserRoles() roles: string[],
+  ) {
+    return this.coursesService.hideCourse(course_id, updateCourseHideDto, roles);
   }
 
   @Get(':course_id/rating')
@@ -77,5 +87,20 @@ export class CoursesController {
     @GetUserRoles() roles: string[],
   ) {
     return this.coursesService.updateCourseEnrolment(updateCourseEnrolmentDto, user.id, roles);
+  }
+
+  @Get('enrolment')
+  getUserEnrolledCourses(@AuthContext() { user }: Passport) {
+    return this.coursesService.getEnrolledCourses(user.id);
+  }
+
+  @Get('user')
+  getUserCourses(@AuthContext() { user }: Passport) {
+    return this.coursesService.getUserCreatedCourses(user.id);
+  }
+
+  @Get('user_not_enrolled')
+  getUserNotEnrolledCourses(@AuthContext() { user }: Passport) {
+    return this.coursesService.getUserNotEnrolledCourses(user.id);
   }
 }

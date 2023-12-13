@@ -8,6 +8,10 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
+import { Not } from 'typeorm';
+import { PageOptionsDto } from '../dto/page-options.dto';
+import { PageMetaDto } from '../dto/page-meta.dto';
+import { PageDto } from '../dto/page.dto';
 
 @Injectable()
 export class CoursesRepository {
@@ -19,7 +23,7 @@ export class CoursesRepository {
 
   private readonly ormUser = AppDataSource.getRepository(User);
 
-  async getAllAuthoredCourses(user_id: string): Promise<Course[]> {
+  async getAllAuthorCourses(user_id: string): Promise<Course[]> {
     return this.ormCourse.find({
       where: {
         author: {
@@ -30,7 +34,7 @@ export class CoursesRepository {
   }
 
   async getAllEnrolledCourses(user_id: string): Promise<Course[]> {
-    const courseEnrolments = await this.ormCourseEnrolment.find({
+    const courseEnrollments = await this.ormCourseEnrolment.find({
       where: {
         user: {
           id: user_id,
@@ -39,7 +43,7 @@ export class CoursesRepository {
     });
 
     return Promise.all(
-      courseEnrolments.map(async (enrolment: CourseEnrolment) => {
+      courseEnrollments.map(async (enrolment: CourseEnrolment) => {
         const courseFound = await this.ormCourse.findOne({
           where: {
             id: enrolment.course.id,
@@ -166,5 +170,39 @@ export class CoursesRepository {
         user_id,
       },
     });
+  }
+
+  async getAllCourses(pageOptionsDto: PageOptionsDto) {
+    const queryBuilder = this.ormCourse.createQueryBuilder('courses');
+    queryBuilder
+      .orderBy('courses.created_at', pageOptionsDto.order)
+      .skip(pageOptionsDto.skip)
+      .take(pageOptionsDto.take);
+
+    const itemCount = await queryBuilder.getCount();
+    const { entities } = await queryBuilder.getRawAndEntities();
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+    return new PageDto(entities, pageMetaDto);
+  }
+
+  async getUserNotEnrolledCourses(user_id: string): Promise<Course[]> {
+    const courseEnrollments = await this.ormCourseEnrolment.find({
+      where: {
+        user: {
+          id: user_id,
+        },
+      },
+    });
+
+    const courses = await Promise.all(
+      courseEnrollments.map(async (enrolment: CourseEnrolment) => {
+        return await this.ormCourse.find({
+          where: {
+            id: Not(enrolment.course_id),
+          },
+        });
+      }),
+    );
+    return courses.flat(2);
   }
 }

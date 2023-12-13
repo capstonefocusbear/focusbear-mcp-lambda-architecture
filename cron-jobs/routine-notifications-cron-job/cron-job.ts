@@ -55,10 +55,21 @@ function sleep(ms: number) {
 async function getMessageFromR2(fileName: string) {
   try {
     const messageData = await s3Client.getObject({ Bucket: 'routine-notifications', Key: fileName }).promise();
-    return JSON.parse(messageData.Body.toString());
+    const parsedMessage = JSON.parse(messageData.Body.toString());
+    return parsedMessage || null;
   } catch (error) {
     return null;
   }
+}
+
+function removeQuotes(input: string): string {
+  // Use a regular expression to match double quotes at the start and end of the string
+  const regex = /^"|"$/g;
+
+  // Use the replace method to remove the matched double quotes
+  const result = input.replace(regex, '');
+
+  return result;
 }
 
 async function addMessageToR2(filename: string, messageData: { message: string; timestamp: string }) {
@@ -87,13 +98,14 @@ async function generateRoutineNotification(routine: string, fileName: string, la
         n: 1,
       });
       const message = response.choices[0].message.content.trim();
+      const messageWithoutQuotes = removeQuotes(message);
       const messageObj = {
-        message,
+        message: messageWithoutQuotes,
         timestamp: DateTime.utc().toISO(),
       };
       await addMessageToR2(fileName, messageObj);
       // Exit the loop if request is successful
-      return message;
+      return messageWithoutQuotes;
     } catch (error) {
       console.error(
         `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,

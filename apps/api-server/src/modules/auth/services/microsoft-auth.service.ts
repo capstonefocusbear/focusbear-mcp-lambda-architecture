@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-
 import { DateTime } from 'luxon';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
@@ -32,11 +31,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
   }
 
   getQueryParams() {
-    const scope = [
-      'https%3A%2F%2Fgraph.microsoft.com%2FCalendars.Read',
-      'https%3A%2F%2Fgraph.microsoft.com%2Fuser.Read',
-      'https%3A%2F%2Fgraph.microsoft.com%2Fmail.Read',
-    ];
+    const scope = 'https://graph.microsoft.com/Calendars.Read';
     const queryParams: any = {
       client_id: this.clientId,
       response_type: 'code',
@@ -78,7 +73,6 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
         location: data.location,
       };
     }
-
     await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, newData, accountId);
     return existingUser;
   }
@@ -89,7 +83,10 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
       Authorization: `Bearer ${data.access_token}`,
     };
     const { data: userInfoData } = await axios.get(`${userInfoURL}`, { headers });
-    return userInfoData.mail;
+    if (userInfoData.mail) {
+      return userInfoData.mail;
+    }
+    return userInfoData.userPrincipalName;
   }
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
@@ -120,11 +117,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
 
   protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
     const { code } = authorizeQuery;
-    const scope = [
-      'https%3A%2F%2Fgraph.microsoft.com%2FCalendars.Read',
-      'https%3A%2F%2Fgraph.microsoft.com%2Fuser.Read',
-      'https%3A%2F%2Fgraph.microsoft.com%2Fmail.Read',
-    ];
+    const scope = 'https://graph.microsoft.com/Calendars.Read';
     const body = {
       client_id: this.clientId,
       scope,

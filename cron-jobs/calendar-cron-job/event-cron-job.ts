@@ -110,18 +110,7 @@ async function getGoogleEvents(userId: string, account?: string) {
   oauth2Client.setCredentials(record.data);
   // Refresh access token using refresh token already provided
   if (record.data.expiry_date  < DateTime.local().toMillis() + 1000) {
-    let access_token: any;
-    try {
-        access_token = await oauth2Client.refreshAccessToken();
-    } catch (error) {
-        console.error(error);
-        return[];
-    }
-    record.data.access_token = access_token;
-    const data = { ...record.data, ...access_token.credentials };
-    record.data = data;
-    await CronJobDataSource.manager.update(PlatformIntegration, { id: record.id }, { data: data } );
-    oauth2Client.setCredentials(access_token.credentials);
+    return [];
   }
 
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
@@ -178,37 +167,13 @@ async function getMicrosoftEvents(userId, account) {
   let access_token = record.data.access_token;
   const baseUrl = 'https://graph.microsoft.com/v1.0';
   if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
-    const tokenURL = `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
-    const scope = ['https%3A%2F%2Fgraph.microsoft.com%2FCalendars.Read',
-                   'https%3A%2F%2Fgraph.microsoft.com%2FUser.Read',
-                   'https%3A%2F%2Fgraph.microsoft.com%2FMail.Read',
-                  ];
-    const body = {
-      client_id: process.env.MICROSOFT_CLIENT_ID,
-      scope,
-      refresh_token: record.data.refresh_token,
-      grant_type: 'refresh_token',
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET,
-    };
-    const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-    const { data } = await axios.post(tokenURL, body, {
-      headers,
-    });
-    access_token = data.access_token;
-    const expiry_date = DateTime.local().toMillis() + data.expires_in * 1000;
-    await CronJobDataSource.manager.update(PlatformIntegration, 
-        { id: record.id }, 
-        { data: { ...record.data, ...data, expiry_date,} } 
-    );
+    return [];
   }
   const headers = {
     Authorization: `Bearer ${access_token}`,
   };
   const { data: calendarData } = await axios.get(`${baseUrl}/me/calendars`, { headers });
   const { value: calendarList } = calendarData;
-  
   const calendarIds = await Promise.all(calendarList.map(async (item) => {
     const existingCalendar = await CronJobDataSource.manager.findOne(Calendar, {
         where: {
@@ -303,7 +268,7 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
   });
   const recordsWithAccessAndRefreshTokens = IntegrationRecords.filter(
     (integration) =>  {
-      return integration.data.access_token && integration.data.refresh_token;
+      return integration.data.access_token; //&& integration.data.refresh_token;
     },
   );
   const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => {

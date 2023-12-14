@@ -133,8 +133,8 @@ describe('PlatformIntegrationsService', () => {
       const response = await platformIntegrationsService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userDummy.id);
 
       expect(response).toEqual([
-        JSON.stringify({ email: 'firstgmail@gmail.com', expired: true }),
-        JSON.stringify({ email: 'secondgmail@gmail.com', expired: true }),
+        { email: 'firstgmail@gmail.com', expired: true },
+        { email: 'secondgmail@gmail.com', expired: true },
       ]);
     });
   });

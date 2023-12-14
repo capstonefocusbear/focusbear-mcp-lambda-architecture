@@ -222,3 +222,7 @@ export const CalendarRepositoryMock = {
 export const CalendarExcluededKeywordRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const CalendarServiceFactoryMock = {
+  get: jest.fn(),
+};

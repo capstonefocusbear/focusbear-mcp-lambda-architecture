@@ -19,10 +19,12 @@ import {
   CalendarRepositoryMock,
   CalendarExcluededKeywordRepositoryMock,
   UserRepositoryMock,
+  CalendarServiceFactoryMock,
 } from '../../../../test/mocks/repositories.mock';
 import { CalendarService } from './calendar.service';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarExcludedKeyword } from '../entities/calendar-excluded-keywords.entity';
+import { CalendarServiceFactory } from './calendar.service.factory';
 
 describe('CalendarService', () => {
   let calendarService: CalendarService;
@@ -34,6 +36,7 @@ describe('CalendarService', () => {
         CalendarRepository,
         CalendarExcluededKeywordRepository,
         UserRepository,
+        CalendarServiceFactory,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -46,6 +49,8 @@ describe('CalendarService', () => {
       .useValue(CalendarExcluededKeywordRepositoryMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(CalendarServiceFactory)
+      .useValue(CalendarServiceFactoryMock)
       .compile();
     calendarService = moduleRef.get<CalendarService>(CalendarService);
   });
@@ -62,7 +67,18 @@ describe('CalendarService', () => {
     it('positive: should fetch all calendars user registered', async () => {
       CalendarRepositoryMock.orm.find.mockResolvedValueOnce([DummyCalendarOne, DummyCalendarTwo]);
       const response = await calendarService.getCalendars(userDummy.id, CalendarPlatforms.GOOGLE, 'account');
-      expect(response).toEqual([JSON.stringify(DummyCalendarOne), JSON.stringify(DummyCalendarTwo)]);
+      expect(response).toEqual([
+        {
+          id: DummyCalendarOne.id,
+          displayName: DummyCalendarOne.summary,
+          is_Selected: DummyCalendarOne.is_selected,
+        },
+        {
+          id: DummyCalendarTwo.id,
+          displayName: DummyCalendarTwo.summary,
+          is_Selected: DummyCalendarTwo.is_selected,
+        },
+      ]);
     });
   });
 

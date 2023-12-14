@@ -90,7 +90,7 @@ describe('MicrosfotService', () => {
           client_id: undefined,
           refresh_token: authorizationResponseDummy.refresh_token,
           access_token: authorizationResponseDummy.access_token,
-          expiry_date: DateTime.local().toMillis(),
+          expiry_date: DateTime.local().toSeconds() * 1000,
           accountId: mail,
           location: '',
           account_server: '',

@@ -100,7 +100,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
         ...data,
         accountServer,
       });
-      const expiry_date = DateTime.local().toMillis() + data.expires_in * 1000;
+      const expiry_date = (DateTime.local().toSeconds() + data.expires_in) * 1000;
       await this.saveUserData(userId, {
         client_id: this.clientId,
         access_token: data.access_token || '',

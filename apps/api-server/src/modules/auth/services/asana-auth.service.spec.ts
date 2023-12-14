@@ -54,7 +54,7 @@ describe('AsanaService', () => {
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
-    ConfigServiceMock.get.mockReturnValueOnce('asana-client-id');
+
     asanaAuthService = moduleRef.get<AsanaAuthService>(AsanaAuthService);
   });
 
@@ -64,6 +64,7 @@ describe('AsanaService', () => {
 
   describe('authorize', () => {
     it('positive: should create platform integration record saving users asana credentials', async () => {
+      ConfigServiceMock.get.mockReturnValueOnce('asana-client-id');
       const authorizationResponseDummy = {
         access_token: 'token',
         expires_in: new Date().valueOf(),
@@ -99,6 +100,7 @@ describe('AsanaService', () => {
 
   describe('refreshToken', () => {
     it('positive: should update platform integration record saving asana credentials', async () => {
+      ConfigServiceMock.get.mockReturnValueOnce('asana-client-id');
       const integrationRecordMock = { data: { refresh_token: 'refresh-token' } };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(integrationRecordMock);
       const refreshResponseMock = {
@@ -118,12 +120,15 @@ describe('AsanaService', () => {
 
   describe('getLoginUrl', () => {
     it('positive: should return redirect url', async () => {
-      const result = asanaAuthService.getLoginUrl();
+      ConfigServiceMock.get.mockReturnValueOnce('asana-redirect-url');
+      ConfigServiceMock.get.mockReturnValueOnce('asana-client-id');
+      const isDevelopment = false;
+      const result = asanaAuthService.getLoginUrl(isDevelopment);
 
       const scope = 'default';
       const queryParams: any = {
         client_id: undefined,
-        redirect_uri: undefined,
+        redirect_uri: 'asana-redirect-url',
         response_type: 'code',
         scope,
       };

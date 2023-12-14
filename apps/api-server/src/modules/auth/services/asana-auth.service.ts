@@ -25,12 +25,12 @@ export class AsanaAuthService extends BaseIntegrationAuthService {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.ASANA);
   }
 
-  protected getQueryParams() {
+  protected getQueryParams(callbackUrl: string) {
     const scope = 'default';
 
     const queryParams: any = {
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       response_type: 'code',
       scope,
     };
@@ -41,14 +41,14 @@ export class AsanaAuthService extends BaseIntegrationAuthService {
     return data.data.gid;
   }
 
-  protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  protected async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code } = authorizeQuery;
     const body = {
       grant_type: 'authorization_code',
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded',

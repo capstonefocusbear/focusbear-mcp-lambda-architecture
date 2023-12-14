@@ -25,7 +25,7 @@ export class JiraAuthService extends BaseIntegrationAuthService {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.JIRA);
   }
 
-  protected getQueryParams() {
+  protected getQueryParams(callbackUrl: string) {
     const scopes = [
       'offline_access',
       'read%3Ajira-work',
@@ -43,7 +43,7 @@ export class JiraAuthService extends BaseIntegrationAuthService {
       audience: 'api.atlassian.com',
       scope: scopes.join('%20'),
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       response_type: 'code',
       prompt: 'consent',
     };
@@ -58,14 +58,14 @@ export class JiraAuthService extends BaseIntegrationAuthService {
     return account.account_id;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code } = authorizeQuery;
     const body = {
       grant_type: 'authorization_code',
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     const headers = {
       'Content-Type': 'application/json',

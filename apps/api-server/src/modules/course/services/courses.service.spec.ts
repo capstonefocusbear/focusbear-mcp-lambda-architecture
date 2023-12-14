@@ -334,4 +334,20 @@ describe('CoursesService', () => {
       expect(CoursesRepositoryMock.updateEnrolmentStatus).toBeCalledWith(DummyUpdateCourseEnrolmentDto);
     });
   });
+
+  describe('getUserCreatedCourses', () => {
+    it('positive: should fetch user created courses', async () => {
+      CoursesRepositoryMock.getAllAuthorCourses.mockResolvedValueOnce([DummyCourseOne, DummyCourseThree]);
+      const result = await coursesService.getUserCreatedCourses(userDummy.id);
+      expect(result).toMatchObject([DummyCourseOne, DummyCourseThree]);
+    });
+  });
+
+  describe('getUserNotEnrolledCourses', () => {
+    it('positive: should fetch user not enrolled courses', async () => {
+      CoursesRepositoryMock.getUserNotEnrolledCourses.mockResolvedValueOnce([DummyCourseThree]);
+      const result = await coursesService.getUserNotEnrolledCourses(userDummy.id);
+      expect(result).toMatchObject([DummyCourseThree]);
+    });
+  });
 });

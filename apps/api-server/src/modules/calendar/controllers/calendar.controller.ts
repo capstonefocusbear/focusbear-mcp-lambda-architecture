@@ -23,20 +23,9 @@ export class CalendarController {
     return events;
   }
 
-  @Get(':platform/accounts')
-  async getAccounts(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
-    const service = this.calendarServiceFactory.get(platform);
-    const accounts = await service.getAccounts(platform, user.id);
-    return accounts;
-  }
-
-  @Get(':platform/calendars')
-  async getCalendars(
-    @Param('platform') platform: CalendarPlatforms,
-    @Query() { account }: { account: string },
-    @AuthContext() { user }: Passport,
-  ) {
-    return this.calendarService.getCalendars(user.id, platform, account);
+  @Get(':platform/calendar-datas')
+  async getCalendarDatas(@Param('platform') platform: CalendarPlatforms, @AuthContext() { user }: Passport) {
+    return this.calendarService.getCalendarDatas(user.id, platform);
   }
 
   @Put('/calendar-update')

@@ -7,6 +7,8 @@ import { Calendar } from '../entities/calendar.entity';
 import { CalendarExcluededKeywordRepository } from '../repositories/calendar-excluded-keyword.repository';
 import { CalendarRepository } from '../repositories/calendar.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { CalendarServiceFactory } from './calendar.service.factory';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 
 @Injectable()
 export class CalendarService {
@@ -14,6 +16,7 @@ export class CalendarService {
     private readonly calendarExcludedKeywordRepository: CalendarExcluededKeywordRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly userRepository: UserRepository,
+    private readonly calendarServiceFactory: CalendarServiceFactory,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -32,8 +35,14 @@ export class CalendarService {
       const calendarDatas = await this.calendarRepository.orm.find({
         where: { user_id: userId, platform, platform_account },
       });
-      const calendarData_toString = await calendarDatas.map((e) => JSON.stringify(e));
-      return calendarData_toString;
+      const filteredCalendarData = calendarDatas.map((cal) => {
+        return {
+          id: cal.id,
+          displayName: cal.summary,
+          is_Selected: cal.is_selected,
+        };
+      });
+      return filteredCalendarData;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -181,5 +190,32 @@ export class CalendarService {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
     }
+  }
+
+  async getCalendarDatas(userId: string, platform: CalendarPlatforms) {
+    const keywords = await this.getCalendarExcludedKeywords(platform, userId);
+
+    let accounts;
+    if (platform === CalendarPlatforms.GOOGLE) {
+      const service = this.calendarServiceFactory.get(IntegrationPlatforms.GOOGLE);
+      accounts = await service.getAccounts(IntegrationPlatforms.GOOGLE, userId);
+    } else {
+      const service = this.calendarServiceFactory.get(IntegrationPlatforms.MICROSOFT);
+      accounts = await service.getAccounts(IntegrationPlatforms.MICROSOFT, userId);
+    }
+    const calendars = await Promise.all(
+      accounts.map(async (account) => {
+        const items = await this.getCalendars(userId, platform, account.email);
+        return {
+          account: account.email,
+          expired: account.expired,
+          items,
+        };
+      }),
+    );
+    return {
+      calendars,
+      keywords,
+    };
   }
 }

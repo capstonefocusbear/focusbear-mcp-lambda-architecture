@@ -66,7 +66,7 @@ export class PlatformIntegrationsService {
         email: account.external_user_id,
         expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
       };
-      return JSON.stringify(data);
+      return data;
     });
     return accountInfos;
   }

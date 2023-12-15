@@ -30,12 +30,12 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
     this.tokenURL = `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
   }
 
-  getQueryParams() {
+  getQueryParams(callbackUrl: string) {
     const scope = 'https://graph.microsoft.com/Calendars.Read';
     const queryParams: any = {
       client_id: this.clientId,
       response_type: 'code',
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       response_mode: 'query',
       scope,
       prompt: 'login',
@@ -116,13 +116,14 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
   }
 
   protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+    const callbackUrl = this.getCallbackUrl(authorizeQuery.is_development);
     const { code } = authorizeQuery;
     const scope = 'https://graph.microsoft.com/Calendars.Read';
     const body = {
       client_id: this.clientId,
       scope,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       grant_type: 'authorization_code',
       client_secret: this.clientSecret,
     };

@@ -40,6 +40,7 @@ export class FocusModeManagerService {
     { finish_time, intention, start_time, to_dos }: StartFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
+    headers: any,
   ): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -52,6 +53,10 @@ export class FocusModeManagerService {
           focus_mode_id,
         },
       });
+      let device_id = null;
+      if (headers?.['device-id']) {
+        device_id = headers['device-id'];
+      }
       // using incoming focus mode's starting time for possible incomplete mode's finish time
       // by passing start_time here for finish_time argument of validateStartingFocusMode
       const [{ name }, { language }] = await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
@@ -79,15 +84,16 @@ export class FocusModeManagerService {
         lang: language,
         args: { focus_mode_name: name },
       });
+      const notificationData = { ...completedMode, device_id };
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
         title: pushNotificationTitle,
         body: pushNotificationBody,
-        pushData: completedMode,
+        pushData: notificationData,
       });
       await this.userRepository.orm.update(user_id, userDataToUpdate);
       // Pusher throwing error about data exceeding size limit, removing to dos
-      delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', completedMode);
+      delete notificationData?.to_dos;
+      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -149,6 +155,7 @@ export class FocusModeManagerService {
     finishFocusBlockDto: FinishFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
+    headers?: any,
   ): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -160,6 +167,10 @@ export class FocusModeManagerService {
           user_id,
         },
       });
+      let device_id = null;
+      if (headers?.['device-id']) {
+        device_id = headers['device-id'];
+      }
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
       const [{ name }, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
@@ -192,14 +203,15 @@ export class FocusModeManagerService {
         lang: user.language,
         args: { focus_mode_name: name },
       });
+      const notificationData = { ...completedMode, device_id };
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
         title: pushNotificationTitle,
         body: pushNotificationBody,
-        pushData: completedMode,
+        pushData: notificationData,
       });
       // Pusher throwing error about data exceeding size limit, removing to dos
-      delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', completedMode);
+      delete notificationData?.to_dos;
+      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', notificationData);
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
         user_id,

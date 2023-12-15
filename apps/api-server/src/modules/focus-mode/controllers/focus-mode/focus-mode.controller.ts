@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+  Headers,
+} from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ResponseMessage } from '../../../../shared/domain/response-message.model';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -64,21 +77,23 @@ export class FocusModeController {
 
   @Post(':focus_mode_id/start')
   async startCurrentFocusMode(
+    @Headers() headers: any,
     @Body() startFocusModeData: StartFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeManagerService.startCurrentFocusMode(startFocusModeData, { focus_mode_id }, user.id);
+    await this.focusModeManagerService.startCurrentFocusMode(startFocusModeData, { focus_mode_id }, user.id, headers);
     return new ResponseMessage('Focus mode has been successfully started!');
   }
 
   @Post(':focus_mode_id/finish')
   async finishCurrentFocusMode(
+    @Headers() headers: any,
     @Body() finishFocusModeDto: FinishFocusModeDto,
     @Param() { focus_mode_id }: GetFocusModeParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ResponseMessage> {
-    await this.focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user.id);
+    await this.focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user.id, headers);
     return new ResponseMessage('Focus mode has been successfully finished!');
   }
 

@@ -54,8 +54,8 @@ export class FocusModeManagerService {
         },
       });
       let device_id = null;
-      if (headers?.['device-id']) {
-        device_id = headers['device-id'];
+      if (headers?.device_id) {
+        device_id = headers.device_id;
       }
       // using incoming focus mode's starting time for possible incomplete mode's finish time
       // by passing start_time here for finish_time argument of validateStartingFocusMode
@@ -168,8 +168,8 @@ export class FocusModeManagerService {
         },
       });
       let device_id = null;
-      if (headers?.['device-id']) {
-        device_id = headers['device-id'];
+      if (headers?.device_id) {
+        device_id = headers.device_id;
       }
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
       const [{ name }, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);

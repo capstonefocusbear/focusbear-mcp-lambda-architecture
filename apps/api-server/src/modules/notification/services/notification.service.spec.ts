@@ -97,4 +97,13 @@ describe('NotificationService', () => {
       expect(NotificationRepositoryMock.update).toBeCalledWith(updateCalendarEventDummy.id, updatedNotification);
     });
   });
+
+  describe('deleteCalendarEvent', () => {
+    it('positive: should delete notification', async () => {
+      await notificationService.deleteCalendarEvent(notificationDBResponseDummy.external_id);
+      expect(NotificationRepositoryMock.orm.delete).toBeCalledWith({
+        external_id: notificationDBResponseDummy.external_id,
+      });
+    });
+  });
 });

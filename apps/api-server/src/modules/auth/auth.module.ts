@@ -22,6 +22,8 @@ import { AsanaAuthService } from './services/asana-auth.service';
 import { ClickUpAuthService } from './services/clickup-auth.service';
 import { TrelloAuthService } from './services/trello-auth.service';
 import { AuthServiceFactory } from './services/auth.service.factory';
+import { GoogleAuthService } from './services/google-auth.service';
+import { MicrosoftAuthService } from './services/microsoft-auth.service';
 
 @Module({
   providers: [
@@ -37,6 +39,8 @@ import { AuthServiceFactory } from './services/auth.service.factory';
     AsanaAuthService,
     ClickUpAuthService,
     TrelloAuthService,
+    GoogleAuthService,
+    MicrosoftAuthService,
     AuthServiceFactory,
   ],
   exports: [

@@ -6,6 +6,8 @@ import { MondayAuthService } from './monday-auth.service';
 import { TrelloAuthService } from './trello-auth.service';
 import { JiraAuthService } from './jira-auth.service';
 import { ClickUpAuthService } from './clickup-auth.service';
+import { GoogleAuthService } from './google-auth.service';
+import { MicrosoftAuthService } from './microsoft-auth.service';
 
 @Injectable()
 export class AuthServiceFactory {
@@ -16,6 +18,8 @@ export class AuthServiceFactory {
     private readonly trelloAuthService: TrelloAuthService,
     private readonly jiraAuthService: JiraAuthService,
     private readonly clickUpAuthService: ClickUpAuthService,
+    private readonly googleAuthService: GoogleAuthService,
+    private readonly microsoftAuthService: MicrosoftAuthService,
   ) {}
 
   get(platform: IntegrationPlatforms) {
@@ -32,6 +36,10 @@ export class AuthServiceFactory {
         return this.jiraAuthService;
       case IntegrationPlatforms.CLICK_UP:
         return this.clickUpAuthService;
+      case IntegrationPlatforms.GOOGLE:
+        return this.googleAuthService;
+      case IntegrationPlatforms.MICROSOFT:
+        return this.microsoftAuthService;
       default:
         throw Error(`${platform} Platform Service Not Found`);
     }

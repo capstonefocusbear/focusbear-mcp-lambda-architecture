@@ -293,3 +293,22 @@ export const PlatformIntegrationsServiceMock = {
 export const ToDoServiceMock = {
   logToDosTime: jest.fn(),
 };
+
+export const GoogleCalendarServiceMock = {
+  getEvents: jest.fn(),
+  getEvent: jest.fn(),
+  updateEvents: jest.fn(),
+  getAccounts: jest.fn(),
+};
+
+export const MicrosoftCalendarServiceMock = {
+  getEvents: jest.fn(),
+  getEvent: jest.fn(),
+  updateEvents: jest.fn(),
+  getAccounts: jest.fn(),
+};
+
+export const NotificationServiceMock = {
+  updateOrCreateCalendarEvent: jest.fn(),
+  deleteCalendarEvent: jest.fn(),
+};

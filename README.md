@@ -66,7 +66,9 @@ $ REDIS_PORT =
 
 # This should be retrieved from slack dashboard
 $ SLACK_BACKEND_ALERTS_WEBHOOK = 
+$ SLACK_CUSTOMER_SUPPORT_WEBHOOK = 
 $ SLACK_WEBHOOKS_CHANNEL =
+$ SLACK_UNINSTALL_FEEDBACK_CHANNEL = 
 
 # Go to the Pusher Channels account to take those values
 $ PUSHER_APP_ID =
@@ -113,11 +115,56 @@ $ OPENAI_API_KEY =
 # use local URL for local testing, use URL generated for staging server to test on staging
 $ STAGING_SERVER_URL =
 
+# Get from sendgrid Dashboard
+$ SENDGRID_KEY = 
+
+# Can be any random string
+$ JWT_INVITATION_SECRET =
+
 #Get these from Zoho
 $ ZOHO_CALLBACK_URL = should be URL of callback path for dashboard zoho login
 $ ZOHO_CALLBACK_URL_DEVELOPMENT = https://dashboard.local.dev:3000/zohocallback
 $ ZOHO_CLIENT_ID =
 $ ZOHO_CLIENT_SECRET =
+
+#Get these from Monday
+$ MONDAY_CALLBACK_URL= should be URL of callback path for dashboard zoho login
+$ MONDAY_CLIENT_ID=
+$ MONDAY_CLIENT_SECRET=
+
+#Get these from Jira
+$ JIRA_CALLBACK_URL=should be URL of callback path for dashboard jira login
+$ JIRA_CLIENT_ID=
+$ JIRA_CLIENT_SECRET=
+
+#Get these from Asana
+$ ASANA_CALLBACK_URL=should be URL of callback path for dashboard asana login
+$ ASANA_CLIENT_ID=
+$ ASANA_CLIENT_SECRET=
+
+#Get these from Clickup
+$ CLICKUP_CALLBACK_URL=should be URL of callback path for dashboard clickup login
+$ CLICKUP_CLIENT_ID=
+$ CLICKUP_CLIENT_SECRET=
+
+#Get these from Trello
+$ TRELLO_CALLBACK_URL=should be URL of callback path for dashboard trello login
+$ TRELLO_CLIENT_ID=
+$ TRELLO_CLIENT_SECRET=
+$ TRELLO_APP_NAME=
+
+#Get these from Google
+$ GOOGLE_CALLBACK_URL= should be URL of callback path for dashboard google login
+$ GOOGLE_CLIENT_ID= 
+$ GOOGLE_CLIENT_SECRET=
+$ GOOGLE_APP_NAME=
+
+#Get these from Microsoft
+$ MICROSOFT_CALLBACK_URL=should be URL of callback path for dashboard microsoft login
+$ MICROSOFT_TENANT_ID=
+$ MICROSOFT_CLIENT_ID=
+$ MICROSOFT_CLIENT_SECRET=
+$ MICROSOFT_APP_NAME=
 
 # Get from ProfitWell
 $ PROFITWELL_API_KEY = 

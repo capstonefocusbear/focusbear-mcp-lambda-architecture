@@ -105,7 +105,7 @@ describe('FocusModeManagerService', () => {
       start_time: CompletedFocusBlockDummy.start_time,
       intention: CompletedFocusBlockDummy.intention,
     };
-    const dummyHeaders = { 'device-id': '12345' };
+    const dummyHeaders = { device_id: '12345' };
 
     it('negative: should throw NotFoundException if focus mode does not exist', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(null);
@@ -174,7 +174,7 @@ describe('FocusModeManagerService', () => {
 
       expect(PusherServiceMock.trigger).toBeCalledWith(`private-${user_id}`, 'focus-mode-started', {
         ...CompletedFocusBlockDummy,
-        device_id: dummyHeaders['device-id'],
+        device_id: dummyHeaders.device_id,
       });
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });

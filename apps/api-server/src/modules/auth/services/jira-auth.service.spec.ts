@@ -54,7 +54,7 @@ describe('JiraService', () => {
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
-    ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
+    // ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
     jiraAuthService = moduleRef.get<JiraAuthService>(JiraAuthService);
   });
 
@@ -64,6 +64,7 @@ describe('JiraService', () => {
 
   describe('authorize', () => {
     it('positive: should create platform integration record saving users jira credentials', async () => {
+      ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
       const authorizationResponseDummy = {
         access_token: 'token',
         expires_in: new Date().valueOf(),
@@ -103,6 +104,7 @@ describe('JiraService', () => {
 
   describe('refreshToken', () => {
     it('positive: should update platform integration record saving asana credentials', async () => {
+      ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
       const integrationRecordMock = { data: { refresh_token: 'refresh-token' } };
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(integrationRecordMock);
       const refreshResponseMock = {
@@ -122,7 +124,10 @@ describe('JiraService', () => {
 
   describe('getLoginUrl', () => {
     it('positive: should return redirect url', async () => {
-      const redirect = jiraAuthService.getLoginUrl();
+      ConfigServiceMock.get.mockReturnValueOnce('jira-redirect-url');
+      ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
+      const isDevelopment = false;
+      const redirect = jiraAuthService.getLoginUrl(isDevelopment);
       const scopes = [
         'offline_access',
         'read%3Ajira-work',
@@ -139,7 +144,7 @@ describe('JiraService', () => {
         audience: 'api.atlassian.com',
         scope: scopes.join('%20'),
         client_id: undefined,
-        redirect_uri: undefined,
+        redirect_uri: 'jira-redirect-url',
         response_type: 'code',
         prompt: 'consent',
       };

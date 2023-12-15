@@ -18,8 +18,6 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
 
   protected readonly clientSecret: string;
 
-  protected readonly callbackUrl: string;
-
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
@@ -29,11 +27,11 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
   ) {
     this.clientId = this.configService.get(`${platform.toUpperCase()}_CLIENT_ID`);
     this.clientSecret = this.configService.get(`${platform.toUpperCase()}_CLIENT_SECRET`);
-    this.callbackUrl = this.configService.get(`${platform.toUpperCase()}_CALLBACK_URL`);
   }
 
-  getLoginUrl() {
-    const queryParams = this.getQueryParams();
+  getLoginUrl(isDevelopment: boolean) {
+    const callbackUrl = this.getCallbackUrl(isDevelopment);
+    const queryParams = this.getQueryParams(callbackUrl);
 
     // convert queryParams to query string
     const queryParamsStr = Object.keys(queryParams)
@@ -43,7 +41,14 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
     return { redirect_url: `${this.loginURL}?${queryParamsStr}` };
   }
 
-  protected abstract getQueryParams();
+  getCallbackUrl(isDevelopment: boolean) {
+    const envVar = isDevelopment
+      ? `${this.platform.toUpperCase()}_DEVELOPMENT_CALLBACK_URL`
+      : `${this.platform.toUpperCase()}_CALLBACK_URL`;
+    return this.configService.get(envVar);
+  }
+
+  protected abstract getQueryParams(callbackUrl: string);
 
   async saveUserData(
     userId: string,
@@ -69,7 +74,8 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
   protected abstract getAccountId(data: any);
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
-    const data = await this.requestAuthorize(authorizeQuery);
+    const callbackUrl = this.getCallbackUrl(authorizeQuery.is_development);
+    const data = await this.requestAuthorize(authorizeQuery, callbackUrl);
     if (!data.access_token) {
       throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
     }
@@ -88,7 +94,7 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
     });
   }
 
-  protected abstract requestAuthorize(authorizeQuery: AuthorizeQuery);
+  protected abstract requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string);
 
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });

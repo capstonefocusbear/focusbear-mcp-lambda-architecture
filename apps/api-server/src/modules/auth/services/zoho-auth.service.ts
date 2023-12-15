@@ -23,7 +23,7 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.ZOHO);
   }
 
-  getQueryParams() {
+  getQueryParams(callbackUrl: string) {
     const scopes = [
       'AaaServer.profile.Read',
       'ZohoProjects.tasks.ALL',
@@ -37,7 +37,7 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
       scope: scopes.join(','),
       client_id: this.clientId,
       client_secret: this.clientSecret,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       response_type: 'code',
       access_type: 'offline',
       prompt: 'consent',
@@ -54,9 +54,9 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
     return ZUID;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code, 'accounts-server': accountServerURL } = authorizeQuery;
-    const url = `${accountServerURL}/oauth/v2/token?client_id=${this.clientId}&grant_type=authorization_code&client_secret=${this.clientSecret}&redirect_uri=${this.callbackUrl}&code=${code}`;
+    const url = `${accountServerURL}/oauth/v2/token?client_id=${this.clientId}&grant_type=authorization_code&client_secret=${this.clientSecret}&redirect_uri=${callbackUrl}&code=${code}`;
     const { data } = await axios.post(url);
     return data;
   }

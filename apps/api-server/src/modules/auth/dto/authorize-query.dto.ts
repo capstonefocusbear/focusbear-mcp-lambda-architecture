@@ -20,5 +20,5 @@ export class AuthorizeQuery {
 
     return value;
   })
-  is_development?: boolean;
+  is_development? = false;
 }

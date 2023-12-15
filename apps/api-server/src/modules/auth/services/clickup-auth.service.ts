@@ -25,10 +25,10 @@ export class ClickUpAuthService extends BaseIntegrationAuthService {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.CLICK_UP);
   }
 
-  getQueryParams() {
+  getQueryParams(callbackUrl: string) {
     const queryParams: any = {
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     return queryParams;
   }

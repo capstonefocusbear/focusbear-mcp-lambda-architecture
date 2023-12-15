@@ -49,6 +49,7 @@ export class IntegrationController {
   }
 
   @Post(':platform/sync-tasks')
+  @UseGuards(IsAuth)
   async manuallySyncTasks(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
     const service = this.integrationFactory.get(platform);
     return service.manuallySyncTasks(user.id);

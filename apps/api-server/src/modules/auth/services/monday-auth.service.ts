@@ -25,10 +25,10 @@ export class MondayAuthService extends BaseIntegrationAuthService {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.MONDAY);
   }
 
-  protected getQueryParams() {
+  protected getQueryParams(callbackUrl: string) {
     const queryParams: any = {
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     return queryParams;
   }
@@ -44,13 +44,13 @@ export class MondayAuthService extends BaseIntegrationAuthService {
     return accountId.account_id;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code } = authorizeQuery;
     const params = {
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     const { data } = await axios.post(this.accountServerURL, null, { params });
     return data;

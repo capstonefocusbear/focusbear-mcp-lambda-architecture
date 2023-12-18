@@ -9,6 +9,7 @@ import { BaseCalendarService } from './base-calendar.service';
 import { NotificationService } from '../../notification/services/notification.service';
 import { NotificationRepository } from '../../notification/repository/notification.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { CalendarService } from './calendar.service';
 
 const notificationAdapter = ({
   event,
@@ -46,13 +47,18 @@ export class GoogleCalendarService extends BaseCalendarService {
     protected readonly notificationRepository: NotificationRepository,
     protected readonly notificationService: NotificationService,
     protected readonly userRepository: UserRepository,
+    private readonly calendarService: CalendarService,
   ) {
     super(notificationRepository, notificationService, platformIntegrationService, userRepository);
   }
 
-  async getEvents(userId) {
+  async getEvents(userId: string, account: string) {
     const platform = IntegrationPlatforms.GOOGLE;
-    const googleIntegrationRecord = await this.platformIntegrationService.getPlatformIntegrationData(platform, userId);
+    const googleIntegrationRecord = await this.platformIntegrationService.getPlatformIntegrationData(
+      platform,
+      userId,
+      account,
+    );
     const clientId = this.configService.get(`${platform.toUpperCase}_CLIENT_ID`);
     const clientSecret = this.configService.get(`${platform.toUpperCase()}_CLIENT_SECRET`);
     const callbackUrl = this.configService.get(`${platform.toUpperCase()}_CALLBACK_URL`);
@@ -62,7 +68,17 @@ export class GoogleCalendarService extends BaseCalendarService {
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     const { data: calendarList } = await calendar.calendarList.list();
-    const calendarIds = calendarList.items.map((item) => item.id);
+    const calendarIds = await Promise.all(
+      calendarList.items.map(async (item) => {
+        await this.calendarService.updateCalendar(userId, {
+          platform: CalendarPlatforms.GOOGLE,
+          platform_account: account,
+          calendar_id: item.id,
+          summary: item.summary,
+        });
+        return item.id;
+      }),
+    );
     const events = await Promise.all(
       calendarIds.map(async (calendarId) => this.getEvent({ userId, calendarId, calendar })),
     );

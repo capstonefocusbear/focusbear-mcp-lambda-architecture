@@ -9,6 +9,7 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
+import { MicrosoftCalendarService } from '../../calendar/services/microsoft-calendar.service';
 
 @Injectable()
 export class MicrosoftAuthService extends BaseIntegrationAuthService {
@@ -23,6 +24,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
     protected readonly userRepository: UserRepository,
     @InjectQueue('time-logs') protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
+    private readonly microsoftCalendarService: MicrosoftCalendarService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.MICROSOFT);
     this.tenantId = configService.get('MICROSOFT_TENANT_ID');
@@ -110,6 +112,9 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
         location: location || '',
         accountId,
       });
+      if (accountId) {
+        await this.microsoftCalendarService.updateEvents(userId, accountId);
+      }
     } catch (error) {
       console.error(error);
     }

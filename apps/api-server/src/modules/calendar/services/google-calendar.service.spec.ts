@@ -4,6 +4,7 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
 import { userDummy } from '../../../../test/dummies';
 import {
+  CalendarServiceMock,
   ConfigServiceMock,
   NotificationRepositoryMock,
   NotificationServiceMock,
@@ -16,6 +17,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { UserRepository } from '../../user/repositories/user.repository';
 import { GoogleCalendarService } from './google-calendar.service';
 import { NotificationService } from '../../notification/services/notification.service';
+import { CalendarService } from './calendar.service';
 
 describe('GoogleCalendarService', () => {
   let googleCalendarService: GoogleCalendarService;
@@ -29,6 +31,7 @@ describe('GoogleCalendarService', () => {
         NotificationRepository,
         NotificationService,
         UserRepository,
+        CalendarService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -45,6 +48,8 @@ describe('GoogleCalendarService', () => {
       .useValue(NotificationServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(CalendarService)
+      .useValue(CalendarServiceMock)
       .compile();
     googleCalendarService = moduleRef.get<GoogleCalendarService>(GoogleCalendarService);
   });
@@ -63,7 +68,7 @@ describe('GoogleCalendarService', () => {
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
       try {
-        await googleCalendarService.updateEvents(userDummy.id);
+        await googleCalendarService.updateEvents(userDummy.id, 'email');
       } catch (error) {
         exception = error;
       }

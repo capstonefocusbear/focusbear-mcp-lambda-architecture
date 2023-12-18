@@ -17,9 +17,13 @@ export class CalendarController {
   constructor(private calendarServiceFactory: CalendarServiceFactory, private calendarService: CalendarService) {}
 
   @Get(':platform/events')
-  async getEvents(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
+  async getEvents(
+    @Param('platform') platform: IntegrationPlatforms,
+    @Query('account') account: string,
+    @AuthContext() { user }: Passport,
+  ) {
     const service = this.calendarServiceFactory.get(platform);
-    const events = await service.updateEvents(user.id);
+    const events = await service.updateEvents(user.id, account);
     return events;
   }
 

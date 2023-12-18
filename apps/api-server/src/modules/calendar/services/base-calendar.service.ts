@@ -16,13 +16,13 @@ export abstract class BaseCalendarService implements ICalendarService {
     protected readonly userRepository: UserRepository,
   ) {}
 
-  async updateEvents(userId) {
+  async updateEvents(userId: string, account: string) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with ID: ${userId} does not exist!`);
     }
 
-    const events = await this.getEvents(userId);
+    const events = await this.getEvents(userId, account);
     const eventIds = events.map((calEvent) => {
       return calEvent.external_id;
     });
@@ -44,8 +44,10 @@ export abstract class BaseCalendarService implements ICalendarService {
     return events;
   }
 
-  async getEvents(userId: any) {
-    return [userId];
+  async getEvents(userId: string, account: string) {
+    // for avoiding an eslint error
+    const data = { userId, account };
+    return data ? [] : [];
   }
 
   async getAccounts(platform: IntegrationPlatforms, userId: string) {

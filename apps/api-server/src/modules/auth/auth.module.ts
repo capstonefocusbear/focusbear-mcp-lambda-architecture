@@ -24,6 +24,7 @@ import { TrelloAuthService } from './services/trello-auth.service';
 import { AuthServiceFactory } from './services/auth.service.factory';
 import { GoogleAuthService } from './services/google-auth.service';
 import { MicrosoftAuthService } from './services/microsoft-auth.service';
+import { CalendarModule } from '../calendar/calendar.module';
 
 @Module({
   providers: [
@@ -80,6 +81,7 @@ import { MicrosoftAuthService } from './services/microsoft-auth.service';
     HelperModule,
     ConfigModule,
     PlatformIntegrationsModule,
+    CalendarModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -11,7 +11,7 @@ import {
   DummyCalendarUpdateDto,
   DummyCalendarCreateDto,
 } from '../../../../test/dummies';
-import { SentryServiceMock } from '../../../../test/mocks';
+import { PlatformIntegrationsServiceMock, SentryServiceMock } from '../../../../test/mocks';
 import { CalendarRepository } from '../repositories/calendar.repository';
 import { CalendarExcluededKeywordRepository } from '../repositories/calendar-excluded-keyword.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -19,12 +19,11 @@ import {
   CalendarRepositoryMock,
   CalendarExcluededKeywordRepositoryMock,
   UserRepositoryMock,
-  CalendarServiceFactoryMock,
 } from '../../../../test/mocks/repositories.mock';
 import { CalendarService } from './calendar.service';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarExcludedKeyword } from '../entities/calendar-excluded-keywords.entity';
-import { CalendarServiceFactory } from './calendar.service.factory';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 
 describe('CalendarService', () => {
   let calendarService: CalendarService;
@@ -36,7 +35,7 @@ describe('CalendarService', () => {
         CalendarRepository,
         CalendarExcluededKeywordRepository,
         UserRepository,
-        CalendarServiceFactory,
+        PlatformIntegrationsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -49,8 +48,8 @@ describe('CalendarService', () => {
       .useValue(CalendarExcluededKeywordRepositoryMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
-      .overrideProvider(CalendarServiceFactory)
-      .useValue(CalendarServiceFactoryMock)
+      .overrideProvider(PlatformIntegrationsService)
+      .useValue(PlatformIntegrationsServiceMock)
       .compile();
     calendarService = moduleRef.get<CalendarService>(CalendarService);
   });

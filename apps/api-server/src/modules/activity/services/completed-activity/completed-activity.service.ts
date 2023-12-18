@@ -1036,6 +1036,7 @@ export class CompletedActivityService {
       pushData,
       should_send_only_data_for_android: true,
     });
+    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 

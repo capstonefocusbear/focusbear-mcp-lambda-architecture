@@ -47,7 +47,10 @@ export abstract class BaseCalendarService implements ICalendarService {
   async getEvents(userId: string, account: string) {
     // for avoiding an eslint error
     const data = { userId, account };
-    return data ? [] : [];
+    if (data) {
+      return [];
+    }
+    return [];
   }
 
   async getAccounts(platform: IntegrationPlatforms, userId: string) {

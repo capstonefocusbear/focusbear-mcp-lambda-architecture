@@ -360,7 +360,6 @@ export class CompletedActivityService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       const failedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] = [];
-      // const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
       const completedActivitiesWithSequenceIds = await this.addSequenceIdsToCompletedActivities(completedActivities);
       const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivitiesWithSequenceIds);
       const activitySequenceCache = {};

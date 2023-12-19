@@ -190,6 +190,7 @@ export class CoursesRepository {
       where: {
         user: {
           id: user_id,
+          auth0_id: Not(user_id),
         },
       },
     });

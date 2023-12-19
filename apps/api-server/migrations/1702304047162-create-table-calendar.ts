@@ -26,7 +26,6 @@ export class CreateTableCalendar1702304047162 implements MigrationInterface {
           "platform" character varying(255) NOT NULL, 
           "calendar_id" character varying(255) NOT NULL, 
           "summary" character varying(1000),
-          "is_selected" boolean NOT NULL DEFAULT false
       );
 
       CREATE INDEX ON "calendars" ("user_id");

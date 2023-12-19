@@ -4,6 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { google } from 'googleapis';
 
+import axios from 'axios';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
@@ -39,7 +40,11 @@ export class GoogleAuthService implements IIntegrationAuthService {
   }
 
   getLoginUrl() {
-    const scopes = ['https://www.googleapis.com/auth/calendar.readonly'];
+    const scopes = [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ];
     const authorizationUrl = this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
@@ -71,9 +76,13 @@ export class GoogleAuthService implements IIntegrationAuthService {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }
 
-      const { email: accountId } = await this.oauth2Client.getTokenInfo(data.access_token);
+      const { data: userInfo } = await axios.get(
+        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${data.access_token}`,
+      );
+      const accountId = userInfo.email;
 
       await this.saveUserData(userId, data, accountId);
+
       if (accountId) {
         await this.googleCalendarService.updateEvents(userId, accountId);
       }

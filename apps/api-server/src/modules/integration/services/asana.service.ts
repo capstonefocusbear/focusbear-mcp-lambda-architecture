@@ -3,6 +3,7 @@ import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -51,6 +52,7 @@ export class AsanaService extends BaseIntegrationService {
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
     @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -61,6 +63,7 @@ export class AsanaService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.ASANA,
       syncTasksQueue,
+      sentryService,
     );
   }
 

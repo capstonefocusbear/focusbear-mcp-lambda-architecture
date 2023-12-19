@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Inject, Injectable, UseGuards, forwardRef } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { getDataCenterUrl, secondsToHHMM } from '../../../shared/utils/helpers';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -48,6 +49,7 @@ export class ZohoService extends BaseIntegrationService {
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
     @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -58,6 +60,7 @@ export class ZohoService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.ZOHO,
       syncTasksQueue,
+      sentryService,
     );
   }
 

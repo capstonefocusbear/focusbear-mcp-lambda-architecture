@@ -3,7 +3,6 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
-import { DateTime } from 'luxon';
 import {
   ConfigServiceMock,
   MicrosoftCalendarServiceMock,
@@ -90,7 +89,7 @@ describe('MicrosfotService', () => {
           client_id: undefined,
           refresh_token: authorizationResponseDummy.refresh_token,
           access_token: authorizationResponseDummy.access_token,
-          expiry_date: DateTime.local().toSeconds() * 1000,
+          expiry_date: expect.toBeNumber(),
           accountId: mail,
           location: '',
           account_server: '',

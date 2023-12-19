@@ -2,6 +2,7 @@
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -35,6 +36,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
     protected readonly platform: IntegrationPlatforms,
     protected readonly syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {}
 
   async getUser(userId: string): Promise<User> {
@@ -48,6 +50,19 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     taskId: string,
     timeEntry: any,
   ): Promise<AxiosResponse<any>> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Adding time entry in base service',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        taskId,
+        timeEntry,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
@@ -59,6 +74,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
           throw error;
         }
       }
@@ -86,17 +102,39 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
 
   async getTasks(userId: string, projectId: string, portalId: string): Promise<Task[]> {
     try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting tasks in base service',
+        data: {
+          userId,
+          portalId,
+          projectId,
+          platform: this.platform,
+        },
+      });
       const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
       if (!integrationRecord) return;
       return await this.tryGetTasks({ integrationRecord, userId, projectId, portalId });
-    } catch (e) {
-      throw new BadRequestException(e.response?.data);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw new BadRequestException(error.response?.data);
     }
   }
 
   protected abstract tryGetTasks({ integrationRecord, userId, projectId, portalId }): Promise<Task[]>;
 
   async getProjects(userId: string, portalId: string): Promise<Project[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting projects in base service',
+      data: {
+        userId,
+        portalId,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
@@ -108,6 +146,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
           throw error;
         }
       }
@@ -118,6 +157,15 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   protected abstract tryGetProjects({ integrationRecord, userId, portalId }): Promise<Project[]>;
 
   async getPortals(userId: string): Promise<Portal[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting portals in base service',
+      data: {
+        userId,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
@@ -132,6 +180,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
           throw error;
         }
       }
@@ -142,6 +191,15 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   protected abstract tryGetPortals({ integrationRecord, userId }): Promise<Portal[]>;
 
   async getAllProjects(userId: string): Promise<Project[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting all projects for user in base service',
+      data: {
+        userId,
+        platform: this.platform,
+      },
+    });
     const portals: any = await this.getPortals(userId);
     let projectsResponse = [];
     if (!portals) return projectsResponse;
@@ -160,60 +218,92 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   }
 
   async getAllUserProjects(userId: string): Promise<SyncedProjectDto[]> {
-    const portals: any = await this.getPortals(userId);
-    const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
-    const userSyncedProjectsExternalIds = userSyncedProjects.map((syncedProject) => syncedProject.external_project_id);
-    const projectsResponse = [];
-    if (!portals) return projectsResponse;
-    for (const portal of portals) {
-      // eslint-disable-next-line no-await-in-loop
-      const projects = await this.getProjects(userId, portal.id);
-      // eslint-disable-next-line no-continue
-      if (!projects?.length) continue;
-      projects.forEach((project) => {
-        const isSynced = userSyncedProjectsExternalIds.includes(project.id);
-        let externalStatuses = [];
-        let haveTasksBeenSynced = false;
-        if (isSynced) {
-          const linkedSyncedProject = userSyncedProjects.find(
-            (syncedProject) => syncedProject.external_project_id === project.id,
-          );
-          externalStatuses = linkedSyncedProject.available_statuses;
-          haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
-        }
-        const projectData = {
-          name: project.name,
-          project_id: project.id,
-          portal_id: portal.id,
-          is_synced: isSynced,
-          have_tasks_been_synced: haveTasksBeenSynced,
-          external_statuses: externalStatuses,
-        };
-        projectsResponse.push(projectData);
-      });
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting all user projects in base service for /:platform/user-projects endpoint',
+      data: {
+        userId,
+        platform: this.platform,
+      },
+    });
+    try {
+      const portals: any = await this.getPortals(userId);
+      const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+      const userSyncedProjectsExternalIds = userSyncedProjects.map(
+        (syncedProject) => syncedProject.external_project_id,
+      );
+      const projectsResponse = [];
+      if (!portals) return projectsResponse;
+      for (const portal of portals) {
+        // eslint-disable-next-line no-await-in-loop
+        const projects = await this.getProjects(userId, portal.id);
+        // eslint-disable-next-line no-continue
+        if (!projects?.length) continue;
+        projects.forEach((project) => {
+          const isSynced = userSyncedProjectsExternalIds.includes(project.id);
+          let externalStatuses = [];
+          let haveTasksBeenSynced = false;
+          if (isSynced) {
+            const linkedSyncedProject = userSyncedProjects.find(
+              (syncedProject) => syncedProject.external_project_id === project.id,
+            );
+            externalStatuses = linkedSyncedProject.available_statuses;
+            haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
+          }
+          const projectData = {
+            name: project.name,
+            project_id: project.id,
+            portal_id: portal.id,
+            is_synced: isSynced,
+            have_tasks_been_synced: haveTasksBeenSynced,
+            external_statuses: externalStatuses,
+          };
+          projectsResponse.push(projectData);
+        });
+      }
+      return projectsResponse;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    return projectsResponse;
   }
 
   async upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string) {
-    const available_statuses = await this.getProjectStatuses(userId, projectId, portalId);
-    const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
-    const syncedProjectsExternalIds = syncedProjects.map((project) => project.external_project_id);
-    const hasProjectBeenSynced = syncedProjectsExternalIds.includes(projectId);
-    if (!hasProjectBeenSynced) {
-      const newProject = new SyncedProject({
-        user_id: userId,
-        external_project_id: projectId,
-        external_portal_id: portalId,
-        available_statuses,
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Upserting synced project record in base service',
+      data: {
+        userId,
+        portalId,
+        projectId,
         platform: this.platform,
-      });
-      return this.syncedProjectsRepository.orm.save(newProject);
+      },
+    });
+    try {
+      const available_statuses = await this.getProjectStatuses(userId, projectId, portalId);
+      const syncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+      const syncedProjectsExternalIds = syncedProjects.map((project) => project.external_project_id);
+      const hasProjectBeenSynced = syncedProjectsExternalIds.includes(projectId);
+      if (!hasProjectBeenSynced) {
+        const newProject = new SyncedProject({
+          user_id: userId,
+          external_project_id: projectId,
+          external_portal_id: portalId,
+          available_statuses,
+          platform: this.platform,
+        });
+        return await this.syncedProjectsRepository.orm.save(newProject);
+      }
+      // if project has already been synced, update statuses
+      const linkedProject = syncedProjects.find((syncedProject) => syncedProject.external_project_id === projectId);
+      linkedProject.available_statuses = available_statuses;
+      return await this.syncedProjectsRepository.orm.save(linkedProject);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    // if project has already been synced, update statuses
-    const linkedProject = syncedProjects.find((syncedProject) => syncedProject.external_project_id === projectId);
-    linkedProject.available_statuses = available_statuses;
-    return this.syncedProjectsRepository.orm.save(linkedProject);
   }
 
   async manuallySyncTasks(userId: string) {
@@ -221,20 +311,47 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   }
 
   async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
-    const project = await this.getProject(userId, portalId, projectId);
-    const [projectAsFocusModeTag] = createNewTags([project], userId, this.platform);
-    await this.upsertSyncedProjectRecord(userId, portalId, project.id);
-    await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
-    await this.syncTasksQueue.add('sync-project-tasks', {
-      userId,
-      portalId,
-      projectId,
-      projectAsFocusModeTag,
-      platform,
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Syncing user project from external platform',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        platform: this.platform,
+      },
     });
+    try {
+      const project = await this.getProject(userId, portalId, projectId);
+      const [projectAsFocusModeTag] = createNewTags([project], userId, this.platform);
+      await this.upsertSyncedProjectRecord(userId, portalId, project.id);
+      await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
+      await this.syncTasksQueue.add('sync-project-tasks', {
+        userId,
+        portalId,
+        projectId,
+        projectAsFocusModeTag,
+        platform,
+      });
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
   }
 
   async getProject(userId: string, portalId: string, projectId: string): Promise<Project> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching project in base service',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
@@ -246,6 +363,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
           throw error;
         }
       }
@@ -256,25 +374,50 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   protected abstract tryGetProject({ integrationRecord, portalId, projectId, userId }): Promise<Project>;
 
   async getAllUserTasks(userId: string): Promise<Task[]> {
-    const syncedProjects = await this.syncedProjectsRepository.orm.find({
-      where: { user_id: userId, platform: this.platform },
-    });
-    const tasks = [];
-    for await (const project of syncedProjects) {
-      const projectTasks = await this.getTasksOwnedByUser(
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching all user tasks from synced projects for specific platform',
+      data: {
         userId,
-        project.external_portal_id,
-        project.external_project_id,
-      );
-      for (const task of projectTasks) {
-        task.portal_id = project.external_portal_id;
-        tasks.push(task);
+        platform: this.platform,
+      },
+    });
+    try {
+      const syncedProjects = await this.syncedProjectsRepository.orm.find({
+        where: { user_id: userId, platform: this.platform },
+      });
+      const tasks = [];
+      for await (const project of syncedProjects) {
+        const projectTasks = await this.getTasksOwnedByUser(
+          userId,
+          project.external_portal_id,
+          project.external_project_id,
+        );
+        for (const task of projectTasks) {
+          task.portal_id = project.external_portal_id;
+          tasks.push(task);
+        }
       }
+      return tasks;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
     }
-    return tasks;
   }
 
   async getTasksOwnedByUser(userId: string, portalId: string, projectId: string): Promise<Task[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching tasks owned by user',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
@@ -286,6 +429,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
           throw error;
         }
       }
@@ -296,6 +440,17 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   protected abstract tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId }): Promise<Task[]>;
 
   async getProjectStatuses(userId: string, projectId: string, portalId: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Fetching project statuses',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        platform: this.platform,
+      },
+    });
     const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
     if (!integrationRecord) return;
     const statuses = await this.tryGetProjectStatuses({ integrationRecord, userId, projectId, portalId });
@@ -310,6 +465,19 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   }): Promise<ExternalTaskStatus[]>;
 
   async updateTaskStatus(userId: string, portalId: string, projectId: string, taskId: string, statusId: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Updating task statuses',
+      data: {
+        userId,
+        portalId,
+        projectId,
+        taskId,
+        statusId,
+        platform: this.platform,
+      },
+    });
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {

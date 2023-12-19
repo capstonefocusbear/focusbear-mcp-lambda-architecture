@@ -3,6 +3,7 @@ import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
@@ -26,6 +27,7 @@ export class JiraService extends BaseIntegrationService {
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
     @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -36,6 +38,7 @@ export class JiraService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.JIRA,
       syncTasksQueue,
+      sentryService,
     );
   }
 

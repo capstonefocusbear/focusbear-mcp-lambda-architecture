@@ -1014,15 +1014,6 @@ export class CompletedActivityService {
     activity: Activity,
     language: string,
   ): Promise<void> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Broadcasting completion event to Pusher',
-      data: {
-        user_id,
-        completed_activity_id,
-      },
-    });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
     const title = this.i18nService.t('common.activity_completed', { lang: language });
@@ -1035,6 +1026,15 @@ export class CompletedActivityService {
       body,
       pushData,
       should_send_only_data_for_android: true,
+    });
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Broadcasting completion event to Pusher',
+      data: {
+        user_id,
+        pushData,
+      },
     });
     console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
     await this.pusherBeams.publishToUsers([user_id], publishRequest);

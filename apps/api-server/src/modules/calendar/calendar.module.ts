@@ -20,6 +20,7 @@ import { User } from '../user/entities/user.entity';
 @Module({
   imports: [NotificationModule, TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User])],
   controllers: [CalendarController],
+  exports: [GoogleCalendarService, MicrosoftCalendarService],
   providers: [
     UserRepository,
     NotificationRepository,

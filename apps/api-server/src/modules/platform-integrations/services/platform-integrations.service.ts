@@ -10,7 +10,7 @@ export class PlatformIntegrationsService {
 
   async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
     let platformRecord;
-    if (platform === IntegrationPlatforms.GOOGLE) {
+    if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
       platformRecord = await this.platformIntegrationsRepository.orm.findOne({
         where: { user_id: userId, platform, external_user_id: userExternalId },
       });

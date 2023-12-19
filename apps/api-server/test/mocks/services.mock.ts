@@ -312,3 +312,14 @@ export const NotificationServiceMock = {
   updateOrCreateCalendarEvent: jest.fn(),
   deleteCalendarEvent: jest.fn(),
 };
+
+export const CalendarServiceMock = {
+  getCalendars: jest.fn(),
+  updateCalendar: jest.fn(),
+  updateCalendarStatus: jest.fn(),
+  deleteCalendar: jest.fn(),
+  getCalendarExcludedKeywords: jest.fn(),
+  updateCalendarExcludedKeyword: jest.fn(),
+  deleteCalendarExcludedKeyword: jest.fn(),
+  getCalendarDatas: jest.fn(),
+};

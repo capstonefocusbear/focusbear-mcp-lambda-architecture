@@ -10,6 +10,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IIntegrationAuthService } from './integration-auth.service.interface';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { User } from '../../user/entities/user.entity';
+import { GoogleCalendarService } from '../../calendar/services/google-calendar.service';
 
 @Injectable()
 export class GoogleAuthService implements IIntegrationAuthService {
@@ -28,6 +29,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
     protected readonly userRepository: UserRepository,
     @InjectQueue('time-logs') protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
+    private readonly googleCalendarService: GoogleCalendarService,
   ) {
     this.clientId = this.configService.get(`${this.platform.toUpperCase()}_CLIENT_ID`);
     this.clientSecret = this.configService.get(`${this.platform.toUpperCase()}_CLIENT_SECRET`);
@@ -72,6 +74,9 @@ export class GoogleAuthService implements IIntegrationAuthService {
       const { email: accountId } = await this.oauth2Client.getTokenInfo(data.access_token);
 
       await this.saveUserData(userId, data, accountId);
+      if (accountId) {
+        await this.googleCalendarService.updateEvents(userId, accountId);
+      }
     } catch (error) {
       console.error(error);
     }

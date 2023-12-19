@@ -10,6 +10,7 @@ import { NotificationRepository } from '../../notification/repository/notificati
 import { NotificationService } from '../../notification/services/notification.service';
 import { BaseCalendarService } from './base-calendar.service';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { CalendarService } from './calendar.service';
 
 const notificationAdapter = ({
   event,
@@ -58,6 +59,7 @@ export class MicrosoftCalendarService extends BaseCalendarService {
     protected readonly notificationRepository: NotificationRepository,
     protected readonly notificationService: NotificationService,
     protected readonly userRepository: UserRepository,
+    private readonly calendarService: CalendarService,
   ) {
     super(notificationRepository, notificationService, platformIntegrationService, userRepository);
     this.tenantId = configService.get('MICROSOFT_TENANT_ID');
@@ -66,11 +68,12 @@ export class MicrosoftCalendarService extends BaseCalendarService {
     this.callbackUrl = configService.get('MICROSOFT_CALLBACK_URL');
   }
 
-  async getEvents(userId) {
+  async getEvents(userId, account) {
     const platform = IntegrationPlatforms.MICROSOFT;
     const microsoftIntegrationRecord = await this.platformIntegrationService.getPlatformIntegrationData(
       platform,
       userId,
+      account,
     );
 
     const headers = {
@@ -79,7 +82,17 @@ export class MicrosoftCalendarService extends BaseCalendarService {
 
     const { data: calendarData } = await axios.get(`${this.baseUrl}/me/calendars`, { headers });
     const { value: calendarList } = calendarData;
-    const calendarIds = calendarList.map((calendar) => calendar.id);
+    const calendarIds = await Promise.all(
+      calendarList.map(async (calendar) => {
+        await this.calendarService.updateCalendar(userId, {
+          platform: CalendarPlatforms.MICROSOFT,
+          platform_account: account,
+          calendar_id: calendar.id,
+          summary: calendar.name,
+        });
+        return calendar.id;
+      }),
+    );
 
     const events = await Promise.all(
       calendarIds.map(async (calendarId) => this.getEvent({ userId, calendarId, headers })),

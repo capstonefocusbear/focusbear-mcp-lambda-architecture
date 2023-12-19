@@ -7,8 +7,8 @@ import { Calendar } from '../entities/calendar.entity';
 import { CalendarExcluededKeywordRepository } from '../repositories/calendar-excluded-keyword.repository';
 import { CalendarRepository } from '../repositories/calendar.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { CalendarServiceFactory } from './calendar.service.factory';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 
 @Injectable()
 export class CalendarService {
@@ -16,7 +16,7 @@ export class CalendarService {
     private readonly calendarExcludedKeywordRepository: CalendarExcluededKeywordRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly userRepository: UserRepository,
-    private readonly calendarServiceFactory: CalendarServiceFactory,
+    private readonly platformIntegrationService: PlatformIntegrationsService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -197,11 +197,9 @@ export class CalendarService {
 
     let accounts;
     if (platform === CalendarPlatforms.GOOGLE) {
-      const service = this.calendarServiceFactory.get(IntegrationPlatforms.GOOGLE);
-      accounts = await service.getAccounts(IntegrationPlatforms.GOOGLE, userId);
+      accounts = await this.platformIntegrationService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userId);
     } else {
-      const service = this.calendarServiceFactory.get(IntegrationPlatforms.MICROSOFT);
-      accounts = await service.getAccounts(IntegrationPlatforms.MICROSOFT, userId);
+      accounts = await this.platformIntegrationService.getPlatformAccounts(IntegrationPlatforms.MICROSOFT, userId);
     }
     const calendars = await Promise.all(
       accounts.map(async (account) => {

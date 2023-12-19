@@ -1,5 +1,5 @@
 export interface ICalendarService {
-  updateEvents(userId);
-  getEvents(userId);
+  updateEvents(userId, account);
+  getEvents(userId, account);
   getAccounts(platform, userId);
 }

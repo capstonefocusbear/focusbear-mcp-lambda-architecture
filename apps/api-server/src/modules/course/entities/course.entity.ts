@@ -1,4 +1,4 @@
-import { Column, ManyToOne, OneToMany, OneToOne, JoinColumn, Entity, Index } from 'typeorm';
+import { Column, ManyToOne, OneToMany, JoinColumn, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Lesson } from '../../lesson/entities/lesson.entity';
 import { CourseRating } from './course-rating.entity';

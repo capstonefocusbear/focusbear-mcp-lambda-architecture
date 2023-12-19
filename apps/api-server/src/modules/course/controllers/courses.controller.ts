@@ -55,7 +55,6 @@ export class CoursesController {
     return this.coursesService.deleteCourse(course_id, deleteCourseDto, roles);
   }
 
-  @UseGuards(IsAdmin)
   @Patch(':course_id/hide')
   hideCourse(
     @Body() updateCourseHideDto: UpdateCourseHideDto,

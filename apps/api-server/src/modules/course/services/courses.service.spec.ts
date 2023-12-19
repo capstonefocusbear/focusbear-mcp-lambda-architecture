@@ -164,7 +164,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.hideCourse(DummyCourseTwo.id, { hidden: true }, [UserTypes.ADMIN]);
+        await coursesService.hideCourse(DummyCourseTwo.id, { should_hide: true }, [UserTypes.ADMIN]);
       } catch (error) {
         exception = error;
       }
@@ -177,7 +177,7 @@ describe('CoursesService', () => {
       const responseMessage = 'User not allowed to perform the operation';
       let exception: any;
       try {
-        await coursesService.hideCourse(DummyCourseTwo.id, { hidden: true }, [UserTypes.STANDARD]);
+        await coursesService.hideCourse(DummyCourseTwo.id, { should_hide: true }, [UserTypes.STANDARD]);
       } catch (error) {
         exception = error;
       }
@@ -187,7 +187,7 @@ describe('CoursesService', () => {
 
     it('positive: should hide the course, if the user has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
-      await coursesService.hideCourse(DummyCourseOne.id, { hidden: true }, [UserTypes.ADMIN]);
+      await coursesService.hideCourse(DummyCourseOne.id, { should_hide: true }, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseHidden).toBeCalledWith(DummyCourseOne.id, true);
     });
   });

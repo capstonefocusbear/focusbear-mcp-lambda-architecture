@@ -75,12 +75,12 @@ export class CoursesController {
     return this.coursesService.createCourseRating(createCourseRatingDto, user.id);
   }
 
-  @Post('enrolment')
+  @Post('enrolled')
   createCourseEnrolment(@Body() createCourseEnrolmentDto: CreateCourseEnrolmentDto, @AuthContext() { user }: Passport) {
     return this.coursesService.createCourseEnrolment(createCourseEnrolmentDto, user.id);
   }
 
-  @Patch('enrolment')
+  @Patch('enrolled')
   updateCourseLessonCompletion(
     @Param() updateCourseEnrolmentDto: UpdateCourseEnrolmentDto,
     @AuthContext() { user }: Passport,
@@ -89,7 +89,7 @@ export class CoursesController {
     return this.coursesService.updateCourseEnrolment(updateCourseEnrolmentDto, user.id, roles);
   }
 
-  @Get('enrolment')
+  @Get('enrolled')
   getUserEnrolledCourses(@AuthContext() { user }: Passport) {
     return this.coursesService.getEnrolledCourses(user.id);
   }
@@ -99,7 +99,7 @@ export class CoursesController {
     return this.coursesService.getUserCreatedCourses(user.id);
   }
 
-  @Get('user_not_enrolled')
+  @Get('user-not-enrolled')
   getUserNotEnrolledCourses(@AuthContext() { user }: Passport) {
     return this.coursesService.getUserNotEnrolledCourses(user.id);
   }

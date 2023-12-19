@@ -8,7 +8,7 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
-import { Not } from 'typeorm';
+import { In, Not } from 'typeorm';
 import { PageOptionsDto } from '../dto/page-options.dto';
 import { PageMetaDto } from '../dto/page-meta.dto';
 import { PageDto } from '../dto/page.dto';
@@ -193,16 +193,7 @@ export class CoursesRepository {
         },
       },
     });
-
-    const courses = await Promise.all(
-      courseEnrollments.map(async (enrolment: CourseEnrolment) => {
-        return await this.ormCourse.find({
-          where: {
-            id: Not(enrolment.course_id),
-          },
-        });
-      }),
-    );
-    return courses.flat(2);
+    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.id);
+    return await this.ormCourse.find({ where: { id: Not(In(enrolledCoursesIds)) } });
   }
 }

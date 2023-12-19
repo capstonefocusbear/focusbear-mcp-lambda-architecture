@@ -105,7 +105,7 @@ export class CoursesService {
     }
   }
 
-  async hideCourse(course_id: string, { hidden }: UpdateCourseHideDto, roles: string[]) {
+  async hideCourse(course_id: string, { should_hide }: UpdateCourseHideDto, roles: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
@@ -113,7 +113,7 @@ export class CoursesService {
         message: 'Hide Course',
         data: {
           course_id,
-          hidden,
+          hidden: should_hide,
         },
       });
       if (!roles.includes(UserTypes.ADMIN)) {
@@ -123,7 +123,7 @@ export class CoursesService {
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
-      await this.coursesRepository.updateCourseHidden(course_id, hidden);
+      await this.coursesRepository.updateCourseHidden(course_id, should_hide);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

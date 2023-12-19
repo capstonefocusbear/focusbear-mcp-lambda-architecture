@@ -94,6 +94,8 @@ export class FocusModeManagerService {
       // Pusher throwing error about data exceeding size limit, removing to dos
       delete notificationData?.to_dos;
       await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
+      // eslint-disable-next-line no-console
+      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');

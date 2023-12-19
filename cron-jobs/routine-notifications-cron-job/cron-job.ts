@@ -227,6 +227,7 @@ function publishToUsersByLanguage(
       fcm: { notification: { title, body: message } },
     });
     console.log('Users to receive routine push notifications: ', userIDs);
+    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
     return beamsClient.publishToUsers(userIDs, publishRequest);
   }
 }

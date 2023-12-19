@@ -215,6 +215,7 @@ describe('CompletedActivityService', () => {
 
     it('negative: should throw NotFoundException if activity sequence does not exist', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       const errorMessage = `Activity Sequence with id: ${completedActivity.activity_sequence_id} does not exist!`;
       let exception: any;
 
@@ -523,7 +524,7 @@ describe('CompletedActivityService', () => {
     it('positive: if target activity is break type the sequence check should be skipped', async () => {
       ActivityDummy.type = ActivityType.break;
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...ActivityDummy, type: ActivityType.break });
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
@@ -1366,6 +1367,16 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
         .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+      ]);
 
       const result = await completedActivityService.completeMultipleActivities(
         [completedActivitiesArrayDummy[0], completedActivitiesArrayDummy[1]],
@@ -1388,6 +1399,12 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
         .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+      ]);
 
       const result = await completedActivityService.completeMultipleActivities([completedActivitiesArrayDummy[0]], {
         user_id: userDummy.id,
@@ -1402,6 +1419,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
@@ -1435,6 +1466,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
@@ -1466,6 +1511,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);

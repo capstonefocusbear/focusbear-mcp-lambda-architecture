@@ -42,16 +42,11 @@ export class CoursesRepository {
       },
     });
 
-    return Promise.all(
-      courseEnrollments.map(async (enrolment: CourseEnrolment) => {
-        const courseFound = await this.ormCourse.findOne({
-          where: {
-            id: enrolment.course.id,
-          },
-        });
-        if (courseFound) return courseFound;
-      }),
-    );
+    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
+    return await this.ormCourse.find({
+      where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
+      relations: ['ratings'],
+    });
   }
 
   async getRatings(course_id: string): Promise<CourseRating[]> {
@@ -190,11 +185,10 @@ export class CoursesRepository {
       where: {
         user: {
           id: user_id,
-          auth0_id: Not(user_id),
         },
       },
     });
-    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.id);
-    return await this.ormCourse.find({ where: { id: Not(In(enrolledCoursesIds)) } });
+    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
+    return await this.ormCourse.find({ where: { id: Not(In(enrolledCoursesIds)), deleted: false, is_hidden: false } });
   }
 }

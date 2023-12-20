@@ -8,7 +8,7 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
-import { In, Not } from 'typeorm';
+import { Equal, In, Not } from 'typeorm';
 import { PageOptionsDto } from '../dto/page-options.dto';
 import { PageMetaDto } from '../dto/page-meta.dto';
 import { PageDto } from '../dto/page.dto';
@@ -45,7 +45,7 @@ export class CoursesRepository {
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
     return await this.ormCourse.find({
       where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
-      relations: ['ratings'],
+      relations: ['ratings', 'lessons'],
     });
   }
 
@@ -189,6 +189,8 @@ export class CoursesRepository {
       },
     });
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    return await this.ormCourse.find({ where: { id: Not(In(enrolledCoursesIds)), deleted: false, is_hidden: false } });
+    return await this.ormCourse.find({
+      where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
+    });
   }
 }

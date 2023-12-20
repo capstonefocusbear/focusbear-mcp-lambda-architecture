@@ -57,7 +57,7 @@ export class CreateCompletedActivityDto {
   @IsUUID()
   device_id: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID('4')
   activity_sequence_id: string;
 

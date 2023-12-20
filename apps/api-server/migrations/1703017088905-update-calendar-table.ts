@@ -13,7 +13,7 @@ export class UpdateCalendarTable1703017088905 implements MigrationInterface {
             "platform" character varying(255) NOT NULL, 
             "calendar_id" character varying(255) NOT NULL, 
             "summary" character varying(1000),
-            "is_selected" BOOLEAN NOT NULL DEFAULT 'false',
+            "is_selected" BOOLEAN NOT NULL DEFAULT 'false'
         );
 
         CREATE INDEX ON "calendars" ("user_id");

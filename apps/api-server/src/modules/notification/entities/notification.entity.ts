@@ -28,6 +28,7 @@ export class Notification extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
+    transformer: BaseEntity.encryptField('platform_account'),
   })
   platform_account?: string;
 

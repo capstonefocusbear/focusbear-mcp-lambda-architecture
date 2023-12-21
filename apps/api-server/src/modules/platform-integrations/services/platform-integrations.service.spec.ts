@@ -107,6 +107,8 @@ describe('PlatformIntegrationsService', () => {
         trello: false,
         asana: false,
         monday: false,
+        google: false,
+        microsoft: false,
       });
     });
   });

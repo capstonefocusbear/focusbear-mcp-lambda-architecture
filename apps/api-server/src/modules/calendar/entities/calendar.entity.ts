@@ -26,6 +26,7 @@ export class Calendar extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
+    transformer: BaseEntity.encryptField('platform_account'),
   })
   platform_account?: string;
 

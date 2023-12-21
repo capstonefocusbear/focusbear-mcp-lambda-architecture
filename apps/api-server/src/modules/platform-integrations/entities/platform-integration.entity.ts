@@ -25,6 +25,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: true,
+    transformer: BaseEntity.encryptField('external_user_id'),
   })
   external_user_id?: string;
 

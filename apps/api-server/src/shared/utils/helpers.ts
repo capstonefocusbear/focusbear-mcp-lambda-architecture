@@ -91,7 +91,7 @@ export const isUUID = (str: string) => {
   return uuidPattern.test(str);
 };
 
-const ENCRYPTION_KEY = '2b7e151628aed2a6abf7158809cf4f3c';
+const ENCRYPTION_KEY = process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY;
 
 export const FieldTransformer = {
   to: (value: string) => {

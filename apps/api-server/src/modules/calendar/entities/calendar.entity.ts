@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
+import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
@@ -26,7 +27,7 @@ export class Calendar extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
-    transformer: BaseEntity.encryptField('platform_account'),
+    transformer: FieldTransformer,
   })
   platform_account?: string;
 

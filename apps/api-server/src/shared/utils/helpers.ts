@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 
 export function wait(seconds: number) {
@@ -88,4 +89,21 @@ export function findNonZeroTotal(invoices: any[]): number {
 export const isUUID = (str: string) => {
   const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return uuidPattern.test(str);
+};
+
+const ENCRYPTION_KEY = '2b7e151628aed2a6abf7158809cf4f3c';
+
+export const FieldTransformer = {
+  to: (value: string) => {
+    const cipher = crypto.createCipher('aes-256-ecb', ENCRYPTION_KEY);
+    let encrypted = cipher.update(value, 'utf-8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
+  },
+  from: (value) => {
+    const decipher = crypto.createDecipher('aes-256-ecb', ENCRYPTION_KEY);
+    let decrypted = decipher.update(value, 'hex', 'utf-8');
+    decrypted += decipher.final('utf-8');
+    return decrypted;
+  },
 };

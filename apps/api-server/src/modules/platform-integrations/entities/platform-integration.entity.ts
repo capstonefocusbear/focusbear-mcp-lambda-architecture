@@ -1,3 +1,4 @@
+import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -25,7 +26,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: true,
-    transformer: BaseEntity.encryptField('external_user_id'),
+    transformer: FieldTransformer,
   })
   external_user_id?: string;
 

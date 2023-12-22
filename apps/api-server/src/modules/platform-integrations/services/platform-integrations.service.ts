@@ -54,6 +54,8 @@ export class PlatformIntegrationsService {
       trello: platforms.includes(IntegrationPlatforms.TRELLO),
       asana: platforms.includes(IntegrationPlatforms.ASANA),
       monday: platforms.includes(IntegrationPlatforms.MONDAY),
+      google: platforms.includes(IntegrationPlatforms.GOOGLE),
+      microsoft: platforms.includes(IntegrationPlatforms.MICROSOFT),
     };
   }
 

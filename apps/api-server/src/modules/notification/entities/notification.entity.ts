@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
+import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
@@ -28,7 +29,7 @@ export class Notification extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
-    transformer: BaseEntity.encryptField('platform_account'),
+    transformer: FieldTransformer,
   })
   platform_account?: string;
 

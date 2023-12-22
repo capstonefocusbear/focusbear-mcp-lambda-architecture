@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
-import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
+import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';

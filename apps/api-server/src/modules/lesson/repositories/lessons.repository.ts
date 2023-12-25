@@ -27,6 +27,7 @@ export class LessonsRepository {
       where: {
         course_id,
       },
+      relations: ['lesson_completions'],
     });
   }
 

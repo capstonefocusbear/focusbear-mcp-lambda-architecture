@@ -27,13 +27,4 @@ export class Lesson extends BaseEntity {
   @ManyToOne(() => Course, (course) => course.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course?: Course;
-
-  @OneToMany(() => CourseRating, (rating) => rating.lesson, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
-  ratings?: CourseRating[];
-
-  @OneToMany(() => LessonCompletion, (completion) => completion.lesson, {
-    onDelete: 'NO ACTION',
-    onUpdate: 'CASCADE',
-  })
-  lesson_completions?: LessonCompletion[];
 }

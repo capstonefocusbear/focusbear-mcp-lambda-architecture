@@ -81,7 +81,7 @@ export class CoursesController {
 
   @Patch('enrolled')
   updateCourseLessonCompletion(
-    @Param() updateCourseEnrolmentDto: UpdateCourseEnrolmentDto,
+    @Body() updateCourseEnrolmentDto: UpdateCourseEnrolmentDto,
     @AuthContext() { user }: Passport,
     @GetUserRoles() roles: string[],
   ) {

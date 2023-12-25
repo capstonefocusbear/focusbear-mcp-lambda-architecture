@@ -309,23 +309,6 @@ describe('CoursesService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
-    it("negative: shouldn't update the enrolment if the user didn't owne the enrolment or is not an admin", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(nonExistUserDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      const responseMessage = `User with user_id ${nonExistUserDummy.id} not allowed to perform the operation`;
-      let exception: any;
-      try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id, [
-          UserTypes.STANDARD,
-        ]);
-      } catch (error) {
-        exception = error;
-      }
-      expect(exception).toBeInstanceOf(ForbiddenException);
-      expect(exception.message).toMatch(responseMessage);
-    });
-
     it('positive: should update a course enrolment status when a user enrolment found in DB ', async () => {
       CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);

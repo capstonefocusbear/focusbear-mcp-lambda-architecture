@@ -4,7 +4,7 @@ import { Course } from '../../course/entities/course.entity';
 import { Lesson } from './lesson.entity';
 import { User } from '../../user/entities/user.entity';
 
-@Entity('lesson_completions')
+@Entity('lesson-completions')
 export class LessonCompletion extends BaseEntity {
   constructor({ id, ...data }: Partial<LessonCompletion> = {}, options = { generateId: false }) {
     super(id, options);
@@ -23,15 +23,15 @@ export class LessonCompletion extends BaseEntity {
   @Column({ type: 'varchar' })
   user_id: string;
 
-  @ManyToOne(() => Lesson, (lesson) => lesson.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @ManyToOne(() => Lesson, (lesson) => lesson.id)
   @JoinColumn({ name: 'lesson_id' })
   lesson?: Lesson;
 
-  @ManyToOne(() => Course, (course) => course.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.id)
   @JoinColumn({ name: 'course_id' })
   course?: Course;
 
-  @ManyToOne(() => User, (user) => user.id, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.id)
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

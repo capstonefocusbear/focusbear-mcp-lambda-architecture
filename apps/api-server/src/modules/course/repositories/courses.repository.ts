@@ -30,6 +30,7 @@ export class CoursesRepository {
           id: user_id,
         },
       },
+      relations: ['ratings'],
     });
   }
 
@@ -45,7 +46,7 @@ export class CoursesRepository {
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
     return await this.ormCourse.find({
       where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
-      relations: ['ratings', 'lessons'],
+      relations: ['ratings', 'lessons', 'lessonCompletions', 'enrollments'],
     });
   }
 
@@ -149,11 +150,10 @@ export class CoursesRepository {
     });
   }
 
-  async checkForeignKeyCourseIdExist(course_id: string, user_id?: string) {
+  async checkForeignKeyCourseIdExist(course_id: string) {
     return this.ormCourse.findOne({
       where: {
         id: course_id,
-        author_id: user_id,
       },
     });
   }
@@ -191,6 +191,7 @@ export class CoursesRepository {
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
     return await this.ormCourse.find({
       where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
+      relations: ['ratings'],
     });
   }
 }

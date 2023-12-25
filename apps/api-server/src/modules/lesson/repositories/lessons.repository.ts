@@ -4,7 +4,6 @@ import { CourseEnrolment } from '../../course/entities/course-enrolment.enitiy';
 import { CourseRating } from '../../course/entities/course-rating.entity';
 import { Course } from '../../course/entities/course.entity';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
-import { CreateLessonRatingDto } from '../dto/create-lesson-rating.dto';
 import { CreateLessonDto } from '../dto/create-lesson.dto';
 import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { LessonCompletion } from '../entities/lesson-completion.entity';
@@ -27,16 +26,6 @@ export class LessonsRepository {
       where: {
         course_id,
       },
-      relations: ['lesson_completions'],
-    });
-  }
-
-  async getLessonRatings(course_id: string, lesson_id: string) {
-    return this.ormCourseRating.find({
-      where: {
-        course_id,
-        lesson_id,
-      },
     });
   }
 
@@ -56,28 +45,14 @@ export class LessonsRepository {
       .execute();
   }
 
-  async createLessonRating({ lesson_id, course_id, rating, review }: CreateLessonRatingDto) {
-    await this.ormLesson
-      .createQueryBuilder()
-      .insert()
-      .into(CourseRating)
-      .values({
-        lesson_id,
-        course_id,
-        rating,
-        review,
-      })
-      .execute();
-  }
-
   async createLessonCompletion({ lesson_id, course_id }: CreateLessonCompletionDto, user_id: string) {
     await this.ormLessonCompletion
       .createQueryBuilder()
       .insert()
       .into(LessonCompletion)
       .values({
-        lesson_id,
         course_id,
+        lesson_id,
         user_id,
       })
       .execute();

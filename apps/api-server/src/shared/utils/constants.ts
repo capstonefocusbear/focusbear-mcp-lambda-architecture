@@ -9,6 +9,7 @@ export const STRIPE_API_VERSION = '2022-08-01';
 export const FOCUS_BEAR_EMAILS = {
   MARKETING: 'marketing@focusbear.io',
   SUPPORT: 'support@focusbear.io',
+  ZOHO_DESK_SUPPORT: 'support@focusbear.zohodesk.com.au',
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',

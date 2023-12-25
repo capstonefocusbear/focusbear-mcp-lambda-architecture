@@ -192,7 +192,7 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: FOCUS_BEAR_EMAILS.SUPPORT,
+        to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
         text: JSON.stringify(dummyEvent),

@@ -269,9 +269,7 @@ describe('CoursesService', () => {
       const responseMessage = `User with user_id ${nonExistUserDummy.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id, [
-          UserTypes.STANDARD,
-        ]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -286,7 +284,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course enrolment with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.STANDARD]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -301,7 +299,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course enrolment with course_id ${DummyCourseEnrolments[1].course_id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.STANDARD]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -309,28 +307,11 @@ describe('CoursesService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
-    it("negative: shouldn't update the enrolment if the user didn't owne the enrolment or is not an admin", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(nonExistUserDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      const responseMessage = `User with user_id ${nonExistUserDummy.id} not allowed to perform the operation`;
-      let exception: any;
-      try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id, [
-          UserTypes.STANDARD,
-        ]);
-      } catch (error) {
-        exception = error;
-      }
-      expect(exception).toBeInstanceOf(ForbiddenException);
-      expect(exception.message).toMatch(responseMessage);
-    });
-
     it('positive: should update a course enrolment status when a user enrolment found in DB ', async () => {
       CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.ADMIN]);
+      await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       expect(CoursesRepositoryMock.updateEnrolmentStatus).toBeCalledWith(DummyUpdateCourseEnrolmentDto);
     });
   });

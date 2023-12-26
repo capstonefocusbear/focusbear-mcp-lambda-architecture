@@ -186,7 +186,7 @@ export class CoursesService {
       if (!user) {
         throw new NotFoundException(`User with user_id ${user_id} couldn't be found in DB`);
       }
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id, user_id);
+      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
@@ -197,7 +197,7 @@ export class CoursesService {
     }
   }
 
-  async updateCourseEnrolment(updateCourseEnrolmentDto: UpdateCourseEnrolmentDto, user_id: string, roles: string[]) {
+  async updateCourseEnrolment(updateCourseEnrolmentDto: UpdateCourseEnrolmentDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
@@ -220,9 +220,6 @@ export class CoursesService {
       const courseEnrolment = await this.coursesRepository.checkUserCourseEnrolment(user_id, course_id);
       if (!courseEnrolment) {
         throw new NotFoundException(`Course enrolment with course_id ${course_id} couldn't be found`);
-      }
-      if (courseEnrolment.user_id !== user_id || !roles.includes(UserTypes.ADMIN)) {
-        throw new ForbiddenException(`User with user_id ${user_id} not allowed to perform the operation`);
       }
       await this.coursesRepository.updateEnrolmentStatus(updateCourseEnrolmentDto);
     } catch (error) {

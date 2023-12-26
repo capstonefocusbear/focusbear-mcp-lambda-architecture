@@ -2,14 +2,10 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
-  DummyCourseEnrolments,
   DummyCourseOne,
   DummyCourseOneLessons,
-  DummyCourseRatings,
-  DummyCourseTwo,
   DummyCreateCLessonCompletionDto,
   DummyCreateLessonDto,
-  DummyCreateLessonRatingDto,
   DummyUpdateLessonDto,
 } from '../../../../test/dummies/online-courses.dummies';
 import { SentryServiceMock } from '../../../../test/mocks';
@@ -129,54 +125,6 @@ describe('LessonsService', () => {
       LessonsRepositoryMock.checkForeignKeyLessonIdExist.mockResolvedValueOnce(DummyCourseOneLessons[0].id);
       await lessonsService.updateLessons(DummyUpdateLessonDto, nonExistUserDummy.id, [UserTypes.ADMIN]);
       expect(LessonsRepositoryMock.updateCourseLessons).toBeCalledWith(DummyUpdateLessonDto);
-    });
-  });
-
-  describe('getLessonRatings', () => {
-    it('positive: should fetch lesson ratings', async () => {
-      LessonsRepositoryMock.getLessonRatings.mockResolvedValueOnce(DummyCourseRatings.slice(3, 5));
-      const result = await lessonsService.getLessonRatings(DummyCourseOne.id, DummyCourseOneLessons[0].id);
-      expect(LessonsRepositoryMock.getLessonRatings).toBeCalledWith(DummyCourseOne.id, DummyCourseOneLessons[0].id);
-      expect(result).toEqual(DummyCourseRatings.slice(3, 5));
-    });
-  });
-
-  describe('createLessonRating', () => {
-    it("negative: should throw NotFoundException when a user with a course couldn't be found in course enrolment", async () => {
-      LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      LessonsRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(null);
-      const responseMessage = `Course enrolment with course_id ${DummyCourseOne.id} couldn't be found`;
-      let exception: any;
-      try {
-        await lessonsService.createLessonRating(DummyCreateLessonRatingDto, userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toMatch(responseMessage);
-    });
-
-    it("negative: should throw NotFoundException when a lesson couldn't be found in DB", async () => {
-      LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
-      LessonsRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      LessonsRepositoryMock.checkForeignKeyLessonIdExist.mockResolvedValueOnce(null);
-      const responseMessage = `Lesson with lesson_id ${DummyCreateLessonRatingDto.lesson_id} couldn't be found`;
-      let exception: any;
-      try {
-        await lessonsService.createLessonRating(DummyCreateLessonRatingDto, userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toMatch(responseMessage);
-    });
-
-    it('positive: should create and save lesson ratings', async () => {
-      LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      LessonsRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      LessonsRepositoryMock.checkForeignKeyLessonIdExist.mockResolvedValueOnce(DummyCourseOneLessons[0]);
-      await lessonsService.createLessonRating(DummyCreateLessonRatingDto, userDummy.id);
-      expect(LessonsRepositoryMock.createLessonRating).toBeCalledWith(DummyCreateLessonRatingDto);
     });
   });
 

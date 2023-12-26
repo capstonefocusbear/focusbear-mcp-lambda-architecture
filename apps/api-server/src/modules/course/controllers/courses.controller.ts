@@ -81,11 +81,10 @@ export class CoursesController {
 
   @Patch('enrolled')
   updateCourseLessonCompletion(
-    @Param() updateCourseEnrolmentDto: UpdateCourseEnrolmentDto,
+    @Body() updateCourseEnrolmentDto: UpdateCourseEnrolmentDto,
     @AuthContext() { user }: Passport,
-    @GetUserRoles() roles: string[],
   ) {
-    return this.coursesService.updateCourseEnrolment(updateCourseEnrolmentDto, user.id, roles);
+    return this.coursesService.updateCourseEnrolment(updateCourseEnrolmentDto, user.id);
   }
 
   @Get('enrolled')

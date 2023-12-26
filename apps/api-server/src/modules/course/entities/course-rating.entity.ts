@@ -2,7 +2,6 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToOne, Index } from 'typeorm'
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from './course.entity';
 import { User } from '../../user/entities/user.entity';
-import { Lesson } from '../../lesson/entities/lesson.entity';
 
 @Entity('course_ratings')
 export class CourseRating extends BaseEntity {
@@ -19,10 +18,6 @@ export class CourseRating extends BaseEntity {
   @Column({ type: 'varchar' })
   course_id: string;
 
-  @Index()
-  @Column({ type: 'varchar' })
-  lesson_id?: string;
-
   @Column({ type: 'smallint' })
   rating: number;
 
@@ -36,8 +31,4 @@ export class CourseRating extends BaseEntity {
   @ManyToOne(() => User, (user) => user.id, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
-
-  @ManyToOne(() => Lesson, (lesson) => lesson.id)
-  @JoinColumn({ name: 'lesson_id' })
-  lesson?: Lesson;
 }

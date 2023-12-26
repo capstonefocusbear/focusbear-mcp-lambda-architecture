@@ -4,7 +4,6 @@ import { CronJobDataSource } from '../data-source';
 import { Between } from 'typeorm';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
-import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
 /* eslint-disable @typescript-eslint/no-var-requires */
 const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
@@ -29,7 +28,7 @@ async function fetchEvents () {
       where: {
         user_id: event.user_id, 
         platform: event.platform, 
-        platform_account: FieldTransformer.to(event.platform_account), 
+        platform_account: event.platform_account, 
         is_selected: true
       }
     });

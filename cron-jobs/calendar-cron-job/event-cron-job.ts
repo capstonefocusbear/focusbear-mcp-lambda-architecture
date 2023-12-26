@@ -7,7 +7,6 @@ import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-in
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { MicrosoftCalendarEventDto } from '../../apps/api-server/src/modules/calendar/dto/microsoft-calendar-event.dto';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
-import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
 const { DateTime } = require('luxon');
 
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -33,7 +32,7 @@ const notificationGoogleAdapter = ({
   return new Notification({
     user_id: userId,
     platform: CalendarPlatforms.GOOGLE,
-    platform_account: FieldTransformer.to(accountId),
+    platform_account: accountId,
     calendar_id: calendarId,
     external_id: id,
     summary,
@@ -64,7 +63,7 @@ const notificationMicrosoftAdapter = ({
       user_id: userId,
       platform: CalendarPlatforms.MICROSOFT,
       calendar_id: calendarId,
-      platform_account: FieldTransformer.to(accountId),
+      platform_account: accountId,
       external_id: id,
       summary: subject,
       description: bodyPreview,
@@ -101,7 +100,7 @@ async function getGoogleEvents(userId: string, account: string) {
   const platform = CalendarPlatforms.GOOGLE;
   // get platform integration data accoding to userId and accountId.
   const record = await CronJobDataSource.manager.findOne(PlatformIntegration, {
-    where: { user_id: userId, platform, external_user_id: FieldTransformer.to(account) },
+    where: { user_id: userId, platform, external_user_id: account },
   });
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -130,7 +129,7 @@ async function getGoogleEvents(userId: string, account: string) {
     if (!syncedGoogleCalendarIds.includes(calendarId)) {
       const newCalendar = new Calendar({
         user_id: userId,
-        platform_account: FieldTransformer.to(account),
+        platform_account: account,
         platform: CalendarPlatforms.GOOGLE,
         calendar_id: calendarId,
         summary: calendarData.sumary,
@@ -172,7 +171,7 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
   const platform = CalendarPlatforms.MICROSOFT;
   // get platform integration data accoding to userId and accountId.
   const record = await CronJobDataSource.manager.findOne(PlatformIntegration, {
-    where: { user_id: userId, platform, external_user_id: FieldTransformer.to(accountId) },
+    where: { user_id: userId, platform, external_user_id: accountId },
   });
   const { access_token } = record.data;
   const baseUrl = 'https://graph.microsoft.com/v1.0';
@@ -292,7 +291,7 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
   const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => {
     return {
       id: integrationRecord.user_id,
-      account: FieldTransformer.from(integrationRecord.external_user_id),
+      account: integrationRecord.external_user_id,
     }
   });
   return idsOfUsersToSync;

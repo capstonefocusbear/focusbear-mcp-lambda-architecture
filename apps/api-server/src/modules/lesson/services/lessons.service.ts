@@ -90,51 +90,6 @@ export class LessonsService {
     }
   }
 
-  // async getLessonRatings(course_id: string, lesson_id: string) {
-  //   try {
-  //     this.sentryService.instance().addBreadcrumb({
-  //       category: 'Lesson Service',
-  //       level: 'debug',
-  //       message: 'Get Lesson Ratings',
-  //       data: {
-  //         course_id,
-  //       },
-  //     });
-  //     return await this.lessonsRepository.getLessonRatings(course_id, lesson_id);
-  //   } catch (error) {
-  //     this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-  //     throw error;
-  //   }
-  // }
-
-  // async createLessonRating({ course_id, lesson_id, rating, review }: CreateLessonRatingDto, user_id: string) {
-  //   try {
-  //     this.sentryService.instance().addBreadcrumb({
-  //       category: 'Lesson Service',
-  //       level: 'debug',
-  //       message: 'Create Lesson Rating',
-  //       data: {
-  //         course_id,
-  //         lesson_id,
-  //         rating,
-  //         review,
-  //       },
-  //     });
-  //     const courseEnrolment = await this.lessonsRepository.checkUserCourseEnrolment(user_id, course_id);
-  //     if (!courseEnrolment) {
-  //       throw new NotFoundException(`Course enrolment with course_id ${course_id} couldn't be found`);
-  //     }
-  //     const lesson = await this.lessonsRepository.checkForeignKeyLessonIdExist(lesson_id);
-  //     if (!lesson) {
-  //       throw new NotFoundException(`Lesson with lesson_id ${lesson_id} couldn't be found`);
-  //     }
-  //     await this.lessonsRepository.createLessonRating({ course_id, lesson_id, rating, review });
-  //   } catch (error) {
-  //     this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-  //     throw error;
-  //   }
-  // }
-
   async createCompletedLesson({ course_id, lesson_id }: CreateLessonCompletionDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({

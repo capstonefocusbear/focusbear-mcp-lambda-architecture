@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
-import { CreateLessonRatingDto } from '../dto/create-lesson-rating.dto';
 import { CreateLessonDto } from '../dto/create-lesson.dto';
 import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { LessonsRepository } from '../repositories/lessons.repository';

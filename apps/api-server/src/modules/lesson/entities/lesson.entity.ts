@@ -1,8 +1,6 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
-import { CourseRating } from '../../course/entities/course-rating.entity';
 import { Course } from '../../course/entities/course.entity';
-import { LessonCompletion } from './lesson-completion.entity';
 
 @Entity('lessons')
 export class Lesson extends BaseEntity {

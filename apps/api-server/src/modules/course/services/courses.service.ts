@@ -197,7 +197,7 @@ export class CoursesService {
     }
   }
 
-  async updateCourseEnrolment(updateCourseEnrolmentDto: UpdateCourseEnrolmentDto, user_id: string, roles: string[]) {
+  async updateCourseEnrolment(updateCourseEnrolmentDto: UpdateCourseEnrolmentDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',

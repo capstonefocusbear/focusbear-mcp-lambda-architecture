@@ -3,7 +3,6 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { LessonsService } from '../services/lessons.service';
 import { CreateLessonDto } from '../dto/create-lesson.dto';
-import { CreateLessonRatingDto } from '../dto/create-lesson-rating.dto';
 import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';

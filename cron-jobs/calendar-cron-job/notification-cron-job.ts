@@ -4,6 +4,7 @@ import { CronJobDataSource } from '../data-source';
 import { Between } from 'typeorm';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
+import { FieldTransformer } from 'apps/api-server/src/shared/utils/helpers';
 /* eslint-disable @typescript-eslint/no-var-requires */
 const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
@@ -19,10 +20,18 @@ async function fetchEvents () {
   });
   const filteredEvents = await events.filter(async (event) => {
     const excludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
-      where: {user_id: event.user_id, platform: event.platform}
+      where: {
+        user_id: event.user_id, 
+        platform: event.platform
+      }
     });
     const existingCalendar = await CronJobDataSource.manager.find(Calendar, {
-      where: {user_id: event.user_id, platform: event.platform, platform_account: event.platform_account, is_selected: true}
+      where: {
+        user_id: event.user_id, 
+        platform: event.platform, 
+        platform_account: FieldTransformer.to(event.platform_account), 
+        is_selected: true
+      }
     });
     if (!existingCalendar) return false;
     if (!excludedKeywords) return true;

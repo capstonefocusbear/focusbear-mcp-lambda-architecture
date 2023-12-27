@@ -11,9 +11,13 @@ import { DeleteLessonDto } from '../dto/delete-lesson.dto';
 @Injectable()
 export class LessonsRepository {
   private readonly ormLesson = AppDataSource.getRepository(Lesson);
+
   private readonly ormLessonCompletion = AppDataSource.getRepository(LessonCompletion);
+
   private readonly ormCourse = AppDataSource.getRepository(Course);
+
   private readonly ormCourseEnrolment = AppDataSource.getRepository(CourseEnrolment);
+
   async getCourseLessons(course_id: string) {
     return this.ormLesson.find({
       where: { course_id },

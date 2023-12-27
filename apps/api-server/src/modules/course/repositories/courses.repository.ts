@@ -71,17 +71,13 @@ export class CoursesRepository {
       .execute();
   }
 
-  async createRatingContent({ review, rating, course_id }: CreateCourseRatingDto, user_id: string) {
+  async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
     await this.ormCourseRating
       .createQueryBuilder()
       .insert()
       .into(CourseRating)
-      .values({
-        rating,
-        course_id,
-        user_id,
-        review,
-      })
+      .values({ ...createCourseRatingDto, user_id })
+      .orUpdate(['rating', 'review'], ['id'])
       .execute();
   }
 
@@ -168,15 +164,15 @@ export class CoursesRepository {
   }
 
   async getAllCourses(pageOptionsDto: PageOptionsDto) {
-    const queryBuilder = this.ormCourse.createQueryBuilder('courses');
-    queryBuilder
-      .orderBy('courses.created_at', pageOptionsDto.order)
-      .skip(pageOptionsDto.skip)
-      .take(pageOptionsDto.take);
-
-    const itemCount = await queryBuilder.getCount();
-    const { entities } = await queryBuilder.getRawAndEntities();
-    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+    const entities = await this.ormCourse.find({
+      order: {
+        created_at: pageOptionsDto.order,
+      },
+      skip: pageOptionsDto.skip,
+      take: pageOptionsDto.take,
+      relations: ['ratings'],
+    });
+    const pageMetaDto = new PageMetaDto({ itemCount: entities.length, pageOptionsDto });
     return new PageDto(entities, pageMetaDto);
   }
 

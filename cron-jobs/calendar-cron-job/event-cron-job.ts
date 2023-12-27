@@ -1,13 +1,13 @@
 import axios from 'axios';
 import { In, MoreThan } from 'typeorm';
 import { calendar_v3, google } from 'googleapis';
+import { DateTime } from 'luxon';
 import { CronJobDataSource } from '../data-source';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { MicrosoftCalendarEventDto } from '../../apps/api-server/src/modules/calendar/dto/microsoft-calendar-event.dto';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
-const { DateTime } = require('luxon');
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
@@ -44,33 +44,33 @@ const notificationGoogleAdapter = ({
 };
 
 const notificationMicrosoftAdapter = ({
-    event,
-    userId,
-    calendarId,
-    accountId,
-  }: {
-    event: MicrosoftCalendarEventDto;
-    userId: string;
-    calendarId: string;
-    accountId: string;
-  }) => {
-    const { id, subject, bodyPreview, start, end, isAllDay } = event;
-    const { dateTime: event_begins } = start;
-    const { dateTime: event_ends } = end;
-    if (isAllDay) return;
-  
-    return new Notification({
-      user_id: userId,
-      platform: CalendarPlatforms.MICROSOFT,
-      calendar_id: calendarId,
-      platform_account: accountId,
-      external_id: id,
-      summary: subject,
-      description: bodyPreview,
-      event_begins: new Date(event_begins),
-      event_ends: new Date(event_ends),
-      external_metadata: event,
-    });
+  event,
+  userId,
+  calendarId,
+  accountId,
+}: {
+  event: MicrosoftCalendarEventDto;
+  userId: string;
+  calendarId: string;
+  accountId: string;
+}) => {
+  const { id, subject, bodyPreview, start, end, isAllDay } = event;
+  const { dateTime: event_begins } = start;
+  const { dateTime: event_ends } = end;
+  if (isAllDay) return;
+
+  return new Notification({
+    user_id: userId,
+    platform: CalendarPlatforms.MICROSOFT,
+    calendar_id: calendarId,
+    platform_account: accountId,
+    external_id: id,
+    summary: subject,
+    description: bodyPreview,
+    event_begins: new Date(event_begins),
+    event_ends: new Date(event_ends),
+    external_metadata: event,
+  });
 };
 
 async function getGoogleEvent({
@@ -109,7 +109,7 @@ async function getGoogleEvents(userId: string, account: string) {
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, callbackUrl);
   oauth2Client.setCredentials(record.data);
   // Refresh access token using refresh token already provided
-  if (record.data.expiry_date  < DateTime.local().toMillis() + 1000) {
+  if (record.data.expiry_date < DateTime.local().toMillis() + 1000) {
     return [];
   }
 
@@ -117,16 +117,19 @@ async function getGoogleEvents(userId: string, account: string) {
   const { data: googleCalendars } = await calendar.calendarList.list();
   const { items: calendarList } = googleCalendars;
   const calendarsFromGoogleIds: string[] = calendarList.map((googleCalendar) => googleCalendar.id);
-  const syncedGoogleCalendars = await CronJobDataSource.manager.find(Calendar, {
-    where: { calendar_id: In(calendarsFromGoogleIds), user_id: userId, platform }
+  const GoogleCalendars = await CronJobDataSource.manager.find(Calendar, {
+    where: { calendar_id: In(calendarsFromGoogleIds), user_id: userId, platform },
   });
-  const syncedGoogleCalendarIds = syncedGoogleCalendars.map((calendar) => calendar.calendar_id);
+  const GoogleCalendarIds = GoogleCalendars.map((syncedCalendar) => syncedCalendar.calendar_id);
+  // filter selected calendars
+  const syncedGoogleCalendars = GoogleCalendars.filter((googleCalendar) => googleCalendar.is_selected);
+  const syncedGoogleCalendarIds = syncedGoogleCalendars.map((syncedCalendar) => syncedCalendar.calendar_id);
   const newCalendars: Calendar[] = [];
 
   for await (const calendarId of calendarsFromGoogleIds) {
     const calendarData = getCalendarData(calendarList, calendarId);
     // check if calendar is new
-    if (!syncedGoogleCalendarIds.includes(calendarId)) {
+    if (!GoogleCalendarIds.includes(calendarId)) {
       const newCalendar = new Calendar({
         user_id: userId,
         platform_account: account,
@@ -140,7 +143,7 @@ async function getGoogleEvents(userId: string, account: string) {
   }
 
   // update summaries of already synced calendars
-  const updateAlreadySyncedCalendarsPromises = syncedGoogleCalendars.map((syncedCalendar) => {
+  const updateAlreadySyncedCalendarsPromises = GoogleCalendars.map((syncedCalendar) => {
     const calendarData = getCalendarData(calendarList, syncedCalendar.calendar_id);
     if (!calendarData) return;
     return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
@@ -148,20 +151,32 @@ async function getGoogleEvents(userId: string, account: string) {
   await Promise.all([updateAlreadySyncedCalendarsPromises]);
   await CronJobDataSource.manager.save(Calendar, newCalendars);
   const events = await Promise.all(
-    calendarsFromGoogleIds.map(async (calendarId) => getGoogleEvent({ userId, calendarId, calendar })),
+    calendarsFromGoogleIds
+      .filter((calendarId) => syncedGoogleCalendarIds.includes(calendarId))
+      .map(async (calendarId) => getGoogleEvent({ userId, calendarId, calendar })),
   );
 
   return events.flat().filter((event) => !!event);
 }
 
-async function getMicrosoftEvent({ userId, calendarId, headers, accountId }: { userId: string; calendarId: string; headers: any, accountId: string }) {
+async function getMicrosoftEvent({
+  userId,
+  calendarId,
+  headers,
+  accountId,
+}: {
+  userId: string;
+  calendarId: string;
+  headers: any;
+  accountId: string;
+}) {
   const baseUrl = 'https://graph.microsoft.com/v1.0';
   const { data: eventData } = await axios.get(`${baseUrl}/me/calendars/${calendarId}/events`, {
-      headers,
-      params: {
-        $filter: `start/dateTime ge '${new Date().toISOString()}'`,
-        $orderby: 'start/dateTime',
-      },
+    headers,
+    params: {
+      $filter: `start/dateTime ge '${new Date().toISOString()}'`,
+      $orderby: 'start/dateTime',
+    },
   });
   const { value: eventList } = eventData;
   return eventList.map((event) => notificationMicrosoftAdapter({ event, calendarId, userId, accountId }));
@@ -184,16 +199,18 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
   const { data: microsoftCalendars } = await axios.get(`${baseUrl}/me/calendars`, { headers });
   const { value: calendarList } = microsoftCalendars;
   const calendarsFromMicroSoftIds: string[] = calendarList.map((microsoftCalendar) => microsoftCalendar.id);
-  const syncedMicroSoftCalendars = await CronJobDataSource.manager.find(Calendar, {
+  const MicroSoftCalendars = await CronJobDataSource.manager.find(Calendar, {
     where: { calendar_id: In(calendarsFromMicroSoftIds), user_id: userId, platform },
   });
-  const syncedMicroSoftCalendarsIds = syncedMicroSoftCalendars.map((calendar) => calendar.calendar_id);
+  const MicroSoftCalendarsIds = MicroSoftCalendars.map((calendar) => calendar.calendar_id);
+  const syncedMicrosoftCalendars = MicroSoftCalendars.filter((microsoftCalendar) => microsoftCalendar.is_selected);
+  const syncedMicrosoftCalendarIds = syncedMicrosoftCalendars.map((microsoftCalendar) => microsoftCalendar.calendar_id);
   const newCalendars: Calendar[] = [];
 
   for await (const calendarId of calendarsFromMicroSoftIds) {
     const calendarData = getCalendarData(calendarList, calendarId);
     // check if calendar is new
-    if (!syncedMicroSoftCalendarsIds.includes(calendarId)) {
+    if (!MicroSoftCalendarsIds.includes(calendarId)) {
       const newCalendar = new Calendar({
         user_id: userId,
         platform_account: accountId,
@@ -206,7 +223,7 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
     }
   }
   // update summaries of already synced calendars
-  const updateAlreadySyncedCalendarsPromises = syncedMicroSoftCalendars.map((syncedCalendar) => {
+  const updateAlreadySyncedCalendarsPromises = MicroSoftCalendars.map((syncedCalendar) => {
     const calendarData = calendarList.find((calendar) => calendar.id === syncedCalendar.calendar_id);
     if (!calendarData) return;
     return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
@@ -214,24 +231,24 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
   await Promise.all([updateAlreadySyncedCalendarsPromises]);
   await CronJobDataSource.manager.save(Calendar, newCalendars);
   const events = await Promise.all(
-    calendarsFromMicroSoftIds.map(async (calendarId) => getMicrosoftEvent({ userId, calendarId, headers, accountId })),
+    calendarsFromMicroSoftIds
+      .filter((calenarId) => syncedMicrosoftCalendarIds.includes(calenarId))
+      .map(async (calendarId) => getMicrosoftEvent({ userId, calendarId, headers, accountId })),
   );
 
   return events.flat().filter((event) => !!event);
 }
 
-
-
 async function getAllUserEvents(platform: CalendarPlatforms, userId: string, account: string) {
-  if(platform == CalendarPlatforms.GOOGLE) return getGoogleEvents(userId, account);
-  if(platform == CalendarPlatforms.MICROSOFT) return getMicrosoftEvents(userId, account);
+  if (platform === CalendarPlatforms.GOOGLE) return getGoogleEvents(userId, account);
+  if (platform === CalendarPlatforms.MICROSOFT) return getMicrosoftEvents(userId, account);
   return null;
 }
 
 async function getUserSyncedEvents(platform: CalendarPlatforms, userId: string) {
-  const currentTime = DateTime.local().toISO();
+  const currentTime: Date = DateTime.now().toJSDate();
   return CronJobDataSource.manager.find(Notification, {
-    where: { user_id: userId, event_begins: MoreThan(currentTime), platform, },
+    where: { user_id: userId, event_begins: MoreThan(currentTime), platform },
   });
 }
 
@@ -245,7 +262,7 @@ async function syncUserEvents(platform: CalendarPlatforms, userId: string, accou
     if (isEventFromSyncedEvents) return true;
     return false;
   });
-  
+
   const eventsToSync = allUserEvents.filter((userEvent) => {
     const isEventFromSyncedEvents = externalEventIds.includes(userEvent?.external_id);
     if (isEventFromSyncedEvents) return false;
@@ -257,17 +274,19 @@ async function syncUserEvents(platform: CalendarPlatforms, userId: string, accou
     if (isEventFromNewData) return false;
     return true;
   });
-  
-  await Promise.all(eventsFromSyncedEvents.map(async (syncedEvent) => {
-    const updatedata = {
-      summary: syncedEvent.summary,
-      description: syncedEvent.description,
-      event_begins: syncedEvent.event_begins, 
-      event_ends: syncedEvent.event_ends,
-      external_metadata: syncedEvent.external_metadata
-    }
-    await CronJobDataSource.manager.update(Notification, {external_id: syncedEvent.external_id}, updatedata);
-  }));
+
+  await Promise.all(
+    eventsFromSyncedEvents.map(async (syncedEvent) => {
+      const updatedata = {
+        summary: syncedEvent.summary,
+        description: syncedEvent.description,
+        event_begins: syncedEvent.event_begins,
+        event_ends: syncedEvent.event_ends,
+        external_metadata: syncedEvent.external_metadata,
+      };
+      await CronJobDataSource.manager.update(Notification, { external_id: syncedEvent.external_id }, updatedata);
+    }),
+  );
 
   const savedEvents = await CronJobDataSource.manager.save(Notification, eventsToSync);
   await CronJobDataSource.manager.delete(Notification, { external_id: In(eventsToRemoveIds) });
@@ -276,23 +295,20 @@ async function syncUserEvents(platform: CalendarPlatforms, userId: string, accou
     eventsSaved: savedEvents.length,
     eventsRemoved: eventsToRemoveIds.length,
   };
-
 }
 
 async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
   const IntegrationRecords = await CronJobDataSource.manager.find(PlatformIntegration, {
-    where: { platform, },
+    where: { platform },
   });
-  const recordsWithAccessAndRefreshTokens = IntegrationRecords.filter(
-    (integration) =>  {
-      return integration.data.access_token; //&& integration.data.refresh_token;
-    },
-  );
+  const recordsWithAccessAndRefreshTokens = IntegrationRecords.filter((integration) => {
+    return integration.data.access_token; // && integration.data.refresh_token;
+  });
   const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => {
     return {
       id: integrationRecord.user_id,
       account: integrationRecord.external_user_id,
-    }
+    };
   });
   return idsOfUsersToSync;
 }
@@ -304,8 +320,9 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
     await Promise.all(usersToSyncGoogle.map((user) => syncUserEvents(CalendarPlatforms.GOOGLE, user.id, user.account)));
 
     const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
-    await Promise.all(usersToSyncMicrosoft.map((user) => syncUserEvents(CalendarPlatforms.MICROSOFT, user.id, user.account)));
-
+    await Promise.all(
+      usersToSyncMicrosoft.map((user) => syncUserEvents(CalendarPlatforms.MICROSOFT, user.id, user.account)),
+    );
     process.exit();
   } catch (error) {
     console.error(error);

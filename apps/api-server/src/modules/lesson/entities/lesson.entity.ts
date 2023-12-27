@@ -22,6 +22,9 @@ export class Lesson extends BaseEntity {
   @Column({ type: 'text' })
   url: string;
 
+  @Column({ type: 'boolean', default: false })
+  deleted: boolean;
+
   @ManyToOne(() => Course, (course) => course.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course?: Course;

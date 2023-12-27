@@ -13,14 +13,6 @@ const { DateTime } = require('luxon');
 
 require('dotenv').config();
 
-async function getPlatformIntegrationData(platform: CalendarPlatforms, userId: string) {
-  const platformRecord = await CronJobDataSource.manager.findOne(PlatformIntegration, {
-    where: { user_id: userId, platform },
-  });
-  if (!platformRecord) return null;
-  return platformRecord;
-}
-
 const notificationGoogleAdapter = ({
   event,
   userId,
@@ -33,14 +25,14 @@ const notificationGoogleAdapter = ({
   const { id, summary, description, start, end, creator } = event;
   const { date, dateTime: event_begins } = start;
   const { dateTime: event_ends } = end;
-  const { email: platform_account } = creator;
+  const { email: accountId } = creator;
   if (date) {
     return;
   }
   return new Notification({
     user_id: userId,
     platform: CalendarPlatforms.GOOGLE,
-    platform_account,
+    platform_account: accountId,
     calendar_id: calendarId,
     external_id: id,
     summary,
@@ -55,10 +47,12 @@ const notificationMicrosoftAdapter = ({
     event,
     userId,
     calendarId,
+    accountId,
   }: {
     event: MicrosoftCalendarEventDto;
     userId: string;
     calendarId: string;
+    accountId: string;
   }) => {
     const { id, subject, bodyPreview, start, end, isAllDay } = event;
     const { dateTime: event_begins } = start;
@@ -69,6 +63,7 @@ const notificationMicrosoftAdapter = ({
       user_id: userId,
       platform: CalendarPlatforms.MICROSOFT,
       calendar_id: calendarId,
+      platform_account: accountId,
       external_id: id,
       summary: subject,
       description: bodyPreview,
@@ -97,8 +92,13 @@ async function getGoogleEvent({
   return data.items.map((event) => notificationGoogleAdapter({ event, userId, calendarId }));
 }
 
-async function getGoogleEvents(userId: string, account?: string) {
+const getCalendarData = (calendars: any[], calendarId: string) => {
+  return calendars.find((calendar) => calendar.id === calendarId);
+};
+
+async function getGoogleEvents(userId: string, account: string) {
   const platform = CalendarPlatforms.GOOGLE;
+  // get platform integration data accoding to userId and accountId.
   const record = await CronJobDataSource.manager.findOne(PlatformIntegration, {
     where: { user_id: userId, platform, external_user_id: account },
   });
@@ -114,39 +114,47 @@ async function getGoogleEvents(userId: string, account?: string) {
   }
 
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-  const { data: calendarList } = await calendar.calendarList.list();
-  const calendarIds = await Promise.all(calendarList.items.map(async (item) => {
-    const existingCalendar = await CronJobDataSource.manager.findOne(Calendar, {
-        where: {
-            calendar_id: item.id,
-            user_id: userId,
-            platform: CalendarPlatforms.GOOGLE,
-        }
-    });
-    if (!existingCalendar) {
-        const calendar = new Calendar({
-            user_id: userId,
-            platform_account: account,
-            platform: CalendarPlatforms.GOOGLE,
-            calendar_id: item.id,
-            summary: item.summary,
-            is_selected: false,
-        });
-        await CronJobDataSource.manager.save(Calendar, calendar);
+  const { data: googleCalendars } = await calendar.calendarList.list();
+  const { items: calendarList } = googleCalendars;
+  const calendarsFromGoogleIds: string[] = calendarList.map((googleCalendar) => googleCalendar.id);
+  const syncedGoogleCalendars = await CronJobDataSource.manager.find(Calendar, {
+    where: { calendar_id: In(calendarsFromGoogleIds), user_id: userId, platform }
+  });
+  const syncedGoogleCalendarIds = syncedGoogleCalendars.map((calendar) => calendar.calendar_id);
+  const newCalendars: Calendar[] = [];
+
+  for await (const calendarId of calendarsFromGoogleIds) {
+    const calendarData = getCalendarData(calendarList, calendarId);
+    // check if calendar is new
+    if (!syncedGoogleCalendarIds.includes(calendarId)) {
+      const newCalendar = new Calendar({
+        user_id: userId,
+        platform_account: account,
+        platform: CalendarPlatforms.GOOGLE,
+        calendar_id: calendarId,
+        summary: calendarData.sumary,
+        is_selected: false,
+      });
+      newCalendars.push(newCalendar);
     }
-    else {
-        await CronJobDataSource.manager.update(Calendar, {id : existingCalendar.id }, { summary: item.summary });
-    }
-    return item.id;
-  }));
+  }
+
+  // update summaries of already synced calendars
+  const updateAlreadySyncedCalendarsPromises = syncedGoogleCalendars.map((syncedCalendar) => {
+    const calendarData = getCalendarData(calendarList, syncedCalendar.calendar_id);
+    if (!calendarData) return;
+    return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
+  });
+  await Promise.all([updateAlreadySyncedCalendarsPromises]);
+  await CronJobDataSource.manager.save(Calendar, newCalendars);
   const events = await Promise.all(
-    calendarIds.map(async (calendarId) => getGoogleEvent({ userId, calendarId, calendar })),
+    calendarsFromGoogleIds.map(async (calendarId) => getGoogleEvent({ userId, calendarId, calendar })),
   );
-  
+
   return events.flat().filter((event) => !!event);
 }
 
-async function getMicrosoftEvent({ userId, calendarId, headers }: { userId: string; calendarId: string; headers: any }) {
+async function getMicrosoftEvent({ userId, calendarId, headers, accountId }: { userId: string; calendarId: string; headers: any, accountId: string }) {
   const baseUrl = 'https://graph.microsoft.com/v1.0';
   const { data: eventData } = await axios.get(`${baseUrl}/me/calendars/${calendarId}/events`, {
       headers,
@@ -156,15 +164,16 @@ async function getMicrosoftEvent({ userId, calendarId, headers }: { userId: stri
       },
   });
   const { value: eventList } = eventData;
-  return eventList.map((event) => notificationMicrosoftAdapter({ event, calendarId, userId }));
+  return eventList.map((event) => notificationMicrosoftAdapter({ event, calendarId, userId, accountId }));
 }
 
-async function getMicrosoftEvents(userId, account) {
+async function getMicrosoftEvents(userId: string, accountId: string) {
   const platform = CalendarPlatforms.MICROSOFT;
+  // get platform integration data accoding to userId and accountId.
   const record = await CronJobDataSource.manager.findOne(PlatformIntegration, {
-    where: { user_id: userId, platform, external_user_id: account },
+    where: { user_id: userId, platform, external_user_id: accountId },
   });
-  let access_token = record.data.access_token;
+  const { access_token } = record.data;
   const baseUrl = 'https://graph.microsoft.com/v1.0';
   if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
     return [];
@@ -172,38 +181,46 @@ async function getMicrosoftEvents(userId, account) {
   const headers = {
     Authorization: `Bearer ${access_token}`,
   };
-  const { data: calendarData } = await axios.get(`${baseUrl}/me/calendars`, { headers });
-  const { value: calendarList } = calendarData;
-  const calendarIds = await Promise.all(calendarList.map(async (item) => {
-    const existingCalendar = await CronJobDataSource.manager.findOne(Calendar, {
-        where: {
-            calendar_id: item.id,
-            user_id: userId,
-            platform: CalendarPlatforms.MICROSOFT,
-        }
-    });
-    if (!existingCalendar) {
-        const calendar = new Calendar({
-            user_id: userId,
-            platform_account: account,
-            platform: CalendarPlatforms.MICROSOFT,
-            calendar_id: item.id,
-            summary: item.name,
-            is_selected: false,
-        });
-        await CronJobDataSource.manager.save(Calendar, calendar);
+  const { data: microsoftCalendars } = await axios.get(`${baseUrl}/me/calendars`, { headers });
+  const { value: calendarList } = microsoftCalendars;
+  const calendarsFromMicroSoftIds: string[] = calendarList.map((microsoftCalendar) => microsoftCalendar.id);
+  const syncedMicroSoftCalendars = await CronJobDataSource.manager.find(Calendar, {
+    where: { calendar_id: In(calendarsFromMicroSoftIds), user_id: userId, platform },
+  });
+  const syncedMicroSoftCalendarsIds = syncedMicroSoftCalendars.map((calendar) => calendar.calendar_id);
+  const newCalendars: Calendar[] = [];
+
+  for await (const calendarId of calendarsFromMicroSoftIds) {
+    const calendarData = getCalendarData(calendarList, calendarId);
+    // check if calendar is new
+    if (!syncedMicroSoftCalendarsIds.includes(calendarId)) {
+      const newCalendar = new Calendar({
+        user_id: userId,
+        platform_account: accountId,
+        platform,
+        calendar_id: calendarId,
+        summary: calendarData.sumary,
+        is_selected: false,
+      });
+      newCalendars.push(newCalendar);
     }
-    else {
-        await CronJobDataSource.manager.update(Calendar, {id : existingCalendar.id }, { summary: item.summary });
-    }
-    return item.id;
-  }));
+  }
+  // update summaries of already synced calendars
+  const updateAlreadySyncedCalendarsPromises = syncedMicroSoftCalendars.map((syncedCalendar) => {
+    const calendarData = calendarList.find((calendar) => calendar.id === syncedCalendar.calendar_id);
+    if (!calendarData) return;
+    return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
+  });
+  await Promise.all([updateAlreadySyncedCalendarsPromises]);
+  await CronJobDataSource.manager.save(Calendar, newCalendars);
   const events = await Promise.all(
-    calendarIds.map(async (calendarId) => getMicrosoftEvent({ userId, calendarId, headers })),
+    calendarsFromMicroSoftIds.map(async (calendarId) => getMicrosoftEvent({ userId, calendarId, headers, accountId })),
   );
 
   return events.flat().filter((event) => !!event);
 }
+
+
 
 async function getAllUserEvents(platform: CalendarPlatforms, userId: string, account: string) {
   if(platform == CalendarPlatforms.GOOGLE) return getGoogleEvents(userId, account);

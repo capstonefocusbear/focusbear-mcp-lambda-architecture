@@ -19,10 +19,18 @@ async function fetchEvents () {
   });
   const filteredEvents = await events.filter(async (event) => {
     const excludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
-      where: {user_id: event.user_id, platform: event.platform}
+      where: {
+        user_id: event.user_id, 
+        platform: event.platform
+      }
     });
     const existingCalendar = await CronJobDataSource.manager.find(Calendar, {
-      where: {user_id: event.user_id, platform: event.platform, platform_account: event.platform_account, is_selected: true}
+      where: {
+        user_id: event.user_id, 
+        platform: event.platform, 
+        platform_account: event.platform_account, 
+        is_selected: true
+      }
     });
     if (!existingCalendar) return false;
     if (!excludedKeywords) return true;

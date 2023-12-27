@@ -195,6 +195,8 @@ export const LessonsRepositoryMock = {
   checkForeignKeyCourseIdExist: jest.fn(),
   checkForeignKeyLessonIdExist: jest.fn(),
   checkUserCourseEnrolment: jest.fn(),
+  upsertCourseLessons: jest.fn(),
+  deleteCourseLesson: jest.fn(),
 };
 
 export const DailyStatsRepositoryMock = {

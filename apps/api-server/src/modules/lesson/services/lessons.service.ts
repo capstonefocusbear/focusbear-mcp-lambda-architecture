@@ -2,9 +2,9 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
-import { CreateLessonDto } from '../dto/create-lesson.dto';
-import { UpdateLessonDto } from '../dto/update-lesson.dto';
+import { UpsertLessonsDto } from '../dto/upsert-lessons.dto';
 import { LessonsRepository } from '../repositories/lessons.repository';
+import { DeleteLessonDto } from '../dto/delete-lesson.dto';
 
 @Injectable()
 export class LessonsService {
@@ -30,33 +30,7 @@ export class LessonsService {
     }
   }
 
-  async createLessons({ course_id, lessons }: CreateLessonDto) {
-    try {
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Lesson Service',
-        level: 'debug',
-        message: 'Create Lessons',
-        data: {
-          course_id,
-          lessons,
-        },
-      });
-      const course = await this.lessonsRepository.checkForeignKeyCourseIdExist(course_id);
-      if (!course) {
-        throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
-      }
-      await this.lessonsRepository.createCourseLessons({ course_id, lessons });
-    } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
-      throw error;
-    }
-  }
-
-  async updateLessons(
-    { course_id, lesson_id, title, content, url }: UpdateLessonDto,
-    user_id: string,
-    roles: string[],
-  ) {
+  async upsertLessons({ course_id, lessons }: UpsertLessonsDto, user_id: string, roles: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Lesson Service',
@@ -64,10 +38,7 @@ export class LessonsService {
         message: 'Update Lessons',
         data: {
           course_id,
-          lesson_id,
-          title,
-          content,
-          url,
+          lessons,
         },
       });
 
@@ -75,15 +46,10 @@ export class LessonsService {
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
-      const lesson = await this.lessonsRepository.checkForeignKeyLessonIdExist(lesson_id);
-      if (!lesson) {
-        throw new NotFoundException(`Lesson with lesson_id ${lesson_id} couldn't be found`);
-      }
-
       if (!(roles.includes(UserTypes.ADMIN) || course.author_id === user_id)) {
         throw new ForbiddenException(`User with user_id ${user_id} not allowed to perform the operation`);
       }
-      await this.lessonsRepository.updateCourseLessons({ course_id, lesson_id, title, content, url });
+      await this.lessonsRepository.upsertCourseLessons({ course_id, lessons });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;
@@ -112,6 +78,32 @@ export class LessonsService {
         throw new NotFoundException(`Lesson with lesson_id ${lesson_id} couldn't be found`);
       }
       await this.lessonsRepository.createLessonCompletion({ course_id, lesson_id }, user_id);
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async deleteCourseLesson({ course_id, lesson_id }: DeleteLessonDto) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Delete Course',
+        data: {
+          course_id,
+          lesson_id,
+        },
+      });
+      const course = await this.lessonsRepository.checkForeignKeyCourseIdExist(course_id);
+      if (!course) {
+        throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
+      }
+      const lesson = await this.lessonsRepository.checkForeignKeyLessonIdExist(lesson_id);
+      if (!lesson) {
+        throw new NotFoundException(`Lesson with lesson_id ${lesson_id} couldn't be found`);
+      }
+      await this.lessonsRepository.deleteCourseLesson({ course_id, lesson_id });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

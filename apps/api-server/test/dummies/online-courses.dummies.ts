@@ -297,7 +297,5 @@ export const DummyCreateLessonDto = {
 export const DummyUpdateLessonDto = {
   lesson_id: DummyCourseOneLessons[0].id,
   course_id: DummyCourseOne.id,
-  title: 'BESET FACT ABOUT STARTING A BUSINESS',
-  content: DummyCourseOneLessons[0].content,
-  url: DummyCourseOneLessons[0].url,
+  lessons: DummyCourseTwo.lessons,
 };

@@ -117,19 +117,19 @@ async function getGoogleEvents(userId: string, account: string) {
   const { data: googleCalendars } = await calendar.calendarList.list();
   const { items: calendarList } = googleCalendars;
   const calendarsFromGoogleIds: string[] = calendarList.map((googleCalendar) => googleCalendar.id);
-  const GoogleCalendars = await CronJobDataSource.manager.find(Calendar, {
+  const allGoogleCalendars = await CronJobDataSource.manager.find(Calendar, {
     where: { calendar_id: In(calendarsFromGoogleIds), user_id: userId, platform },
   });
-  const GoogleCalendarIds = GoogleCalendars.map((syncedCalendar) => syncedCalendar.calendar_id);
+  const allGoogleCalendarIds = allGoogleCalendars.map((syncedCalendar) => syncedCalendar.calendar_id);
   // filter selected calendars
-  const syncedGoogleCalendars = GoogleCalendars.filter((googleCalendar) => googleCalendar.is_selected);
+  const syncedGoogleCalendars = allGoogleCalendars.filter((googleCalendar) => googleCalendar.is_selected);
   const syncedGoogleCalendarIds = syncedGoogleCalendars.map((syncedCalendar) => syncedCalendar.calendar_id);
   const newCalendars: Calendar[] = [];
 
   for await (const calendarId of calendarsFromGoogleIds) {
     const calendarData = getCalendarData(calendarList, calendarId);
     // check if calendar is new
-    if (!GoogleCalendarIds.includes(calendarId)) {
+    if (!allGoogleCalendarIds.includes(calendarId)) {
       const newCalendar = new Calendar({
         user_id: userId,
         platform_account: account,
@@ -143,13 +143,14 @@ async function getGoogleEvents(userId: string, account: string) {
   }
 
   // update summaries of already synced calendars
-  const updateAlreadySyncedCalendarsPromises = GoogleCalendars.map((syncedCalendar) => {
+  const updateAlreadySyncedCalendarsPromises = allGoogleCalendars.map((syncedCalendar) => {
     const calendarData = getCalendarData(calendarList, syncedCalendar.calendar_id);
     if (!calendarData) return;
     return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
   });
   await Promise.all([updateAlreadySyncedCalendarsPromises]);
   await CronJobDataSource.manager.save(Calendar, newCalendars);
+  // fetch events from only selected calendars
   const events = await Promise.all(
     calendarsFromGoogleIds
       .filter((calendarId) => syncedGoogleCalendarIds.includes(calendarId))
@@ -199,18 +200,18 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
   const { data: microsoftCalendars } = await axios.get(`${baseUrl}/me/calendars`, { headers });
   const { value: calendarList } = microsoftCalendars;
   const calendarsFromMicroSoftIds: string[] = calendarList.map((microsoftCalendar) => microsoftCalendar.id);
-  const MicroSoftCalendars = await CronJobDataSource.manager.find(Calendar, {
+  const allMicroSoftCalendars = await CronJobDataSource.manager.find(Calendar, {
     where: { calendar_id: In(calendarsFromMicroSoftIds), user_id: userId, platform },
   });
-  const MicroSoftCalendarsIds = MicroSoftCalendars.map((calendar) => calendar.calendar_id);
-  const syncedMicrosoftCalendars = MicroSoftCalendars.filter((microsoftCalendar) => microsoftCalendar.is_selected);
+  const allMicroSoftCalendarsIds = allMicroSoftCalendars.map((calendar) => calendar.calendar_id);
+  const syncedMicrosoftCalendars = allMicroSoftCalendars.filter((microsoftCalendar) => microsoftCalendar.is_selected);
   const syncedMicrosoftCalendarIds = syncedMicrosoftCalendars.map((microsoftCalendar) => microsoftCalendar.calendar_id);
   const newCalendars: Calendar[] = [];
 
   for await (const calendarId of calendarsFromMicroSoftIds) {
     const calendarData = getCalendarData(calendarList, calendarId);
     // check if calendar is new
-    if (!MicroSoftCalendarsIds.includes(calendarId)) {
+    if (!allMicroSoftCalendarsIds.includes(calendarId)) {
       const newCalendar = new Calendar({
         user_id: userId,
         platform_account: accountId,
@@ -223,13 +224,14 @@ async function getMicrosoftEvents(userId: string, accountId: string) {
     }
   }
   // update summaries of already synced calendars
-  const updateAlreadySyncedCalendarsPromises = MicroSoftCalendars.map((syncedCalendar) => {
+  const updateAlreadySyncedCalendarsPromises = allMicroSoftCalendars.map((syncedCalendar) => {
     const calendarData = calendarList.find((calendar) => calendar.id === syncedCalendar.calendar_id);
     if (!calendarData) return;
     return CronJobDataSource.manager.update(Calendar, { id: syncedCalendar.id }, { summary: calendarData.summary });
   });
   await Promise.all([updateAlreadySyncedCalendarsPromises]);
   await CronJobDataSource.manager.save(Calendar, newCalendars);
+  // fetch events from only selected calendars
   const events = await Promise.all(
     calendarsFromMicroSoftIds
       .filter((calenarId) => syncedMicrosoftCalendarIds.includes(calenarId))

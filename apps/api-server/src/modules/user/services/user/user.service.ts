@@ -42,7 +42,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { INTERNAL_TEST, ONE_MINUTE, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
@@ -68,7 +68,6 @@ export class UserService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
-    @InjectQueue('profitwell') private profitwellQueue: Queue,
     @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
@@ -140,34 +139,10 @@ export class UserService {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
-        console.log('HAS REGISTERED USER');
-        const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
-        if (!isTestUser) {
-          await this.profitwellQueue.add(
-            'register-profitwell-user',
-            {
-              user_id: registeredUser.id,
-              stripe_id: stripeId,
-            },
-            {
-              delay: ONE_MINUTE,
-            },
-          );
-        }
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
       const newlySavedUser = await this.userRepository.create(newUser);
-      await this.profitwellQueue.add(
-        'register-profitwell-user',
-        {
-          user_id: newlySavedUser.id,
-          stripe_id: stripeId,
-        },
-        {
-          delay: ONE_MINUTE,
-        },
-      );
       return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
@@ -663,24 +638,5 @@ export class UserService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
-  }
-
-  async doesUserExistInProfitWell(stripeId: string) {
-    try {
-      const response = await this.httpService.get(`https://api.profitwell.com/v2/customers?email=${stripeId}`, {
-        headers: {
-          Authorization: process.env.PROFITWELL_API_KEY,
-        },
-      });
-      // email field in profitwell can be used to store any string
-      // we want to avoid storing the user's email, so saved the stripe ID in this field
-      const userStripeId = response?.data[0]?.email;
-      if (userStripeId.toLowerCase() === stripeId.toLowerCase()) {
-        return true;
-      }
-      return false;
-    } catch (error) {
-      return false;
-    }
   }
 }

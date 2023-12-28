@@ -75,8 +75,6 @@ export const UTC_TO_IANA_MAP = {
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-export const PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT = 'https://api.profitwell.com/v2/subscriptions/';
-
 export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];
 
 export const IMPACT_MEASUREMENT_EVENT_TYPES = [

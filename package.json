@@ -54,6 +54,7 @@
     "axios": "^1.4.0",
     "axios-retry": "^3.6.0",
     "bull": "^4.10.2",
+    "bullmq": "^5.1.0",
     "cheerio": "^1.0.0-rc.12",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.14.0",

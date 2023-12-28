@@ -7,26 +7,27 @@ export class BrevoService {
   private httpService = axios;
 
   async registerBrevoEvent(email: string, event: TrackEventDto) {
-    const callUrl = 'https://in-automate.brevo.com/api/v2/trackEvent';
-    const config = {
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'ma-key': process.env.SENDINBLUE_MA_KEY,
-      },
-    };
-    const { event_type, user_properties, event_data } = event;
-    const data = {
-      email,
-      event: event_type,
-      properties: user_properties,
-      eventdata: event_data,
-    };
-
     try {
+      const callUrl = 'https://in-automate.brevo.com/api/v2/trackEvent';
+      const config = {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'ma-key': process.env.SENDINBLUE_MA_KEY,
+        },
+      };
+      const { event_type, user_properties, event_data } = event;
+      const data = {
+        email,
+        event: event_type,
+        properties: user_properties,
+        eventdata: event_data,
+      };
+
       await this.httpService.post(callUrl, data, config);
     } catch (error) {
       console.error(error);
+      throw error;
     }
   }
 

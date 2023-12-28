@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bull';
 import { CalendarController } from './controllers/calendar.controller';
 import { CalendarServiceFactory } from './services/calendar.service.factory';
 import { PlatformIntegrationsService } from '../platform-integrations/services/platform-integrations.service';
@@ -16,9 +17,16 @@ import { CalendarExcluededKeywordRepository } from './repositories/calendar-excl
 import { CalendarRepository } from './repositories/calendar.repository';
 import { UserRepository } from '../user/repositories/user.repository';
 import { User } from '../user/entities/user.entity';
+import { SyncEventsConsumer } from './consumers/sync-events.consumer';
 
 @Module({
-  imports: [NotificationModule, TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User])],
+  imports: [
+    NotificationModule,
+    TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User]),
+    BullModule.registerQueue({
+      name: 'sync-events',
+    }),
+  ],
   controllers: [CalendarController],
   exports: [GoogleCalendarService, MicrosoftCalendarService],
   providers: [
@@ -33,6 +41,7 @@ import { User } from '../user/entities/user.entity';
     ConfigService,
     PlatformIntegrationsService,
     PlatformIntegrationRepository,
+    SyncEventsConsumer,
   ],
 })
 export class CalendarModule {}

@@ -15,6 +15,7 @@ import { AsanaService } from './services/asana.service';
 import { ClickUpService } from './services/clickup.service';
 import { TrelloService } from './services/trello.service';
 import { SyncTasksConsumer } from './consumers/sync-tasks.consumer';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -40,7 +41,7 @@ import { SyncTasksConsumer } from './consumers/sync-tasks.consumer';
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'sync-tasks',
+      name: BullQueues.SYNC_TASKS,
     }),
   ],
   controllers: [IntegrationController],

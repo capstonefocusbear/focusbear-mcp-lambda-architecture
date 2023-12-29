@@ -9,6 +9,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class MondayAuthService extends BaseIntegrationAuthService {
@@ -19,7 +20,7 @@ export class MondayAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.MONDAY);

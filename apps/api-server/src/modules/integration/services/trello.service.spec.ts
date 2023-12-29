@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
 import { getQueueToken } from '@nestjs/bull';
-import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
+import { BullQueues, FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsServiceMock, SentryServiceMock, TrelloAuthServiceMock } from '../../../../test/mocks';
 import {
@@ -49,7 +49,7 @@ describe('trelloService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('sync-tasks'),
+          provide: getQueueToken(BullQueues.SYNC_TASKS),
           useValue: QueueMock,
         },
       ],

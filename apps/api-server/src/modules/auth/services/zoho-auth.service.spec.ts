@@ -17,6 +17,7 @@ import { ZohoService } from '../../integration/services/zoho.service';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { BullQueues } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -50,7 +51,7 @@ describe('ZohoService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('time-logs'),
+          provide: getQueueToken(BullQueues.TIME_LOGS),
           useValue: QueueMock,
         },
       ],

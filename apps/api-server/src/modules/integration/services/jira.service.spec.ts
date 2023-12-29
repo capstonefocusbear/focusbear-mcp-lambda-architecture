@@ -20,6 +20,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { BullQueues } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -46,7 +47,7 @@ describe('jiraService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('sync-tasks'),
+          provide: getQueueToken(BullQueues.SYNC_TASKS),
           useValue: QueueMock,
         },
       ],

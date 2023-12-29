@@ -16,6 +16,7 @@ import { AsanaService } from '../../integration/services/asana.service';
 import { QueueMock, userDummy } from '../../../../test/dummies';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { BullQueues } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -40,7 +41,7 @@ describe('AsanaService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('time-logs'),
+          provide: getQueueToken(BullQueues.TIME_LOGS),
           useValue: QueueMock,
         },
       ],

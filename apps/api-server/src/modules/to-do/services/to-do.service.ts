@@ -20,6 +20,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { Task } from '../../integration/domain/task.model';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 @Injectable()
 export class ToDoService {
@@ -27,7 +28,7 @@ export class ToDoService {
     private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
     private readonly toDoRepository: ToDoRepository,
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
-    @InjectQueue('time-logs') private timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
@@ -54,30 +55,27 @@ export class ToDoService {
     const tags = updatedToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id: userId }));
     if (DEFAULT_STATUSES.includes(updatedToDo.status)) {
       const newToDo = new ToDo({ ...updatedToDo, user_id: userId, updated_at: new Date().toISOString(), tags });
-      return await this.toDoRepository.orm.save(newToDo);
-    } else {
-      // External status is used, check whether status should mark task as completed
-      const { available_statuses } = await this.syncedProjectsRepository.orm.findOneBy({
-        id: toDoFromDB.synced_project_id,
-      });
-      const selectedStatus = available_statuses.find(
-        (externalStatus) => externalStatus.status_id === updatedToDo.status,
+      return this.toDoRepository.orm.save(newToDo);
+    }
+    // External status is used, check whether status should mark task as completed
+    const { available_statuses } = await this.syncedProjectsRepository.orm.findOneBy({
+      id: toDoFromDB.synced_project_id,
+    });
+    const selectedStatus = available_statuses.find((externalStatus) => externalStatus.status_id === updatedToDo.status);
+    if (!selectedStatus) {
+      throw new BadRequestException(
+        `Error while updating task external status. No external status found with ID: ${updatedToDo.status} for task with ID: ${updatedToDo.id}`,
       );
-      if (!selectedStatus) {
-        throw new BadRequestException(
-          `Error while updating task external status. No external status found with ID: ${updatedToDo.status} for task with ID: ${updatedToDo.id}`,
-        );
-      }
-      if (selectedStatus?.should_complete_task) {
-        const newToDo = new ToDo({
-          ...updatedToDo,
-          user_id: userId,
-          updated_at: new Date().toISOString(),
-          tags,
-          status: ToDoStatus.COMPLETED,
-        });
-        return await this.toDoRepository.orm.save(newToDo);
-      }
+    }
+    if (selectedStatus?.should_complete_task) {
+      const newToDo = new ToDo({
+        ...updatedToDo,
+        user_id: userId,
+        updated_at: new Date().toISOString(),
+        tags,
+        status: ToDoStatus.COMPLETED,
+      });
+      return this.toDoRepository.orm.save(newToDo);
     }
   }
 
@@ -237,7 +235,7 @@ export class ToDoService {
     await this.taskTimeLogsRepository.orm.save(timeLogs);
 
     if (tasksFromExternalPlatforms.length) {
-      await this.timeLogsQueue.add('save-task-time-log', {
+      await this.timeLogsQueue.add(BullWorkers.SAVE_TASK_TIME_LOG, {
         userId,
         toDoTimeLogs,
         toDos: tasksFromExternalPlatforms,

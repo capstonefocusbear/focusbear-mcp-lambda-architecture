@@ -19,6 +19,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { BullQueues } from '../../../shared/utils/constants';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
   id: task.id_string,
@@ -48,7 +49,7 @@ export class ZohoService extends BaseIntegrationService {
     protected readonly integrationAuthService: ZohoAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
     @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(

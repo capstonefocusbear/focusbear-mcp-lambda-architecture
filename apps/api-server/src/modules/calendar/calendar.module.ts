@@ -18,13 +18,14 @@ import { CalendarRepository } from './repositories/calendar.repository';
 import { UserRepository } from '../user/repositories/user.repository';
 import { User } from '../user/entities/user.entity';
 import { SyncEventsConsumer } from './consumers/sync-events.consumer';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   imports: [
     NotificationModule,
     TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User]),
     BullModule.registerQueue({
-      name: 'sync-events',
+      name: BullQueues.SYNC_EVENTS,
     }),
   ],
   controllers: [CalendarController],

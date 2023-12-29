@@ -11,8 +11,9 @@ import { IntegrationFactory } from '../services/IntegrationFactory';
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { Task } from '../domain/task.model';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
-@Processor('sync-tasks')
+@Processor(BullQueues.SYNC_TASKS)
 export class SyncTasksConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -22,7 +23,7 @@ export class SyncTasksConsumer {
     private readonly integrationFactory: IntegrationFactory,
   ) {}
 
-  @Process('sync-project-tasks')
+  @Process(BullWorkers.SYNC_PROJECT_TASKS)
   async readOperationJob(
     job: Job<{
       userId: string;
@@ -60,7 +61,7 @@ export class SyncTasksConsumer {
     }
   }
 
-  @Process('manually-sync-platform-tasks')
+  @Process(BullWorkers.MANUALLY_SYNC_PLATFORM_TASKS)
   async manuallySyncPlatformTasks(
     job: Job<{
       userId: string;

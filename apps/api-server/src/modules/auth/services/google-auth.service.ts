@@ -12,6 +12,7 @@ import { IIntegrationAuthService } from './integration-auth.service.interface';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { User } from '../../user/entities/user.entity';
 import { GoogleCalendarService } from '../../calendar/services/google-calendar.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class GoogleAuthService implements IIntegrationAuthService {
@@ -28,7 +29,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly googleCalendarService: GoogleCalendarService,
   ) {

@@ -16,6 +16,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { MicrosoftAuthService } from './microsoft-auth.service';
 import { MicrosoftCalendarService } from '../../calendar/services/microsoft-calendar.service';
+import { BullQueues } from 'apps/api-server/src/shared/utils/constants';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -38,7 +39,7 @@ describe('MicrosfotService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('time-logs'),
+          provide: getQueueToken(BullQueues.TIME_LOGS),
           useValue: QueueMock,
         },
       ],

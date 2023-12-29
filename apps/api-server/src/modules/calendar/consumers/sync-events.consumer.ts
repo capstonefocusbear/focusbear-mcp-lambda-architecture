@@ -6,6 +6,7 @@ import { DateTime } from 'luxon';
 import axios from 'axios';
 import { calendar_v3, google as Google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { NotificationRepository } from '../../notification/repository/notification.repository';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarRepository } from '../repositories/calendar.repository';
@@ -13,7 +14,7 @@ import { PlatformIntegrationRepository } from '../../platform-integrations/repos
 import { MicrosoftCalendarEventDto } from '../dto/microsoft-calendar-event.dto';
 import { Notification } from '../../notification/entities/notification.entity';
 
-@Processor('sync-events')
+@Processor(BullQueues.SYNC_EVENTS)
 export class SyncEventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -207,7 +208,7 @@ export class SyncEventsConsumer {
     });
   }
 
-  @Process('sync-events-for-platform')
+  @Process(BullWorkers.SYNC_EVENTS_FOR_PLATFORM)
   async readOperationJob(job: Job<{ platform: CalendarPlatforms; userId: string; account: string }>) {
     const {
       data: { platform, userId, account },

@@ -10,6 +10,8 @@ import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
 import {
   ACTIVE,
+  BullQueues,
+  BullWorkers,
   INTERNAL_TEST,
   MONTH,
   ONE_SECOND_AS_MILLIS,
@@ -37,7 +39,7 @@ axiosRetry(axios, {
   },
 });
 
-@Processor('revenue-cat-status')
+@Processor(BullQueues.REVENUE_CAT_STATUS)
 export class RevenueCatStatusConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -160,7 +162,7 @@ export class RevenueCatStatusConsumer {
     });
   }
 
-  @Process('update-revenue-cat-status')
+  @Process(BullWorkers.UPDATE_REVENUE_CAT_STATUS)
   async readOperationJob(job: Job<{ user_id: string }>) {
     try {
       this.sentryService.instance().addBreadcrumb({

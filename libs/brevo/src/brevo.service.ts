@@ -27,7 +27,6 @@ export class BrevoService {
       await this.httpService.post(callUrl, data, config);
     } catch (error) {
       console.error(error);
-      throw error;
     }
   }
 

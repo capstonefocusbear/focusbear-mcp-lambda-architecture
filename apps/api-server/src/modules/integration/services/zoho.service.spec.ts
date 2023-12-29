@@ -22,6 +22,7 @@ import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projec
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { BullQueues } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -48,7 +49,7 @@ describe('ZohoService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('sync-tasks'),
+          provide: getQueueToken(BullQueues.SYNC_TASKS),
           useValue: QueueMock,
         },
       ],

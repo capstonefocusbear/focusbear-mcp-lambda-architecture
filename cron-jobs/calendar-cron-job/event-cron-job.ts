@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq';
+import { BullQueues, BullWorkers } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
@@ -27,7 +28,7 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
   try {
     await CronJobDataSource.initialize();
     // Initialize the BullMQ queue
-    const syncQueue = new Queue('sync-events', {
+    const syncQueue = new Queue(BullQueues.SYNC_EVENTS, {
       connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
     });
 
@@ -40,7 +41,7 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
       }[],
     ) => {
       for await (const user of users) {
-        await syncQueue.add('sync-events-for-platform', {
+        await syncQueue.add(BullWorkers.SYNC_EVENTS_FOR_PLATFORM, {
           platform,
           userId: user.id,
           account: user.account,

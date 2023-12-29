@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { QueueMock, userDummy } from '../../../../../test/dummies';
 import { WebhookHandlerStrategy } from './webhook-handler.strategy';
+import { BullQueues } from '../../../../shared/utils/constants';
 
 describe('WebhookHandlerStrategy', () => {
   let webhookHandlerStrategy: WebhookHandlerStrategy;
@@ -11,7 +12,7 @@ describe('WebhookHandlerStrategy', () => {
       providers: [
         WebhookHandlerStrategy,
         {
-          provide: getQueueToken('revenue-cat-status'),
+          provide: getQueueToken(BullQueues.REVENUE_CAT_STATUS),
           useValue: QueueMock,
         },
       ],

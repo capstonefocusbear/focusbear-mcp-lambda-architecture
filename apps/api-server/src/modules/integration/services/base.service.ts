@@ -3,7 +3,7 @@ import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, Unautho
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { MAX_RETRY } from '../../../shared/utils/constants';
+import { BullWorkers, MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
@@ -307,7 +307,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
   }
 
   async manuallySyncTasks(userId: string) {
-    await this.syncTasksQueue.add('manually-sync-platform-tasks', { userId, platform: this.platform });
+    await this.syncTasksQueue.add(BullWorkers.MANUALLY_SYNC_PLATFORM_TASKS, { userId, platform: this.platform });
   }
 
   async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
@@ -327,7 +327,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       const [projectAsFocusModeTag] = createNewTags([project], userId, this.platform);
       await this.upsertSyncedProjectRecord(userId, portalId, project.id);
       await this.focusModeTagRepository.orm.save(projectAsFocusModeTag);
-      await this.syncTasksQueue.add('sync-project-tasks', {
+      await this.syncTasksQueue.add(BullWorkers.SYNC_PROJECT_TASKS, {
         userId,
         portalId,
         projectId,

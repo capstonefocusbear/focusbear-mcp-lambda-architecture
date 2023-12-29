@@ -9,6 +9,7 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class JiraAuthService extends BaseIntegrationAuthService {
@@ -19,7 +20,7 @@ export class JiraAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.JIRA);

@@ -35,7 +35,7 @@ export class LessonsRepository {
   }
 
   async createLessonCompletion(createLessonCompletionDto: CreateLessonCompletionDto, user_id: string) {
-    const newLessonCompletion = new LessonCompletion({...createLessonCompletionDto, user_id });
+    const newLessonCompletion = new LessonCompletion({ ...createLessonCompletionDto, user_id });
     await this.ormLessonCompletion.save(newLessonCompletion);
   }
 

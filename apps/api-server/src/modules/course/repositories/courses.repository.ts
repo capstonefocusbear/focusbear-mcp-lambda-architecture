@@ -9,7 +9,7 @@ import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { Equal, In, Not } from 'typeorm';
-import { PaginationDto,PaginationMetaDto,PaginationOptionsDto } from '../dto/pagination.dto';
+import { PaginationDto, PaginationMetaDto, PaginationOptionsDto } from '../dto/pagination.dto';
 
 @Injectable()
 export class CoursesRepository {
@@ -63,12 +63,12 @@ export class CoursesRepository {
 
   async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
     const newRating = new CourseRating({ ...createCourseRatingDto, user_id });
-await this.ormCourseRating.save(newRating);
+    await this.ormCourseRating.save(newRating);
   }
 
   async createEnrolmentContent(course_id: string, user_id: string) {
     const newEnrolment = new CourseEnrolment({ course_id, user_id });
-await this.ormCourseEnrolment.save(newEnrolment);
+    await this.ormCourseEnrolment.save(newEnrolment);
   }
 
   async updateCourseContent({ name, description }: UpdateCourseDto, course_id: string) {

@@ -6,7 +6,7 @@ import { UpsertLessonsDto } from '../dto/upsert-lessons.dto';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
 import { Passport } from '../../auth/domain/passport.model';
-import { AuthContext } from 'apps/api-server/src/shared/decorators/passport.decorator';
+import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { DeleteLessonDto } from '../dto/delete-lesson.dto';
 
 @Controller('lesson')

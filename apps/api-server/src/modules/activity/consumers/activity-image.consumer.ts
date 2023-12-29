@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import axios from 'axios';
-import { BullQueues, BullWorkers } from 'apps/api-server/src/shared/utils/constants';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 @Processor(BullQueues.ACTIVITY_IMAGE)
 export class ActivityImageConsumer {

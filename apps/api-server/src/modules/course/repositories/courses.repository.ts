@@ -9,9 +9,7 @@ import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { Equal, In, Not } from 'typeorm';
-import { PageOptionsDto } from '../dto/page-options.dto';
-import { PageMetaDto } from '../dto/page-meta.dto';
-import { PageDto } from '../dto/page.dto';
+import { PaginationDto,PaginationMetaDto,PaginationOptionsDto } from '../dto/pagination.dto';
 
 @Injectable()
 export class CoursesRepository {
@@ -58,39 +56,19 @@ export class CoursesRepository {
     });
   }
 
-  async createCourseContent({ name, description }: CreateCourseDto, author_id: string) {
-    await this.ormCourse
-      .createQueryBuilder()
-      .insert()
-      .into(Course)
-      .values({
-        name,
-        description,
-        author_id,
-      })
-      .execute();
+  async createCourseContent(createCourseDto: CreateCourseDto, author_id: string) {
+    const newCourse = new Course({ ...createCourseDto, author_id });
+    await this.ormCourse.save(newCourse);
   }
 
   async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
-    await this.ormCourseRating
-      .createQueryBuilder()
-      .insert()
-      .into(CourseRating)
-      .values({ ...createCourseRatingDto, user_id })
-      .orUpdate(['rating', 'review'], ['id'])
-      .execute();
+    const newRating = new CourseRating({ ...createCourseRatingDto, user_id });
+await this.ormCourseRating.save(newRating);
   }
 
   async createEnrolmentContent(course_id: string, user_id: string) {
-    await this.ormCourseEnrolment
-      .createQueryBuilder()
-      .insert()
-      .into(CourseEnrolment)
-      .values({
-        course_id,
-        user_id,
-      })
-      .execute();
+    const newEnrolment = new CourseEnrolment({ course_id, user_id });
+await this.ormCourseEnrolment.save(newEnrolment);
   }
 
   async updateCourseContent({ name, description }: UpdateCourseDto, course_id: string) {
@@ -163,17 +141,17 @@ export class CoursesRepository {
     });
   }
 
-  async getAllCourses(pageOptionsDto: PageOptionsDto) {
+  async getAllCourses(paginationOptionsDto: PaginationOptionsDto) {
     const entities = await this.ormCourse.find({
       order: {
-        created_at: pageOptionsDto.order,
+        created_at: paginationOptionsDto.order,
       },
-      skip: pageOptionsDto.skip,
-      take: pageOptionsDto.take,
+      skip: paginationOptionsDto.skip,
+      take: paginationOptionsDto.take,
       relations: ['ratings'],
     });
-    const pageMetaDto = new PageMetaDto({ itemCount: entities.length, pageOptionsDto });
-    return new PageDto(entities, pageMetaDto);
+    const paginationMetaDto = new PaginationMetaDto({ itemCount: entities.length, paginationOptionsDto });
+    return new PaginationDto(entities, paginationMetaDto);
   }
 
   async getUserNotEnrolledCourses(user_id: string): Promise<Course[]> {

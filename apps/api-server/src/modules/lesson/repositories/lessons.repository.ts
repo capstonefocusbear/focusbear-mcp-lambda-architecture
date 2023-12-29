@@ -34,17 +34,9 @@ export class LessonsRepository {
       .execute();
   }
 
-  async createLessonCompletion({ lesson_id, course_id }: CreateLessonCompletionDto, user_id: string) {
-    await this.ormLessonCompletion
-      .createQueryBuilder()
-      .insert()
-      .into(LessonCompletion)
-      .values({
-        course_id,
-        lesson_id,
-        user_id,
-      })
-      .execute();
+  async createLessonCompletion(createLessonCompletionDto: CreateLessonCompletionDto, user_id: string) {
+    const newLessonCompletion = new LessonCompletion({...createLessonCompletionDto, user_id });
+    await this.ormLessonCompletion.save(newLessonCompletion);
   }
 
   async checkForeignKeyCourseIdExist(course_id: string) {

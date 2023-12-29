@@ -13,8 +13,7 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PageOptionsDto } from '../dto/page-options.dto';
-import { PageDto } from '../dto/page.dto';
+import { PaginationDto, PaginationOptionsDto } from '../dto/pagination.dto';
 import { Course } from '../entities/course.entity';
 
 @Controller('course')
@@ -26,8 +25,8 @@ export class CoursesController {
 
   @UseGuards(IsAdmin)
   @Get('admin')
-  getAllCourses(@Query() pageOptionsDto: PageOptionsDto): Promise<PageDto<Course>> {
-    return this.coursesService.getAllCourses(pageOptionsDto);
+  getAllCourses(@Query() paginationOptionsDto: PaginationOptionsDto): Promise<PaginationDto<Course>> {
+    return this.coursesService.getAllCourses(paginationOptionsDto);
   }
 
   @Post()

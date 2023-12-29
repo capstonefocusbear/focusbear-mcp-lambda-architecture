@@ -9,7 +9,7 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CoursesRepository } from '../repositories/courses.repository';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PageOptionsDto } from '../dto/page-options.dto';
+import { PaginationOptionsDto } from '../dto/pagination.dto';
 
 @Injectable()
 export class CoursesService {
@@ -18,15 +18,15 @@ export class CoursesService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
-  async getAllCourses(pageOptionsDto: PageOptionsDto) {
+  async getAllCourses(paginationOptionsDto: PaginationOptionsDto) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
         level: 'debug',
         message: 'Getting All Courses',
-        data: pageOptionsDto,
+        data: paginationOptionsDto,
       });
-      return await this.coursesRepository.getAllCourses(pageOptionsDto);
+      return await this.coursesRepository.getAllCourses(paginationOptionsDto);
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
     }

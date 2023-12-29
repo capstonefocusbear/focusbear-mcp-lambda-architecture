@@ -9,7 +9,6 @@ import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
-import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -53,13 +52,11 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { ONE_MINUTE } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 
 // Mock axios and set the type
 jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserService', () => {
   let userService: UserService;
@@ -87,10 +84,6 @@ describe('UserService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
-        },
-        {
-          provide: getQueueToken('profitwell'),
-          useValue: QueueMock,
         },
         {
           provide: getQueueToken('revenue-cat-status'),
@@ -634,27 +627,6 @@ describe('UserService', () => {
     });
   });
 
-  describe('updateOrCreateUser', () => {
-    const dummyStripeId = 'some_id';
-    it('positive: should add item to ProfitWell queue', async () => {
-      UserRepositoryMock.create.mockResolvedValueOnce({ id: userDummy.id });
-      StripeServiceMock.registerNewCustomer.mockResolvedValueOnce({ id: dummyStripeId });
-
-      await userService.updateOrCreateUser({ auth0_id: 'some_id', email: 'someone@email.com' }, null);
-
-      expect(QueueMock.add).toBeCalledWith(
-        'register-profitwell-user',
-        {
-          user_id: userDummy.id,
-          stripe_id: dummyStripeId,
-        },
-        {
-          delay: ONE_MINUTE,
-        },
-      );
-    });
-  });
-
   describe('getFocusBlockSummary', () => {
     it('negative: should throw error if user is not found', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
@@ -812,35 +784,6 @@ describe('UserService', () => {
       expect(AdminAccessRequestRepositoryMock.create).toBeCalledWith(
         new AdminAccessRequest({ admin_user_id: userDummy.id, access_reason: accessReasonDummy }),
       );
-    });
-  });
-
-  describe('doesUserExistInProfitWell', () => {
-    it('positive: if user is returned from profitwell, true should be returned', async () => {
-      const dummyStripeId = 'cus_12345';
-      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: dummyStripeId }] });
-
-      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
-
-      expect(response).toBeTrue();
-    });
-
-    it('positive: if stripe IDs do not match, false should be returned', async () => {
-      const dummyStripeId = 'cus_12345';
-      mockedAxios.get.mockResolvedValueOnce({ data: [{ email: 'cus_9876' }] });
-
-      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
-
-      expect(response).toBeFalse();
-    });
-
-    it('positive: if user is NOT returned from profitwell, false should be returned', async () => {
-      const dummyStripeId = 'cus_12345';
-      mockedAxios.get.mockResolvedValueOnce({ data: [] });
-
-      const response = await userService.doesUserExistInProfitWell(dummyStripeId);
-
-      expect(response).toBeFalse();
     });
   });
 

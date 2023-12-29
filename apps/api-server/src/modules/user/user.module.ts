@@ -35,7 +35,6 @@ import { UserDataController } from './controllers/user-data/user-data.controller
 import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
-import { ProfitWellConsumer } from './consumers/profitwell.consumer';
 import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
 import { UserFeedbackRepository } from './repositories/user-feedback.repository';
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
@@ -56,7 +55,6 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     AdminAccessRequestRepository,
     UserDataService,
     UserPersonalDataConsumer,
-    ProfitWellConsumer,
     RevenueCatStatusConsumer,
     UserFeedbackRepository,
     UserFeedbackService,
@@ -90,9 +88,6 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
       },
       {
         name: 'user-data',
-      },
-      {
-        name: 'profitwell',
       },
       {
         name: 'revenue-cat-status',

@@ -42,7 +42,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
@@ -68,7 +68,7 @@ export class UserService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
-    @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
+    @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
@@ -508,7 +508,7 @@ export class UserService {
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const shouldUpdateCache = this.shouldSyncWithRevenueCat(user);
     if (shouldUpdateCache) {
-      await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
+      await this.revenueCatQueue.add(BullWorkers.UPDATE_REVENUE_CAT_STATUS, { user_id });
     }
     if (!shouldUpdateCache && user.revenue_cat_data) {
       return user.revenue_cat_data;

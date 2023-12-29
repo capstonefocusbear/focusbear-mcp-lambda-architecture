@@ -12,6 +12,7 @@ import { Auth0Module } from '../../../../../libs/auth0/src';
 import { EventsRepository } from './repositories/events.repository';
 import { UserModule } from '../user/user.module';
 import { DeviceModule } from '../device/device.module';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository],
@@ -23,7 +24,7 @@ import { DeviceModule } from '../device/device.module';
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'events',
+      name: BullQueues.EVENTS,
     }),
     Auth0Module.registerAsync({
       imports: [ConfigModule],

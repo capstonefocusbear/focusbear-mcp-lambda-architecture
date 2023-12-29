@@ -16,6 +16,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { JiraAuthService } from '../../auth/services/jira-auth.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 export class JiraService extends BaseIntegrationService {
   constructor(
@@ -26,7 +27,7 @@ export class JiraService extends BaseIntegrationService {
     protected readonly integrationAuthService: JiraAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
     @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(

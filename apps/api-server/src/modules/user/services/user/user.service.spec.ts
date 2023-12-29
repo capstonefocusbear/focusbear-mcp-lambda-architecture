@@ -52,6 +52,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
+import { BullQueues } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 
@@ -86,7 +87,7 @@ describe('UserService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('revenue-cat-status'),
+          provide: getQueueToken(BullQueues.REVENUE_CAT_STATUS),
           useValue: QueueMock,
         },
       ],

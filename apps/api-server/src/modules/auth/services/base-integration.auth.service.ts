@@ -3,7 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { MAX_RETRY } from '../../../shared/utils/constants';
+import { BullQueues, MAX_RETRY } from '../../../shared/utils/constants';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
@@ -21,7 +21,7 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly platform: IntegrationPlatforms,
   ) {

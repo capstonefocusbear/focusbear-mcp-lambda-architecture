@@ -25,6 +25,7 @@ import { AuthServiceFactory } from './services/auth.service.factory';
 import { GoogleAuthService } from './services/google-auth.service';
 import { MicrosoftAuthService } from './services/microsoft-auth.service';
 import { CalendarModule } from '../calendar/calendar.module';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -88,7 +89,7 @@ import { CalendarModule } from '../calendar/calendar.module';
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'time-logs',
+      name: BullQueues.TIME_LOGS,
     }),
   ],
 })

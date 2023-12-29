@@ -17,6 +17,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ClickUpAuthService } from '../../auth/services/clickup-auth.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { BullQueues } from '../../../shared/utils/constants';
 
 export class ClickUpService extends BaseIntegrationService {
   constructor(
@@ -27,7 +28,7 @@ export class ClickUpService extends BaseIntegrationService {
     protected readonly integrationAuthService: ClickUpAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
     @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(

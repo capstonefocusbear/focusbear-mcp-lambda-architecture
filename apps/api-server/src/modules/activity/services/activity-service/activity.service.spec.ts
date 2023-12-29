@@ -17,6 +17,7 @@ import {
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { UserTypes } from '../../../user/domain/user-types.enum';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 describe('ActivityService', () => {
   let activityService: ActivityService;
@@ -28,7 +29,7 @@ describe('ActivityService', () => {
         UserRepository,
         StripeService,
         {
-          provide: getQueueToken('activity-image'),
+          provide: getQueueToken(BullQueues.ACTIVITY_IMAGE),
           useValue: QueueMock,
         },
         {
@@ -100,7 +101,7 @@ describe('ActivityService', () => {
         `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       );
 
-      expect(QueueMock.add).toBeCalledWith('delete-activity-image', {
+      expect(QueueMock.add).toBeCalledWith(BullWorkers.DELETE_ACTIVITY_IMAGE, {
         user_id: userDummy.id,
         filePath: `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       });

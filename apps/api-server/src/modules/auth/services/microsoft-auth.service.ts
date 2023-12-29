@@ -10,6 +10,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
 import { MicrosoftCalendarService } from '../../calendar/services/microsoft-calendar.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class MicrosoftAuthService extends BaseIntegrationAuthService {
@@ -22,7 +23,7 @@ export class MicrosoftAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly microsoftCalendarService: MicrosoftCalendarService,
   ) {

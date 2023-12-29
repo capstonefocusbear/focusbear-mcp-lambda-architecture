@@ -103,6 +103,30 @@ export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
+export enum BullQueues {
+  SYNC_EVENTS = 'sync-events',
+  REVENUE_CAT_STATUS = 'revenue-cat-status',
+  USER_DATA = 'user-data',
+  STATS = 'stats',
+  ACTIVITY_IMAGE = 'activity-image',
+  EVENTS = 'events',
+  TIME_LOGS = 'time-logs',
+  SYNC_TASKS = 'sync-tasks',
+}
+
+export enum BullWorkers {
+  DAILY_STATS_ACTIVITY_COMPLETED = 'daily-stats-activity-completed',
+  DELETE_ACTIVITY_IMAGE = 'delete-activity-image',
+  SYNC_EVENTS_FOR_PLATFORM = 'sync-events-for-platform',
+  TRACK_EVENT = 'track-event',
+  SYNC_PROJECT_TASKS = 'sync-project-tasks',
+  RESUME_NOTIFICATION = 'resume-notification',
+  MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  SAVE_TASK_TIME_LOG = 'save-task-time-log',
+  UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
+  GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+}
+
 export const createActivityFunction = {
   name: 'createActivity',
   description: 'Creates a new activity from users specifications of activity',

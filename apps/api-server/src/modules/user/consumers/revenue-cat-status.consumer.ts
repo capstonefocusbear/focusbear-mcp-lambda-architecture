@@ -4,8 +4,9 @@ import { Job } from 'bull';
 import { RevenueCatService } from '@app/revenue-cat';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
-@Processor('revenue-cat-status')
+@Processor(BullQueues.REVENUE_CAT_STATUS)
 export class RevenueCatStatusConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -37,7 +38,7 @@ export class RevenueCatStatusConsumer {
     });
   }
 
-  @Process('update-revenue-cat-status')
+  @Process(BullWorkers.UPDATE_REVENUE_CAT_STATUS)
   async readOperationJob(job: Job<{ user_id: string }>) {
     try {
       this.sentryService.instance().addBreadcrumb({

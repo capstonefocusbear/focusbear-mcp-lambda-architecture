@@ -18,6 +18,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import { UserDataService } from './user-data.service';
 import { QueueMock, userDummy } from '../../../../../test/dummies';
 import { LanguageOptions } from '../../domain/language-options.enum';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -44,7 +45,7 @@ describe('UserDataService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('user-data'),
+          provide: getQueueToken(BullQueues.USER_DATA),
           useValue: QueueMock,
         },
       ],
@@ -72,7 +73,7 @@ describe('UserDataService', () => {
     it('positive: should enter job into queue to process and email user their data', async () => {
       await service.processAndEmailUserData(userDummy.id, LanguageOptions.ENGLISH);
 
-      expect(QueueMock.add).toBeCalledWith('get-user-personal-data', {
+      expect(QueueMock.add).toBeCalledWith(BullWorkers.GET_USER_PERSONAL_DATA, {
         user_id: userDummy.id,
         language: LanguageOptions.ENGLISH,
       });

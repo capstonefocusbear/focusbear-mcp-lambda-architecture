@@ -6,15 +6,16 @@ import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { ToDo } from '../entities/to-do.entity';
 import { BillingStatus } from '../../integration/domain/billing-status.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
-@Processor('time-logs')
+@Processor(BullQueues.TIME_LOGS)
 export class TimeLogsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly integrationFactory: IntegrationFactory,
   ) {}
 
-  @Process('save-task-time-log')
+  @Process(BullWorkers.SAVE_TASK_TIME_LOG)
   async readOperationJob(
     job: Job<{
       userId: string;

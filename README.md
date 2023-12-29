@@ -49,7 +49,7 @@ $ TYPEORM_ENCRYPTION_KEY =
 # Got to the Auth0 dashboard, Application => Application, open "Server API" and take values to populate those keys
 $ AUTH0_DOMAIN = dev-2hidr8ad.us.auth0.com
 $ AUTH0_CONNECTION = Username-Password-Authentication
-$ AUTH0_INDENTIFIER = https://dev-2hidr8ad.us.auth0.com/api/v2/
+$ AUTH0_IDENTIFIER = https://dev-2hidr8ad.us.auth0.com/api/v2/
 $ AUTH0_MANAGEMENT_CLIENT_ID =
 $ AUTH0_MANAGEMENT_CLIENT_SECRET =
 
@@ -166,8 +166,6 @@ $ MICROSOFT_CLIENT_ID=
 $ MICROSOFT_CLIENT_SECRET=
 $ MICROSOFT_APP_NAME=
 
-# Get from ProfitWell
-$ PROFITWELL_API_KEY = 
 ```
 
 3. Update .env file with actual values for PostgreSQL

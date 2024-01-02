@@ -4,6 +4,7 @@ import { registerAs } from '@nestjs/config';
 export const validationPipeConfig = registerAs(
   'validation-pipe',
   (): ValidationPipeOptions => ({
+    whitelist: true,
     transform: true,
     transformOptions: {
       enableImplicitConversion: true,

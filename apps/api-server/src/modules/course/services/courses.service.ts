@@ -9,7 +9,7 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CoursesRepository } from '../repositories/courses.repository';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PaginationOptionsDto } from '../dto/pagination.dto';
+import { PaginationOptionsDto } from '../dto/pagination-options.dto';
 
 @Injectable()
 export class CoursesService {

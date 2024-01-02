@@ -1,6 +1,6 @@
 import { IsArray, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
-import { Lesson } from '../entities/lesson.entity';
 import { Type } from 'class-transformer';
+import { Lesson } from '../entities/lesson.entity';
 
 export class UpsertLessonsDto {
   @IsNotEmpty()

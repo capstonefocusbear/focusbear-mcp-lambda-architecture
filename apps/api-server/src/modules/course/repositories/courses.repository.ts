@@ -9,7 +9,9 @@ import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { Equal, In, Not } from 'typeorm';
-import { PaginationDto, PaginationMetaDto, PaginationOptionsDto } from '../dto/pagination.dto';
+import { PaginationDto } from '../dto/pagination';
+import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
+import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 
 @Injectable()
 export class CoursesRepository {

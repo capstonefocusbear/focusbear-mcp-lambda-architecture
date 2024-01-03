@@ -13,8 +13,9 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PaginationDto, PaginationOptionsDto } from '../dto/pagination.dto';
+import { PaginationDto } from '../dto/pagination';
 import { Course } from '../entities/course.entity';
+import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 
 @Controller('course')
 @UseGuards(IsAuth)

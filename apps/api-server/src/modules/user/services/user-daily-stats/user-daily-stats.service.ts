@@ -5,7 +5,13 @@ import { DateTime } from 'luxon';
 import { Between, Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { BullQueues, BullWorkers, DAYS_OF_WEEK, ONE_MINUTE_SECONDS, TEN_MINUTES } from '../../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  DAYS_OF_WEEK,
+  ONE_MINUTE_SECONDS,
+  TEN_MINUTES,
+} from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
   getRoutinesAndFocusModesAverages,

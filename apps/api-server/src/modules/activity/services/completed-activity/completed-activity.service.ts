@@ -678,17 +678,19 @@ export class CompletedActivityService {
         user_id: user.id,
       },
     });
-    const { current_activity_sequence_id } = user;
+    const { id, current_activity_sequence_id, current_completing_sequence_log_id, current_activity_assigned_at } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
-    const isCompletingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    if (!isCompletingActivitySequenceTheCurrent) {
-      await this.completedActivitySequenceService.forceCompleteCurrentSequence(
-        current_activity_sequence_id,
-        user.id,
-        true,
-      );
+
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
+      .setZone(user.timezone)
+      .toJSDate()
+      .getDate();
+    const userTimes = this.getUserTimesFromPartialUser(user);
+
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, user);
     }
   }
 
@@ -816,13 +818,24 @@ export class CompletedActivityService {
   }
 
   async recalculateCurrentActivity(partialUser: Partial<User>) {
-    const { id, current_activity_sequence_id, current_activity, current_completing_sequence_log_id } = partialUser;
+    const {
+      id,
+      current_activity_sequence_id,
+      current_activity,
+      current_completing_sequence_log_id,
+      current_activity_assigned_at,
+    } = partialUser;
 
     const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
+      .setZone(partialUser.timezone)
+      .toJSDate()
+      .getDate();
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes)) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (this.isCutoffTimeReached(partialUser)) {
@@ -851,8 +864,14 @@ export class CompletedActivityService {
     return this.getUserTimes(timezone, startup_time, shutdown_time);
   }
 
-  shouldCompleteRoutine(sequence: ActivitySequence, userTimes: UserTimesResponse): boolean {
+  shouldCompleteRoutine(
+    sequence: ActivitySequence,
+    userTimes: UserTimesResponse,
+    currentActivityAssignedDate: number,
+  ): boolean {
+    const hasRoutineBeenStartedToday = userTimes.userCurrentTime.toJSDate().getDate() === currentActivityAssignedDate;
     return (
+      !hasRoutineBeenStartedToday ||
       (sequence.type === ActivityType.morning && userTimes.userCurrentTime >= userTimes.userShutdownTime) ||
       (sequence.type === ActivityType.evening &&
         userTimes.userCurrentTime >= userTimes.userStartupTime &&
@@ -871,10 +890,6 @@ export class CompletedActivityService {
       partialUser.current_activity_sequence_id,
       partialUser.current_sequence_started_at,
     );
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - completeRoutineAndNullifyProps triggered');
-    }
-    return { activity: null, shouldRefetchUser: true };
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {
@@ -902,7 +917,8 @@ export class CompletedActivityService {
     );
 
     if (!nextHighPriorityActivity) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (current_activity.id !== nextHighPriorityActivity.id) {

@@ -56,7 +56,7 @@ export class EventsConsumer {
       // update user updated_at field to indicate activity
       await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Error in track-event queue for user with ID: ${user_id}\nTrack event: \`\`\`${JSON.stringify(
           trackEventDto,
@@ -93,7 +93,7 @@ export class EventsConsumer {
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       console.error('Error in resume-habits-notification queued job:', error);
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   }
 }

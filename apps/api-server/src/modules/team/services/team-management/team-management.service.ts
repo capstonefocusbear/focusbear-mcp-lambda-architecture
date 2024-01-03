@@ -83,7 +83,7 @@ export class TeamManagementService {
       await this.updateTeamSize(adminId, teamId, newTeamSize);
       return user;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -122,7 +122,7 @@ export class TeamManagementService {
       const newTeamSize = team.team_size - member_ids.length;
       await this.updateTeamSize(adminId, teamId, newTeamSize);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -147,7 +147,7 @@ export class TeamManagementService {
       }
       await Promise.all(revokeEntitlementsPromises);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -220,7 +220,7 @@ export class TeamManagementService {
       const newTeamSize = members.length - 1;
       await this.updateTeamSize(adminId, teamId, newTeamSize);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -259,7 +259,7 @@ export class TeamManagementService {
       });
       return inviteUrl;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -281,7 +281,7 @@ export class TeamManagementService {
         await this.assignNewMemberAsAdmin(user_id, team_id, first_name, last_name);
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -522,7 +522,7 @@ export class TeamManagementService {
       // delete team after other promises returned because team record needs to be queried for their logic
       await this.teamRepository.orm.delete({ id: teamId });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

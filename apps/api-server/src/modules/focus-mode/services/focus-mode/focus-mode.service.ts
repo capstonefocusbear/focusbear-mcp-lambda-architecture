@@ -38,7 +38,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       const focusModes = await this.focusModeRepository.orm.find({ where: { user_id } });
       return focusModes;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -67,7 +67,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.fetchUserFocusModes(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -93,7 +93,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       this.focusModeRepository.orm.softDelete(id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -129,7 +129,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       return savedFocusMode;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'warning' });
       throw error;
     }
   }
@@ -177,7 +177,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.focusModeRepository.orm.save(updateFocusMode);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'warning' });
       throw error;
     }
   }
@@ -196,7 +196,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await Promise.all(newlyCreatedTags?.map((newTag) => this.focusModeTagRepository.upsert(newTag, ['id'])));
       return newlyCreatedTags;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -228,7 +228,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         }),
       );
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

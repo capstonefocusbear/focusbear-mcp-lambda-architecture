@@ -84,7 +84,7 @@ export class EventsService {
       });
       await this.deviceService.updateDeviceAppVersion(device_id, app_version);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -150,7 +150,7 @@ export class EventsService {
         text: message,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

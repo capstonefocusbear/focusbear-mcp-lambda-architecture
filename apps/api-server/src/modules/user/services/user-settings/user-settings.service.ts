@@ -80,7 +80,7 @@ export class UserSettingsService {
       }
       return this.serializeSettings(userSettings);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -196,7 +196,7 @@ export class UserSettingsService {
       }
       return await this.getSettings({ user_id });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -406,7 +406,7 @@ export class UserSettingsService {
         current_activity_sequence_id,
       };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

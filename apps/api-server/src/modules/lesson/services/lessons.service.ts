@@ -25,7 +25,7 @@ export class LessonsService {
       });
       return await this.lessonsRepository.getCourseLessons(course_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -51,7 +51,7 @@ export class LessonsService {
       }
       await this.lessonsRepository.upsertCourseLessons({ course_id, lessons });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -79,7 +79,7 @@ export class LessonsService {
       }
       await this.lessonsRepository.createLessonCompletion({ course_id, lesson_id }, user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -105,7 +105,7 @@ export class LessonsService {
       }
       await this.lessonsRepository.deleteCourseLesson({ course_id, lesson_id });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

@@ -9,7 +9,7 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
-import { PaginationDto } from '../dto/pagination';
+import { PaginationDto } from '../dto/pagination/index.dto';
 import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 

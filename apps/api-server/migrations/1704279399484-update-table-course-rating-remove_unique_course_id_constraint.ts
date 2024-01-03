@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableUnique } from 'typeorm';
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class UpdateTableCourseRatingRemoveUniqueCourseIdConstraint1704279399484 implements MigrationInterface {
   name = 'UpdateTableCourseRatingRemoveUniqueCourseIdConstraint1704279399484';

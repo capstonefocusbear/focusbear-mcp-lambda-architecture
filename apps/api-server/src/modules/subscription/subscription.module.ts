@@ -10,6 +10,7 @@ import { WebhooksController } from './controllers/webhooks/webhooks.controller';
 import { HasSubscription } from './guards/has-subscription/has-subscription.guard';
 import { WebhookHandlerStrategy } from './services/webhook-handler/webhook-handler.strategy';
 import { StripeController } from './controllers/webhooks/stripe.controller';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [WebhookHandlerStrategy, HasSubscription],
@@ -29,7 +30,7 @@ import { StripeController } from './controllers/webhooks/stripe.controller';
       useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     BullModule.registerQueue({
-      name: 'revenue-cat-status',
+      name: BullQueues.REVENUE_CAT_STATUS,
     }),
   ],
   controllers: [WebhooksController, StripeController],

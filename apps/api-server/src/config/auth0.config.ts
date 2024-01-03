@@ -10,7 +10,7 @@ export const auth0Config = registerAs(
     },
     domain: process.env.AUTH0_DOMAIN,
     connection: process.env.AUTH0_CONNECTION || 'Username-Password-Authentication',
-    identifier: process.env.AUTH0_INDENTIFIER,
+    identifier: process.env.AUTH0_IDENTIFIER,
     actionSecret: process.env.AUTH0_ACTION_SECRET,
   }),
 );

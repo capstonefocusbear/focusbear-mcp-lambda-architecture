@@ -22,6 +22,10 @@ import { AsanaAuthService } from './services/asana-auth.service';
 import { ClickUpAuthService } from './services/clickup-auth.service';
 import { TrelloAuthService } from './services/trello-auth.service';
 import { AuthServiceFactory } from './services/auth.service.factory';
+import { GoogleAuthService } from './services/google-auth.service';
+import { MicrosoftAuthService } from './services/microsoft-auth.service';
+import { CalendarModule } from '../calendar/calendar.module';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -37,6 +41,8 @@ import { AuthServiceFactory } from './services/auth.service.factory';
     AsanaAuthService,
     ClickUpAuthService,
     TrelloAuthService,
+    GoogleAuthService,
+    MicrosoftAuthService,
     AuthServiceFactory,
   ],
   exports: [
@@ -76,13 +82,14 @@ import { AuthServiceFactory } from './services/auth.service.factory';
     HelperModule,
     ConfigModule,
     PlatformIntegrationsModule,
+    CalendarModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'time-logs',
+      name: BullQueues.TIME_LOGS,
     }),
   ],
 })

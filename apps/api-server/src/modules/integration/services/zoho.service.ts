@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Inject, Injectable, UseGuards, forwardRef } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { getDataCenterUrl, secondsToHHMM } from '../../../shared/utils/helpers';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -18,6 +19,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { BullQueues } from '../../../shared/utils/constants';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
   id: task.id_string,
@@ -47,7 +49,8 @@ export class ZohoService extends BaseIntegrationService {
     protected readonly integrationAuthService: ZohoAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -58,6 +61,7 @@ export class ZohoService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.ZOHO,
       syncTasksQueue,
+      sentryService,
     );
   }
 
@@ -89,13 +93,20 @@ export class ZohoService extends BaseIntegrationService {
     return response.data;
   }
 
+  protected filterTasksByOwnerId(tasks, ownerId: string) {
+    return tasks.filter((task) => task.details.owners.some((owner) => owner.id === ownerId));
+  }
+
   protected async tryGetTasks({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const url = `${getDataCenterUrl(integrationRecord.location).api}/portal/${portalId}/projects/${projectId}/tasks/`;
     const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const response = await this.httpService.get(url, {
       headers,
     });
-    return response.data?.tasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
+    // get only tasks owned by user
+    const ownerId = integrationRecord.accountId.toString();
+    const ownedTasks = this.filterTasksByOwnerId(response.data?.tasks, ownerId);
+    return ownedTasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
   }
 
   protected async tryGetProjects({ integrationRecord, portalId }): Promise<Project[]> {
@@ -127,16 +138,7 @@ export class ZohoService extends BaseIntegrationService {
   }
 
   protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
-    const url = `${getDataCenterUrl(integrationRecord.location).api}/portal/${portalId}/mytasks/?owner=${
-      integrationRecord.accountId
-    }`;
-    const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
-
-    const response = await this.httpService.get(url, {
-      headers,
-    });
-    const tasks = response.data?.tasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
-    return tasks;
+    return this.tryGetTasks({ integrationRecord, portalId, projectId });
   }
 
   protected async tryGetProjectStatuses({ integrationRecord, projectId, portalId }): Promise<ExternalTaskStatus[]> {

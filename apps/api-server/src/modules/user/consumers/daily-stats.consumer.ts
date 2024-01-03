@@ -10,8 +10,9 @@ import { DailyStatsRepository } from '../repositories/user-daily-stats.repositor
 import { UserDailyStatsService } from '../services/user-daily-stats/user-daily-stats.service';
 import { UserRepository } from '../repositories/user.repository';
 import { ActivitySequenceService } from '../../activity/services/activity-sequence/activity-sequence.service';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
-@Processor('stats')
+@Processor(BullQueues.STATS)
 export class DailyStatsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -21,7 +22,7 @@ export class DailyStatsConsumer {
     private readonly activitySequenceService: ActivitySequenceService,
   ) {}
 
-  @Process('daily-stats-activity-completed')
+  @Process(BullWorkers.DAILY_STATS_ACTIVITY_COMPLETED)
   async readOperationJob(
     job: Job<{
       user_id: string;

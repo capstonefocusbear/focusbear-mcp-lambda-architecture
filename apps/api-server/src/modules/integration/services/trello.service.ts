@@ -3,8 +3,9 @@ import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
-import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
+import { BullQueues, FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -52,7 +53,8 @@ export class TrelloService extends BaseIntegrationService {
     protected readonly integrationAuthService: TrelloAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -63,6 +65,7 @@ export class TrelloService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.TRELLO,
       syncTasksQueue,
+      sentryService,
     );
   }
 

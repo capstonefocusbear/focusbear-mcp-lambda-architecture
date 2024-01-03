@@ -14,6 +14,7 @@ import { SyncedProjectsService } from './services/synced-projects.service';
 import { IntegrationModule } from '../integration/integration.module';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
 import { PlatformIntegrationRepository } from '../platform-integrations/repositories/platform-integration.repository';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -35,7 +36,7 @@ import { PlatformIntegrationRepository } from '../platform-integrations/reposito
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'time-logs',
+      name: BullQueues.TIME_LOGS,
     }),
     OpenAIModule.registerAsync({
       imports: [ConfigModule],

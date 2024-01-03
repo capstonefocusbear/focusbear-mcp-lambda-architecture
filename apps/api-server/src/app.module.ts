@@ -32,6 +32,7 @@ import { ToDoModule } from './modules/to-do/to-do.module';
 import { PlatformIntegrationsModule } from './modules/platform-integrations/platform-integrations.module';
 import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { IntegrationModule } from './modules/integration/integration.module';
     PlatformIntegrationsModule,
     AiModule,
     IntegrationModule,
+    CalendarModule,
   ],
   controllers: [AppController],
 })

@@ -9,6 +9,7 @@ export const STRIPE_API_VERSION = '2022-08-01';
 export const FOCUS_BEAR_EMAILS = {
   MARKETING: 'marketing@focusbear.io',
   SUPPORT: 'support@focusbear.io',
+  ZOHO_DESK_SUPPORT: 'support@focusbear.zohodesk.com.au',
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
@@ -74,8 +75,6 @@ export const UTC_TO_IANA_MAP = {
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-export const PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT = 'https://api.profitwell.com/v2/subscriptions/';
-
 export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];
 
 export const IMPACT_MEASUREMENT_EVENT_TYPES = [
@@ -103,6 +102,30 @@ export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
 export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
+
+export enum BullQueues {
+  SYNC_EVENTS = 'sync-events',
+  REVENUE_CAT_STATUS = 'revenue-cat-status',
+  USER_DATA = 'user-data',
+  STATS = 'stats',
+  ACTIVITY_IMAGE = 'activity-image',
+  EVENTS = 'events',
+  TIME_LOGS = 'time-logs',
+  SYNC_TASKS = 'sync-tasks',
+}
+
+export enum BullWorkers {
+  DAILY_STATS_ACTIVITY_COMPLETED = 'daily-stats-activity-completed',
+  DELETE_ACTIVITY_IMAGE = 'delete-activity-image',
+  SYNC_EVENTS_FOR_PLATFORM = 'sync-events-for-platform',
+  TRACK_EVENT = 'track-event',
+  SYNC_PROJECT_TASKS = 'sync-project-tasks',
+  RESUME_NOTIFICATION = 'resume-notification',
+  MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  SAVE_TASK_TIME_LOG = 'save-task-time-log',
+  UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
+  GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+}
 
 export const createActivityFunction = {
   name: 'createActivity',

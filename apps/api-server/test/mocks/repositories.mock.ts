@@ -219,3 +219,15 @@ export const UserFeedbackRepositoryMock = {
 export const SyncedProjectsRepositoryMock = {
   ...BaseRepositoryMock,
 };
+
+export const CalendarRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const CalendarExcluededKeywordRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const CalendarServiceFactoryMock = {
+  get: jest.fn(),
+};

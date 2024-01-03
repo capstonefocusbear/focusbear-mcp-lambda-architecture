@@ -1,6 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
+import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 
 @Entity('notifications')
 export class Notification extends BaseEntity {
@@ -18,6 +20,35 @@ export class Notification extends BaseEntity {
 
   @Column({
     type: 'varchar',
+    length: 255,
+    unique: true,
+  })
+  platform?: CalendarPlatforms;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    transformer: FieldTransformer,
+  })
+  platform_account?: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    unique: true,
+  })
+  calendar_id?: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    unique: true,
+  })
+  external_id?: string;
+
+  @Column({
+    type: 'varchar',
     length: 1000,
   })
   summary?: string;
@@ -27,13 +58,6 @@ export class Notification extends BaseEntity {
     length: 2500,
   })
   description?: string;
-
-  @Column({
-    type: 'varchar',
-    length: 255,
-    unique: true,
-  })
-  external_id?: string;
 
   @Column({
     type: 'timestamptz',
@@ -66,4 +90,7 @@ export class Notification extends BaseEntity {
   @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @Column({ type: 'jsonb', default: null, nullable: true, select: false })
+  external_metadata?: any;
 }

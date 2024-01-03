@@ -105,6 +105,7 @@ describe('FocusModeManagerService', () => {
       start_time: CompletedFocusBlockDummy.start_time,
       intention: CompletedFocusBlockDummy.intention,
     };
+    const dummyHeaders = { device_id: '12345' };
 
     it('negative: should throw NotFoundException if focus mode does not exist', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(null);
@@ -112,7 +113,12 @@ describe('FocusModeManagerService', () => {
       let exception: any;
 
       try {
-        await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
+        await focusModeManagerService.startCurrentFocusMode(
+          startFocusModeDto,
+          { focus_mode_id },
+          user_id,
+          dummyHeaders,
+        );
       } catch (error) {
         exception = error;
       }
@@ -127,7 +133,7 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
       expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
         new CompletedFocusBlock({
@@ -146,7 +152,7 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(
         user_id,
@@ -164,13 +170,12 @@ describe('FocusModeManagerService', () => {
       CompletedFocusBlockRepositoryMock.orm.save.mockResolvedValueOnce(CompletedFocusBlockDummy);
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
 
-      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
-      expect(PusherServiceMock.trigger).toBeCalledWith(
-        `private-${user_id}`,
-        'focus-mode-started',
-        CompletedFocusBlockDummy,
-      );
+      expect(PusherServiceMock.trigger).toBeCalledWith(`private-${user_id}`, 'focus-mode-started', {
+        ...CompletedFocusBlockDummy,
+        device_id: dummyHeaders.device_id,
+      });
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });
 
@@ -188,6 +193,7 @@ describe('FocusModeManagerService', () => {
         startFocusModeDto,
         { focus_mode_id },
         userWithCurrentFocusMode.id,
+        dummyHeaders,
       );
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(
@@ -214,6 +220,7 @@ describe('FocusModeManagerService', () => {
         startFocusModeDto,
         { focus_mode_id },
         userWithCurrentFocusMode.id,
+        dummyHeaders,
       );
 
       expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
@@ -245,6 +252,7 @@ describe('FocusModeManagerService', () => {
         { ...startFocusModeDto, to_dos: [toDoDummy] },
         { focus_mode_id },
         userWithCurrentFocusMode.id,
+        dummyHeaders,
       );
 
       expect(ToDoRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userDummy.id, id: In([toDoDummy.id]) } });
@@ -274,6 +282,7 @@ describe('FocusModeManagerService', () => {
       finish_time: CompletedFocusBlockDummy.finish_time,
       focus_duration_seconds: thirtyMinutesInSeconds,
     };
+    const dummyHeaders = { device_id: '12345' };
 
     it('negative: should throw NotFoundException if focus mode does not exist', async () => {
       FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(null);
@@ -281,7 +290,12 @@ describe('FocusModeManagerService', () => {
       let exception: any;
 
       try {
-        await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+        await focusModeManagerService.finishCurrentFocusMode(
+          finishFocusModeDto,
+          { focus_mode_id },
+          user_id,
+          dummyHeaders,
+        );
       } catch (error) {
         exception = error;
       }
@@ -300,7 +314,12 @@ describe('FocusModeManagerService', () => {
       let exception: any;
 
       try {
-        await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+        await focusModeManagerService.finishCurrentFocusMode(
+          finishFocusModeDto,
+          { focus_mode_id },
+          user_id,
+          dummyHeaders,
+        );
       } catch (error) {
         exception = error;
       }
@@ -318,7 +337,12 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishFocusModeDto,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
+      );
 
       expect(UserRepositoryMock.orm.update).toBeCalledWith(
         user_id,
@@ -338,7 +362,12 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishFocusModeDto,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
+      );
 
       expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith({
         ...CompletedFocusBlockDummy,
@@ -357,13 +386,17 @@ describe('FocusModeManagerService', () => {
       PusherBeamsServiceMock.createBeamsPublishRequest.mockImplementationOnce(() => pusherBeamsPublishRequestDummy);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
-
-      expect(PusherServiceMock.trigger).toBeCalledWith(
-        `private-${user_id}`,
-        'focus-mode-finished',
-        CompletedFocusBlockDummy,
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishFocusModeDto,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
       );
+
+      expect(PusherServiceMock.trigger).toBeCalledWith(`private-${user_id}`, 'focus-mode-finished', {
+        ...CompletedFocusBlockDummy,
+        device_id: dummyHeaders.device_id,
+      });
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });
 
@@ -376,7 +409,12 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishFocusModeDto, { focus_mode_id }, user_id);
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishFocusModeDto,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
+      );
 
       expect(UserRepositoryMock.update).toBeCalledWith(user_id, {
         last_completed_focus_mode_at: DateTime.fromISO('2023-02-07T05:42:39.221Z').toJSDate(),
@@ -398,7 +436,12 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completedFocusBlock);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishedFocusModeData, { focus_mode_id }, user_id);
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishedFocusModeData,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
+      );
 
       expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith({
         ...completedFocusBlock,
@@ -421,6 +464,7 @@ describe('FocusModeManagerService', () => {
         { ...finishFocusModeDto, to_dos: toDoTimeLogDummies },
         { focus_mode_id },
         user_id,
+        dummyHeaders,
       );
 
       expect(ToDoServiceMock.logToDosTime).toBeCalledWith(
@@ -444,7 +488,12 @@ describe('FocusModeManagerService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrentFocusMode);
       CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completedFocusBlock);
 
-      await focusModeManagerService.finishCurrentFocusMode(finishedFocusModeData, { focus_mode_id }, user_id);
+      await focusModeManagerService.finishCurrentFocusMode(
+        finishedFocusModeData,
+        { focus_mode_id },
+        user_id,
+        dummyHeaders,
+      );
 
       expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toBeCalledWith(
         user_id,

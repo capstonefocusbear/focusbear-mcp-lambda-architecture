@@ -6,12 +6,12 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
-import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsService } from '../services/events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 
-@Processor('events')
+@Processor(BullQueues.EVENTS)
 export class EventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -22,7 +22,7 @@ export class EventsConsumer {
     private readonly userRepository: UserRepository,
   ) {}
 
-  @Process('track-event')
+  @Process(BullWorkers.TRACK_EVENT)
   async readOperationJob(job: Job<{ trackEventDto: TrackEventDto; user_id: string; email: string }>) {
     const {
       data: { user_id, email, trackEventDto },
@@ -65,7 +65,7 @@ export class EventsConsumer {
     }
   }
 
-  @Process('resume-notification')
+  @Process(BullWorkers.RESUME_NOTIFICATION)
   async sendResumeHabitsNotification(job: Job<{ user_id: string; event_type: EventTypes; language: string }>) {
     try {
       const {

@@ -35,13 +35,13 @@ import { UserDataController } from './controllers/user-data/user-data.controller
 import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
-import { ProfitWellConsumer } from './consumers/profitwell.consumer';
 import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
 import { UserFeedbackRepository } from './repositories/user-feedback.repository';
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
 import { ToDoModule } from '../to-do/to-do.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -56,7 +56,6 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     AdminAccessRequestRepository,
     UserDataService,
     UserPersonalDataConsumer,
-    ProfitWellConsumer,
     RevenueCatStatusConsumer,
     UserFeedbackRepository,
     UserFeedbackService,
@@ -86,16 +85,13 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
     }),
     BullModule.registerQueue(
       {
-        name: 'stats',
+        name: BullQueues.STATS,
       },
       {
-        name: 'user-data',
+        name: BullQueues.USER_DATA,
       },
       {
-        name: 'profitwell',
-      },
-      {
-        name: 'revenue-cat-status',
+        name: BullQueues.REVENUE_CAT_STATUS,
       },
     ),
     R2Module.registerAsync({

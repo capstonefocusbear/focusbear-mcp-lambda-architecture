@@ -27,7 +27,17 @@ export class NotificationService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
       // eslint-disable-next-line prettier/prettier
-      const { id, summary, description, event_begins, event_ends, external_id, is_dismissed, dismiss_reason, received } = event;
+      const {
+        id,
+        summary,
+        description,
+        event_begins,
+        event_ends,
+        external_id,
+        is_dismissed,
+        dismiss_reason,
+        received,
+      } = event;
       const notification = await this.notificationRepository.orm.findOne({ where: [{ id }, { external_id }] });
       if (!notification) {
         const newNotification = new Notification({
@@ -56,6 +66,23 @@ export class NotificationService {
         ...(typeof received === 'boolean' && { received }),
       });
       return event;
+    } catch (error) {
+      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      throw error;
+    }
+  }
+
+  async deleteCalendarEvent(externalId: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Deleting calendar event',
+        data: {
+          external_id: externalId,
+        },
+      });
+      await this.notificationRepository.orm.delete({ external_id: externalId });
     } catch (error) {
       this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
       throw error;

@@ -48,6 +48,13 @@ export class IntegrationController {
     return service.syncProjectAndChildTasks(user.id, portal_id, project_id, platform);
   }
 
+  @Post(':platform/sync-tasks')
+  @UseGuards(IsAuth)
+  async manuallySyncTasks(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
+    const service = this.integrationFactory.get(platform);
+    return service.manuallySyncTasks(user.id);
+  }
+
   @Get(':platform/:portalId/projects')
   @UseGuards(IsAuth)
   async getProjects(

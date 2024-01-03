@@ -107,7 +107,6 @@ export class CompletedActivityService {
       const startTimeToUse = this.handleStartTime(completedActivity?.start_time, headers);
 
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-        completedActivity.activity_sequence_id,
         completedActivity.activity_id,
         user_id,
         completedActivity.choice_id,
@@ -119,7 +118,6 @@ export class CompletedActivityService {
 
       let logQuantityAnswers: LogQuantityAnswer[] = [];
       let completingSequenceLog = null;
-
       if (activity.type === ActivityType.break) {
         return await this.handleBreakActivity(
           completedActivity,
@@ -247,7 +245,7 @@ export class CompletedActivityService {
 
   private async handleBreakActivity(
     completedActivity: CreateCompletedActivityDto,
-    activity: any,
+    activity: Activity,
     choice: any,
     user_id: string,
     startTimeToUse: Date,
@@ -257,7 +255,7 @@ export class CompletedActivityService {
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
-      { ...completedActivity, start_time: startTimeToUse },
+      { ...completedActivity, start_time: startTimeToUse, activity_sequence_id: activity.activity_sequence_id },
       activity,
       choice,
       user_id,
@@ -362,7 +360,8 @@ export class CompletedActivityService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       const failedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] = [];
-      const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
+      const completedActivitiesWithSequenceIds = await this.addSequenceIdsToCompletedActivities(completedActivities);
+      const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivitiesWithSequenceIds);
       const activitySequenceCache = {};
       const activitiesCache = {};
       await Promise.all(
@@ -544,13 +543,8 @@ export class CompletedActivityService {
           skippedActivity,
         },
       });
-      const { activity_sequence_id, activity_id, choice_id } = skippedActivity;
-      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-        activity_sequence_id,
-        activity_id,
-        user_id,
-        choice_id,
-      );
+      const { activity_id, choice_id } = skippedActivity;
+      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
       const skippedActivityMetadata = { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
         { ...skippedActivity, metadata: skippedActivityMetadata },
@@ -599,11 +593,11 @@ export class CompletedActivityService {
       },
     });
     await this.validateCompletingActivity(user, sequence, activity, choice);
-    const { device_id, activity_sequence_id, activity_id, metadata } = activityData;
+    const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       user,
-      activity_sequence_id,
+      sequence.id,
       start_time,
     );
     const { nextActivityId, currentState } = await this.defineNextCurrentActivity(
@@ -637,7 +631,6 @@ export class CompletedActivityService {
   }
 
   private async fetchPreparatoryData(
-    activity_sequence_id: string,
     activity_id: string,
     user_id: string,
     choice_id?: string,
@@ -649,18 +642,22 @@ export class CompletedActivityService {
       data: {
         user_id,
         activity_id,
-        activity_sequence_id,
         choice_id,
       },
     });
-    const [sequence, activity, user, choice] = await Promise.all([
-      this.activitySequenceRepository.orm.findOne({ where: { id: activity_sequence_id }, relations: ['activities'] }),
-      this.activityRepository.orm.findOneBy({ id: activity_id }),
+    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    const [sequence, user, choice] = await Promise.all([
+      this.activitySequenceRepository.orm.findOne({
+        where: { id: activity.activity_sequence_id },
+        relations: ['activities'],
+      }),
       this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
     ]);
-    if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
-    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    if (!sequence) {
+      throw new NotFoundException(`Activity Sequence with id: ${activity.activity_sequence_id} does not exist!`);
+    }
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const invalidSequenceMsg = `Activity with id: ${activity_id} is not a part of the sequence with id: ${sequence.id}!`;
     if (activity.activity_sequence_id !== sequence.id) throw new BadRequestException(invalidSequenceMsg);
@@ -681,17 +678,19 @@ export class CompletedActivityService {
         user_id: user.id,
       },
     });
-    const { current_activity_sequence_id } = user;
+    const { id, current_activity_sequence_id, current_completing_sequence_log_id, current_activity_assigned_at } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
-    const isCompletingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    if (!isCompletingActivitySequenceTheCurrent) {
-      await this.completedActivitySequenceService.forceCompleteCurrentSequence(
-        current_activity_sequence_id,
-        user.id,
-        true,
-      );
+
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
+      .setZone(user.timezone)
+      .toJSDate()
+      .getDate();
+    const userTimes = this.getUserTimesFromPartialUser(user);
+
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, user);
     }
   }
 
@@ -819,13 +818,24 @@ export class CompletedActivityService {
   }
 
   async recalculateCurrentActivity(partialUser: Partial<User>) {
-    const { id, current_activity_sequence_id, current_activity, current_completing_sequence_log_id } = partialUser;
+    const {
+      id,
+      current_activity_sequence_id,
+      current_activity,
+      current_completing_sequence_log_id,
+      current_activity_assigned_at,
+    } = partialUser;
 
     const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
+      .setZone(partialUser.timezone)
+      .toJSDate()
+      .getDate();
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes)) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (this.isCutoffTimeReached(partialUser)) {
@@ -854,8 +864,14 @@ export class CompletedActivityService {
     return this.getUserTimes(timezone, startup_time, shutdown_time);
   }
 
-  shouldCompleteRoutine(sequence: ActivitySequence, userTimes: UserTimesResponse): boolean {
+  shouldCompleteRoutine(
+    sequence: ActivitySequence,
+    userTimes: UserTimesResponse,
+    currentActivityAssignedDate: number,
+  ): boolean {
+    const hasRoutineBeenStartedToday = userTimes.userCurrentTime.toJSDate().getDate() === currentActivityAssignedDate;
     return (
+      !hasRoutineBeenStartedToday ||
       (sequence.type === ActivityType.morning && userTimes.userCurrentTime >= userTimes.userShutdownTime) ||
       (sequence.type === ActivityType.evening &&
         userTimes.userCurrentTime >= userTimes.userStartupTime &&
@@ -874,10 +890,6 @@ export class CompletedActivityService {
       partialUser.current_activity_sequence_id,
       partialUser.current_sequence_started_at,
     );
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - completeRoutineAndNullifyProps triggered');
-    }
-    return { activity: null, shouldRefetchUser: true };
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {
@@ -905,7 +917,8 @@ export class CompletedActivityService {
     );
 
     if (!nextHighPriorityActivity) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (current_activity.id !== nextHighPriorityActivity.id) {
@@ -977,7 +990,13 @@ export class CompletedActivityService {
     delete data.should_not_update_current_activity;
     delete data.log_quantity_answers;
     const completedItem = new CompletedActivity(
-      { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
+      {
+        ...data,
+        user_id,
+        activity_sequence_id: sequenceLog?.activity_sequence_id ?? data.activity_sequence_id,
+        completed_sequence_id: sequenceLog?.id,
+        activity_note: note_logged,
+      },
       { log_quantity: activity.log_quantity, generateId: false },
     );
     const completedChoice = new CompletedActivity(
@@ -1014,15 +1033,6 @@ export class CompletedActivityService {
     activity: Activity,
     language: string,
   ): Promise<void> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Broadcasting completion event to Pusher',
-      data: {
-        user_id,
-        completed_activity_id,
-      },
-    });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
     const title = this.i18nService.t('common.activity_completed', { lang: language });
@@ -1036,6 +1046,16 @@ export class CompletedActivityService {
       pushData,
       should_send_only_data_for_android: true,
     });
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Broadcasting completion event to Pusher',
+      data: {
+        user_id,
+        pushData,
+      },
+    });
+    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
@@ -1582,5 +1602,23 @@ export class CompletedActivityService {
       where: { completed_sequence_id: currentCompletingSequenceLogId },
     });
     return completedActivities.map((completedActivity) => completedActivity.activity_id);
+  }
+
+  async addSequenceIdsToCompletedActivities(
+    completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
+  ): Promise<(CreateCompletedActivityDto | CreateSkippedActivityDto)[]> {
+    const activityIds = completedActivities.map((completedActivity) => completedActivity.activity_id);
+    const activitiesFromDB = await this.activityRepository.orm.find({ where: { id: In(activityIds) } });
+    const findActivitySequenceId = (activityId: string, activities: Activity[]) => {
+      const matchingActivity = activities.find((activity) => activity.id === activityId);
+      return matchingActivity.activity_sequence_id;
+    };
+    const activitiesWithSequenceIds = completedActivities.map((completedActivity) => {
+      return {
+        ...completedActivity,
+        activity_sequence_id: findActivitySequenceId(completedActivity.activity_id, activitiesFromDB),
+      };
+    });
+    return activitiesWithSequenceIds;
   }
 }

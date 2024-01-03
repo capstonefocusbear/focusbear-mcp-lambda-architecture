@@ -3,6 +3,7 @@ import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
@@ -15,6 +16,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { JiraAuthService } from '../../auth/services/jira-auth.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 export class JiraService extends BaseIntegrationService {
   constructor(
@@ -25,7 +27,8 @@ export class JiraService extends BaseIntegrationService {
     protected readonly integrationAuthService: JiraAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -36,6 +39,7 @@ export class JiraService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.JIRA,
       syncTasksQueue,
+      sentryService,
     );
   }
 

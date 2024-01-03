@@ -11,6 +11,8 @@ import { EventTypes } from '../domain/event-types.enum';
 import { ImpactEvent } from '../entities/impact-event.entity';
 import { EventsRepository } from '../repositories/events.repository';
 import {
+  BullQueues,
+  BullWorkers,
   DISTRACTION_BLOCK_EVENTS,
   EMAIL_SUBJECTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
@@ -27,7 +29,7 @@ import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 @Injectable()
 export class EventsService {
   constructor(
-    @InjectQueue('events') private eventsQueue: Queue,
+    @InjectQueue(BullQueues.EVENTS) private eventsQueue: Queue,
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
@@ -75,7 +77,7 @@ export class EventsService {
       if (DISTRACTION_BLOCK_EVENTS.includes(event_type as EventTypes)) {
         await this.userDailyStatsService.updateDistractionBlockCount(user_id, user.timezone);
       }
-      await this.eventsQueue.add('track-event', {
+      await this.eventsQueue.add(BullWorkers.TRACK_EVENT, {
         user_id,
         email: userAuth0Data.email,
         trackEventDto,
@@ -101,7 +103,7 @@ export class EventsService {
 
   async emailQuitFeedback(event: TrackEventDto, email: string) {
     await this.emailService.sendEmail({
-      to: FOCUS_BEAR_EMAILS.SUPPORT,
+      to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
       text: JSON.stringify(event),
@@ -113,7 +115,7 @@ export class EventsService {
     // Convert minutes to postpone to milliseconds
     const durationMilliseconds = durationMinutes * ONE_MINUTE;
     await this.eventsQueue.add(
-      'resume-notification',
+      BullWorkers.RESUME_NOTIFICATION,
       {
         user_id: userId,
         event_type: eventType,

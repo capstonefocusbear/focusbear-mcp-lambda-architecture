@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
@@ -7,15 +8,22 @@ import { PlatformIntegration } from '../entities/platform-integration.entity';
 export class PlatformIntegrationsService {
   constructor(private readonly platformIntegrationsRepository: PlatformIntegrationRepository) {}
 
-  async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string) {
-    const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+  async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
+    let platformRecord;
+    if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
+      platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+        where: { user_id: userId, platform, external_user_id: userExternalId },
+      });
+      return platformRecord;
+    }
+    platformRecord = await this.platformIntegrationsRepository.orm.findOne({
       where: { user_id: userId, platform },
     });
     return platformRecord;
   }
 
   async updatePlatformIntegration(userId: string, platform: IntegrationPlatforms, data: any, userExternalId?: string) {
-    const existingRecord = await this.getPlatformIntegrationData(platform, userId);
+    const existingRecord = await this.getPlatformIntegrationData(platform, userId, userExternalId);
     if (existingRecord) {
       const platformIntegration = new PlatformIntegration({
         ...existingRecord,
@@ -46,6 +54,22 @@ export class PlatformIntegrationsService {
       trello: platforms.includes(IntegrationPlatforms.TRELLO),
       asana: platforms.includes(IntegrationPlatforms.ASANA),
       monday: platforms.includes(IntegrationPlatforms.MONDAY),
+      google: platforms.includes(IntegrationPlatforms.GOOGLE),
+      microsoft: platforms.includes(IntegrationPlatforms.MICROSOFT),
     };
+  }
+
+  async getPlatformAccounts(platform: IntegrationPlatforms, userId: string) {
+    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
+      where: { platform, user_id: userId },
+    });
+    const accountInfos = await integartionRecords.map((account) => {
+      const data = {
+        email: account.external_user_id,
+        expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
+      };
+      return data;
+    });
+    return accountInfos;
   }
 }

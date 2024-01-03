@@ -24,6 +24,7 @@ import { HelperModule } from '../helper/helper.module';
 import { ActivitySequenceService } from './services/activity-sequence/activity-sequence.service';
 import { LogQuantityAnswersRepository } from './repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from './repositories/log-quantity-questions.repository';
+import { BullQueues } from '../../shared/utils/constants';
 
 @Module({
   providers: [
@@ -73,7 +74,7 @@ import { LogQuantityQuestionsRepository } from './repositories/log-quantity-ques
       useFactory: async (config: ConfigService) => config.get('bull'),
     }),
     BullModule.registerQueue({
-      name: 'activity-image',
+      name: BullQueues.ACTIVITY_IMAGE,
     }),
     StripeModule.registerAsync({
       imports: [ConfigModule],

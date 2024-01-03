@@ -5,4 +5,6 @@ export enum IntegrationPlatforms {
   JIRA = 'jira',
   ASANA = 'asana',
   MONDAY = 'monday',
+  GOOGLE = 'google',
+  MICROSOFT = 'microsoft',
 }

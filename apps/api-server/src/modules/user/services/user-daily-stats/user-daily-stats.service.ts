@@ -5,7 +5,13 @@ import { DateTime } from 'luxon';
 import { Between, Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { DAYS_OF_WEEK, ONE_MINUTE_SECONDS, TEN_MINUTES } from '../../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  DAYS_OF_WEEK,
+  ONE_MINUTE_SECONDS,
+  TEN_MINUTES,
+} from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
   getRoutinesAndFocusModesAverages,
@@ -39,7 +45,7 @@ export class UserDailyStatsService {
     private readonly completedActivityRepository: CompletedActivityRepository,
     private readonly completedActivitySequenceRepository: CompletedActivitySequenceRepository,
     private readonly dailyStatsRepository: DailyStatsRepository,
-    @InjectQueue('stats') private statsQueue: Queue,
+    @InjectQueue(BullQueues.STATS) private statsQueue: Queue,
     @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
     private readonly activitySequenceService: ActivitySequenceService,
@@ -330,7 +336,7 @@ export class UserDailyStatsService {
         },
       });
       await this.statsQueue.add(
-        'daily-stats-activity-completed',
+        BullWorkers.DAILY_STATS_ACTIVITY_COMPLETED,
         {
           user_id,
           activityType,

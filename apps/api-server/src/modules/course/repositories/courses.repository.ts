@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Equal, In, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { Course } from '../entities/course.entity';
 import { CourseEnrolment } from '../entities/course-enrolment.enitiy';
@@ -8,7 +9,6 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
-import { Equal, In, Not } from 'typeorm';
 import { PaginationDto } from '../dto/pagination';
 import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
@@ -44,7 +44,7 @@ export class CoursesRepository {
     });
 
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    return await this.ormCourse.find({
+    return this.ormCourse.find({
       where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
       relations: ['ratings', 'lessons', 'lessonCompletions', 'enrollments'],
     });
@@ -165,7 +165,7 @@ export class CoursesRepository {
       },
     });
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    return await this.ormCourse.find({
+    return this.ormCourse.find({
       where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
       relations: ['ratings'],
     });

@@ -27,7 +27,7 @@ import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
-import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -47,7 +47,7 @@ describe('EventService', () => {
         SendGridService,
         DeviceService,
         {
-          provide: getQueueToken('events'),
+          provide: getQueueToken(BullQueues.EVENTS),
           useValue: QueueMock,
         },
         {
@@ -108,7 +108,7 @@ describe('EventService', () => {
 
       await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
 
-      expect(QueueMock.add).toBeCalledWith('track-event', {
+      expect(QueueMock.add).toBeCalledWith(BullWorkers.TRACK_EVENT, {
         user_id: userDummy.id,
         email: auth0UserDummy.email,
         trackEventDto: { event_type: 'test-event' },
@@ -140,7 +140,7 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(QueueMock.add).toBeCalledWith(
-        'resume-notification',
+        BullWorkers.RESUME_NOTIFICATION,
         {
           user_id: userDummy.id,
           event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
@@ -192,7 +192,7 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: FOCUS_BEAR_EMAILS.SUPPORT,
+        to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
         text: JSON.stringify(dummyEvent),

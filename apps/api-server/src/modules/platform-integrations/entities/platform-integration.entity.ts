@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 
@@ -25,6 +26,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: true,
+    transformer: FieldTransformer,
   })
   external_user_id?: string;
 

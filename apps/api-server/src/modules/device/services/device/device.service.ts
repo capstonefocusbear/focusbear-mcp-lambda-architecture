@@ -36,7 +36,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
       const createdDevice = await this.deviceRepository.create(newDevice);
       return createdDevice;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -55,7 +55,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
       device.is_leader = true;
       return await this.deviceRepository.orm.save(device);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

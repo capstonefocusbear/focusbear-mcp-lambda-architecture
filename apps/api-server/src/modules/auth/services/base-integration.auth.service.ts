@@ -10,6 +10,7 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IIntegrationAuthService } from './integration-auth.service.interface';
+import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
 
 export abstract class BaseIntegrationAuthService implements IIntegrationAuthService {
   protected readonly loginURL: string;
@@ -50,17 +51,7 @@ export abstract class BaseIntegrationAuthService implements IIntegrationAuthServ
 
   protected abstract getQueryParams(callbackUrl: string);
 
-  async saveUserData(
-    userId: string,
-    data: {
-      client_id: string;
-      access_token: string;
-      refresh_token: string;
-      account_server: string;
-      accountId: string;
-      location: string;
-    },
-  ): Promise<any> {
+  async saveUserData(userId: string, data: PlatformIntegrationMetadataDto): Promise<any> {
     const { accountId } = data;
     const existingUser = await this.getUser(userId);
     if (!existingUser) {

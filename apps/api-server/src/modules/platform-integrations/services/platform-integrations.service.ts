@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
+import { PlatformIntegrationMetadataDto } from '../dto/platform-integration-metadata.dto';
 
 @Injectable()
 export class PlatformIntegrationsService {
@@ -22,7 +23,12 @@ export class PlatformIntegrationsService {
     return platformRecord;
   }
 
-  async updatePlatformIntegration(userId: string, platform: IntegrationPlatforms, data: any, userExternalId?: string) {
+  async updatePlatformIntegration(
+    userId: string,
+    platform: IntegrationPlatforms,
+    data: PlatformIntegrationMetadataDto,
+    userExternalId?: string,
+  ) {
     const existingRecord = await this.getPlatformIntegrationData(platform, userId, userExternalId);
     if (existingRecord) {
       const platformIntegration = new PlatformIntegration({

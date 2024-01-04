@@ -68,7 +68,7 @@ export class ActivitySequenceService {
       });
       return dailySequenceDurations;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

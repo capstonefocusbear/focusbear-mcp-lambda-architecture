@@ -94,7 +94,7 @@ export class UserService {
       const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -145,7 +145,7 @@ export class UserService {
       const newlySavedUser = await this.userRepository.create(newUser);
       return newlySavedUser;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -167,7 +167,7 @@ export class UserService {
         this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }),
       ]);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -196,7 +196,7 @@ export class UserService {
       const syncedPlatformsMap = await this.platformIntegrationsService.getUserSyncedPlatforms(id);
       return { ...userDetails, email, focus_modes: formattedFocusModes, synced_platforms: syncedPlatformsMap };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -235,7 +235,7 @@ export class UserService {
       }
       return currentActivityProps;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -284,7 +284,7 @@ export class UserService {
       }
       return updatedSettings;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -306,7 +306,7 @@ export class UserService {
       }
       return user.local_device_settings;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -341,7 +341,7 @@ export class UserService {
       });
       return await this.userRepository.getUsersList({ search });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -366,7 +366,7 @@ export class UserService {
         to_time: end_date,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -385,7 +385,7 @@ export class UserService {
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       return await this.completedActivityRepository.getWeekSummary(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -535,7 +535,7 @@ export class UserService {
         device_type,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

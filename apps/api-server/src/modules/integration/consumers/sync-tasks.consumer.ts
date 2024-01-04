@@ -56,7 +56,7 @@ export class SyncTasksConsumer {
         this.syncedProjectsService.markSyncedProjectTasksAsSynced(syncedProjectRecord.id),
       ]);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       console.error('Error in sync-project-tasks queued job: ', JSON.stringify(error));
     }
   }
@@ -99,7 +99,7 @@ export class SyncTasksConsumer {
         ]);
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       console.error('Error in manually-sync-platform-tasks queued job: ', error);
     }
   }

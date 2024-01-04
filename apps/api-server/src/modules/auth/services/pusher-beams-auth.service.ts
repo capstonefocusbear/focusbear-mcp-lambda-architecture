@@ -28,7 +28,7 @@ export class PusherBeamsAuthService {
       if (!token) throw new ServiceUnavailableException(`Couldn't generate token for user with id: ${user_id}`);
       return token;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -47,7 +47,7 @@ export class PusherBeamsAuthService {
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       return await this.pusherBeamsService.deleteUser(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

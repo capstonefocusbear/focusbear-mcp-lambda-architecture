@@ -56,7 +56,7 @@ export class VideoMetadataService {
         videos_metadata: formattedMetadata,
       };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -107,7 +107,7 @@ export class VideoMetadataService {
       const regexArray = regex.exec(url)[3];
       return regexArray;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   };
 

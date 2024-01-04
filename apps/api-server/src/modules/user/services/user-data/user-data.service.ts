@@ -40,7 +40,7 @@ export class UserDataService {
         language,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -74,7 +74,7 @@ export class UserDataService {
       }
       await Promise.all([auth0Promise, revenueCatPromise, brevoPromise, userRepositoryPromise, backendAlertPromise]);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }

@@ -28,7 +28,7 @@ export class CoursesService {
       });
       return await this.coursesRepository.getAllCourses(paginationOptionsDto);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   }
 
@@ -49,7 +49,7 @@ export class CoursesService {
       }
       await this.coursesRepository.createCourseContent(createCourseDto, user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -75,7 +75,7 @@ export class CoursesService {
       }
       await this.coursesRepository.updateCourseContent(updateCourseDto, course_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -100,7 +100,7 @@ export class CoursesService {
       }
       await this.coursesRepository.updateCourseDeleted(course_id, deleted);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -125,7 +125,7 @@ export class CoursesService {
       }
       await this.coursesRepository.updateCourseHidden(course_id, should_hide);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -142,7 +142,7 @@ export class CoursesService {
       });
       return await this.coursesRepository.getRatings(course_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -165,7 +165,7 @@ export class CoursesService {
       }
       await this.coursesRepository.createRatingContent(createCourseRatingDto, user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -192,7 +192,7 @@ export class CoursesService {
       }
       await this.coursesRepository.createEnrolmentContent(course_id, user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -223,7 +223,7 @@ export class CoursesService {
       }
       await this.coursesRepository.updateEnrolmentStatus(updateCourseEnrolmentDto);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;
     }
   }
@@ -240,7 +240,7 @@ export class CoursesService {
       });
       return await this.coursesRepository.getAllEnrolledCourses(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   }
 
@@ -256,7 +256,7 @@ export class CoursesService {
       });
       return await this.coursesRepository.getAllAuthorCourses(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   }
 
@@ -272,7 +272,7 @@ export class CoursesService {
       });
       return await this.coursesRepository.getUserNotEnrolledCourses(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
     }
   }
 }

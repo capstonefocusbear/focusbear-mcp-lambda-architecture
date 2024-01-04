@@ -1283,7 +1283,7 @@ export class CompletedActivityService {
         .toISO();
       return { from_time, to_time };
     } catch (e) {
-      this.sentryService.instance().captureMessage(JSON.stringify(e), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(e), { level: 'error' });
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'error',

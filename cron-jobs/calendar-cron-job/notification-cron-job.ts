@@ -1,7 +1,7 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
+import { Between } from 'typeorm';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { CronJobDataSource } from '../data-source';
-import { Between } from 'typeorm';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -11,42 +11,46 @@ const { DateTime } = require('luxon');
 
 dotenv.config();
 
-async function fetchEvents () {
+async function fetchEvents() {
   const currentTime = DateTime.now().toISO();
   const timeInFiveMinutes = DateTime.now().plus({ minutes: 5 }).toISO();
   const events = await CronJobDataSource.manager.find(Notification, {
-    where: { event_begins: Between(currentTime, timeInFiveMinutes), received: false, },
+    where: { event_begins: Between(currentTime, timeInFiveMinutes), received: false },
   });
-  const filteredEvents = await events.filter(async (event) => {
-    const excludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
-      where: {
-        user_id: event.user_id, 
-        platform: event.platform
-      }
+  const allExcludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
+    where: {},
+  });
+  const allCalendars = await CronJobDataSource.manager.find(Calendar, {
+    where: {
+      is_selected: true,
+    },
+  });
+  const filteredEvents = events.filter(async (event) => {
+    const excludedKeywords = allExcludedKeywords.filter((keyword) => {
+      return keyword.user_id === event.user_id && keyword.platform === event.platform;
     });
-    const existingCalendar = await CronJobDataSource.manager.find(Calendar, {
-      where: {
-        user_id: event.user_id, 
-        platform: event.platform, 
-        platform_account: event.platform_account, 
-        is_selected: true
-      }
+    const existingCalendar = allCalendars.filter((calendar) => {
+      return (
+        calendar.user_id === event.user_id &&
+        calendar.platform === event.platform &&
+        calendar.platform_account === event.platform_account
+      );
     });
     if (!existingCalendar) return false;
     if (!excludedKeywords) return true;
     let canNotificate = true;
-    excludedKeywords.forEach(element => {
-        if (element.intitle && event.summary.includes(element.keyword)) {
-          canNotificate = false;
-        }
-        if (element.indescription && event.description.includes(element.keyword)) {
-          canNotificate = false;
-        }
+    excludedKeywords.forEach((element) => {
+      if (element.intitle && event.summary.includes(element.keyword)) {
+        canNotificate = false;
+      }
+      if (element.indescription && event.description.includes(element.keyword)) {
+        canNotificate = false;
+      }
     });
     return canNotificate;
   });
   return filteredEvents;
-};
+}
 
 const beamsClient = new PushNotifications({
   instanceId: process.env.PUSHER_BEAMS_INSTANCE_ID,
@@ -56,12 +60,19 @@ const beamsClient = new PushNotifications({
 const sendBeamsPushNotification = async (userId: string, notificationData: Notification) => {
   const publishRequest: BeamsPublishRequest = {
     apns: {
-      aps: {},
-      data: {
-        notificationData,
+      aps: {
+        alert: {
+          title: notificationData.summary,
+          body: notificationData.description,
+        },
       },
+      data: { notificationData },
     },
     fcm: {
+      notification: {
+        title: notificationData.summary,
+        body: notificationData.description,
+      },
       data: {
         notificationData,
       },
@@ -71,8 +82,8 @@ const sendBeamsPushNotification = async (userId: string, notificationData: Notif
 };
 
 const updateNotificationStatus = async (id: string) => {
-  await CronJobDataSource.manager.update(Notification, id, {received: true});
-}
+  await CronJobDataSource.manager.update(Notification, id, { received: true });
+};
 
 (async () => {
   try {
@@ -81,7 +92,6 @@ const updateNotificationStatus = async (id: string) => {
     // eslint-disable-next-line no-console
     console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
     if (calendarEventsToSend.length === 0) process.exit();
-    
     calendarEventsToSend.forEach(async (calendarEvent) => {
       const { id, summary, description, event_begins, event_ends } = calendarEvent;
       await sendBeamsPushNotification(calendarEvent.user_id, {

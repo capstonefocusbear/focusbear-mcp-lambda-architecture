@@ -25,31 +25,31 @@ async function fetchEvents() {
       is_selected: true,
     },
   });
-  const filteredEvents = events.filter(async (event) => {
+  const eventsToSend = events.filter(async (event) => {
     const excludedKeywords = allExcludedKeywords.filter((keyword) => {
       return keyword.user_id === event.user_id && keyword.platform === event.platform;
     });
-    const existingCalendar = allCalendars.filter((calendar) => {
+    const userCalendars = allCalendars.filter((calendar) => {
       return (
         calendar.user_id === event.user_id &&
         calendar.platform === event.platform &&
         calendar.platform_account === event.platform_account
       );
     });
-    if (!existingCalendar) return false;
-    if (!excludedKeywords) return true;
-    let canNotificate = true;
+    if (userCalendars.length === 0) return false;
+    if (excludedKeywords.length === 0) return true;
+    let canNotify = true;
     excludedKeywords.forEach((element) => {
       if (element.intitle && event.summary.includes(element.keyword)) {
-        canNotificate = false;
+        canNotify = false;
       }
       if (element.indescription && event.description.includes(element.keyword)) {
-        canNotificate = false;
+        canNotify = false;
       }
     });
-    return canNotificate;
+    return canNotify;
   });
-  return filteredEvents;
+  return eventsToSend;
 }
 
 const beamsClient = new PushNotifications({
@@ -66,16 +66,14 @@ const sendBeamsPushNotification = async (userId: string, notificationData: Notif
           body: notificationData.description,
         },
       },
-      data: { notificationData },
+      data: notificationData,
     },
     fcm: {
       notification: {
         title: notificationData.summary,
         body: notificationData.description,
       },
-      data: {
-        notificationData,
-      },
+      data: notificationData,
     },
   };
   await beamsClient.publishToUsers([userId], publishRequest);

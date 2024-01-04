@@ -153,6 +153,7 @@ export const BrevoServiceMock = {
 const mockSentryInstance = {
   addBreadcrumb: jest.fn(),
   captureMessage: jest.fn(),
+  captureException: jest.fn(),
 };
 
 export const SentryServiceMock = {

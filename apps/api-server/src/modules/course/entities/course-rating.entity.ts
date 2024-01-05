@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne, Index } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from './course.entity';
 import { User } from '../../user/entities/user.entity';
@@ -24,7 +24,7 @@ export class CourseRating extends BaseEntity {
   @Column({ type: 'varchar', length: 500 })
   review?: string;
 
-  @OneToOne(() => Course, (course) => course.id)
+  @ManyToOne(() => Course, (course) => course.id)
   @JoinColumn({ name: 'course_id' })
   course?: Course;
 

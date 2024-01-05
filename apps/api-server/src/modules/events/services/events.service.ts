@@ -156,6 +156,16 @@ export class EventsService {
   }
 
   async saveImpactEvent(eventType: EventTypes, userId: string, quantity = 0) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Saving impact event',
+      data: {
+        userId,
+        eventType,
+        quantity,
+      },
+    });
     const impactCategory = EVENTS_TO_IMPACT_CATEGORIES_MAP[eventType];
     const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, quantity });
     await this.eventsRepository.orm.save(impactEvent);

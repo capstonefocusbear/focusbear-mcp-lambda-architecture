@@ -62,7 +62,7 @@ export class EventsService {
       if (shouldLogEvent) {
         await this.logEventInSlack(user_id, trackEventDto);
       }
-      if (event_type === EventTypes.APP_QUIT && hasFeedback) {
+      if (shouldLogEvent && hasFeedback) {
         await this.emailQuitFeedback(trackEventDto, userAuth0Data.email);
       }
       if (
@@ -136,19 +136,12 @@ export class EventsService {
           event,
         },
       });
-      const { event_type } = event;
-      let message: string;
-      if (event_type === EventTypes.GIVE_ME_4HR_BREAK) {
-        message = `*User disabled app for 4 hours:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(
-          event,
-        )}\`\`\``;
-      }
-      if (event_type === EventTypes.APP_QUIT) {
-        message = `*User quit app:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``;
-      }
-      await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, {
-        text: message,
-      });
+      const messagePrefix = `*User ${
+        event.event_type === EventTypes.GIVE_ME_4HR_BREAK ? 'disabled app for 4 hours' : 'quit app'
+      }:*\n*User ID:* ${user_id}\n*Event:*`;
+      const message = `${messagePrefix}\`\`\`${JSON.stringify(event)}\`\`\``;
+
+      await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, { text: message });
     } catch (error) {
       this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
       throw error;

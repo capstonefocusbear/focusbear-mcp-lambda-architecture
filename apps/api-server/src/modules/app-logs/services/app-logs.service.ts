@@ -65,7 +65,7 @@ export class AppLogsService {
 
   async emailFeedback(data: any, email: string) {
     await this.emailService.sendEmail({
-      to: FOCUS_BEAR_EMAILS.SUPPORT,
+      to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT, FOCUS_BEAR_EMAILS.SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
       text: JSON.stringify(data),

@@ -24,7 +24,7 @@ export class BrevoService {
         eventdata: event_data,
       };
 
-      await this.httpService.post(callUrl, data, config);
+      return await this.httpService.post(callUrl, data, config);
     } catch (error) {
       console.error(error);
     }

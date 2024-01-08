@@ -12,7 +12,6 @@ import { UserRepository } from '../../user/repositories/user.repository';
 import { NotificationRepository } from '../repository/notification.repository';
 import { NotificationService } from './notification.service';
 import { Notification } from '../entities/notification.entity';
-import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 
 describe('NotificationService', () => {
   let notificationService: NotificationService;
@@ -71,9 +70,10 @@ describe('NotificationService', () => {
         event_ends: createCalendarEventDummy.event_ends,
         is_dismissed: createCalendarEventDummy.is_dismissed,
         dismiss_reason: createCalendarEventDummy.dismiss_reason,
+        calendar_id: undefined,
         platform_account: account,
-        platform: CalendarPlatforms.GOOGLE,
-        external_metadata: 'external_data',
+        platform: undefined,
+        external_metadata: undefined,
         received: createCalendarEventDummy.received,
       });
 
@@ -95,8 +95,6 @@ describe('NotificationService', () => {
         is_dismissed: updateCalendarEventDummy.is_dismissed,
         dismiss_reason: updateCalendarEventDummy.dismiss_reason,
         platform_account: account,
-        platform: CalendarPlatforms.GOOGLE,
-        external_metadata: 'external_data',
         received: updateCalendarEventDummy.received,
       };
 

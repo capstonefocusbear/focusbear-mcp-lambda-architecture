@@ -38,7 +38,7 @@ export abstract class BaseCalendarService implements ICalendarService {
     });
 
     events.forEach((calendarEvent) => {
-      this.notificationService.updateOrCreateCalendarEvent(calendarEvent, userId);
+      this.notificationService.updateOrCreateCalendarEvent(calendarEvent, userId, account);
     });
 
     return events;

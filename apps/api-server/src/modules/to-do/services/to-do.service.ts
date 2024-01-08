@@ -67,16 +67,14 @@ export class ToDoService {
         `Error while updating task external status. No external status found with ID: ${updatedToDo.status} for task with ID: ${updatedToDo.id}`,
       );
     }
-    if (selectedStatus?.should_complete_task) {
-      const newToDo = new ToDo({
-        ...updatedToDo,
-        user_id: userId,
-        updated_at: new Date().toISOString(),
-        tags,
-        status: ToDoStatus.COMPLETED,
-      });
-      return this.toDoRepository.orm.save(newToDo);
-    }
+    const newToDo = new ToDo({
+      ...updatedToDo,
+      user_id: userId,
+      updated_at: new Date().toISOString(),
+      tags,
+      status: selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : selectedStatus.label,
+    });
+    return this.toDoRepository.orm.save(newToDo);
   }
 
   async getToDos(

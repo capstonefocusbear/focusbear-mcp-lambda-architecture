@@ -33,7 +33,8 @@ async function fetchEvents() {
       return (
         calendar.user_id === event.user_id &&
         calendar.platform === event.platform &&
-        calendar.platform_account === event.platform_account
+        calendar.platform_account === event.platform_account &&
+        calendar.calendar_id === event.calendar_id
       );
     });
     if (userCalendars.length === 0) return false;

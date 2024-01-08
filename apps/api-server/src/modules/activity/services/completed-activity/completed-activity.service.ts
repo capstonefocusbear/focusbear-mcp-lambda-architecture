@@ -593,23 +593,24 @@ export class CompletedActivityService {
       },
     });
     await this.validateCompletingActivity(user, sequence, activity, choice);
+    const updatedUser = await this.userRepository.orm.findOne({ where: { id: user_id } });
     const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
-      user,
+      updatedUser,
       sequence.id,
       start_time,
     );
     const { nextActivityId, currentState } = await this.defineNextCurrentActivity(
       sequence,
       activity_id,
-      user,
+      updatedUser,
       completingSequenceLog.id,
       activityData,
     );
     const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
-    const skippedActivityIds = user.current_sequence_skipped_activities ?? [];
+    const skippedActivityIds = updatedUser.current_sequence_skipped_activities ?? [];
     if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
       skippedActivityIds.push(activity_id);
     }
@@ -621,7 +622,7 @@ export class CompletedActivityService {
       has_received_inactivity_warning: false,
     });
     if (!nextActivityId) {
-      if (user.id === JEREMYS_USER_ID) {
+      if (updatedUser.id === JEREMYS_USER_ID) {
         console.log('Completing sequence - updateUserAndSequence');
         console.log({ currentState, nextActivityId, activityData });
       }

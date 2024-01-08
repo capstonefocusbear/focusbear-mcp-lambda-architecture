@@ -19,6 +19,7 @@ export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
   APP_QUIT_FEEDBACK: 'App Quit Feedback',
   USER_FEEDBACK_AND_APP_LOGS: 'User Feedback Add App Logs',
+  USER_SURVEY_FEEDBACK: 'User Survey Feedback',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;

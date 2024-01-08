@@ -2,8 +2,17 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
-import { userDummy } from '../../../../../test/dummies';
-import { UserRepositoryMock, SentryServiceMock, UserFeedbackRepositoryMock } from '../../../../../test/mocks';
+import { Auth0ManagementService } from '@app/auth0';
+import { SendGridService } from '@app/send-grid';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { auth0UserDummy, userDummy } from '../../../../../test/dummies';
+import {
+  UserRepositoryMock,
+  SentryServiceMock,
+  UserFeedbackRepositoryMock,
+  Auth0ManagementServiceMock,
+  SendGridServiceMock,
+} from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackService } from './user-feedback.service';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
@@ -22,6 +31,8 @@ describe('UserFeedbackService', () => {
         UserFeedbackService,
         UserFeedbackRepository,
         UserRepository,
+        Auth0ManagementService,
+        SendGridService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -32,6 +43,10 @@ describe('UserFeedbackService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(UserFeedbackRepository)
       .useValue(UserFeedbackRepositoryMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
 
     service = module.get<UserFeedbackService>(UserFeedbackService);
@@ -65,6 +80,7 @@ describe('UserFeedbackService', () => {
 
     it('positive: should save user feedback in DB and update user', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
 
       await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
 
@@ -78,6 +94,13 @@ describe('UserFeedbackService', () => {
       );
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { last_date_gave_feedback: expect.toBeDate() });
       expect(mockedAxios.post).toBeCalled();
+      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        replyTo: auth0UserDummy.email,
+        text: expect.toBeString(),
+        subject: `${EMAIL_SUBJECTS.USER_SURVEY_FEEDBACK}`,
+      });
     });
   });
 });

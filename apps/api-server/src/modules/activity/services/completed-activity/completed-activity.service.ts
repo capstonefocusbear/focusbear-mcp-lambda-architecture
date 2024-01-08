@@ -593,7 +593,10 @@ export class CompletedActivityService {
       },
     });
     await this.validateCompletingActivity(user, sequence, activity, choice);
-    const updatedUser = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    const updatedUser = await this.userRepository.orm.findOne({
+      where: { id: user_id },
+      relations: ['completing_sequence_log'],
+    });
     const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(

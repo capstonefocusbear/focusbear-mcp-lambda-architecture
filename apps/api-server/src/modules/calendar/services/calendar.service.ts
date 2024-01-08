@@ -44,7 +44,7 @@ export class CalendarService {
       });
       return filteredCalendarData;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -78,7 +78,7 @@ export class CalendarService {
       await this.calendarRepository.orm.save(newCalendar);
       return;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -96,7 +96,7 @@ export class CalendarService {
       });
       await this.calendarRepository.update(id, { is_selected });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -113,7 +113,7 @@ export class CalendarService {
       });
       await this.calendarRepository.orm.delete(id);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -131,7 +131,7 @@ export class CalendarService {
       });
       return excludedKeywords;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -166,7 +166,7 @@ export class CalendarService {
       await this.calendarExcludedKeywordRepository.create(newExcludedCalendarKeyword);
       return;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -187,7 +187,7 @@ export class CalendarService {
       if (!existingRecord) throw new NotFoundException(`CalendarKeyword with ID: ${id} does not exist!`);
       await this.calendarExcludedKeywordRepository.orm.delete({ id });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

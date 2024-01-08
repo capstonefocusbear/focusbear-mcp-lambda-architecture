@@ -37,7 +37,7 @@ export class HabitPackService {
       const habitPack = await this.habitPackRepository.orm.findOneBy({ id: pack_id });
       if (!habitPack) throw new NotFoundException(`Habit pack with id: ${pack_id} does not exist!`);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -56,7 +56,7 @@ export class HabitPackService {
       const habitPack = await this.habitPackRepository.getHabitPack(pack_id);
       return this.serializeHabitPack(habitPack);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -75,7 +75,7 @@ export class HabitPackService {
       const serializedApprovedPacks = fetchedPacks.map((pack) => this.serializeHabitPack(pack));
       return serializedApprovedPacks;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -206,7 +206,7 @@ export class HabitPackService {
       );
       return await this.getHabitPack(id);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -249,7 +249,7 @@ export class HabitPackService {
         `User with ID: ${user_id} is not authorized to delete habit pack with ID: ${pack_id}!`,
       );
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

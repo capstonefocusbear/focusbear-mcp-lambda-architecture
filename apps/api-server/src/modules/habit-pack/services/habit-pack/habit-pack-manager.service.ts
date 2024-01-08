@@ -77,7 +77,7 @@ export class HabitPackManagerService {
         return response;
       }
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -364,7 +364,7 @@ export class HabitPackManagerService {
         return response;
       }
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -440,7 +440,7 @@ export class HabitPackManagerService {
       const updatedSettings = await this.userSettingsService.getSettings({ user_id });
       return updatedSettings;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -467,7 +467,7 @@ export class HabitPackManagerService {
       });
       return serializedInstalledPacks;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

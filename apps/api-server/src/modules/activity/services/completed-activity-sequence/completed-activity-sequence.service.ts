@@ -49,7 +49,7 @@ export class CompletedActivitySequenceService {
       });
       return await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -109,7 +109,7 @@ export class CompletedActivitySequenceService {
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
       return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -132,7 +132,7 @@ export class CompletedActivitySequenceService {
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
       return await this.completedActivitySequenceRepository.orm.save(sequenceLog);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -200,7 +200,7 @@ export class CompletedActivitySequenceService {
         timezone,
       });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -289,7 +289,7 @@ export class CompletedActivitySequenceService {
       hasConsistentCurrentSet ? await this.completeActivitySequence(user.completing_sequence_log.id, user.id) : null;
       return await this.nullifyUserCurrentActivityProps(user_id, activity_sequence_id, sequenceStartTime);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

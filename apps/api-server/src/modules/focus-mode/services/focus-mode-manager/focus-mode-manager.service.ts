@@ -109,7 +109,7 @@ export class FocusModeManagerService {
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -239,7 +239,7 @@ export class FocusModeManagerService {
         has_received_inactivity_warning: false,
       });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

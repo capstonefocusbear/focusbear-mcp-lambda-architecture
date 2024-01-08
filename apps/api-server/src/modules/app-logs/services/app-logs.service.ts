@@ -58,7 +58,7 @@ export class AppLogsService {
       ]);
       return await response.send('Upload successful!').status(201);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

@@ -143,7 +143,7 @@ export class DailyStatsConsumer {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.log('Error in daily stats queued job: ', error);
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
     }
   }
 }

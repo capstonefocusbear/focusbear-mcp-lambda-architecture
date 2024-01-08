@@ -24,7 +24,7 @@ export class AuthService {
       const passport = new Passport({ isAuth, user });
       return passport;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

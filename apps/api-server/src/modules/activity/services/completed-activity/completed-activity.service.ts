@@ -269,7 +269,7 @@ export class CompletedActivityService {
   }
 
   private handleError(error: any) {
-    this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+    this.sentryService.instance().captureException(error, { level: 'error' });
     throw error;
   }
 
@@ -342,7 +342,7 @@ export class CompletedActivityService {
         }
       }
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
     }
   }
 
@@ -401,7 +401,7 @@ export class CompletedActivityService {
       await this.updateActivityPropsForOfflineSync(completedActivities, user);
       return failedActivities;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -519,7 +519,7 @@ export class CompletedActivityService {
 
   handleSyncActivityError(error: Error): boolean {
     console.error('Error syncing offline activity: ', error);
-    this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+    this.sentryService.instance().captureException(error, { level: 'error' });
 
     if (
       error?.name.includes('TypeError') ||
@@ -571,7 +571,7 @@ export class CompletedActivityService {
       );
       return createdItem;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1116,7 +1116,7 @@ export class CompletedActivityService {
       });
       return stats;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1252,7 +1252,7 @@ export class CompletedActivityService {
         daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
       });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1438,7 +1438,7 @@ export class CompletedActivityService {
       );
       return completedActivitesGroupedByDateAndSequence;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1456,7 +1456,7 @@ export class CompletedActivityService {
       }, {});
       return completedActivitiesGroupedBySequence;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1491,7 +1491,7 @@ export class CompletedActivityService {
       );
       return this.formatNotesResponse(completedActivitiesWithNotes);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1523,7 +1523,7 @@ export class CompletedActivityService {
         await this.completedActivityRepository.orm.save(completedActivityToUpdate);
       }
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

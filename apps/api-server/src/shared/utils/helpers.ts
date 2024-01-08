@@ -95,12 +95,14 @@ const ENCRYPTION_KEY = process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY;
 
 export const FieldTransformer = {
   to: (value: string) => {
+    if (value === undefined || value === '') return '';
     const cipher = crypto.createCipher('aes-256-ecb', ENCRYPTION_KEY);
     let encrypted = cipher.update(value, 'utf-8', 'hex');
     encrypted += cipher.final('hex');
     return encrypted;
   },
   from: (value) => {
+    if (value === undefined || value === '') return '';
     const decipher = crypto.createDecipher('aes-256-ecb', ENCRYPTION_KEY);
     let decrypted = decipher.update(value, 'hex', 'utf-8');
     decrypted += decipher.final('utf-8');

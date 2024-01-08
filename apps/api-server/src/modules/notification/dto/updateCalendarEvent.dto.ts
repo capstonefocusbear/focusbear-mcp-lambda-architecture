@@ -1,4 +1,5 @@
 import { IsString, IsDate, IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 
 export class UpdateCalendarEventDto {
   @IsOptional()
@@ -36,4 +37,16 @@ export class UpdateCalendarEventDto {
   @IsOptional()
   @IsBoolean()
   received?: boolean;
+
+  @IsOptional()
+  @IsString()
+  platform?: CalendarPlatforms;
+
+  @IsOptional()
+  @IsString()
+  calendar_id?: string;
+
+  @IsOptional()
+  @IsString()
+  external_metadata?: any;
 }

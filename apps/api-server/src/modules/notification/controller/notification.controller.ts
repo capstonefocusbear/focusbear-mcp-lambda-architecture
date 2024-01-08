@@ -18,6 +18,7 @@ export class NotificationController {
     @Body() updateCalendarEventDto: UpdateCalendarEventDto,
     @AuthContext() { user }: Passport,
   ) {
-    return this.notificationService.updateOrCreateCalendarEvent(updateCalendarEventDto, user.id);
+    // account part remained yet
+    return this.notificationService.updateOrCreateCalendarEvent(updateCalendarEventDto, user.id, 'account');
   }
 }

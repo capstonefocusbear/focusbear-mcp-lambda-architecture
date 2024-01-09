@@ -7,6 +7,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
 import { UserFeedback } from '../../entities/user-feedback.entity';
 import { UserFeedbackDto } from '../../dto/user-feedback.dto';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
 
 @Injectable()
 export class UserFeedbackService {
@@ -15,6 +16,7 @@ export class UserFeedbackService {
     private readonly userFeedbackRepository: UserFeedbackRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly emailService: SendGridService,
+    private readonly deviceRepository: DeviceRepository,
   ) {}
 
   private httpService = axios;
@@ -26,7 +28,18 @@ export class UserFeedbackService {
     }
     const appPlatform = headers.platform;
     const appVersion = headers['app-version'];
-    const combinedMetadata = { ...metadata, app: appPlatform, version: appVersion, user_id: userId };
+    const deviceId = headers['device-id'];
+    let device = null;
+    if (deviceId) {
+      device = await this.deviceRepository.orm.findOneBy({ id: deviceId, user_id: userId });
+    }
+    const combinedMetadata = {
+      ...metadata,
+      app: appPlatform,
+      version: appVersion,
+      user_id: userId,
+      operating_system: device?.operating_system ?? 'undefined',
+    };
     const savedFeedback = new UserFeedback({ user_id: userId, rating, feedback, metadata: combinedMetadata });
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
     const saveFeedbackPromise = this.userFeedbackRepository.orm.save(savedFeedback);

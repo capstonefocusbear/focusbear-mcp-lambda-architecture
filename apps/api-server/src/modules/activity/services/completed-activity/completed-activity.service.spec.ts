@@ -731,7 +731,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toBeCalled();
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalled();
       expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toBeCalled();
     });
 

@@ -73,6 +73,10 @@ export const UTC_TO_IANA_MAP = {
   '-12:00': 'Etc/UTC-12',
 };
 
+export const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+const DEON_USER_ID = 'fb9c4498-cfc1-4342-8cb1-4cf026f59a72';
+export const IDS_TO_LOG_FOR = [JEREMYS_USER_ID, DEON_USER_ID];
+
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];

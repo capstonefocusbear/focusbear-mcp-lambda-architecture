@@ -19,6 +19,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { TrelloAuthService } from '../../auth/services/trello-auth.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 
 const taskAdapter = ({ task, projectId, portalId }) => {
   const { id, name, desc, idList } = task;
@@ -278,5 +279,86 @@ export class TrelloService extends BaseIntegrationService {
       params,
     });
     return response.data;
+  }
+
+  protected async tryGetUserProjects({ integrationRecord }): Promise<Project[]> {
+    const url = `${this.base_url}members/me/boards`;
+    const params = {
+      key: integrationRecord.client_id,
+      token: integrationRecord.access_token,
+    };
+    const response = await this.httpService.get(url, {
+      params,
+    });
+    return (response.data ?? []).map((board) => projectAdapter(board));
+  }
+
+  async getAllUserProjects(userId: string): Promise<SyncedProjectDto[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting all user projects in base service for /:trello/user-projects endpoint',
+      data: {
+        userId,
+        platform: this.platform,
+      },
+    });
+    try {
+      const portals: any = await this.getPortals(userId);
+      const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+      const userSyncedProjectsExternalIds = userSyncedProjects.map(
+        (syncedProject) => syncedProject.external_project_id,
+      );
+      const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+      if (!integrationRecord) return;
+      const projectsResponse = [];
+      let projectResponseIds = [];
+      const userProjects = await this.tryGetUserProjects({ integrationRecord });
+      const checkProject = (project, portal) => {
+        if (portal === undefined && projectResponseIds.includes(project.id)) {
+          return;
+        }
+        const isSynced = userSyncedProjectsExternalIds.includes(project.id);
+        let externalStatuses = [];
+        let haveTasksBeenSynced = false;
+        if (isSynced) {
+          const linkedSyncedProject = userSyncedProjects.find(
+            (syncedProject) => syncedProject.external_project_id === project.id,
+          );
+          externalStatuses = linkedSyncedProject.available_statuses;
+          haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
+        }
+        const projectData = {
+          name: project.name,
+          project_id: project.id,
+          portal_id: portal?.id,
+          is_synced: isSynced,
+          have_tasks_been_synced: haveTasksBeenSynced,
+          external_statuses: externalStatuses,
+        };
+        projectsResponse.push(projectData);
+      };
+      if (!portals) {
+        for (const project of userProjects) {
+          checkProject(project, undefined);
+        }
+        return projectsResponse;
+      }
+      for (const portal of portals) {
+        // eslint-disable-next-line no-await-in-loop
+        const projects = await this.getProjects(userId, portal.id);
+        // eslint-disable-next-line no-continue
+        if (!projects?.length) continue;
+        projects.forEach((project) => checkProject(project, portal));
+      }
+      projectResponseIds = projectsResponse.map((project) => project.project_id);
+      for (const project of userProjects) {
+        checkProject(project, undefined);
+      }
+      return projectsResponse;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

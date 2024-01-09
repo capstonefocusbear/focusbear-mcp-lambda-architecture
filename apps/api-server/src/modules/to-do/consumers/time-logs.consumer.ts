@@ -52,7 +52,7 @@ export class TimeLogsConsumer {
         await Promise.all([addTimeEntryPromise, updateTaskStatusPromise]);
       }
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       console.error('Error in save-task-time-log queued job: ', error);
     }
   }

@@ -82,7 +82,7 @@ export class NotificationService {
       });
       return event;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -99,7 +99,7 @@ export class NotificationService {
       });
       await this.notificationRepository.orm.delete({ external_id: externalId });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

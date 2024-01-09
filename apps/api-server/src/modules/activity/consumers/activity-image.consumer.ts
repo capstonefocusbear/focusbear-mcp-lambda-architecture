@@ -28,7 +28,7 @@ export class ActivityImageConsumer {
         { headers: { authorization: `Bearer ${process.env.UPLOAD_IO_SECRET_API_KEY}` } },
       );
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Error in delete-activity-image queue for user with ID: ${user_id}\nFile Path: ${filePath}\nError: \`\`\`${error}\`\`\``,
       });

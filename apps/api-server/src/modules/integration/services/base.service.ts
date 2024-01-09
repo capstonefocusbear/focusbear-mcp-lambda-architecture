@@ -74,7 +74,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }
@@ -117,7 +117,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       if (!integrationRecord) return;
       return await this.tryGetTasks({ integrationRecord, userId, projectId, portalId });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw new BadRequestException(error.response?.data);
     }
   }
@@ -146,7 +146,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }
@@ -180,7 +180,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }
@@ -264,7 +264,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       }
       return projectsResponse;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -301,7 +301,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       linkedProject.available_statuses = available_statuses;
       return await this.syncedProjectsRepository.orm.save(linkedProject);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -335,7 +335,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         platform,
       });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -363,7 +363,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }
@@ -401,7 +401,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       }
       return tasks;
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -429,7 +429,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }

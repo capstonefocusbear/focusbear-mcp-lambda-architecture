@@ -58,7 +58,7 @@ export class RevenueCatStatusConsumer {
       await this.updateRevenueCatInfo(user.id, subscriptionInfo, userActiveSubscription);
     } catch (error) {
       console.error({ error, data: error.response?.data });
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
     }
   }
 }

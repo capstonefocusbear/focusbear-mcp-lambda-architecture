@@ -61,7 +61,7 @@ export class UserPersonalDataConsumer {
         subject: this.i18nService.t('common.user_data_email_header', { lang: language }),
       });
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       console.error('Error in user data email queued job: ', error);
     }
   }

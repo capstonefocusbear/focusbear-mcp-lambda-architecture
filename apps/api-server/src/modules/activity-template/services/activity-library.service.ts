@@ -40,7 +40,7 @@ export class ActivityLibraryService {
       const [libraryActivities, userActivities] = await Promise.all([libraryActivitiesPromise, userActivitiesPromise]);
       return this.activityTemplateParserService.serializeLibraryActivities([...libraryActivities, ...userActivities]);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -67,7 +67,7 @@ export class ActivityLibraryService {
       );
       return await this.getLibraryActivities(user_id);
     } catch (error) {
-      this.sentryService.instance().captureException(JSON.stringify(error), { level: 'error' });
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

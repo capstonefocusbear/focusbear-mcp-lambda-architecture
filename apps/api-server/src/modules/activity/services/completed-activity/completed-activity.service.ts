@@ -13,7 +13,7 @@ import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
-import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
+import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE, IDS_TO_LOG_FOR } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -61,8 +61,6 @@ import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserTimesResponse } from '../../domain/user-times-response.model';
-
-const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class CompletedActivityService {
@@ -167,7 +165,7 @@ export class CompletedActivityService {
         activity,
         user.language,
       );
-      this.logJeremyData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
+      this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
       this.handleError(error);
@@ -208,7 +206,7 @@ export class CompletedActivityService {
     return startTimeToUse;
   }
 
-  private logJeremyData(
+  private logUserData(
     choice: any,
     user: User,
     completedActivity: CreateCompletedActivityDto,
@@ -216,8 +214,8 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     completingSequenceLog: any,
   ) {
-    if (user.id === JEREMYS_USER_ID) {
-      console.log("Jeremy's completed activity data: ", {
+    if (IDS_TO_LOG_FOR.includes(user.id)) {
+      console.log("User's completed activity data: ", {
         completingSequenceLog,
         completedActivity,
         user,
@@ -625,7 +623,7 @@ export class CompletedActivityService {
       has_received_inactivity_warning: false,
     });
     if (!nextActivityId) {
-      if (updatedUser.id === JEREMYS_USER_ID) {
+      if (IDS_TO_LOG_FOR.includes(user_id)) {
         console.log('Completing sequence - updateUserAndSequence');
         console.log({ currentState, nextActivityId, activityData });
       }
@@ -693,7 +691,10 @@ export class CompletedActivityService {
       .getDate();
     const userTimes = this.getUserTimesFromPartialUser(user);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+      if (IDS_TO_LOG_FOR.includes(id)) {
+        console.log('Completing user routine from validateCompletingActivity function - shouldCompleteRoutine: TRUE');
+      }
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, user);
     }
   }
@@ -781,7 +782,7 @@ export class CompletedActivityService {
       completedActivity,
     );
 
-    if (user.id === JEREMYS_USER_ID && !nextActivityId) {
+    if (IDS_TO_LOG_FOR.includes(user.id) && !nextActivityId) {
       console.log('Data in defineNextCurrentActivity function: ', {
         nextActivityId,
         currentState,
@@ -837,17 +838,21 @@ export class CompletedActivityService {
       .getDate();
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+      if (IDS_TO_LOG_FOR.includes(id)) {
+        console.log('Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE');
+      }
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
       return { activity: null, shouldRefetchUser: true };
     }
 
     if (this.isCutoffTimeReached(partialUser)) {
+      console.log('Completing user routine from recalculateCurrentActivity function - isCutoffTimeReached: TRUE');
       return this.handleActivitiesAfterCutoffTime(partialUser, sequence);
     }
 
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - recalculateCurrentActivity - no change in current activity');
+    if (IDS_TO_LOG_FOR.includes(id)) {
+      console.log('Log data - recalculateCurrentActivity - no change in current activity');
     }
 
     return {
@@ -870,16 +875,30 @@ export class CompletedActivityService {
 
   shouldCompleteRoutine(
     sequence: ActivitySequence,
-    userTimes: UserTimesResponse,
+    { userCurrentTime, userShutdownTime, userStartupTime }: UserTimesResponse,
     currentActivityAssignedDate: number,
+    userId: string,
   ): boolean {
-    const hasRoutineBeenStartedToday = userTimes.userCurrentTime.toJSDate().getDate() === currentActivityAssignedDate;
+    const userCurrentDate = userCurrentTime.toJSDate().getDate();
+    const hasRoutineBeenStartedToday = userCurrentDate === currentActivityAssignedDate;
+    if (IDS_TO_LOG_FOR.includes(userId)) {
+      console.log('Log data - shouldCompleteRoutine function:');
+      console.log({
+        hasRoutineBeenStartedToday,
+        sequenceType: sequence.type,
+        currentActivityAssignedDate,
+        userCurrentDate,
+        userCurrentTime: userCurrentTime.toISO(),
+        userStartupTime: userStartupTime.toISO(),
+        userShutdownTime: userShutdownTime.toISO(),
+      });
+    }
     return (
       !hasRoutineBeenStartedToday ||
-      (sequence.type === ActivityType.morning && userTimes.userCurrentTime >= userTimes.userShutdownTime) ||
+      (sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime) ||
       (sequence.type === ActivityType.evening &&
-        userTimes.userCurrentTime >= userTimes.userStartupTime &&
-        userTimes.userCurrentTime < userTimes.userShutdownTime)
+        userCurrentTime >= userStartupTime &&
+        userCurrentTime < userShutdownTime)
     );
   }
 
@@ -933,8 +952,8 @@ export class CompletedActivityService {
       });
     }
 
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - handleActivitiesAfterCutoffTime triggered');
+    if (IDS_TO_LOG_FOR.includes(partialUser.id)) {
+      console.log('Log data - handleActivitiesAfterCutoffTime triggered');
       console.log({ nextHighPriorityActivity });
     }
 

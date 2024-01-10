@@ -35,7 +35,8 @@ export class BaseRepository<T> {
       const item_id = updateResult.raw[0].id;
       return this.orm.findOneBy({ id: item_id } as FindOptionsWhere<T>);
     }
-    throw new Error(`No record was updated! ID: ${id}, Entity: ${this.Entity}, Values: ${JSON.stringify(values)}`);
+    // eslint-disable-next-line no-console
+    console.info(`No record was updated! ID: ${id}, Entity: ${this.Entity}, Values: ${JSON.stringify(values)}`);
   }
 
   async upsert(item: T, conflictTarget: string[]): Promise<T> {

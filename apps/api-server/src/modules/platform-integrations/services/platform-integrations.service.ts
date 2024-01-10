@@ -78,4 +78,39 @@ export class PlatformIntegrationsService {
     });
     return accountInfos;
   }
+
+  async getAssigneeStatus(userId: string) {
+    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
+      where: { user_id: userId },
+    });
+    return Object.values(IntegrationPlatforms)
+      .filter((platform) => {
+        return !(platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT);
+      })
+      .map((platform) => {
+        const record = integartionRecords.find((integartionRecord) => integartionRecord.platform === platform);
+        if (!record) {
+          return {
+            platform,
+            status: 'only sync assigned tasks',
+          };
+        }
+        return {
+          platform,
+          status: record.only_assigned === true ? 'only sync assigned tasks' : 'sync all tasks',
+        };
+      });
+  }
+
+  async updateAssigneStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
+    await this.platformIntegrationsRepository.orm.update(
+      {
+        user_id: userId,
+        platform,
+      },
+      {
+        only_assigned,
+      },
+    );
+  }
 }

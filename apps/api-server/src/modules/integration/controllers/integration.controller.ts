@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards, forwardRef } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards, forwardRef, Put } from '@nestjs/common';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { CreateTimeLog } from '../dto/create-time-log.dto';
 import { TaskParamsQueryDto } from '../dto/task-params-query.dto';
@@ -7,12 +7,15 @@ import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { IntegrationFactory } from '../services/IntegrationFactory';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
+import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 
 @Controller('integration')
 export class IntegrationController {
   constructor(
     @Inject(forwardRef(() => IntegrationFactory))
+    @Inject(forwardRef(() => PlatformIntegrationsService))
     private readonly integrationFactory: IntegrationFactory,
+    private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
   @Get(':platform')
@@ -87,5 +90,21 @@ export class IntegrationController {
   ) {
     const service = this.integrationFactory.get(platform);
     return service.addTimeEntry(user.id, portalId, projectId, taskId, timeEntry);
+  }
+
+  @Put(':platform/assignee-filter-status')
+  @UseGuards(IsAuth)
+  async updateAssigneeFilterStatus(
+    @Param('platform') platform: IntegrationPlatforms,
+    @Body() { only_assigned }: { only_assigned: boolean },
+    @AuthContext() { user }: Passport,
+  ) {
+    this.platformIntegrationsService.updateAssigneStatus(user.id, platform, only_assigned);
+  }
+
+  @Get('assignee')
+  @UseGuards(IsAuth)
+  async getAssigneeStatus(@AuthContext() { user }: Passport) {
+    return this.platformIntegrationsService.getAssigneeStatus(user.id);
   }
 }

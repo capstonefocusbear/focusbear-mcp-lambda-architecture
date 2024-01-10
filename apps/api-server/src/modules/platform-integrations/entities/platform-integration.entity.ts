@@ -37,6 +37,12 @@ export class PlatformIntegration extends BaseEntity {
   })
   data?: any;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  only_assigned?: boolean;
+
   @ManyToOne(() => User, (user) => user.platform_integrations, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

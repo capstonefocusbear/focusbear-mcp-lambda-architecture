@@ -685,10 +685,9 @@ export class CompletedActivityService {
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
 
-    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
-      .setZone(user.timezone)
-      .toJSDate()
-      .getDate();
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at)).setZone(
+      user.timezone,
+    ).day;
     const userTimes = this.getUserTimesFromPartialUser(user);
 
     if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
@@ -832,15 +831,15 @@ export class CompletedActivityService {
     } = partialUser;
 
     const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
-    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at))
-      .setZone(partialUser.timezone)
-      .toJSDate()
-      .getDate();
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at)).setZone(
+      partialUser.timezone,
+    ).day;
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
     if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
       if (IDS_TO_LOG_FOR.includes(id)) {
         console.log('Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE');
+        console.log({ current_activity_assigned_at });
       }
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
       return { activity: null, shouldRefetchUser: true };
@@ -879,7 +878,7 @@ export class CompletedActivityService {
     currentActivityAssignedDate: number,
     userId: string,
   ): boolean {
-    const userCurrentDate = userCurrentTime.toJSDate().getDate();
+    const userCurrentDate = userCurrentTime.day;
     const hasRoutineBeenStartedToday = userCurrentDate === currentActivityAssignedDate;
     if (IDS_TO_LOG_FOR.includes(userId)) {
       console.log('Log data - shouldCompleteRoutine function:');

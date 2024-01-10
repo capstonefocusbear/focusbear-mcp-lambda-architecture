@@ -23,14 +23,19 @@ export class BaseRepository<T> {
   }
 
   async update(id: string, values: QueryDeepPartialEntity<T>): Promise<T> {
-    return this.orm
+    const updateResult = await this.orm
       .createQueryBuilder()
       .update(this.Entity)
       .set(values)
       .where('id = :id', { id })
       .returning('*')
-      .execute()
-      .then(({ raw: [{ id: item_id }] }: UpdateResult) => this.orm.findOneBy({ id: item_id } as FindOptionsWhere<T>));
+      .execute();
+
+    if (updateResult.raw && updateResult.raw.length > 0) {
+      const item_id = updateResult.raw[0].id;
+      return this.orm.findOneBy({ id: item_id } as FindOptionsWhere<T>);
+    }
+    throw new Error(`No record was updated! ID: ${id}, Entity: ${this.Entity}, Values: ${JSON.stringify(values)}`);
   }
 
   async upsert(item: T, conflictTarget: string[]): Promise<T> {

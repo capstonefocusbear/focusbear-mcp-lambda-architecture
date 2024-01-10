@@ -231,6 +231,7 @@ export class UserService {
         console.log('Jeremy current user state', {
           initialCurrentActivity,
           updatedActivityProps: currentActivityProps,
+          originalActivityProps: partialUser,
         });
       }
       return currentActivityProps;

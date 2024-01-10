@@ -26,7 +26,13 @@ export interface IBaseIntegrationService {
 
   upsertSyncedProjectRecord(userId: string, portalId: string, projectId: string);
 
-  syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms);
+  syncProjectAndChildTasks(
+    userId: string,
+    portalId: string,
+    projectId: string,
+    platform: IntegrationPlatforms,
+    only_assigned: boolean,
+  );
 
   getProject(userId: string, portalId: string, projectId: string);
 

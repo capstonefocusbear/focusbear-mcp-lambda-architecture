@@ -31,14 +31,17 @@ export class SyncTasksConsumer {
       projectId: string;
       projectAsFocusModeTag: FocusModeTag;
       platform: IntegrationPlatforms;
+      only_assigned: boolean;
     }>,
   ) {
     const {
-      data: { userId, portalId, projectId, projectAsFocusModeTag, platform },
+      data: { userId, portalId, projectId, projectAsFocusModeTag, platform, only_assigned },
     } = job;
     try {
       const service = this.integrationFactory.get(platform);
-      const tasksFromProject = await service.getTasksOwnedByUser(userId, portalId, projectId);
+      const tasksFromProject = only_assigned
+        ? await service.getTasksOwnedByUser(userId, portalId, projectId)
+        : await service.getTasks(userId, portalId, projectId);
       const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId);
       const tasksAsToDos = tasksFromProject.map((task) => {
         return new ToDo({

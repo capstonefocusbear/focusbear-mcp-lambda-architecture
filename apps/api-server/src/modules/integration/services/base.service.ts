@@ -310,7 +310,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     await this.syncTasksQueue.add(BullWorkers.MANUALLY_SYNC_PLATFORM_TASKS, { userId, platform: this.platform });
   }
 
-  async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
+  async syncProjectAndChildTasks(
+    userId: string,
+    portalId: string,
+    projectId: string,
+    platform: IntegrationPlatforms,
+    only_assigned: boolean,
+  ) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -333,6 +339,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         projectId,
         projectAsFocusModeTag,
         platform,
+        only_assigned,
       });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -389,11 +396,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       });
       const tasks = [];
       for await (const project of syncedProjects) {
-        const projectTasks = await this.getTasksOwnedByUser(
-          userId,
-          project.external_portal_id,
-          project.external_project_id,
-        );
+        const projectTasks = await this.getTasks(userId, project.external_portal_id, project.external_project_id);
         for (const task of projectTasks) {
           task.portal_id = project.external_portal_id;
           tasks.push(task);
@@ -410,7 +413,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
-      message: 'Fetching tasks owned by user',
+      message: 'Fetching tasks',
       data: {
         userId,
         portalId,
@@ -418,26 +421,17 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         platform: this.platform,
       },
     });
-    let retryCount = 0;
-
-    while (retryCount < MAX_RETRY) {
-      try {
-        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
-        if (!integrationRecord) return;
-        return await this.tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId });
-      } catch (error) {
-        if (error.response && error.response.status === 401) {
-          retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
-        } else {
-          this.sentryService.instance().captureException(error, { level: 'error' });
-          throw error;
-        }
-      }
-    }
-    throw new Error(`Failed to ${this.platform} get task owned by user after trying to get new access token.`);
+    const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+    if (!integrationRecord) return;
+    const tasksOwnedByUser = await this.tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId });
+    const allTasks = await this.getTasks(userId, portalId, projectId);
+    const tasksOwnedByUserIds = tasksOwnedByUser.map((task) => task.id);
+    return allTasks.filter((task) => {
+      return tasksOwnedByUserIds.includes(task.id);
+    });
   }
 
-  protected abstract tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId }): Promise<Task[]>;
+  protected abstract tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]>;
 
   async getProjectStatuses(userId: string, projectId: string, portalId: string) {
     this.sentryService.instance().addBreadcrumb({

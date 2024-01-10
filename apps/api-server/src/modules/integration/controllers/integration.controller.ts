@@ -45,10 +45,11 @@ export class IntegrationController {
   async syncProject(
     @Param('platform') platform: IntegrationPlatforms,
     @Query() { portal_id, project_id }: { portal_id: string; project_id: string },
+    @Body() { only_assigned }: { only_assigned: boolean },
     @AuthContext() { user }: Passport,
   ) {
     const service = this.integrationFactory.get(platform);
-    return service.syncProjectAndChildTasks(user.id, portal_id, project_id, platform);
+    return service.syncProjectAndChildTasks(user.id, portal_id, project_id, platform, only_assigned);
   }
 
   @Post(':platform/sync-tasks')

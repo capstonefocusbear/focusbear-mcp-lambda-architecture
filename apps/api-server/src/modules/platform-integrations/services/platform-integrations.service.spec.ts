@@ -140,4 +140,52 @@ describe('PlatformIntegrationsService', () => {
       ]);
     });
   });
+
+  describe('getAssigneeStatus', () => {
+    it('positive: should return an array of integration only_assigned values', async () => {
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          platform: 'asana',
+          only_assigned: true,
+        },
+        {
+          platform: 'clickup',
+          only_assigned: true,
+        },
+        {
+          platform: 'trello',
+          only_assigned: false,
+        },
+      ]);
+
+      const response = await platformIntegrationsService.getAssigneeStatus(userDummy.id);
+
+      expect(response).toEqual([
+        {
+          platform: 'zoho',
+          status: '1',
+        },
+        {
+          platform: 'clickup',
+          status: '1',
+        },
+        {
+          platform: 'trello',
+          status: '2',
+        },
+        {
+          platform: 'jira',
+          status: '1',
+        },
+        {
+          platform: 'asana',
+          status: '1',
+        },
+        {
+          platform: 'monday',
+          status: '1',
+        },
+      ]);
+    });
+  });
 });

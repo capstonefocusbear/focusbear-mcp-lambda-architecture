@@ -289,6 +289,8 @@ export const PlatformIntegrationsServiceMock = {
   getPlatformIntegrationData: jest.fn(),
   updatePlatformIntegration: jest.fn(),
   getUserSyncedPlatforms: jest.fn(),
+  getAssigneeStatus: jest.fn(),
+  updateAssigneeStatus: jest.fn(),
 };
 
 export const ToDoServiceMock = {

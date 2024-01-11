@@ -66,10 +66,10 @@ export class PlatformIntegrationsService {
   }
 
   async getPlatformAccounts(platform: IntegrationPlatforms, userId: string) {
-    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
+    const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { platform, user_id: userId },
     });
-    const accountInfos = await integartionRecords.map((account) => {
+    const accountInfos = await integrationRecords.map((account) => {
       const data = {
         email: account.external_user_id,
         expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
@@ -77,5 +77,42 @@ export class PlatformIntegrationsService {
       return data;
     });
     return accountInfos;
+  }
+
+  async getAssigneeStatus(userId: string) {
+    const integrationRecords = await this.platformIntegrationsRepository.orm.find({
+      where: { user_id: userId },
+    });
+    const isCalendarIntegration = (platform) =>
+      platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT;
+    return Object.values(IntegrationPlatforms)
+      .filter((platform) => {
+        return !isCalendarIntegration(platform);
+      })
+      .map((platform) => {
+        const record = integrationRecords.find((integrationRecord) => integrationRecord.platform === platform);
+        if (!record) {
+          return {
+            platform,
+            status: '1',
+          };
+        }
+        return {
+          platform,
+          status: record.only_assigned === true ? '1' : '2',
+        };
+      });
+  }
+
+  async updateAssigneeStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
+    await this.platformIntegrationsRepository.orm.update(
+      {
+        user_id: userId,
+        platform,
+      },
+      {
+        only_assigned,
+      },
+    );
   }
 }

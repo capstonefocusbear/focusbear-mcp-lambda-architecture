@@ -34,7 +34,7 @@ export class SyncedProjectsService {
   async syncProject(userId: string, syncProjectData: SyncProjectDto) {
     const { platform, portal_id, project_id } = syncProjectData;
     const service = this.integrationFactory.get(platform);
-    await service.syncProjectAndChildTasks(userId, portal_id, project_id, platform);
+    await service.syncProjectAndChildTasks(userId, portal_id, project_id, platform, true);
   }
 
   async unSyncProject(userId: string, projectId: string) {

@@ -222,7 +222,8 @@ export class MondayService extends BaseIntegrationService {
     return projectAdapter(response.data.data.boards[0]);
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const tasks = this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }

@@ -100,7 +100,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     userId,
   }): Promise<any>;
 
-  async getTasks(userId: string, projectId: string, portalId: string): Promise<Task[]> {
+  async getTasks(userId: string, portalId: string, projectId: string): Promise<Task[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -310,7 +310,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     await this.syncTasksQueue.add(BullWorkers.MANUALLY_SYNC_PLATFORM_TASKS, { userId, platform: this.platform });
   }
 
-  async syncProjectAndChildTasks(userId: string, portalId: string, projectId: string, platform: IntegrationPlatforms) {
+  async syncProjectAndChildTasks(
+    userId: string,
+    portalId: string,
+    projectId: string,
+    platform: IntegrationPlatforms,
+    only_assigned: boolean,
+  ) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -333,6 +339,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         projectId,
         projectAsFocusModeTag,
         platform,
+        only_assigned,
       });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -389,11 +396,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       });
       const tasks = [];
       for await (const project of syncedProjects) {
-        const projectTasks = await this.getTasksOwnedByUser(
-          userId,
-          project.external_portal_id,
-          project.external_project_id,
-        );
+        const projectTasks = await this.getTasks(userId, project.external_portal_id, project.external_project_id);
         for (const task of projectTasks) {
           task.portal_id = project.external_portal_id;
           tasks.push(task);
@@ -410,7 +413,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
-      message: 'Fetching tasks owned by user',
+      message: 'Fetching tasks',
       data: {
         userId,
         portalId,
@@ -418,26 +421,32 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         platform: this.platform,
       },
     });
+    // get tasks owned by user from project
     let retryCount = 0;
 
     while (retryCount < MAX_RETRY) {
       try {
         const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
         if (!integrationRecord) return;
-        return await this.tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId });
+        const allTasksOwnedByUser = await this.tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId });
+        const allTasks = await this.tryGetTasks({ integrationRecord, userId, portalId, projectId });
+        const tasksOwnedByUserIds = allTasksOwnedByUser.map((task) => task.id);
+        return allTasks.filter((task) => {
+          return tasksOwnedByUserIds.includes(task.id);
+        });
       } catch (error) {
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
-          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }
     }
-    throw new Error(`Failed to ${this.platform} get task owned by user after trying to get new access token.`);
+    throw new Error('Failed to update task status after trying to get new access token.');
   }
 
-  protected abstract tryGetTasksOwnedByUser({ integrationRecord, userId, portalId, projectId }): Promise<Task[]>;
+  // get All tasks owned by user in system
+  protected abstract tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]>;
 
   async getProjectStatuses(userId: string, projectId: string, portalId: string) {
     this.sentryService.instance().addBreadcrumb({

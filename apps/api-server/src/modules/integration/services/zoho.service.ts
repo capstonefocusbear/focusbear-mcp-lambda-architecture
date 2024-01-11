@@ -137,7 +137,8 @@ export class ZohoService extends BaseIntegrationService {
     return projectAdapter({ project: data.projects[0], portalId });
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
     return this.tryGetTasks({ integrationRecord, portalId, projectId });
   }
 

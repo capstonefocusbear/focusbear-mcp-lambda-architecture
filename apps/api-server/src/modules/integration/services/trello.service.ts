@@ -248,7 +248,8 @@ export class TrelloService extends BaseIntegrationService {
     return projectAdapter(response.data);
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
     const url = `${this.base_url}members/me/cards`;
     const params = {
       key: integrationRecord.client_id,

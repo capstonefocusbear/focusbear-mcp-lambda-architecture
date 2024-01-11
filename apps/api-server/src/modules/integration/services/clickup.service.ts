@@ -136,7 +136,8 @@ export class ClickUpService extends BaseIntegrationService {
     }));
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const tasks = await this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }

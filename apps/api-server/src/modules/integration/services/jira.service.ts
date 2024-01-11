@@ -162,7 +162,8 @@ export class JiraService extends BaseIntegrationService {
     } as Project;
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
     const tasks = await this.tryGetTasks({ integrationRecord, portalId, projectId });
     return tasks;
   }

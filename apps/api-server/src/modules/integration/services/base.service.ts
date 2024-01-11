@@ -421,17 +421,32 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         platform: this.platform,
       },
     });
-    const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
-    if (!integrationRecord) return;
-    const tasksOwnedByUser = await this.tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId });
-    const allTasks = await this.getTasks(userId, portalId, projectId);
-    const tasksOwnedByUserIds = tasksOwnedByUser.map((task) => task.id);
-    return allTasks.filter((task) => {
-      return tasksOwnedByUserIds.includes(task.id);
-    });
+    // get tasks owned by user from project
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRY) {
+      try {
+        const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+        if (!integrationRecord) return;
+        const allTasksOwnedByUser = await this.tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId });
+        const allTasks = await this.tryGetTasks({ integrationRecord, userId, portalId, projectId });
+        const tasksOwnedByUserIds = allTasksOwnedByUser.map((task) => task.id);
+        return allTasks.filter((task) => {
+          return tasksOwnedByUserIds.includes(task.id);
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('Failed to update task status after trying to get new access token.');
   }
 
-  protected abstract tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]>;
+  // get All tasks owned by user in system
+  protected abstract tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]>;
 
   async getProjectStatuses(userId: string, projectId: string, portalId: string) {
     this.sentryService.instance().addBreadcrumb({

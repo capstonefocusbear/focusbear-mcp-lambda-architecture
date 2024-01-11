@@ -85,7 +85,9 @@ export class PlatformIntegrationsService {
     });
     return Object.values(IntegrationPlatforms)
       .filter((platform) => {
-        return !(platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT);
+        const isCalendarIntegration =
+          platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT;
+        return !isCalendarIntegration;
       })
       .map((platform) => {
         const record = integrationRecords.find((integrationRecord) => integrationRecord.platform === platform);

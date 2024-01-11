@@ -139,7 +139,8 @@ export class AsanaService extends BaseIntegrationService {
     return projectAdapter(response.data?.data);
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
     const tasks = await this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }

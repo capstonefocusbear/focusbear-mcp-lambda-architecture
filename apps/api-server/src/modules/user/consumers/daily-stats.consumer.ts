@@ -46,6 +46,7 @@ export class DailyStatsConsumer {
         },
       });
       const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+      if (!user) return;
       const startTimeAsJSDate = new Date(startTime);
       let startTimeToUse = startTimeAsJSDate;
       const { startup_time, shutdown_time, current_sequence_started_at, last_completed_sequence_started_at } = user;

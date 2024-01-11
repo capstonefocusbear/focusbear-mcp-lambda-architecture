@@ -100,7 +100,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     userId,
   }): Promise<any>;
 
-  async getTasks(userId: string, projectId: string, portalId: string): Promise<Task[]> {
+  async getTasks(userId: string, portalId: string, projectId: string): Promise<Task[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',

@@ -83,11 +83,11 @@ export class PlatformIntegrationsService {
     const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { user_id: userId },
     });
+    const isCalendarIntegration = (platform) =>
+      platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT;
     return Object.values(IntegrationPlatforms)
       .filter((platform) => {
-        const isCalendarIntegration =
-          platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT;
-        return !isCalendarIntegration;
+        return !isCalendarIntegration(platform);
       })
       .map((platform) => {
         const record = integrationRecords.find((integrationRecord) => integrationRecord.platform === platform);

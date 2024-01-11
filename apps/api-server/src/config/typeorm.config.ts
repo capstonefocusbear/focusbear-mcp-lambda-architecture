@@ -40,6 +40,7 @@ import { CalendarExcludedKeyword } from '../modules/calendar/entities/calendar-e
 import { Calendar } from '../modules/calendar/entities/calendar.entity';
 import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
+import { TrackEvent } from '../modules/events/entities/track-event.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -93,6 +94,9 @@ export const typeormConfig = registerAs(
       Calendar,
       TeamToMember,
       TeamToAdmin,
+      CalendarExcludedKeyword,
+      Calendar,
+      TrackEvent,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

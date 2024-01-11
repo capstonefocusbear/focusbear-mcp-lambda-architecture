@@ -85,7 +85,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     if (!deviceId || !appVersion) return;
     const device = await this.deviceRepository.orm.findOneBy({ id: deviceId });
     device.app_version = appVersion;
-    await this.deviceRepository.orm.save(device);
+    return this.deviceRepository.orm.save(device);
   }
 
   async getDevicesForAdmin(adminId: string, userId: string) {

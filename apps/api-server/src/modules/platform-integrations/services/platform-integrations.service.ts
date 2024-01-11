@@ -66,10 +66,10 @@ export class PlatformIntegrationsService {
   }
 
   async getPlatformAccounts(platform: IntegrationPlatforms, userId: string) {
-    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
+    const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { platform, user_id: userId },
     });
-    const accountInfos = await integartionRecords.map((account) => {
+    const accountInfos = await integrationRecords.map((account) => {
       const data = {
         email: account.external_user_id,
         expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
@@ -80,7 +80,7 @@ export class PlatformIntegrationsService {
   }
 
   async getAssigneeStatus(userId: string) {
-    const integartionRecords = await this.platformIntegrationsRepository.orm.find({
+    const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { user_id: userId },
     });
     return Object.values(IntegrationPlatforms)
@@ -88,21 +88,21 @@ export class PlatformIntegrationsService {
         return !(platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT);
       })
       .map((platform) => {
-        const record = integartionRecords.find((integartionRecord) => integartionRecord.platform === platform);
+        const record = integrationRecords.find((integrationRecord) => integrationRecord.platform === platform);
         if (!record) {
           return {
             platform,
-            status: 'only sync assigned tasks',
+            status: '1',
           };
         }
         return {
           platform,
-          status: record.only_assigned === true ? 'only sync assigned tasks' : 'sync all tasks',
+          status: record.only_assigned === true ? '1' : '2',
         };
       });
   }
 
-  async updateAssigneStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
+  async updateAssigneeStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
     await this.platformIntegrationsRepository.orm.update(
       {
         user_id: userId,

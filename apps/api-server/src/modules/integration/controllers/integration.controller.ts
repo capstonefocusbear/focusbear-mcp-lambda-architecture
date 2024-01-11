@@ -78,7 +78,7 @@ export class IntegrationController {
     @AuthContext() { user }: Passport,
   ) {
     const service = this.integrationFactory.get(platform);
-    return service.getTasks(user.id, projectId, portalId);
+    return service.getTasks(user.id, portalId, projectId);
   }
 
   @Post(':platform/:portalId/projects/:projectId/tasks/:taskId/logs')
@@ -100,7 +100,7 @@ export class IntegrationController {
     @Body() { only_assigned }: { only_assigned: boolean },
     @AuthContext() { user }: Passport,
   ) {
-    this.platformIntegrationsService.updateAssigneStatus(user.id, platform, only_assigned);
+    this.platformIntegrationsService.updateAssigneeStatus(user.id, platform, only_assigned);
   }
 
   @Get('assignee')

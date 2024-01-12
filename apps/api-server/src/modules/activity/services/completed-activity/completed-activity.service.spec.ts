@@ -707,6 +707,7 @@ describe('CompletedActivityService', () => {
       jest.clearAllMocks();
       jest.clearAllTimers();
       jest.resetAllMocks();
+      Settings.now = () => 1670477400000;
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       const sequenceId = randomUUID();
@@ -714,10 +715,10 @@ describe('CompletedActivityService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValue(
         new User({
           ...userDummy,
-          current_activity_assigned_at: new Date(),
+          current_activity_assigned_at: new Date('2022-12-08T13:30:00+0000'),
           current_activity_sequence_id: sequenceId,
           current_completing_sequence_log_id: completedSequenceLogId,
-          current_sequence_started_at: new Date(),
+          current_sequence_started_at: new Date('2022-12-08T13:30:00+0000'),
         }),
       );
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
@@ -732,6 +733,7 @@ describe('CompletedActivityService', () => {
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toBeCalled();
+      Settings.now = () => new Date().valueOf();
     });
 
     it('positive: if target activity is break type the daily stat time spent in breaks should be updated', async () => {

@@ -196,7 +196,7 @@ describe('jiraService', () => {
         IntegrationPlatforms.JIRA,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
       expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers, params });
       expect(result).toEqual(tasksOwnedByUser);
     });

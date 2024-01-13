@@ -308,7 +308,7 @@ describe('ZohoService', () => {
           accountId: Number(accountId),
         },
       });
-      mockedAxios.get.mockResolvedValue({ data: { tasks: tasksData } });
+      mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
 
       const result = await zohoService.getTasks(userDummy.id, portalId, projectId);
 

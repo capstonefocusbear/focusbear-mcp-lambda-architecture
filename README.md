@@ -332,3 +332,26 @@ The preview DB will be seeded with a test user and some additional records linke
 ### Admin users
 
 To set a user as admin, an admin role should be assigned to them from the Auth0 dashboard and their `user_type` field should be set to `ADMIN` in the users table in the DB.
+
+### Testing Stripe Webhooks Locally
+
+Stripe webhooks are used to register users in RevenueCat, handle subscription changes, and create teams after users subscribe from the dashboard. To test these features locally, navigate to the Stripe dashboard, click on "Developers" from the navigation bar, and then switch on "Test mode" from the navigation bar.
+
+Navigate to API Keys and copy the public and secret keys to update your local .env variables.
+
+Under the webhooks tab there should be a URL containing "ngrok", Ngrok will be used to expose your local server to the internet. Check how to set up ngrok locally at https://ngrok.com/docs/getting-started/
+
+Start your local server then expose your local port using Ngrok.
+
+Use the HTTPS protocol link returned from Ngrok to update the Ngrok webhook in the Stripe dashboard. After updating the link, enable the webhook. (Disable after use)
+
+For any events that trigger the webhook, the local POST `/subscription/webhooks/stripe` endpoint will be called.
+
+
+
+
+
+
+
+
+

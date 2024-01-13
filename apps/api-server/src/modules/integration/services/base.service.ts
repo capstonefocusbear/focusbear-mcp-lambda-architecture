@@ -438,6 +438,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         if (error.response && error.response.status === 401) {
           retryCount = await this.integrationAuthService.handleUnauthorizedError(userId, retryCount);
         } else {
+          this.sentryService.instance().captureException(error, { level: 'error' });
           throw error;
         }
       }

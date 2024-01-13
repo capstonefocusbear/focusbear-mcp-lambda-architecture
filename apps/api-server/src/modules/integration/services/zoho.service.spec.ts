@@ -280,7 +280,7 @@ describe('ZohoService', () => {
           external_status: 'status',
           key: 'key1',
           name: undefined,
-          descrption: undefined,
+          description: undefined,
           external_metadata: {
             ...task1,
             portal_id: portalId,
@@ -292,7 +292,7 @@ describe('ZohoService', () => {
           external_status: 'status',
           key: 'key2',
           name: undefined,
-          descrption: undefined,
+          description: undefined,
           external_metadata: {
             ...task2,
             portal_id: portalId,
@@ -308,9 +308,9 @@ describe('ZohoService', () => {
           accountId: Number(accountId),
         },
       });
-      mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
+      mockedAxios.get.mockResolvedValue({ data: { tasks: tasksData } });
 
-      const result = await zohoService.getTasks(userDummy.id, projectId, portalId);
+      const result = await zohoService.getTasks(userDummy.id, portalId, projectId);
 
       expect(result).toEqual(taskResult);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(

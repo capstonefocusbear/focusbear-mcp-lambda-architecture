@@ -174,7 +174,7 @@ describe('jiraService', () => {
 
     it('positive: should retrieve tasks owned by the user when the request is successful', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
-      mockedAxios.get.mockResolvedValueOnce(response);
+      mockedAxios.get.mockResolvedValue(response);
       const result = await jiraService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
 
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(

@@ -442,7 +442,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         }
       }
     }
-    throw new Error('Failed to update task status after trying to get new access token.');
+    throw new Error(`Failed to ${this.platform} get task owned by user after trying to get new access token`);
   }
 
   // get All tasks owned by user in system

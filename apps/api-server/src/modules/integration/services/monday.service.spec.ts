@@ -319,9 +319,9 @@ describe('mondayService', () => {
           access_token: 'token123',
         },
       });
-      mockedAxios.post.mockResolvedValueOnce({ data: { data: { boards: [{ items: tasksData }] } } });
+      mockedAxios.post.mockResolvedValue({ data: { data: { boards: [{ items: tasksData }] } } });
 
-      const result = await mondayService.getTasks(userDummy.id, projectId, portalId);
+      const result = await mondayService.getTasks(userDummy.id, portalId, projectId);
 
       expect(result).toEqual([resultTask]);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(

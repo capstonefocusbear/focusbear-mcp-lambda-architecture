@@ -330,12 +330,12 @@ describe('trelloService', () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
         data: trelloData,
       });
-      mockedAxios.get.mockResolvedValueOnce({ data: [task] });
+      mockedAxios.get.mockResolvedValue({ data: [task] });
       const params = {
         key: trelloData.client_id,
         token: trelloData.access_token,
       };
-      const result = await trelloService.getTasks(userDummy.id, projectId, null);
+      const result = await trelloService.getTasks(userDummy.id, null, projectId);
 
       expect(result).toEqual(resultTasks);
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(

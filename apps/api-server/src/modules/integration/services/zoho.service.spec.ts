@@ -509,73 +509,73 @@ describe('ZohoService', () => {
       );
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
-  });
 
-  it('positive: should return tasks data', async () => {
-    const projectId = 'project123';
-    const portalId = 'portal123';
-    const accountId = '12345';
-    const task1 = {
-      id_string: 'task1',
-      key: 'key1',
-      status: { id: 'status' },
-      details: { owners: [{ id: accountId }] },
-    };
-    const task2 = {
-      id_string: 'task2',
-      key: 'key2',
-      status: { id: 'status' },
-      details: { owners: [{ id: accountId }] },
-    };
-    const tasksData = [task1, task2];
-    const taskResult = [
-      {
-        id: 'task1',
-        external_status: 'status',
+    it('positive: should return tasks data', async () => {
+      const projectId = 'project123';
+      const portalId = 'portal123';
+      const accountId = '12345';
+      const task1 = {
+        id_string: 'task1',
         key: 'key1',
-        name: undefined,
-        description: undefined,
-        external_metadata: {
-          ...task1,
-          portal_id: portalId,
-          project_id: projectId,
-        },
-      },
-      {
-        id: 'task2',
-        external_status: 'status',
+        status: { id: 'status' },
+        details: { owners: [{ id: accountId }] },
+      };
+      const task2 = {
+        id_string: 'task2',
         key: 'key2',
-        name: undefined,
-        description: undefined,
-        external_metadata: {
-          ...task2,
-          portal_id: portalId,
-          project_id: projectId,
+        status: { id: 'status' },
+        details: { owners: [{ id: accountId }] },
+      };
+      const tasksData = [task1, task2];
+      const taskResult = [
+        {
+          id: 'task1',
+          external_status: 'status',
+          key: 'key1',
+          name: undefined,
+          description: undefined,
+          external_metadata: {
+            ...task1,
+            portal_id: portalId,
+            project_id: projectId,
+          },
         },
-      },
-    ];
+        {
+          id: 'task2',
+          external_status: 'status',
+          key: 'key2',
+          name: undefined,
+          description: undefined,
+          external_metadata: {
+            ...task2,
+            portal_id: portalId,
+            project_id: projectId,
+          },
+        },
+      ];
 
-    PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
-      data: {
-        location: 'us',
-        access_token: 'token123',
-        accountId: Number(accountId),
-      },
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValue({
+        data: {
+          location: 'us',
+          access_token: 'token123',
+          accountId: Number(accountId),
+        },
+      });
+      mockedAxios.get.mockResolvedValue({ data: { tasks: tasksData } });
+
+      const result = await zohoService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
+
+      expect(result).toEqual(taskResult);
+      expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+      );
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/`,
+        {
+          headers: { Authorization: 'Bearer token123' },
+        },
+      );
     });
-    mockedAxios.get.mockResolvedValueOnce({ data: { tasks: tasksData } });
-
-    const result = await zohoService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
-
-    expect(result).toEqual(taskResult);
-    expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
-      IntegrationPlatforms.ZOHO,
-      userDummy.id,
-    );
-    expect(mockedAxios.get).toHaveBeenCalledWith(
-      `https://projectsapi.zoho.com/restapi/portal/${portalId}/projects/${projectId}/tasks/`,
-      {
-        headers: { Authorization: 'Bearer token123' },
-      },
-    );
   });
 });

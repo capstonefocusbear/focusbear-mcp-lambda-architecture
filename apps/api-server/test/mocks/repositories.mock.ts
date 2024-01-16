@@ -212,6 +212,10 @@ export const EventsRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
+export const TrackEventRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const UserFeedbackRepositoryMock = {
   ...BaseRepositoryMock,
 };

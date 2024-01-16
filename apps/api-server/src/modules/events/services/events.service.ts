@@ -25,6 +25,9 @@ import {
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
 import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
+import { TrackEventRepository } from '../repositories/track-event.repository';
+import { OperatingSystem } from '../../device/domain/operating-system.enum';
+import { TrackEvent } from '../entities/track-event.entity';
 
 @Injectable()
 export class EventsService {
@@ -37,6 +40,7 @@ export class EventsService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly emailService: SendGridService,
     private readonly deviceService: DeviceService,
+    private readonly trackEventRepository: TrackEventRepository,
   ) {}
 
   async handleIncomingEvent(
@@ -51,38 +55,40 @@ export class EventsService {
         message: 'Adding event to track-event queue',
         data: {
           user_id,
+          device_id,
+          app_version,
         },
       });
+
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
-      const { event_type, event_data } = trackEventDto;
-      const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
-      const hasFeedback = !!event_data?.data?.feedback;
-      if (shouldLogEvent) {
-        await this.logEventInSlack(user_id, trackEventDto);
-      }
-      if (shouldLogEvent && hasFeedback) {
-        await this.emailQuitFeedback(trackEventDto, userAuth0Data.email);
-      }
-      if (
-        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE ||
-        event_type === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE
-      ) {
-        await this.handleMobilePostpone(user_id, event_type, trackEventDto.event_data.data.quantity, user.language);
-      }
-      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
-        await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.quantity);
-      }
-      if (DISTRACTION_BLOCK_EVENTS.includes(event_type as EventTypes)) {
-        await this.userDailyStatsService.updateDistractionBlockCount(user_id, user.timezone);
-      }
+      const { email } = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
+      const { event_type } = trackEventDto;
+      await this.handleEventBroadcast(user_id, trackEventDto, email);
+      await this.handleMobilePostpone(
+        user_id,
+        event_type as EventTypes,
+        trackEventDto?.event_data?.data?.quantity,
+        user.language,
+      );
+
       await this.eventsQueue.add(BullWorkers.TRACK_EVENT, {
         user_id,
-        email: userAuth0Data.email,
+        email,
         trackEventDto,
       });
-      await this.deviceService.updateDeviceAppVersion(device_id, app_version);
+      let device = null;
+      if (device_id) {
+        device = await this.deviceService.updateDeviceAppVersion(device_id, app_version);
+      }
+
+      await this.saveTrackEvent(user_id, trackEventDto, device?.operating_system ?? null);
+      await this.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.quantity);
+
+      const isDistractionBlockEvent = DISTRACTION_BLOCK_EVENTS.includes(event_type as EventTypes);
+      if (isDistractionBlockEvent) {
+        await this.userDailyStatsService.updateDistractionBlockCount(user_id, user.timezone);
+      }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -112,6 +118,9 @@ export class EventsService {
   }
 
   async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {
+    const isPostponeEvent =
+      eventType === EventTypes.POSTPONE_HABITS_FROM_MOBILE || eventType === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE;
+    if (!isPostponeEvent) return;
     // Convert minutes to postpone to milliseconds
     const durationMilliseconds = durationMinutes * ONE_MINUTE;
     await this.eventsQueue.add(
@@ -148,7 +157,21 @@ export class EventsService {
     }
   }
 
+  async handleEventBroadcast(userId: string, trackEventDto: TrackEventDto, email: string) {
+    const { event_data, event_type } = trackEventDto;
+    const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
+    const hasFeedback = !!event_data?.data?.feedback;
+    if (shouldLogEvent) {
+      await this.logEventInSlack(userId, trackEventDto);
+    }
+    if (shouldLogEvent && hasFeedback) {
+      await this.emailQuitFeedback(trackEventDto, email);
+    }
+  }
+
   async saveImpactEvent(eventType: EventTypes, userId: string, quantity = 0) {
+    const isImpactMeasurementEvent = IMPACT_MEASUREMENT_EVENT_TYPES.includes(eventType);
+    if (!isImpactMeasurementEvent) return;
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -162,5 +185,17 @@ export class EventsService {
     const impactCategory = EVENTS_TO_IMPACT_CATEGORIES_MAP[eventType];
     const impactEvent = new ImpactEvent({ user_id: userId, impact_category: impactCategory, quantity });
     await this.eventsRepository.orm.save(impactEvent);
+  }
+
+  async saveTrackEvent(userId: string, trackEventDto: TrackEventDto, operatingSystem?: OperatingSystem) {
+    const { user_properties, event_type, event_data } = trackEventDto;
+    const trackEvent = new TrackEvent({
+      user_id: userId,
+      operating_system: operatingSystem,
+      user_properties,
+      event_data,
+      event_type,
+    });
+    await this.trackEventRepository.orm.save(trackEvent);
   }
 }

@@ -38,6 +38,7 @@ import { TeamToAdmin } from '../apps/api-server/src/modules/team/entities/team-t
 import { TeamToMember } from '../apps/api-server/src/modules/team/entities/team-to-member.entity';
 import { CalendarExcludedKeyword } from '../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../apps/api-server/src/modules/calendar/entities/calendar.entity';
+import { TrackEvent } from '../apps/api-server/src/modules/events/entities/track-event.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -87,7 +88,8 @@ export const CronJobDataSource = new DataSource({
     TeamToAdmin,
     TeamToMember,
     CalendarExcludedKeyword,
-    Calendar
+    Calendar,
+    TrackEvent,
   ],
   subscribers: [],
   migrations: [],

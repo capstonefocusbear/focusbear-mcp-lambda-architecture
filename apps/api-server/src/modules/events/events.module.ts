@@ -13,9 +13,10 @@ import { EventsRepository } from './repositories/events.repository';
 import { UserModule } from '../user/user.module';
 import { DeviceModule } from '../device/device.module';
 import { BullQueues } from '../../shared/utils/constants';
+import { TrackEventRepository } from './repositories/track-event.repository';
 
 @Module({
-  providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository],
+  providers: [EventsService, BrevoService, UserRepository, EventsConsumer, EventsRepository, TrackEventRepository],
   exports: [EventsService],
   imports: [
     BullModule.forRootAsync({

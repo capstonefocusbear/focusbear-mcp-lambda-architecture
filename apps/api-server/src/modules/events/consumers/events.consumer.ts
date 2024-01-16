@@ -46,10 +46,19 @@ export class EventsConsumer {
         );
       }
       const brevoResponse = await this.brevoService.registerBrevoEvent(email, trackEventDto);
+
       this.sentryService
         .instance()
-        .captureMessage(
-          `Save Brevo event response status: ${brevoResponse.status} Data: ${JSON.stringify(brevoResponse.data)}`,
+        .addBreadcrumb(
+          {
+            category: 'Service',
+            level: 'debug',
+            message: `Save Brevo event response status: ${brevoResponse.status} Data: ${JSON.stringify(brevoResponse.data)}`,
+            data: {
+              user_id,
+              track_event: trackEventDto,
+            },
+          }
         );
       // update user updated_at field to indicate activity
       await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });

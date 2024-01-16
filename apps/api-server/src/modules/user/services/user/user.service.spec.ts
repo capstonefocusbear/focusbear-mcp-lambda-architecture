@@ -126,6 +126,7 @@ describe('UserService', () => {
     userService = moduleRef.get<UserService>(UserService);
 
     jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -173,13 +174,15 @@ describe('UserService', () => {
 
     it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
       Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 
       await userService.syncUserAccount(syncAccountDto);
 
+      expect(UserRepositoryMock.create).toBeCalled();
       expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email);
       expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toBeCalled();
@@ -314,7 +317,7 @@ describe('UserService', () => {
 
     it('negative: if there is no user throw NotFoundExcaption', async () => {
       const user_id = randomUUID();
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       let exception: any;
 
       try {

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -84,5 +84,6 @@ export class CreateCompletedActivityDto {
 
   @IsOptional()
   @IsArray()
+  @Transform(({ value }) => (value === '' ? [] : value))
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

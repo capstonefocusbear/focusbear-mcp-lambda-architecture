@@ -262,7 +262,7 @@ export class SyncEventsConsumer {
       await this.notificationRepository.orm.delete({ external_id: In(eventsToRemoveIds) });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      console.error('Error in sync-events-for-platform queued job: ', JSON.stringify(error));
+      console.error('Error in sync-events-for-platform queued job: ', error);
     }
   }
 }

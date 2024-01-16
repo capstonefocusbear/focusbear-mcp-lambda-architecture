@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
@@ -50,5 +50,6 @@ export class CreateSkippedActivityDto {
 
   @IsOptional()
   @IsArray()
+  @Transform(({ value }) => (value === '' ? [] : value))
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

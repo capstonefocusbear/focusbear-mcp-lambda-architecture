@@ -53,9 +53,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: {
-      rejectUnauthorized: false, // You might set this to `true` in production if you have the right CA
-    },
+    ssl: process.env.NODE_ENV === 'dev',
     entities: [
       User,
       Activity,

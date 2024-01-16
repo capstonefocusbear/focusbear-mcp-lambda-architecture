@@ -60,7 +60,7 @@ export class SyncTasksConsumer {
       ]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      console.error('Error in sync-project-tasks queued job: ', JSON.stringify(error));
+      console.error('Error in sync-project-tasks queued job: ', error);
     }
   }
 

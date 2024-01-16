@@ -82,16 +82,13 @@ export class UserService {
         message: 'Syncing user account',
         data: {
           auth0_id,
-          email,
         },
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
-      const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
-      if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
-      const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+      const subscriptionStatus = await this.getSubscription(id);
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -506,6 +503,7 @@ export class UserService {
 
   async getSubscription(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    // TODO add breadcrumbs here
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const shouldUpdateCache = this.shouldSyncWithRevenueCat(user);
     if (shouldUpdateCache) {

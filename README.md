@@ -35,6 +35,7 @@ $ touch .env
 ```bash
 $ SERVER_PORT = 5038
 $ SERVER_HOST = 127.0.0.1
+$ NODE_ENV = 
 
 # populate those variables with your local DB values to connect with
 $ POSTGRES_PORT =

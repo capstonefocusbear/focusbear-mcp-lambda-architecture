@@ -61,9 +61,7 @@ services:
   - fromGroup: backend-env-group
 - type: redis
   name: focus-bear-redis
-  ipAllowList: # required - allow external connections from only these CIDR blocks
-    - source: # add IP address here
-      description: # add name here
+  ipAllowList: [] # only allows internal connections, check https://docs.render.com/blueprint-spec for allowing external connections
   region: oregon # optional (defaults to oregon)
   plan: starter # optional (defaults to starter instance type)
   previewPlan: starter # optional (defaults to the value specified by 'plan')

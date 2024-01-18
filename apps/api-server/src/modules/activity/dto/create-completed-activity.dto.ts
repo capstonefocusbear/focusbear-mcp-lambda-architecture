@@ -32,6 +32,16 @@ export function IsTimestampGreaterThan(property: string, validationOptions?: Val
   };
 }
 
+function transformLogQuantityAnswers({ value }) {
+  if (value === '') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((item: any) => item !== '');
+  }
+  return value;
+}
+
 export class CreateCompletedActivityDto {
   @IsNotEmpty()
   @IsUUID('4')
@@ -84,6 +94,6 @@ export class CreateCompletedActivityDto {
 
   @IsOptional()
   @IsArray()
-  @Transform(({ value }) => (value === '' ? [] : value))
+  @Transform(transformLogQuantityAnswers)
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

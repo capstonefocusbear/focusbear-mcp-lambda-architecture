@@ -54,7 +54,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: process.env.NODE_ENV === 'dev',
+    ssl: process.env.NODE_ENV !== undefined && process.env.NODE_ENV === 'dev',
     entities: [
       User,
       Activity,

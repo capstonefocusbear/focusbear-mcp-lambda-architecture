@@ -148,6 +148,11 @@ export class CompletedActivityService {
       );
 
       if (completedActivity.log_quantity_answers?.length > 0) {
+        console.log('Log-quantity debug data:', {
+          headers,
+          completedActivity,
+          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+        });
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, completedActivity.log_quantity_answers);
       }
 

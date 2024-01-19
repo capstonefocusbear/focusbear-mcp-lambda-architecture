@@ -1,5 +1,5 @@
 # Builder
-FROM node:14
+FROM node:20
 
 # Prepare data
 WORKDIR /app/backend

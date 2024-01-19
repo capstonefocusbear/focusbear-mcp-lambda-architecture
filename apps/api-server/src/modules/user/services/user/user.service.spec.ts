@@ -157,7 +157,7 @@ describe('UserService', () => {
     };
 
     it('negative: if user account does not exist in Auth, throw the NotFoundException', async () => {
-      Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(undefined);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(undefined);
       const errorMessage = 'User does not exist in Auth0!';
       let exception: any;
 
@@ -173,7 +173,7 @@ describe('UserService', () => {
     });
 
     it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
-      Auth0ManagementServiceMock.getUser.mockResolvedValueOnce(auth0UserDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
@@ -196,7 +196,7 @@ describe('UserService', () => {
 
     it('positive: getUserDetails should be called', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getUser.mockResolvedValueOnce({ email: auth0UserDummy.email });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: auth0UserDummy.email });
       PlatformIntegrationsServiceMock.getUserSyncedPlatforms({
         zoho: true,
         jira: false,

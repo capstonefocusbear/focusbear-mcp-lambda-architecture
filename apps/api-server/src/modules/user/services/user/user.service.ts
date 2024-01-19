@@ -105,7 +105,7 @@ export class UserService {
         auth0_id,
       },
     });
-    const auth0UserPromise = this.auth0ManagementService.getUser({ id: auth0_id }).catch(() => undefined);
+    const auth0UserPromise = this.auth0ManagementService.getAuth0User(auth0_id).catch(() => undefined);
     const dbUserPromise = this.userRepository.orm.findOne({ where: { auth0_id } });
     const [auth0User, dbUser] = await Promise.all([auth0UserPromise, dbUserPromise]);
     return [auth0User, dbUser];
@@ -181,7 +181,7 @@ export class UserService {
       });
       const userDetails = await this.userRepository.getUserDetails(id);
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
-      const { email } = await this.auth0ManagementService.getUser({ id: userDetails.auth0_id });
+      const { email } = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const { focus_modes } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {

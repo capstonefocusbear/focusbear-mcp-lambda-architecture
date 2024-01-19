@@ -304,7 +304,6 @@ describe('TeamManagementService', () => {
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
         team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
       });
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
       ConfigServiceMock.get.mockReturnValueOnce('test-secret');
       let exception;
       const errorMessage = `Unable to invite more members to team with ID: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
@@ -329,7 +328,6 @@ describe('TeamManagementService', () => {
 
     it('positive: jwt should be created with email and owner_id in payload', async () => {
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
       ConfigServiceMock.get.mockReturnValueOnce('test-secret');
 
       await teamManagementService.inviteTeamMember(userDummy.id, {
@@ -361,7 +359,6 @@ describe('TeamManagementService', () => {
       const singedJwt = 'some.test.jwt.string';
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
 
       await teamManagementService.inviteTeamMember(userDummy.id, {
         email,
@@ -390,7 +387,6 @@ describe('TeamManagementService', () => {
       });
       const singedJwt = 'some.test.jwt.string';
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce([]);
 
       await teamManagementService.inviteTeamMember(userDummy.id, {
         email,

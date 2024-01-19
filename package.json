@@ -49,7 +49,7 @@
     "@sentry/node": "^7.22.0",
     "@types/html-to-text": "^9.0.0",
     "api": "^4.5.1",
-    "auth0": "^2.40.0",
+    "auth0": "^4.2.0",
     "aws-sdk": "^2.1292.0",
     "axios": "^1.4.0",
     "axios-retry": "^3.6.0",

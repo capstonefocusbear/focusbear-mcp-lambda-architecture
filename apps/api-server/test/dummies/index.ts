@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { User as Auth0User } from 'auth0';
+import { UserProfile as Auth0UserProfile } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
 import { CalendarPlatforms } from '../../src/modules/platform-integrations/domain/calendar-platforms.enum';
@@ -73,7 +73,7 @@ export const adminUserDummy = new User(
   { generateId: false },
 );
 
-export const auth0UserDummy: Auth0User = {
+export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,

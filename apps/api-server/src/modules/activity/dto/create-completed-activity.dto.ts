@@ -32,7 +32,7 @@ export function IsTimestampGreaterThan(property: string, validationOptions?: Val
   };
 }
 
-function transformLogQuantityAnswers({ value }) {
+export function transformLogQuantityAnswers({ value }) {
   if (value === '') {
     return [];
   }

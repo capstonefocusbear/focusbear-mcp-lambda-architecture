@@ -265,6 +265,10 @@ export class CompletedActivityService {
     );
     let logQuantityAnswers = [];
     if (log_quantity_answers?.length > 0) {
+      console.log('Log-quantity debug data for break activity:', {
+        completedActivity,
+        log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+      });
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
     await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
@@ -436,6 +440,10 @@ export class CompletedActivityService {
       );
 
       if (log_quantity_answers?.length > 0) {
+        console.log('Log-quantity debug data for offline activity:', {
+          completedActivity,
+          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+        });
         await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
 

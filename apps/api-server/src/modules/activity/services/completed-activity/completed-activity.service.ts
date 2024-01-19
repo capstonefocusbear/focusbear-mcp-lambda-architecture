@@ -1639,19 +1639,25 @@ export class CompletedActivityService {
     return completedActivities.map((completedActivity) => completedActivity.activity_id);
   }
 
+  findActivitySequenceId(activityId: string, activities: Activity[]) {
+    const matchingActivity = activities.find((activity) => activity.id === activityId);
+    return matchingActivity.activity_sequence_id;
+  }
+
   async addSequenceIdsToCompletedActivities(
     completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
   ): Promise<(CreateCompletedActivityDto | CreateSkippedActivityDto)[]> {
-    const activityIds = completedActivities.map((completedActivity) => completedActivity.activity_id);
-    const activitiesFromDB = await this.activityRepository.orm.find({ where: { id: In(activityIds) } });
-    const findActivitySequenceId = (activityId: string, activities: Activity[]) => {
-      const matchingActivity = activities.find((activity) => activity.id === activityId);
-      return matchingActivity.activity_sequence_id;
-    };
-    const activitiesWithSequenceIds = completedActivities.map((completedActivity) => {
+    const completedActivityIds = completedActivities.map((completedActivity) => completedActivity.activity_id);
+    const activitiesFromDB = await this.activityRepository.orm.find({ where: { id: In(completedActivityIds) } });
+    // filter out activities that could have been deleted
+    const existingCompletedActivities = completedActivities.filter((completedActivity) => {
+      const matchingActivity = activitiesFromDB.find((activity) => activity.id === completedActivity.activity_id);
+      return matchingActivity !== undefined;
+    });
+    const activitiesWithSequenceIds = existingCompletedActivities.map((completedActivity) => {
       return {
         ...completedActivity,
-        activity_sequence_id: findActivitySequenceId(completedActivity.activity_id, activitiesFromDB),
+        activity_sequence_id: this.findActivitySequenceId(completedActivity.activity_id, activitiesFromDB),
       };
     });
     return activitiesWithSequenceIds;

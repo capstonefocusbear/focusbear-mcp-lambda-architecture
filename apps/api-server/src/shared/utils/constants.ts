@@ -4,6 +4,7 @@ import { EventTypes } from '../../modules/events/domain/event-types.enum';
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
+export const TRIAL_DURATION_DAYS = 7;
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
 export const STRIPE_API_VERSION = '2022-08-01';
 export const FOCUS_BEAR_EMAILS = {

@@ -184,7 +184,7 @@ When creating test files for services within the NestJS project scope, create th
 
 #### Preview Environments
 
-To test a new feature related to backend changes, a preview server can be set up that will be connected with a preview DB. To set up a preview environment, commit your changes to a feature branch and open a pull request to the main branch. Under the pull request's 'Conversation' tab, scroll to find a message similar to 'temporarily deployed to... eyst-backend-prod PR' and click on it to open the staging server's dashboard in Render. From here you'll be able to copy the staging server's URL, which will be in a similar format to `https://eyst-backend-prod-pr-710.onrender.com`. This process will also set up the preview database to which you can get login credentials by clicking on the message 'deployed to... - eyst-postgres' under the 'Conversation' tab as well.
+To test backend changes, a preview server can be set up that will be connected with a preview DB and Redis instance. To set up a preview environment, commit your changes to a feature branch and open a pull request to the main branch. To access preview environments, navigate to Render.com > Blueprints > backend-api [PR #number of pull request in GitHub]. From here you can get the staging server URI and database and Redis instance configuration.
 
 The preview DB will be seeded with a test user and some additional records linked to them that can be used for testing. Seed scripts are located at `./apps/api-server/seeds`. For convenience, it's recommended to use the seed user's account registered in Focus Bear when getting an access token locally. (Ask for login credentials)
 

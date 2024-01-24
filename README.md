@@ -206,6 +206,10 @@ Use the HTTPS protocol link returned from Ngrok to update the Ngrok webhook in t
 
 For any events that trigger the webhook, the local POST `/subscription/webhooks/stripe` endpoint will be called.
 
+### Example Video of Making Change
+
+[Google Doc containing video links](https://docs.google.com/document/d/1ZiiIcFibBE3fQXuY18tFXiIoSFqq1mfYo6CQkzpZgEk/edit?usp=sharing)
+
 
 
 

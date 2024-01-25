@@ -26,6 +26,8 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   private readonly platform = IntegrationPlatforms.GOOGLE;
 
+  private readonly nodeEnv: string;
+
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
@@ -33,9 +35,19 @@ export class GoogleAuthService implements IIntegrationAuthService {
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly googleCalendarService: GoogleCalendarService,
   ) {
-    this.clientId = this.configService.get(`${this.platform.toUpperCase()}_CLIENT_ID`);
-    this.clientSecret = this.configService.get(`${this.platform.toUpperCase()}_CLIENT_SECRET`);
-    this.callbackUrl = this.configService.get(`${this.platform.toUpperCase()}_CALLBACK_URL`);
+    this.nodeEnv = this.configService.get('NODE_ENV');
+    this.clientId =
+      this.nodeEnv !== undefined && this.nodeEnv === 'dev'
+        ? this.configService.get(`${this.platform.toUpperCase()}_DEVELOPMENT_CLIENT_ID`)
+        : this.configService.get(`${this.platform.toUpperCase()}_CLIENT_ID`);
+    this.clientSecret =
+      this.nodeEnv !== undefined && this.nodeEnv === 'dev'
+        ? this.configService.get(`${this.platform.toUpperCase()}_DEVELOPMENT_CLIENT_SECRET`)
+        : this.configService.get(`${this.platform.toUpperCase()}_CLIENT_SECRET`);
+    this.callbackUrl =
+      this.nodeEnv !== undefined && this.nodeEnv === 'dev'
+        ? this.configService.get(`${this.platform.toUpperCase()}_DEVELOPMENT_CALLBACK_URL`)
+        : this.configService.get(`${this.platform.toUpperCase()}_CALLBACK_URL`);
 
     this.oauth2Client = new google.auth.OAuth2(this.clientId, this.clientSecret, this.callbackUrl);
   }

@@ -59,9 +59,19 @@ export class GoogleCalendarService extends BaseCalendarService {
       userId,
       account,
     );
-    const clientId = this.configService.get(`${platform.toUpperCase}_CLIENT_ID`);
-    const clientSecret = this.configService.get(`${platform.toUpperCase()}_CLIENT_SECRET`);
-    const callbackUrl = this.configService.get(`${platform.toUpperCase()}_CALLBACK_URL`);
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const clientId =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get(`${platform.toUpperCase()}_DEVELOPMENT_CLIENT_ID`)
+        : this.configService.get(`${platform.toUpperCase()}_CLIENT_ID`);
+    const clientSecret =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get(`${platform.toUpperCase()}_DEVELOPMENT_CLIENT_SECRET`)
+        : this.configService.get(`${platform.toUpperCase()}_CLIENT_SECRET`);
+    const callbackUrl =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get(`${platform.toUpperCase()}_DEVELOPMENT_CALLBACK_URL`)
+        : this.configService.get(`${platform.toUpperCase()}_CALLBACK_URL`);
 
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(googleIntegrationRecord.data);

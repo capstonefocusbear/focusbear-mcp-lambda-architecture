@@ -146,6 +146,8 @@ This reverts only the latest migration script reflected in the DB.
 
 To see which migrations are already reflected in the DB, view the entries of the `migrations` table in your local or production DB.
 
+To connect to the production database locally, update .env config for database connection and set `ssl: true` in `apps/api-server/src/config/typeorm.config.ts` before starting local server.
+
 ### Running Unit Tests
 
 To run all unit tests, open the terminal and run

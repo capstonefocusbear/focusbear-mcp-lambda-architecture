@@ -512,14 +512,13 @@ export class UserService {
     if (!shouldUpdateCache && user.revenue_cat_data) {
       return user.revenue_cat_data;
     }
-    // if there's no cache to use or cache is outdated, get data from RevenueCat directly
-    const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
-    if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
     try {
+      const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
+      if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
       return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
     } catch (error) {
       // Return user subscription status as trialing if error getting status from Revenue Cat
-      if (error?.statusCode === 429) {
+      if (error?.statusCode === 429 || error?.response?.status === 429) {
         return this.revenueCatService.getTrialSubscription();
       }
       this.sentryService.instance().captureException(error, { level: 'error' });

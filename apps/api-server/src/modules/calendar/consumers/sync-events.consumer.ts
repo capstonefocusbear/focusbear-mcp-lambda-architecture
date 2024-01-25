@@ -43,9 +43,19 @@ export class SyncEventsConsumer {
     const record = await this.platformIntegrationRepository.orm.findOne({
       where: { user_id: userId, platform, external_user_id: account },
     });
-    const clientId = this.configService.get('GOOGLE_CLIENT_ID');
-    const clientSecret = this.configService.get('GOOGLE_CLIENT_SECRET');
-    const callbackUrl = this.configService.get('GOOGLE_CALLBACK_URL');
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const clientId =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get('GOOGLE_DEVELOPMENT_CLIENT_ID')
+        : this.configService.get('GOOGLE_CLIENT_ID');
+    const clientSecret =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get('GOOGLE_DEVELOPMENT_CLIENT_SECRET')
+        : this.configService.get('GOOGLE_CLIENT_SECRET');
+    const callbackUrl =
+      nodeEnv !== undefined && nodeEnv === 'dev'
+        ? this.configService.get('GOOGLE_DEVELOPMENT_CALLBACK_URL')
+        : this.configService.get('GOOGLE_CALLBACK_URL');
 
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);

@@ -18,6 +18,9 @@ services:
     value: 4000
   - key: SERVER_HOST
     value: 0.0.0.0
+  - key: NODE_ENV
+    value: prod
+    previewValue: dev
   - key: REDIS_HOSTNAME
     fromService:
       type: redis

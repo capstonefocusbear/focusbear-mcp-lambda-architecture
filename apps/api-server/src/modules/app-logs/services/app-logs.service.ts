@@ -4,6 +4,8 @@ import { R2Service } from '@app/r2';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
+import { SendGridService } from '@app/send-grid';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { maskEmail } from '../../../shared/utils/helpers';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -16,6 +18,7 @@ export class AppLogsService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly userRepository: UserRepository,
+    private readonly emailService: SendGridService,
   ) {}
 
   async uploadFile(request: FileUploadRequest, response: FastifyReply, user_id: string): Promise<any> {
@@ -47,13 +50,26 @@ export class AppLogsService {
         email: maskEmail(auth0User.email),
         log_url: presignedUrl,
       });
-      await axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
-        text: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
-      });
+      await Promise.all([
+        axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
+          text: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
+        }),
+        this.emailFeedback(JSON.stringify(uninstallFeedback), auth0User.email),
+      ]);
       return await response.send('Upload successful!').status(201);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  async emailFeedback(data: any, email: string) {
+    await this.emailService.sendEmail({
+      to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT, FOCUS_BEAR_EMAILS.SUPPORT],
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      replyTo: email,
+      text: JSON.stringify(data),
+      subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+    });
   }
 }

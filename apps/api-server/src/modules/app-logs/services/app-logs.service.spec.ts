@@ -2,9 +2,11 @@ import { Test } from '@nestjs/testing';
 import { Auth0ManagementService } from '@app/auth0';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { R2Service } from '@app/r2';
+import { SendGridService } from '@app/send-grid';
 import {
   Auth0ManagementServiceMock,
   R2ServiceMock,
+  SendGridServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks/index';
@@ -21,6 +23,7 @@ describe('AppLogsService', () => {
         R2Service,
         Auth0ManagementService,
         UserRepository,
+        SendGridService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -33,6 +36,8 @@ describe('AppLogsService', () => {
       .useValue(R2ServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
 
     appLogsService = moduleRef.get<AppLogsService>(AppLogsService);

@@ -20,6 +20,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { Task } from '../../integration/domain/task.model';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 @Injectable()
 export class ToDoService {
@@ -27,7 +28,7 @@ export class ToDoService {
     private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
     private readonly toDoRepository: ToDoRepository,
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
-    @InjectQueue('time-logs') private timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
@@ -41,15 +42,38 @@ export class ToDoService {
           `User with ID: ${userId} is not allowed to edit todo with ID: ${existingToDo.id}!`,
         );
       }
+      return existingToDo;
     }
   }
 
-  async upsertToDo(user_id: string, upsertToDo: CreateToDoDto) {
-    if (upsertToDo.id) {
-      await this.validateUpdatingToDo(user_id, upsertToDo);
+  async upsertToDo(userId: string, updatedToDo: CreateToDoDto) {
+    let toDoFromDB = null;
+    if (updatedToDo.id) {
+      toDoFromDB = await this.validateUpdatingToDo(userId, updatedToDo);
     }
-    const tags = upsertToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id }));
-    const newToDo = new ToDo({ ...upsertToDo, user_id, updated_at: new Date().toISOString(), tags });
+    const DEFAULT_STATUSES: string[] = [ToDoStatus.NOT_STARTED, ToDoStatus.IN_PROGRESS, ToDoStatus.COMPLETED];
+    const tags = updatedToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id: userId }));
+    if (DEFAULT_STATUSES.includes(updatedToDo.status)) {
+      const newToDo = new ToDo({ ...updatedToDo, user_id: userId, updated_at: new Date().toISOString(), tags });
+      return this.toDoRepository.orm.save(newToDo);
+    }
+    // External status is used, check whether status should mark task as completed
+    const { available_statuses } = await this.syncedProjectsRepository.orm.findOneBy({
+      id: toDoFromDB.synced_project_id,
+    });
+    const selectedStatus = available_statuses.find((externalStatus) => externalStatus.status_id === updatedToDo.status);
+    if (!selectedStatus) {
+      throw new BadRequestException(
+        `Error while updating task external status. No external status found with ID: ${updatedToDo.status} for task with ID: ${updatedToDo.id}`,
+      );
+    }
+    const newToDo = new ToDo({
+      ...updatedToDo,
+      user_id: userId,
+      updated_at: new Date().toISOString(),
+      tags,
+      status: selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : selectedStatus.label,
+    });
     return this.toDoRepository.orm.save(newToDo);
   }
 
@@ -123,6 +147,10 @@ export class ToDoService {
             where: { user_id: userId, external_project_id: toDoProjectId },
           });
           const linkedTask = findTask(toDo.external_task_id, userTasks);
+          // handle not finding task (could have been deleted since last sync)
+          if (!linkedTask) {
+            return;
+          }
           const availableStatuses = syncedProject?.available_statuses;
           const externalStatusId = linkedTask?.external_status;
           const currentExternalStatus = availableStatuses.find((status) => status.status_id === externalStatusId);
@@ -205,7 +233,7 @@ export class ToDoService {
     await this.taskTimeLogsRepository.orm.save(timeLogs);
 
     if (tasksFromExternalPlatforms.length) {
-      await this.timeLogsQueue.add('save-task-time-log', {
+      await this.timeLogsQueue.add(BullWorkers.SAVE_TASK_TIME_LOG, {
         userId,
         toDoTimeLogs,
         toDos: tasksFromExternalPlatforms,

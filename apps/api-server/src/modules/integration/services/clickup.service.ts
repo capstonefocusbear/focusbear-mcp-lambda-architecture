@@ -3,6 +3,7 @@ import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { User } from '../../user/entities/user.entity';
@@ -16,6 +17,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { ClickUpAuthService } from '../../auth/services/clickup-auth.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { BullQueues } from '../../../shared/utils/constants';
 
 export class ClickUpService extends BaseIntegrationService {
   constructor(
@@ -26,7 +28,8 @@ export class ClickUpService extends BaseIntegrationService {
     protected readonly integrationAuthService: ClickUpAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -37,6 +40,7 @@ export class ClickUpService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.CLICK_UP,
       syncTasksQueue,
+      sentryService,
     );
   }
 
@@ -132,7 +136,8 @@ export class ClickUpService extends BaseIntegrationService {
     }));
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const tasks = await this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }

@@ -1,6 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
-import { CourseRating } from '../../course/entities/course-rating.entity';
 import { Course } from '../../course/entities/course.entity';
 
 @Entity('lessons')
@@ -23,10 +22,10 @@ export class Lesson extends BaseEntity {
   @Column({ type: 'text' })
   url: string;
 
+  @Column({ type: 'boolean', default: false })
+  deleted: boolean;
+
   @ManyToOne(() => Course, (course) => course.id, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course?: Course;
-
-  @OneToMany(() => CourseRating, (rating) => rating.lesson, { onDelete: 'NO ACTION', onUpdate: 'NO ACTION' })
-  ratings?: CourseRating[];
 }

@@ -6,12 +6,12 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
-import { IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsService } from '../services/events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 
-@Processor('events')
+@Processor(BullQueues.EVENTS)
 export class EventsConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -22,7 +22,7 @@ export class EventsConsumer {
     private readonly userRepository: UserRepository,
   ) {}
 
-  @Process('track-event')
+  @Process(BullWorkers.TRACK_EVENT)
   async readOperationJob(job: Job<{ trackEventDto: TrackEventDto; user_id: string; email: string }>) {
     const {
       data: { user_id, email, trackEventDto },
@@ -34,7 +34,7 @@ export class EventsConsumer {
         message: 'Registering Brevo event',
         data: {
           user_id,
-          treack_event: trackEventDto,
+          track_event: trackEventDto,
         },
       });
       const { event_type } = trackEventDto;
@@ -45,18 +45,25 @@ export class EventsConsumer {
           trackEventDto.event_data?.data?.quantity,
         );
       }
-      await this.brevoService.registerBrevoEvent(email, trackEventDto);
-      if (IMPACT_MEASUREMENT_EVENT_TYPES.includes(event_type as EventTypes)) {
-        await this.eventsService.saveImpactEvent(
-          event_type as EventTypes,
-          user_id,
-          trackEventDto.event_data?.data?.quantity,
+      const brevoResponse = await this.brevoService.registerBrevoEvent(email, trackEventDto);
+
+      this.sentryService
+        .instance()
+        .addBreadcrumb(
+          {
+            category: 'Service',
+            level: 'debug',
+            message: `Save Brevo event response status: ${brevoResponse.status} Data: ${JSON.stringify(brevoResponse.data)}`,
+            data: {
+              user_id,
+              track_event: trackEventDto,
+            },
+          }
         );
-      }
       // update user updated_at field to indicate activity
       await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Error in track-event queue for user with ID: ${user_id}\nTrack event: \`\`\`${JSON.stringify(
           trackEventDto,
@@ -65,24 +72,13 @@ export class EventsConsumer {
     }
   }
 
-  @Process('resume-notification')
+  @Process(BullWorkers.RESUME_NOTIFICATION)
   async sendResumeHabitsNotification(job: Job<{ user_id: string; event_type: EventTypes; language: string }>) {
     try {
       const {
         data: { user_id, event_type, language },
       } = job;
-      const title = this.i18nService.t(
-        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE
-          ? 'common.resume_habits_title'
-          : 'common.resume_focus_mode_title',
-        { lang: language },
-      );
-      const body = this.i18nService.t(
-        event_type === EventTypes.POSTPONE_HABITS_FROM_MOBILE
-          ? 'common.resume_habits_body'
-          : 'common.resume_focus_mode_body',
-        { lang: language },
-      );
+      const { title, body } = this.getNotificationTitleAndBody(language, event_type);
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
         title,
         body,
@@ -93,7 +89,23 @@ export class EventsConsumer {
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       console.error('Error in resume-habits-notification queued job:', error);
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
     }
+  }
+
+  getNotificationTitleAndBody(language: string, eventType: EventTypes) {
+    const title = this.i18nService.t(
+      eventType === EventTypes.POSTPONE_HABITS_FROM_MOBILE
+        ? 'common.resume_habits_title'
+        : 'common.resume_focus_mode_title',
+      { lang: language },
+    );
+    const body = this.i18nService.t(
+      eventType === EventTypes.POSTPONE_HABITS_FROM_MOBILE
+        ? 'common.resume_habits_body'
+        : 'common.resume_focus_mode_body',
+      { lang: language },
+    );
+    return { title, body };
   }
 }

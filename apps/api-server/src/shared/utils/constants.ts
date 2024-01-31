@@ -4,11 +4,13 @@ import { EventTypes } from '../../modules/events/domain/event-types.enum';
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
+export const TRIAL_DURATION_DAYS = 7;
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
 export const STRIPE_API_VERSION = '2022-08-01';
 export const FOCUS_BEAR_EMAILS = {
   MARKETING: 'marketing@focusbear.io',
   SUPPORT: 'support@focusbear.io',
+  ZOHO_DESK_SUPPORT: 'support@focusbear.zohodesk.com.au',
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
@@ -16,7 +18,9 @@ export const EMAIL_TEMPLATE_IDS = {
 export const A_TEAM = 'a team';
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
-  APP_UNINSTALL_FEEDBACK: 'App Uninstall Feedback',
+  APP_QUIT_FEEDBACK: 'App Quit Feedback',
+  USER_FEEDBACK_AND_APP_LOGS: 'User Feedback Add App Logs',
+  USER_SURVEY_FEEDBACK: 'User Survey Feedback',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;
@@ -71,9 +75,11 @@ export const UTC_TO_IANA_MAP = {
   '-12:00': 'Etc/UTC-12',
 };
 
-export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+export const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+const DEON_USER_ID = 'fb9c4498-cfc1-4342-8cb1-4cf026f59a72';
+export const IDS_TO_LOG_FOR = [JEREMYS_USER_ID, DEON_USER_ID];
 
-export const PROFITWELL_ADD_SUBSCRIPTION_ENDPOINT = 'https://api.profitwell.com/v2/subscriptions/';
+export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];
 
@@ -102,6 +108,30 @@ export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
 export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
+
+export enum BullQueues {
+  SYNC_EVENTS = 'sync-events',
+  REVENUE_CAT_STATUS = 'revenue-cat-status',
+  USER_DATA = 'user-data',
+  STATS = 'stats',
+  ACTIVITY_IMAGE = 'activity-image',
+  EVENTS = 'events',
+  TIME_LOGS = 'time-logs',
+  SYNC_TASKS = 'sync-tasks',
+}
+
+export enum BullWorkers {
+  DAILY_STATS_ACTIVITY_COMPLETED = 'daily-stats-activity-completed',
+  DELETE_ACTIVITY_IMAGE = 'delete-activity-image',
+  SYNC_EVENTS_FOR_PLATFORM = 'sync-events-for-platform',
+  TRACK_EVENT = 'track-event',
+  SYNC_PROJECT_TASKS = 'sync-project-tasks',
+  RESUME_NOTIFICATION = 'resume-notification',
+  MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  SAVE_TASK_TIME_LOG = 'save-task-time-log',
+  UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
+  GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+}
 
 export const createActivityFunction = {
   name: 'createActivity',

@@ -1,14 +1,14 @@
+import { IsArray, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsString } from 'class-validator';
 import { Lesson } from '../entities/lesson.entity';
 
-export class CreateLessonDto {
+export class UpsertLessonsDto {
   @IsNotEmpty()
   @IsString()
   course_id: string;
 
-  @IsNotEmpty()
   @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => Lesson)
   lessons: Lesson[];
 }

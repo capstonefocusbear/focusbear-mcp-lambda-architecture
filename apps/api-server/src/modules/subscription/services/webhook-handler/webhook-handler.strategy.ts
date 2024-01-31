@@ -2,14 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { isUUID } from '../../../../shared/utils/helpers';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class WebhookHandlerStrategy {
-  constructor(@InjectQueue('revenue-cat-status') private revenueCatQueue: Queue) {}
+  constructor(@InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue) {}
 
   async updateUserRevenueCatCache(user_id: string) {
     if (!isUUID(user_id)) return;
-    await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
+    await this.revenueCatQueue.add(BullWorkers.UPDATE_REVENUE_CAT_STATUS, { user_id });
   }
 
   async INITIAL_PURCHASE(event) {

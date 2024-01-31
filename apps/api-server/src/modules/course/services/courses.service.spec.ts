@@ -49,11 +49,12 @@ describe('CoursesService', () => {
   });
 
   describe('getAllCourses', () => {
-    it('positive: should fetch author owned and enrolled courses', async () => {
-      CoursesRepositoryMock.getAllAuthoredCourses.mockResolvedValueOnce([DummyCourseOne, DummyCourseThree]);
-      CoursesRepositoryMock.getAllEnrolledCourses.mockResolvedValueOnce([DummyCourseTwo]);
-      const result = await coursesService.getAllCourses(userDummy.id);
-      expect(result).toMatchObject([DummyCourseOne, DummyCourseThree, DummyCourseTwo]);
+    it('positive: should fetch courses', async () => {
+      CoursesRepositoryMock.getAllCourses.mockResolvedValueOnce([DummyCourseOne, DummyCourseThree]);
+      const result = await coursesService.getAllCourses({
+        skip: 50,
+      });
+      expect(result).toMatchObject([DummyCourseOne, DummyCourseThree]);
     });
   });
 
@@ -129,7 +130,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.deleteCourse(DummyCourseTwo.id, true, [UserTypes.ADMIN]);
+        await coursesService.deleteCourse(DummyCourseTwo.id, { deleted: true }, [UserTypes.ADMIN]);
       } catch (error) {
         exception = error;
       }
@@ -142,7 +143,7 @@ describe('CoursesService', () => {
       const responseMessage = 'User not allowed to perform the operation';
       let exception: any;
       try {
-        await coursesService.deleteCourse(DummyCourseTwo.id, true, [UserTypes.STANDARD]);
+        await coursesService.deleteCourse(DummyCourseTwo.id, { deleted: true }, [UserTypes.STANDARD]);
       } catch (error) {
         exception = error;
       }
@@ -152,7 +153,7 @@ describe('CoursesService', () => {
 
     it('positive: should delete the course, if the user role has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      await coursesService.deleteCourse(DummyCourseTwo.id, true, [UserTypes.ADMIN]);
+      await coursesService.deleteCourse(DummyCourseTwo.id, { deleted: true }, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseDeleted).toBeCalledWith(DummyCourseTwo.id, true);
     });
   });
@@ -163,7 +164,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.hideCourse(DummyCourseTwo.id, true, [UserTypes.ADMIN]);
+        await coursesService.hideCourse(DummyCourseTwo.id, { should_hide: true }, [UserTypes.ADMIN]);
       } catch (error) {
         exception = error;
       }
@@ -176,7 +177,7 @@ describe('CoursesService', () => {
       const responseMessage = 'User not allowed to perform the operation';
       let exception: any;
       try {
-        await coursesService.hideCourse(DummyCourseTwo.id, true, [UserTypes.STANDARD]);
+        await coursesService.hideCourse(DummyCourseTwo.id, { should_hide: true }, [UserTypes.STANDARD]);
       } catch (error) {
         exception = error;
       }
@@ -186,7 +187,7 @@ describe('CoursesService', () => {
 
     it('positive: should hide the course, if the user has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
-      await coursesService.hideCourse(DummyCourseOne.id, true, [UserTypes.ADMIN]);
+      await coursesService.hideCourse(DummyCourseOne.id, { should_hide: true }, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseHidden).toBeCalledWith(DummyCourseOne.id, true);
     });
   });
@@ -268,9 +269,7 @@ describe('CoursesService', () => {
       const responseMessage = `User with user_id ${nonExistUserDummy.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id, [
-          UserTypes.STANDARD,
-        ]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -285,7 +284,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course enrolment with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.STANDARD]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -300,7 +299,7 @@ describe('CoursesService', () => {
       const responseMessage = `Course enrolment with course_id ${DummyCourseEnrolments[1].course_id} couldn't be found`;
       let exception: any;
       try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.STANDARD]);
+        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       } catch (error) {
         exception = error;
       }
@@ -308,29 +307,28 @@ describe('CoursesService', () => {
       expect(exception.message).toMatch(responseMessage);
     });
 
-    it("negative: shouldn't update the enrolment if the user didn't owne the enrolment or is not an admin", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(nonExistUserDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      const responseMessage = `User with user_id ${nonExistUserDummy.id} not allowed to perform the operation`;
-      let exception: any;
-      try {
-        await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, nonExistUserDummy.id, [
-          UserTypes.STANDARD,
-        ]);
-      } catch (error) {
-        exception = error;
-      }
-      expect(exception).toBeInstanceOf(ForbiddenException);
-      expect(exception.message).toMatch(responseMessage);
-    });
-
     it('positive: should update a course enrolment status when a user enrolment found in DB ', async () => {
       CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
-      await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id, [UserTypes.ADMIN]);
+      await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
       expect(CoursesRepositoryMock.updateEnrolmentStatus).toBeCalledWith(DummyUpdateCourseEnrolmentDto);
+    });
+  });
+
+  describe('getUserCreatedCourses', () => {
+    it('positive: should fetch user created courses', async () => {
+      CoursesRepositoryMock.getAllAuthorCourses.mockResolvedValueOnce([DummyCourseOne, DummyCourseThree]);
+      const result = await coursesService.getUserCreatedCourses(userDummy.id);
+      expect(result).toMatchObject([DummyCourseOne, DummyCourseThree]);
+    });
+  });
+
+  describe('getUserNotEnrolledCourses', () => {
+    it('positive: should fetch user not enrolled courses', async () => {
+      CoursesRepositoryMock.getUserNotEnrolledCourses.mockResolvedValueOnce([DummyCourseThree]);
+      const result = await coursesService.getUserNotEnrolledCourses(userDummy.id);
+      expect(result).toMatchObject([DummyCourseThree]);
     });
   });
 });

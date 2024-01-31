@@ -1,8 +1,10 @@
-import { Column, ManyToOne, OneToMany, OneToOne, JoinColumn, Entity, Index } from 'typeorm';
+import { Column, ManyToOne, OneToMany, JoinColumn, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Lesson } from '../../lesson/entities/lesson.entity';
 import { CourseRating } from './course-rating.entity';
 import { User } from '../../user/entities/user.entity';
+import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
+import { CourseEnrolment } from './course-enrolment.enitiy';
 
 @Entity('courses')
 export class Course extends BaseEntity {
@@ -31,9 +33,15 @@ export class Course extends BaseEntity {
   @JoinColumn({ name: 'author_id' })
   author?: User;
 
-  @OneToMany(() => Lesson, (lesson) => lesson.course, { eager: true })
+  @OneToMany(() => LessonCompletion, (lesson_completion) => lesson_completion.course)
+  lessonCompletions?: LessonCompletion[];
+
+  @OneToMany(() => Lesson, (lesson) => lesson.course)
   lessons?: Lesson[];
 
-  @OneToOne(() => CourseRating, (courseRating) => courseRating.course)
-  ratings?: CourseRating;
+  @OneToMany(() => CourseRating, (courseRating) => courseRating.course)
+  ratings?: CourseRating[];
+
+  @OneToMany(() => CourseEnrolment, (course_enrolment) => course_enrolment.course)
+  enrollments?: CourseEnrolment[];
 }

@@ -116,7 +116,7 @@ export class OpenAIService {
 
       return await response.send(stream);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

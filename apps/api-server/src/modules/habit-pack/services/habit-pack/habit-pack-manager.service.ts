@@ -77,7 +77,7 @@ export class HabitPackManagerService {
         return response;
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -110,7 +110,7 @@ export class HabitPackManagerService {
       logQuantityQuestionsNewIdsMap,
     });
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, true);
+    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, false, { is_onboarding: true });
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 
@@ -364,7 +364,7 @@ export class HabitPackManagerService {
         return response;
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -389,7 +389,7 @@ export class HabitPackManagerService {
     newSettings.morning_activities = activityTemplateIdsToRemove(morning_activities, activityTemplateIds);
     newSettings.break_activities = activityTemplateIdsToRemove(break_activities, activityTemplateIds);
     newSettings.evening_activities = activityTemplateIdsToRemove(evening_activities, activityTemplateIds);
-    await this.userSettingsService.updateSettings({ user_id }, newSettings, false);
+    await this.userSettingsService.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });
     await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully uninstalled for user with ID: ${user_id}!`);
   }
@@ -440,7 +440,7 @@ export class HabitPackManagerService {
       const updatedSettings = await this.userSettingsService.getSettings({ user_id });
       return updatedSettings;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -467,7 +467,7 @@ export class HabitPackManagerService {
       });
       return serializedInstalledPacks;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

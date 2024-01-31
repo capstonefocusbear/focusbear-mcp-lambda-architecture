@@ -36,8 +36,11 @@ import { UserFeedback } from '../modules/user/entities/user-feedback.entity';
 import { TaskTimeLog } from '../modules/to-do/entities/tasks-time-logs.entity';
 import { PlatformIntegration } from '../modules/platform-integrations/entities/platform-integration.entity';
 import { SyncedProject } from '../modules/to-do/entities/synced-project.entity';
+import { CalendarExcludedKeyword } from '../modules/calendar/entities/calendar-excluded-keywords.entity';
+import { Calendar } from '../modules/calendar/entities/calendar.entity';
 import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
+import { TrackEvent } from '../modules/events/entities/track-event.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -51,6 +54,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
+    ssl: false,
     entities: [
       User,
       Activity,
@@ -87,8 +91,13 @@ export const typeormConfig = registerAs(
       TaskTimeLog,
       PlatformIntegration,
       SyncedProject,
+      CalendarExcludedKeyword,
+      Calendar,
       TeamToMember,
       TeamToAdmin,
+      CalendarExcludedKeyword,
+      Calendar,
+      TrackEvent,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

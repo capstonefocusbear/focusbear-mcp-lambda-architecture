@@ -1,5 +1,7 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
+import { DateTime } from 'luxon';
+import { TRIAL_DURATION_DAYS } from '../../../apps/api-server/src/shared/utils/constants';
 import { SubscriptionProvider } from '../../../apps/api-server/src/modules/subscription/domain/subscription-provider.enum';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';
@@ -49,6 +51,19 @@ export class RevenueCatService {
     const activeEntitlementsEntries = emtitlementsEntries.filter(this.validateEntitlement);
     const activeEntitlements = Object.keys(Object.fromEntries(activeEntitlementsEntries));
     const expirations = Object.fromEntries(activeEntitlementsEntries.map((e) => this.getExpirations(e)));
+    return new SubscriptionStatus({ activeEntitlements, expirations });
+  }
+
+  getTrialSubscription(): SubscriptionStatus {
+    const activeEntitlements = [Entitlement.trial];
+    const currentDate = DateTime.local();
+    const expirations = {
+      trial: {
+        expires_date: currentDate.plus({ days: TRIAL_DURATION_DAYS }).toISO(),
+        purchase_date: currentDate.toISO(),
+        days_left: TRIAL_DURATION_DAYS,
+      },
+    };
     return new SubscriptionStatus({ activeEntitlements, expirations });
   }
 

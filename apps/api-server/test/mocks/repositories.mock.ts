@@ -167,7 +167,7 @@ export const FocusModeTemplatesRepositoryMock = {
 };
 
 export const CoursesRepositoryMock = {
-  getAllAuthoredCourses: jest.fn(),
+  getAllAuthorCourses: jest.fn(),
   getAllEnrolledCourses: jest.fn(),
   getRatings: jest.fn(),
   createCourseContent: jest.fn(),
@@ -180,6 +180,9 @@ export const CoursesRepositoryMock = {
   checkForeignKeyUserIdExist: jest.fn(),
   checkForeignKeyCourseIdExist: jest.fn(),
   checkUserCourseEnrolment: jest.fn(),
+  getAllCourses: jest.fn(),
+  getUserNotEnrolledCourses: jest.fn(),
+  getUserCreatedCourses: jest.fn(),
 };
 
 export const LessonsRepositoryMock = {
@@ -192,6 +195,8 @@ export const LessonsRepositoryMock = {
   checkForeignKeyCourseIdExist: jest.fn(),
   checkForeignKeyLessonIdExist: jest.fn(),
   checkUserCourseEnrolment: jest.fn(),
+  upsertCourseLessons: jest.fn(),
+  deleteCourseLesson: jest.fn(),
 };
 
 export const DailyStatsRepositoryMock = {
@@ -207,10 +212,26 @@ export const EventsRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
+export const TrackEventRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const UserFeedbackRepositoryMock = {
   ...BaseRepositoryMock,
 };
 
 export const SyncedProjectsRepositoryMock = {
   ...BaseRepositoryMock,
+};
+
+export const CalendarRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const CalendarExcluededKeywordRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
+export const CalendarServiceFactoryMock = {
+  get: jest.fn(),
 };

@@ -88,7 +88,7 @@ export class FocusModeTemplatesService {
       });
       return await this.focusModeTemplateRepository.orm.save(focusModeTemplate);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -160,7 +160,7 @@ export class FocusModeTemplatesService {
       await this.focusModeTemplateRepository.orm.softDelete({ id: template_id });
       return new ResponseMessage(`Focus mode template with ID: ${template_id} successfully deleted!`);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -217,7 +217,7 @@ export class FocusModeTemplatesService {
       });
       return await this.focusModeRepository.orm.save(createdFocusMode);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -237,7 +237,7 @@ export class FocusModeTemplatesService {
       const templates = await this.focusModeTemplateRepository.fetchTemplatesByFilter(getTemplatesQuery);
       return templates;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -246,7 +246,7 @@ export class FocusModeTemplatesService {
     try {
       return await this.focusModeTemplateRepository.fetchUserTemplates(userId);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -274,7 +274,7 @@ export class FocusModeTemplatesService {
       });
       return useInstalledFocusModes;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

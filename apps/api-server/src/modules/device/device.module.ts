@@ -6,7 +6,7 @@ import { UserModule } from '../user/user.module';
 
 @Module({
   providers: [DeviceRepository, DeviceService],
-  exports: [DeviceService],
+  exports: [DeviceService, DeviceRepository],
   imports: [forwardRef(() => UserModule)],
   controllers: [DeviceController],
 })

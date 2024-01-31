@@ -32,7 +32,7 @@ export class InstalledPackService {
       });
       await this.installedPackRepository.create(newInstalledPackRecord);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -48,7 +48,7 @@ export class InstalledPackService {
       installedPackRecord.installation_status = false;
       await this.installedPackRepository.update(installedPackRecord.id, installedPackRecord);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

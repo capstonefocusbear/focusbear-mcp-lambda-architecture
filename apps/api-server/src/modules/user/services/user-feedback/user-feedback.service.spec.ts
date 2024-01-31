@@ -2,12 +2,23 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
-import { userDummy } from '../../../../../test/dummies';
-import { UserRepositoryMock, SentryServiceMock, UserFeedbackRepositoryMock } from '../../../../../test/mocks';
+import { Auth0ManagementService } from '@app/auth0';
+import { SendGridService } from '@app/send-grid';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { DeviceDummy, auth0UserDummy, userDummy } from '../../../../../test/dummies';
+import {
+  UserRepositoryMock,
+  SentryServiceMock,
+  UserFeedbackRepositoryMock,
+  Auth0ManagementServiceMock,
+  SendGridServiceMock,
+  DeviceRepositoryMock,
+} from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackService } from './user-feedback.service';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
 import { UserFeedback } from '../../entities/user-feedback.entity';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -22,6 +33,9 @@ describe('UserFeedbackService', () => {
         UserFeedbackService,
         UserFeedbackRepository,
         UserRepository,
+        Auth0ManagementService,
+        SendGridService,
+        DeviceRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -32,6 +46,12 @@ describe('UserFeedbackService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(UserFeedbackRepository)
       .useValue(UserFeedbackRepositoryMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
+      .overrideProvider(DeviceRepository)
+      .useValue(DeviceRepositoryMock)
       .compile();
 
     service = module.get<UserFeedbackService>(UserFeedbackService);
@@ -46,7 +66,7 @@ describe('UserFeedbackService', () => {
       rating: 5,
       feedback: 'Just a test!',
     };
-    const dummyHeaders = { 'app-version': '1.0.100', platform: 'Windows' };
+    const dummyHeaders = { 'app-version': '1.0.100', platform: 'Windows', 'device-id': DeviceDummy.id };
 
     it('negative: should throw not found error if user ot returned from DB', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
@@ -65,6 +85,8 @@ describe('UserFeedbackService', () => {
 
     it('positive: should save user feedback in DB and update user', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      DeviceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(DeviceDummy);
 
       await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
 
@@ -73,11 +95,23 @@ describe('UserFeedbackService', () => {
           user_id: userDummy.id,
           feedback: userFeedbackDummy.feedback,
           rating: userFeedbackDummy.rating,
-          metadata: { app: dummyHeaders.platform, version: dummyHeaders['app-version'], user_id: userDummy.id },
+          metadata: {
+            app: dummyHeaders.platform,
+            version: dummyHeaders['app-version'],
+            user_id: userDummy.id,
+            operating_system: DeviceDummy.operating_system,
+          },
         }),
       );
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { last_date_gave_feedback: expect.toBeDate() });
       expect(mockedAxios.post).toBeCalled();
+      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        replyTo: auth0UserDummy.email,
+        text: expect.toBeString(),
+        subject: `${EMAIL_SUBJECTS.USER_SURVEY_FEEDBACK}`,
+      });
     });
   });
 });

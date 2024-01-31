@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsOptional } from 'class-validator';
 
-export class ZohoLoginQuery {
+export class IntegrationLoginQuery {
   @IsOptional()
   @Transform(({ obj, key }) => {
     const value = obj[key];
@@ -11,5 +11,5 @@ export class ZohoLoginQuery {
 
     return value;
   })
-  is_development?: boolean;
+  is_development? = false;
 }

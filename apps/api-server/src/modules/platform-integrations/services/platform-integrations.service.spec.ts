@@ -107,7 +107,85 @@ describe('PlatformIntegrationsService', () => {
         trello: false,
         asana: false,
         monday: false,
+        google: false,
+        microsoft: false,
       });
+    });
+  });
+
+  describe('getPlatformAccounts', () => {
+    it('positive: should return an array of all calendar accounts user has connected', async () => {
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          external_user_id: 'firstgmail@gmail.com',
+          platform: 'google',
+          data: {
+            expiry_date: '1700903125447',
+          },
+        },
+        {
+          external_user_id: 'secondgmail@gmail.com',
+          platform: 'google',
+          data: {
+            expiry_date: '1700903125448',
+          },
+        },
+      ]);
+
+      const response = await platformIntegrationsService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userDummy.id);
+
+      expect(response).toEqual([
+        { email: 'firstgmail@gmail.com', expired: true },
+        { email: 'secondgmail@gmail.com', expired: true },
+      ]);
+    });
+  });
+
+  describe('getAssigneeStatus', () => {
+    it('positive: should return an array of integration only_assigned values', async () => {
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          platform: 'asana',
+          only_assigned: true,
+        },
+        {
+          platform: 'clickup',
+          only_assigned: true,
+        },
+        {
+          platform: 'trello',
+          only_assigned: false,
+        },
+      ]);
+
+      const response = await platformIntegrationsService.getAssigneeStatus(userDummy.id);
+
+      expect(response).toEqual([
+        {
+          platform: 'zoho',
+          status: '1',
+        },
+        {
+          platform: 'clickup',
+          status: '1',
+        },
+        {
+          platform: 'trello',
+          status: '2',
+        },
+        {
+          platform: 'jira',
+          status: '1',
+        },
+        {
+          platform: 'asana',
+          status: '1',
+        },
+        {
+          platform: 'monday',
+          status: '1',
+        },
+      ]);
     });
   });
 });

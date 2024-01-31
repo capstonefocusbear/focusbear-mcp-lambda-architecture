@@ -2,8 +2,9 @@ import { Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
-import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
+import { BullQueues, FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FocusModeTagRepository } from '../../focus-mode/repositories/focus-mode-tags.repository';
@@ -48,7 +49,8 @@ export class MondayService extends BaseIntegrationService {
     protected readonly integrationAuthService: MondayAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -59,6 +61,7 @@ export class MondayService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.MONDAY,
       syncTasksQueue,
+      sentryService,
     );
   }
 
@@ -219,7 +222,8 @@ export class MondayService extends BaseIntegrationService {
     return projectAdapter(response.data.data.boards[0]);
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
     const tasks = this.tryGetTasks({ integrationRecord, projectId, portalId });
     return tasks;
   }

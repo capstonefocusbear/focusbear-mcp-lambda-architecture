@@ -153,6 +153,7 @@ export const BrevoServiceMock = {
 const mockSentryInstance = {
   addBreadcrumb: jest.fn(),
   captureMessage: jest.fn(),
+  captureException: jest.fn(),
 };
 
 export const SentryServiceMock = {
@@ -288,8 +289,40 @@ export const PlatformIntegrationsServiceMock = {
   getPlatformIntegrationData: jest.fn(),
   updatePlatformIntegration: jest.fn(),
   getUserSyncedPlatforms: jest.fn(),
+  getAssigneeStatus: jest.fn(),
+  updateAssigneeStatus: jest.fn(),
 };
 
 export const ToDoServiceMock = {
   logToDosTime: jest.fn(),
+};
+
+export const GoogleCalendarServiceMock = {
+  getEvents: jest.fn(),
+  getEvent: jest.fn(),
+  updateEvents: jest.fn(),
+  getAccounts: jest.fn(),
+};
+
+export const MicrosoftCalendarServiceMock = {
+  getEvents: jest.fn(),
+  getEvent: jest.fn(),
+  updateEvents: jest.fn(),
+  getAccounts: jest.fn(),
+};
+
+export const NotificationServiceMock = {
+  updateOrCreateCalendarEvent: jest.fn(),
+  deleteCalendarEvent: jest.fn(),
+};
+
+export const CalendarServiceMock = {
+  getCalendars: jest.fn(),
+  updateCalendar: jest.fn(),
+  updateCalendarStatus: jest.fn(),
+  deleteCalendar: jest.fn(),
+  getCalendarExcludedKeywords: jest.fn(),
+  updateCalendarExcludedKeyword: jest.fn(),
+  deleteCalendarExcludedKeyword: jest.fn(),
+  getCalendarDatas: jest.fn(),
 };

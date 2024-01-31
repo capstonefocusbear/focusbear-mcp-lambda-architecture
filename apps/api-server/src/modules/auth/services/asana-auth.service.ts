@@ -9,6 +9,7 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class AsanaAuthService extends BaseIntegrationAuthService {
@@ -19,18 +20,18 @@ export class AsanaAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.ASANA);
   }
 
-  protected getQueryParams() {
+  protected getQueryParams(callbackUrl: string) {
     const scope = 'default';
 
     const queryParams: any = {
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
       response_type: 'code',
       scope,
     };
@@ -41,14 +42,14 @@ export class AsanaAuthService extends BaseIntegrationAuthService {
     return data.data.gid;
   }
 
-  protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  protected async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code } = authorizeQuery;
     const body = {
       grant_type: 'authorization_code',
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded',

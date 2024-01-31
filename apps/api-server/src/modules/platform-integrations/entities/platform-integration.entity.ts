@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 
@@ -12,7 +13,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'uuid',
     nullable: false,
-    unique: true,
+    unique: false,
   })
   user_id?: string;
 
@@ -25,6 +26,7 @@ export class PlatformIntegration extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: true,
+    transformer: FieldTransformer,
   })
   external_user_id?: string;
 
@@ -34,6 +36,12 @@ export class PlatformIntegration extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('data'),
   })
   data?: any;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  only_assigned?: boolean;
 
   @ManyToOne(() => User, (user) => user.platform_integrations, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

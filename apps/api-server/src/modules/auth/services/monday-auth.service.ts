@@ -9,6 +9,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class MondayAuthService extends BaseIntegrationAuthService {
@@ -19,16 +20,16 @@ export class MondayAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.MONDAY);
   }
 
-  protected getQueryParams() {
+  protected getQueryParams(callbackUrl: string) {
     const queryParams: any = {
       client_id: this.clientId,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     return queryParams;
   }
@@ -44,13 +45,13 @@ export class MondayAuthService extends BaseIntegrationAuthService {
     return accountId.account_id;
   }
 
-  async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {
     const { code } = authorizeQuery;
     const params = {
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code,
-      redirect_uri: this.callbackUrl,
+      redirect_uri: callbackUrl,
     };
     const { data } = await axios.post(this.accountServerURL, null, { params });
     return data;

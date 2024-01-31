@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -32,6 +32,16 @@ export function IsTimestampGreaterThan(property: string, validationOptions?: Val
   };
 }
 
+export function transformLogQuantityAnswers({ value }) {
+  if (value === '') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((item: any) => item !== '');
+  }
+  return value;
+}
+
 export class CreateCompletedActivityDto {
   @IsNotEmpty()
   @IsUUID('4')
@@ -57,7 +67,7 @@ export class CreateCompletedActivityDto {
   @IsUUID()
   device_id: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID('4')
   activity_sequence_id: string;
 
@@ -84,5 +94,6 @@ export class CreateCompletedActivityDto {
 
   @IsOptional()
   @IsArray()
+  @Transform(transformLogQuantityAnswers)
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

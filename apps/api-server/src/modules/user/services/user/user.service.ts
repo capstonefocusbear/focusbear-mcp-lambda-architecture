@@ -42,7 +42,7 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { INTERNAL_TEST, ONE_MINUTE, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
@@ -68,8 +68,7 @@ export class UserService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
-    @InjectQueue('profitwell') private profitwellQueue: Queue,
-    @InjectQueue('revenue-cat-status') private revenueCatQueue: Queue,
+    @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
@@ -83,19 +82,16 @@ export class UserService {
         message: 'Syncing user account',
         data: {
           auth0_id,
-          email,
         },
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
-      const subscriber = await this.revenueCatService.getOrCreateSubscriber(id);
-      if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
-      const subscriptionStatus = this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+      const subscriptionStatus = await this.getSubscription(id);
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -109,7 +105,7 @@ export class UserService {
         auth0_id,
       },
     });
-    const auth0UserPromise = this.auth0ManagementService.getUser({ id: auth0_id }).catch(() => undefined);
+    const auth0UserPromise = this.auth0ManagementService.getAuth0User(auth0_id).catch(() => undefined);
     const dbUserPromise = this.userRepository.orm.findOne({ where: { auth0_id } });
     const [auth0User, dbUser] = await Promise.all([auth0UserPromise, dbUserPromise]);
     return [auth0User, dbUser];
@@ -140,37 +136,13 @@ export class UserService {
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
       if (registeredUser) {
-        console.log('HAS REGISTERED USER');
-        const isTestUser = email.toLowerCase().includes(INTERNAL_TEST);
-        if (!isTestUser) {
-          await this.profitwellQueue.add(
-            'register-profitwell-user',
-            {
-              user_id: registeredUser.id,
-              stripe_id: stripeId,
-            },
-            {
-              delay: ONE_MINUTE,
-            },
-          );
-        }
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
       const newUser = new User({ auth0_id });
       const newlySavedUser = await this.userRepository.create(newUser);
-      await this.profitwellQueue.add(
-        'register-profitwell-user',
-        {
-          user_id: newlySavedUser.id,
-          stripe_id: stripeId,
-        },
-        {
-          delay: ONE_MINUTE,
-        },
-      );
       return newlySavedUser;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -189,10 +161,10 @@ export class UserService {
       const defaultSettings = settingsConfig.generateDefault();
       await Promise.all([
         this.revenueCatService.grantTrialAccess(id),
-        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false),
+        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }),
       ]);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -209,7 +181,7 @@ export class UserService {
       });
       const userDetails = await this.userRepository.getUserDetails(id);
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
-      const { email } = await this.auth0ManagementService.getUser({ id: userDetails.auth0_id });
+      const { email } = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const { focus_modes } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
@@ -221,7 +193,7 @@ export class UserService {
       const syncedPlatformsMap = await this.platformIntegrationsService.getUserSyncedPlatforms(id);
       return { ...userDetails, email, focus_modes: formattedFocusModes, synced_platforms: syncedPlatformsMap };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -256,11 +228,12 @@ export class UserService {
         console.log('Jeremy current user state', {
           initialCurrentActivity,
           updatedActivityProps: currentActivityProps,
+          originalActivityProps: partialUser,
         });
       }
       return currentActivityProps;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -309,7 +282,7 @@ export class UserService {
       }
       return updatedSettings;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -331,7 +304,7 @@ export class UserService {
       }
       return user.local_device_settings;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -366,7 +339,7 @@ export class UserService {
       });
       return await this.userRepository.getUsersList({ search });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -391,7 +364,7 @@ export class UserService {
         to_time: end_date,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -410,7 +383,7 @@ export class UserService {
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       return await this.completedActivityRepository.getWeekSummary(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -530,18 +503,27 @@ export class UserService {
 
   async getSubscription(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    // TODO add breadcrumbs here
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const shouldUpdateCache = this.shouldSyncWithRevenueCat(user);
     if (shouldUpdateCache) {
-      await this.revenueCatQueue.add('update-revenue-cat-status', { user_id });
+      await this.revenueCatQueue.add(BullWorkers.UPDATE_REVENUE_CAT_STATUS, { user_id });
     }
     if (!shouldUpdateCache && user.revenue_cat_data) {
       return user.revenue_cat_data;
     }
-    // if there's no cache to use or cache is outdated, get data from RevenueCat directly
-    const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
-    if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
-    return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+    try {
+      const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
+      if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
+      return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
+    } catch (error) {
+      // Return user subscription status as trialing if error getting status from Revenue Cat
+      if (error?.statusCode === 429 || error?.response?.status === 429) {
+        return this.revenueCatService.getTrialSubscription();
+      }
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 
   async getMotivationalMessage(
@@ -560,7 +542,7 @@ export class UserService {
         device_type,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -663,24 +645,5 @@ export class UserService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
-  }
-
-  async doesUserExistInProfitWell(stripeId: string) {
-    try {
-      const response = await this.httpService.get(`https://api.profitwell.com/v2/customers?email=${stripeId}`, {
-        headers: {
-          Authorization: process.env.PROFITWELL_API_KEY,
-        },
-      });
-      // email field in profitwell can be used to store any string
-      // we want to avoid storing the user's email, so saved the stripe ID in this field
-      const userStripeId = response?.data[0]?.email;
-      if (userStripeId.toLowerCase() === stripeId.toLowerCase()) {
-        return true;
-      }
-      return false;
-    } catch (error) {
-      return false;
-    }
   }
 }

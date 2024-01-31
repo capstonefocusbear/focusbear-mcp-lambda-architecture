@@ -20,6 +20,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 import { SyncedProjectsRepository } from '../../to-do/repositories/synced-projects.repository';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../to-do/entities/synced-project.entity';
+import { BullQueues } from '../../../shared/utils/constants';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -46,7 +47,7 @@ describe('jiraService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('sync-tasks'),
+          provide: getQueueToken(BullQueues.SYNC_TASKS),
           useValue: QueueMock,
         },
       ],
@@ -173,7 +174,7 @@ describe('jiraService', () => {
 
     it('positive: should retrieve tasks owned by the user when the request is successful', async () => {
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce(platformIntegrationRecord);
-      mockedAxios.get.mockResolvedValueOnce(response);
+      mockedAxios.get.mockResolvedValue(response);
       const result = await jiraService.getTasksOwnedByUser(userDummy.id, portalId, projectId);
 
       expect(PlatformIntegrationsServiceMock.getPlatformIntegrationData).toHaveBeenCalledWith(
@@ -195,7 +196,7 @@ describe('jiraService', () => {
         IntegrationPlatforms.JIRA,
         userDummy.id,
       );
-      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
       expect(mockedAxios.get).toHaveBeenCalledWith(url, { headers, params });
       expect(result).toEqual(tasksOwnedByUser);
     });

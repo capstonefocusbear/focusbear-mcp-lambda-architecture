@@ -3,8 +3,9 @@ import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
-import { FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
+import { BullQueues, FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -18,6 +19,7 @@ import { Task } from '../domain/task.model';
 import { Portal } from '../domain/portal.model';
 import { TrelloAuthService } from '../../auth/services/trello-auth.service';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
+import { SyncedProjectDto } from '../../to-do/dto/synced-project.dto';
 
 const taskAdapter = ({ task, projectId, portalId }) => {
   const { id, name, desc, idList } = task;
@@ -52,7 +54,8 @@ export class TrelloService extends BaseIntegrationService {
     protected readonly integrationAuthService: TrelloAuthService,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     protected readonly syncedProjectsRepository: SyncedProjectsRepository,
-    @InjectQueue('sync-tasks') public syncTasksQueue: Queue,
+    @InjectQueue(BullQueues.SYNC_TASKS) public syncTasksQueue: Queue,
+    @InjectSentry() protected readonly sentryService: SentryService,
   ) {
     super(
       userRepository,
@@ -63,6 +66,7 @@ export class TrelloService extends BaseIntegrationService {
       syncedProjectsRepository,
       IntegrationPlatforms.TRELLO,
       syncTasksQueue,
+      sentryService,
     );
   }
 
@@ -244,9 +248,17 @@ export class TrelloService extends BaseIntegrationService {
     return projectAdapter(response.data);
   }
 
-  protected async tryGetTasksOwnedByUser({ integrationRecord, projectId, portalId }): Promise<Task[]> {
-    const tasks = await this.tryGetTasks({ integrationRecord, projectId, portalId });
-    return tasks;
+  // should be updated
+  protected async tryGetALLTasksOwnedByUser({ integrationRecord, portalId, projectId }): Promise<Task[]> {
+    const url = `${this.base_url}members/me/cards`;
+    const params = {
+      key: integrationRecord.client_id,
+      token: integrationRecord.access_token,
+    };
+    const response = await this.httpService.get(url, {
+      params,
+    });
+    return (response.data ?? []).map((task) => taskAdapter({ task, projectId, portalId }));
   }
 
   protected async tryGetProjectStatuses({ integrationRecord, projectId }): Promise<ExternalTaskStatus[]> {
@@ -275,5 +287,86 @@ export class TrelloService extends BaseIntegrationService {
       params,
     });
     return response.data;
+  }
+
+  protected async tryGetUserProjects({ integrationRecord }): Promise<Project[]> {
+    const url = `${this.base_url}members/me/boards`;
+    const params = {
+      key: integrationRecord.client_id,
+      token: integrationRecord.access_token,
+    };
+    const response = await this.httpService.get(url, {
+      params,
+    });
+    return (response.data ?? []).map((board) => projectAdapter(board));
+  }
+
+  async getAllUserProjects(userId: string): Promise<SyncedProjectDto[]> {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting all user projects in base service for /:trello/user-projects endpoint',
+      data: {
+        userId,
+        platform: this.platform,
+      },
+    });
+    try {
+      const portals: any = await this.getPortals(userId);
+      const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+      const userSyncedProjectsExternalIds = userSyncedProjects.map(
+        (syncedProject) => syncedProject.external_project_id,
+      );
+      const integrationRecord = await this.getPlatformIntegrationRecord(this.platform, userId);
+      if (!integrationRecord) return;
+      const projectsResponse = [];
+      let projectResponseIds = [];
+      const userProjects = await this.tryGetUserProjects({ integrationRecord });
+      const checkProject = (project, portal) => {
+        if (portal === undefined && projectResponseIds.includes(project.id)) {
+          return;
+        }
+        const isSynced = userSyncedProjectsExternalIds.includes(project.id);
+        let externalStatuses = [];
+        let haveTasksBeenSynced = false;
+        if (isSynced) {
+          const linkedSyncedProject = userSyncedProjects.find(
+            (syncedProject) => syncedProject.external_project_id === project.id,
+          );
+          externalStatuses = linkedSyncedProject.available_statuses;
+          haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
+        }
+        const projectData = {
+          name: project.name,
+          project_id: project.id,
+          portal_id: portal?.id,
+          is_synced: isSynced,
+          have_tasks_been_synced: haveTasksBeenSynced,
+          external_statuses: externalStatuses,
+        };
+        projectsResponse.push(projectData);
+      };
+      if (!portals) {
+        for (const project of userProjects) {
+          checkProject(project, undefined);
+        }
+        return projectsResponse;
+      }
+      for (const portal of portals) {
+        // eslint-disable-next-line no-await-in-loop
+        const projects = await this.getProjects(userId, portal.id);
+        // eslint-disable-next-line no-continue
+        if (!projects?.length) continue;
+        projects.forEach((project) => checkProject(project, portal));
+      }
+      projectResponseIds = projectsResponse.map((project) => project.project_id);
+      for (const project of userProjects) {
+        checkProject(project, undefined);
+      }
+      return projectsResponse;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

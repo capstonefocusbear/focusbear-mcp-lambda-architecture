@@ -6,7 +6,7 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
-import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
+import { userDummy, QueueMock, auth0UserDummy, DeviceDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
   EventsRepositoryMock,
@@ -16,6 +16,7 @@ import {
   UserDailyStatsServiceMock,
   SendGridServiceMock,
   DeviceServiceMock,
+  TrackEventRepositoryMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -27,7 +28,9 @@ import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { TrackEventDto } from '../dto/track-event.dto';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
-import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { TrackEventRepository } from '../repositories/track-event.repository';
+import { TrackEvent } from '../entities/track-event.entity';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -46,8 +49,9 @@ describe('EventService', () => {
         UserDailyStatsService,
         SendGridService,
         DeviceService,
+        TrackEventRepository,
         {
-          provide: getQueueToken('events'),
+          provide: getQueueToken(BullQueues.EVENTS),
           useValue: QueueMock,
         },
         {
@@ -70,6 +74,8 @@ describe('EventService', () => {
       .useValue(SendGridServiceMock)
       .overrideProvider(DeviceService)
       .useValue(DeviceServiceMock)
+      .overrideProvider(TrackEventRepository)
+      .useValue(TrackEventRepositoryMock)
       .compile();
 
     eventsService = moduleRef.get<EventsService>(EventsService);
@@ -77,6 +83,9 @@ describe('EventService', () => {
     process.env = {
       SLACK_WEBHOOKS_CHANNEL: 'some-url',
     };
+
+    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -108,7 +117,7 @@ describe('EventService', () => {
 
       await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
 
-      expect(QueueMock.add).toBeCalledWith('track-event', {
+      expect(QueueMock.add).toBeCalledWith(BullWorkers.TRACK_EVENT, {
         user_id: userDummy.id,
         email: auth0UserDummy.email,
         trackEventDto: { event_type: 'test-event' },
@@ -140,7 +149,7 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(QueueMock.add).toBeCalledWith(
-        'resume-notification',
+        BullWorkers.RESUME_NOTIFICATION,
         {
           user_id: userDummy.id,
           event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
@@ -192,12 +201,35 @@ describe('EventService', () => {
       await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: FOCUS_BEAR_EMAILS.SUPPORT,
+        to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
         text: JSON.stringify(dummyEvent),
-        subject: `${EMAIL_SUBJECTS.APP_UNINSTALL_FEEDBACK}`,
+        subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
       });
+    });
+
+    it('positive: track event should be saved in DB', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      const dummyEvent = {
+        event_type: EventTypes.APP_QUIT,
+        event_data: { data: { quitReason: 'App is broken', feedback: 'Test feedback' } },
+        user_properties: { id: userDummy.id },
+      };
+      DeviceServiceMock.updateDeviceAppVersion.mockResolvedValueOnce(DeviceDummy);
+
+      await eventsService.handleIncomingEvent(dummyEvent, userDummy.id, headersDummy);
+
+      expect(TrackEventRepositoryMock.orm.save).toBeCalledWith(
+        new TrackEvent({
+          user_id: userDummy.id,
+          event_data: dummyEvent.event_data,
+          event_type: dummyEvent.event_type,
+          user_properties: dummyEvent.user_properties,
+          operating_system: DeviceDummy.operating_system,
+        }),
+      );
     });
   });
 

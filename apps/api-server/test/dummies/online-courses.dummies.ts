@@ -260,35 +260,30 @@ export const DummyCourseRatings = [
   new CourseRating({
     user_id: userDummy.id,
     course_id: DummyCourseOne.id,
-    lesson_id: '',
     rating: 4,
     review: '',
   }),
   new CourseRating({
     user_id: userDummy.id,
     course_id: DummyCourseTwo.id,
-    lesson_id: '',
     rating: 3,
     review: 'this is dummy review text for dummy course one',
   }),
   new CourseRating({
     user_id: adminUserDummy.id,
     course_id: DummyCourseOne.id,
-    lesson_id: '',
     rating: 4,
     review: '',
   }),
   new CourseRating({
     user_id: '7678080d-463d-4c1a-b8cc-9526edd2f803',
     course_id: DummyCourseTwo.id,
-    lesson_id: DummyCourseTwoLessons[0].id,
     rating: 3.5,
     review: 'this is dummy review text for dummy lesson one in dummy course one',
   }),
   new CourseRating({
     user_id: userDummy.id,
     course_id: DummyCourseOne.id,
-    lesson_id: DummyCourseOneLessons[0].id,
     rating: 4,
     review: '',
   }),
@@ -302,7 +297,5 @@ export const DummyCreateLessonDto = {
 export const DummyUpdateLessonDto = {
   lesson_id: DummyCourseOneLessons[0].id,
   course_id: DummyCourseOne.id,
-  title: 'BESET FACT ABOUT STARTING A BUSINESS',
-  content: DummyCourseOneLessons[0].content,
-  url: DummyCourseOneLessons[0].url,
+  lessons: DummyCourseTwo.lessons,
 };

@@ -13,7 +13,7 @@ import { In } from 'typeorm';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
-import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
+import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE, IDS_TO_LOG_FOR } from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -62,8 +62,6 @@ import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-l
 import { UserService } from '../../../user/services/user/user.service';
 import { UserTimesResponse } from '../../domain/user-times-response.model';
 
-const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
-
 @Injectable()
 export class CompletedActivityService {
   constructor(
@@ -107,7 +105,6 @@ export class CompletedActivityService {
       const startTimeToUse = this.handleStartTime(completedActivity?.start_time, headers);
 
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-        completedActivity.activity_sequence_id,
         completedActivity.activity_id,
         user_id,
         completedActivity.choice_id,
@@ -119,7 +116,6 @@ export class CompletedActivityService {
 
       let logQuantityAnswers: LogQuantityAnswer[] = [];
       let completingSequenceLog = null;
-
       if (activity.type === ActivityType.break) {
         return await this.handleBreakActivity(
           completedActivity,
@@ -152,6 +148,11 @@ export class CompletedActivityService {
       );
 
       if (completedActivity.log_quantity_answers?.length > 0) {
+        console.log('Log-quantity debug data:', {
+          headers,
+          completedActivity,
+          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+        });
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, completedActivity.log_quantity_answers);
       }
 
@@ -169,7 +170,7 @@ export class CompletedActivityService {
         activity,
         user.language,
       );
-      this.logJeremyData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
+      this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
       this.handleError(error);
@@ -210,7 +211,7 @@ export class CompletedActivityService {
     return startTimeToUse;
   }
 
-  private logJeremyData(
+  private logUserData(
     choice: any,
     user: User,
     completedActivity: CreateCompletedActivityDto,
@@ -218,8 +219,8 @@ export class CompletedActivityService {
     sequence: ActivitySequence,
     completingSequenceLog: any,
   ) {
-    if (user.id === JEREMYS_USER_ID) {
-      console.log("Jeremy's completed activity data: ", {
+    if (IDS_TO_LOG_FOR.includes(user.id)) {
+      console.log("User's completed activity data: ", {
         completingSequenceLog,
         completedActivity,
         user,
@@ -247,7 +248,7 @@ export class CompletedActivityService {
 
   private async handleBreakActivity(
     completedActivity: CreateCompletedActivityDto,
-    activity: any,
+    activity: Activity,
     choice: any,
     user_id: string,
     startTimeToUse: Date,
@@ -257,13 +258,17 @@ export class CompletedActivityService {
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
-      { ...completedActivity, start_time: startTimeToUse },
+      { ...completedActivity, start_time: startTimeToUse, activity_sequence_id: activity.activity_sequence_id },
       activity,
       choice,
       user_id,
     );
     let logQuantityAnswers = [];
     if (log_quantity_answers?.length > 0) {
+      console.log('Log-quantity debug data for break activity:', {
+        completedActivity,
+        log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+      });
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
     await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
@@ -271,7 +276,7 @@ export class CompletedActivityService {
   }
 
   private handleError(error: any) {
-    this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    this.sentryService.instance().captureException(error, { level: 'error' });
     throw error;
   }
 
@@ -344,7 +349,7 @@ export class CompletedActivityService {
         }
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
     }
   }
 
@@ -362,7 +367,8 @@ export class CompletedActivityService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       const failedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[] = [];
-      const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivities);
+      const completedActivitiesWithSequenceIds = await this.addSequenceIdsToCompletedActivities(completedActivities);
+      const groupedActivities = this.groupActivitiesByDateAndSequence(completedActivitiesWithSequenceIds);
       const activitySequenceCache = {};
       const activitiesCache = {};
       await Promise.all(
@@ -402,7 +408,7 @@ export class CompletedActivityService {
       await this.updateActivityPropsForOfflineSync(completedActivities, user);
       return failedActivities;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -434,6 +440,10 @@ export class CompletedActivityService {
       );
 
       if (log_quantity_answers?.length > 0) {
+        console.log('Log-quantity debug data for offline activity:', {
+          completedActivity,
+          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
+        });
         await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
 
@@ -520,7 +530,7 @@ export class CompletedActivityService {
 
   handleSyncActivityError(error: Error): boolean {
     console.error('Error syncing offline activity: ', error);
-    this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+    this.sentryService.instance().captureException(error, { level: 'error' });
 
     if (
       error?.name.includes('TypeError') ||
@@ -544,13 +554,8 @@ export class CompletedActivityService {
           skippedActivity,
         },
       });
-      const { activity_sequence_id, activity_id, choice_id } = skippedActivity;
-      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
-        activity_sequence_id,
-        activity_id,
-        user_id,
-        choice_id,
-      );
+      const { activity_id, choice_id } = skippedActivity;
+      const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
       const skippedActivityMetadata = { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
         { ...skippedActivity, metadata: skippedActivityMetadata },
@@ -568,9 +573,16 @@ export class CompletedActivityService {
         false,
         completingSequenceLog,
       );
+      await this.broadcastCompletionEvent(
+        user_id,
+        createdItem.completed_activity_log.id,
+        { ...skippedActivity },
+        activity,
+        user.language,
+      );
       return createdItem;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -592,23 +604,27 @@ export class CompletedActivityService {
       },
     });
     await this.validateCompletingActivity(user, sequence, activity, choice);
-    const { device_id, activity_sequence_id, activity_id, metadata } = activityData;
+    const updatedUser = await this.userRepository.orm.findOne({
+      where: { id: user_id },
+      relations: ['completing_sequence_log'],
+    });
+    const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
-      user,
-      activity_sequence_id,
+      updatedUser,
+      sequence.id,
       start_time,
     );
     const { nextActivityId, currentState } = await this.defineNextCurrentActivity(
       sequence,
       activity_id,
-      user,
+      updatedUser,
       completingSequenceLog.id,
       activityData,
     );
     const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     await this.deviceService.markAsLeader(device_id, user_id);
-    const skippedActivityIds = user.current_sequence_skipped_activities ?? [];
+    const skippedActivityIds = updatedUser.current_sequence_skipped_activities ?? [];
     if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
       skippedActivityIds.push(activity_id);
     }
@@ -620,7 +636,7 @@ export class CompletedActivityService {
       has_received_inactivity_warning: false,
     });
     if (!nextActivityId) {
-      if (user.id === JEREMYS_USER_ID) {
+      if (IDS_TO_LOG_FOR.includes(user_id)) {
         console.log('Completing sequence - updateUserAndSequence');
         console.log({ currentState, nextActivityId, activityData });
       }
@@ -630,7 +646,6 @@ export class CompletedActivityService {
   }
 
   private async fetchPreparatoryData(
-    activity_sequence_id: string,
     activity_id: string,
     user_id: string,
     choice_id?: string,
@@ -642,18 +657,22 @@ export class CompletedActivityService {
       data: {
         user_id,
         activity_id,
-        activity_sequence_id,
         choice_id,
       },
     });
-    const [sequence, activity, user, choice] = await Promise.all([
-      this.activitySequenceRepository.orm.findOne({ where: { id: activity_sequence_id }, relations: ['activities'] }),
-      this.activityRepository.orm.findOneBy({ id: activity_id }),
+    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    const [sequence, user, choice] = await Promise.all([
+      this.activitySequenceRepository.orm.findOne({
+        where: { id: activity.activity_sequence_id },
+        relations: ['activities'],
+      }),
       this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
     ]);
-    if (!sequence) throw new NotFoundException(`Activity Sequence with id: ${activity_sequence_id} does not exist!`);
-    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    if (!sequence) {
+      throw new NotFoundException(`Activity Sequence with id: ${activity.activity_sequence_id} does not exist!`);
+    }
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const invalidSequenceMsg = `Activity with id: ${activity_id} is not a part of the sequence with id: ${sequence.id}!`;
     if (activity.activity_sequence_id !== sequence.id) throw new BadRequestException(invalidSequenceMsg);
@@ -674,17 +693,21 @@ export class CompletedActivityService {
         user_id: user.id,
       },
     });
-    const { current_activity_sequence_id } = user;
+    const { id, current_activity_sequence_id, current_completing_sequence_log_id, current_activity_assigned_at } = user;
     const isNewCurrentSequence = !current_activity_sequence_id;
     this.validateChoice(activity, choice);
     if (isNewCurrentSequence) return;
-    const isCompletingActivitySequenceTheCurrent = sequence.id === current_activity_sequence_id;
-    if (!isCompletingActivitySequenceTheCurrent) {
-      await this.completedActivitySequenceService.forceCompleteCurrentSequence(
-        current_activity_sequence_id,
-        user.id,
-        true,
-      );
+
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at)).setZone(
+      user.timezone,
+    ).day;
+    const userTimes = this.getUserTimesFromPartialUser(user);
+
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+      if (IDS_TO_LOG_FOR.includes(id)) {
+        console.log('Completing user routine from validateCompletingActivity function - shouldCompleteRoutine: TRUE');
+      }
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, user);
     }
   }
 
@@ -771,7 +794,7 @@ export class CompletedActivityService {
       completedActivity,
     );
 
-    if (user.id === JEREMYS_USER_ID && !nextActivityId) {
+    if (IDS_TO_LOG_FOR.includes(user.id) && !nextActivityId) {
       console.log('Data in defineNextCurrentActivity function: ', {
         nextActivityId,
         currentState,
@@ -812,21 +835,36 @@ export class CompletedActivityService {
   }
 
   async recalculateCurrentActivity(partialUser: Partial<User>) {
-    const { id, current_activity_sequence_id, current_activity, current_completing_sequence_log_id } = partialUser;
+    const {
+      id,
+      current_activity_sequence_id,
+      current_activity,
+      current_completing_sequence_log_id,
+      current_activity_assigned_at,
+    } = partialUser;
 
     const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
+    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at)).setZone(
+      partialUser.timezone,
+    ).day;
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes)) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+      if (IDS_TO_LOG_FOR.includes(id)) {
+        console.log('Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE');
+        console.log({ current_activity_assigned_at });
+      }
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (this.isCutoffTimeReached(partialUser)) {
+      console.log('Completing user routine from recalculateCurrentActivity function - isCutoffTimeReached: TRUE');
       return this.handleActivitiesAfterCutoffTime(partialUser, sequence);
     }
 
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - recalculateCurrentActivity - no change in current activity');
+    if (IDS_TO_LOG_FOR.includes(id)) {
+      console.log('Log data - recalculateCurrentActivity - no change in current activity');
     }
 
     return {
@@ -847,12 +885,32 @@ export class CompletedActivityService {
     return this.getUserTimes(timezone, startup_time, shutdown_time);
   }
 
-  shouldCompleteRoutine(sequence: ActivitySequence, userTimes: UserTimesResponse): boolean {
+  shouldCompleteRoutine(
+    sequence: ActivitySequence,
+    { userCurrentTime, userShutdownTime, userStartupTime }: UserTimesResponse,
+    currentActivityAssignedDate: number,
+    userId: string,
+  ): boolean {
+    const userCurrentDate = userCurrentTime.day;
+    const hasRoutineBeenStartedToday = userCurrentDate === currentActivityAssignedDate;
+    if (IDS_TO_LOG_FOR.includes(userId)) {
+      console.log('Log data - shouldCompleteRoutine function:');
+      console.log({
+        hasRoutineBeenStartedToday,
+        sequenceType: sequence.type,
+        currentActivityAssignedDate,
+        userCurrentDate,
+        userCurrentTime: userCurrentTime.toISO(),
+        userStartupTime: userStartupTime.toISO(),
+        userShutdownTime: userShutdownTime.toISO(),
+      });
+    }
     return (
-      (sequence.type === ActivityType.morning && userTimes.userCurrentTime >= userTimes.userShutdownTime) ||
+      !hasRoutineBeenStartedToday ||
+      (sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime) ||
       (sequence.type === ActivityType.evening &&
-        userTimes.userCurrentTime >= userTimes.userStartupTime &&
-        userTimes.userCurrentTime < userTimes.userShutdownTime)
+        userCurrentTime >= userStartupTime &&
+        userCurrentTime < userShutdownTime)
     );
   }
 
@@ -867,10 +925,6 @@ export class CompletedActivityService {
       partialUser.current_activity_sequence_id,
       partialUser.current_sequence_started_at,
     );
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - completeRoutineAndNullifyProps triggered');
-    }
-    return { activity: null, shouldRefetchUser: true };
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {
@@ -898,7 +952,8 @@ export class CompletedActivityService {
     );
 
     if (!nextHighPriorityActivity) {
-      return this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
+      return { activity: null, shouldRefetchUser: true };
     }
 
     if (current_activity.id !== nextHighPriorityActivity.id) {
@@ -909,8 +964,8 @@ export class CompletedActivityService {
       });
     }
 
-    if (id === JEREMYS_USER_ID) {
-      console.log('Jeremy data - handleActivitiesAfterCutoffTime triggered');
+    if (IDS_TO_LOG_FOR.includes(partialUser.id)) {
+      console.log('Log data - handleActivitiesAfterCutoffTime triggered');
       console.log({ nextHighPriorityActivity });
     }
 
@@ -970,7 +1025,13 @@ export class CompletedActivityService {
     delete data.should_not_update_current_activity;
     delete data.log_quantity_answers;
     const completedItem = new CompletedActivity(
-      { ...data, user_id, completed_sequence_id: sequenceLog?.id, activity_note: note_logged },
+      {
+        ...data,
+        user_id,
+        activity_sequence_id: sequenceLog?.activity_sequence_id ?? data.activity_sequence_id,
+        completed_sequence_id: sequenceLog?.id,
+        activity_note: note_logged,
+      },
       { log_quantity: activity.log_quantity, generateId: false },
     );
     const completedChoice = new CompletedActivity(
@@ -1003,19 +1064,10 @@ export class CompletedActivityService {
   private async broadcastCompletionEvent(
     user_id: string,
     completed_activity_id: string,
-    completedActivity: CreateCompletedActivityDto,
+    completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto,
     activity: Activity,
     language: string,
   ): Promise<void> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Broadcasting completion event to Pusher',
-      data: {
-        user_id,
-        completed_activity_id,
-      },
-    });
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
     await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
     const title = this.i18nService.t('common.activity_completed', { lang: language });
@@ -1029,6 +1081,16 @@ export class CompletedActivityService {
       pushData,
       should_send_only_data_for_android: true,
     });
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Broadcasting completion event to Pusher',
+      data: {
+        user_id,
+        pushData,
+      },
+    });
+    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
     await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
@@ -1085,7 +1147,7 @@ export class CompletedActivityService {
       });
       return stats;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1221,7 +1283,7 @@ export class CompletedActivityService {
         daySummaryDuration: this.countSummaryDuration(daySummaryDurationItems),
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1272,7 +1334,7 @@ export class CompletedActivityService {
         .toISO();
       return { from_time, to_time };
     } catch (e) {
-      this.sentryService.instance().captureMessage(JSON.stringify(e), 'error');
+      this.sentryService.instance().captureException(JSON.stringify(e), { level: 'error' });
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'error',
@@ -1407,7 +1469,7 @@ export class CompletedActivityService {
       );
       return completedActivitesGroupedByDateAndSequence;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1425,7 +1487,7 @@ export class CompletedActivityService {
       }, {});
       return completedActivitiesGroupedBySequence;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1460,7 +1522,7 @@ export class CompletedActivityService {
       );
       return this.formatNotesResponse(completedActivitiesWithNotes);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1492,7 +1554,7 @@ export class CompletedActivityService {
         await this.completedActivityRepository.orm.save(completedActivityToUpdate);
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -1575,5 +1637,29 @@ export class CompletedActivityService {
       where: { completed_sequence_id: currentCompletingSequenceLogId },
     });
     return completedActivities.map((completedActivity) => completedActivity.activity_id);
+  }
+
+  findActivitySequenceId(activityId: string, activities: Activity[]) {
+    const matchingActivity = activities.find((activity) => activity.id === activityId);
+    return matchingActivity.activity_sequence_id;
+  }
+
+  async addSequenceIdsToCompletedActivities(
+    completedActivities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[],
+  ): Promise<(CreateCompletedActivityDto | CreateSkippedActivityDto)[]> {
+    const completedActivityIds = completedActivities.map((completedActivity) => completedActivity.activity_id);
+    const activitiesFromDB = await this.activityRepository.orm.find({ where: { id: In(completedActivityIds) } });
+    // filter out activities that could have been deleted
+    const existingCompletedActivities = completedActivities.filter((completedActivity) => {
+      const matchingActivity = activitiesFromDB.find((activity) => activity.id === completedActivity.activity_id);
+      return matchingActivity !== undefined;
+    });
+    const activitiesWithSequenceIds = existingCompletedActivities.map((completedActivity) => {
+      return {
+        ...completedActivity,
+        activity_sequence_id: this.findActivitySequenceId(completedActivity.activity_id, activitiesFromDB),
+      };
+    });
+    return activitiesWithSequenceIds;
   }
 }

@@ -6,17 +6,18 @@ import { IsAuth } from '../guards/is-auth/is-auth.guard';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { AuthServiceFactory } from '../services/auth.service.factory';
+import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
 
 @Controller('auth')
 @ApiTags('auth')
 @ApiSecurity('Auth0AccessToken')
 export class AuthController {
-  constructor(private readonly authSerivceFactory: AuthServiceFactory) {}
+  constructor(private readonly authServiceFactory: AuthServiceFactory) {}
 
   @Get(':platform')
-  login(@Param('platform') platform: IntegrationPlatforms) {
-    const service = this.authSerivceFactory.get(platform);
-    return service.getLoginUrl();
+  login(@Param('platform') platform: IntegrationPlatforms, @Query() { is_development }: IntegrationLoginQuery) {
+    const service = this.authServiceFactory.get(platform);
+    return service.getLoginUrl(is_development);
   }
 
   @Get(':platform/callback')
@@ -27,7 +28,7 @@ export class AuthController {
     @AuthContext() { user }: Passport,
   ) {
     try {
-      const service = this.authSerivceFactory.get(platform);
+      const service = this.authServiceFactory.get(platform);
       return await service.authorize(user.id, authorizeQuery);
     } catch (error) {
       return error;

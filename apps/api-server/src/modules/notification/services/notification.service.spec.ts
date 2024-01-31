@@ -45,9 +45,10 @@ describe('NotificationService', () => {
     it('negative: should return that the user was not found', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      const account = 'account';
       let exception: any;
       try {
-        await notificationService.updateOrCreateCalendarEvent(updateCalendarEventDummy, userDummy.id);
+        await notificationService.updateOrCreateCalendarEvent(updateCalendarEventDummy, userDummy.id, account);
       } catch (error) {
         exception = error;
       }
@@ -59,7 +60,7 @@ describe('NotificationService', () => {
     it('positive: should call create on NotificationRepository', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       NotificationRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-
+      const account = 'account';
       const newNotification = new Notification({
         user_id: userDummy.id,
         summary: createCalendarEventDummy.summary,
@@ -69,10 +70,14 @@ describe('NotificationService', () => {
         event_ends: createCalendarEventDummy.event_ends,
         is_dismissed: createCalendarEventDummy.is_dismissed,
         dismiss_reason: createCalendarEventDummy.dismiss_reason,
+        calendar_id: undefined,
+        platform_account: account,
+        platform: undefined,
+        external_metadata: undefined,
         received: createCalendarEventDummy.received,
       });
 
-      await notificationService.updateOrCreateCalendarEvent(createCalendarEventDummy, userDummy.id);
+      await notificationService.updateOrCreateCalendarEvent(createCalendarEventDummy, userDummy.id, account);
 
       expect(NotificationRepositoryMock.create).toBeCalledWith(newNotification);
     });
@@ -80,7 +85,7 @@ describe('NotificationService', () => {
     it('positive: should call update on NotificationRepository', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       NotificationRepositoryMock.orm.findOne.mockResolvedValueOnce(notificationDBResponseDummy);
-
+      const account = 'account';
       const updatedNotification = {
         summary: updateCalendarEventDummy.summary,
         description: updateCalendarEventDummy.description,
@@ -89,12 +94,22 @@ describe('NotificationService', () => {
         event_ends: updateCalendarEventDummy.event_ends,
         is_dismissed: updateCalendarEventDummy.is_dismissed,
         dismiss_reason: updateCalendarEventDummy.dismiss_reason,
+        platform_account: account,
         received: updateCalendarEventDummy.received,
       };
 
-      await notificationService.updateOrCreateCalendarEvent(updateCalendarEventDummy, userDummy.id);
+      await notificationService.updateOrCreateCalendarEvent(updateCalendarEventDummy, userDummy.id, account);
 
       expect(NotificationRepositoryMock.update).toBeCalledWith(updateCalendarEventDummy.id, updatedNotification);
+    });
+  });
+
+  describe('deleteCalendarEvent', () => {
+    it('positive: should delete notification', async () => {
+      await notificationService.deleteCalendarEvent(notificationDBResponseDummy.external_id);
+      expect(NotificationRepositoryMock.orm.delete).toBeCalledWith({
+        external_id: notificationDBResponseDummy.external_id,
+      });
     });
   });
 });

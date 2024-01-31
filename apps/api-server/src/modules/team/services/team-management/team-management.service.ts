@@ -21,6 +21,7 @@ import { TeamToAdminRepository } from '../../repositories/team-to-admin.reposito
 import { TeamToMember } from '../../entities/team-to-member.entity';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
+import { PaymentType } from '../../domain/payment-type.enum';
 
 @Injectable()
 export class TeamManagementService {
@@ -56,13 +57,18 @@ export class TeamManagementService {
           adminId,
         },
       });
-      const [user, { members }] = await Promise.all([
+      const [user, { members, team }] = await Promise.all([
         this.userRepository.orm.findOne({
           where: { id: memberId },
         }),
         this.teamRepository.findActiveTeamWithMembers(teamId, adminId),
       ]);
-      this.validateTeamMembership(user, members, { member_id: memberId, owner_id: adminId, teamId });
+      this.validateTeamMembership(user, members, {
+        member_id: memberId,
+        owner_id: adminId,
+        teamId,
+        team,
+      });
       // Save user as part of team
       const connectedMemberRecord = new TeamToMember({
         member_id: memberId,
@@ -77,12 +83,12 @@ export class TeamManagementService {
       await this.updateTeamSize(adminId, teamId, newTeamSize);
       return user;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  private validateTeamMembership(user: User, members: User[], { member_id, owner_id, teamId }): void | never {
+  private validateTeamMembership(user: User, members: User[], { member_id, owner_id, teamId, team }): void | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -98,6 +104,12 @@ export class TeamManagementService {
     if (isUserAlreadyInTeam) {
       throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
     }
+    const { team_size, team_size_limit, payment_type } = team;
+    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+      throw new BadRequestException(
+        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
+      );
+    }
   }
 
   async bulkDeleteTeamMembers(member_ids: string[], adminId: string, teamId: string): Promise<any> {
@@ -110,7 +122,7 @@ export class TeamManagementService {
       const newTeamSize = team.team_size - member_ids.length;
       await this.updateTeamSize(adminId, teamId, newTeamSize);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -135,7 +147,7 @@ export class TeamManagementService {
       }
       await Promise.all(revokeEntitlementsPromises);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -208,7 +220,7 @@ export class TeamManagementService {
       const newTeamSize = members.length - 1;
       await this.updateTeamSize(adminId, teamId, newTeamSize);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -229,6 +241,13 @@ export class TeamManagementService {
         is_admin,
         is_member,
       });
+      // check whether team has available space if offline payment type
+      const { team_size_limit, team_size, payment_type } = team;
+      if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+        throw new BadRequestException(
+          `Unable to invite more members to team with ID: ${team.id}, maximum capacity reached!`,
+        );
+      }
       const secretKey = this.configService.get('tokens.secret');
       const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
       const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
@@ -240,7 +259,7 @@ export class TeamManagementService {
       });
       return inviteUrl;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -262,7 +281,7 @@ export class TeamManagementService {
         await this.assignNewMemberAsAdmin(user_id, team_id, first_name, last_name);
       }
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -344,6 +363,7 @@ export class TeamManagementService {
       owner: user,
       expires_date: expiresDate,
       stripe_subscription_id: subscriptionId,
+      payment_type: PaymentType.STRIPE,
     });
     const [savedTeam] = await Promise.all([
       this.teamRepository.orm.save(team),
@@ -379,10 +399,10 @@ export class TeamManagementService {
     if (!subId || !subItemId) {
       throw new Error(`Missing stripe data for team with ID: ${teamId}`);
     }
-    await Promise.all([
-      this.stripeService.updateSubscription(subId, subItemId, teamSize),
-      this.teamRepository.update(teamId, { team_size: teamSize }),
-    ]);
+    await this.teamRepository.update(teamId, { team_size: teamSize });
+    if (team.payment_type === PaymentType.STRIPE) {
+      await this.stripeService.updateSubscription(subId, subItemId, teamSize);
+    }
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
@@ -435,8 +455,8 @@ export class TeamManagementService {
     const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: adminId } });
     const teamIds = teamsAdminOf.map((team) => team.team_id);
     const teams = await this.teamRepository.orm.find({ where: { id: In(teamIds) } });
-    return teams.map(({ id, name, team_size, owner_id }) => {
-      return { id, name, team_size, owner_id };
+    return teams.map(({ id, name, team_size, team_size_limit, owner_id, payment_type, expires_date }) => {
+      return { id, name, team_size, owner_id, payment_type, team_size_limit, expires_date };
     });
   }
 
@@ -502,7 +522,7 @@ export class TeamManagementService {
       // delete team after other promises returned because team record needs to be queried for their logic
       await this.teamRepository.orm.delete({ id: teamId });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

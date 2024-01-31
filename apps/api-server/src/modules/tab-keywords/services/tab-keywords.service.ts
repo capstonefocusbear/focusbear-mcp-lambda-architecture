@@ -67,7 +67,7 @@ export class TabKeywordsService {
       const topPhrases = topPhrasesAndFrequencies.map(([phrase]) => phrase);
       return topPhrases;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

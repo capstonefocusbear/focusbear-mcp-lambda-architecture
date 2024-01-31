@@ -11,6 +11,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 import { maskEmail } from '../../../../shared/utils/helpers';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class UserDataService {
@@ -20,7 +21,7 @@ export class UserDataService {
     private readonly revenueCatService: RevenueCatService,
     private readonly stripeService: StripeService,
     @InjectSentry() private readonly sentryService: SentryService,
-    @InjectQueue('user-data') private userDataQueue: Queue,
+    @InjectQueue(BullQueues.USER_DATA) private userDataQueue: Queue,
     private readonly brevoService: BrevoService,
   ) {}
 
@@ -34,12 +35,12 @@ export class UserDataService {
           user_id,
         },
       });
-      await this.userDataQueue.add('get-user-personal-data', {
+      await this.userDataQueue.add(BullWorkers.GET_USER_PERSONAL_DATA, {
         user_id,
         language,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -73,7 +74,7 @@ export class UserDataService {
       }
       await Promise.all([auth0Promise, revenueCatPromise, brevoPromise, userRepositoryPromise, backendAlertPromise]);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

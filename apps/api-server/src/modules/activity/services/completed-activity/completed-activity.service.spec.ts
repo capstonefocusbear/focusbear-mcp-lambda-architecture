@@ -215,6 +215,7 @@ describe('CompletedActivityService', () => {
 
     it('negative: should throw NotFoundException if activity sequence does not exist', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       const errorMessage = `Activity Sequence with id: ${completedActivity.activity_sequence_id} does not exist!`;
       let exception: any;
 
@@ -291,7 +292,7 @@ describe('CompletedActivityService', () => {
     it('positive: the target device should be marked as leader', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
@@ -306,7 +307,7 @@ describe('CompletedActivityService', () => {
     it('positive: if there is the next activity in the sequence, its id should be set as current_activity_id for the given User', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
         { activity_id: sequenceWhenThereIsNextActivity.activity_ids[0] },
@@ -337,7 +338,7 @@ describe('CompletedActivityService', () => {
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
@@ -365,7 +366,7 @@ describe('CompletedActivityService', () => {
     it('positive: completed activity record should be created', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
@@ -387,7 +388,7 @@ describe('CompletedActivityService', () => {
     it('positive: if activity has log quantity answers they should be saved', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
@@ -410,7 +411,7 @@ describe('CompletedActivityService', () => {
     it('positive: push notification should be sent via pusher', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       const completedActivityId = randomUUID();
@@ -459,7 +460,7 @@ describe('CompletedActivityService', () => {
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
@@ -487,7 +488,7 @@ describe('CompletedActivityService', () => {
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithChoices);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithChoices.choices[0]);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
@@ -520,45 +521,6 @@ describe('CompletedActivityService', () => {
       );
     });
 
-    it('positive: if target activity is break type the sequence check should be skipped', async () => {
-      ActivityDummy.type = ActivityType.break;
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
-      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
-      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
-
-      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
-
-      expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(
-        new CompletedActivity(
-          { ...completedActivityUpsertFormat, user_id, completed_sequence_id: undefined },
-          { generateId: false, log_quantity: ActivityDummy.log_quantity },
-        ),
-        ['activity_id', 'completed_sequence_id'],
-      );
-    });
-
-    it('positive: if target activity is break type the daily stat time spent in breaks should be updated', async () => {
-      ActivityDummy.type = ActivityType.break;
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
-      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
-      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
-      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
-
-      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
-
-      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toBeCalledWith(
-        userDummy.id,
-        completedActivity.start_time,
-        userDummy.timezone,
-        completedActivity.duration_logged,
-      );
-    });
-
     it('positive: if user cut off time has been reached, set the next activity to be the next high priority activity in sequence when marking activity as completed', async () => {
       Settings.now = () => 1665081000000;
       const activity: CreateCompletedActivityDto = {
@@ -575,7 +537,7 @@ describe('CompletedActivityService', () => {
       const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceWithHighPriorityActivitiesDummy);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...userDummy,
         cutoff_time_for_non_high_priority_activities: '18:00',
       });
@@ -623,7 +585,7 @@ describe('CompletedActivityService', () => {
         ActivitySequenceWithoutHighPriorityActivitiesDummy,
       );
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...userDummy,
         cutoff_time_for_non_high_priority_activities: '18:00',
         current_sequence_started_at: '2023-02-07T05:42:39.221Z',
@@ -672,7 +634,7 @@ describe('CompletedActivityService', () => {
       const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
@@ -700,6 +662,119 @@ describe('CompletedActivityService', () => {
       Settings.now = () => new Date().valueOf();
     });
 
+    it("positive: if user's current sequence is from previous day, sequence should be force completed", async () => {
+      // mock date to be next day according to current activity props
+      Settings.now = () => 1670569200000;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      const sequenceId = randomUUID();
+      const completedSequenceLogId = randomUUID();
+      UserRepositoryMock.orm.findOne
+        .mockResolvedValueOnce(
+          new User({
+            ...userDummy,
+            current_activity_assigned_at: new Date('2022-12-08T13:30:00+0000'),
+            current_activity_sequence_id: sequenceId,
+            current_completing_sequence_log_id: completedSequenceLogId,
+            current_sequence_started_at: new Date('2022-12-08T13:30:00+0000'),
+          }),
+        )
+        .mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      const completedActivityId = randomUUID();
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        completedSequenceLogId,
+        userDummy.id,
+      );
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+        userDummy.id,
+        sequenceId,
+        expect.toBeDate(),
+      );
+      Settings.now = () => new Date().valueOf();
+    });
+
+    it("positive: if user's current sequence is from current day, sequence should NOT be force completed", async () => {
+      jest.clearAllMocks();
+      jest.clearAllTimers();
+      jest.resetAllMocks();
+      Settings.now = () => 1670477400000;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      const sequenceId = randomUUID();
+      const completedSequenceLogId = randomUUID();
+      UserRepositoryMock.orm.findOne.mockResolvedValue(
+        new User({
+          ...userDummy,
+          current_activity_assigned_at: new Date('2022-12-08T13:30:00+0000'),
+          current_activity_sequence_id: sequenceId,
+          current_completing_sequence_log_id: completedSequenceLogId,
+          current_sequence_started_at: new Date('2022-12-08T13:30:00+0000'),
+        }),
+      );
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      const completedActivityId = randomUUID();
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toBeCalled();
+      Settings.now = () => new Date().valueOf();
+    });
+
+    it('positive: if target activity is break type the daily stat time spent in breaks should be updated', async () => {
+      ActivityDummy.type = ActivityType.break;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+
+      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toBeCalledWith(
+        userDummy.id,
+        completedActivity.start_time,
+        userDummy.timezone,
+        completedActivity.duration_logged,
+      );
+    });
+
+    it('positive: if target activity is break type the sequence check should be skipped', async () => {
+      ActivityDummy.type = ActivityType.break;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...ActivityDummy, type: ActivityType.break });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValueOnce(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+
+      expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(
+        new CompletedActivity(
+          { ...completedActivityUpsertFormat, user_id, completed_sequence_id: undefined },
+          { generateId: false, log_quantity: ActivityDummy.log_quantity },
+        ),
+        ['activity_id', 'completed_sequence_id'],
+      );
+    });
+
     it('positive: if last remaining activity in sequence for current day is completed, user current activity should be set to null', async () => {
       // mock date to be a Tuesday, dummy sequence only has one activity for Tuesday so routine should be completed after
       Settings.now = () => 1676961000000;
@@ -715,7 +790,7 @@ describe('CompletedActivityService', () => {
       const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
@@ -749,7 +824,7 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
@@ -792,7 +867,7 @@ describe('CompletedActivityService', () => {
         activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 2 },
       });
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
@@ -843,7 +918,7 @@ describe('CompletedActivityService', () => {
       const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWithActivitiesForDifferentDays);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       const completingSequenceLogId = randomUUID();
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce({
@@ -918,6 +993,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -933,7 +1009,7 @@ describe('CompletedActivityService', () => {
         current_sequence_skipped_activities: [previousSkippedId],
         current_sequence_started_at: new Date().toISOString(),
       };
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(user);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(user);
       CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
         { activity_id: sequenceWhenThereIsNextActivity.activity_ids[0] },
@@ -941,6 +1017,7 @@ describe('CompletedActivityService', () => {
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -966,13 +1043,14 @@ describe('CompletedActivityService', () => {
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([{ activity_id: randomUUID() }]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
@@ -1002,13 +1080,14 @@ describe('CompletedActivityService', () => {
       };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithCurrentActivity);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
         UncompletedSequenceLogDummy,
       );
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
       const updatedCompletedActivity = {
         id: undefined,
         activity_id: completedActivity.activity_id,
@@ -1362,6 +1441,16 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
         .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+      ]);
 
       const result = await completedActivityService.completeMultipleActivities(
         [completedActivitiesArrayDummy[0], completedActivitiesArrayDummy[1]],
@@ -1384,6 +1473,12 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
         .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+      ]);
 
       const result = await completedActivityService.completeMultipleActivities([completedActivitiesArrayDummy[0]], {
         user_id: userDummy.id,
@@ -1398,6 +1493,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
@@ -1431,6 +1540,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
@@ -1462,6 +1585,20 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: completedActivitiesArrayDummy[0].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[0].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[1].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[1].activity_sequence_id,
+        },
+        {
+          id: completedActivitiesArrayDummy[2].activity_id,
+          activity_sequence_id: completedActivitiesArrayDummy[2].activity_sequence_id,
+        },
+      ]);
       ActivityRepositoryMock.orm.find
         .mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities)
         .mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
@@ -1681,6 +1818,7 @@ describe('CompletedActivityService', () => {
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[0],
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_activity_assigned_at: new Date('2022-12-10T20:30:00+0000'),
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
         startup_time: '05:00',
@@ -1689,7 +1827,6 @@ describe('CompletedActivityService', () => {
       });
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(EveningActivitySequenceDummy);
       CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
-
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
       expect(response.activity).toBe(eveningActivitiesDBResponseDummy[1]);
@@ -1702,6 +1839,7 @@ describe('CompletedActivityService', () => {
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[0],
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_activity_assigned_at: new Date('2022-12-10T18:30:00+0000'),
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
         startup_time: '05:00',
@@ -1723,6 +1861,7 @@ describe('CompletedActivityService', () => {
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[1],
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
+        current_activity_assigned_at: new Date('2022-12-10T20:30:00+0000'),
         current_completing_sequence_log_id: randomUUID(),
         timezone: 'UTC',
         startup_time: '05:00',
@@ -1803,6 +1942,41 @@ describe('CompletedActivityService', () => {
         id: randomUUID(),
         current_activity: ActivityDummy,
         current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        current_completing_sequence_log_id: randomUUID(),
+        current_sequence_started_at: new Date(),
+        timezone: 'UTC',
+        startup_time: '05:00',
+        shutdown_time: '18:00',
+        cutoff_time_for_non_high_priority_activities: '20:00',
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...ActivitySequenceDummy,
+        type: ActivityType.morning,
+      });
+
+      const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+      expect(response.activity).toBe(null);
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+        partialUserDummy.current_completing_sequence_log_id,
+        partialUserDummy.id,
+      );
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+        partialUserDummy.id,
+        partialUserDummy.current_activity_sequence_id,
+        partialUserDummy.current_sequence_started_at,
+      );
+    });
+
+    it("positive: if user current routine is from previous day, but it's time for evening routine, current activity props should be cleared", async () => {
+      // mock current time to be after user morning routine should start
+      Settings.now = () => new Date('2022-12-10T05:30:00+0000').valueOf();
+      const partialUserDummy = new User({
+        id: randomUUID(),
+        current_activity: ActivityDummy,
+        current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        // mock current activity start date to be from a previous day
+        current_activity_assigned_at: new Date('2022-12-08T04:00:00+0000'),
         current_completing_sequence_log_id: randomUUID(),
         current_sequence_started_at: new Date(),
         timezone: 'UTC',

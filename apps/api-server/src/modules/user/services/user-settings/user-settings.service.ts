@@ -13,6 +13,11 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { PusherService } from '@app/pusher';
+import { I18nService } from 'nestjs-i18n';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -33,6 +38,7 @@ import { ActivitySequence } from '../../../activity/entities/activity-sequence.e
 import { FunctionCallParametersDto } from '../../../ai/dto/function-call-parameters.dto';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
+import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 
 @Injectable()
 export class UserSettingsService {
@@ -47,6 +53,9 @@ export class UserSettingsService {
     private readonly activitySequenceService: ActivitySequenceService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    private readonly pusher: PusherService,
+    private readonly pusherBeams: PusherBeamsService,
+    private readonly i18nService: I18nService,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -71,7 +80,7 @@ export class UserSettingsService {
       }
       return this.serializeSettings(userSettings);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -94,7 +103,7 @@ export class UserSettingsService {
     { user_id }: GetUserSettingsDto,
     updateSettingsData: UpdateUserSettingsDto,
     should_update_has_edited_settings: boolean,
-    isOnboarding = false,
+    { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ): Promise<UpdateUserSettingsDto> {
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
@@ -134,7 +143,7 @@ export class UserSettingsService {
         shutdown_time,
         user.timezone,
       );
-      const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !isOnboarding);
+      const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const updatedUser = new User({
         startup_time,
         shutdown_time,
@@ -180,13 +189,34 @@ export class UserSettingsService {
         logQuantityQuestions,
       );
       if (should_update_has_edited_settings) {
-        await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS);
+        await Promise.all([
+          this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
+          this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id),
+        ]);
       }
       return await this.getSettings({ user_id });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async sendSettingsUpdatedBroadcast(userId: string, language: string, deviceId: string) {
+    await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+    // NOTE: comment out until implemented in mobile app
+    // const title = this.i18nService.t('common.settings_updated', { lang: language });
+    // const body = this.i18nService.t('common.settings_updated_message', {
+    //   lang: language,
+    // });
+    // const pushData = { event: NotificationEvents.UPDATED_SETTINGS };
+    // const publishRequest = this.pusherBeams.createBeamsPublishRequest({
+    //   title,
+    //   body,
+    //   should_send_only_data_for_android: true,
+    //   pushData,
+    // });
+    // await this.pusherBeams.publishToUsers([userId], publishRequest);
   }
 
   calculateRelaxActivityDuration(sleepTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
@@ -234,7 +264,7 @@ export class UserSettingsService {
     newSettings.morning_activities = userSettings.morning_activities.filter((activity) => !activity.is_default);
     newSettings.break_activities = userSettings.break_activities.filter((activity) => !activity.is_default);
     newSettings.evening_activities = userSettings.evening_activities.filter((activity) => !activity.is_default);
-    await this.updateSettings({ user_id }, newSettings, false);
+    await this.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });
   }
 
   async updateUserTimezoneAndLanguage(
@@ -376,7 +406,7 @@ export class UserSettingsService {
         current_activity_sequence_id,
       };
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -466,6 +496,6 @@ export class UserSettingsService {
       ...userSettings,
       [`${routineToAddTo}_activities`]: [...userSettings[`${routineToAddTo}_activities`], activity],
     };
-    await this.updateSettings({ user_id: userId }, updatedSettings, false);
+    await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
 }

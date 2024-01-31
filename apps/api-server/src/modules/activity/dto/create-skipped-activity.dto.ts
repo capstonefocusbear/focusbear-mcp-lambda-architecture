@@ -1,7 +1,8 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
+import { transformLogQuantityAnswers } from './create-completed-activity.dto';
 
 export class CreateSkippedActivityDto {
   @IsNotEmpty()
@@ -28,7 +29,7 @@ export class CreateSkippedActivityDto {
   @IsUUID()
   device_id: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID('4')
   activity_sequence_id: string;
 
@@ -50,5 +51,6 @@ export class CreateSkippedActivityDto {
 
   @IsOptional()
   @IsArray()
+  @Transform(transformLogQuantityAnswers)
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

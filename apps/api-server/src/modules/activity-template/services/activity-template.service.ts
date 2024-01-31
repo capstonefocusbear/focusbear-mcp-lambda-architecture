@@ -18,7 +18,7 @@ export class ActivityTemplateService {
       });
       await this.activityTemplateRepository.orm.softDelete({ pack_id });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

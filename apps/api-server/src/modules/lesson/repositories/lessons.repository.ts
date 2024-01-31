@@ -1,14 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { AppDataSource } from '../../../../ormconfig';
 import { CourseEnrolment } from '../../course/entities/course-enrolment.enitiy';
-import { CourseRating } from '../../course/entities/course-rating.entity';
 import { Course } from '../../course/entities/course.entity';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
-import { CreateLessonRatingDto } from '../dto/create-lesson-rating.dto';
-import { CreateLessonDto } from '../dto/create-lesson.dto';
-import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { LessonCompletion } from '../entities/lesson-completion.entity';
 import { Lesson } from '../entities/lesson.entity';
+import { UpsertLessonsDto } from '../dto/upsert-lessons.dto';
+import { DeleteLessonDto } from '../dto/delete-lesson.dto';
 
 @Injectable()
 export class LessonsRepository {
@@ -16,85 +14,29 @@ export class LessonsRepository {
 
   private readonly ormLessonCompletion = AppDataSource.getRepository(LessonCompletion);
 
-  private readonly ormCourseRating = AppDataSource.getRepository(CourseRating);
-
   private readonly ormCourse = AppDataSource.getRepository(Course);
 
   private readonly ormCourseEnrolment = AppDataSource.getRepository(CourseEnrolment);
 
   async getCourseLessons(course_id: string) {
     return this.ormLesson.find({
-      where: {
-        course_id,
-      },
+      where: { course_id, deleted: false },
     });
   }
 
-  async getLessonRatings(course_id: string, lesson_id: string) {
-    return this.ormCourseRating.find({
-      where: {
-        course_id,
-        lesson_id,
-      },
-    });
-  }
-
-  async createCourseLessons({ lessons, course_id }: CreateLessonDto) {
+  async upsertCourseLessons({ lessons, course_id }: UpsertLessonsDto) {
     await this.ormLesson
       .createQueryBuilder()
       .insert()
       .into(Lesson)
-      .values([
-        ...lessons.map((lesson) => ({
-          title: lesson.title,
-          content: lesson.content,
-          url: lesson.url,
-          course_id,
-        })),
-      ])
+      .values(lessons.map((lesson) => ({ ...lesson, course_id })))
+      .orUpdate(['title', 'content', 'url'], ['id'])
       .execute();
   }
 
-  async createLessonRating({ lesson_id, course_id, rating, review }: CreateLessonRatingDto) {
-    await this.ormLesson
-      .createQueryBuilder()
-      .insert()
-      .into(CourseRating)
-      .values({
-        lesson_id,
-        course_id,
-        rating,
-        review,
-      })
-      .execute();
-  }
-
-  async createLessonCompletion({ lesson_id, course_id, status }: CreateLessonCompletionDto, user_id: string) {
-    await this.ormLessonCompletion
-      .createQueryBuilder()
-      .insert()
-      .into(LessonCompletion)
-      .values({
-        lesson_id,
-        course_id,
-        status,
-        user_id,
-      })
-      .execute();
-  }
-
-  async updateCourseLessons({ course_id, lesson_id, title, content, url }: UpdateLessonDto) {
-    await this.ormLesson.update(
-      {
-        id: lesson_id,
-        course_id,
-      },
-      {
-        title,
-        content,
-        url,
-      },
-    );
+  async createLessonCompletion(createLessonCompletionDto: CreateLessonCompletionDto, user_id: string) {
+    const newLessonCompletion = new LessonCompletion({ ...createLessonCompletionDto, user_id });
+    await this.ormLessonCompletion.save(newLessonCompletion);
   }
 
   async checkForeignKeyCourseIdExist(course_id: string) {
@@ -121,5 +63,17 @@ export class LessonsRepository {
         user_id,
       },
     });
+  }
+
+  async deleteCourseLesson({ course_id, lesson_id }: DeleteLessonDto) {
+    await this.ormLesson.update(
+      {
+        id: lesson_id,
+        course_id,
+      },
+      {
+        deleted: true,
+      },
+    );
   }
 }

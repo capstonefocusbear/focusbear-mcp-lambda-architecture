@@ -40,6 +40,7 @@ export class FocusModeManagerService {
     { finish_time, intention, start_time, to_dos }: StartFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
+    headers: any,
   ): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -52,9 +53,18 @@ export class FocusModeManagerService {
           focus_mode_id,
         },
       });
+      let device_id = null;
+      if (headers?.device_id) {
+        device_id = headers.device_id;
+      }
       // using incoming focus mode's starting time for possible incomplete mode's finish time
       // by passing start_time here for finish_time argument of validateStartingFocusMode
-      const [{ name }, { language }] = await this.validateStartingFocusMode(focus_mode_id, user_id, start_time);
+      const [{ name }, { language }] = await this.validateStartingFocusMode(
+        focus_mode_id,
+        user_id,
+        start_time,
+        headers,
+      );
       const scheduled_finish_time = finish_time;
       const toDoIds = to_dos?.map((todo) => todo.id);
       let toDosToLink = [];
@@ -79,18 +89,27 @@ export class FocusModeManagerService {
         lang: language,
         args: { focus_mode_name: name },
       });
+      const notificationData = { ...completedMode, device_id };
       const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
         title: pushNotificationTitle,
         body: pushNotificationBody,
-        pushData: completedMode,
+        pushData: notificationData,
       });
       await this.userRepository.orm.update(user_id, userDataToUpdate);
       // Pusher throwing error about data exceeding size limit, removing to dos
-      delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-started', completedMode);
+      delete notificationData?.to_dos;
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Sending start focus mode notification with Pusher',
+        data: { user_id, notificationData },
+      });
+      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
+      // eslint-disable-next-line no-console
+      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -99,6 +118,7 @@ export class FocusModeManagerService {
     focus_mode_id: string,
     user_id: string,
     finish_time: Date,
+    headers: any,
   ): Promise<[FocusMode, User]> | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -113,12 +133,19 @@ export class FocusModeManagerService {
     const notFoundModeMsg = `Focus Mode with id: ${focus_mode_id} does not exist for User with id: ${user_id}!`;
     if (!focusMode) throw new NotFoundException(notFoundModeMsg);
     const hasUserCurrentMode = Boolean(user.current_focus_mode_id);
+    const isForcefullyFinishing = true;
     if (hasUserCurrentMode) {
       const hasCurrentFocusModeBeenDeleted = await this.checkFocusModeDeleted(user.current_focus_mode_id);
       if (hasCurrentFocusModeBeenDeleted) {
         await this.nullifyCurrentFocusModeForUser(user_id);
       } else {
-        await this.finishCurrentFocusMode({ finish_time }, { focus_mode_id: user.current_focus_mode_id }, user.id);
+        await this.finishCurrentFocusMode(
+          { finish_time },
+          { focus_mode_id: user.current_focus_mode_id },
+          user.id,
+          headers,
+          isForcefullyFinishing,
+        );
       }
     }
     return [focusMode, user];
@@ -149,6 +176,8 @@ export class FocusModeManagerService {
     finishFocusBlockDto: FinishFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
     user_id: string,
+    headers: any,
+    isForcefullyFinishing = false,
   ): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -160,6 +189,10 @@ export class FocusModeManagerService {
           user_id,
         },
       });
+      let device_id = null;
+      if (headers?.device_id) {
+        device_id = headers.device_id;
+      }
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
       const [{ name }, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
@@ -185,22 +218,15 @@ export class FocusModeManagerService {
         this.nullifyCurrentFocusModeForUser(user_id),
         this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
-      const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
-        lang: user.language,
-      });
-      const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
-        lang: user.language,
-        args: { focus_mode_name: name },
-      });
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
-        title: pushNotificationTitle,
-        body: pushNotificationBody,
-        pushData: completedMode,
-      });
-      // Pusher throwing error about data exceeding size limit, removing to dos
-      delete completedMode?.to_dos;
-      await this.pusher.trigger(`private-${user_id}`, 'focus_mode-finished', completedMode);
-      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+      if (!isForcefullyFinishing) {
+        await this.sendFinishFocusModeNotification({
+          user_id,
+          language: user.language,
+          device_id,
+          completedMode,
+          name,
+        });
+      }
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
         user_id,
         finish_time,
@@ -213,9 +239,47 @@ export class FocusModeManagerService {
         has_received_inactivity_warning: false,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  async sendFinishFocusModeNotification({
+    user_id,
+    language,
+    completedMode,
+    name,
+    device_id,
+  }: {
+    user_id: string;
+    language: string;
+    completedMode: CompletedFocusBlock;
+    name: string;
+    device_id: string;
+  }) {
+    const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
+      lang: language,
+    });
+    const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
+      lang: language,
+      args: { focus_mode_name: name },
+    });
+    const notificationData = { ...completedMode, device_id };
+    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+      title: pushNotificationTitle,
+      body: pushNotificationBody,
+      pushData: notificationData,
+    });
+    // Pusher throwing error about data exceeding size limit, removing to dos
+    delete notificationData?.to_dos;
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Sending finish focus mode notification with Pusher',
+      data: { user_id, notificationData },
+    });
+    await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', notificationData);
+    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
   }
 
   calculateFocusDurationSeconds(fromTime: Date, toTime: Date): number {

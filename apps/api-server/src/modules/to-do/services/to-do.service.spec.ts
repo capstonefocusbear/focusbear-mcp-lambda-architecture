@@ -32,6 +32,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -51,7 +52,7 @@ describe('toDoService', () => {
           useValue: SentryServiceMock,
         },
         {
-          provide: getQueueToken('time-logs'),
+          provide: getQueueToken(BullQueues.TIME_LOGS),
           useValue: QueueMock,
         },
       ],
@@ -221,7 +222,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).toBeCalledWith('save-task-time-log', {
+      expect(QueueMock.add).toBeCalledWith(BullWorkers.SAVE_TASK_TIME_LOG, {
         userId: userDummy.id,
         toDoTimeLogs: [toDoTimeLogDummy],
         toDos: [ToDoDBResponseDummy],

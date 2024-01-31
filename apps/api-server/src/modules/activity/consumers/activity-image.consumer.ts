@@ -2,12 +2,13 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import axios from 'axios';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
-@Processor('activity-image')
+@Processor(BullQueues.ACTIVITY_IMAGE)
 export class ActivityImageConsumer {
   constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
-  @Process('delete-activity-image')
+  @Process(BullWorkers.DELETE_ACTIVITY_IMAGE)
   async readOperationJob(job: Job<{ user_id: string; filePath: string }>) {
     const {
       data: { user_id, filePath },
@@ -27,7 +28,7 @@ export class ActivityImageConsumer {
         { headers: { authorization: `Bearer ${process.env.UPLOAD_IO_SECRET_API_KEY}` } },
       );
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
         text: `Error in delete-activity-image queue for user with ID: ${user_id}\nFile Path: ${filePath}\nError: \`\`\`${error}\`\`\``,
       });

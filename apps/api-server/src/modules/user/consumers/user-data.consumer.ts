@@ -8,9 +8,9 @@ import { R2Service } from '@app/r2/services/r2.service';
 import { SendGridService } from '@app/send-grid';
 import { UserRepository } from '../repositories/user.repository';
 import { LanguageOptions } from '../domain/language-options.enum';
-import { FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 
-@Processor('user-data')
+@Processor(BullQueues.USER_DATA)
 export class UserPersonalDataConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
@@ -22,7 +22,7 @@ export class UserPersonalDataConsumer {
     private readonly i18nService: I18nService,
   ) {}
 
-  @Process('get-user-personal-data')
+  @Process(BullWorkers.GET_USER_PERSONAL_DATA)
   async readOperationJob(
     job: Job<{
       user_id: string;
@@ -61,7 +61,7 @@ export class UserPersonalDataConsumer {
         subject: this.i18nService.t('common.user_data_email_header', { lang: language }),
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       console.error('Error in user data email queued job: ', error);
     }
   }

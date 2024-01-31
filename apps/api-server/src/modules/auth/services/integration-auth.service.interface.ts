@@ -1,7 +1,7 @@
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
 
 export interface IIntegrationAuthService {
-  getLoginUrl();
+  getLoginUrl(isDevelopment: boolean);
 
   authorize(userId: string, authorizeQuery: AuthorizeQuery);
 }

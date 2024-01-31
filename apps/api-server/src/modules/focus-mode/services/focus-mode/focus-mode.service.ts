@@ -1,5 +1,6 @@
 import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { randomUUID } from 'crypto';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { InstalledFocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/installed-focus-mode-templates.reporisoty';
 import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
@@ -38,7 +39,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       const focusModes = await this.focusModeRepository.orm.find({ where: { user_id } });
       return focusModes;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -67,7 +68,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.fetchUserFocusModes(user_id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -93,7 +94,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       this.focusModeRepository.orm.softDelete(id);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -115,7 +116,15 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       const existingFocusModes = await this.focusModeRepository.orm.find({ where: { user_id } });
       await this.validateFocusModeName(focusModeDto.name, user_id, existingFocusModes);
-      const createdFocusMode = new FocusMode({ ...focusModeDto, user_id, tags: focusModeTags });
+      const createdFocusMode = new FocusMode({
+        id: focusModeDto.id ?? randomUUID(),
+        user_id,
+        name: focusModeDto.name,
+        metadata: focusModeDto.metadata,
+        allowed_apps: focusModeDto.allowed_apps,
+        allowed_urls: focusModeDto.allowed_urls,
+        tags: focusModeTags,
+      });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
       // check that focus mode is not one created by default when installing one of the apps
       // and if so, update onboarding progress
@@ -129,7 +138,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       }
       return savedFocusMode;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'warning' });
       throw error;
     }
   }
@@ -177,7 +186,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.focusModeRepository.orm.save(updateFocusMode);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'warning' });
       throw error;
     }
   }
@@ -192,11 +201,13 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           user_id,
         },
       });
-      const newlyCreatedTags = tags?.map((tag) => new FocusModeTag({ ...tag, user_id }));
+      const newlyCreatedTags = tags?.map(
+        (tag) => new FocusModeTag({ id: tag.id ?? randomUUID(), user_id, text: tag.text }),
+      );
       await Promise.all(newlyCreatedTags?.map((newTag) => this.focusModeTagRepository.upsert(newTag, ['id'])));
       return newlyCreatedTags;
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -228,7 +239,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         }),
       );
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

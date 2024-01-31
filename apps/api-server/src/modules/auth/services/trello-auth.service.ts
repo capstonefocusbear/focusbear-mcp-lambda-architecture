@@ -9,6 +9,7 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { BaseIntegrationAuthService } from './base-integration.auth.service';
+import { BullQueues } from '../../../shared/utils/constants';
 
 @Injectable()
 export class TrelloAuthService extends BaseIntegrationAuthService {
@@ -21,18 +22,18 @@ export class TrelloAuthService extends BaseIntegrationAuthService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
-    @InjectQueue('time-logs') protected timeLogsQueue: Queue,
+    @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {
     super(configService, userRepository, timeLogsQueue, platformIntegrationsService, IntegrationPlatforms.TRELLO);
   }
 
-  getQueryParams() {
+  getQueryParams(callbackUrl: string) {
     const scope = 'read,write,account';
 
     const queryParams: any = {
       key: this.clientId,
-      return_url: this.callbackUrl,
+      return_url: callbackUrl,
       name: this.appName,
       response_type: 'token',
       scope,

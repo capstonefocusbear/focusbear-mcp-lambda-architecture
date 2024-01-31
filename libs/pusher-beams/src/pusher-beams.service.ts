@@ -1,7 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as PusherBeams from '@pusher/push-notifications-server';
-import { ActivityCompletedPush } from 'apps/api-server/src/modules/activity/domain/activity-completed-push.model';
-import { CompletedFocusBlock } from 'apps/api-server/src/modules/focus-mode/entities/completed-focus-block.entity';
 import { BeamsPublishRequest } from './domains/pusher-beams-publish-request.model';
 import { IPusherBeamsOptions } from './interfaces';
 import { PUSHER_BEAMS_MODULE_OPTIONS } from './pusher-beams.constants';
@@ -20,7 +18,7 @@ export class PusherBeamsService extends PusherBeams {
   }: {
     title?: string;
     body?: string;
-    pushData?: ActivityCompletedPush | CompletedFocusBlock;
+    pushData?: { [key: string]: any };
     // we use push notification to trigger a state update for the mobile app, was requested
     // that we exclude title and body for Android
     should_send_only_data_for_android?: boolean;
@@ -31,10 +29,12 @@ export class PusherBeamsService extends PusherBeams {
         data: pushData,
       },
       fcm: {
-        notification: {
-          title: should_send_only_data_for_android ? undefined : title,
-          body: should_send_only_data_for_android ? undefined : body,
-        },
+        ...(!should_send_only_data_for_android && {
+          notification: {
+            title,
+            body,
+          },
+        }),
         data: pushData,
       },
     };

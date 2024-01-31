@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Equal, In, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { Course } from '../entities/course.entity';
 import { CourseEnrolment } from '../entities/course-enrolment.enitiy';
@@ -8,6 +9,9 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';
 import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
+import { PaginationDto } from '../dto/pagination/index.dto';
+import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
+import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 
 @Injectable()
 export class CoursesRepository {
@@ -19,18 +23,19 @@ export class CoursesRepository {
 
   private readonly ormUser = AppDataSource.getRepository(User);
 
-  async getAllAuthoredCourses(user_id: string): Promise<Course[]> {
+  async getAllAuthorCourses(user_id: string): Promise<Course[]> {
     return this.ormCourse.find({
       where: {
         author: {
           id: user_id,
         },
       },
+      relations: ['ratings'],
     });
   }
 
   async getAllEnrolledCourses(user_id: string): Promise<Course[]> {
-    const courseEnrolments = await this.ormCourseEnrolment.find({
+    const courseEnrollments = await this.ormCourseEnrolment.find({
       where: {
         user: {
           id: user_id,
@@ -38,16 +43,11 @@ export class CoursesRepository {
       },
     });
 
-    return Promise.all(
-      courseEnrolments.map(async (enrolment: CourseEnrolment) => {
-        const courseFound = await this.ormCourse.findOne({
-          where: {
-            id: enrolment.course.id,
-          },
-        });
-        if (courseFound) return courseFound;
-      }),
-    );
+    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
+    return this.ormCourse.find({
+      where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
+      relations: ['ratings', 'lessons', 'lessonCompletions', 'enrollments'],
+    });
   }
 
   async getRatings(course_id: string): Promise<CourseRating[]> {
@@ -58,43 +58,19 @@ export class CoursesRepository {
     });
   }
 
-  async createCourseContent({ name, description }: CreateCourseDto, author_id: string) {
-    await this.ormCourse
-      .createQueryBuilder()
-      .insert()
-      .into(Course)
-      .values({
-        name,
-        description,
-        author_id,
-      })
-      .execute();
+  async createCourseContent(createCourseDto: CreateCourseDto, author_id: string) {
+    const newCourse = new Course({ ...createCourseDto, author_id });
+    await this.ormCourse.save(newCourse);
   }
 
-  async createRatingContent({ review, rating, course_id }: CreateCourseRatingDto, user_id: string) {
-    await this.ormCourseRating
-      .createQueryBuilder()
-      .insert()
-      .into(CourseRating)
-      .values({
-        rating,
-        course_id,
-        user_id,
-        review,
-      })
-      .execute();
+  async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
+    const newRating = new CourseRating({ ...createCourseRatingDto, user_id });
+    await this.ormCourseRating.save(newRating);
   }
 
   async createEnrolmentContent(course_id: string, user_id: string) {
-    await this.ormCourseEnrolment
-      .createQueryBuilder()
-      .insert()
-      .into(CourseEnrolment)
-      .values({
-        course_id,
-        user_id,
-      })
-      .execute();
+    const newEnrolment = new CourseEnrolment({ course_id, user_id });
+    await this.ormCourseEnrolment.save(newEnrolment);
   }
 
   async updateCourseContent({ name, description }: UpdateCourseDto, course_id: string) {
@@ -150,11 +126,10 @@ export class CoursesRepository {
     });
   }
 
-  async checkForeignKeyCourseIdExist(course_id: string, user_id?: string) {
+  async checkForeignKeyCourseIdExist(course_id: string) {
     return this.ormCourse.findOne({
       where: {
         id: course_id,
-        author_id: user_id,
       },
     });
   }
@@ -165,6 +140,34 @@ export class CoursesRepository {
         course_id,
         user_id,
       },
+    });
+  }
+
+  async getAllCourses(paginationOptionsDto: PaginationOptionsDto) {
+    const entities = await this.ormCourse.find({
+      order: {
+        created_at: paginationOptionsDto.order,
+      },
+      skip: paginationOptionsDto.skip,
+      take: paginationOptionsDto.take,
+      relations: ['ratings'],
+    });
+    const paginationMetaDto = new PaginationMetaDto({ itemCount: entities.length, paginationOptionsDto });
+    return new PaginationDto(entities, paginationMetaDto);
+  }
+
+  async getUserNotEnrolledCourses(user_id: string): Promise<Course[]> {
+    const courseEnrollments = await this.ormCourseEnrolment.find({
+      where: {
+        user: {
+          id: user_id,
+        },
+      },
+    });
+    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
+    return this.ormCourse.find({
+      where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
+      relations: ['ratings'],
     });
   }
 }

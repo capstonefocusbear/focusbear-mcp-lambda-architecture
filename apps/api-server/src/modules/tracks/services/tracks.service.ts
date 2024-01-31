@@ -49,7 +49,7 @@ export class TracksService {
       );
       return tracksWithDownloadUrls.filter((track) => track !== null);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
@@ -66,7 +66,7 @@ export class TracksService {
       });
       return await this.tracksRepository.upsert(track, ['id']);
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

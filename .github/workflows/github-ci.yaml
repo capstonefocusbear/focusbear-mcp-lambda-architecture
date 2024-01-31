@@ -2,8 +2,6 @@ name: github-ci
 on: 
   push:
     branches: [main]
-  pull_request:
-    branches: [ main ]
 env:
   RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -13,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [20.x]
     
     steps:
       
@@ -28,9 +26,8 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
       
-      # temporary change
-      # - name: Security audit of dependencies
-      #   run: npm audit --production
+      - name: Security audit of dependencies
+        run: npm audit --production
       
       - name: Lint code
         run: npm run lint

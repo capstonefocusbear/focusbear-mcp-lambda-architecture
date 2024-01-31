@@ -7,13 +7,14 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
 import { GetActivitiesForAdminQueryDto } from '../../dto/get-activities-for-admin.dto';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class ActivityService {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userRepository: UserRepository,
-    @InjectQueue('activity-image') private activityQueue: Queue,
+    @InjectQueue(BullQueues.ACTIVITY_IMAGE) private activityQueue: Queue,
     private readonly activityRepository: ActivityRepository,
     private readonly stripeService: StripeService,
   ) {}
@@ -40,12 +41,12 @@ export class ActivityService {
           `User with ID: ${user_id} is not authorized to delete this image from activity with ID: ${activityId}`,
         );
       }
-      await this.activityQueue.add('delete-activity-image', {
+      await this.activityQueue.add(BullWorkers.DELETE_ACTIVITY_IMAGE, {
         user_id,
         filePath,
       });
     } catch (error) {
-      this.sentryService.instance().captureMessage(JSON.stringify(error), 'error');
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

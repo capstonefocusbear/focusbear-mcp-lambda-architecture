@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto';
-import { User as Auth0User } from 'auth0';
+import { UserProfile as Auth0UserProfile } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
+import { CalendarPlatforms } from '../../src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { CreateFocusModeTagDto } from '../../src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
 import { DaysOfWeek } from '../../src/modules/activity/domain/days-of-week.enum';
@@ -29,6 +30,7 @@ import { FocusModeTag } from '../../src/modules/focus-mode/entities/focus-mode-t
 import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { IntegrationPlatforms } from '../../src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../src/modules/to-do/entities/synced-project.entity';
+import { PaymentType } from '../../src/modules/team/domain/payment-type.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -71,7 +73,7 @@ export const adminUserDummy = new User(
   { generateId: false },
 );
 
-export const auth0UserDummy: Auth0User = {
+export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,
@@ -1125,7 +1127,9 @@ export const TeamWithMembersDummy = new Team({
   owner: userDummy,
   is_active: true,
   team_size: 5,
+  team_size_limit: 0,
   name: 'Team Name',
+  payment_type: PaymentType.STRIPE,
   stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
 });
@@ -1713,3 +1717,63 @@ export const syncedProjectDummy = new SyncedProject({
   user_id: userDummy.id,
   available_statuses: [{ label: 'Open', status_id: 'test-id', should_complete_task: true }],
 });
+
+export const DummyCalendarOne = {
+  id: '7678080d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  platform: 'google',
+  account: 'account',
+  calendar_id: 'CalendarId',
+  summary: 'Summary1',
+  is_selected: true,
+};
+
+export const DummyCalendarTwo = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  platform: 'google',
+  account: 'account',
+  calendar_id: 'CalendarId2',
+  summary: 'Summary4',
+  is_selected: false,
+};
+
+export const DummyCalendarDto = {
+  platform: CalendarPlatforms.GOOGLE,
+  platform_account: 'account',
+  calendar_id: 'CalenarId',
+  summary: 'Summary',
+};
+
+export const DummyCalendarKeywordOne = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f803',
+  user_id: userDummy.id,
+  keyowrd: 'busy',
+  intitle: true,
+  indescription: true,
+  platform: 'google',
+};
+
+export const DummyCalendarKeywordTwo = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f823',
+  user_id: userDummy.id,
+  keyowrd: 'not busy',
+  intitle: false,
+  indescription: true,
+  platform: 'google',
+};
+
+export const DummyCalendarUpdateDto = {
+  id: '7678970d-463d-4c1a-b8cc-9526edd2f823',
+  keyword: 'not busy',
+  title: false,
+  description: true,
+  platform: 'google',
+};
+
+export const DummyCalendarCreateDto = {
+  keyword: 'not busy',
+  title: false,
+  description: true,
+  platform: CalendarPlatforms.GOOGLE,
+};

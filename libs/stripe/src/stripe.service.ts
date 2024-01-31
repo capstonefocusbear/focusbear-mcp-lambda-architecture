@@ -24,6 +24,7 @@ export class StripeService extends Stripe {
         allow_promotion_codes: true,
         customer,
         automatic_tax: { enabled: true },
+        customer_update: { address: 'auto' },
         billing_address_collection: 'auto',
         line_items: [
           {

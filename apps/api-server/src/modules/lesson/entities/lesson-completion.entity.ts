@@ -3,6 +3,7 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from '../../course/entities/course.entity';
 import { Lesson } from './lesson.entity';
 import { User } from '../../user/entities/user.entity';
+import { LessonCompletionStatus } from '../domain/lesson-completion-status.enum';
 
 @Entity('lesson_completions')
 export class LessonCompletion extends BaseEntity {
@@ -10,6 +11,9 @@ export class LessonCompletion extends BaseEntity {
     super(id, options);
     Object.assign(this, { ...data });
   }
+
+  @Column({ type: 'enum', enum: LessonCompletionStatus, default: LessonCompletionStatus.TUTORIAL })
+  status: LessonCompletionStatus;
 
   @Index()
   @Column({ type: 'varchar' })

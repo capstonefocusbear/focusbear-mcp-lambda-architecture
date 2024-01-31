@@ -69,7 +69,7 @@ export class LessonsRepository {
       .execute();
   }
 
-  async createLessonCompletion({ lesson_id, course_id }: CreateLessonCompletionDto, user_id: string) {
+  async createLessonCompletion({ lesson_id, course_id, status }: CreateLessonCompletionDto, user_id: string) {
     await this.ormLessonCompletion
       .createQueryBuilder()
       .insert()
@@ -77,6 +77,7 @@ export class LessonsRepository {
       .values({
         lesson_id,
         course_id,
+        status,
         user_id,
       })
       .execute();

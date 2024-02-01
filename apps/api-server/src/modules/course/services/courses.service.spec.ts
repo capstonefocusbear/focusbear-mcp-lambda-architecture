@@ -84,6 +84,27 @@ describe('CoursesService', () => {
     });
   });
 
+  describe('getCourseDetails', () => {
+    it("negative: should throw NotFoundException if the course couldn't be found in DB", async () => {
+      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
+      const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
+      let exception: any;
+      try {
+        await coursesService.getCourseDetails(DummyCourseTwo.id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toMatch(responseMessage);
+    });
+
+    it('positive: should return course content', async () => {
+      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      await coursesService.getCourseDetails(DummyCourseTwo.id, userDummy.id);
+      expect(CoursesRepositoryMock.checkForeignKeyCourseIdExist).toBeCalledWith(DummyCourseTwo.id);
+    });
+  });
+
   describe('updateCourse', () => {
     it("negative: should throw NotFoundException if the course couldn't be found in DB", async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);

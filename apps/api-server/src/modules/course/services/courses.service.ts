@@ -54,6 +54,28 @@ export class CoursesService {
     }
   }
 
+  async getCourseDetails(course_id: string, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Get Course Details',
+        data: {
+          user_id,
+          course_id,
+        },
+      });
+      const course = await this.coursesRepository.getCourseDetails(course_id);
+      if (!course) {
+        throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
+      }
+      return course;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
   async updateCourse(updateCourseDto: UpdateCourseDto, course_id: string, user_id: string, roles: string[]) {
     try {
       this.sentryService.instance().addBreadcrumb({

@@ -56,7 +56,7 @@ export class LessonsService {
     }
   }
 
-  async createCompletedLesson({ course_id, lesson_id }: CreateLessonCompletionDto, user_id: string) {
+  async createCompletedLesson({ course_id, lesson_id, status }: CreateLessonCompletionDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Lesson Service',
@@ -65,6 +65,7 @@ export class LessonsService {
         data: {
           course_id,
           lesson_id,
+          status,
           user_id,
         },
       });
@@ -77,7 +78,7 @@ export class LessonsService {
       if (!lesson) {
         throw new NotFoundException(`Lesson with lesson_id ${lesson_id} couldn't be found`);
       }
-      await this.lessonsRepository.createLessonCompletion({ course_id, lesson_id }, user_id);
+      await this.lessonsRepository.createLessonCompletion({ course_id, lesson_id, status }, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

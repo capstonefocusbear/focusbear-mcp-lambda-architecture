@@ -35,6 +35,11 @@ export class CoursesController {
     this.coursesService.createCourse(createCourseDto, user.id);
   }
 
+  @Get(':course_id')
+  getCourseDetails(@Param('course_id') course_id: string, @AuthContext() { user }: Passport): Promise<Course> {
+    return this.coursesService.getCourseDetails(course_id, user.id);
+  }
+
   @Patch(':course_id')
   updateCourse(
     @Body() updateCourseDto: UpdateCourseDto,

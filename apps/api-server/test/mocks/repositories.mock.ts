@@ -183,6 +183,7 @@ export const CoursesRepositoryMock = {
   getAllCourses: jest.fn(),
   getUserNotEnrolledCourses: jest.fn(),
   getUserCreatedCourses: jest.fn(),
+  getCourseDetails: jest.fn(),
 };
 
 export const LessonsRepositoryMock = {

@@ -65,7 +65,7 @@ export class CoursesService {
           course_id,
         },
       });
-      const course = await this.coursesRepository.getCourseDetails(course_id);
+      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }

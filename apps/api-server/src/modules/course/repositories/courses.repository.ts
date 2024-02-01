@@ -63,14 +63,6 @@ export class CoursesRepository {
     await this.ormCourse.save(newCourse);
   }
 
-  async getCourseDetails(course_id: string) {
-    return this.ormCourse.findOne({
-      where: {
-        id: course_id,
-      },
-    });
-  }
-
   async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
     const newRating = new CourseRating({ ...createCourseRatingDto, user_id });
     await this.ormCourseRating.save(newRating);

@@ -86,7 +86,7 @@ describe('CoursesService', () => {
 
   describe('getCourseDetails', () => {
     it("negative: should throw NotFoundException if the course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.getCourseDetails.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
@@ -99,9 +99,9 @@ describe('CoursesService', () => {
     });
 
     it('positive: should return course content', async () => {
-      CoursesRepositoryMock.getCourseDetails.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.getCourseDetails(DummyCourseTwo.id, userDummy.id);
-      expect(CoursesRepositoryMock.getCourseDetails).toBeCalledWith(DummyCourseTwo.id);
+      expect(CoursesRepositoryMock.checkForeignKeyCourseIdExist).toBeCalledWith(DummyCourseTwo.id);
     });
   });
 

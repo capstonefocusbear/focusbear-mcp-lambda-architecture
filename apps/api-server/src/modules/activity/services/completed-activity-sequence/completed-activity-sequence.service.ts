@@ -100,10 +100,15 @@ export class CompletedActivitySequenceService {
       });
       const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
       if (!uncompletedSequenceLog) {
-        throw new NotFoundException({
-          message: `There is no uncompleted sequence log with id: ${log_id}`,
-          donotloginslack: true,
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Activity sequence already completed',
+          data: {
+            user_id,
+          },
         });
+        return;
       }
       uncompletedSequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);

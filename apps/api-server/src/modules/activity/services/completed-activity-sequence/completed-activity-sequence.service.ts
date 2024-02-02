@@ -100,6 +100,14 @@ export class CompletedActivitySequenceService {
       });
       const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
       if (!uncompletedSequenceLog) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Activity sequence already completed',
+          data: {
+            user_id,
+          },
+        });
         return;
       }
       uncompletedSequenceLog.finalizeUncompletedLog();

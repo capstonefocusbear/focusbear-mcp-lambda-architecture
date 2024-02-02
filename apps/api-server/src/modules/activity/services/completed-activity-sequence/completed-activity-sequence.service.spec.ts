@@ -213,22 +213,6 @@ describe('CompletedActivitySequenceService', () => {
   });
 
   describe('completeActivitySequence', () => {
-    it('negative: should throw NotFoundException if there is no uncompleted sequence log to complete', async () => {
-      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(null);
-      const errorMessage = `There is no uncompleted sequence log with id: ${UncompletedSequenceLogDummy.id}`;
-      let exception: any;
-
-      try {
-        await completedActivitySequenceService.completeActivitySequence(UncompletedSequenceLogDummy.id, userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
     it('positive: new completedActivitySequence should be finalized ', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const log = new CompletedActivitySequence({ ...UncompletedSequenceLogDummy });

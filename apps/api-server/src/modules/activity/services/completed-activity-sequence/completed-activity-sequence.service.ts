@@ -100,10 +100,7 @@ export class CompletedActivitySequenceService {
       });
       const uncompletedSequenceLog = await this.completedActivitySequenceRepository.getUncompletedSequenceLog(log_id);
       if (!uncompletedSequenceLog) {
-        throw new NotFoundException({
-          message: `There is no uncompleted sequence log with id: ${log_id}`,
-          donotloginslack: true,
-        });
+        return;
       }
       uncompletedSequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);

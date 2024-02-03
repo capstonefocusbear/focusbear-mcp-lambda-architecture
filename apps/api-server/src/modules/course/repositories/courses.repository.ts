@@ -118,6 +118,15 @@ export class CoursesRepository {
     );
   }
 
+  async getCourseDetails(course_id: string) {
+    return this.ormCourse.findOne({
+      where: {
+        id: course_id,
+      },
+      relations: ['ratings', 'lessons', 'lessonCompletions'],
+    });
+  }
+
   async checkForeignKeyUserIdExist(user_id: string) {
     return this.ormUser.findOne({
       where: {

@@ -122,6 +122,10 @@ export class CoursesRepository {
     return this.ormCourse.findOne({
       where: {
         id: course_id,
+        deleted: false,
+        lessons: {
+          deleted: false,
+        },
       },
       relations: ['ratings', 'lessons', 'lessonCompletions'],
     });

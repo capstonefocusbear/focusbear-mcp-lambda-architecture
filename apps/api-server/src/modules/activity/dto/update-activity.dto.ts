@@ -23,6 +23,7 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
+import { Course } from '../../course/entities/course.entity';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -127,4 +128,8 @@ export class UpdateActivityDto extends ActivityData {
   @IsEnum(ImpactCategory)
   @ApiProperty({ enum: ImpactCategory })
   impact_category?: ImpactCategory;
+
+  @IsOptional()
+  @IsArray()
+  courses?: Course[];
 }

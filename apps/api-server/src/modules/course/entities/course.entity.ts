@@ -5,6 +5,7 @@ import { CourseRating } from './course-rating.entity';
 import { User } from '../../user/entities/user.entity';
 import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
 import { CourseEnrolment } from './course-enrolment.enitiy';
+import { Activity } from '../../activity/entities/activity.entity';
 
 @Entity('courses')
 export class Course extends BaseEntity {
@@ -29,6 +30,10 @@ export class Course extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   deleted: boolean;
 
+  @Index()
+  @Column({ type: 'varchar' })
+  activity_id: string;
+
   @ManyToOne(() => User, (user) => user.id, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'author_id' })
   author?: User;
@@ -44,4 +49,8 @@ export class Course extends BaseEntity {
 
   @OneToMany(() => CourseEnrolment, (course_enrolment) => course_enrolment.course)
   enrollments?: CourseEnrolment[];
+
+  @ManyToOne(() => Activity, (activity) => activity.courses, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'activity_id' })
+  activity: Activity;
 }

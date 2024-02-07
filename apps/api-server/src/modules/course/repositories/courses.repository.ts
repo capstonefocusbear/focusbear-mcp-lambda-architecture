@@ -12,7 +12,6 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { PaginationDto } from '../dto/pagination/index.dto';
 import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
-import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 import { CoursePlatform } from '../domain/course-platform.enum';
 
 @Injectable()

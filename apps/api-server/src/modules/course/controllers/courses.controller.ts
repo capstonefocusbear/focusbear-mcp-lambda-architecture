@@ -16,6 +16,7 @@ import { DeleteCourseDto } from '../dto/delete-course.dto';
 import { PaginationDto } from '../dto/pagination/index.dto';
 import { Course } from '../entities/course.entity';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
+import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 
 @Controller('course')
 @UseGuards(IsAuth)
@@ -105,5 +106,10 @@ export class CoursesController {
   @Get('user-not-enrolled')
   getUserNotEnrolledCourses(@AuthContext() { user }: Passport) {
     return this.coursesService.getUserNotEnrolledCourses(user.id);
+  }
+
+  @Post('sync-platform-courses')
+  syncPlatformCourses(@Body() syncPlatformCoursesDto: SyncPlatformCoursesDto, @AuthContext() { user }: Passport) {
+    return this.coursesService.syncPlatformCourses(syncPlatformCoursesDto, user.id);
   }
 }

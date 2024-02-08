@@ -10,6 +10,7 @@ import { CoursesRepository } from '../repositories/courses.repository';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
+import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 
 @Injectable()
 export class CoursesService {
@@ -293,6 +294,26 @@ export class CoursesService {
         },
       });
       return await this.coursesRepository.getUserNotEnrolledCourses(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+    }
+  }
+
+  async syncPlatformCourses(syncPlatformCoursesDto: SyncPlatformCoursesDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Sync Platform Courses',
+        data: {
+          user_id,
+          ...syncPlatformCoursesDto,
+        },
+      });
+      const platformCourses = this.coursesRepository.getPlatformCourses(syncPlatformCoursesDto.platform);
+      return await Promise.allSettled(
+        (await platformCourses).map((course) => this.coursesRepository.createEnrolmentContent(course.id, user_id)),
+      );
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
     }

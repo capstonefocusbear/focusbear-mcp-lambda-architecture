@@ -6,6 +6,7 @@ import { User } from '../../user/entities/user.entity';
 import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
 import { CourseEnrolment } from './course-enrolment.enitiy';
 import { Activity } from '../../activity/entities/activity.entity';
+import { CoursePlatform } from '../domain/course-platform.enum';
 
 @Entity('courses')
 export class Course extends BaseEntity {
@@ -33,6 +34,10 @@ export class Course extends BaseEntity {
   @Index()
   @Column({ type: 'varchar' })
   activity_id: string;
+
+  @Index()
+  @Column({ type: 'enum', enum: CoursePlatform, default: CoursePlatform.WEB })
+  platform: CoursePlatform;
 
   @ManyToOne(() => User, (user) => user.id, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'author_id' })

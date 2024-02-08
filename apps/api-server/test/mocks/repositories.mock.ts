@@ -184,6 +184,7 @@ export const CoursesRepositoryMock = {
   getUserNotEnrolledCourses: jest.fn(),
   getUserCreatedCourses: jest.fn(),
   getCourseDetails: jest.fn(),
+  getPlatformCourses: jest.fn(),
 };
 
 export const LessonsRepositoryMock = {

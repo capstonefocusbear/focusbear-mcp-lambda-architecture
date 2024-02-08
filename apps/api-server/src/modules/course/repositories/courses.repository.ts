@@ -12,6 +12,7 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { PaginationDto } from '../dto/pagination/index.dto';
 import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
+import { CoursePlatform } from '../domain/course-platform.enum';
 
 @Injectable()
 export class CoursesRepository {
@@ -181,6 +182,14 @@ export class CoursesRepository {
     return this.ormCourse.find({
       where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
       relations: ['ratings'],
+    });
+  }
+
+  async getPlatformCourses(platform: CoursePlatform) {
+    return await this.ormCourse.find({
+      where: {
+        platform,
+      },
     });
   }
 }

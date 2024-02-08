@@ -19,6 +19,7 @@ import {
   DummyUpdateCourseEnrolmentDto,
 } from '../../../../test/dummies/online-courses.dummies';
 import { UserTypes } from '../../user/domain/user-types.enum';
+import { CoursePlatform } from '../domain/course-platform.enum';
 
 describe('CoursesService', () => {
   let coursesService: CoursesService;
@@ -350,6 +351,21 @@ describe('CoursesService', () => {
       CoursesRepositoryMock.getUserNotEnrolledCourses.mockResolvedValueOnce([DummyCourseThree]);
       const result = await coursesService.getUserNotEnrolledCourses(userDummy.id);
       expect(result).toMatchObject([DummyCourseThree]);
+    });
+  });
+
+  describe('syncPlatformCourses', () => {
+    it('positive: should sync platform courses', async () => {
+      CoursesRepositoryMock.getPlatformCourses.mockResolvedValueOnce([DummyCourseTwo, DummyCourseThree]);
+      await coursesService.syncPlatformCourses({ platform: CoursePlatform.MAC }, userDummy.id);
+      expect(CoursesRepositoryMock.getPlatformCourses).toBeCalledWith(CoursePlatform.MAC);
+      expect(CoursesRepositoryMock.createEnrolmentContent).toBeCalledTimes(2);
+      expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenNthCalledWith(1, DummyCourseTwo.id, userDummy.id);
+      expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenNthCalledWith(
+        2,
+        DummyCourseThree.id,
+        userDummy.id,
+      );
     });
   });
 });

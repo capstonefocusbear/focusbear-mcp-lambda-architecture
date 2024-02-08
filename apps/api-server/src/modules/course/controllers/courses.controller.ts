@@ -17,6 +17,7 @@ import { PaginationDto } from '../dto/pagination/index.dto';
 import { Course } from '../entities/course.entity';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
+import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
 
 @Controller('course')
 @UseGuards(IsAuth)
@@ -99,8 +100,8 @@ export class CoursesController {
   }
 
   @Get('user')
-  getUserCourses(@AuthContext() { user }: Passport) {
-    return this.coursesService.getUserCreatedCourses(user.id);
+  getUserCourses(@Param() getUserCoursesDto: GetUserCoursesDto, @AuthContext() { user }: Passport) {
+    return this.coursesService.getUserCreatedCourses(getUserCoursesDto, user.id);
   }
 
   @Get('user-not-enrolled')

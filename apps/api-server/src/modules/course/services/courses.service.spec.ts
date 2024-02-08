@@ -341,7 +341,7 @@ describe('CoursesService', () => {
   describe('getUserCreatedCourses', () => {
     it('positive: should fetch user created courses', async () => {
       CoursesRepositoryMock.getAllAuthorCourses.mockResolvedValueOnce([DummyCourseOne, DummyCourseThree]);
-      const result = await coursesService.getUserCreatedCourses(userDummy.id);
+      const result = await coursesService.getUserCreatedCourses({ hidden: false, deleted: false }, userDummy.id);
       expect(result).toMatchObject([DummyCourseOne, DummyCourseThree]);
     });
   });

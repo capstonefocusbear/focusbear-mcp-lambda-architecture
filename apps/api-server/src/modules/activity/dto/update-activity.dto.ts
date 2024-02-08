@@ -24,6 +24,7 @@ import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
 import { Course } from '../../course/entities/course.entity';
+import { Tutorial } from '../entities/tutorial.entity';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -131,5 +132,6 @@ export class UpdateActivityDto extends ActivityData {
 
   @IsOptional()
   @IsArray()
-  courses?: Course[];
+  @IsUUID('4', { each: true })
+  tutorials?: Tutorial[];
 }

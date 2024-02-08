@@ -1,7 +1,7 @@
 import { Lesson } from '../../src/modules/lesson/entities/lesson.entity';
 import { adminUserDummy, userDummy } from '.';
 import { Course } from '../../src/modules/course/entities/course.entity';
-import { CourseEnrolment } from '../../src/modules/course/entities/course-enrolment.enitiy';
+import { CourseEnrolment } from '../../src/modules/course/entities/course-enrolment.entity';
 import { LessonCompletion } from '../../src/modules/lesson/entities/lesson-completion.entity';
 import { CourseRating } from '../../src/modules/course/entities/course-rating.entity';
 import { CoursePlatform } from '../../src/modules/course/domain/course-platform.enum';

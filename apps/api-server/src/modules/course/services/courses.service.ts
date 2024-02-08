@@ -276,6 +276,7 @@ export class CoursesService {
         message: 'Getting User Created Courses',
         data: {
           user_id,
+          ...this.getUserCreatedTutorials,
         },
       });
       return await this.coursesRepository.getAllAuthorCourses(getUserCoursesDto, user_id);
@@ -315,6 +316,22 @@ export class CoursesService {
       return await Promise.allSettled(
         (await platformCourses).map((course) => this.coursesRepository.createEnrolmentContent(course.id, user_id)),
       );
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+    }
+  }
+
+  async getUserCreatedTutorials(user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Course Service',
+        level: 'debug',
+        message: 'Getting User Created Courses',
+        data: {
+          user_id,
+        },
+      });
+      return (await this.coursesRepository.getUserCreatedTutorials(user_id)).map(({ id, name }) => ({ id, name }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
     }

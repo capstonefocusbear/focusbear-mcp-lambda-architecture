@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AppDataSource } from '../../../../ormconfig';
-import { CourseEnrolment } from '../../course/entities/course-enrolment.enitiy';
+import { CourseEnrolment } from '../../course/entities/course-enrolment.entity';
 import { Course } from '../../course/entities/course.entity';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
 import { LessonCompletion } from '../entities/lesson-completion.entity';

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Equal, In, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { Course } from '../entities/course.entity';
-import { CourseEnrolment } from '../entities/course-enrolment.enitiy';
+import { CourseEnrolment } from '../entities/course-enrolment.entity';
 import { CourseRating } from '../entities/course-rating.entity';
 import { User } from '../../user/entities/user.entity';
 import { UpdateCourseDto } from '../dto/update-course.dto';
@@ -132,6 +132,16 @@ export class CoursesRepository {
         },
       },
       relations: ['ratings', 'lessons', 'lessonCompletions'],
+    });
+  }
+
+  async getUserCreatedTutorials(user_id: string) {
+    return this.ormCourse.find({
+      where: {
+        author_id: user_id,
+        deleted: false,
+        is_hidden: false,
+      },
     });
   }
 

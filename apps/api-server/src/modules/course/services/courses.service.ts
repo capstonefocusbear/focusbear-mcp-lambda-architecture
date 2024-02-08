@@ -11,6 +11,7 @@ import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
+import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
 
 @Injectable()
 export class CoursesService {
@@ -267,7 +268,7 @@ export class CoursesService {
     }
   }
 
-  async getUserCreatedCourses(user_id: string) {
+  async getUserCreatedCourses(getUserCoursesDto: GetUserCoursesDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Course Service',
@@ -277,7 +278,7 @@ export class CoursesService {
           user_id,
         },
       });
-      return await this.coursesRepository.getAllAuthorCourses(user_id);
+      return await this.coursesRepository.getAllAuthorCourses(getUserCoursesDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
     }

@@ -13,6 +13,7 @@ import { PaginationDto } from '../dto/pagination/index.dto';
 import { PaginationMetaDto } from '../dto/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 import { CoursePlatform } from '../domain/course-platform.enum';
+import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
 
 @Injectable()
 export class CoursesRepository {
@@ -24,12 +25,14 @@ export class CoursesRepository {
 
   private readonly ormUser = AppDataSource.getRepository(User);
 
-  async getAllAuthorCourses(user_id: string): Promise<Course[]> {
+  async getAllAuthorCourses({ hidden, deleted }: GetUserCoursesDto, user_id: string): Promise<Course[]> {
     return this.ormCourse.find({
       where: {
         author: {
           id: user_id,
         },
+        is_hidden: hidden,
+        deleted,
       },
       relations: ['ratings'],
     });

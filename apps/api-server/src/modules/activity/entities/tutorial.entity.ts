@@ -1,4 +1,4 @@
-import { Column, OneToMany, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Activity } from './activity.entity';
 

@@ -131,6 +131,5 @@ export class UpdateActivityDto extends ActivityData {
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
   tutorials?: Tutorial[];
 }

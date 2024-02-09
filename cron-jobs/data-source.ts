@@ -6,7 +6,7 @@ import { ActivitySequence } from '../apps/api-server/src/modules/activity/entiti
 import { Activity } from '../apps/api-server/src/modules/activity/entities/activity.entity';
 import { CompletedActivitySequence } from '../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
 import { CompletedActivity } from '../apps/api-server/src/modules/activity/entities/completed-activity.entity';
-import { CourseEnrolment } from '../apps/api-server/src/modules/course/entities/course-enrolment.enitiy';
+import { CourseEnrolment } from '../apps/api-server/src/modules/course/entities/course-enrolment.entity';
 import { CourseRating } from '../apps/api-server/src/modules/course/entities/course-rating.entity';
 import { Course } from '../apps/api-server/src/modules/course/entities/course.entity';
 import { Device } from '../apps/api-server/src/modules/device/entities/device.entity';

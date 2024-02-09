@@ -113,4 +113,9 @@ export class CoursesController {
   syncPlatformCourses(@Body() syncPlatformCoursesDto: SyncPlatformCoursesDto, @AuthContext() { user }: Passport) {
     return this.coursesService.syncPlatformCourses(syncPlatformCoursesDto, user.id);
   }
+
+  @Get('user-tutorials')
+  getUserTutorials(@AuthContext() { user }: Passport) {
+    return this.coursesService.getUserCreatedTutorials(user.id);
+  }
 }

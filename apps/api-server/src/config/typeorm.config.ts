@@ -19,7 +19,7 @@ import { Track } from '../modules/tracks/entities/track.entity';
 import { FocusModeTemplate } from '../modules/focus-mode-template/entities/focus-mode-template.entity';
 import { InstalledFocusModeTemplate } from '../modules/focus-mode-template/entities/installed-focus-mode_templates.entity';
 import { Course } from '../modules/course/entities/course.entity';
-import { CourseEnrolment } from '../modules/course/entities/course-enrolment.enitiy';
+import { CourseEnrolment } from '../modules/course/entities/course-enrolment.entity';
 import { CourseRating } from '../modules/course/entities/course-rating.entity';
 import { Lesson } from '../modules/lesson/entities/lesson.entity';
 import { LessonCompletion } from '../modules/lesson/entities/lesson-completion.entity';
@@ -41,6 +41,7 @@ import { Calendar } from '../modules/calendar/entities/calendar.entity';
 import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
+import { Tutorial } from '../modules/activity/entities/tutorial.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -98,6 +99,7 @@ export const typeormConfig = registerAs(
       CalendarExcludedKeyword,
       Calendar,
       TrackEvent,
+      Tutorial,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

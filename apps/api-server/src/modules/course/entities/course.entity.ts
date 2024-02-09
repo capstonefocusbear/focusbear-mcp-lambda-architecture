@@ -4,8 +4,7 @@ import { Lesson } from '../../lesson/entities/lesson.entity';
 import { CourseRating } from './course-rating.entity';
 import { User } from '../../user/entities/user.entity';
 import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
-import { CourseEnrolment } from './course-enrolment.enitiy';
-import { Activity } from '../../activity/entities/activity.entity';
+import { CourseEnrolment } from './course-enrolment.entity';
 import { CoursePlatform } from '../domain/course-platform.enum';
 
 @Entity('courses')
@@ -32,10 +31,6 @@ export class Course extends BaseEntity {
   deleted: boolean;
 
   @Index()
-  @Column({ type: 'varchar' })
-  activity_id: string;
-
-  @Index()
   @Column({ type: 'enum', enum: CoursePlatform, default: CoursePlatform.WEB })
   platform: CoursePlatform;
 
@@ -54,8 +49,4 @@ export class Course extends BaseEntity {
 
   @OneToMany(() => CourseEnrolment, (course_enrolment) => course_enrolment.course)
   enrollments?: CourseEnrolment[];
-
-  @ManyToOne(() => Activity, (activity) => activity.courses, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'activity_id' })
-  activity: Activity;
 }

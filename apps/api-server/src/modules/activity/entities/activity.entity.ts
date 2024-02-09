@@ -10,7 +10,7 @@ import { ActivityTemplate } from '../../activity-template/entity/activity-templa
 import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogQuantityQuestion } from './log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
-import { Course } from '../../course/entities/course.entity';
+import { Tutorial } from './tutorial.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -175,7 +175,6 @@ export class Activity extends BaseEntity {
   @JoinColumn({ name: 'activity_template_id' })
   activity_template?: ActivityTemplate;
 
-  @OneToMany(() => Course, (course) => course.activity)
-  @JoinColumn({ name: 'id' })
-  courses?: Course[];
+  @OneToMany(() => Tutorial, (tutorial) => tutorial.activity)
+  tutorials?: Tutorial[];
 }

@@ -140,7 +140,6 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',
-        'activities.tutorials',
       ])
       .where('users.id = :id', { id })
       .getOne();

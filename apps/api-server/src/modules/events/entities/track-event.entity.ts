@@ -9,7 +9,7 @@ export class TrackEvent extends BaseEntity {
     Object.assign(this, { ...trackEvent });
   }
 
-  @Column({ type: 'uuid', nullable: false })
+  @Column({ type: 'uuid', nullable: true })
   user_id: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

@@ -25,8 +25,7 @@ import { ActivitySequenceService } from './services/activity-sequence/activity-s
 import { LogQuantityAnswersRepository } from './repositories/log-quantity-answers.repository';
 import { LogQuantityQuestionsRepository } from './repositories/log-quantity-questions.repository';
 import { BullQueues } from '../../shared/utils/constants';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Tutorial } from './entities/tutorial.entity';
+import { TutorialsRepository } from './repositories/tutorial.repository';
 
 @Module({
   providers: [
@@ -43,6 +42,7 @@ import { Tutorial } from './entities/tutorial.entity';
     ActivitySequenceService,
     LogQuantityAnswersRepository,
     LogQuantityQuestionsRepository,
+    TutorialsRepository,
   ],
   exports: [
     ActivityParserService,
@@ -84,7 +84,6 @@ import { Tutorial } from './entities/tutorial.entity';
       useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     HelperModule,
-    TypeOrmModule.forFeature([Tutorial]),
   ],
 })
 export class ActivityModule {}

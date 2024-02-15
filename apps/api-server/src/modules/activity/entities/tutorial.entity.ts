@@ -21,5 +21,5 @@ export class Tutorial extends BaseEntity {
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_id' })
-  activity: Activity;
+  activity?: Activity;
 }

@@ -10,11 +10,7 @@ interface ILoginData {
 }
 
 const buildRequestBody = (email: string, password: string): URLSearchParams => {
-  const {
-    management: { clientId, clientSecret },
-    identifier,
-    connection,
-  } = auth0Config();
+  const { clientId, clientSecret, identifier, connection } = auth0Config();
   const params = new URLSearchParams();
   params.append('grant_type', 'password');
   params.append('username', email);

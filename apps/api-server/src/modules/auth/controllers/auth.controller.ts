@@ -7,12 +7,13 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { AuthServiceFactory } from '../services/auth.service.factory';
 import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 
 @Controller('auth')
 @ApiTags('auth')
 @ApiSecurity('Auth0AccessToken')
 export class AuthController {
-  constructor(private readonly authServiceFactory: AuthServiceFactory) {}
+  constructor(private readonly authServiceFactory: AuthServiceFactory, @InjectSentry() private readonly sentryService: SentryService) {}
 
   @Get(':platform')
   login(@Param('platform') platform: IntegrationPlatforms, @Query() { is_development }: IntegrationLoginQuery) {
@@ -31,6 +32,8 @@ export class AuthController {
       const service = this.authServiceFactory.get(platform);
       return await service.authorize(user.id, authorizeQuery);
     } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+
       return error;
     }
   }

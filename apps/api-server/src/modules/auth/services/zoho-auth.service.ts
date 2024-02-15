@@ -52,7 +52,7 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
     const {
       data: { ZUID },
     } = await axios.get(profileUrl, { headers });
-    return ZUID;
+    return ZUID.toString();
   }
 
   async requestAuthorize(authorizeQuery: AuthorizeQuery, callbackUrl: string) {

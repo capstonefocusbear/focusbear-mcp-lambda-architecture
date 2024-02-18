@@ -81,7 +81,7 @@ describe('ZohoService', () => {
         refresh_token: 'refresh-token',
         expires_in: new Date().valueOf(),
       };
-      const userInfoResponseDummy = { ZUID: 12345 };
+      const userInfoResponseDummy = { ZUID: '12345' };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       mockedAxios.post.mockResolvedValueOnce({
         data: authorizationResponseDummy,

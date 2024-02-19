@@ -1777,16 +1777,3 @@ export const DummyCalendarCreateDto = {
   description: true,
   platform: CalendarPlatforms.GOOGLE,
 };
-
-export const dummyTutorials = [
-  {
-    id: randomUUID(),
-    name: 'How to create focus mode?',
-    activity_id: randomUUID(),
-  },
-  {
-    id: randomUUID(),
-    name: 'Skip micro breaks',
-    activity_id: randomUUID(),
-  },
-];

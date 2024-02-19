@@ -179,7 +179,7 @@ export class UserSettingsService {
         }
       }
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
-      const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
+      const { deserializedActivities, logQuantityQuestions } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
       );
@@ -187,7 +187,6 @@ export class UserSettingsService {
         updatedUser,
         deserializedActivities,
         logQuantityQuestions,
-        tutorials,
       );
       if (should_update_has_edited_settings) {
         await Promise.all([

@@ -8,7 +8,6 @@ import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
-import { Tutorial } from '../../entities/tutorial.entity';
 
 export interface DeserializedActivity {
   sequence: ActivitySequence;
@@ -58,7 +57,6 @@ export class ActivityParserService {
         check_list,
         impact_category,
         created_at,
-        tutorials,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -78,7 +76,6 @@ export class ActivityParserService {
         impact_category,
         created_at,
         ...activity_data,
-        tutorials,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
@@ -90,11 +87,7 @@ export class ActivityParserService {
     serialized: SerializedActivity,
     user_id: string,
     pack_id?: string,
-  ): Promise<{
-    deserializedActivities: DeserializedActivity[];
-    logQuantityQuestions: LogQuantityQuestion[];
-    tutorials: Tutorial[];
-  }> {
+  ): Promise<{ deserializedActivities: DeserializedActivity[]; logQuantityQuestions: LogQuantityQuestion[] }> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -104,7 +97,6 @@ export class ActivityParserService {
       },
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    const tutorials = this.getActivityTutorials(serialized);
     const entries = Object.entries(serialized);
     const deserializedActivities = await Promise.all(
       entries.map(async ([name, serializedActivities]) => {
@@ -118,7 +110,7 @@ export class ActivityParserService {
         return { sequence, activities };
       }),
     );
-    return { deserializedActivities, logQuantityQuestions, tutorials };
+    return { deserializedActivities, logQuantityQuestions };
   }
 
   getLogQuantityQuestions(serializedActivities: SerializedActivity, userId: string) {
@@ -309,14 +301,5 @@ export class ActivityParserService {
     const initialAccumulator = 0;
     const sequenceDuration = durations.reduce(addUp, initialAccumulator);
     return sequenceDuration;
-  }
-
-  getActivityTutorials(serializedActivities: SerializedActivity) {
-    const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
-    return activities
-      .map((activity) => {
-        return activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id }));
-      })
-      .flat();
   }
 }

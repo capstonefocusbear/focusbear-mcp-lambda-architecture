@@ -10,6 +10,7 @@ import { User } from '../entities/user.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
+import { Tutorial } from '../../activity/entities/tutorial.entity';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -21,6 +22,7 @@ export class UserRepository extends BaseRepository<User> {
     { id, ...updateData }: User,
     activitiesData: DeserializedActivity[],
     logQuantityQuestions: LogQuantityQuestion[],
+    tutorials: Tutorial[],
   ) {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -69,6 +71,7 @@ export class UserRepository extends BaseRepository<User> {
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
+      await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -140,6 +143,8 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',
+        'tutorials.id',
+        'tutorials.name',
       ])
       .where('users.id = :id', { id })
       .getOne();

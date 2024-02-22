@@ -14,6 +14,7 @@ import { mockDeep } from 'jest-mock-extended';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
+  dummyTutorials,
   logQuantityQuestionsDummy,
   serializedActivityDummy,
   serializedActivityDummyWithDefaultActivities,
@@ -197,6 +198,7 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
       });
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
@@ -214,6 +216,7 @@ describe('UserSettingsService', () => {
         },
         deserializedActivitiesDummy,
         logQuantityQuestionsDummy,
+        dummyTutorials,
       );
     });
 
@@ -221,6 +224,7 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
+        tutorials: [],
       });
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
@@ -260,6 +264,7 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
+        tutorials: [],
       });
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
         isVerboseLoggingAllowed: false,
@@ -301,6 +306,7 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
+        tutorials: [],
       });
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
         isVerboseLoggingAllowed: false,
@@ -577,6 +583,7 @@ describe('UserSettingsService', () => {
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
+        tutorials: [],
       });
       UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
 

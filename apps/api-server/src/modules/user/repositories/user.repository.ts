@@ -67,6 +67,15 @@ export class UserRepository extends BaseRepository<User> {
         id: Not(In(incomingQuestionIds)),
         activity_id: Not(IsNull()),
       });
+      const tutorialIdsToKeep = tutorials.map((tutorial) => tutorial.id);
+      await Promise.all(
+        tutorials.map(async ({ activity_id }) => {
+          await queryRunner.manager.delete(Tutorial, {
+            activity_id,
+            id: Not(In(tutorialIdsToKeep)),
+          });
+        }),
+      );
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);

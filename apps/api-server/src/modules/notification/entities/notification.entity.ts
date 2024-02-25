@@ -93,6 +93,12 @@ export class Notification extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ type: 'jsonb', default: null, nullable: true, select: false })
+  @Column({
+    type: 'jsonb',
+    default: null,
+    nullable: true,
+    select: false,
+    transformer: BaseEntity.encryptJSONField('data'),
+  })
   external_metadata?: any;
 }

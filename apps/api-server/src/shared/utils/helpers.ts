@@ -1,6 +1,11 @@
 import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 
+/* eslint-disable @typescript-eslint/no-var-requires */
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 export function wait(seconds: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, seconds * 1000);

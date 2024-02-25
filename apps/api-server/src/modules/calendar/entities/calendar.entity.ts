@@ -34,12 +34,14 @@ export class Calendar extends BaseEntity {
   @Column({
     type: 'varchar',
     length: 255,
+    transformer: FieldTransformer,
   })
   calendar_id?: string;
 
   @Column({
     type: 'varchar',
     length: 1000,
+    transformer: FieldTransformer,
   })
   summary?: string;
 

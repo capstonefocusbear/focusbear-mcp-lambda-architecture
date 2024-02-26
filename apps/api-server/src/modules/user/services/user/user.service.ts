@@ -16,7 +16,6 @@ import { HabitOption, OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -71,8 +70,6 @@ export class UserService {
     @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
-
-  private httpService = axios;
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {

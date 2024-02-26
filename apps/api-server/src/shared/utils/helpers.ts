@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 
+// eslint-disable-next-line
 const dotenv = require('dotenv');
 
 dotenv.config();

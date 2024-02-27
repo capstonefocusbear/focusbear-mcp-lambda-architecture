@@ -98,7 +98,7 @@ export class Notification extends BaseEntity {
     default: null,
     nullable: true,
     select: false,
-    transformer: BaseEntity.encryptJSONField('data'),
+    transformer: BaseEntity.encryptJSONField('external_metadata'),
   })
   external_metadata?: any;
 }

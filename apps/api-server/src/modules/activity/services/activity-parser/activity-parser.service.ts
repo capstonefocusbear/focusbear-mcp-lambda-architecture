@@ -315,7 +315,9 @@ export class ActivityParserService {
     const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
     return activities
       .map((activity) => {
-        return activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id }));
+        return activity?.tutorials?.length
+          ? activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id }))
+          : [];
       })
       .flat();
   }

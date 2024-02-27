@@ -1,7 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { JSONEncryptionTransformer } from 'typeorm-encrypted';
 import { FieldTransformer } from '../src/shared/utils/helpers';
 import { Calendar } from '../src/modules/calendar/entities/calendar.entity';
 import { Notification } from '../src/modules/notification/entities/notification.entity';
+import { typeormEncryptionConfig } from '../src/config/typeorm-encryption.config';
 
 export class EncryptCalendarFields1709036620789 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -13,7 +15,9 @@ export class EncryptCalendarFields1709036620789 implements MigrationInterface {
     };
     const encryptNotificationFields = (notification: Notification) => {
       const notificationCopy = { ...notification };
-      notificationCopy.external_metadata = FieldTransformer.to(notification.external_metadata);
+      notificationCopy.calendar_id = FieldTransformer.to(notification.calendar_id);
+      const config = typeormEncryptionConfig('external_metadata');
+      notificationCopy.external_metadata = new JSONEncryptionTransformer(config).to(notification.external_metadata);
       return notificationCopy;
     };
 
@@ -21,7 +25,9 @@ export class EncryptCalendarFields1709036620789 implements MigrationInterface {
     const encryptedCalendarRecords = calendars.map(encryptCalendarFields);
     await queryRunner.manager.save(Calendar, encryptedCalendarRecords);
 
-    const notifications = await queryRunner.manager.find(Notification);
+    const notifications = await queryRunner.manager.find(Notification, {
+      select: ['id', 'calendar_id', 'external_metadata'],
+    });
     const encryptedNotificationRecords = notifications.map(encryptNotificationFields);
     await queryRunner.manager.save(Notification, encryptedNotificationRecords);
   }
@@ -35,7 +41,9 @@ export class EncryptCalendarFields1709036620789 implements MigrationInterface {
     };
     const decryptNotificationFields = (notification: Notification) => {
       const notificationCopy = { ...notification };
-      notificationCopy.external_metadata = FieldTransformer.from(notification.external_metadata);
+      notificationCopy.calendar_id = FieldTransformer.from(notification.calendar_id);
+      const config = typeormEncryptionConfig('external_metadata');
+      notificationCopy.external_metadata = new JSONEncryptionTransformer(config).from(notification.external_metadata);
       return notificationCopy;
     };
 
@@ -43,7 +51,9 @@ export class EncryptCalendarFields1709036620789 implements MigrationInterface {
     const decryptedCalendarRecords = calendars.map(decryptCalendarFields);
     await queryRunner.manager.save(Calendar, decryptedCalendarRecords);
 
-    const notifications = await queryRunner.manager.find(Notification);
+    const notifications = await queryRunner.manager.find(Notification, {
+      select: ['id', 'calendar_id', 'external_metadata'],
+    });
     const decryptedNotificationRecords = notifications.map(decryptNotificationFields);
     await queryRunner.manager.save(Notification, decryptedNotificationRecords);
   }

@@ -17,7 +17,7 @@ export class Tutorial extends BaseEntity {
   activity_id: string;
 
   @ManyToOne(() => Activity, (activity) => activity.tutorials, {
-    onDelete: 'SET NULL',
+    onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_id' })

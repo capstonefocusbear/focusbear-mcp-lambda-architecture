@@ -37,6 +37,7 @@ export class Notification extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
+    transformer: FieldTransformer,
   })
   calendar_id?: string;
 

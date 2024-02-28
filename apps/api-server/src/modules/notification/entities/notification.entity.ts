@@ -37,6 +37,7 @@ export class Notification extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
+    transformer: FieldTransformer,
   })
   calendar_id?: string;
 
@@ -93,6 +94,12 @@ export class Notification extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ type: 'jsonb', default: null, nullable: true, select: false })
+  @Column({
+    type: 'jsonb',
+    default: null,
+    nullable: true,
+    select: false,
+    transformer: BaseEntity.encryptJSONField('external_metadata'),
+  })
   external_metadata?: any;
 }

@@ -1,6 +1,11 @@
 import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 
+// eslint-disable-next-line
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 export function wait(seconds: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, seconds * 1000);
@@ -101,7 +106,7 @@ export const FieldTransformer = {
     encrypted += cipher.final('hex');
     return encrypted;
   },
-  from: (value) => {
+  from: (value: string) => {
     if (value === undefined || value === '') return '';
     const decipher = crypto.createDecipher('aes-256-ecb', ENCRYPTION_KEY);
     let decrypted = decipher.update(value, 'hex', 'utf-8');

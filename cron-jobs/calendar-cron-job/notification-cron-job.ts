@@ -1,5 +1,6 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Between } from 'typeorm';
+import { DateTime } from 'luxon';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { CronJobDataSource } from '../data-source';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
@@ -7,13 +8,12 @@ import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/ca
 /* eslint-disable @typescript-eslint/no-var-requires */
 const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
-const { DateTime } = require('luxon');
 
 dotenv.config();
 
 async function fetchEvents() {
-  const currentTime = DateTime.now().toISO();
-  const timeInFiveMinutes = DateTime.now().plus({ minutes: 5 }).toISO();
+  const currentTime = DateTime.now().toJSDate();
+  const timeInFiveMinutes = DateTime.now().plus({ minutes: 5 }).toJSDate();
   const events = await CronJobDataSource.manager.find(Notification, {
     where: { event_begins: Between(currentTime, timeInFiveMinutes), received: false },
   });

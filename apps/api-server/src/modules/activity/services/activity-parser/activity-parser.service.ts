@@ -104,7 +104,7 @@ export class ActivityParserService {
       },
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    const tutorials = this.getActivitiesTutorials(serialized);
+    const tutorials = this.getActivitiesTutorials(serialized, user_id);
     const entries = Object.entries(serialized);
     const deserializedActivities = await Promise.all(
       entries.map(async ([name, serializedActivities]) => {
@@ -311,11 +311,11 @@ export class ActivityParserService {
     return sequenceDuration;
   }
 
-  getActivitiesTutorials(serializedActivities: SerializedActivity) {
+  getActivitiesTutorials(serializedActivities: SerializedActivity, user_id: string) {
     const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
     return activities
       .map((activity) => {
-        return activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id }));
+        return activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id, user_id }));
       })
       .flat();
   }

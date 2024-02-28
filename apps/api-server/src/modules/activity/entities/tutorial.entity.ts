@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Activity } from './activity.entity';
+import { User } from '../../user/entities/user.entity';
 
 @Entity('tutorials')
 export class Tutorial extends BaseEntity {
@@ -16,10 +17,18 @@ export class Tutorial extends BaseEntity {
   @Column({ type: 'varchar' })
   activity_id: string;
 
+  @Index()
+  @Column({ type: 'varchar' })
+  user_id: string;
+
   @ManyToOne(() => Activity, (activity) => activity.tutorials, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_id' })
   activity?: Activity;
+
+  @ManyToOne(() => User, (user) => user.tutorials)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }

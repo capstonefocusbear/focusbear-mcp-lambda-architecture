@@ -69,8 +69,9 @@ export class UserRepository extends BaseRepository<User> {
       });
       const tutorialIdsToKeep = tutorials.map((tutorial) => tutorial.id);
       await Promise.all(
-        tutorials.map(async ({ activity_id }) => {
+        tutorials.map(async ({ activity_id, user_id }) => {
           await queryRunner.manager.delete(Tutorial, {
+            user_id,
             activity_id,
             id: Not(In(tutorialIdsToKeep)),
           });

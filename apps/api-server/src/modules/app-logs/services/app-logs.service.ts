@@ -50,6 +50,7 @@ export class AppLogsService {
         email: maskEmail(auth0User.email),
         log_url: presignedUrl,
       });
+
       await Promise.all([
         axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
           text: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
@@ -64,8 +65,11 @@ export class AppLogsService {
   }
 
   async emailFeedback(data: any, email: string) {
+    if (email.includes('internaltest')) {
+      return;
+    }
     await this.emailService.sendEmail({
-      to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT, FOCUS_BEAR_EMAILS.SUPPORT],
+      to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
       text: JSON.stringify(data),

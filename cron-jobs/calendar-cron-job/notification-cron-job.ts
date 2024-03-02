@@ -1,12 +1,12 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Between } from 'typeorm';
 import { DateTime } from 'luxon';
+import PushNotifications = require('@pusher/push-notifications-server');
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { CronJobDataSource } from '../data-source';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
 /* eslint-disable @typescript-eslint/no-var-requires */
-const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -59,25 +59,29 @@ const beamsClient = new PushNotifications({
 });
 
 const sendBeamsPushNotification = async (userId: string, notificationData: Notification) => {
-  const publishRequest: BeamsPublishRequest = {
-    apns: {
-      aps: {
-        alert: {
+  try {
+    const publishRequest: BeamsPublishRequest = {
+      apns: {
+        aps: {
+          alert: {
+            title: notificationData.summary,
+            body: notificationData.description,
+          },
+        },
+        data: notificationData,
+      },
+      fcm: {
+        notification: {
           title: notificationData.summary,
           body: notificationData.description,
         },
+        data: notificationData,
       },
-      data: notificationData,
-    },
-    fcm: {
-      notification: {
-        title: notificationData.summary,
-        body: notificationData.description,
-      },
-      data: notificationData,
-    },
-  };
-  await beamsClient.publishToUsers([userId], publishRequest);
+    };
+    await beamsClient.publishToUsers([userId], publishRequest);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 const updateNotificationStatus = async (id: string) => {
@@ -91,7 +95,7 @@ const updateNotificationStatus = async (id: string) => {
     // eslint-disable-next-line no-console
     console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
     if (calendarEventsToSend.length === 0) process.exit();
-    calendarEventsToSend.forEach(async (calendarEvent) => {
+    const sendNotificationsPromises = calendarEventsToSend.map(async (calendarEvent) => {
       const { id, summary, description, event_begins, event_ends } = calendarEvent;
       await sendBeamsPushNotification(calendarEvent.user_id, {
         id,
@@ -102,6 +106,13 @@ const updateNotificationStatus = async (id: string) => {
       });
       await updateNotificationStatus(id);
     });
+    const updateNotificationStatusPromises = calendarEventsToSend.map(async (calendarEvent) => {
+      const { id } = calendarEvent;
+      await updateNotificationStatus(id);
+    });
+    await Promise.all(sendNotificationsPromises);
+    await Promise.all(updateNotificationStatusPromises);
+    // give me code to change the code above to send all the push notifications simultaneously
     process.exit();
   } catch (error) {
     console.error(error);

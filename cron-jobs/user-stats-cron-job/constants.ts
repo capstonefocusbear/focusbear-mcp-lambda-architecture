@@ -15,18 +15,48 @@ export const LUXON_WEEK_DAYS = [1, 2, 3, 4, 5];
 export const LEVEL_THRESHOLDS = [
   {
     level: 1,
+    routines: 1,
+    focus_modes: 1,
+  },
+  {
+    level: 2,
+    routines: 2,
+    focus_modes: 2,
+  },
+  {
+    level: 3,
+    routines: 5,
+    focus_modes: 5,
+  },
+  {
+    level: 4,
     routines: 7,
     focus_modes: 10,
   },
   {
-    level: 2,
-    routines: 14,
-    focus_modes: 20,
+    level: 5,
+    routines: 10,
+    focus_modes: 15,
   },
   {
-    level: 3,
-    routines: 21,
+    level: 6,
+    routines: 15,
     focus_modes: 30,
+  },
+  {
+    level: 7,
+    routines: 30,
+    focus_modes: 50,
+  },
+  {
+    level: 8,
+    routines: 60,
+    focus_modes: 100,
+  },
+  {
+    level: 9,
+    routines: 100,
+    focus_modes: 200,
   },
 ];
 

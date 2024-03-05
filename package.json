@@ -193,7 +193,8 @@
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/apps/",
-      "<rootDir>/libs/"
+      "<rootDir>/libs/",
+      "<rootDir>/cron-jobs"
     ],
     "moduleNameMapper": {
       "^@app/fastify-content-types(|/.*)$": "<rootDir>/libs/fastify-content-types/src/$1",

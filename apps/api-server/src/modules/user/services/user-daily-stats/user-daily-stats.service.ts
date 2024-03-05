@@ -233,7 +233,7 @@ export class UserDailyStatsService {
         has_edited_settings,
         has_chatted_with_focus_bear,
       } = this.getOnboardingStats(user);
-      // replace level 0 with leve 1 for existing users
+      // replace level 0 with level 1 for existing users
       const levelToUse = level === 0 ? 1 : level;
       await this.userRepository.update(user_id, {
         morning_routines_streak,

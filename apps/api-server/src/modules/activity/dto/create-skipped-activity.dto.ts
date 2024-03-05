@@ -1,5 +1,14 @@
 import { Type, Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
 import { transformLogQuantityAnswers } from './create-completed-activity.dto';
@@ -49,8 +58,10 @@ export class CreateSkippedActivityDto {
   @IsBoolean()
   should_not_update_current_activity?: boolean;
 
-  @IsOptional()
   @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
   @Transform(transformLogQuantityAnswers)
+  @Type(() => LogQuantityAnswerDto)
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

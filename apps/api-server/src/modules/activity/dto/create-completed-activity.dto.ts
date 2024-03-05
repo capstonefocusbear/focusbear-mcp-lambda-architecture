@@ -9,6 +9,7 @@ import {
   IsString,
   IsUUID,
   registerDecorator,
+  ValidateNested,
   ValidationArguments,
   ValidationOptions,
 } from 'class-validator';
@@ -72,13 +73,11 @@ export class CreateCompletedActivityDto {
   activity_sequence_id: string;
 
   @IsNotEmpty()
-  // @IsTimestampLesserThanNow(null, { message: 'start_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'start_time should be a valid ISO string in UTC zone' })
   start_time?: Date;
 
   @IsNotEmpty()
-  // @IsTimestampLesserThanNow(null, { message: 'finish_time should be lesser than NOW!' })
   @Type(() => Date)
   @IsDate({ message: 'finish_time should be a valid ISO string in UTC zone' })
   @IsTimestampGreaterThan('start_time', { message: 'finish_time should be greater than or equal to start_time' })
@@ -92,8 +91,10 @@ export class CreateCompletedActivityDto {
   @IsBoolean()
   should_not_update_current_activity?: boolean;
 
-  @IsOptional()
   @IsArray()
+  @IsOptional()
   @Transform(transformLogQuantityAnswers)
+  @ValidateNested({ each: true })
+  @Type(() => LogQuantityAnswerDto)
   log_quantity_answers?: LogQuantityAnswerDto[];
 }

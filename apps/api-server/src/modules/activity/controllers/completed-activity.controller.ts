@@ -21,6 +21,7 @@ import { ReviseCompletedActivityDto } from '../dto/revise-completed-activity.dto
 import { CompletedActivity } from '../entities/completed-activity.entity';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
 import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
+import { OfflineSyncActivitiesDto } from '../dto/offline-sync-activities.dto';
 
 @Controller('completed-activity')
 @UseGuards(IsAuth)
@@ -41,13 +42,7 @@ export class CompletedActivityController {
   @Post('sync')
   completedMultipleActivities(
     @Body()
-    {
-      completed_activites,
-      completed_activities,
-    }: {
-      completed_activites: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
-      completed_activities: (CreateCompletedActivityDto | CreateSkippedActivityDto)[];
-    },
+    { completed_activites, completed_activities }: OfflineSyncActivitiesDto,
     @AuthContext() { user }: Passport,
   ): Promise<(CreateCompletedActivityDto | CreateSkippedActivityDto)[]> {
     // temporary implementation to fix typo in body key

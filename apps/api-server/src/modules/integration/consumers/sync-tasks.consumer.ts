@@ -37,6 +37,14 @@ export class SyncTasksConsumer {
     const {
       data: { userId, portalId, projectId, projectAsFocusModeTag, platform, only_assigned },
     } = job;
+
+    console.log('Start sync-project-tasks queued job');
+    console.log({
+      userId: userId,
+      projectId: projectId,
+      platform: platform
+    });
+
     try {
       const service = this.integrationFactory.get(platform);
       const tasksFromProject = only_assigned

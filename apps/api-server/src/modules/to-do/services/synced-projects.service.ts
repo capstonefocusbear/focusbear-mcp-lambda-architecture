@@ -60,6 +60,10 @@ export class SyncedProjectsService {
 
   async markSyncedProjectTasksAsSynced(syncedProjectRecordId: string) {
     const syncedProject = await this.syncedProjectsRepository.orm.findOneBy({ id: syncedProjectRecordId });
+
+    console.log('Start markSyncedProjectTasksAsSynced - to update have_tasks_been_synced=true');
+    console.log(syncedProject);
+
     syncedProject.have_tasks_been_synced = true;
     await this.syncedProjectsRepository.orm.save(syncedProject);
   }

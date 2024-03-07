@@ -36,6 +36,7 @@ import { CalendarExcludedKeyword } from '../../calendar/entities/calendar-exclud
 import { Calendar } from '../../calendar/entities/calendar.entity';
 import { TeamToMember } from '../../team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
+import { Tutorial } from '../../activity/entities/tutorial.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -461,4 +462,7 @@ export class User extends BaseEntity {
   @OneToOne(() => FocusMode, (mode) => mode.user)
   @JoinColumn({ name: 'current_focus_mode_id' })
   current_focus_mode?: FocusMode;
+
+  @OneToMany(() => Tutorial, (tutorial) => tutorial.user)
+  tutorials?: Tutorial[];
 }

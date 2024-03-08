@@ -199,7 +199,7 @@ export class CoursesRepository {
   }
 
   async getPlatformCourses(platform: CoursePlatform) {
-    return await this.ormCourse.find({
+    return this.ormCourse.find({
       where: {
         platform,
       },

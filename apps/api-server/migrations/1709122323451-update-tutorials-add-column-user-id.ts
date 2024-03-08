@@ -2,6 +2,7 @@ import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey, TableInd
 
 export class UpdateTutorialsAddColumnUserId1709122323451 implements MigrationInterface {
   name = 'UpdateTutorialsAddColumnUserId1709122323451';
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumn(
       'tutorials',

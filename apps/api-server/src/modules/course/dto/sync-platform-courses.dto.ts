@@ -1,6 +1,6 @@
 import { IsEnum } from 'class-validator';
-import { CoursePlatform } from '../domain/course-platform.enum';
 import { ApiProperty } from '@nestjs/swagger';
+import { CoursePlatform } from '../domain/course-platform.enum';
 
 export class SyncPlatformCoursesDto {
   @ApiProperty({

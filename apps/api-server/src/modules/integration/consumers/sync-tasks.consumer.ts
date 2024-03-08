@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
@@ -40,9 +41,9 @@ export class SyncTasksConsumer {
 
     console.log('Start sync-project-tasks queued job');
     console.log({
-      userId: userId,
-      projectId: projectId,
-      platform: platform
+      userId,
+      projectId,
+      platform,
     });
 
     try {

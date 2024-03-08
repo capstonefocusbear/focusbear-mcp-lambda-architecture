@@ -127,6 +127,7 @@ export class UserRepository extends BaseRepository<User> {
         'activities.impact_category',
         'activities.created_at',
         'activities.impact_category',
+        'activities.cutoff_time_for_doing_activity',
         'choices.id',
         'choices.log_quantity',
         'choices.duration_seconds',

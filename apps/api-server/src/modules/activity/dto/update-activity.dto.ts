@@ -132,4 +132,7 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @IsArray()
   tutorials?: Tutorial[];
+
+  @IsOptional()
+  cutoff_time_for_doing_activity?: string;
 }

@@ -125,7 +125,8 @@
   "overrides": {
     "fastify": "^4.10.2",
     "auth0": {
-      "jsonwebtoken": "9.0.0"
+      "jsonwebtoken": "9.0.0",
+      "jose": "4.15.5"
     },
     "@pusher/push-notifications-server": {
       "jsonwebtoken": "9.0.0"

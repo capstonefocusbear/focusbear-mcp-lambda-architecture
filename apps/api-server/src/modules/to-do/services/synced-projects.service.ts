@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { Injectable } from '@nestjs/common';
 import { In } from 'typeorm';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';

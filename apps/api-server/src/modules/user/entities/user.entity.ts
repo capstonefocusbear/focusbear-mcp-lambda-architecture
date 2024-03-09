@@ -276,6 +276,13 @@ export class User extends BaseEntity {
   focus_modes_streak?: number;
 
   @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  micro_breaks_streak?: number;
+
+  @Column({
     type: 'boolean',
     default: false,
   })

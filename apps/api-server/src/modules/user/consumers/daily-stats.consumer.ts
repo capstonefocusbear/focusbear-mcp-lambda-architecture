@@ -69,7 +69,7 @@ export class DailyStatsConsumer {
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
         where: { user_id: user.id, date_completed: Equal(startOfDate) },
       });
-      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
         await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
       let routineCompletionPercentage = 0;
       if (!isOffLineActivity) {
@@ -128,15 +128,17 @@ export class DailyStatsConsumer {
         },
         order: { date_completed: 'DESC' },
       });
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
-        userDailyStats,
-        user.timezone,
-        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
-      );
+      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+        calculateStreaks(userDailyStats, user.timezone, {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        });
       const updatedLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,
         morning_routines_streak,
         evening_routines_streak,
+        micro_breaks_streak,
       });
       await this.userRepository.update(user.id, {
         onboarding_progress: { ...user.onboarding_progress, level: updatedLevel },

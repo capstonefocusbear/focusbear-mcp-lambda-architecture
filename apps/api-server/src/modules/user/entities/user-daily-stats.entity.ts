@@ -45,6 +45,13 @@ export class DailyStats extends BaseEntity {
   evening_routine_completion_percentage?: number;
 
   @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  micro_breaks_routine_completion_percentage?: number;
+
+  @Column({
     type: 'boolean',
   })
   should_recalculate?: boolean;

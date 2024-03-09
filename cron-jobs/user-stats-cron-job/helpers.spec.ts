@@ -29,6 +29,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 2; // Set this just above the first level threshold
     tasksStreaksResponse.morning_routines_streak = 2;
     tasksStreaksResponse.evening_routines_streak = 2;
+    tasksStreaksResponse.micro_breaks_streak = 2;
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(2); // Expect the level to be 2 as it meets the second threshold
@@ -47,6 +48,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 1;
     tasksStreaksResponse.morning_routines_streak = 1;
     tasksStreaksResponse.evening_routines_streak = 1;
+    tasksStreaksResponse.micro_breaks_streak = 1;
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(1);
@@ -64,6 +66,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 1; // Just below the threshold for level 2
     tasksStreaksResponse.morning_routines_streak = 1;
     tasksStreaksResponse.evening_routines_streak = 1;
+    tasksStreaksResponse.micro_breaks_streak = 1;
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(1); // Should remain at level 1
@@ -78,6 +81,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 100; // High streaks
     tasksStreaksResponse.morning_routines_streak = 100;
     tasksStreaksResponse.evening_routines_streak = 100;
+    tasksStreaksResponse.micro_breaks_streak = 100;
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(0); // Should return level 0 due to incomplete setup
@@ -94,6 +98,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 210; // Exceeding maximum level requirements
     tasksStreaksResponse.morning_routines_streak = 110;
     tasksStreaksResponse.evening_routines_streak = 110;
+    tasksStreaksResponse.micro_breaks_streak = 110;
 
     const maxLevel = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].level;
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
@@ -111,6 +116,7 @@ describe('determineUserLevel', () => {
     tasksStreaksResponse.focus_modes_streak = 55;
     tasksStreaksResponse.morning_routines_streak = 32;
     tasksStreaksResponse.evening_routines_streak = 30;
+    tasksStreaksResponse.micro_breaks_streak = 30;
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(7);

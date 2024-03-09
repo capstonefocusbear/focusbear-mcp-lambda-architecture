@@ -817,6 +817,28 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       priority: ActivityPriority.HIGH,
     },
   ],
+  break_activities: [
+    {
+      id: '000d3de0-2a6c-46e1-bb47-542049fc876b',
+      duration_seconds: 120,
+      video_urls: [],
+      name: 'Push up',
+      log_quantity: false,
+      is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.STANDARD,
+    },
+    {
+      id: '757f8b32-b7c7-4aac-a6b9-9c41cf269670',
+      duration_seconds: 60,
+      video_urls: [],
+      name: 'Stretching',
+      log_quantity: false,
+      is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.HIGH,
+    },
+  ],
 };
 
 export const eveningActivitiesDBResponseDummy = [

@@ -1,3 +1,4 @@
+import { DummyTasksStreaksResponse } from '../../apps/api-server/test/dummies';
 import { TasksStreaksResponse } from '../../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
 import { UserOnboardingProgress } from '../../apps/api-server/src/modules/user/domain/user-onboarding-progress.model';
 import { LEVEL_THRESHOLDS } from './constants';
@@ -8,11 +9,7 @@ describe('determineUserLevel', () => {
     const onboardingProgress = new UserOnboardingProgress();
     onboardingProgress.has_installed_desktop_app = false;
     onboardingProgress.has_installed_mobile_app = false;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 1;
-    tasksStreaksResponse.morning_routines_streak = 1;
-    tasksStreaksResponse.evening_routines_streak = 1;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.SET_UP_NOT_COMPLETED);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(0);
@@ -24,12 +21,7 @@ describe('determineUserLevel', () => {
     onboardingProgress.has_edited_settings = true;
     onboardingProgress.has_edited_always_blocked_urls = true;
     onboardingProgress.has_installed_desktop_app = true;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 2; // Set this just above the first level threshold
-    tasksStreaksResponse.morning_routines_streak = 2;
-    tasksStreaksResponse.evening_routines_streak = 2;
-    tasksStreaksResponse.micro_breaks_streak = 2;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.ROUTINE_INPROGRESS);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(2); // Expect the level to be 2 as it meets the second threshold
@@ -42,13 +34,7 @@ describe('determineUserLevel', () => {
     onboardingProgress.has_edited_settings = true;
     onboardingProgress.has_edited_always_blocked_urls = true;
     onboardingProgress.has_installed_desktop_app = true;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    // Set streaks to minimum for level 1
-    tasksStreaksResponse.focus_modes_streak = 1;
-    tasksStreaksResponse.morning_routines_streak = 1;
-    tasksStreaksResponse.evening_routines_streak = 1;
-    tasksStreaksResponse.micro_breaks_streak = 1;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.LEVEL_ONE);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(1);
@@ -60,13 +46,8 @@ describe('determineUserLevel', () => {
     onboardingProgress.has_edited_settings = true;
     onboardingProgress.has_edited_always_blocked_urls = true;
     onboardingProgress.has_installed_desktop_app = true;
-
     // Level 2 requires routines: 2, focus_modes: 2
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 1; // Just below the threshold for level 2
-    tasksStreaksResponse.morning_routines_streak = 1;
-    tasksStreaksResponse.evening_routines_streak = 1;
-    tasksStreaksResponse.micro_breaks_streak = 1;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.LEVEL_TWO);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(1); // Should remain at level 1
@@ -76,12 +57,7 @@ describe('determineUserLevel', () => {
     const onboardingProgress = new UserOnboardingProgress();
     // Incomplete setup
     onboardingProgress.has_edited_focus_mode = false;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 100; // High streaks
-    tasksStreaksResponse.morning_routines_streak = 100;
-    tasksStreaksResponse.evening_routines_streak = 100;
-    tasksStreaksResponse.micro_breaks_streak = 100;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.LEVEL_MAX);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(0); // Should return level 0 due to incomplete setup
@@ -93,12 +69,7 @@ describe('determineUserLevel', () => {
     onboardingProgress.has_edited_settings = true;
     onboardingProgress.has_edited_always_blocked_urls = true;
     onboardingProgress.has_installed_desktop_app = true;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 210; // Exceeding maximum level requirements
-    tasksStreaksResponse.morning_routines_streak = 110;
-    tasksStreaksResponse.evening_routines_streak = 110;
-    tasksStreaksResponse.micro_breaks_streak = 110;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.LEVEL_EXCEED_MAX);
 
     const maxLevel = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].level;
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
@@ -111,12 +82,7 @@ describe('determineUserLevel', () => {
     onboardingProgress.has_edited_settings = true;
     onboardingProgress.has_edited_always_blocked_urls = true;
     onboardingProgress.has_installed_desktop_app = true;
-
-    const tasksStreaksResponse = new TasksStreaksResponse();
-    tasksStreaksResponse.focus_modes_streak = 55;
-    tasksStreaksResponse.morning_routines_streak = 32;
-    tasksStreaksResponse.evening_routines_streak = 30;
-    tasksStreaksResponse.micro_breaks_streak = 30;
+    const tasksStreaksResponse = new TasksStreaksResponse(DummyTasksStreaksResponse.LEVEL_SEVEN);
 
     const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
     expect(level).toBe(7);

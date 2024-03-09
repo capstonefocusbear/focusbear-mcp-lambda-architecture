@@ -1812,3 +1812,49 @@ export const dummyTutorials = [
     activity_id: randomUUID(),
   },
 ];
+
+export const DummyTasksStreaksResponse = {
+  SET_UP_NOT_COMPLETED: {
+    focus_modes_streak: 1,
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  ROUTINE_INPROGRESS: {
+    focus_modes_streak: 2, // Set this just above the first level threshold
+    morning_routines_streak: 2,
+    evening_routines_streak: 2,
+    micro_breaks_streak: 2,
+  },
+  LEVEL_ONE: {
+    // Set streaks to minimum for level 1
+    focus_modes_streak: 1,
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  LEVEL_TWO: {
+    focus_modes_streak: 1, // Just below the threshold for level 2
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  LEVEL_MAX: {
+    focus_modes_streak: 100, // High streaks
+    morning_routines_streak: 100,
+    evening_routines_streak: 100,
+    micro_breaks_streak: 100,
+  },
+  LEVEL_EXCEED_MAX: {
+    focus_modes_streak: 210, // Exceeding maximum level requirements
+    morning_routines_streak: 110,
+    evening_routines_streak: 110,
+    micro_breaks_streak: 110,
+  },
+  LEVEL_SEVEN: {
+    focus_modes_streak: 55,
+    morning_routines_streak: 32,
+    evening_routines_streak: 30,
+    micro_breaks_streak: 30,
+  },
+};

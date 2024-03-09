@@ -177,12 +177,14 @@ export class UserDailyStatsService {
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await this.activitySequenceService.getUserRoutineDailyDurations(userId);
     const sequenceType = routineLog.activity_sequence.type;
-    const sequenceDurationForCurrentDay: number =
-      sequenceType === ActivityType.morning
-        ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
-        : sequenceType === ActivityType.evening
-        ? eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
-        : microBreaksDailyDurations[currentDayOfWeek.toUpperCase()];
+    let sequenceDurationForCurrentDay: number;
+    if (sequenceType === ActivityType.morning) {
+      sequenceDurationForCurrentDay = morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else if (sequenceType === ActivityType.evening) {
+      sequenceDurationForCurrentDay = eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else {
+      sequenceDurationForCurrentDay = microBreaksDailyDurations[currentDayOfWeek.toUpperCase()];
+    }
     return sequenceDurationForCurrentDay;
   }
 

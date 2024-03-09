@@ -55,6 +55,15 @@ export class ToDo extends BaseEntity {
   })
   details: string;
 
+  @Column({
+    type: 'varchar',
+    length: 32000,
+    default: null,
+    nullable: true,
+    transformer: BaseEntity.encryptField('objective'),
+  })
+  objective: string;
+
   @Column({ type: 'varchar', default: null, nullable: true })
   external_task_id?: string;
 

@@ -182,8 +182,10 @@ export class UserDailyStatsService {
       sequenceDurationForCurrentDay = morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
     } else if (sequenceType === ActivityType.evening) {
       sequenceDurationForCurrentDay = eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
-    } else {
+    } else if (sequenceType === ActivityType.break) {
       sequenceDurationForCurrentDay = microBreaksDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else {
+      sequenceDurationForCurrentDay = 0;
     }
     return sequenceDurationForCurrentDay;
   }
@@ -443,7 +445,7 @@ export class UserDailyStatsService {
       const dayOfWeek = DAYS_OF_WEEK[date.getUTCDay()];
       const morningTotalMinutes = Math.round(morningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
       const eveningTotalMinutes = Math.round(eveningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
-      const microBreaksTotalMinutes = Math.round(eveningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
+      const microBreaksTotalMinutes = Math.round(microBreaksDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
       if (dayStat) {
         const morningSeconds =
           (dayStat.morning_routine_completion_percentage / 100) * morningRoutineDailyDurations[dayOfWeek];

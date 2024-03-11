@@ -59,6 +59,7 @@ export class ActivityParserService {
         impact_category,
         created_at,
         tutorials,
+        cutoff_time_for_doing_activity,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -79,6 +80,7 @@ export class ActivityParserService {
         created_at,
         ...activity_data,
         tutorials,
+        cutoff_time_for_doing_activity,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });

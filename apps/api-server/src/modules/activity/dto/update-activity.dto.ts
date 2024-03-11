@@ -7,6 +7,7 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsMilitaryTime,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -134,5 +135,8 @@ export class UpdateActivityDto extends ActivityData {
   tutorials?: Tutorial[];
 
   @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  @IsMilitaryTime()
   cutoff_time_for_doing_activity?: string;
 }

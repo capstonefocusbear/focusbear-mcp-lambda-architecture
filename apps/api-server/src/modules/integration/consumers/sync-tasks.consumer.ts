@@ -51,7 +51,7 @@ export class SyncTasksConsumer {
       const tasksFromProject = only_assigned
         ? await service.getTasksOwnedByUser(userId, portalId, projectId)
         : await service.getTasks(userId, portalId, projectId);
-      const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId);
+      const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId, userId);
 
       console.log(syncedProjectRecord);
       

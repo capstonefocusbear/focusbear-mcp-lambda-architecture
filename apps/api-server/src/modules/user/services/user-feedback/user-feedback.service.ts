@@ -46,7 +46,7 @@ export class UserFeedbackService {
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
     const messageData = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
       combinedMetadata,
-    )}`;
+    )} \n\n Headers: ${JSON.stringify(headers)}`;
     const slackLogPromise = this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
       text: messageData,
     });

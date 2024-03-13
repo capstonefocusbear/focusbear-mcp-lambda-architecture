@@ -26,9 +26,12 @@ export class UserFeedbackService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${userId} does not exist!`);
     }
-    const appPlatform = headers.platform;
-    const appVersion = headers['app-version'];
-    const deviceId = headers['device-id'];
+    const requestHeaders = { ...headers };
+    const appPlatform = requestHeaders.platform;
+    const appVersion = requestHeaders['app-version'];
+    const deviceId = requestHeaders['device-id'];
+    // remove user access token from logged headers
+    delete requestHeaders.authorization;
     let device = null;
     if (deviceId) {
       device = await this.deviceRepository.orm.findOneBy({ id: deviceId, user_id: userId });
@@ -46,7 +49,7 @@ export class UserFeedbackService {
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
     const messageData = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
       combinedMetadata,
-    )} \n\n Headers: ${JSON.stringify(headers)}`;
+    )} \n\n Headers: ${JSON.stringify(requestHeaders)}`;
     const slackLogPromise = this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
       text: messageData,
     });

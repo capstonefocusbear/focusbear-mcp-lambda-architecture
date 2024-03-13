@@ -13,12 +13,14 @@ import {
   Auth0ManagementServiceMock,
   SendGridServiceMock,
   DeviceRepositoryMock,
+  EventsServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackService } from './user-feedback.service';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
 import { UserFeedback } from '../../entities/user-feedback.entity';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
+import { EventsService } from '../../../events/services/events.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -36,6 +38,7 @@ describe('UserFeedbackService', () => {
         Auth0ManagementService,
         SendGridService,
         DeviceRepository,
+        EventsService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -52,6 +55,8 @@ describe('UserFeedbackService', () => {
       .useValue(SendGridServiceMock)
       .overrideProvider(DeviceRepository)
       .useValue(DeviceRepositoryMock)
+      .overrideProvider(EventsService)
+      .useValue(EventsServiceMock)
       .compile();
 
     service = module.get<UserFeedbackService>(UserFeedbackService);

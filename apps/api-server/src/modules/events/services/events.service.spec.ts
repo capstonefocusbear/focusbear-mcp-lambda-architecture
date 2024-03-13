@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
@@ -31,6 +32,17 @@ import { DeviceService } from '../../device/services/device/device.service';
 import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { TrackEventRepository } from '../repositories/track-event.repository';
 import { TrackEvent } from '../entities/track-event.entity';
+
+jest.mock('ioredis', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const RedisMock = require('ioredis-mock');
+  if (typeof RedisMock === 'function') {
+    // ioredis-mock exports a constructor function
+    return RedisMock;
+  }
+  // ioredis-mock exports an object (or class), so we return a constructor function
+  return jest.fn(() => RedisMock);
+});
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -82,6 +94,9 @@ describe('EventService', () => {
 
     process.env = {
       SLACK_WEBHOOKS_CHANNEL: 'some-url',
+      REDIS_PORT: '6379',
+      REDIS__HOSTNAME: 'localhost',
+      FIELD_TRANSFORMER_ENCRYPTION_KEY: 'super-secret-key',
     };
 
     jest.clearAllMocks();

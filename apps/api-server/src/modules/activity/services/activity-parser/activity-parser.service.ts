@@ -188,6 +188,7 @@ export class ActivityParserService {
       // in the new format in getLogQuantityQuestions function
       log_quantity_question,
       impact_category,
+      cutoff_time_for_doing_activity,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -220,6 +221,7 @@ export class ActivityParserService {
       linked_activity_id,
       check_list,
       impact_category,
+      cutoff_time_for_doing_activity,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));

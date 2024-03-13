@@ -130,14 +130,33 @@ export class UserSettingsService {
         throw new BadRequestException({ validationErrors });
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
-        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
+      const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
+        (break_activity) => 'tutorial' in break_activity,
+      );
+      if (foundTutorialInMicroBreaks) throw new BadRequestException(`Break activities don't have a tutorial`);
+
       const {
         startup_time,
         shutdown_time,
         cutoff_time_for_non_high_priority_activities: cutoffTime,
         break_after_minutes,
+        morning_activities,
+        evening_activities,
+        break_activities,
       } = updateSettingsData;
+
+      const tutorialIds = []
+        .concat(morning_activities, evening_activities, break_activities)
+        .map((activity) => activity.tutorial)
+        .filter(Boolean);
+      const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
+      if (foundActivitiesWithTheSameTutorialIds)
+        throw new BadRequestException(`Activities tutorial value should be unique`);
+
+      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
+        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
       const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
         shutdown_time,
@@ -160,7 +179,6 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
       });
-      const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       let eveningActivities = evening_activities;
       if (updateSettingsData?.sleep_time) {
         const relaxActivityDuration = this.calculateRelaxActivityDuration(

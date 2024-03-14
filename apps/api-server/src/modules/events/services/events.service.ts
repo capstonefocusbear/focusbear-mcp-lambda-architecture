@@ -198,4 +198,13 @@ export class EventsService {
     });
     await this.trackEventRepository.orm.save(trackEvent);
   }
+
+  async getLastFiftyEvents(userId: string) {
+    const events = await this.trackEventRepository.orm.find({
+      where: { user_id: userId },
+      order: { created_at: 'DESC' },
+      take: 50,
+    });
+    return events;
+  }
 }

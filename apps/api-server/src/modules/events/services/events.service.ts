@@ -34,7 +34,7 @@ import { TrackEvent } from '../entities/track-event.entity';
 
 @Injectable()
 export class EventsService {
-  private redisClient = new Redis({ port: Number(process.env.REDIS_PORT), host: process.env.REDIS__HOSTNAME });
+  private redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
 
   private readonly algorithm = 'aes-256-cbc';
 

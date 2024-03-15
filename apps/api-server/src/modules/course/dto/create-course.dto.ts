@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { CoursePlatform } from '../domain/course-platform.enum';
 
 export class CreateCourseDto {
   @IsNotEmpty()
@@ -8,4 +9,8 @@ export class CreateCourseDto {
   @IsNotEmpty()
   @IsString()
   description: string;
+
+  @IsOptional()
+  @IsEnum(CoursePlatform)
+  platform?: CoursePlatform;
 }

@@ -247,9 +247,11 @@ export function getRoutinesAndFocusModesAverages(dailyStats: DailyStats[]) {
   const morningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.morning);
   const eveningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.evening);
   const focusModesAverage = calculateAverageFocusModesCompleted(dailyStats);
+  const breakRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.break);
   return {
     morningRoutineAverage,
     eveningRoutineAverage,
     focusModesAverage,
+    breakRoutineAverage,
   };
 }

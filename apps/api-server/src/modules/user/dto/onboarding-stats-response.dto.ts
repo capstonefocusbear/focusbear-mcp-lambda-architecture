@@ -36,4 +36,10 @@ export class OnboardingStatsResponseDto {
   routines_threshold: number;
 
   focus_modes_threshold: number;
+
+  break_routines_completion_percentage_for_current_level: number;
+
+  break_routine_completion_streak_days: number;
+
+  average_break_routines_completion_percentage: number;
 }

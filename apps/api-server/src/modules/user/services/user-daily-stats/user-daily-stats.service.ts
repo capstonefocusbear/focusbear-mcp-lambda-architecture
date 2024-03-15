@@ -216,12 +216,13 @@ export class UserDailyStatsService {
       const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user_id);
       const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
         await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
-        userDailyStats,
-        user.timezone,
-        { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations },
-      );
-      const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage } =
+      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+        calculateStreaks(userDailyStats, user.timezone, {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        });
+      const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage, breakRoutineAverage } =
         getRoutinesAndFocusModesAverages(userDailyStats);
       const { hasInstalledDesktopApp, hasInstalledMobileApp } = await this.deviceService.getUserInstalledDevices(
         user.id,
@@ -231,7 +232,13 @@ export class UserDailyStatsService {
         evening_routines_completion_percentage_for_current_level,
         focus_modes_completion_percentage_for_current_level,
         total_percent,
-      } = this.calculateCompletionPercentages(morning_routines_streak, evening_routines_streak, focus_modes_streak);
+        break_routines_completion_percentage_for_current_level,
+      } = this.calculateCompletionPercentages(
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
+        micro_breaks_streak,
+      );
       const {
         level,
         has_edited_focus_mode,
@@ -244,6 +251,7 @@ export class UserDailyStatsService {
       await this.userRepository.update(user_id, {
         morning_routines_streak,
         evening_routines_streak,
+        micro_breaks_streak,
         focus_modes_streak,
         onboarding_progress: {
           ...user.onboarding_progress,
@@ -272,6 +280,9 @@ export class UserDailyStatsService {
         average_num_focus_modes_completed_per_day: focusModesAverage,
         routines_threshold: LEVEL_THRESHOLDS[levelToUse - 1].routines,
         focus_modes_threshold: LEVEL_THRESHOLDS[levelToUse - 1].focus_modes,
+        average_break_routines_completion_percentage: breakRoutineAverage,
+        break_routines_completion_percentage_for_current_level,
+        break_routine_completion_streak_days: micro_breaks_streak,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -371,6 +382,7 @@ export class UserDailyStatsService {
     morning_routines_streak: number,
     evening_routines_streak: number,
     focus_modes_streak: number,
+    micro_breaks_streak: number,
   ) {
     const userCurrentLevelThresholds = LEVEL_THRESHOLDS[0];
     const totalRoutines = userCurrentLevelThresholds.routines;
@@ -381,14 +393,21 @@ export class UserDailyStatsService {
     };
     const morningRoutinesPercentage = getPercentage(morning_routines_streak, totalRoutines);
     const eveningRoutinesPercentage = getPercentage(evening_routines_streak, totalRoutines);
+    const breakRoutinesPercentage = getPercentage(micro_breaks_streak, totalRoutines);
     const focusModesPercentPercentage = getPercentage(focus_modes_streak, totalFocusModes);
-    const percentages = [morningRoutinesPercentage, eveningRoutinesPercentage, focusModesPercentPercentage];
+    const percentages = [
+      morningRoutinesPercentage,
+      eveningRoutinesPercentage,
+      focusModesPercentPercentage,
+      breakRoutinesPercentage,
+    ];
     const totalPercent = Math.ceil(percentages.reduce((total, curr) => total + curr, 0) / percentages.length);
     return {
       morning_routines_completion_percentage_for_current_level: morningRoutinesPercentage,
       evening_routines_completion_percentage_for_current_level: eveningRoutinesPercentage,
       focus_modes_completion_percentage_for_current_level: focusModesPercentPercentage,
       total_percent: totalPercent,
+      break_routines_completion_percentage_for_current_level: breakRoutinesPercentage,
     };
   }
 

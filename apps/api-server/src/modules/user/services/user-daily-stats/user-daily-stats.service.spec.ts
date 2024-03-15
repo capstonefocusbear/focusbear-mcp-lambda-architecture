@@ -410,6 +410,7 @@ describe('UserDailyStatsService', () => {
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
         morning_routines_streak: 3,
         evening_routines_streak: 3,
+        micro_breaks_streak: 0,
         focus_modes_streak: 10,
         onboarding_progress: {
           has_installed_desktop_app: false,

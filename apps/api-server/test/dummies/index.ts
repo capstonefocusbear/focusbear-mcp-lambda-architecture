@@ -1510,6 +1510,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   // this stat is mocked to fall over a weekend and has no completed focus modes
   // to test streak not being reset if FM not done over weekend
@@ -1524,6 +1525,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1536,6 +1538,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1548,6 +1551,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1560,6 +1564,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1572,6 +1577,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1584,6 +1590,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1596,6 +1603,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1608,6 +1616,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1620,6 +1629,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1632,6 +1642,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
 ];
 
@@ -1646,6 +1657,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1657,6 +1669,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    break_sequence_log_id: null,
   },
 ];
 
@@ -1704,18 +1717,21 @@ export const DailyStatsDummy = [
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 50,
     evening_routine_completion_percentage: 60,
+    micro_breaks_routine_completion_percentage: 90,
   },
   {
     date_completed: DateTime.local().minus({ days: 2 }).toJSDate(),
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 34,
     evening_routine_completion_percentage: 78,
+    micro_breaks_routine_completion_percentage: 83,
   },
   {
     date_completed: DateTime.local().minus({ days: 3 }).toJSDate(),
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 47,
     evening_routine_completion_percentage: 98,
+    micro_breaks_routine_completion_percentage: 91,
   },
 ];
 

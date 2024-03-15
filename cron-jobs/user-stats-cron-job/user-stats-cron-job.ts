@@ -48,6 +48,7 @@ function calculateSequenceDurationForWeek(activities: Activity[]): DailySequence
 async function getUserRoutineDailyDurations(user_id: string): Promise<{
   morningRoutineDailyDurations: DailySequenceDurations;
   eveningRoutineDailyDurations: DailySequenceDurations;
+  microBreaksDailyDurations: DailySequenceDurations;
 }> {
   const morningActivities = await CronJobDataSource.manager.find(Activity, {
     where: { user_id, type: ActivityType.morning },
@@ -55,19 +56,28 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
   const eveningActivities = await CronJobDataSource.manager.find(Activity, {
     where: { user_id, type: ActivityType.evening },
   });
+  const breakActivities = await CronJobDataSource.manager.find(Activity, {
+    where: { user_id, type: ActivityType.break },
+  });
   const morningRoutineDailyDurations = calculateSequenceDurationForWeek(morningActivities);
   const eveningRoutineDailyDurations = calculateSequenceDurationForWeek(eveningActivities);
-  return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
+  const microBreaksDailyDurations = calculateSequenceDurationForWeek(breakActivities);
+  return { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations };
 }
 
 async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
   const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
-  const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(userId);
+  const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
+    await getUserRoutineDailyDurations(userId);
   const sequenceType = routineLog.activity_sequence.type;
-  const sequenceDurationForCurrentDay: number =
-    sequenceType === ActivityType.morning
-      ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
-      : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  let sequenceDurationForCurrentDay: number = 0;
+  if (sequenceType === ActivityType.morning) {
+    sequenceDurationForCurrentDay = morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  } else if (sequenceType === ActivityType.evening) {
+    sequenceDurationForCurrentDay = eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+  } else if (sequenceType === ActivityType.break) {
+    sequenceDurationForCurrentDay = microBreaksDailyDurations[currentDayOfWeek.toUpperCase()];
+  }
   return sequenceDurationForCurrentDay;
 }
 
@@ -113,6 +123,12 @@ async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {
       dailyStat.evening_sequence_log_id,
     );
   }
+  if (dailyStat.break_sequence_log_id) {
+    updatedDailyStat.micro_breaks_routine_completion_percentage = await calculateRoutineCompletionPercentage(
+      dailyStat.user_id,
+      dailyStat.break_sequence_log_id,
+    );
+  }
   updatedDailyStat.should_recalculate = false;
   CronJobDataSource.manager.update(DailyStats, { id: dailyStat.id }, updatedDailyStat);
 }
@@ -138,18 +154,19 @@ async function calculateOfflineActivitiesCompletionPercentage() {
         },
         order: { date_completed: 'DESC' },
       });
-      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } = await getUserRoutineDailyDurations(
-        user.id,
-      );
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
-        userDailyStats,
-        user.timezone,
-        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
-      );
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
+        await getUserRoutineDailyDurations(user.id);
+      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+        calculateStreaks(userDailyStats, user.timezone, {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        });
       const userLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,
         morning_routines_streak,
         evening_routines_streak,
+        micro_breaks_streak,
       });
       const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
       await CronJobDataSource.manager.update(
@@ -164,6 +181,7 @@ async function calculateOfflineActivitiesCompletionPercentage() {
           morning_routines_streak,
           evening_routines_streak,
           focus_modes_streak,
+          micro_breaks_streak,
         },
       );
     }

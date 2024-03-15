@@ -89,6 +89,12 @@ export class DailyStats extends BaseEntity {
   })
   seconds_spent_in_focus_sessions?: number;
 
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  break_sequence_log_id?: string;
+
   @OneToOne(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.completed_morning_sequence)
   @JoinColumn({ name: 'morning_sequence_log_id' })
   morning_sequence_log?: CompletedActivitySequence;
@@ -100,4 +106,8 @@ export class DailyStats extends BaseEntity {
   @ManyToOne(() => User, (user) => user.consents, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @OneToOne(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.completed_break_sequence)
+  @JoinColumn({ name: 'break_sequence_log_id' })
+  break_sequence_log?: CompletedActivitySequence;
 }

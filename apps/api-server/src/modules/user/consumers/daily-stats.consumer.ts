@@ -89,6 +89,8 @@ export class DailyStatsConsumer {
         routineToUpdate = 'morning_routine_completion_percentage';
       } else if (activityType === ActivityType.evening) {
         routineToUpdate = 'evening_routine_completion_percentage';
+      } else if (activityType === ActivityType.break) {
+        routineToUpdate = 'micro_breaks_routine_completion_percentage';
       }
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -103,14 +105,17 @@ export class DailyStatsConsumer {
       if (dailyStats) {
         const morningSequenceIdIfNoExisting = activityType === ActivityType.morning ? completed_activity_log_id : null;
         const eveningSequenceIdIfNoExisting = activityType === ActivityType.evening ? completed_activity_log_id : null;
+        const breakSequenceIdIfNoExisting = activityType === ActivityType.break ? completed_activity_log_id : null;
         dailyStats.morning_sequence_log_id = dailyStats.morning_sequence_log_id ?? morningSequenceIdIfNoExisting;
         dailyStats.evening_sequence_log_id = dailyStats.evening_sequence_log_id ?? eveningSequenceIdIfNoExisting;
+        dailyStats.break_sequence_log_id = dailyStats.break_sequence_log_id ?? breakSequenceIdIfNoExisting;
         dailyStats[routineToUpdate] = routineCompletionPercentage;
         dailyStats.should_recalculate = shouldStatsBeRecalculated;
         await this.dailyStatsRepository.orm.save(dailyStats);
       } else {
         const morning_sequence_log_id = activityType === ActivityType.morning ? completed_activity_log_id : null;
         const evening_sequence_log_id = activityType === ActivityType.evening ? completed_activity_log_id : null;
+        const break_sequence_log_id = activityType === ActivityType.evening ? completed_activity_log_id : null;
         const newDailyStats = new DailyStats({
           user_id: user.id,
           date_completed: startOfDate,
@@ -119,6 +124,7 @@ export class DailyStatsConsumer {
           morning_sequence_log_id,
           evening_sequence_log_id,
           focus_modes_completed: 0,
+          break_sequence_log_id,
         });
         await this.dailyStatsRepository.create(newDailyStats);
       }

@@ -39,6 +39,7 @@ import { FunctionCallParametersDto } from '../../../ai/dto/function-call-paramet
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
+import moment from 'moment';
 
 @Injectable()
 export class UserSettingsService {
@@ -130,14 +131,44 @@ export class UserSettingsService {
         throw new BadRequestException({ validationErrors });
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
-        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
       const {
+        morning_activities,
+        evening_activities,
+        break_activities,
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: cutoffTime,
+        cutoff_time_for_non_high_priority_activities,
+        cutoff_time_for_high_priority_activities,
         break_after_minutes,
       } = updateSettingsData;
+
+      const activities_cutoff_times = []
+        .concat(morning_activities, break_activities)
+        .map((activity) => activity.cutoff_time_for_doing_activity)
+        .filter(Boolean);
+
+      const foundActivityWithCutOffTime = activities_cutoff_times.some(
+        (activity) => 'cutoff_time_for_doing_activity' in activity,
+      );
+
+      if (foundActivityWithCutOffTime) {
+        throw new BadRequestException('Evening activities should only have cutoff_time_for_doing_activity');
+      }
+
+      const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
+        ({ cutoff_time_for_doing_activity }) =>
+          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_high_priority_activities),
+      );
+      if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
+        throw new BadRequestException(
+          'Evening activities cutoff time should be after a global cutoff time for higher priority activities',
+        );
+      }
+
+      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
+        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
       const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
         shutdown_time,
@@ -147,7 +178,10 @@ export class UserSettingsService {
       const updatedUser = new User({
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(cutoffTime) ? cutoffTime : null,
+        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(
+          cutoff_time_for_non_high_priority_activities,
+        ),
+        cutoff_time_for_high_priority_activities: this.validateCutoffTime(cutoff_time_for_high_priority_activities),
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
@@ -160,7 +194,6 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
       });
-      const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       let eveningActivities = evening_activities;
       if (updateSettingsData?.sleep_time) {
         const relaxActivityDuration = this.calculateRelaxActivityDuration(
@@ -465,10 +498,9 @@ export class UserSettingsService {
 
   validateCutoffTime(time: string) {
     if (!time) {
-      return false;
+      return null;
     }
-    const cutoffTimeForToday = DateTime.fromFormat(time, 'hh:mm');
-    return cutoffTimeForToday.isValid;
+    return DateTime.fromFormat(time, 'hh:mm').isValid ? time : null;
   }
 
   hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
@@ -499,4 +531,18 @@ export class UserSettingsService {
     };
     await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
+
+  isValidTimeForActivity = (
+    cutoff_time_for_doing_activity: string,
+    cutoff_time_for_high_priority_activities: string,
+  ) => {
+    if (cutoff_time_for_high_priority_activities) {
+      return this.validateCutoffTime(cutoff_time_for_doing_activity)
+        ? moment(cutoff_time_for_doing_activity, 'hh:mm').isBefore(
+            moment(cutoff_time_for_high_priority_activities, 'hh:mm'),
+          )
+        : false;
+    }
+    return false;
+  };
 }

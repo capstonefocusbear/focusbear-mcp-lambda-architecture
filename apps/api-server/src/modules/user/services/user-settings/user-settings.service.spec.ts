@@ -194,6 +194,7 @@ describe('UserSettingsService', () => {
         current_activity_sequence_id: undefined,
         current_completing_sequence_log_id: undefined,
         cutoff_time_for_non_high_priority_activities: null,
+        cutoff_time_for_high_priority_activities: null,
       });
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
@@ -551,13 +552,13 @@ describe('UserSettingsService', () => {
     it('positive: invalid hh:mm format time should return false', () => {
       const response = userSettingsService.validateCutoffTime('7:30');
 
-      expect(response).toBeFalse();
+      expect(response).toBeNull();
     });
 
     it('positive: valid hh:mm format time should return true', () => {
       const response = userSettingsService.validateCutoffTime('20:30');
 
-      expect(response).toBeTrue();
+      expect(response).toBe('20:30');
     });
   });
 
@@ -570,9 +571,11 @@ describe('UserSettingsService', () => {
         allowed_urls: [],
         allowed_apps: [],
       };
+
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce({
         ...userSettingsDBResponseDummy,
         cutoff_time_for_non_high_priority_activities: '20:30',
+        cutoff_time_for_high_priority_activities: null,
       });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({

@@ -110,7 +110,6 @@ export class UserRepository extends BaseRepository<User> {
         'users.cutoff_time_for_non_high_priority_activities',
         'users.break_after_minutes',
         'users.has_edited_settings',
-        'users.cutoff_time_for_high_priority_activities',
         'activities.id',
         'activities.log_quantity',
         'activities.duration_seconds',

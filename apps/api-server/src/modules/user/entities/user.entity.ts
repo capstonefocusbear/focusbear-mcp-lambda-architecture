@@ -351,11 +351,6 @@ export class User extends BaseEntity {
   })
   last_date_gave_feedback?: Date;
 
-  @Column({
-    type: 'varchar',
-  })
-  cutoff_time_for_high_priority_activities?: string;
-
   @OneToMany(() => SyncedProject, (syncedProject) => syncedProject.user)
   synced_projects?: SyncedProject[];
 

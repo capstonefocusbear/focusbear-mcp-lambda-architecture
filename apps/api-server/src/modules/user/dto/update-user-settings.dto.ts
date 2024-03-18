@@ -22,9 +22,6 @@ export class UpdateUserSettingsDto {
   @IsOptional()
   cutoff_time_for_non_high_priority_activities?: string;
 
-  @IsOptional()
-  cutoff_time_for_high_priority_activities?: string;
-
   @IsNotEmpty()
   @IsInt()
   @Min(1)

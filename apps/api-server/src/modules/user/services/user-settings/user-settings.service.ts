@@ -39,7 +39,7 @@ import { FunctionCallParametersDto } from '../../../ai/dto/function-call-paramet
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
-import moment from 'moment';
+import * as moment from 'moment';
 
 @Injectable()
 export class UserSettingsService {
@@ -76,6 +76,15 @@ export class UserSettingsService {
       if (userSettings.cutoff_time_for_non_high_priority_activities === null) {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
+
+      userSettings?.activity_sequences?.forEach((sequence) => {
+        sequence.type !== ActivityType.evening &&
+          sequence.activities.forEach((activity) => {
+            if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
+              delete activity.cutoff_time_for_doing_activity;
+            }
+          });
+      });
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
@@ -139,16 +148,10 @@ export class UserSettingsService {
         startup_time,
         shutdown_time,
         cutoff_time_for_non_high_priority_activities,
-        cutoff_time_for_high_priority_activities,
         break_after_minutes,
       } = updateSettingsData;
 
-      const activities_cutoff_times = []
-        .concat(morning_activities, break_activities)
-        .map((activity) => activity.cutoff_time_for_doing_activity)
-        .filter(Boolean);
-
-      const foundActivityWithCutOffTime = activities_cutoff_times.some(
+      const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
         (activity) => 'cutoff_time_for_doing_activity' in activity,
       );
 
@@ -158,11 +161,11 @@ export class UserSettingsService {
 
       const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
         ({ cutoff_time_for_doing_activity }) =>
-          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_high_priority_activities),
+          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_non_high_priority_activities),
       );
       if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
         throw new BadRequestException(
-          'Evening activities cutoff time should be after a global cutoff time for higher priority activities',
+          'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities',
         );
       }
 
@@ -181,7 +184,6 @@ export class UserSettingsService {
         cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(
           cutoff_time_for_non_high_priority_activities,
         ),
-        cutoff_time_for_high_priority_activities: this.validateCutoffTime(cutoff_time_for_high_priority_activities),
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
@@ -532,15 +534,10 @@ export class UserSettingsService {
     await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
 
-  isValidTimeForActivity = (
-    cutoff_time_for_doing_activity: string,
-    cutoff_time_for_high_priority_activities: string,
-  ) => {
-    if (cutoff_time_for_high_priority_activities) {
-      return this.validateCutoffTime(cutoff_time_for_doing_activity)
-        ? moment(cutoff_time_for_doing_activity, 'hh:mm').isBefore(
-            moment(cutoff_time_for_high_priority_activities, 'hh:mm'),
-          )
+  isValidTimeForActivity = (activity_cutoff_time: string, global_cutoff_time: string) => {
+    if (activity_cutoff_time) {
+      return this.validateCutoffTime(activity_cutoff_time)
+        ? moment(activity_cutoff_time, 'hh:mm').isBefore(moment(global_cutoff_time, 'hh:mm'))
         : false;
     }
     return false;

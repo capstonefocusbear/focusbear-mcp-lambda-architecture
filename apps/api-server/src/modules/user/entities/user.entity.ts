@@ -37,7 +37,7 @@ import { Calendar } from '../../calendar/entities/calendar.entity';
 import { TeamToMember } from '../../team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
-import { Feedback } from '@app/stripe/entities/feedback.entity';
+import { Feedback } from '../../../../../../libs/stripe/src/entities/feedback.entity';
 
 @Entity('users')
 export class User extends BaseEntity {

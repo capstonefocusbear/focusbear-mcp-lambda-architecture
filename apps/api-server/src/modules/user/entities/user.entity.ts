@@ -37,6 +37,7 @@ import { Calendar } from '../../calendar/entities/calendar.entity';
 import { TeamToMember } from '../../team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
+import { Feedback } from '@app/stripe/entities/feedback.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -465,4 +466,7 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Tutorial, (tutorial) => tutorial.user)
   tutorials?: Tutorial[];
+
+  @OneToOne(() => Feedback, (feedback) => feedback.cancel_subscription_reason)
+  cancel_subscription_feedback?: Feedback;
 }

@@ -42,6 +42,7 @@ import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
+import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -100,6 +101,7 @@ export const typeormConfig = registerAs(
       Calendar,
       TrackEvent,
       Tutorial,
+      Feedback,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

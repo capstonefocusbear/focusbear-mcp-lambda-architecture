@@ -5,12 +5,18 @@ import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/co
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
+import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session';
+import { UserAuthContext } from '../.../../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
+import { Feedback } from './entities/feedback.entity';
+import { AppDataSource } from '../../../apps/api-server/ormconfig';
 
 @Injectable()
 export class StripeService extends Stripe {
   constructor(@Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions) {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
+
+  private readonly ormFeedback = AppDataSource.getRepository(Feedback);
 
   async createCheckoutSession(
     customer: string,
@@ -144,5 +150,18 @@ export class StripeService extends Stripe {
 
   async cancelSubscription(subscriptionId: string) {
     await this.subscriptions.del(subscriptionId);
+  }
+
+  async cancelSubscriptionSession(cancelSubscriptionSession: CancelSubscriptionSession, user: UserAuthContext) {
+    try {
+      const feedback = new Feedback({
+        cancel_subscription_reason: cancelSubscriptionSession.cancel_subscription_reason,
+        user_id: user.id,
+      });
+      await this.subscriptions.cancel(user.stripeCustomerId);
+      await this.ormFeedback.save(feedback);
+    } catch (error) {
+      throw error;
+    }
   }
 }

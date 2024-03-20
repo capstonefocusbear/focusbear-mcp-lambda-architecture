@@ -156,7 +156,7 @@ export class UserSettingsService {
       );
 
       if (foundActivityWithCutOffTime) {
-        throw new BadRequestException('Evening activities should only have cutoff_time_for_doing_activity');
+        throw new BadRequestException('Morning and break activities cannot have a cutoff_time_for_doing_activity');
       }
 
       const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(

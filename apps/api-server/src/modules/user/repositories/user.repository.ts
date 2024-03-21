@@ -67,15 +67,23 @@ export class UserRepository extends BaseRepository<User> {
         id: Not(In(incomingQuestionIds)),
         activity_id: Not(IsNull()),
       });
-      const tutorialIdsToKeep = tutorials.map((tutorial) => tutorial.id);
+      const tutorialActivityIdsToKeep = tutorials.map((tutorial) => tutorial.activity_id);
+
       await Promise.all(
-        tutorials.map(async ({ activity_id, user_id }) => {
-          await queryRunner.manager.delete(Tutorial, {
-            user_id,
-            activity_id,
-            id: Not(In(tutorialIdsToKeep)),
-          });
-        }),
+        tutorials?.length
+          ? tutorials.map(async ({ id: tutorial_id }) => {
+              await queryRunner.manager.delete(Tutorial, {
+                id: tutorial_id,
+                user_id: id,
+                activity_id: Not(In(tutorialActivityIdsToKeep)),
+              });
+            })
+          : activitiesArray.map(async (activity) => {
+              await queryRunner.manager.delete(Tutorial, {
+                user_id: id,
+                activity_id: activity.id,
+              });
+            }),
       );
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
@@ -103,7 +111,7 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('activities.choices', 'choices')
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
-      .leftJoinAndSelect('activities.tutorials', 'tutorials')
+      .leftJoinAndSelect('activities.tutorial', 'tutorials')
       .select([
         'users.startup_time',
         'users.shutdown_time',
@@ -156,7 +164,6 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.id',
         'activity_sequences.activity_ids',
         'tutorials.id',
-        'tutorials.name',
       ])
       .where('users.id = :id', { id })
       .getOne();

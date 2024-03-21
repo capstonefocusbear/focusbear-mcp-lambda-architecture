@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Activity } from './activity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -10,9 +10,6 @@ export class Tutorial extends BaseEntity {
     Object.assign(this, { ...data });
   }
 
-  @Column({ type: 'varchar', length: 1000 })
-  name: string;
-
   @Index()
   @Column({ type: 'varchar' })
   activity_id: string;
@@ -21,7 +18,7 @@ export class Tutorial extends BaseEntity {
   @Column({ type: 'varchar' })
   user_id: string;
 
-  @ManyToOne(() => Activity, (activity) => activity.tutorials, {
+  @OneToOne(() => Activity, (activity) => activity.tutorial, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })

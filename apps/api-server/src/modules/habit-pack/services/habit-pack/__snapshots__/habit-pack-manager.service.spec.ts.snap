@@ -12,7 +12,7 @@ exports[`HabitPackManagerService convertActivityTemplatesToUpdateActivityDtos Po
   "log_summary_type": "SUM",
   "name": "Mess up desk",
   "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
-  "tutorials": [],
+  "tutorial": undefined,
   "video_urls": [],
 }
 `;

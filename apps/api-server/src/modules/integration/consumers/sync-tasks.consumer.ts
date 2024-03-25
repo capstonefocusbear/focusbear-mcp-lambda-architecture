@@ -54,7 +54,7 @@ export class SyncTasksConsumer {
       const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId, userId);
 
       console.log(syncedProjectRecord);
-      
+
       const tasksAsToDos = tasksFromProject.map((task) => {
         return new ToDo({
           user_id: userId,

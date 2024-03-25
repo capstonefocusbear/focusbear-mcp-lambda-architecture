@@ -134,7 +134,7 @@ export class UserSettingsService {
       const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
         (break_activity) => 'tutorial' in break_activity,
       );
-      if (foundTutorialInMicroBreaks) throw new BadRequestException(`Break activities don't have a tutorial`);
+      if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
 
       const {
         startup_time,
@@ -151,8 +151,9 @@ export class UserSettingsService {
         .map((activity) => activity.tutorial)
         .filter(Boolean);
       const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
-      if (foundActivitiesWithTheSameTutorialIds)
-        throw new BadRequestException(`Activities tutorial value should be unique`);
+      if (foundActivitiesWithTheSameTutorialIds) {
+        throw new BadRequestException('Activities tutorial value should be unique');
+      }
 
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);

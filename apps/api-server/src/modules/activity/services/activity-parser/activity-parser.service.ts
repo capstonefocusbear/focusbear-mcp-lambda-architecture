@@ -318,8 +318,9 @@ export class ActivityParserService {
   getActivitiesTutorial(serializedActivities: SerializedActivity, user_id: string) {
     const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
     return activities.reduce((tutorials: Tutorial[], activity) => {
-      if (activity?.tutorial)
+      if (activity?.tutorial) {
         tutorials.push(new Tutorial({ id: activity.tutorial, activity_id: activity.id, user_id }));
+      }
       return tutorials;
     }, []);
   }

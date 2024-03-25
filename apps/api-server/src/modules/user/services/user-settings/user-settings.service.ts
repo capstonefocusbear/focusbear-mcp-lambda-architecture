@@ -39,7 +39,6 @@ import { FunctionCallParametersDto } from '../../../ai/dto/function-call-paramet
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
-import * as moment from 'moment';
 
 @Injectable()
 export class UserSettingsService {
@@ -141,15 +140,29 @@ export class UserSettingsService {
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
 
+      const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
+        (break_activity) => 'tutorial' in break_activity,
+      );
+      if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
+
       const {
-        morning_activities,
-        evening_activities,
-        break_activities,
         startup_time,
         shutdown_time,
         cutoff_time_for_non_high_priority_activities,
         break_after_minutes,
+        morning_activities,
+        evening_activities,
+        break_activities,
       } = updateSettingsData;
+
+      const tutorialIds = []
+        .concat(morning_activities, evening_activities, break_activities)
+        .map((activity) => activity.tutorial)
+        .filter(Boolean);
+      const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
+      if (foundActivitiesWithTheSameTutorialIds) {
+        throw new BadRequestException('Activities tutorial value should be unique');
+      }
 
       const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
         (activity) => 'cutoff_time_for_doing_activity' in activity,
@@ -535,10 +548,20 @@ export class UserSettingsService {
   }
 
   isValidTimeForActivity = (activity_cutoff_time: string, global_cutoff_time: string) => {
-    if (activity_cutoff_time) {
-      return this.validateCutoffTime(activity_cutoff_time)
-        ? moment(activity_cutoff_time, 'hh:mm').isBefore(moment(global_cutoff_time, 'hh:mm'))
-        : false;
+    if (
+      activity_cutoff_time &&
+      this.validateCutoffTime(activity_cutoff_time) &&
+      this.validateCutoffTime(global_cutoff_time)
+    ) {
+      const [globalHours, globalMinutes] = global_cutoff_time.split(':');
+      const [activityHours, activityMinutes] = activity_cutoff_time.split(':');
+      const globalTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(globalHours), minutes: parseInt(globalMinutes) });
+      const activityTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(activityHours), minutes: parseInt(activityMinutes) });
+      return activityTime <= globalTime;
     }
     return false;
   };

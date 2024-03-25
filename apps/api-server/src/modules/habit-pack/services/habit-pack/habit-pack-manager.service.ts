@@ -214,7 +214,7 @@ export class HabitPackManagerService {
     });
     const activities: UpdateActivityDto[] = [];
     activityTemplatesOfType.map(
-      ({ id: templateId, choices, log_quantity_questions, tutorials, ...restOfTemplateData }) => {
+      ({ id: templateId, choices, log_quantity_questions, tutorial, ...restOfTemplateData }) => {
         // convert template choices to normal choices
         const convertedChoices = choices.map(
           ({ id, log_quantity_questions: choiceLogQuantityQuestions, ...restOfChoiceData }) => {
@@ -244,8 +244,6 @@ export class HabitPackManagerService {
             return { id: newQuestionId, ...restOfQuestionData };
           },
         );
-        // convert activity's tutorials to new tutorials for installable activity
-        const convertedActivityTutorials = tutorials?.map((tutorial) => ({ ...tutorial, id: randomUUID() })) ?? [];
         // create installable activity from activity template
         const activityNewId = randomUUID();
         const activityCreatedFromTemplate: UpdateActivityDto = {
@@ -253,7 +251,7 @@ export class HabitPackManagerService {
           activity_template_id: templateId,
           choices: convertedChoices,
           log_quantity_questions: convertedLogQuantityQuestions,
-          tutorials: convertedActivityTutorials,
+          tutorial,
           ...restOfTemplateData,
         };
         templatesNewIdsMap.set(templateId, activityNewId);

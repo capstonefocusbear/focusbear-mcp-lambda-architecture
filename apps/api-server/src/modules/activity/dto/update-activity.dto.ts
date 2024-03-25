@@ -24,7 +24,6 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
-import { Tutorial } from '../entities/tutorial.entity';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -131,8 +130,8 @@ export class UpdateActivityDto extends ActivityData {
   impact_category?: ImpactCategory;
 
   @IsOptional()
-  @IsArray()
-  tutorials?: Tutorial[];
+  @IsUUID('4')
+  tutorial?: string;
 
   @IsOptional()
   @IsString()

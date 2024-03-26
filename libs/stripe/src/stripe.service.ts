@@ -9,10 +9,14 @@ import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/
 import { UserAuthContext } from '../.../../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
 import { Feedback } from './entities/feedback.entity';
 import { AppDataSource } from '../../../apps/api-server/ormconfig';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 
 @Injectable()
 export class StripeService extends Stripe {
-  constructor(@Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions) {
+  constructor(
+    @Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions,
+    @InjectSentry() private readonly sentryService: SentryService,
+  ) {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
@@ -152,15 +156,22 @@ export class StripeService extends Stripe {
     await this.subscriptions.del(subscriptionId);
   }
 
-  async cancelSubscriptionSession(cancelSubscriptionSession: CancelSubscriptionSession, user: UserAuthContext) {
+  async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
     try {
+      const minimum_feedback_characters_length = 10;
+      if (cancel_subscription_reason?.length < minimum_feedback_characters_length) {
+        throw new BadRequestException(
+          `Feedback number of characters should be greater than or equal to ${minimum_feedback_characters_length}`,
+        );
+      }
+      await this.subscriptions.cancel(user.stripeCustomerId);
       const feedback = new Feedback({
-        cancel_subscription_reason: cancelSubscriptionSession.cancel_subscription_reason,
+        cancel_subscription_reason,
         user_id: user.id,
       });
-      await this.subscriptions.cancel(user.stripeCustomerId);
-      await this.ormFeedback.save(feedback);
+      return await this.ormFeedback.save(feedback);
     } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }

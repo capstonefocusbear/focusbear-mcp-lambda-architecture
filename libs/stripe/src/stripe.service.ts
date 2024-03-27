@@ -1,16 +1,16 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import axios from 'axios';
 import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
 import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session';
-import { UserAuthContext } from '../.../../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
+import { UserAuthContext } from '../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
 import { Feedback } from './entities/feedback.entity';
 import { AppDataSource } from '../../../apps/api-server/ormconfig';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import axios from 'axios';
 
 @Injectable()
 export class StripeService extends Stripe {

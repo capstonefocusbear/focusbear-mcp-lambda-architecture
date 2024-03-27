@@ -58,7 +58,7 @@ export class ActivityParserService {
         check_list,
         impact_category,
         created_at,
-        tutorials,
+        tutorial,
         cutoff_time_for_doing_activity,
       }: Activity) => ({
         id,
@@ -79,7 +79,7 @@ export class ActivityParserService {
         impact_category,
         created_at,
         ...activity_data,
-        tutorials,
+        tutorial,
         cutoff_time_for_doing_activity,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
@@ -106,7 +106,7 @@ export class ActivityParserService {
       },
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    const tutorials = this.getActivitiesTutorials(serialized, user_id);
+    const tutorials = this.getActivitiesTutorial(serialized, user_id);
     const entries = Object.entries(serialized);
     const deserializedActivities = await Promise.all(
       entries.map(async ([name, serializedActivities]) => {
@@ -315,14 +315,13 @@ export class ActivityParserService {
     return sequenceDuration;
   }
 
-  getActivitiesTutorials(serializedActivities: SerializedActivity, user_id: string) {
+  getActivitiesTutorial(serializedActivities: SerializedActivity, user_id: string) {
     const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
-    return activities
-      .map((activity) => {
-        return activity?.tutorials?.length
-          ? activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id, user_id }))
-          : [];
-      })
-      .flat();
+    return activities.reduce((tutorials: Tutorial[], activity) => {
+      if (activity?.tutorial) {
+        tutorials.push(new Tutorial({ id: activity.tutorial, activity_id: activity.id, user_id }));
+      }
+      return tutorials;
+    }, []);
   }
 }

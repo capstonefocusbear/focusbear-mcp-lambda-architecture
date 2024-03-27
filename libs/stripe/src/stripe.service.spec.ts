@@ -1,13 +1,13 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
+import Stripe from 'stripe';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IStripeOptions } from './interfaces';
 import { StripeModule } from './stripe.module';
 import { StripeService } from './stripe.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { dummySubscriptionCancelFeedback, userDummy } from '../../../apps/api-server/test/dummies';
 import { StripeMock } from '../../../apps/api-server/test/mocks';
-import Stripe from 'stripe';
 
 describe('StripeService', () => {
   let service: StripeService;
@@ -36,7 +36,7 @@ describe('StripeService', () => {
 
   describe('cancelSubscriptionSession', () => {
     it('negative:should throw BadRequestException, if user feedback character length less than 10', async () => {
-      const exceptionMessage = `Feedback number of characters should be greater than or equal to 10`;
+      const exceptionMessage = 'Feedback number of characters should be greater than or equal to 10';
       StripeMock.subscriptions.cancel.mockRejectedValueOnce(null);
       let exception: any;
 

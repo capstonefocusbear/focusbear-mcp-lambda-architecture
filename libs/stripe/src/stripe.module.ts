@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
+import { SentryModule } from '@ntegral/nestjs-sentry';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DynamicModuleFactory } from '../../dynamic-module/src';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 import { StripeService } from './stripe.service';
-import { SentryModule } from '@ntegral/nestjs-sentry';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   providers: [StripeService],

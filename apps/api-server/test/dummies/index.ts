@@ -1792,6 +1792,117 @@ export const dummyTutorials = [
   },
 ];
 
+export const dummyUserCutoffTimeActivities = {
+  BREAK_WITH_CUTOFF: {
+    break_activities: [
+      {
+        id: '666da3c5-50b7-4205-a481-13b402de53d6',
+        choices: [
+          {
+            id: '310b74aa-d6c2-4153-93f1-dab6cd1db49a',
+            duration_seconds: 30,
+            log_quantity: true,
+            log_summary_type: LogSummaryType.SUM,
+            name: 'Pushups',
+            video_urls: ['https://www.youtube.com/watch?v=StXac04arIc', 'https://www.youtube.com/watch?v=dOY-VkXbJCY'],
+          },
+        ],
+        duration_seconds: 30,
+        activity_sequence_id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Micro-workout',
+        is_office_friendly: false,
+        video_urls: [],
+        allowed_apps: [],
+        include_in_every_break: true,
+        log_quantity_question: '',
+        choice_type: ActivityChoiceType.random,
+        allowed_urls: [],
+        cutoff_time_for_doing_activity: '12:20',
+      },
+    ],
+    morning_activities: [
+      {
+        id: 'a4758757-5894-46c6-9f33-a081a351a2f6',
+        choices: [],
+        duration_seconds: 180,
+        activity_sequence_id: '1293da0c-2055-4b30-9664-4736973e1dcf',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Deep breathing',
+        video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+      },
+    ],
+    evening_activities: [
+      {
+        id: 'daec162d-dedf-45fb-81af-6c55e9394668',
+        choices: [],
+        duration_seconds: 300,
+        activity_sequence_id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Journal about day',
+        video_urls: [],
+      },
+    ],
+  },
+  EVENING_WITH_CUTOFF: {
+    break_activities: [
+      {
+        id: '666da3c5-50b7-4205-a481-13b402de53d6',
+        choices: [
+          {
+            id: '310b74aa-d6c2-4153-93f1-dab6cd1db49a',
+            duration_seconds: 30,
+            log_quantity: true,
+            log_summary_type: LogSummaryType.SUM,
+            name: 'Pushups',
+            video_urls: ['https://www.youtube.com/watch?v=StXac04arIc', 'https://www.youtube.com/watch?v=dOY-VkXbJCY'],
+          },
+        ],
+        duration_seconds: 30,
+        activity_sequence_id: 'c3b8e1f0-00b3-4283-b891-b1358a8743be',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Micro-workout',
+        is_office_friendly: false,
+        video_urls: [],
+        allowed_apps: [],
+        include_in_every_break: true,
+        log_quantity_question: '',
+        choice_type: ActivityChoiceType.random,
+        allowed_urls: [],
+      },
+    ],
+    morning_activities: [
+      {
+        id: 'a4758757-5894-46c6-9f33-a081a351a2f6',
+        choices: [],
+        duration_seconds: 180,
+        activity_sequence_id: '1293da0c-2055-4b30-9664-4736973e1dcf',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Deep breathing',
+        video_urls: ['https://www.youtube.com/watch?v=36mnXAQGRzc'],
+      },
+    ],
+    evening_activities: [
+      {
+        id: 'daec162d-dedf-45fb-81af-6c55e9394668',
+        choices: [],
+        duration_seconds: 300,
+        activity_sequence_id: '555c587e-6c64-4c02-aeb0-61e015cc0290',
+        log_quantity: false,
+        log_summary_type: LogSummaryType.SUM,
+        name: 'Journal about day',
+        video_urls: [],
+        cutoff_time_for_doing_activity: '20:20',
+      },
+    ],
+  },
+};
+
 export const dummySubscriptionCancelFeedback = {
   INVALID_FEEDBACK: 'Short fee',
   VALID_FEEDBACK: 'Long feedback',

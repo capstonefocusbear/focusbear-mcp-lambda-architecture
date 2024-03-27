@@ -75,6 +75,16 @@ export class UserSettingsService {
       if (userSettings.cutoff_time_for_non_high_priority_activities === null) {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
+
+      userSettings?.activity_sequences?.map(
+        (sequence) =>
+          sequence.type !== ActivityType.evening &&
+          sequence.activities.forEach(({ type, cutoff_time_for_doing_activity, ...rest }) => {
+            type !== ActivityType.evening && cutoff_time_for_doing_activity === null
+              ? { ...rest, type }
+              : { ...rest, type, cutoff_time_for_doing_activity };
+          }),
+      );
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
@@ -130,14 +140,52 @@ export class UserSettingsService {
         throw new BadRequestException({ validationErrors });
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
-        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
+      const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
+        (break_activity) => 'tutorial' in break_activity,
+      );
+      if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
+
       const {
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: cutoffTime,
+        cutoff_time_for_non_high_priority_activities,
         break_after_minutes,
+        morning_activities,
+        evening_activities,
+        break_activities,
       } = updateSettingsData;
+
+      const tutorialIds = []
+        .concat(morning_activities, evening_activities, break_activities)
+        .map((activity) => activity.tutorial)
+        .filter(Boolean);
+      const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
+      if (foundActivitiesWithTheSameTutorialIds) {
+        throw new BadRequestException('Activities tutorial value should be unique');
+      }
+
+      const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
+        (activity) => 'cutoff_time_for_doing_activity' in activity,
+      );
+
+      if (foundActivityWithCutOffTime) {
+        throw new BadRequestException('Morning and break activities cannot have a cutoff_time_for_doing_activity');
+      }
+
+      const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
+        ({ cutoff_time_for_doing_activity }) =>
+          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_non_high_priority_activities),
+      );
+      if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
+        throw new BadRequestException(
+          'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities',
+        );
+      }
+
+      const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
+        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+
       const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
         shutdown_time,
@@ -147,7 +195,9 @@ export class UserSettingsService {
       const updatedUser = new User({
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(cutoffTime) ? cutoffTime : null,
+        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(
+          cutoff_time_for_non_high_priority_activities,
+        ),
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
@@ -160,7 +210,6 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
       });
-      const { morning_activities, evening_activities, break_activities } = updateSettingsData;
       let eveningActivities = evening_activities;
       if (updateSettingsData?.sleep_time) {
         const relaxActivityDuration = this.calculateRelaxActivityDuration(
@@ -465,10 +514,9 @@ export class UserSettingsService {
 
   validateCutoffTime(time: string) {
     if (!time) {
-      return false;
+      return null;
     }
-    const cutoffTimeForToday = DateTime.fromFormat(time, 'hh:mm');
-    return cutoffTimeForToday.isValid;
+    return DateTime.fromFormat(time, 'hh:mm').isValid ? time : null;
   }
 
   hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
@@ -499,4 +547,23 @@ export class UserSettingsService {
     };
     await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
+
+  isValidTimeForActivity = (activity_cutoff_time: string, global_cutoff_time: string) => {
+    if (
+      activity_cutoff_time &&
+      this.validateCutoffTime(activity_cutoff_time) &&
+      this.validateCutoffTime(global_cutoff_time)
+    ) {
+      const [globalHours, globalMinutes] = global_cutoff_time.split(':');
+      const [activityHours, activityMinutes] = activity_cutoff_time.split(':');
+      const globalTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(globalHours, 10), minutes: parseInt(globalMinutes, 10) });
+      const activityTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(activityHours, 10), minutes: parseInt(activityMinutes, 10) });
+      return activityTime <= globalTime;
+    }
+    return false;
+  };
 }

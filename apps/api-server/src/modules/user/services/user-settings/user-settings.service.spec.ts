@@ -22,6 +22,7 @@ import {
   userDummy,
   userSettingsDBResponseDummy,
   userSettingsDummy,
+  dummyUserCutoffTimeActivities,
 } from '../../../../../test/dummies';
 import {
   ActivityParserServiceMock,
@@ -177,6 +178,67 @@ describe('UserSettingsService', () => {
 
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: If any of the morning or break activities have a cutoff time for an activity, throw BadRequestException', async () => {
+      const errorMessage = 'Morning and break activities cannot have a cutoff_time_for_doing_activity';
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      let exception: any;
+
+      try {
+        await userSettingsService.updateSettings(
+          { user_id: userDummy.id },
+          { ...userSettingsDummy, ...dummyUserCutoffTimeActivities.BREAK_WITH_CUTOFF },
+          true,
+          {
+            is_onboarding: false,
+          },
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: If any evening activity has a cutoff time before the cutoff time for non-high priority activities, throw BadRequestException', async () => {
+      const errorMessage =
+        'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities';
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      let exception: any;
+
+      try {
+        await userSettingsService.updateSettings(
+          { user_id: userDummy.id },
+          {
+            ...userSettingsDummy,
+            cutoff_time_for_non_high_priority_activities: '21:00',
+            ...dummyUserCutoffTimeActivities.EVENING_WITH_CUTOFF,
+          },
+          true,
+          {
+            is_onboarding: false,
+          },
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual(errorMessage);
     });
 
@@ -551,13 +613,13 @@ describe('UserSettingsService', () => {
     it('positive: invalid hh:mm format time should return false', () => {
       const response = userSettingsService.validateCutoffTime('7:30');
 
-      expect(response).toBeFalse();
+      expect(response).toBeNull();
     });
 
     it('positive: valid hh:mm format time should return true', () => {
       const response = userSettingsService.validateCutoffTime('20:30');
 
-      expect(response).toBeTrue();
+      expect(response).toBe('20:30');
     });
   });
 
@@ -570,6 +632,7 @@ describe('UserSettingsService', () => {
         allowed_urls: [],
         allowed_apps: [],
       };
+
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce({
         ...userSettingsDBResponseDummy,
         cutoff_time_for_non_high_priority_activities: '20:30',

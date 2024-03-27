@@ -180,6 +180,6 @@ export class Activity extends BaseEntity {
   @JoinColumn({ name: 'activity_template_id' })
   activity_template?: ActivityTemplate;
 
-  @OneToMany(() => Tutorial, (tutorial) => tutorial.activity)
-  tutorials?: Tutorial[];
+  @OneToOne(() => Tutorial, (tutorial) => tutorial.activity)
+  tutorial?: string;
 }

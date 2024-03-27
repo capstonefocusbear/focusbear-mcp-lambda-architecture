@@ -1,5 +1,5 @@
-import { BaseEntity } from '../../../../apps/api-server/src/shared/entities/base-entity.entity';
 import { Column, Entity, Index, JoinColumn, OneToOne } from 'typeorm';
+import { BaseEntity } from '../../../../apps/api-server/src/shared/entities/base-entity.entity';
 import { User } from '../../../../apps/api-server/src/modules/user/entities/user.entity';
 
 @Entity('feedbacks')

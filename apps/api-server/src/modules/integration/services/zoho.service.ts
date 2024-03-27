@@ -74,8 +74,9 @@ export class ZohoService extends BaseIntegrationService {
   }
 
   protected async tryAddTimeEntry({ integrationRecord, portalId, projectId, taskId, timeEntry }): Promise<any> {
-    const url = `${getDataCenterUrl(integrationRecord.location).api
-      }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
+    const url = `${
+      getDataCenterUrl(integrationRecord.location).api
+    }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/logs/`;
     const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const [year, month, day] = timeEntry.date.split('-');
     const formData = {
@@ -148,8 +149,9 @@ export class ZohoService extends BaseIntegrationService {
   }
 
   protected async tryGetProjectStatuses({ integrationRecord, projectId, portalId }): Promise<ExternalTaskStatus[]> {
-    const url = `${getDataCenterUrl(integrationRecord.location).api
-      }/portal/${portalId}/projects/${projectId}/tasklayouts`;
+    const url = `${
+      getDataCenterUrl(integrationRecord.location).api
+    }/portal/${portalId}/projects/${projectId}/tasklayouts`;
     const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const { data } = await this.httpService.get(url, {
       headers,
@@ -161,8 +163,9 @@ export class ZohoService extends BaseIntegrationService {
   }
 
   protected async tryUpdateTaskStatus({ integrationRecord, portalId, projectId, taskId, statusId }): Promise<any> {
-    const url = `${getDataCenterUrl(integrationRecord.location).api
-      }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
+    const url = `${
+      getDataCenterUrl(integrationRecord.location).api
+    }/portal/${portalId}/projects/${projectId}/tasks/${taskId}/`;
     const headers = { Authorization: `Bearer ${integrationRecord.access_token}` };
     const formData = {
       custom_status: statusId,

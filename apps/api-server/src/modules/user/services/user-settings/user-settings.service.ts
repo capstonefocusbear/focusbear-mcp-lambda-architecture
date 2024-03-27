@@ -75,6 +75,15 @@ export class UserSettingsService {
       if (userSettings.cutoff_time_for_non_high_priority_activities === null) {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
+
+      userSettings?.activity_sequences?.forEach((sequence) => {
+        sequence.type !== ActivityType.evening &&
+          sequence.activities.forEach((activity) => {
+            if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
+              delete activity.cutoff_time_for_doing_activity;
+            }
+          });
+      });
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
@@ -139,7 +148,7 @@ export class UserSettingsService {
       const {
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: cutoffTime,
+        cutoff_time_for_non_high_priority_activities,
         break_after_minutes,
         morning_activities,
         evening_activities,
@@ -155,6 +164,24 @@ export class UserSettingsService {
         throw new BadRequestException('Activities tutorial value should be unique');
       }
 
+      const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
+        (activity) => 'cutoff_time_for_doing_activity' in activity,
+      );
+
+      if (foundActivityWithCutOffTime) {
+        throw new BadRequestException('Morning and break activities cannot have a cutoff_time_for_doing_activity');
+      }
+
+      const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
+        ({ cutoff_time_for_doing_activity }) =>
+          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_non_high_priority_activities),
+      );
+      if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
+        throw new BadRequestException(
+          'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities',
+        );
+      }
+
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
 
@@ -167,7 +194,9 @@ export class UserSettingsService {
       const updatedUser = new User({
         startup_time,
         shutdown_time,
-        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(cutoffTime) ? cutoffTime : null,
+        cutoff_time_for_non_high_priority_activities: this.validateCutoffTime(
+          cutoff_time_for_non_high_priority_activities,
+        ),
         break_after_minutes,
         id: user_id,
         has_edited_settings: userHasEditedSettings,
@@ -484,10 +513,9 @@ export class UserSettingsService {
 
   validateCutoffTime(time: string) {
     if (!time) {
-      return false;
+      return null;
     }
-    const cutoffTimeForToday = DateTime.fromFormat(time, 'hh:mm');
-    return cutoffTimeForToday.isValid;
+    return DateTime.fromFormat(time, 'hh:mm').isValid ? time : null;
   }
 
   hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
@@ -518,4 +546,23 @@ export class UserSettingsService {
     };
     await this.updateSettings({ user_id: userId }, updatedSettings, false, { is_onboarding: false });
   }
+
+  isValidTimeForActivity = (activity_cutoff_time: string, global_cutoff_time: string) => {
+    if (
+      activity_cutoff_time &&
+      this.validateCutoffTime(activity_cutoff_time) &&
+      this.validateCutoffTime(global_cutoff_time)
+    ) {
+      const [globalHours, globalMinutes] = global_cutoff_time.split(':');
+      const [activityHours, activityMinutes] = activity_cutoff_time.split(':');
+      const globalTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(globalHours), minutes: parseInt(globalMinutes) });
+      const activityTime = DateTime.now()
+        .startOf('minute')
+        .plus({ hours: parseInt(activityHours), minutes: parseInt(activityMinutes) });
+      return activityTime <= globalTime;
+    }
+    return false;
+  };
 }

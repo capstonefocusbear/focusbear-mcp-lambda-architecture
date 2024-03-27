@@ -10,6 +10,7 @@ import { UserAuthContext } from '../.../../../../apps/api-server/src/modules/aut
 import { Feedback } from './entities/feedback.entity';
 import { AppDataSource } from '../../../apps/api-server/ormconfig';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import axios from 'axios';
 
 @Injectable()
 export class StripeService extends Stripe {
@@ -169,7 +170,14 @@ export class StripeService extends Stripe {
         cancel_subscription_reason,
         user_id: user.id,
       });
-      return await this.ormFeedback.save(feedback);
+      const response = await this.ormFeedback.save(feedback);
+      if (response) {
+        const message = `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`;
+        axios.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
+          text: message,
+        });
+      }
+      return response;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

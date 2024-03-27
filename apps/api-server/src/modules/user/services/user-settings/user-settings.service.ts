@@ -79,10 +79,13 @@ export class UserSettingsService {
       userSettings?.activity_sequences?.map(
         (sequence) =>
           sequence.type !== ActivityType.evening &&
-          sequence.activities.forEach(({ type, cutoff_time_for_doing_activity, ...rest }) => {
-            type !== ActivityType.evening && cutoff_time_for_doing_activity === null
-              ? { ...rest, type }
-              : { ...rest, type, cutoff_time_for_doing_activity };
+          sequence.activities?.map((activity) => {
+            if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
+              const { cutoff_time_for_doing_activity, ...rest } = activity;
+              return rest;
+            } else {
+              return activity;
+            }
           }),
       );
       if (timezone || language) {

@@ -164,7 +164,10 @@ export class UserDailyStatsService {
         0,
       );
       const sequenceDurationForCurrentDay = await this.getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
-      const completionPercentage = (totalOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
+      const completionPercentage =
+        sequenceDurationForCurrentDay === 0
+          ? 100 // If the sequence duration is 0, assume completion is 100%
+          : (totalOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
       return Math.round(completionPercentage);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

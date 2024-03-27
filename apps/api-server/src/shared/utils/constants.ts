@@ -26,6 +26,7 @@ export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
+export const ONE_DAY_SECONDS = 86400;
 export const ONE_SECOND_AS_MILLIS = 1000;
 export const TEN_SECONDS_AS_MILLIS = 10000;
 export const TWENTY = 20;

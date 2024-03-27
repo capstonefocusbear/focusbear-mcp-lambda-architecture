@@ -10,6 +10,7 @@ export class TasksStreaksResponse {
     this.focus_modes_streak = focus_modes_streak;
     this.micro_breaks_streak = micro_breaks_streak;
   }
+
   focus_modes_streak: number;
 
   morning_routines_streak: number;

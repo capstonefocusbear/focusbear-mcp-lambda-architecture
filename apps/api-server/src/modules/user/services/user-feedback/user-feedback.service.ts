@@ -8,6 +8,7 @@ import { UserFeedbackRepository } from '../../repositories/user-feedback.reposit
 import { UserFeedback } from '../../entities/user-feedback.entity';
 import { UserFeedbackDto } from '../../dto/user-feedback.dto';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
+import { EventsService } from '../../../events/services/events.service';
 
 @Injectable()
 export class UserFeedbackService {
@@ -17,6 +18,7 @@ export class UserFeedbackService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly emailService: SendGridService,
     private readonly deviceRepository: DeviceRepository,
+    private readonly eventsService: EventsService,
   ) {}
 
   private httpService = axios;
@@ -26,9 +28,12 @@ export class UserFeedbackService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${userId} does not exist!`);
     }
-    const appPlatform = headers.platform;
-    const appVersion = headers['app-version'];
-    const deviceId = headers['device-id'];
+    const requestHeaders = { ...headers };
+    const appPlatform = requestHeaders.platform;
+    const appVersion = requestHeaders['app-version'];
+    const deviceId = requestHeaders['device-id'];
+    // remove user access token from logged headers
+    delete requestHeaders.authorization;
     let device = null;
     if (deviceId) {
       device = await this.deviceRepository.orm.findOneBy({ id: deviceId, user_id: userId });
@@ -44,8 +49,15 @@ export class UserFeedbackService {
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
     const saveFeedbackPromise = this.userFeedbackRepository.orm.save(savedFeedback);
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
+    const lastFiftyEvents = await this.eventsService.getLastFiftyEvents(userId);
     const messageData = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
       combinedMetadata,
+      null,
+      2,
+    )} \n\n Headers: ${JSON.stringify(requestHeaders, null, 2)} \n\n Last 50 events: ${JSON.stringify(
+      lastFiftyEvents,
+      null,
+      2,
     )}`;
     const slackLogPromise = this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
       text: messageData,

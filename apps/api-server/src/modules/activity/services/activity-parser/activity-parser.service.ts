@@ -58,7 +58,8 @@ export class ActivityParserService {
         check_list,
         impact_category,
         created_at,
-        tutorials,
+        tutorial,
+        cutoff_time_for_doing_activity,
       }: Activity) => ({
         id,
         choices: choices?.map(mapActivity),
@@ -78,7 +79,8 @@ export class ActivityParserService {
         impact_category,
         created_at,
         ...activity_data,
-        tutorials,
+        tutorial,
+        cutoff_time_for_doing_activity,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
@@ -104,7 +106,7 @@ export class ActivityParserService {
       },
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    const tutorials = this.getActivitiesTutorials(serialized, user_id);
+    const tutorials = this.getActivitiesTutorial(serialized, user_id);
     const entries = Object.entries(serialized);
     const deserializedActivities = await Promise.all(
       entries.map(async ([name, serializedActivities]) => {
@@ -186,6 +188,7 @@ export class ActivityParserService {
       // in the new format in getLogQuantityQuestions function
       log_quantity_question,
       impact_category,
+      cutoff_time_for_doing_activity,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -218,6 +221,7 @@ export class ActivityParserService {
       linked_activity_id,
       check_list,
       impact_category,
+      cutoff_time_for_doing_activity,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -311,14 +315,13 @@ export class ActivityParserService {
     return sequenceDuration;
   }
 
-  getActivitiesTutorials(serializedActivities: SerializedActivity, user_id: string) {
+  getActivitiesTutorial(serializedActivities: SerializedActivity, user_id: string) {
     const activities: UpdateActivityDto[] = Object.values(serializedActivities).flat();
-    return activities
-      .map((activity) => {
-        return activity?.tutorials?.length
-          ? activity?.tutorials?.map((tutorial) => new Tutorial({ ...tutorial, activity_id: activity.id, user_id }))
-          : [];
-      })
-      .flat();
+    return activities.reduce((tutorials: Tutorial[], activity) => {
+      if (activity?.tutorial) {
+        tutorials.push(new Tutorial({ id: activity.tutorial, activity_id: activity.id, user_id }));
+      }
+      return tutorials;
+    }, []);
   }
 }

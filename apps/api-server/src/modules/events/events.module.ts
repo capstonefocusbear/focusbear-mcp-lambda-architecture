@@ -1,5 +1,5 @@
 import { BullModule } from '@nestjs/bull';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
@@ -42,7 +42,7 @@ import { TrackEventRepository } from './repositories/track-event.repository';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
-    UserModule,
+    forwardRef(() => UserModule),
     DeviceModule,
   ],
   controllers: [EventsController],

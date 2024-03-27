@@ -131,6 +131,11 @@ export class Activity extends BaseEntity {
   })
   impact_category?: ImpactCategory;
 
+  @Column({
+    type: 'varchar',
+  })
+  cutoff_time_for_doing_activity?: string;
+
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
@@ -175,6 +180,6 @@ export class Activity extends BaseEntity {
   @JoinColumn({ name: 'activity_template_id' })
   activity_template?: ActivityTemplate;
 
-  @OneToMany(() => Tutorial, (tutorial) => tutorial.activity)
-  tutorials?: Tutorial[];
+  @OneToOne(() => Tutorial, (tutorial) => tutorial.activity)
+  tutorial?: string;
 }

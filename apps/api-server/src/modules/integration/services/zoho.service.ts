@@ -20,12 +20,14 @@ import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { BullQueues } from '../../../shared/utils/constants';
+import { ZohoTask } from '../domain/zoho-task.model';
 
 const taskAdapter = ({ task, portalId, projectId }) => ({
   id: task.id_string,
   key: task.key,
   name: task.name,
   description: task.description,
+  status: task.status?.name,
   external_status: task.status.id,
   external_metadata: { ...task, portal_id: portalId, project_id: projectId },
 });
@@ -93,7 +95,11 @@ export class ZohoService extends BaseIntegrationService {
     return response.data;
   }
 
-  protected filterTasksByOwnerId(tasks, ownerId: string) {
+  protected filterTasksByOwnerId(tasks: ZohoTask[], ownerId: string) {
+    if (!tasks?.length) {
+      return [];
+    }
+
     return tasks.filter((task) => task.details.owners.some((owner) => owner.id === ownerId));
   }
 
@@ -106,7 +112,7 @@ export class ZohoService extends BaseIntegrationService {
     // get only tasks owned by user
     const ownerId = integrationRecord.accountId.toString();
     const ownedTasks = this.filterTasksByOwnerId(response.data?.tasks, ownerId);
-    return ownedTasks.map((task) => taskAdapter({ task, portalId, projectId })) ?? [];
+    return ownedTasks.map((task: ZohoTask) => taskAdapter({ task, portalId, projectId })) ?? [];
   }
 
   protected async tryGetProjects({ integrationRecord, portalId }): Promise<Project[]> {

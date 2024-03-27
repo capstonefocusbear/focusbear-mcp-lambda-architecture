@@ -47,7 +47,7 @@ export class ToDoService {
   }
 
   async upsertToDo(userId: string, updatedToDo: CreateToDoDto) {
-    let toDoFromDB = null;
+    let toDoFromDB: ToDo = null;
     if (updatedToDo.id) {
       toDoFromDB = await this.validateUpdatingToDo(userId, updatedToDo);
     }
@@ -57,22 +57,24 @@ export class ToDoService {
       const newToDo = new ToDo({ ...updatedToDo, user_id: userId, updated_at: new Date().toISOString(), tags });
       return this.toDoRepository.orm.save(newToDo);
     }
+    let status: ToDoStatus = ToDoStatus.NOT_STARTED;
     // External status is used, check whether status should mark task as completed
-    const { available_statuses } = await this.syncedProjectsRepository.orm.findOneBy({
-      id: toDoFromDB.synced_project_id,
-    });
-    const selectedStatus = available_statuses.find((externalStatus) => externalStatus.status_id === updatedToDo.status);
-    if (!selectedStatus) {
-      throw new BadRequestException(
-        `Error while updating task external status. No external status found with ID: ${updatedToDo.status} for task with ID: ${updatedToDo.id}`,
+    if (toDoFromDB?.synced_project_id) {
+      const external_status = await this.syncedProjectsRepository.orm.findOneBy({
+        id: toDoFromDB?.synced_project_id,
+      });
+      const selectedStatus = external_status?.available_statuses?.find(
+        (externalStatus) => externalStatus.status_id === updatedToDo.status,
       );
+      status = selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : (selectedStatus.label as ToDoStatus);
     }
+
     const newToDo = new ToDo({
       ...updatedToDo,
       user_id: userId,
       updated_at: new Date().toISOString(),
       tags,
-      status: selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : selectedStatus.label,
+      status,
     });
     return this.toDoRepository.orm.save(newToDo);
   }

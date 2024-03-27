@@ -42,6 +42,7 @@ import { UserFeedbackService } from './services/user-feedback/user-feedback.serv
 import { ToDoModule } from '../to-do/to-do.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 import { BullQueues } from '../../shared/utils/constants';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   providers: [
@@ -130,6 +131,7 @@ import { BullQueues } from '../../shared/utils/constants';
     BrevoModule,
     ToDoModule,
     PlatformIntegrationsModule,
+    EventsModule,
   ],
   controllers: [
     UserSettingsController,

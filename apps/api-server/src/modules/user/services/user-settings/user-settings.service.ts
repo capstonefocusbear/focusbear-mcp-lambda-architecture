@@ -78,10 +78,12 @@ export class UserSettingsService {
 
       userSettings?.activity_sequences?.forEach((sequence) => {
         sequence.type !== ActivityType.evening &&
-          sequence.activities.forEach((activity) => {
+          sequence.activities.map((activity) => {
             if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
-              delete activity.cutoff_time_for_doing_activity;
+              const { cutoff_time_for_doing_activity, ...rest } = activity;
+              return rest;
             }
+            return activity;
           });
       });
       if (timezone || language) {
@@ -557,10 +559,10 @@ export class UserSettingsService {
       const [activityHours, activityMinutes] = activity_cutoff_time.split(':');
       const globalTime = DateTime.now()
         .startOf('minute')
-        .plus({ hours: parseInt(globalHours), minutes: parseInt(globalMinutes) });
+        .plus({ hours: parseInt(globalHours, 10), minutes: parseInt(globalMinutes, 10) });
       const activityTime = DateTime.now()
         .startOf('minute')
-        .plus({ hours: parseInt(activityHours), minutes: parseInt(activityMinutes) });
+        .plus({ hours: parseInt(activityHours, 10), minutes: parseInt(activityMinutes, 10) });
       return activityTime <= globalTime;
     }
     return false;

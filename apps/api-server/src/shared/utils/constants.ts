@@ -15,7 +15,7 @@ export const FOCUS_BEAR_EMAILS = {
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
 };
-export const A_TEAM = 'a team';
+export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
   APP_QUIT_FEEDBACK: 'App Quit Feedback',

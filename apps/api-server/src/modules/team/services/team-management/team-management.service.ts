@@ -13,7 +13,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
-import { A_TEAM, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { TEAM_A, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { InviteTeamMemberDto } from '../../dto/invite-team-member.dto';
 import { TeamToMemberRepository } from '../../repositories/team-to-member.repository';
@@ -240,6 +240,7 @@ export class TeamManagementService {
         member_expiry_date,
         is_admin,
         is_member,
+        team_name: team?.name ?? TEAM_A,
       });
       // check whether team has available space if offline payment type
       const { team_size_limit, team_size, payment_type } = team;
@@ -255,7 +256,7 @@ export class TeamManagementService {
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
-        dynamicTemplateData: { invite_url: inviteUrl, team_name: team.name ?? A_TEAM },
+        dynamicTemplateData: { invite_url: inviteUrl, team_name: team?.name ?? TEAM_A },
       });
       return inviteUrl;
     } catch (error) {

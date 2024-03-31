@@ -93,12 +93,13 @@ export class HabitPackManagerService {
       },
     });
     const userSettings = await this.userSettingsService.getSettings({ user_id });
+    const break_activities = (userSettings?.break_activities ?? []).map(({ tutorial, ...rest }) => rest);
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const templatesNewIdsMap = new Map<string, string>([]);
     const templatesChoicesNewIdsMap = new Map<string, string>([]);
     const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
     // convert templates to normal activities and merge them with user's current settings
-    const newSettings = this.addTemplatesToUserSettings(userSettings, habitPack, {
+    const newSettings = this.addTemplatesToUserSettings({ ...userSettings, break_activities }, habitPack, {
       templatesNewIdsMap,
       templatesChoicesNewIdsMap,
       logQuantityQuestionsNewIdsMap,
@@ -392,7 +393,9 @@ export class HabitPackManagerService {
     };
     const newSettings = _.cloneDeep(userSettings);
     newSettings.morning_activities = activityTemplateIdsToRemove(morning_activities, activityTemplateIds);
-    newSettings.break_activities = activityTemplateIdsToRemove(break_activities, activityTemplateIds);
+    newSettings.break_activities = activityTemplateIdsToRemove(break_activities, activityTemplateIds)?.map(
+      ({ tutorial, ...rest }) => ({ ...rest }),
+    );
     newSettings.evening_activities = activityTemplateIdsToRemove(evening_activities, activityTemplateIds);
     await this.userSettingsService.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });
     await this.installedPackService.setPackAsUninstalledForUser(user_id, pack_id);

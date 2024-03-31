@@ -93,13 +93,12 @@ export class HabitPackManagerService {
       },
     });
     const userSettings = await this.userSettingsService.getSettings({ user_id });
-    const break_activities = (userSettings?.break_activities ?? []).map(({ tutorial, ...rest }) => rest);
     const habitPack: UpsertHabitPackDto = await this.habitPackService.getHabitPack(pack_id);
     const templatesNewIdsMap = new Map<string, string>([]);
     const templatesChoicesNewIdsMap = new Map<string, string>([]);
     const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
     // convert templates to normal activities and merge them with user's current settings
-    const newSettings = this.addTemplatesToUserSettings({ ...userSettings, break_activities }, habitPack, {
+    const newSettings = this.addTemplatesToUserSettings(userSettings, habitPack, {
       templatesNewIdsMap,
       templatesChoicesNewIdsMap,
       logQuantityQuestionsNewIdsMap,
@@ -110,8 +109,21 @@ export class HabitPackManagerService {
       templatesChoicesNewIdsMap,
       logQuantityQuestionsNewIdsMap,
     });
+    const morning_activities = (linkedSettings?.morning_activities ?? []).map(
+      ({ cutoff_time_for_doing_activity, ...rest }) => rest,
+    );
+    const break_activities = (linkedSettings?.break_activities ?? []).map(
+      ({ tutorial, cutoff_time_for_doing_activity, ...rest }) => rest,
+    );
     await this.installedPackService.setPackAsInstalledForUser(user_id, pack_id);
-    await this.userSettingsService.updateSettings({ user_id }, linkedSettings, false, { is_onboarding: true });
+    await this.userSettingsService.updateSettings(
+      { user_id },
+      { ...linkedSettings, break_activities, morning_activities },
+      false,
+      {
+        is_onboarding: true,
+      },
+    );
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);
   }
 
@@ -392,9 +404,11 @@ export class HabitPackManagerService {
       return activityArray.filter(({ activity_template_id }) => !idArray.includes(activity_template_id));
     };
     const newSettings = _.cloneDeep(userSettings);
-    newSettings.morning_activities = activityTemplateIdsToRemove(morning_activities, activityTemplateIds);
+    newSettings.morning_activities = activityTemplateIdsToRemove(morning_activities, activityTemplateIds)?.map(
+      ({ cutoff_time_for_doing_activity, ...rest }) => ({ ...rest }),
+    );
     newSettings.break_activities = activityTemplateIdsToRemove(break_activities, activityTemplateIds)?.map(
-      ({ tutorial, ...rest }) => ({ ...rest }),
+      ({ tutorial, cutoff_time_for_doing_activity, ...rest }) => ({ ...rest }),
     );
     newSettings.evening_activities = activityTemplateIdsToRemove(evening_activities, activityTemplateIds);
     await this.userSettingsService.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });

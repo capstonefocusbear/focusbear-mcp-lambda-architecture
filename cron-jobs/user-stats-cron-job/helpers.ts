@@ -15,7 +15,7 @@ export function findDifferenceInSeconds(startTime: Date, finishTime: Date) {
 
 export function determineUserLevel(
   onboardingProgress: UserOnboardingProgress,
-  { focus_modes_streak, morning_routines_streak, evening_routines_streak }: TasksStreaksResponse,
+  { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak }: TasksStreaksResponse,
 ) {
   let onboarding_progress = onboardingProgress;
   if (!onboarding_progress) {
@@ -44,7 +44,13 @@ export function determineUserLevel(
     const areEnoughMorningRoutinesCompleted = morning_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughEveningRoutinesCompleted = evening_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughFocusModesCompleted = focus_modes_streak >= currentLevelBeingChecked.focus_modes;
-    if (areEnoughMorningRoutinesCompleted && areEnoughEveningRoutinesCompleted && areEnoughFocusModesCompleted) {
+    const areEnoughMicroBreakRoutinesCompleted = micro_breaks_streak >= currentLevelBeingChecked.routines;
+    if (
+      areEnoughMorningRoutinesCompleted &&
+      areEnoughEveningRoutinesCompleted &&
+      areEnoughFocusModesCompleted &&
+      areEnoughMicroBreakRoutinesCompleted
+    ) {
       level = currentLevelBeingChecked.level;
       currentLevelIndex += 1;
     } else {
@@ -176,9 +182,11 @@ export function calculateStreaks(
   {
     morningRoutineDailyDurations,
     eveningRoutineDailyDurations,
+    microBreaksDailyDurations,
   }: {
     morningRoutineDailyDurations: DailySequenceDurations;
     eveningRoutineDailyDurations: DailySequenceDurations;
+    microBreaksDailyDurations: DailySequenceDurations;
   },
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
@@ -187,6 +195,9 @@ export function calculateStreaks(
   );
   const daysWhereEveningRoutinesWereCompleted = userDailyStats.filter(
     (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
+  );
+  const daysWhereMicroBreaksWereCompleted = userDailyStats.filter(
+    (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
   return {
     focus_modes_streak: calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone),
@@ -199,6 +210,11 @@ export function calculateStreaks(
       daysWhereEveningRoutinesWereCompleted,
       timeZone,
       eveningRoutineDailyDurations,
+    ),
+    micro_breaks_streak: calculateStreakForRoutine(
+      daysWhereMicroBreaksWereCompleted,
+      timeZone,
+      microBreaksDailyDurations,
     ),
   };
 }
@@ -231,9 +247,11 @@ export function getRoutinesAndFocusModesAverages(dailyStats: DailyStats[]) {
   const morningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.morning);
   const eveningRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.evening);
   const focusModesAverage = calculateAverageFocusModesCompleted(dailyStats);
+  const breakRoutineAverage = calculateRoutineCompletionPercentageAverage(dailyStats, ActivityType.break);
   return {
     morningRoutineAverage,
     eveningRoutineAverage,
     focusModesAverage,
+    breakRoutineAverage,
   };
 }

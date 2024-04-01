@@ -817,6 +817,28 @@ export const ActivitiesArrayDummy: SerializedActivity = {
       priority: ActivityPriority.HIGH,
     },
   ],
+  break_activities: [
+    {
+      id: '000d3de0-2a6c-46e1-bb47-542049fc876b',
+      duration_seconds: 120,
+      video_urls: [],
+      name: 'Push up',
+      log_quantity: false,
+      is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.STANDARD,
+    },
+    {
+      id: '757f8b32-b7c7-4aac-a6b9-9c41cf269670',
+      duration_seconds: 60,
+      video_urls: [],
+      name: 'Stretching',
+      log_quantity: false,
+      is_default: true,
+      days_of_week: [DaysOfWeek.ALL],
+      priority: ActivityPriority.HIGH,
+    },
+  ],
 };
 
 export const eveningActivitiesDBResponseDummy = [
@@ -1488,6 +1510,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   // this stat is mocked to fall over a weekend and has no completed focus modes
   // to test streak not being reset if FM not done over weekend
@@ -1502,6 +1525,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1514,6 +1538,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1526,6 +1551,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1538,6 +1564,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1550,6 +1577,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1562,6 +1590,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1574,6 +1603,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1586,6 +1616,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1598,6 +1629,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1610,6 +1642,7 @@ export const dailyStatsArrayDummy = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
+    break_sequence_log_id: null,
   },
 ];
 
@@ -1624,6 +1657,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    break_sequence_log_id: null,
   },
   {
     id: randomUUID(),
@@ -1635,6 +1669,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     should_recalculate: false,
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
+    break_sequence_log_id: null,
   },
 ];
 
@@ -1682,18 +1717,21 @@ export const DailyStatsDummy = [
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 50,
     evening_routine_completion_percentage: 60,
+    micro_breaks_routine_completion_percentage: 90,
   },
   {
     date_completed: DateTime.local().minus({ days: 2 }).toJSDate(),
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 34,
     evening_routine_completion_percentage: 78,
+    micro_breaks_routine_completion_percentage: 83,
   },
   {
     date_completed: DateTime.local().minus({ days: 3 }).toJSDate(),
     focus_modes_completed: 3,
     morning_routine_completion_percentage: 47,
     evening_routine_completion_percentage: 98,
+    micro_breaks_routine_completion_percentage: 91,
   },
 ];
 
@@ -1899,5 +1937,51 @@ export const dummyUserCutoffTimeActivities = {
         cutoff_time_for_doing_activity: '20:20',
       },
     ],
+  },
+};
+
+export const DummyTasksStreaksResponse = {
+  SET_UP_NOT_COMPLETED: {
+    focus_modes_streak: 1,
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  ROUTINE_INPROGRESS: {
+    focus_modes_streak: 2, // Set this just above the first level threshold
+    morning_routines_streak: 2,
+    evening_routines_streak: 2,
+    micro_breaks_streak: 2,
+  },
+  LEVEL_ONE: {
+    // Set streaks to minimum for level 1
+    focus_modes_streak: 1,
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  LEVEL_TWO: {
+    focus_modes_streak: 1, // Just below the threshold for level 2
+    morning_routines_streak: 1,
+    evening_routines_streak: 1,
+    micro_breaks_streak: 1,
+  },
+  LEVEL_MAX: {
+    focus_modes_streak: 100, // High streaks
+    morning_routines_streak: 100,
+    evening_routines_streak: 100,
+    micro_breaks_streak: 100,
+  },
+  LEVEL_EXCEED_MAX: {
+    focus_modes_streak: 210, // Exceeding maximum level requirements
+    morning_routines_streak: 110,
+    evening_routines_streak: 110,
+    micro_breaks_streak: 110,
+  },
+  LEVEL_SEVEN: {
+    focus_modes_streak: 55,
+    morning_routines_streak: 32,
+    evening_routines_streak: 30,
+    micro_breaks_streak: 30,
   },
 };

@@ -77,6 +77,9 @@ export class CompletedActivitySequence extends BaseEntity {
   @OneToOne(() => DailyStats, (daily_stat) => daily_stat.evening_sequence_log)
   completed_evening_sequence?: DailyStats;
 
+  @OneToOne(() => DailyStats, (daily_stat) => daily_stat.break_sequence_log)
+  completed_break_sequence: DailyStats;
+
   finalizeUncompletedLog() {
     this.setMetrics();
     this.is_completed = true;

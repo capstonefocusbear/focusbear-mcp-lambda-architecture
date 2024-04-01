@@ -246,12 +246,14 @@ export class UserRepository extends BaseRepository<User> {
           username, 
           morning_routines_streak,
           evening_routines_streak,
-          focus_modes_streak, 
+          focus_modes_streak,
+          micro_breaks_streak,
           ROW_NUMBER() OVER (ORDER BY 
               CASE 
                 WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
                 WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-                ELSE evening_routines_streak
+                WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+                ELSE micro_breaks_streak
               END 
             DESC,
             username
@@ -262,7 +264,8 @@ export class UserRepository extends BaseRepository<User> {
           CASE 
             WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
             WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-            ELSE evening_routines_streak
+            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+            ELSE micro_breaks_streak
           END
       DESC,
       username
@@ -281,6 +284,7 @@ export class UserRepository extends BaseRepository<User> {
             morning_routines_streak,
             evening_routines_streak,
             focus_modes_streak,
+            micro_breaks_streak,
             rank
         FROM 
             (
@@ -290,12 +294,14 @@ export class UserRepository extends BaseRepository<User> {
                     morning_routines_streak,
                     evening_routines_streak,
                     focus_modes_streak,
+                    micro_breaks_streak,
                     RANK() OVER (
                         ORDER BY 
                           CASE 
                             WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
                             WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-                            ELSE evening_routines_streak
+                            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+                            ELSE micro_breaks_streak
                           END 
                         DESC,
                         username

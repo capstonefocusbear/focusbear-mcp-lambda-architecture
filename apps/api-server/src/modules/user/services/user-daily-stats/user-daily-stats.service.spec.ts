@@ -204,6 +204,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const sequenceId = randomUUID();
@@ -233,6 +234,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
       const sequenceId = randomUUID();
 
@@ -265,6 +267,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: { ...routineDurationsDummy, MON: 360 },
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
       const sequenceId = randomUUID();
 
@@ -295,6 +298,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
@@ -323,6 +327,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
@@ -349,6 +354,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
@@ -375,6 +381,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
@@ -395,6 +402,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: routineDurationsDummy,
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       await service.CalculateUserStatsResponse(userDummy.id);
@@ -402,6 +410,7 @@ describe('UserDailyStatsService', () => {
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
         morning_routines_streak: 3,
         evening_routines_streak: 3,
+        micro_breaks_streak: 0,
         focus_modes_streak: 10,
         onboarding_progress: {
           has_installed_desktop_app: false,
@@ -427,6 +436,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: { MON: 300, TUE: 300, WED: 300, THU: 300, FRI: 300, SAT: 300, SUN: 0 },
         eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
 
       const response = await service.CalculateUserStatsResponse(userDummy.id);
@@ -529,6 +539,7 @@ describe('UserDailyStatsService', () => {
       ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
         morningRoutineDailyDurations: DailyDurationsDummy,
         eveningRoutineDailyDurations: DailyDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
       });
       const stats = await service.getLastWeekDailyStats(userDummy.id);
       expect(stats.length).toBe(7);

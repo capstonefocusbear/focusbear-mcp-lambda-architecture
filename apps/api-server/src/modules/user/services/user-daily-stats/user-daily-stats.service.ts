@@ -177,24 +177,30 @@ export class UserDailyStatsService {
 
   async getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
     const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
-    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await this.activitySequenceService.getUserRoutineDailyDurations(userId);
     const sequenceType = routineLog.activity_sequence.type;
-    const sequenceDurationForCurrentDay: number =
-      sequenceType === ActivityType.morning
-        ? morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()]
-        : eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    let sequenceDurationForCurrentDay: number;
+    if (sequenceType === ActivityType.morning) {
+      sequenceDurationForCurrentDay = morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else if (sequenceType === ActivityType.evening) {
+      sequenceDurationForCurrentDay = eveningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else if (sequenceType === ActivityType.break) {
+      sequenceDurationForCurrentDay = microBreaksDailyDurations[currentDayOfWeek.toUpperCase()];
+    } else {
+      sequenceDurationForCurrentDay = 0;
+    }
     return sequenceDurationForCurrentDay;
   }
 
   async getUserStreaks(user: User) {
     const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
-    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
     const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
       userDailyStats,
       user.timezone,
-      { morningRoutineDailyDurations, eveningRoutineDailyDurations },
+      { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations },
     );
     return { focus_modes_streak, morning_routines_streak, evening_routines_streak };
   }
@@ -211,14 +217,15 @@ export class UserDailyStatsService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user_id);
-      const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
         await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
-        userDailyStats,
-        user.timezone,
-        { morningRoutineDailyDurations, eveningRoutineDailyDurations },
-      );
-      const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage } =
+      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+        calculateStreaks(userDailyStats, user.timezone, {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        });
+      const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage, breakRoutineAverage } =
         getRoutinesAndFocusModesAverages(userDailyStats);
       const { hasInstalledDesktopApp, hasInstalledMobileApp } = await this.deviceService.getUserInstalledDevices(
         user.id,
@@ -228,7 +235,13 @@ export class UserDailyStatsService {
         evening_routines_completion_percentage_for_current_level,
         focus_modes_completion_percentage_for_current_level,
         total_percent,
-      } = this.calculateCompletionPercentages(morning_routines_streak, evening_routines_streak, focus_modes_streak);
+        break_routines_completion_percentage_for_current_level,
+      } = this.calculateCompletionPercentages(
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
+        micro_breaks_streak,
+      );
       const {
         level,
         has_edited_focus_mode,
@@ -241,6 +254,7 @@ export class UserDailyStatsService {
       await this.userRepository.update(user_id, {
         morning_routines_streak,
         evening_routines_streak,
+        micro_breaks_streak,
         focus_modes_streak,
         onboarding_progress: {
           ...user.onboarding_progress,
@@ -269,6 +283,9 @@ export class UserDailyStatsService {
         average_num_focus_modes_completed_per_day: focusModesAverage,
         routines_threshold: LEVEL_THRESHOLDS[levelToUse - 1].routines,
         focus_modes_threshold: LEVEL_THRESHOLDS[levelToUse - 1].focus_modes,
+        average_break_routines_completion_percentage: breakRoutineAverage,
+        break_routines_completion_percentage_for_current_level,
+        break_routine_completion_streak_days: micro_breaks_streak,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -368,6 +385,7 @@ export class UserDailyStatsService {
     morning_routines_streak: number,
     evening_routines_streak: number,
     focus_modes_streak: number,
+    micro_breaks_streak: number,
   ) {
     const userCurrentLevelThresholds = LEVEL_THRESHOLDS[0];
     const totalRoutines = userCurrentLevelThresholds.routines;
@@ -378,14 +396,21 @@ export class UserDailyStatsService {
     };
     const morningRoutinesPercentage = getPercentage(morning_routines_streak, totalRoutines);
     const eveningRoutinesPercentage = getPercentage(evening_routines_streak, totalRoutines);
+    const breakRoutinesPercentage = getPercentage(micro_breaks_streak, totalRoutines);
     const focusModesPercentPercentage = getPercentage(focus_modes_streak, totalFocusModes);
-    const percentages = [morningRoutinesPercentage, eveningRoutinesPercentage, focusModesPercentPercentage];
+    const percentages = [
+      morningRoutinesPercentage,
+      eveningRoutinesPercentage,
+      focusModesPercentPercentage,
+      breakRoutinesPercentage,
+    ];
     const totalPercent = Math.ceil(percentages.reduce((total, curr) => total + curr, 0) / percentages.length);
     return {
       morning_routines_completion_percentage_for_current_level: morningRoutinesPercentage,
       evening_routines_completion_percentage_for_current_level: eveningRoutinesPercentage,
       focus_modes_completion_percentage_for_current_level: focusModesPercentPercentage,
       total_percent: totalPercent,
+      break_routines_completion_percentage_for_current_level: breakRoutinesPercentage,
     };
   }
 
@@ -435,28 +460,34 @@ export class UserDailyStatsService {
     for (const stat of stats) {
       stat.date_completed = this.convertToUserTimezone(stat.date_completed, user.timezone);
     }
-    const { morningRoutineDailyDurations, eveningRoutineDailyDurations } =
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
     const last7DaysSummary = last7Days.map((date) => {
       const dayStat = this.findDayStat(stats, date);
       const dayOfWeek = DAYS_OF_WEEK[date.getUTCDay()];
       const morningTotalMinutes = Math.round(morningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
       const eveningTotalMinutes = Math.round(eveningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
+      const microBreaksTotalMinutes = Math.round(microBreaksDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
       if (dayStat) {
         const morningSeconds =
           (dayStat.morning_routine_completion_percentage / 100) * morningRoutineDailyDurations[dayOfWeek];
         const eveningSeconds =
           (dayStat.evening_routine_completion_percentage / 100) * eveningRoutineDailyDurations[dayOfWeek];
+        const microBreaksSeconds =
+          (dayStat.micro_breaks_routine_completion_percentage / 100) * microBreaksDailyDurations[dayOfWeek];
         return new DailyStatSummary({
           date: dayStat.date_completed,
           day_of_week: dayOfWeek,
           morning_percentage: dayStat.morning_routine_completion_percentage,
           evening_percentage: dayStat.evening_routine_completion_percentage,
+          micro_breaks_completion_percentage: dayStat.micro_breaks_routine_completion_percentage,
           focus_modes: dayStat.focus_modes_completed,
           morning_minutes: morningSeconds / ONE_MINUTE_SECONDS,
           morning_total_minutes: morningTotalMinutes,
           evening_minutes: eveningSeconds / ONE_MINUTE_SECONDS,
           evening_total_minutes: eveningTotalMinutes,
+          micro_breaks_minutes: microBreaksSeconds / ONE_MINUTE_SECONDS,
+          micro_breaks_total_minutes: microBreaksTotalMinutes,
         });
       }
       return new DailyStatSummary({
@@ -464,6 +495,7 @@ export class UserDailyStatsService {
         day_of_week: dayOfWeek,
         morning_total_minutes: morningTotalMinutes,
         evening_total_minutes: eveningTotalMinutes,
+        micro_breaks_total_minutes: microBreaksTotalMinutes,
       });
     });
     return last7DaysSummary;

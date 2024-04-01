@@ -34,6 +34,7 @@ describe('ActivitySequenceService', () => {
     it('getUserRoutineDailyDurations', async () => {
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivitiesArrayDummy.morning_activities);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivitiesArrayDummy.evening_activities);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivitiesArrayDummy.break_activities);
 
       const result = await activitySequenceService.getUserRoutineDailyDurations(userDummy.id);
 
@@ -55,6 +56,15 @@ describe('ActivitySequenceService', () => {
           FRI: 480,
           SAT: 480,
           SUN: 480,
+        },
+        microBreaksDailyDurations: {
+          MON: 180,
+          TUE: 180,
+          WED: 180,
+          THU: 180,
+          FRI: 180,
+          SAT: 180,
+          SUN: 180,
         },
       });
     });

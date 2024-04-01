@@ -78,7 +78,7 @@ export class UserSettingsService {
 
       userSettings?.activity_sequences?.forEach((sequence) => {
         sequence.type !== ActivityType.evening &&
-          sequence.activities.map((activity) => {
+          sequence.activities?.map((activity) => {
             if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
               const { cutoff_time_for_doing_activity, ...rest } = activity;
               return rest;

@@ -79,8 +79,7 @@ export class TeamManagementService {
       });
       await this.teamToMemberRepository.orm.save(connectedMemberRecord);
       await this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_member);
-      const newTeamSize = members.length + 1;
-      await this.updateTeamSize(adminId, teamId, newTeamSize);
+      await this.updateTeamSize(adminId, teamId, ++members.length);
       return user;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -394,15 +393,15 @@ export class TeamManagementService {
     if (!team) {
       throw new NotFoundException(`Team with ID: ${teamId} does not exist!`);
     }
-    const subId = team?.stripe_data?.subscriptionId;
-    const subItemId = team?.stripe_data?.subscriptionItemId;
-    if (!subId || !subItemId) {
-      throw new Error(`Missing stripe data for team with ID: ${teamId}`);
-    }
-    await this.teamRepository.update(teamId, { team_size: teamSize });
     if (team.payment_type === PaymentType.STRIPE) {
+      const subId = team?.stripe_data?.subscriptionId;
+      const subItemId = team?.stripe_data?.subscriptionItemId;
+      if (!subId || !subItemId) {
+        throw new Error(`Missing stripe data for team with ID: ${teamId}`);
+      }
       await this.stripeService.updateSubscription(subId, subItemId, teamSize);
     }
+    await this.teamRepository.update(teamId, { team_size: teamSize });
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {

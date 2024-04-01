@@ -350,6 +350,7 @@ describe('TeamManagementService', () => {
           member_expiry_date: expiryDate,
           is_admin: false,
           is_member: true,
+          team_name: TeamWithMembersDummy.name,
         },
         'test-secret',
       );

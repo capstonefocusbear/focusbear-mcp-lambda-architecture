@@ -76,18 +76,16 @@ export class UserSettingsService {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
 
-      userSettings?.activity_sequences?.map(
-        (sequence) =>
-          sequence.type !== ActivityType.evening &&
+      userSettings?.activity_sequences?.forEach((sequence) => {
+        sequence.type !== ActivityType.evening &&
           sequence.activities?.map((activity) => {
             if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
               const { cutoff_time_for_doing_activity, ...rest } = activity;
               return rest;
-            } else {
-              return activity;
             }
-          }),
-      );
+            return activity;
+          });
+      });
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }

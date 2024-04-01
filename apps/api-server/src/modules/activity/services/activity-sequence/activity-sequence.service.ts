@@ -76,6 +76,7 @@ export class ActivitySequenceService {
   async getUserRoutineDailyDurations(user_id: string): Promise<{
     morningRoutineDailyDurations: DailySequenceDurations;
     eveningRoutineDailyDurations: DailySequenceDurations;
+    microBreaksDailyDurations: DailySequenceDurations;
   }> {
     const morningActivities = await this.activityRepository.orm.find({
       where: { user_id, type: ActivityType.morning },
@@ -83,8 +84,12 @@ export class ActivitySequenceService {
     const eveningActivities = await this.activityRepository.orm.find({
       where: { user_id, type: ActivityType.evening },
     });
+    const microBreakActivities = await this.activityRepository.orm.find({
+      where: { user_id, type: ActivityType.break },
+    });
     const morningRoutineDailyDurations = this.calculateSequenceDurationForWeek(morningActivities);
     const eveningRoutineDailyDurations = this.calculateSequenceDurationForWeek(eveningActivities);
-    return { morningRoutineDailyDurations, eveningRoutineDailyDurations };
+    const microBreaksDailyDurations = this.calculateSequenceDurationForWeek(microBreakActivities);
+    return { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations };
   }
 }

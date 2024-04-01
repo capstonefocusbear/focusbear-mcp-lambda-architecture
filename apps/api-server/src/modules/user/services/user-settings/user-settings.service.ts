@@ -76,20 +76,17 @@ export class UserSettingsService {
         delete userSettings.cutoff_time_for_non_high_priority_activities;
       }
 
-      userSettings?.activity_sequences?.forEach((sequence) => {
-        sequence.type !== ActivityType.evening &&
-          sequence.activities?.map((activity) => {
-            if (activity.type !== ActivityType.evening && activity.cutoff_time_for_doing_activity === null) {
-              const { cutoff_time_for_doing_activity, ...rest } = activity;
-              return rest;
-            }
-            return activity;
-          });
-      });
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
-      return this.serializeSettings(userSettings);
+      const settings = this.serializeSettings(userSettings);
+      settings.morning_activities = settings?.morning_activities?.map(
+        ({ cutoff_time_for_doing_activity, ...rest }) => rest,
+      );
+      settings.break_activities = settings?.break_activities?.map(
+        ({ cutoff_time_for_doing_activity, tutorial, ...rest }) => rest,
+      );
+      return settings;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

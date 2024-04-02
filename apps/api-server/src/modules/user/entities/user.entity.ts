@@ -470,6 +470,6 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'current_focus_mode_id' })
   current_focus_mode?: FocusMode;
 
-  @OneToMany(() => Tutorial, (tutorial) => tutorial.user)
-  tutorials?: Tutorial[];
+  @OneToOne(() => Tutorial, (tutorial) => tutorial.user)
+  tutorial?: string;
 }

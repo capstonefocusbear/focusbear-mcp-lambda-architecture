@@ -60,7 +60,7 @@ describe('StripeService', () => {
 
       try {
         StripeMock.subscriptions.cancel.mockRejectedValueOnce({
-          statusCode: 404,
+          statusCode: 401,
           message: exceptionMessage,
         });
         await service.cancelSubscriptionSession(

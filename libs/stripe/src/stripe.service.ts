@@ -1,16 +1,27 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import axios from 'axios';
 import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
+import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session';
+import { UserAuthContext } from '../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
+import { Feedback } from './entities/feedback.entity';
+import { AppDataSource } from '../../../apps/api-server/ormconfig';
 
 @Injectable()
 export class StripeService extends Stripe {
-  constructor(@Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions) {
+  constructor(
+    @Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions,
+    @InjectSentry() private readonly sentryService: SentryService,
+  ) {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
+
+  private readonly ormFeedback = AppDataSource.getRepository(Feedback);
 
   async createCheckoutSession(
     customer: string,
@@ -144,5 +155,32 @@ export class StripeService extends Stripe {
 
   async cancelSubscription(subscriptionId: string) {
     await this.subscriptions.del(subscriptionId);
+  }
+
+  async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
+    try {
+      const minimum_feedback_characters_length = 10;
+      if (cancel_subscription_reason?.length < minimum_feedback_characters_length) {
+        throw new BadRequestException(
+          `Feedback number of characters should be greater than or equal to ${minimum_feedback_characters_length}`,
+        );
+      }
+      await this.subscriptions.cancel(user.stripeCustomerId);
+      const feedback = new Feedback({
+        cancel_subscription_reason,
+        user_id: user.id,
+      });
+      const response = await this.ormFeedback.save(feedback);
+      if (response) {
+        const message = `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`;
+        axios.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
+          text: message,
+        });
+      }
+      return response;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

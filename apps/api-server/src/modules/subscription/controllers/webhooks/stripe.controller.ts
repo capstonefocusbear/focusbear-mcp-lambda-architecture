@@ -8,6 +8,7 @@ import { CreateStripeCheckoutSessionDto } from '../../dto/create-stripe-checkout
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { GetStripeProductsDto } from '../../dto/get-stripe-products.dto';
 import { GetStripePricesDto } from '../../dto/get-stripe-prices.dto';
+import { CancelSubscriptionSession } from '../../dto/cancel-subscription-session';
 
 @Controller('subscription/stripe')
 @UseGuards(IsAuth)
@@ -49,5 +50,13 @@ export class StripeController {
   @Get('prices/:price_id')
   async getPriceDetails(@Param('price_id') price_id: string): Promise<Stripe.Response<Stripe.Price>> {
     return this.stripeService.getPriceDetails(price_id);
+  }
+
+  @Post('cancel-subscription-session')
+  async cancelSubscriptionSession(
+    @Body() cancelSubscriptionSession: CancelSubscriptionSession,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.stripeService.cancelSubscriptionSession(cancelSubscriptionSession, user);
   }
 }

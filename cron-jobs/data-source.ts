@@ -40,6 +40,7 @@ import { CalendarExcludedKeyword } from '../apps/api-server/src/modules/calendar
 import { Calendar } from '../apps/api-server/src/modules/calendar/entities/calendar.entity';
 import { TrackEvent } from '../apps/api-server/src/modules/events/entities/track-event.entity';
 import { Tutorial } from '../apps/api-server/src/modules/activity/entities/tutorial.entity';
+import { Feedback } from '../libs/stripe/src/entities/feedback.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -92,6 +93,7 @@ export const CronJobDataSource = new DataSource({
     Calendar,
     TrackEvent,
     Tutorial,
+    Feedback,
   ],
   subscribers: [],
   migrations: [],

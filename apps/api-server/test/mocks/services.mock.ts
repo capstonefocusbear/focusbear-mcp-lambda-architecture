@@ -330,3 +330,9 @@ export const CalendarServiceMock = {
   deleteCalendarExcludedKeyword: jest.fn(),
   getCalendarDatas: jest.fn(),
 };
+
+export const StripeMock = {
+  subscriptions: {
+    cancel: jest.fn(),
+  },
+};

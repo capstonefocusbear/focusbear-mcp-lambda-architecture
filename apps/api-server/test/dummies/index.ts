@@ -56,6 +56,7 @@ export const userDummy = new User(
     user_type: UserTypes.STANDARD,
     timezone: 'UTC',
     username: 'someusername',
+    stripe_customer_id: 'cus_Nj9H342KvxDgbj',
   },
   { generateId: false },
 );
@@ -1984,4 +1985,9 @@ export const DummyTasksStreaksResponse = {
     evening_routines_streak: 30,
     micro_breaks_streak: 30,
   },
+};
+
+export const dummySubscriptionCancelFeedback = {
+  INVALID_FEEDBACK: 'Short fee',
+  VALID_FEEDBACK: 'Long feedback',
 };

@@ -34,6 +34,7 @@ import {
   OpenAIServiceMock,
   CompletedActivityServiceMock,
   PlatformIntegrationsServiceMock,
+  DeviceRepositoryMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -55,6 +56,7 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { BullQueues } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -82,6 +84,7 @@ describe('UserService', () => {
         CompletedActivityService,
         OpenAIService,
         PlatformIntegrationsService,
+        DeviceRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -122,6 +125,8 @@ describe('UserService', () => {
       .useValue(OpenAIServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
+      .overrideProvider(DeviceRepository)
+      .useValue(DeviceRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
 
@@ -183,7 +188,7 @@ describe('UserService', () => {
       await userService.syncUserAccount(syncAccountDto);
 
       expect(UserRepositoryMock.create).toBeCalled();
-      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email);
+      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email, auth0UserDummy.device);
       expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toBeCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toBeCalledWith(userDummy.id);

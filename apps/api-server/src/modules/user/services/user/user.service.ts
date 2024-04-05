@@ -46,6 +46,7 @@ import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -69,6 +70,7 @@ export class UserService {
     private readonly openAIService: OpenAIService,
     @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
+    private readonly deviceRepository: DeviceRepository,
   ) {}
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -120,13 +122,21 @@ export class UserService {
       });
       const userProperties = { auth0_id };
       let stripeId = await this.stripeService.getStripeCustomerId(email);
+
       if (!stripeId) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
           level: 'debug',
           message: 'Registering new user in Stripe',
         });
-        const stripeCustomer = await this.stripeService.registerNewCustomer(email);
+
+        const devices = await this.deviceRepository.orm.find({
+          where: { user_id: registeredUser?.id },
+          order: { created_at: 'ASC' },
+        });
+
+        const stripeCustomer = await this.stripeService
+          .registerNewCustomer(email, devices ? devices[0]?.operating_system : '');
         stripeId = stripeCustomer.id;
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       } else {

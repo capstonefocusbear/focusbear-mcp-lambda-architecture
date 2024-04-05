@@ -78,6 +78,7 @@ export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,
+  device: 'Windows'
 };
 
 export const deserializedActivitiesDummy = [

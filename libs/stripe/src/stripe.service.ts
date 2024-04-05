@@ -74,8 +74,14 @@ export class StripeService extends Stripe {
       });
   }
 
-  async registerNewCustomer(email?: string) {
-    return this.customers.create({ email });
+  async registerNewCustomer(email?: string, platform?: string) {
+    return this.customers.create({
+      email,
+      metadata: {
+        is_internal_user: email?.includes('focusbear.io').toString(),
+        platform,
+      },
+    });
   }
 
   async decodeWebhookEvent(payload: any, headers: unknown): Promise<Stripe.Event> {

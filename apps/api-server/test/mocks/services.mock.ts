@@ -1,5 +1,6 @@
 import { IntegrationPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
+import Stripe from 'stripe';
 
 export const AuthServiceMock = {
   authenticate: jest.fn(),
@@ -331,8 +332,4 @@ export const CalendarServiceMock = {
   getCalendarDatas: jest.fn(),
 };
 
-export const StripeMock = {
-  subscriptions: {
-    cancel: jest.fn(),
-  },
-};
+export const StripeMock = new Stripe('sk_test_4eC39HqLyjWDarjtT1zdp7dc', { apiVersion: '2022-08-01' });

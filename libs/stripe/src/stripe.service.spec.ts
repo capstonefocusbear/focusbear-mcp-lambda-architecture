@@ -37,8 +37,8 @@ describe('StripeService', () => {
   describe('cancelSubscriptionSession', () => {
     it('negative:should throw BadRequestException, if user feedback character length less than 10', async () => {
       const exceptionMessage = 'Feedback number of characters should be greater than or equal to 10';
-      StripeMock.subscriptions.cancel.mockRejectedValueOnce(null);
       let exception: any;
+      StripeMock.subscriptions.cancel = jest.fn().mockRejectedValue(null);
 
       try {
         await service.cancelSubscriptionSession(
@@ -57,11 +57,11 @@ describe('StripeService', () => {
     it("negative:should throw BadRequestException, if user subscription couldn't be found in Stripe", async () => {
       const exceptionMessage = `No such subscription: '${userDummy.stripe_customer_id}'`;
       let exception: any;
+      StripeMock.subscriptions.cancel = jest.fn().mockRejectedValue({
+        message: exceptionMessage,
+      });
 
       try {
-        StripeMock.subscriptions.cancel.mockRejectedValueOnce({
-          message: exceptionMessage,
-        });
         await service.cancelSubscriptionSession(
           { cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK },
           { id: userDummy.id, stripeCustomerId: userDummy.stripe_customer_id },
@@ -69,6 +69,7 @@ describe('StripeService', () => {
       } catch (error) {
         exception = error;
       }
+
       expect(exception).toBeDefined();
       expect(exception.message).toMatch(exceptionMessage);
     });

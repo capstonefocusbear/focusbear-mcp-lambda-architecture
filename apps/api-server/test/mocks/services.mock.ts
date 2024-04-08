@@ -332,4 +332,4 @@ export const CalendarServiceMock = {
   getCalendarDatas: jest.fn(),
 };
 
-export const StripeMock = new Stripe('sk_test_4eC39HqLyjWDarjtT1zdp7dc', { apiVersion: '2022-08-01' });
+export const StripeMock = new Stripe(process.env.stripe_test_mode_api_key, { apiVersion: '2022-08-01' });

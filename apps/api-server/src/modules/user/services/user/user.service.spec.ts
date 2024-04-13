@@ -12,6 +12,7 @@ import { getQueueToken } from '@nestjs/bull';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
+  DeviceDummy,
   QueueMock,
   auth0UserDummy,
   focusModeTemplateDBResponseDummy,
@@ -182,6 +183,9 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([
+        { ...DeviceDummy, user_id: auth0UserDummy._id, operating_system: auth0UserDummy.device },
+      ]);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 

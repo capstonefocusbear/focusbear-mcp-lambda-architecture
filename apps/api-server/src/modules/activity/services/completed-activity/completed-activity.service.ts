@@ -184,9 +184,12 @@ export class CompletedActivityService {
     user: User,
     createdItem: CompletedActivityResponse,
   ) {
-    const isCurrentActivityMorningOrEveningType =
-      activity.type === ActivityType.morning || activity.type === ActivityType.evening;
-    const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningType;
+    const isCurrentActivityMorningOrEveningOrBreakType = [
+      ActivityType.morning,
+      ActivityType.break,
+      ActivityType.evening,
+    ].includes(activity.type);
+    const shouldUpdateDailyStats = !should_not_update_current_activity && isCurrentActivityMorningOrEveningOrBreakType;
     if (shouldUpdateDailyStats) {
       await this.userDailyStatsService.updateDailyStatsRoutineCompletion(
         user.id,

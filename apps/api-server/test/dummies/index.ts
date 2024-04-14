@@ -57,6 +57,9 @@ export const userDummy = new User(
     timezone: 'UTC',
     username: 'someusername',
     stripe_customer_id: 'cus_Nj9H342KvxDgbj',
+    morning_routines_streak: 3,
+    evening_routines_streak: 4,
+    focus_modes_streak: 2,
   },
   { generateId: false },
 );
@@ -78,7 +81,7 @@ export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,
-  device: 'Windows'
+  device: 'Windows',
 };
 
 export const deserializedActivitiesDummy = [

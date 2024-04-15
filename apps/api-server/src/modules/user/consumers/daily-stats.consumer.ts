@@ -115,7 +115,7 @@ export class DailyStatsConsumer {
       } else {
         const morning_sequence_log_id = activityType === ActivityType.morning ? completed_activity_log_id : null;
         const evening_sequence_log_id = activityType === ActivityType.evening ? completed_activity_log_id : null;
-        const break_sequence_log_id = activityType === ActivityType.evening ? completed_activity_log_id : null;
+        const break_sequence_log_id = activityType === ActivityType.break ? completed_activity_log_id : null;
         const newDailyStats = new DailyStats({
           user_id: user.id,
           date_completed: startOfDate,

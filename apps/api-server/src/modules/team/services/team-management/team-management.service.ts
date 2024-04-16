@@ -411,10 +411,19 @@ export class TeamManagementService {
     const membersData = [];
     const adminData = [];
     for await (const member of members) {
-      const [{ email }, { first_name, last_name, member_expiry_date, created_at }] = await Promise.all([
+      const [
+        { email },
+        { first_name, last_name, member_expiry_date, created_at },
+        { morning_routines_streak, evening_routines_streak, focus_modes_streak },
+      ] = await Promise.all([
         this.auth0ManagementService.getAuth0User(member.auth0_id),
         this.teamToMemberRepository.orm.findOne({
           where: { team_id: teamId, member_id: member.id },
+        }),
+        this.userRepository.orm.findOne({
+          where: {
+            id: member.id,
+          },
         }),
       ]);
       membersData.push({
@@ -425,13 +434,26 @@ export class TeamManagementService {
         last_name,
         member_expiry_date,
         created_at,
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
       });
     }
+
     for await (const adminMember of admins) {
-      const [{ email }, { first_name, last_name, created_at }] = await Promise.all([
+      const [
+        { email },
+        { first_name, last_name, created_at },
+        { morning_routines_streak, evening_routines_streak, focus_modes_streak },
+      ] = await Promise.all([
         this.auth0ManagementService.getAuth0User(adminMember.auth0_id),
         this.teamToAdminRepository.orm.findOne({
           where: { team_id: teamId, admin_id: adminMember.id },
+        }),
+        this.userRepository.orm.findOne({
+          where: {
+            id: adminMember.id,
+          },
         }),
       ]);
       adminData.push({
@@ -441,8 +463,12 @@ export class TeamManagementService {
         first_name,
         last_name,
         created_at,
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
       });
     }
+
     return { members: membersData, admin: adminData };
   }
 

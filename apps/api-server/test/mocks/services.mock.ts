@@ -1,6 +1,6 @@
 import { IntegrationPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
-import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
 import Stripe from 'stripe';
+import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
 
 export const AuthServiceMock = {
   authenticate: jest.fn(),

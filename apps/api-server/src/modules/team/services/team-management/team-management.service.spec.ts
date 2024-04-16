@@ -684,6 +684,11 @@ describe('TeamManagementService', () => {
         last_name: lastName,
       });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({ email: 'test@mail.com' });
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        morning_routines_streak: userDummy.morning_routines_streak,
+        evening_routines_streak: userDummy.evening_routines_streak,
+        focus_modes_streak: userDummy.focus_modes_streak,
+      });
 
       const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
 

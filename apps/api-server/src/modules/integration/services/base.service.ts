@@ -37,7 +37,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     protected readonly platform: IntegrationPlatforms,
     protected readonly syncTasksQueue: Queue,
     @InjectSentry() protected readonly sentryService: SentryService,
-  ) { }
+  ) {}
 
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
@@ -204,9 +204,11 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     let projectsResponse = [];
     if (!portals) return projectsResponse;
     for (const portal of portals) {
-      // eslint-disable-next-line no-await-in-loop
+      // eslint-disable-next-line no-console, no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
+      // eslint-disable-next-line no-console,
       console.log('getAllProjects - portal: ', portal.id);
+      // eslint-disable-next-line no-console,
       console.log('getAllProjects: ', projects);
       // eslint-disable-next-line no-continue
       if (!projects?.length) continue;
@@ -216,7 +218,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       });
       projectsResponse = [...projectsResponse, ...projects];
     }
-
+    // eslint-disable-next-line no-console,
     console.log('getAllProjects - response: ', projectsResponse);
     return projectsResponse;
   }
@@ -240,9 +242,11 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       const projectsResponse = [];
       if (!portals) return projectsResponse;
       for (const portal of portals) {
-        // eslint-disable-next-line no-await-in-loop
+        // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
+        // eslint-disable-next-line no-console,
         console.log('getAllUserProjects - portal: ', portal.id);
+        // eslint-disable-next-line no-console,
         console.log('getAllUserProjects: ', projects);
         // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
@@ -268,7 +272,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
           projectsResponse.push(projectData);
         });
       }
-
+      // eslint-disable-next-line no-console
       console.log('getAllUserProjects - response: ', projectsResponse);
       return projectsResponse;
     } catch (error) {

@@ -184,6 +184,7 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([
+        // eslint-disable-next-line no-underscore-dangle
         { ...DeviceDummy, user_id: auth0UserDummy._id, operating_system: auth0UserDummy.device },
       ]);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });

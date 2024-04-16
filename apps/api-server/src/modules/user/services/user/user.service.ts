@@ -135,8 +135,10 @@ export class UserService {
           order: { created_at: 'ASC' },
         });
 
-        const stripeCustomer = await this.stripeService
-          .registerNewCustomer(email, devices ? devices[0]?.operating_system : '');
+        const stripeCustomer = await this.stripeService.registerNewCustomer(
+          email,
+          devices ? devices[0]?.operating_system : '',
+        );
         stripeId = stripeCustomer.id;
         Object.assign(userProperties, { stripe_customer_id: stripeId });
       } else {

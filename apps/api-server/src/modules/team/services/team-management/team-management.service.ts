@@ -408,7 +408,7 @@ export class TeamManagementService {
   async getAllTeamMembers(adminId: string, teamId: string) {
     const team = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
     const { members, admins } = team;
-    let membersData = [];
+    const membersData = [];
     const adminData = [];
     for await (const member of members) {
       const [

@@ -31,6 +31,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.objective',
         'tags.id',
         'tags.text',
+        'tags.duration',
       ])
       .take(take)
       .skip(skip)

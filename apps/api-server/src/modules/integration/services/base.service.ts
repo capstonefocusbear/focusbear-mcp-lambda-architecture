@@ -37,7 +37,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     protected readonly platform: IntegrationPlatforms,
     protected readonly syncTasksQueue: Queue,
     @InjectSentry() protected readonly sentryService: SentryService,
-  ) {}
+  ) { }
 
   async getUser(userId: string): Promise<User> {
     return this.userRepository.orm.findOneBy({ id: userId });
@@ -206,6 +206,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     for (const portal of portals) {
       // eslint-disable-next-line no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
+      console.log('getAllProjects - portal: ', portal.id);
+      console.log('getAllProjects: ', projects);
       // eslint-disable-next-line no-continue
       if (!projects?.length) continue;
       projects.forEach((project) => {
@@ -214,6 +216,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       });
       projectsResponse = [...projectsResponse, ...projects];
     }
+
+    console.log('getAllProjects - response: ', projectsResponse);
     return projectsResponse;
   }
 
@@ -238,6 +242,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       for (const portal of portals) {
         // eslint-disable-next-line no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
+        console.log('getAllUserProjects - portal: ', portal.id);
+        console.log('getAllUserProjects: ', projects);
         // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
         projects.forEach((project) => {
@@ -262,6 +268,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
           projectsResponse.push(projectData);
         });
       }
+
+      console.log('getAllUserProjects - response: ', projectsResponse);
       return projectsResponse;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

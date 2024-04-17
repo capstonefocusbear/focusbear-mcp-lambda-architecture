@@ -331,5 +331,3 @@ export const CalendarServiceMock = {
   deleteCalendarExcludedKeyword: jest.fn(),
   getCalendarDatas: jest.fn(),
 };
-
-export const StripeMock = new Stripe('sk_test_4eC39HqLyjWDarjtT1zdp7dc', { apiVersion: '2022-08-01' });

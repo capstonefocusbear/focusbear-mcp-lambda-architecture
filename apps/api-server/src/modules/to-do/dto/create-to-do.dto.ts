@@ -40,4 +40,7 @@ export class CreateToDoDto {
 
   @IsOptional()
   objective?: string;
+
+  @IsOptional()
+  duration?: number;
 }

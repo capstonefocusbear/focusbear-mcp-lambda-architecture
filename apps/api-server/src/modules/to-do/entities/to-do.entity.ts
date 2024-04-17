@@ -82,6 +82,12 @@ export class ToDo extends BaseEntity {
   @Column({ type: 'varchar', default: ToDoStatus.NOT_STARTED })
   status: string;
 
+  @Column({
+    type: 'int',
+    default: 0,
+  })
+  duration?: number;
+
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

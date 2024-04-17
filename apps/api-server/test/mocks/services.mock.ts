@@ -1,5 +1,4 @@
 import { IntegrationPlatforms } from 'apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
-import Stripe from 'stripe';
 import { deserializedStandaloneActivitiesDummy } from '../dummies/habit-packs.dummies';
 
 export const AuthServiceMock = {

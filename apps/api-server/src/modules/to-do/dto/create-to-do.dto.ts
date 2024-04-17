@@ -43,4 +43,7 @@ export class CreateToDoDto {
 
   @IsOptional()
   duration?: number;
+
+  @IsOptional()
+  icon?: string;
 }

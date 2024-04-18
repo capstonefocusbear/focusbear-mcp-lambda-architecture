@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Between, Connection } from 'typeorm';
+import { Between, Connection, IsNull } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { CompletedFocusBlock } from '../entities/completed-focus-block.entity';
 import { GetFocusStatsQueryDto } from '../dto/get-focus-stats-query.dto';
@@ -29,6 +29,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
       where: {
         user_id,
         finish_time: Between(from_time, to_time),
+        focus_mode: { deleted_at: IsNull() },
       },
       order: {
         start_time: 'DESC',

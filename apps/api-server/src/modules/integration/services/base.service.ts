@@ -206,7 +206,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     for (const portal of portals) {
       // eslint-disable-next-line no-console, no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
-      
+
       // eslint-disable-next-line no-console
       console.log('getAllProjects - portal: ', portal.id);
 

@@ -88,6 +88,12 @@ export class ToDo extends BaseEntity {
   })
   duration?: number;
 
+  @Column({
+    type: 'varchar',
+    default: null,
+  })
+  icon?: string;
+
   @ManyToOne(() => User, (user) => user.to_dos, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

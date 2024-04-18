@@ -8,6 +8,6 @@ export class UpdateTableAddFieldIcon1713355660563 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "to_do" DROP COLUMN IF EXISTS "icon";`);
+    await queryRunner.query('ALTER TABLE "to_do" DROP COLUMN IF EXISTS "icon";');
   }
 }

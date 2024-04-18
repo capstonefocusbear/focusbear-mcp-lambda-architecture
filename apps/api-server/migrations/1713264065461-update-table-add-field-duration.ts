@@ -8,6 +8,6 @@ export class UpdateTableAddFieldDuration1713264065461 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "to_do" DROP COLUMN IF EXISTS "duration";`);
+    await queryRunner.query('ALTER TABLE "to_do" DROP COLUMN IF EXISTS "duration";');
   }
 }

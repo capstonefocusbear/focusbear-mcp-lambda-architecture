@@ -206,10 +206,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     for (const portal of portals) {
       // eslint-disable-next-line no-console, no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
-      // eslint-disable-next-line no-console,
+      
+      // eslint-disable-next-line no-console
       console.log('getAllProjects - portal: ', portal.id);
-      // eslint-disable-next-line no-console,
+
+      // eslint-disable-next-line no-console
       console.log('getAllProjects: ', projects);
+
       // eslint-disable-next-line no-continue
       if (!projects?.length) continue;
       projects.forEach((project) => {
@@ -218,7 +221,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       });
       projectsResponse = [...projectsResponse, ...projects];
     }
-    // eslint-disable-next-line no-console,
+
+    // eslint-disable-next-line no-console
     console.log('getAllProjects - response: ', projectsResponse);
     return projectsResponse;
   }
@@ -244,10 +248,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       for (const portal of portals) {
         // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
-        // eslint-disable-next-line no-console,
+
+        // eslint-disable-next-line no-console
         console.log('getAllUserProjects - portal: ', portal.id);
-        // eslint-disable-next-line no-console,
+
+        // eslint-disable-next-line no-console
         console.log('getAllUserProjects: ', projects);
+
         // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
         projects.forEach((project) => {
@@ -272,6 +279,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
           projectsResponse.push(projectData);
         });
       }
+
       // eslint-disable-next-line no-console
       console.log('getAllUserProjects - response: ', projectsResponse);
       return projectsResponse;

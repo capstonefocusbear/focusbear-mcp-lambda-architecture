@@ -351,6 +351,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
     ],
   ],
   "logQuantityQuestions": [],
+  "packTutorials": [],
 }
 `;
 
@@ -471,6 +472,7 @@ exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive:
     ],
   ],
   "logQuantityQuestions": [],
+  "packTutorials": [],
 }
 `;
 

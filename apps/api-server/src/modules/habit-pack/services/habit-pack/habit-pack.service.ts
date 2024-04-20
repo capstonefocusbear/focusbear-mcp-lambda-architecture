@@ -120,6 +120,7 @@ export class HabitPackService {
           `User with ID: ${user_id} is not authorized to edit habit pack with ID: ${upsertHabitPackDto.id}!`,
         );
       }
+
       const {
         pack_name,
         pack_type,
@@ -136,6 +137,7 @@ export class HabitPackService {
         creator_name,
         language,
       } = upsertHabitPackDto;
+
       const { marketplaceApprovalStatus, isFeatured, isFeaturedForOnboarding } = this.determineAdminProperties(
         userIsAdmin,
         upsertHabitPackDto,
@@ -149,19 +151,22 @@ export class HabitPackService {
       ]);
       let deserializedActivities;
       let questions;
+      let tutorials;
       if (upsertHabitPackDto.pack_type === HabitPackType.standalone) {
         const activities = { standalone_activities };
-        const { deserializedActivityTemplates, logQuantityQuestions } =
+        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials } =
           this.activityTemplateParserService.deserializeStandaloneActivities(activities, user_id, id);
         deserializedActivities = deserializedActivityTemplates;
         questions = logQuantityQuestions;
+        tutorials = packTutorials;
       }
       if (upsertHabitPackDto.pack_type === HabitPackType.routine) {
         const activities = { morning_activities, break_activities, evening_activities };
-        const { deserializedActivityTemplates, logQuantityQuestions } =
+        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials } =
           this.activityTemplateParserService.deserializeRoutineActivities(activities, user_id, id);
         deserializedActivities = deserializedActivityTemplates;
         questions = logQuantityQuestions;
+        tutorials = packTutorials;
       }
       const activityIds = [];
       await deserializedActivities.map((activityType) => {
@@ -203,6 +208,7 @@ export class HabitPackService {
         activityIds,
         deserializedActivities,
         questions,
+        tutorials,
       );
       return await this.getHabitPack(id);
     } catch (error) {

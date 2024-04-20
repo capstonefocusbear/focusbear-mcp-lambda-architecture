@@ -226,51 +226,51 @@ export class HabitPackManagerService {
       message: 'Converting activity templates to normal activities',
     });
     const activities: UpdateActivityDto[] = [];
-    activityTemplatesOfType.map(
-      ({ id: templateId, choices, log_quantity_questions, tutorial, ...restOfTemplateData }) => {
-        // convert template choices to normal choices
-        const convertedChoices = choices.map(
-          ({ id, log_quantity_questions: choiceLogQuantityQuestions, ...restOfChoiceData }) => {
-            const choiceNewId = randomUUID();
-            templatesChoicesNewIdsMap.set(id, choiceNewId);
-            // convert template choices' log quantity questions to normal questions
-            const convertedChoiceLogQuantityQuestions = choiceLogQuantityQuestions?.map(
-              ({ id: choiceQuestionId, ...restOfQuestionData }) => {
-                const newChoiceQuestionId = randomUUID();
-                logQuantityQuestionsNewIdsMap.set(choiceQuestionId, newChoiceQuestionId);
-                return { id: newChoiceQuestionId, ...restOfQuestionData };
-              },
-            );
-            return {
-              id: choiceNewId,
-              activity_template_id: id,
-              log_quantity_questions: convertedChoiceLogQuantityQuestions,
-              ...restOfChoiceData,
-            };
-          },
-        );
-        // convert activity's log quantity questions to new questions for installable activity
-        const convertedLogQuantityQuestions = log_quantity_questions?.map(
-          ({ id: questionId, ...restOfQuestionData }) => {
-            const newQuestionId = randomUUID();
-            logQuantityQuestionsNewIdsMap.set(questionId, newQuestionId);
-            return { id: newQuestionId, ...restOfQuestionData };
-          },
-        );
-        // create installable activity from activity template
-        const activityNewId = randomUUID();
-        const activityCreatedFromTemplate: UpdateActivityDto = {
-          id: activityNewId,
-          activity_template_id: templateId,
-          choices: convertedChoices,
-          log_quantity_questions: convertedLogQuantityQuestions,
-          tutorial,
-          ...restOfTemplateData,
-        };
-        templatesNewIdsMap.set(templateId, activityNewId);
-        return activities.push(activityCreatedFromTemplate);
-      },
-    );
+    activityTemplatesOfType.map(({ id: templateId, choices, log_quantity_questions, ...restOfTemplateData }) => {
+      // convert template choices to normal choices
+      const convertedChoices = choices.map(
+        ({ id, log_quantity_questions: choiceLogQuantityQuestions, ...restOfChoiceData }) => {
+          const choiceNewId = randomUUID();
+          templatesChoicesNewIdsMap.set(id, choiceNewId);
+          // convert template choices' log quantity questions to normal questions
+          const convertedChoiceLogQuantityQuestions = choiceLogQuantityQuestions?.map(
+            ({ id: choiceQuestionId, ...restOfQuestionData }) => {
+              const newChoiceQuestionId = randomUUID();
+              logQuantityQuestionsNewIdsMap.set(choiceQuestionId, newChoiceQuestionId);
+              return { id: newChoiceQuestionId, ...restOfQuestionData };
+            },
+          );
+          return {
+            id: choiceNewId,
+            activity_template_id: id,
+            log_quantity_questions: convertedChoiceLogQuantityQuestions,
+            ...restOfChoiceData,
+          };
+        },
+      );
+      // convert activity's log quantity questions to new questions for installable activity
+      const convertedLogQuantityQuestions = log_quantity_questions?.map(({ id: questionId, ...restOfQuestionData }) => {
+        const newQuestionId = randomUUID();
+        logQuantityQuestionsNewIdsMap.set(questionId, newQuestionId);
+        return { id: newQuestionId, ...restOfQuestionData };
+      });
+
+      // convert template tutorial to normal tutorial
+      const newTutorialId = randomUUID();
+
+      // create installable activity from activity template
+      const activityNewId = randomUUID();
+      const activityCreatedFromTemplate: UpdateActivityDto = {
+        id: activityNewId,
+        activity_template_id: templateId,
+        choices: convertedChoices,
+        log_quantity_questions: convertedLogQuantityQuestions,
+        tutorial: newTutorialId,
+        ...restOfTemplateData,
+      };
+      templatesNewIdsMap.set(templateId, activityNewId);
+      return activities.push(activityCreatedFromTemplate);
+    });
     return activities;
   }
 

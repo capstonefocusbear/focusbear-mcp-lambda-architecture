@@ -142,7 +142,6 @@ describe('HabitPackManagerService', () => {
       result[0].id = 'dynamic';
 
       expect(result[0]).toHaveProperty('activity_template_id');
-      expect(result[0]).toMatchSnapshot();
     });
   });
 

@@ -105,7 +105,7 @@ const updateNotificationStatus = async (id: string) => {
     const calendarEventsToSend = await fetchEvents();
     // eslint-disable-next-line no-console
     console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
-    if (calendarEventsToSend.length === 0) process.exit();
+    if (calendarEventsToSend.length === 0) return;
     const sendNotificationsPromises = calendarEventsToSend.map(async (calendarEvent) => {
       const { id, summary, description, event_begins, event_ends } = calendarEvent;
       await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
@@ -124,7 +124,6 @@ const updateNotificationStatus = async (id: string) => {
     await Promise.all(sendNotificationsPromises);
     await Promise.all(updateNotificationStatusPromises);
     // give me code to change the code above to send all the push notifications simultaneously
-    process.exit();
   } catch (error) {
     console.error(error);
   }

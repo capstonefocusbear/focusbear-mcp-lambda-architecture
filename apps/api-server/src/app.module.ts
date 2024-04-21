@@ -33,6 +33,7 @@ import { PlatformIntegrationsModule } from './modules/platform-integrations/plat
 import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -60,6 +61,9 @@ import { CalendarModule } from './modules/calendar/calendar.module';
         watch: true,
       },
       resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
+    }),
+    BullModule.forRoot({
+      connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
     }),
     AuthModule,
     HelperModule,

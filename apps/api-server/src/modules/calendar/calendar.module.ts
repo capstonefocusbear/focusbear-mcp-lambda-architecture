@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { CalendarController } from './controllers/calendar.controller';
 import { CalendarServiceFactory } from './services/calendar.service.factory';
 import { PlatformIntegrationsService } from '../platform-integrations/services/platform-integrations.service';

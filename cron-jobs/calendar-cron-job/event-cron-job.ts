@@ -56,8 +56,6 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
     // Enqueue jobs for Microsoft Calendar
     const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
     await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
-
-    process.exit();
   } catch (error) {
     console.error(error);
   }

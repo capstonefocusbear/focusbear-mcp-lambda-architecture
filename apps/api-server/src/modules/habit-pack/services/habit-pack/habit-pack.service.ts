@@ -95,6 +95,7 @@ export class HabitPackService {
         pack_type,
       },
     });
+
     const serializedActivityTemplates = this.activityTemplateParserService.serialize(pack_type, activity_templates);
     const pack: HabitPack = { pack_type, ...packData, ...serializedActivityTemplates };
     return pack;

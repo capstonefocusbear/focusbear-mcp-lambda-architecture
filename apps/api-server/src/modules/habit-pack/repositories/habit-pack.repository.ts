@@ -61,6 +61,21 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         id: Not(In(incomingQuestionIds)),
         activity_template_id: In(activityTemplateIds),
       });
+
+      const tutorialActivityTemplateIdsToKeep = tutorials.map((tutorial) => tutorial.activity_template_id);
+      await Promise.all(
+        allActivityTemplatesFromPack.map(async () => {
+          await transactionalEntityManager.update(
+            Tutorial,
+            {
+              user_id: updateData.user_id,
+              activity_template_id: Not(In(tutorialActivityTemplateIdsToKeep)),
+            },
+            { activity_template_id: null },
+          );
+        }),
+      );
+
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
       await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);

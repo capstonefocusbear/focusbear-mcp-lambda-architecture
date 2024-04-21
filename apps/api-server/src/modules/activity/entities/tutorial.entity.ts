@@ -27,7 +27,7 @@ export class Tutorial extends BaseEntity {
   activity_template_id?: string;
 
   @OneToOne(() => Activity, (activity) => activity.tutorial, {
-    onDelete: 'CASCADE',
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_id' })
@@ -38,7 +38,7 @@ export class Tutorial extends BaseEntity {
   user: User;
 
   @ManyToOne(() => ActivityTemplate, (activityTemplate) => activityTemplate.tutorials, {
-    onDelete: 'CASCADE',
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_template_id' })

@@ -252,6 +252,7 @@ export class ActivityTemplateParserService {
       linked_activity_template_id, // see docs/linked-activity-template-id.md
       check_list,
       impact_category,
+      tutorials,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -266,6 +267,7 @@ export class ActivityTemplateParserService {
       linked_activity_template_id,
       check_list,
       impact_category,
+      tutorial: tutorials?.length && activity_type !== ActivityType.break ? tutorials?.[0]?.id : undefined,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {

@@ -33,7 +33,7 @@ export class UpdateTutorialsAddFieldActivityTemplateId1713622257940 implements M
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.dropIndex('tutorials', 'IDX_gft9h2R0KMh1Evwj6fXUumUMZo');
-    await queryRunner.dropForeignKey('tutorials', 'tutorials_user_id_fkey');
+    await queryRunner.dropForeignKey('tutorials', 'tutorials_activity_template_id_fkey');
     await queryRunner.dropColumn('tutorials', 'activity_template_id');
   }
 }

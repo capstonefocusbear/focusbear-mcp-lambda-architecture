@@ -8,6 +8,7 @@ import { HabitPackType } from '../../habit-pack/domain/habit-pack-type.enum';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { Tutorial } from '../../activity/entities/tutorial.entity';
 
 export interface SerializedActivityTemplates {
   morning_activities?: UpdateActivityTemplateDto[];
@@ -30,7 +31,11 @@ export class ActivityTemplateParserService {
     serialized: SerializedActivityTemplates,
     user_id: string,
     pack_id: string,
-  ): { deserializedActivityTemplates: ActivityTemplate[]; logQuantityQuestions: LogQuantityQuestion[] } {
+  ): {
+    deserializedActivityTemplates: ActivityTemplate[];
+    logQuantityQuestions: LogQuantityQuestion[];
+    packTutorials: Tutorial[];
+  } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -44,7 +49,8 @@ export class ActivityTemplateParserService {
       });
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    return { deserializedActivityTemplates, logQuantityQuestions };
+    const packTutorials = this.getTutorials(serialized, user_id);
+    return { deserializedActivityTemplates, logQuantityQuestions, packTutorials };
   }
 
   /*
@@ -55,7 +61,11 @@ export class ActivityTemplateParserService {
     serialized: SerializedActivityTemplates,
     user_id: string,
     pack_id: string,
-  ): { deserializedActivityTemplates: ActivityTemplate[]; logQuantityQuestions: LogQuantityQuestion[] } {
+  ): {
+    deserializedActivityTemplates: ActivityTemplate[];
+    logQuantityQuestions: LogQuantityQuestion[];
+    packTutorials: Tutorial[];
+  } {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -70,7 +80,8 @@ export class ActivityTemplateParserService {
       });
     });
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
-    return { deserializedActivityTemplates, logQuantityQuestions };
+    const packTutorials = this.getTutorials(serialized, user_id);
+    return { deserializedActivityTemplates, logQuantityQuestions, packTutorials };
   }
 
   deserializeLibraryActivities(
@@ -241,6 +252,7 @@ export class ActivityTemplateParserService {
       linked_activity_template_id, // see docs/linked-activity-template-id.md
       check_list,
       impact_category,
+      tutorials,
     }: ActivityTemplate) => ({
       id,
       ...activity_data,
@@ -255,6 +267,7 @@ export class ActivityTemplateParserService {
       linked_activity_template_id,
       check_list,
       impact_category,
+      tutorial: tutorials?.length && activity_type !== ActivityType.break ? tutorials?.[0]?.id : undefined,
     });
 
     const formatActivityTemplates = (fetchedTemplateArray: ActivityTemplate[], activityType: ActivityType) => {
@@ -318,5 +331,22 @@ export class ActivityTemplateParserService {
       };
     };
     return fetchedActivities.map(mapActivity);
+  }
+
+  getTutorials(serializedActivities: SerializedActivityTemplates, user_id: string) {
+    const activityTemplates: UpdateActivityTemplateDto[] = Object.values(serializedActivities).flat();
+    return activityTemplates.reduce((tutorials: Tutorial[], activityTemplate) => {
+      if (activityTemplate?.tutorial) {
+        tutorials.push(
+          new Tutorial({
+            id: activityTemplate.tutorial,
+            activity_id: null,
+            activity_template_id: activityTemplate.id,
+            user_id,
+          }),
+        );
+      }
+      return tutorials;
+    }, []);
   }
 }

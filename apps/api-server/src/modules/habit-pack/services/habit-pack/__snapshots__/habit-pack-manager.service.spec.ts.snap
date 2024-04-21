@@ -1,22 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`HabitPackManagerService convertActivityTemplatesToUpdateActivityDtos Positive: should return an array of UpdateActivityDtos 1`] = `
-{
-  "activity_template_id": "f3dbeeb2-9284-4d39-bbd4-04cc17d40b4e",
-  "activity_type": "evening_activity",
-  "choices": [],
-  "duration_seconds": 150,
-  "id": "dynamic",
-  "log_quantity": false,
-  "log_quantity_questions": undefined,
-  "log_summary_type": "SUM",
-  "name": "Mess up desk",
-  "pack_id": "34dd7441-16f9-4772-be6c-416f9af5689b",
-  "tutorial": undefined,
-  "video_urls": [],
-}
-`;
-
 exports[`HabitPackManagerService getUserInstalledPacks positive: should return the user's installed packs 1`] = `
 [
   {

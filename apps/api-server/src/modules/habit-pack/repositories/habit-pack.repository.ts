@@ -9,6 +9,7 @@ import { DeserializedActivity } from '../../activity/services/activity-parser/ac
 import { GetMultiplePacksQueryDto } from '../dto/get-multiple-packs-query.dto';
 import { HabitPack } from '../entity/habit-pack.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { Tutorial } from '../../activity/entities/tutorial.entity';
 
 @Injectable()
 export class HabitPackRepository extends BaseRepository<HabitPack> {
@@ -21,6 +22,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
     activityTemplateIds: string[],
     activitiesData: ActivityTemplate[][],
     logQuantityQuestions: LogQuantityQuestion[],
+    tutorials: Tutorial[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.upsert(HabitPack, updateData, ['id']);
@@ -59,10 +61,26 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         id: Not(In(incomingQuestionIds)),
         activity_template_id: In(activityTemplateIds),
       });
+
+      const tutorialActivityTemplateIdsToKeep = tutorials.map((tutorial) => tutorial.activity_template_id);
+      await Promise.all(
+        allActivityTemplatesFromPack.map(async () => {
+          await transactionalEntityManager.update(
+            Tutorial,
+            {
+              user_id: updateData.user_id,
+              activity_template_id: Not(In(tutorialActivityTemplateIdsToKeep)),
+            },
+            { activity_template_id: null },
+          );
+        }),
+      );
+
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
       await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
+      await transactionalEntityManager.upsert(Tutorial, tutorials, ['id']);
     });
   }
 
@@ -85,6 +103,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
+      .leftJoinAndSelect('activity_templates.tutorials', 'tutorials')
       .select([
         'habit_packs.id',
         'habit_packs.pack_name',
@@ -142,6 +161,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.linked_question_id',
+        'tutorials',
       ])
       .where('habit_packs.id = :id', { id: pack_id })
       .getOne();

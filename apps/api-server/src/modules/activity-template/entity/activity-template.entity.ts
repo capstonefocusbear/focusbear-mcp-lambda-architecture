@@ -8,6 +8,7 @@ import { Activity } from '../../activity/entities/activity.entity';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { ImpactCategory } from '../../activity/domain/impact-category.enum';
+import { Tutorial } from '../../activity/entities/tutorial.entity';
 
 @Entity('activity_template')
 export class ActivityTemplate extends BaseEntity {
@@ -148,4 +149,7 @@ export class ActivityTemplate extends BaseEntity {
 
   @OneToMany(() => Activity, (activity) => activity.activity_template)
   activities?: Activity[];
+
+  @OneToMany(() => Tutorial, (tutorial) => tutorial.activity_template)
+  tutorials?: Tutorial[];
 }

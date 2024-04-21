@@ -351,6 +351,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
     ],
   ],
   "logQuantityQuestions": [],
+  "packTutorials": [],
 }
 `;
 
@@ -471,6 +472,7 @@ exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive:
     ],
   ],
   "logQuantityQuestions": [],
+  "packTutorials": [],
 }
 `;
 
@@ -490,6 +492,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "tutorial": undefined,
     },
     {
       "activity_type": "standalone_activity",
@@ -504,6 +507,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "tutorial": undefined,
     },
     {
       "activity_type": "standalone_activity",
@@ -518,6 +522,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
+      "tutorial": undefined,
     },
   ],
 }

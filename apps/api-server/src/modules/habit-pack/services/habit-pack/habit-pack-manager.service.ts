@@ -257,6 +257,7 @@ export class HabitPackManagerService {
             return { id: newQuestionId, ...restOfQuestionData };
           },
         );
+
         // create installable activity from activity template
         const activityNewId = randomUUID();
         const activityCreatedFromTemplate: UpdateActivityDto = {
@@ -264,7 +265,7 @@ export class HabitPackManagerService {
           activity_template_id: templateId,
           choices: convertedChoices,
           log_quantity_questions: convertedLogQuantityQuestions,
-          tutorial,
+          tutorial: tutorial ?? undefined,
           ...restOfTemplateData,
         };
         templatesNewIdsMap.set(templateId, activityNewId);

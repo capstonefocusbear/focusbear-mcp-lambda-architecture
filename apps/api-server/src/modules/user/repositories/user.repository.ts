@@ -70,21 +70,18 @@ export class UserRepository extends BaseRepository<User> {
       const tutorialActivityIdsToKeep = tutorials.map((tutorial) => tutorial.activity_id);
 
       await Promise.all(
-        tutorials?.length
-          ? tutorials.map(async ({ id: tutorial_id }) => {
-              await queryRunner.manager.delete(Tutorial, {
-                id: tutorial_id,
-                user_id: id,
-                activity_id: Not(In(tutorialActivityIdsToKeep)),
-              });
-            })
-          : activitiesArray.map(async (activity) => {
-              await queryRunner.manager.delete(Tutorial, {
-                user_id: id,
-                activity_id: activity.id,
-              });
-            }),
+        activitiesArray.map(async () => {
+          await queryRunner.manager.update(
+            Tutorial,
+            {
+              user_id: id,
+              activity_id: Not(In(tutorialActivityIdsToKeep)),
+            },
+            { activity_id: null },
+          );
+        }),
       );
+
       const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
       const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);

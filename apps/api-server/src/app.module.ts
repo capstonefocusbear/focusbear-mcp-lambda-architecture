@@ -1,3 +1,4 @@
+/* eslint-disable linebreak-style */
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -5,6 +6,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
+import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -33,7 +35,6 @@ import { PlatformIntegrationsModule } from './modules/platform-integrations/plat
 import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
-import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [

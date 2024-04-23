@@ -1,3 +1,4 @@
+/* eslint-disable linebreak-style */
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bullmq';
@@ -26,10 +27,7 @@ export class SyncEventsConsumer extends WorkerHost {
     super();
   }
 
-  async process(
-    job: Job<{ platform: CalendarPlatforms; userId: string; account: string }>,
-    token?: string,
-  ): Promise<any> {
+  async process(job: Job<{ platform: CalendarPlatforms; userId: string; account: string }>): Promise<any> {
     const {
       data: { platform, userId, account },
     } = job;
@@ -87,6 +85,10 @@ export class SyncEventsConsumer extends WorkerHost {
           this.sentryService.instance().captureException(error, { level: 'error' });
           console.error('Error in sync-events-for-platform queued job: ', error);
         }
+        break;
+
+      default:
+        break;
     }
 
     throw new Error('Method not implemented.');

@@ -39,6 +39,7 @@ export class ActivityParserService {
     for (const { type, activities, activity_ids } of activity_sequences) {
       let key = `${type}_activities`;
       if (type === ActivityType.break) key = 'break_activities';
+      const transformTutorial = (tutorial) => (tutorial && typeof tutorial === 'object' ? tutorial.id : tutorial);
       const findActivity = (id): Activity => activities.find((e) => e.id === id);
       const mapActivity = ({
         id,
@@ -79,7 +80,7 @@ export class ActivityParserService {
         impact_category,
         created_at,
         ...activity_data,
-        tutorial,
+        tutorial: transformTutorial(tutorial),
         cutoff_time_for_doing_activity,
       });
       const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);

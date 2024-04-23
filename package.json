@@ -34,6 +34,7 @@
     "@fastify/swagger": "^8.2.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@nestjs/bull": "^0.6.2",
+    "@nestjs/bullmq": "^10.1.1",
     "@nestjs/common": "^9.2.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.2.0",

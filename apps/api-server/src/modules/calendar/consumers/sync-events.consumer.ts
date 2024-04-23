@@ -1,6 +1,7 @@
-import { Process, Processor } from '@nestjs/bull';
+/* eslint-disable linebreak-style */
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { In, MoreThan } from 'typeorm';
 import { DateTime } from 'luxon';
 import axios from 'axios';
@@ -15,14 +16,83 @@ import { MicrosoftCalendarEventDto } from '../dto/microsoft-calendar-event.dto';
 import { Notification } from '../../notification/entities/notification.entity';
 
 @Processor(BullQueues.SYNC_EVENTS)
-export class SyncEventsConsumer {
+export class SyncEventsConsumer extends WorkerHost {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly notificationRepository: NotificationRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly platformIntegrationRepository: PlatformIntegrationRepository,
     protected readonly configService: ConfigService,
-  ) {}
+  ) {
+    super();
+  }
+
+  async process(job: Job<{ platform: CalendarPlatforms; userId: string; account: string }>): Promise<any> {
+    const {
+      data: { platform, userId, account },
+    } = job;
+    switch (job.name) {
+      case BullWorkers.SYNC_EVENTS_FOR_PLATFORM:
+        try {
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Service',
+            level: 'debug',
+            message: 'Syncing calendar events',
+            data: {
+              platform,
+              userId,
+            },
+          });
+          const userSyncedEvents = await this.getUserSyncedEvents(platform, userId);
+          const externalEventIds = userSyncedEvents.map((syncedEvent) => syncedEvent.external_id);
+          const allUserEvents = await this.getAllUserEvents(platform, userId, account);
+
+          const externalUserEventsIds = allUserEvents.map((userEvent) => userEvent.external_id);
+          const eventsFromSyncedEvents = allUserEvents.filter((userEvent) => {
+            const isEventFromSyncedEvents = externalEventIds.includes(userEvent?.external_id);
+            if (isEventFromSyncedEvents) return true;
+            return false;
+          });
+
+          const eventsToSync = allUserEvents.filter((userEvent) => {
+            const isEventFromSyncedEvents = externalEventIds.includes(userEvent?.external_id);
+            if (isEventFromSyncedEvents) return false;
+            return true;
+          });
+
+          const eventsToRemoveIds = externalEventIds.filter((id) => {
+            const isEventFromNewData = externalUserEventsIds.includes(id);
+            if (isEventFromNewData) return false;
+            return true;
+          });
+
+          await Promise.all(
+            eventsFromSyncedEvents.map(async (syncedEvent) => {
+              const updateData = {
+                summary: syncedEvent.summary,
+                description: syncedEvent.description,
+                event_begins: syncedEvent.event_begins,
+                event_ends: syncedEvent.event_ends,
+                external_metadata: syncedEvent.external_metadata,
+              };
+              await this.notificationRepository.orm.update({ external_id: syncedEvent.external_id }, updateData);
+            }),
+          );
+
+          await this.notificationRepository.orm.save(eventsToSync);
+          await this.notificationRepository.orm.delete({ external_id: In(eventsToRemoveIds) });
+        } catch (error) {
+          this.sentryService.instance().captureException(error, { level: 'error' });
+          console.error('Error in sync-events-for-platform queued job: ', error);
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    throw new Error('Method not implemented.');
+  }
 
   async getUserSyncedEvents(platform: CalendarPlatforms, userId: string) {
     const currentTime: Date = DateTime.now().toJSDate();
@@ -216,63 +286,5 @@ export class SyncEventsConsumer {
       event_ends: new Date(event_ends),
       external_metadata: event,
     });
-  }
-
-  @Process(BullWorkers.SYNC_EVENTS_FOR_PLATFORM)
-  async readOperationJob(job: Job<{ platform: CalendarPlatforms; userId: string; account: string }>) {
-    const {
-      data: { platform, userId, account },
-    } = job;
-    try {
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Syncing calendar events',
-        data: {
-          platform,
-          userId,
-        },
-      });
-      const userSyncedEvents = await this.getUserSyncedEvents(platform, userId);
-      const externalEventIds = userSyncedEvents.map((syncedEvent) => syncedEvent.external_id);
-      const allUserEvents = await this.getAllUserEvents(platform, userId, account);
-      const externalUserEventsIds = allUserEvents.map((userEvent) => userEvent.external_id);
-      const eventsFromSyncedEvents = allUserEvents.filter((userEvent) => {
-        const isEventFromSyncedEvents = externalEventIds.includes(userEvent?.external_id);
-        if (isEventFromSyncedEvents) return true;
-        return false;
-      });
-
-      const eventsToSync = allUserEvents.filter((userEvent) => {
-        const isEventFromSyncedEvents = externalEventIds.includes(userEvent?.external_id);
-        if (isEventFromSyncedEvents) return false;
-        return true;
-      });
-
-      const eventsToRemoveIds = externalEventIds.filter((id) => {
-        const isEventFromNewData = externalUserEventsIds.includes(id);
-        if (isEventFromNewData) return false;
-        return true;
-      });
-
-      await Promise.all(
-        eventsFromSyncedEvents.map(async (syncedEvent) => {
-          const updateData = {
-            summary: syncedEvent.summary,
-            description: syncedEvent.description,
-            event_begins: syncedEvent.event_begins,
-            event_ends: syncedEvent.event_ends,
-            external_metadata: syncedEvent.external_metadata,
-          };
-          await this.notificationRepository.orm.update({ external_id: syncedEvent.external_id }, updateData);
-        }),
-      );
-
-      await this.notificationRepository.orm.save(eventsToSync);
-      await this.notificationRepository.orm.delete({ external_id: In(eventsToRemoveIds) });
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      console.error('Error in sync-events-for-platform queued job: ', error);
-    }
   }
 }

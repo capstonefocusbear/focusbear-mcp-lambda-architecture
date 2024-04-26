@@ -178,8 +178,8 @@ export class UserController {
 
   @Post('/is-url-safe-to-use')
   @UseGuards(IsAuth)
-  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
-    return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
+  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto, @AuthContext() { user }: Passport) {
+    return this.userService.checkIsUrlSafe(isUrlSafeDto, user.id);
   }
 
   @Patch('/long-term-goals')

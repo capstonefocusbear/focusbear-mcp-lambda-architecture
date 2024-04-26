@@ -166,7 +166,7 @@ export class OpenAIService {
     }
   }
 
-  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
+  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto, isPaidUser: boolean) {
     if (!isUrlSafeDto?.url || !this.isValidURL(isUrlSafeDto?.url)) {
       return null;
     }
@@ -182,7 +182,7 @@ export class OpenAIService {
       role: 'system',
       content: `Please provide a JSON response indicating whether the following website is related to the user's Focus Mode:
     JSON response format:
-    { allowed_probability: number between 0 and 1, reason: the reason why the website and focus mode are related or unrelated }
+    { allowed_probability: number between 0 and 1, reason: the reason why the website and focus mode are related or unrelated in first person talking to the user }
 
     Website data:
       URL: ${isUrlSafeDto.url}
@@ -203,8 +203,9 @@ export class OpenAIService {
     let retryCount = 0;
     while (retryCount < 3) {
       try {
+        const model = isPaidUser ? 'gpt-4-turbo' : 'gpt-3.5-turbo';
         const completions = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model,
           messages: [defaultChat],
           temperature: 0,
           n: 1,

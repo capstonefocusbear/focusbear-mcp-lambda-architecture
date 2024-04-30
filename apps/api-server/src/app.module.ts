@@ -33,6 +33,7 @@ import { PlatformIntegrationsModule } from './modules/platform-integrations/plat
 import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { SurveyModule } from './modules/survey/survey.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     AiModule,
     IntegrationModule,
     CalendarModule,
+    SurveyModule,
   ],
   controllers: [AppController],
 })

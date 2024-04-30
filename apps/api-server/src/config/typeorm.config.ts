@@ -43,6 +43,9 @@ import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
 import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
+import { Survey } from '../modules/survey/entities/survey.entity';
+import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
+import { SurveyMetadata } from '../modules/survey/entities/survey-metadata.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -102,6 +105,9 @@ export const typeormConfig = registerAs(
       TrackEvent,
       Tutorial,
       Feedback,
+      Survey,
+      SurveyAnswer,
+      SurveyMetadata,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

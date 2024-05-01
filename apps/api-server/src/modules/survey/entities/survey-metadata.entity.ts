@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToOne } from 'typeorm'
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { Survey } from './survey.entity';
+import { SurveyAnswer } from './survey-answer.entity';
 
 @Entity('survey-metadata')
 export class SurveyMetadata extends BaseEntity {
@@ -48,6 +49,13 @@ export class SurveyMetadata extends BaseEntity {
   })
   user_id: string;
 
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: false,
+  })
+  survey_answer_id: string;
+
   @OneToOne(() => Survey, (survey) => survey.id)
   @JoinColumn({ name: 'survey_id' })
   survey?: Survey;
@@ -55,4 +63,8 @@ export class SurveyMetadata extends BaseEntity {
   @ManyToOne(() => User, (user) => user.id)
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @OneToOne(() => SurveyAnswer, (surveyAnswer) => surveyAnswer.id)
+  @JoinColumn({ name: 'survey_answer_id' })
+  surveyAnswer?: SurveyAnswer;
 }

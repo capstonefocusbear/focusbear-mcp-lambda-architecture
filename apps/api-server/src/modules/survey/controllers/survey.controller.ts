@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { AuthContext } from 'apps/api-server/src/shared/decorators/passport.decorator';
+import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { SurveyService } from '../services/survey.service';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
@@ -8,6 +8,7 @@ import { CreateSurveyAnswerDto } from '../dto/create-survey-answer.dto';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAdmin } from '../../auth/guards/is-admin/is-admin.guard';
 import { UpdateSurveyDto } from '../dto/update-survey.dto';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 
 @Controller('survey')
 @UseGuards(IsAuth)
@@ -16,8 +17,8 @@ import { UpdateSurveyDto } from '../dto/update-survey.dto';
 export class SurveyController {
   constructor(private readonly surveyService: SurveyService) {}
 
-  @Post()
   @UseGuards(IsAdmin)
+  @Post()
   createSurvey(@Body() createSurveyDto: CreateSurveyDto, @AuthContext() { user }: Passport) {
     return this.surveyService.createSurvey(createSurveyDto, user.id);
   }
@@ -38,18 +39,33 @@ export class SurveyController {
   }
 
   @Patch(':survey_id/completed')
-  updateSurveyAnswerCompletion(@Param('survey_id') survey_id: string, @AuthContext() { user }: Passport) {
-    return this.surveyService.updateSurveyCompletion(survey_id, user.id);
+  updateSurveyAnswerCompletion(
+    @Param('survey_id') survey_id: string,
+    @Query('completed') completed: boolean,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.surveyService.updateSurveyCompletion(survey_id, completed, user.id);
   }
 
   @Get('/unanswered')
-  getUnansweredSurveys(@AuthContext() { user }: Passport) {
-    return this.surveyService.getUnansweredSurveys(user.id);
+  getUserUnansweredSurveys() {
+    return this.surveyService.getUserUnansweredSurveys();
   }
 
   @UseGuards(IsAdmin)
-  @Get('/answered')
+  @Get('/answers_completed')
   getAnsweredSurveys(@AuthContext() { user }: Passport) {
-    return this.surveyService.getAnsweredSurveys(user.id);
+    return this.surveyService.getUserCompletedSurveys(user.id);
+  }
+
+  @Get('/answers_uncompleted')
+  getUnCompletedAnsweredSurveys(@AuthContext() { user }: Passport) {
+    return this.surveyService.getUserUncompletedSurveys(user.id);
+  }
+
+  @UseGuards(IsAdmin)
+  @Get()
+  getSurveys(@Query() paginationOptionsDto: PaginationOptionsDto) {
+    return this.surveyService.getSurveys(paginationOptionsDto);
   }
 }

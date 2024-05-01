@@ -13,11 +13,11 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { GetUserRoles } from '../../../shared/decorators/get-user-roles.decorator';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PaginationDto } from '../dto/pagination/index.dto';
 import { Course } from '../entities/course.entity';
-import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 @Controller('course')
 @UseGuards(IsAuth)

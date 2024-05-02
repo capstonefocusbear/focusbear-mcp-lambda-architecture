@@ -1,4 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SurveyService } from './survey.service';
 import { SurveyRepository } from '../repositories/survey.repository';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
@@ -10,7 +12,6 @@ import {
   SurveyRepositoryMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { UserRepository } from '../../user/repositories/user.repository';
 import {
   dummyCreateSurveyAnswerDto,
@@ -21,10 +22,9 @@ import {
   dummyUpdateSurveyDto,
   userDummy,
 } from '../../../../test/dummies';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Survey } from '../entities/survey.entity';
-import { PaginationDto } from '../../../../src/shared/pagination/index.dto';
-import { PaginationMetaDto } from '../../../../src/shared/pagination/pagination-meta.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 
 describe('surveyService', () => {
   let surveyService: SurveyService;

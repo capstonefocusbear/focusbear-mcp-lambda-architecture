@@ -1,7 +1,7 @@
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
-import { CreateSurveyAnswerMetaDto } from './create-survey-answer-metadata.dto';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { CreateSurveyAnswerMetaDto } from './create-survey-answer-metadata.dto';
 
 export class CreateSurveyAnswerDto {
   @IsNotEmpty()

@@ -1,10 +1,10 @@
 import { Connection } from 'typeorm';
 import { Injectable } from '@nestjs/common';
+import { PaginationOptionsDto } from '../../../../src/shared/pagination/pagination-options.dto';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Survey } from '../entities/survey.entity';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
 import { SurveyAnswer } from '../entities/survey-answer.entity';
-import { PaginationOptionsDto } from 'apps/api-server/src/shared/pagination/pagination-options.dto';
 
 @Injectable()
 export class SurveyRepository extends BaseRepository<Survey> {

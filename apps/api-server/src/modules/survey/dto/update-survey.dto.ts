@@ -1,8 +1,8 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpdateSurveyDto {
   @IsNotEmpty()
-  @IsString()
+  @IsUUID()
   survey_id: string;
 
   @IsNotEmpty()

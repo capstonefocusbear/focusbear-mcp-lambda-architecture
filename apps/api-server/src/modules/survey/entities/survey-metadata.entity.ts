@@ -4,9 +4,9 @@ import { User } from '../../user/entities/user.entity';
 import { Survey } from './survey.entity';
 import { SurveyAnswer } from './survey-answer.entity';
 
-@Entity('survey-metadata')
+@Entity('survey_metadata')
 export class SurveyMetadata extends BaseEntity {
-  constructor({ id, ...surveyMetadata }: Partial<SurveyMetadata> = {}, options = { generateId: true }) {
+  constructor({ id, ...surveyMetadata }: Partial<SurveyMetadata> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...surveyMetadata });
   }

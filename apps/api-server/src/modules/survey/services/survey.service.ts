@@ -33,10 +33,7 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
+      await this.validateUser(user_id);
       await this.surveyRepository.createSurvey(createSurveyDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -56,14 +53,10 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
-      const survey = await this.surveyRepository.getUserSurvey(updateSurveyDto.survey_id, user_id);
-      if (survey) {
-        throw new NotFoundException(`Survey with survey_id ${updateSurveyDto.survey_id} couldn't be found`);
-      }
+      await this.validateUser(user_id);
+      const survey = await this.validateSurvey(updateSurveyDto.survey_id);
+      survey.question = updateSurveyDto.question;
+      survey.choices = updateSurveyDto.choices;
       await this.surveyRepository.updateSurvey(survey);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -84,14 +77,8 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
-      const survey = await this.surveyRepository.getSurvey(survey_id);
-      if (!survey) {
-        throw new NotFoundException(`Survey with survey_id ${survey_id} couldn't be found`);
-      }
+      this.validateUser(user_id);
+      const survey = await this.validateSurvey(survey_id);
       const foundAnswer = survey.choices?.length ? survey.choices.includes(createSurveyAnswerDto.reply) : true;
       if (!foundAnswer) {
         throw new BadRequestException(
@@ -120,13 +107,13 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
-      const survey = await this.surveyRepository.getUserSurvey(survey_id, user_id);
-      if (survey) {
-        throw new NotFoundException(`User with ${user_id} and survey_id ${survey_id} couldn't be found`);
+      await this.validateUser(user_id);
+      await this.validateSurvey(survey_id);
+      const surveyAnswer = await this.surveyAnswerRepository.getSurveyAnswer(survey_id, user_id);
+      if (!surveyAnswer) {
+        throw new NotFoundException(
+          `Previous survey answer of a user with ${user_id} and survey_id ${survey_id} couldn't be found`,
+        );
       }
       await this.surveyAnswerRepository.updateSurveyAnswerCompletion(survey_id, user_id, completed);
     } catch (error) {
@@ -135,13 +122,15 @@ export class SurveyService {
     }
   }
 
-  async getUserUnansweredSurveys() {
+  async getUserUnansweredSurveys(user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'get user unanswered surveys',
+        data: { user_id },
       });
+      await this.validateUser(user_id);
       return await this.surveyRepository.getUserUnansweredSurveys();
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -160,10 +149,7 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
+      await this.validateUser(user_id);
       return await this.surveyRepository.getUserSurveys(user_id, false);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -182,10 +168,7 @@ export class SurveyService {
         },
       });
 
-      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      if (!user) {
-        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
-      }
+      await this.validateUser(user_id);
       return await this.surveyRepository.getUserSurveys(user_id, true);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -193,7 +176,7 @@ export class SurveyService {
     }
   }
 
-  async getSurveys(paginationOptionsDto: PaginationOptionsDto) {
+  async getSurveys(paginationOptionsDto: PaginationOptionsDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -201,14 +184,30 @@ export class SurveyService {
         message: 'get surveys',
         data: {
           ...paginationOptionsDto,
+          user_id,
         },
       });
+      await this.validateUser(user_id);
       const [surveys, total] = await this.surveyRepository.getSurveys(paginationOptionsDto);
-      const paginationMetaDto = new PaginationMetaDto({ paginationOptionsDto, itemCount: total });
-      return new PaginationDto(surveys, paginationMetaDto);
+      return new PaginationDto(surveys, new PaginationMetaDto({ paginationOptionsDto, itemCount: total }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  async validateUser(user_id: string) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
+    }
+  }
+
+  async validateSurvey(survey_id: string) {
+    const survey = await this.surveyRepository.getSurvey(survey_id);
+    if (!survey) {
+      throw new NotFoundException(`Survey with survey_id ${survey_id} couldn't be found`);
+    }
+    return survey;
   }
 }

@@ -237,3 +237,26 @@ export const CalendarExcluededKeywordRepositoryMock = {
 export const CalendarServiceFactoryMock = {
   get: jest.fn(),
 };
+
+export const SurveyRepositoryMock = {
+  ...BaseRepositoryMock,
+  createSurvey: jest.fn(),
+  getUserSurvey: jest.fn(),
+  getSurvey: jest.fn(),
+  updateSurvey: jest.fn(),
+  getUserUnansweredSurveys: jest.fn(),
+  getUserSurveys: jest.fn(),
+  getSurveys: jest.fn(),
+};
+
+export const SurveyAnswerRepositoryMock = {
+  ...BaseRepositoryMock,
+  createSurveyAnswer: jest.fn(),
+  getSurveyAnswer: jest.fn(),
+  updateSurveyAnswerCompletion: jest.fn(),
+};
+
+export const SurveyMetadataRepositoryMock = {
+  ...BaseRepositoryMock,
+  createSurveyAnswerMetadata: jest.fn(),
+};

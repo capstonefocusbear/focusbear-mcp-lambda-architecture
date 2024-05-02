@@ -5,7 +5,7 @@ import { User } from '../../user/entities/user.entity';
 
 @Entity('survey')
 export class Survey extends BaseEntity {
-  constructor({ id, ...survey }: Partial<Survey> = {}, options = { generateId: true }) {
+  constructor({ id, ...survey }: Partial<Survey> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...survey });
   }

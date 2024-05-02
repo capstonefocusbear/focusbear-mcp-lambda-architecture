@@ -48,8 +48,8 @@ export class SurveyController {
   }
 
   @Get('/unanswered')
-  getUserUnansweredSurveys() {
-    return this.surveyService.getUserUnansweredSurveys();
+  getUserUnansweredSurveys(@AuthContext() { user }: Passport) {
+    return this.surveyService.getUserUnansweredSurveys(user.id);
   }
 
   @UseGuards(IsAdmin)
@@ -65,7 +65,7 @@ export class SurveyController {
 
   @UseGuards(IsAdmin)
   @Get()
-  getSurveys(@Query() paginationOptionsDto: PaginationOptionsDto) {
-    return this.surveyService.getSurveys(paginationOptionsDto);
+  getSurveys(@Query() paginationOptionsDto: PaginationOptionsDto, @AuthContext() { user }: Passport) {
+    return this.surveyService.getSurveys(paginationOptionsDto, user.id);
   }
 }

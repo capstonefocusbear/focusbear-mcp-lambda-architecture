@@ -22,6 +22,15 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
     return await this.orm.save(newSurveyAnswer);
   }
 
+  async getSurveyAnswer(survey_id: string, user_id: string) {
+    return await this.orm.findOne({
+      where: {
+        survey_id,
+        user_id,
+      },
+    });
+  }
+
   async updateSurveyAnswerCompletion(survey_id: string, user_id: string, completed: boolean) {
     await this.orm
       .createQueryBuilder()

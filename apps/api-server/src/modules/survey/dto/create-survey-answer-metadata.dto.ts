@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class CreateSurveyMetaDto {
+export class CreateSurveyAnswerMetaDto {
   @IsNotEmpty()
   @IsString()
   feature: string;

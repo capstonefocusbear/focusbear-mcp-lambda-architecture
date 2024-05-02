@@ -3,9 +3,9 @@ import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { Survey } from './survey.entity';
 
-@Entity('survey-answer')
+@Entity('survey_answer')
 export class SurveyAnswer extends BaseEntity {
-  constructor({ id, ...answer }: Partial<SurveyAnswer> = {}, options = { generateId: true }) {
+  constructor({ id, ...answer }: Partial<SurveyAnswer> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...answer });
   }

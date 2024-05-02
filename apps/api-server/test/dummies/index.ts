@@ -31,6 +31,8 @@ import { ToDo } from '../../src/modules/to-do/entities/to-do.entity';
 import { IntegrationPlatforms } from '../../src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../src/modules/to-do/entities/synced-project.entity';
 import { PaymentType } from '../../src/modules/team/domain/payment-type.enum';
+import { AnswerType } from '../../src/modules/survey/domain/answer-type.enum';
+import { PaginationOptionsDto } from '../../src/shared/pagination/pagination-options.dto';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1995,3 +1997,77 @@ export const dummySubscriptionCancelFeedback = {
   INVALID_FEEDBACK: 'Short fee',
   VALID_FEEDBACK: 'Long feedback',
 };
+
+export const dummyCreateSurveyDto = {
+  question:
+    'Have you ever tried body doubling services like Focus Mate or Cave Day? (We’re thinking about adding this to the app)',
+  choices: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'],
+  answer_type: AnswerType.CHOICES_NUMBER,
+};
+
+export const dummyUpdateSurveyDto = {
+  survey_id: '44f8b2b0-3c2c-487f-82d4-66dd33eaa8a4',
+  question: 'Have you ever tried body doubling services like Focus Mate or Cave Day?',
+  choices: ['Disagree', 'Neutral', 'Agree'],
+};
+
+export const dummyCreateSurveyMetadata = {
+  feature: 'morning-routine',
+  device: 'samsung',
+  operating_system: 'android',
+  version: '14',
+};
+
+export const dummyCreateSurveyAnswerDto = {
+  VALID: {
+    reply: 'Agree',
+    metadata: dummyCreateSurveyMetadata,
+  },
+  INVALID: {
+    reply: 'Yes',
+    metadata: dummyCreateSurveyMetadata,
+  },
+};
+
+export const dummySurveys = [
+  {
+    id: '44f8b2b0-3c2c-487f-82d4-66dd33eaa8a4',
+    question:
+      'Have you ever tried body doubling services like Focus Mate or Cave Day? (We’re thinking about adding this to the app)',
+    choices: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'],
+    answer_type: AnswerType.CHOICES_NUMBER,
+    creator: userDummy.id,
+  },
+  {
+    id: '97851e9e-22b6-4420-bfc8-b359c82dbfd4',
+    question: 'How are you finding Focus Bear so far?',
+    choices: ['Yes', 'No'],
+    answer_type: AnswerType.CHOICES_BOOLEAN,
+    creator: userDummy.id,
+  },
+  {
+    id: 'bde369d7-310b-4066-9446-794c4cd7d44e',
+    question: 'How helpful was the focus session you just did?',
+    answer_type: AnswerType.TEXT_AND_RATING,
+    creator: userDummy.id,
+  },
+];
+
+export const dummySurveyAnswers = [
+  {
+    id: 'f89ccff1-6f6c-4d61-8f41-73af0667639d',
+    reply: 'Agree',
+    survey_id: dummySurveys[0].id,
+    user_id: userDummy.id,
+    completed: false,
+  },
+  {
+    id: 'fd7b9139-ad6a-4afd-a69c-3b661401d094',
+    reply: 'Yes',
+    survey_id: dummySurveys[1].id,
+    user_id: userDummy.id,
+    completed: true,
+  },
+];
+
+export const dummyPaginationOptionsDto = new PaginationOptionsDto();

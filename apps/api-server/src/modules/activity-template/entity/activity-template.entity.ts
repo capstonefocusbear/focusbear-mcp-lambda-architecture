@@ -9,6 +9,7 @@ import { ActivitySequence } from '../../activity/entities/activity-sequence.enti
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { ImpactCategory } from '../../activity/domain/impact-category.enum';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
+import { ActivityTemplateTag } from './activity-template-tag.entity';
 
 @Entity('activity_template')
 export class ActivityTemplate extends BaseEntity {
@@ -152,4 +153,7 @@ export class ActivityTemplate extends BaseEntity {
 
   @OneToMany(() => Tutorial, (tutorial) => tutorial.activity_template)
   tutorials?: Tutorial[];
+
+  @OneToMany(() => ActivityTemplateTag, (activityTemplateTag) => activityTemplateTag.activity_template, { eager: true })
+  tags?: ActivityTemplateTag[];
 }

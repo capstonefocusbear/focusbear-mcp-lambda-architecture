@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, Not } from 'typeorm';
+import { Connection, In, LessThanOrEqual, Not } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { AppDataSource } from '../../../../ormconfig';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -28,6 +29,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     activityTemplates: ActivityTemplate[],
     user_id: string,
     logQuantityQuestions: LogQuantityQuestion[],
+    templateTags: ActivityTemplateTag[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(ActivityTemplate, {
@@ -50,6 +52,19 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
         activity_template_id: In(activityTemplateIds),
       });
       await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplateTag, templateTags, ['id']);
     });
+  }
+
+  async getActivityTemplatesWithGoalsMatched(user_goals: string[]) {
+    const allowed_routines = [ActivityType.morning, ActivityType.evening];
+    return await this.orm
+      .createQueryBuilder('activity_templates')
+      .select(['activity_templates'])
+      .innerJoin('activity_templates.tags', 'template_tags')
+      .select(`template_tags.tags::jsonb @> :goals::jsonb`)
+      .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
+      .setParameters({ goals: JSON.stringify(user_goals), allowed_routines })
+      .getMany();
   }
 }

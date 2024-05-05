@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID, IsString } from 'class-validator';
+import { IsOptional, IsUUID, IsString, IsArray } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
 export class UpdateActivityTemplateDto extends UpdateActivityDto {
@@ -6,4 +6,9 @@ export class UpdateActivityTemplateDto extends UpdateActivityDto {
   @IsUUID()
   @IsString()
   pack_id?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

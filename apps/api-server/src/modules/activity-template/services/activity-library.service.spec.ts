@@ -128,6 +128,7 @@ describe('ActivityLibraryService', () => {
         [],
         userDummy.id,
         [],
+        [],
       );
     });
   });

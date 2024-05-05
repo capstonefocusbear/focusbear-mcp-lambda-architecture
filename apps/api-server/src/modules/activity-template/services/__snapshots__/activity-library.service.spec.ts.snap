@@ -19,6 +19,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
         "log_summary_type": "SUM",
         "name": "Crunches",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+        "tags": [],
         "video_urls": [],
       },
     ],
@@ -30,6 +31,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
     "log_summary_type": "SUM",
     "name": "Journaling",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+    "tags": [],
     "video_urls": [],
   },
   {
@@ -45,6 +47,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
     "log_summary_type": "SUM",
     "name": "Swimming",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
+    "tags": [],
     "video_urls": [],
   },
 ]

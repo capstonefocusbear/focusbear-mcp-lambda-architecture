@@ -8,6 +8,8 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
+import { ActivityTemplate } from '../entity/activity-template.entity';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -27,11 +29,10 @@ export class ActivityLibraryService {
         message: 'Fetching user library activities',
         data: { user_id },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      await this.validateUser(user_id);
       const libraryActivitiesPromise = this.activityTemplateRepository.orm.find({
         where: { user_id, activity_type: 'library' },
-        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions'],
+        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions', 'activity_template_tag'],
       });
       const userActivitiesPromise = this.activityRepository.orm.find({
         where: { user_id },
@@ -53,10 +54,9 @@ export class ActivityLibraryService {
         message: 'Updating user library activities',
         data: { user_id },
       });
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+      await this.validateUser(user_id);
       const activitiesToUpsert = await this.removeActivitiesNotBelongingToUser(updateActivities, user_id);
-      const { deserializedActivityTemplates, logQuantityQuestions } =
+      const { deserializedActivityTemplates, logQuantityQuestions, templateTags } =
         this.activityTemplateParserService.deserializeLibraryActivities(activitiesToUpsert, user_id);
       const activityIds = deserializedActivityTemplates.map((activityTemplate) => activityTemplate.id);
       await this.activityTemplateRepository.consistentlyUpdateLibraryActivities(
@@ -64,6 +64,7 @@ export class ActivityLibraryService {
         deserializedActivityTemplates,
         user_id,
         logQuantityQuestions,
+        templateTags,
       );
       return await this.getLibraryActivities(user_id);
     } catch (error) {
@@ -84,5 +85,58 @@ export class ActivityLibraryService {
       .filter((activity) => activity.user_id !== user_id)
       .map((activity) => activity.id);
     return templateActivitiesOnly.filter(({ id }) => !activitiesNotBelongingToUser.includes(id));
+  }
+
+  async getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto: GetRoutineSuggestionsDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'get activities related to user goals',
+        data: { ...getRoutineSuggestionsDto, user_id },
+      });
+
+      await this.validateUser(user_id);
+      const { user_goals, routine_duration } = getRoutineSuggestionsDto;
+      const activityTemplates = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(user_goals);
+      const updateActivityTemplates = activityTemplates
+        .filter((activityTemplate) => activityTemplate.duration_seconds <= routine_duration)
+        .sort(
+          (activityTemplateA, activityTemplateB) =>
+            activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
+        );
+      console.log(updateActivityTemplates);
+      return this.formatTemplates(updateActivityTemplates);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  formatTemplates(activityTemplates: ActivityTemplate[]) {
+    const MAX_NUMBER_OF_ROUTINE_HABITS = 3;
+    const morning_routine = [];
+    const evening_routine = [];
+
+    activityTemplates?.some((activityTemplate) => {
+      if (
+        morning_routine.length === MAX_NUMBER_OF_ROUTINE_HABITS &&
+        evening_routine.length === MAX_NUMBER_OF_ROUTINE_HABITS
+      ) {
+        return true;
+      } else {
+        activityTemplate.activity_type === ActivityType.morning
+          ? morning_routine.push(activityTemplate)
+          : evening_routine.push(activityTemplate);
+        return false;
+      }
+    });
+    return [...morning_routine, ...evening_routine];
+  }
+
+  async validateUser(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    return user;
   }
 }

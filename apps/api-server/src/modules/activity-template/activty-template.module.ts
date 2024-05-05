@@ -8,6 +8,7 @@ import { ActivityLibraryController } from './controllers/activity-library.contro
 import { ActivityLibraryService } from './services/activity-library.service';
 import { UserModule } from '../user/user.module';
 import { ActivityModule } from '../activity/activity.module';
+import { ActivityTemplateTagRepository } from './repository/activity-template-tag.repository';
 
 @Module({
   providers: [
@@ -15,6 +16,7 @@ import { ActivityModule } from '../activity/activity.module';
     ActivityTemplateRepository,
     ActivityTemplateParserService,
     ActivityLibraryService,
+    ActivityTemplateTagRepository,
   ],
   exports: [ActivityTemplateParserService, ActivityTemplateService, ActivityTemplateRepository, ActivityLibraryService],
   controllers: [ActivityLibraryController],

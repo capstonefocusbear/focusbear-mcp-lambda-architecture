@@ -220,6 +220,7 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.deserializeRoutineActivities.mockReturnValueOnce({
         deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
         logQuantityQuestions: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(routineHabitPackDBResponseDummy)
@@ -263,6 +264,7 @@ describe('HabitPackService', () => {
         deserializedActivityTemplates: deserializedStandaloneActivitiesDummy,
         logQuantityQuestions: [],
         packTutorials: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
@@ -278,6 +280,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         deserializedStandaloneActivitiesDummy,
+        [],
         [],
         [],
       );
@@ -306,6 +309,7 @@ describe('HabitPackService', () => {
         deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
         logQuantityQuestions: [],
         packTutorials: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
@@ -319,6 +323,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         deserializedRoutineActivitiesDummy,
+        [],
         [],
         [],
       );
@@ -341,6 +346,7 @@ describe('HabitPackService', () => {
         deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
         logQuantityQuestions: [],
         packTutorials: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
@@ -372,6 +378,7 @@ describe('HabitPackService', () => {
         deserializedRoutineActivitiesDummy,
         [],
         [],
+        [],
       );
     });
 
@@ -392,6 +399,7 @@ describe('HabitPackService', () => {
         deserializedActivityTemplates: deserializedRoutineActivitiesDummy,
         logQuantityQuestions: [],
         packTutorials: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
@@ -423,6 +431,7 @@ describe('HabitPackService', () => {
         deserializedRoutineActivitiesDummy,
         [],
         [],
+        [],
       );
     });
 
@@ -445,6 +454,7 @@ describe('HabitPackService', () => {
         deserializedActivityTemplates: breaksOnlyDeserializedRoutineActivitiesDummy,
         logQuantityQuestions: [],
         packTutorials: [],
+        templateTags: [],
       });
       HabitPackRepositoryMock.orm.findOneBy
         .mockResolvedValueOnce(null)
@@ -465,6 +475,7 @@ describe('HabitPackService', () => {
         newPack,
         activityIds,
         breaksOnlyDeserializedRoutineActivitiesDummy,
+        [],
         [],
         [],
       );

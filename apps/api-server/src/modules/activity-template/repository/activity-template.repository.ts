@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, LessThanOrEqual, Not } from 'typeorm';
+import { Connection, In, Not } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { AppDataSource } from '../../../../ormconfig';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
+import { convertMinutesToSeconds } from '../../../shared/utils/helpers';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -56,15 +57,17 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     });
   }
 
-  async getActivityTemplatesWithGoalsMatched(user_goals: string[]) {
+  async getActivityTemplatesWithGoalsMatched(user_goals: string[], duration: number) {
+    const duration_seconds = convertMinutesToSeconds(duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
     return await this.orm
       .createQueryBuilder('activity_templates')
       .select(['activity_templates'])
       .innerJoin('activity_templates.tags', 'template_tags')
       .select(`template_tags.tags::jsonb @> :goals::jsonb`)
+      .where('activity_templates.duration_seconds <= :duration_seconds')
       .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
-      .setParameters({ goals: JSON.stringify(user_goals), allowed_routines })
+      .setParameters({ goals: JSON.stringify(user_goals), allowed_routines, duration_seconds })
       .getMany();
   }
 }

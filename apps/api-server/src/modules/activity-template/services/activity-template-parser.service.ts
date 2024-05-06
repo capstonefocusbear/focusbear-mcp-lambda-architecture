@@ -102,7 +102,7 @@ export class ActivityTemplateParserService {
       level: 'debug',
       message: 'Deserializing library activities',
     });
-    const templateTags = this.getLibraryTemplateTags(serialized);
+    const templateTags = this.getTemplateTags(serialized);
     const logQuantityQuestions = this.getLogQuantityQuestions({ library_activities: serialized }, user_id);
     const deserializedActivityTemplates = serialized.flatMap((deserializedActivity, index) => {
       return this.createActivityTemplate(deserializedActivity, { activity_type: ActivityType.library, user_id, index });
@@ -364,7 +364,7 @@ export class ActivityTemplateParserService {
     }, []);
   }
 
-  getPackTemplateTags(serializedActivities: SerializedActivityTemplates) {
+  getTemplateTags(serializedActivities: UpdateActivityTemplateDto[]) {
     const activityTemplates: UpdateActivityTemplateDto[] = Object.values(serializedActivities).flat();
     return activityTemplates.reduce((tags: ActivityTemplateTag[], activityTemplate) => {
       if (activityTemplate?.tags) {
@@ -379,18 +379,8 @@ export class ActivityTemplateParserService {
     }, []);
   }
 
-  getLibraryTemplateTags(serializedActivities: UpdateActivityTemplateDto[]) {
+  getPackTemplateTags(serializedActivities: SerializedActivityTemplates) {
     const activityTemplates: UpdateActivityTemplateDto[] = Object.values(serializedActivities).flat();
-    return activityTemplates.reduce((tags: ActivityTemplateTag[], activityTemplate) => {
-      if (activityTemplate?.tags) {
-        tags.push(
-          new ActivityTemplateTag({
-            tags: activityTemplate.tags,
-            activity_template_id: activityTemplate.id,
-          }),
-        );
-      }
-      return tags;
-    }, []);
+    return this.getTemplateTags(activityTemplates);
   }
 }

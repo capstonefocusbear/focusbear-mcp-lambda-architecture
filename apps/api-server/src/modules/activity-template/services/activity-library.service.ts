@@ -98,14 +98,14 @@ export class ActivityLibraryService {
 
       await this.validateUser(user_id);
       const { user_goals, routine_duration } = getRoutineSuggestionsDto;
-      const activityTemplates = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(user_goals);
-      const updateActivityTemplates = activityTemplates
-        .filter((activityTemplate) => activityTemplate.duration_seconds <= routine_duration)
-        .sort(
-          (activityTemplateA, activityTemplateB) =>
-            activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
-        );
-      console.log(updateActivityTemplates);
+      const activityTemplates = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(
+        user_goals,
+        routine_duration,
+      );
+      const updateActivityTemplates = activityTemplates.sort(
+        (activityTemplateA, activityTemplateB) =>
+          activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
+      );
       return this.formatTemplates(updateActivityTemplates);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -114,7 +114,7 @@ export class ActivityLibraryService {
   }
 
   formatTemplates(activityTemplates: ActivityTemplate[]) {
-    const MAX_NUMBER_OF_ROUTINE_HABITS = 3;
+    const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
     const morning_routine = [];
     const evening_routine = [];
 

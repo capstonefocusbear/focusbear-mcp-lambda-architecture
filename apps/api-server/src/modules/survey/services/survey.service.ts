@@ -77,7 +77,7 @@ export class SurveyService {
         },
       });
 
-      this.validateUser(user_id);
+      await this.validateUser(user_id);
       const survey = await this.validateSurvey(survey_id);
       const foundAnswer = survey.choices?.length ? survey.choices.includes(createSurveyAnswerDto.reply) : true;
       if (!foundAnswer) {

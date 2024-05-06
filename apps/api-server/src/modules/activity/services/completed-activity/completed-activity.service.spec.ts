@@ -980,7 +980,7 @@ describe('CompletedActivityService', () => {
     const sequenceWhenThereIsNoNextActivity = new ActivitySequence({
       ...ActivitySequenceDummy,
       activity_ids: [...ActivitySequenceDummy.activity_ids, completedActivity.activity_id],
-      activities: ActivitiesArrayDummy.morning_activities,
+      activities: ActivitiesArrayDummy.morning_activities.map((activity) => ({ ...activity, tutorial: undefined })),
     });
 
     it('positive: the target device should be marked as leader', async () => {

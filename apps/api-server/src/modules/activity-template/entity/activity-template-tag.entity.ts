@@ -16,7 +16,9 @@ export class ActivityTemplateTag extends BaseEntity {
   tags: string[];
 
   @Index()
-  @Column('uuid', {
+  @Column({
+    type: 'uuid',
+    unique: true,
     nullable: false,
   })
   activity_template_id: string;

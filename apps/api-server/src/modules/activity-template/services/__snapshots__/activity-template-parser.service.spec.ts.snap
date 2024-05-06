@@ -494,7 +494,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
-      "tags": [],
+      "tags": undefined,
       "tutorial": undefined,
     },
     {
@@ -510,7 +510,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
-      "tags": [],
+      "tags": undefined,
       "tutorial": undefined,
     },
     {
@@ -526,7 +526,7 @@ exports[`ActivityTemplateParserService serialize Positive: should return seriali
       "log_quantity_questions": undefined,
       "log_summary_type": undefined,
       "pack_id": "bc55568b-59bb-4842-8a83-e92843356978",
-      "tags": [],
+      "tags": undefined,
       "tutorial": undefined,
     },
   ],
@@ -552,6 +552,7 @@ exports[`ActivityTemplateParserService serializeLibraryActivities Positive: Shou
       "name": "Crunches",
       "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
       "tags": [],
+      "tutorial": undefined,
       "video_urls": [],
     },
   ],
@@ -564,6 +565,7 @@ exports[`ActivityTemplateParserService serializeLibraryActivities Positive: Shou
   "name": "Journaling",
   "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
   "tags": [],
+  "tutorial": undefined,
   "video_urls": [],
 }
 `;

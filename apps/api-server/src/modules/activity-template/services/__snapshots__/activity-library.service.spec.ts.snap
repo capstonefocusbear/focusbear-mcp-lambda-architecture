@@ -20,6 +20,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
         "name": "Crunches",
         "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
         "tags": [],
+        "tutorial": undefined,
         "video_urls": [],
       },
     ],
@@ -32,6 +33,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
     "name": "Journaling",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
     "tags": [],
+    "tutorial": undefined,
     "video_urls": [],
   },
   {
@@ -48,6 +50,7 @@ exports[`ActivityLibraryService getLibraryActivities positive: should fetch acti
     "name": "Swimming",
     "pack_id": "8f458a6b-72ad-471b-80cc-22f47fd7c2b4",
     "tags": [],
+    "tutorial": undefined,
     "video_urls": [],
   },
 ]

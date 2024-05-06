@@ -97,10 +97,9 @@ export class ActivityLibraryService {
       });
 
       await this.validateUser(user_id);
-      const { user_goals, routine_duration } = getRoutineSuggestionsDto;
+
       const activityTemplates = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(
-        user_goals,
-        routine_duration,
+        getRoutineSuggestionsDto,
       );
       const updateActivityTemplates = activityTemplates.sort(
         (activityTemplateA, activityTemplateB) =>

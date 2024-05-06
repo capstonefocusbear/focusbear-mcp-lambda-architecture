@@ -83,7 +83,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await transactionalEntityManager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
       await transactionalEntityManager.upsert(Tutorial, tutorials, ['id']);
-      await transactionalEntityManager.upsert(ActivityTemplateTag, templateTags, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplateTag, templateTags, ['activity_template_id']);
     });
   }
 
@@ -106,8 +106,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
-      .leftJoinAndSelect('activity_templates.tutorials', 'tutorials')
-      .leftJoinAndSelect('activity_templates.tutorials', 'tutorials')
+      .leftJoinAndSelect('activity_templates.tutorial', 'tutorial')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .select([
         'habit_packs.id',
@@ -166,8 +165,8 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.linked_question_id',
-        'tutorials',
-        'template_tags',
+        'tutorial',
+        'template_tags.tags',
       ])
       .where('habit_packs.id = :id', { id: pack_id })
       .getOne();
@@ -191,6 +190,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
+      .leftJoinAndSelect('activity_templates.tutorials', 'tutorial')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .select([
         'habit_packs.id',
@@ -249,6 +249,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.linked_question_id',
+        'tutorial',
         'template_tags.tags',
       ])
       .orderBy('habit_packs.pack_name', 'ASC');
@@ -292,6 +293,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
+      .leftJoinAndSelect('activity_templates.tutorial', 'tutorial')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .select([
         'habit_packs.id',
@@ -350,6 +352,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
         'choices_log_quantity_questions.max_value_description',
         'choices_log_quantity_questions.log_summary_type',
         'choices_log_quantity_questions.linked_question_id',
+        'tutorial',
         'template_tags.tags',
       ])
       .orderBy('habit_packs.pack_name', 'ASC')

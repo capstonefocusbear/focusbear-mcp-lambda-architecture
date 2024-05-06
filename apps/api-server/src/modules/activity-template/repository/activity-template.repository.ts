@@ -7,6 +7,7 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
 import { convertMinutesToSeconds } from '../../../shared/utils/helpers';
+import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -57,17 +58,21 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     });
   }
 
-  async getActivityTemplatesWithGoalsMatched(user_goals: string[], duration: number) {
-    const duration_seconds = convertMinutesToSeconds(duration);
+  async getActivityTemplatesWithGoalsMatched(getRoutineSuggestionsDto: GetRoutineSuggestionsDto) {
+    const duration_seconds = convertMinutesToSeconds(getRoutineSuggestionsDto.routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
+    console.log(JSON.stringify(getRoutineSuggestionsDto.user_goals));
     return await this.orm
       .createQueryBuilder('activity_templates')
-      .select(['activity_templates'])
-      .innerJoin('activity_templates.tags', 'template_tags')
-      .select(`template_tags.tags::jsonb @> :goals::jsonb`)
-      .where('activity_templates.duration_seconds <= :duration_seconds')
+      .leftJoinAndSelect('activity_templates.tags', 'template_tags')
+      .where(`template_tags.tags @> :goals::jsonb`)
       .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
-      .setParameters({ goals: JSON.stringify(user_goals), allowed_routines, duration_seconds })
+      .andWhere('activity_templates.duration_seconds <= :duration_seconds')
+      .setParameters({
+        goals: JSON.stringify(getRoutineSuggestionsDto.user_goals),
+        allowed_routines,
+        duration_seconds,
+      })
       .getMany();
   }
 }

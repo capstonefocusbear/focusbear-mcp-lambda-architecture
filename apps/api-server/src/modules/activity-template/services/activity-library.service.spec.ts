@@ -7,6 +7,8 @@ import {
   activityTemplateFromDBDummy,
   activityTemplateFromDBForDifferentUserDummy,
   deserializedStandaloneActivitiesDummy,
+  dummyActivityTemplatesWithTags,
+  dummyGetRoutineSuggestionsDto,
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import {
@@ -130,6 +132,37 @@ describe('ActivityLibraryService', () => {
         [],
         [],
       );
+    });
+  });
+
+  describe('getActivitiesRelatedToUserGoals', () => {
+    it('negative: should return that the user does not exist', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesWithTags.slice(0, 3),
+      );
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        dummyGetRoutineSuggestionsDto,
+        userDummy.id,
+      );
+
+      expect(response).toHaveLength(dummyActivityTemplatesWithTags.slice(0, 3).length);
+      expect(response).toMatchObject(dummyActivityTemplatesWithTags);
     });
   });
 });

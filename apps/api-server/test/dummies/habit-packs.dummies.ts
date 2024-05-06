@@ -677,3 +677,19 @@ export const uninstalledPackRecordDummy: InstalledPack = {
   user_id: 'uuid-3',
   installation_status: false,
 };
+
+export const dummyGetRoutineSuggestionsDto = {
+  user_goals: ['increase fitness', 'meditate consistently'],
+  routine_duration: 2,
+};
+
+export const dummyActivityTemplatesWithTags = activityTemplateArrayDummy.map((template, idx) => {
+  switch (idx) {
+    case 0:
+      return { ...template, duration_seconds: 60, tags: ['increase fitness', 'meditate consistently'] };
+    case 1:
+      return { ...template, duration_seconds: 120, tags: ['increase fitness'] };
+    default:
+      return template;
+  }
+});

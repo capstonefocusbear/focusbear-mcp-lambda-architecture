@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Index, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityData } from '../../activity/domain/activity-data.model';
 import { LogSummaryType } from '../../activity/domain/log-summary-type.enum';
@@ -151,9 +151,9 @@ export class ActivityTemplate extends BaseEntity {
   @OneToMany(() => Activity, (activity) => activity.activity_template)
   activities?: Activity[];
 
-  @OneToMany(() => Tutorial, (tutorial) => tutorial.activity_template)
-  tutorials?: Tutorial[];
+  @OneToOne(() => Tutorial, (tutorial) => tutorial.activity_template)
+  tutorial?: Tutorial;
 
-  @OneToMany(() => ActivityTemplateTag, (activityTemplateTag) => activityTemplateTag.activity_template, { eager: true })
+  @OneToMany(() => ActivityTemplateTag, (activityTemplateTag) => activityTemplateTag.activity_template)
   tags?: ActivityTemplateTag[];
 }

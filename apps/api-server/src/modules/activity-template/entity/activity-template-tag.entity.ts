@@ -11,7 +11,6 @@ export class ActivityTemplateTag extends BaseEntity {
 
   @Column({
     type: 'jsonb',
-    transformer: BaseEntity.encryptJSONField('tags'),
   })
   tags: string[];
 

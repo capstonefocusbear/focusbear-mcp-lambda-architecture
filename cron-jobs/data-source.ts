@@ -41,6 +41,7 @@ import { Calendar } from '../apps/api-server/src/modules/calendar/entities/calen
 import { TrackEvent } from '../apps/api-server/src/modules/events/entities/track-event.entity';
 import { Tutorial } from '../apps/api-server/src/modules/activity/entities/tutorial.entity';
 import { Feedback } from '../libs/stripe/src/entities/feedback.entity';
+import { ActivityTemplateTag } from '../apps/api-server/src/modules/activity-template/entity/activity-template-tag.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -94,6 +95,7 @@ export const CronJobDataSource = new DataSource({
     TrackEvent,
     Tutorial,
     Feedback,
+    ActivityTemplateTag,
   ],
   subscribers: [],
   migrations: [],

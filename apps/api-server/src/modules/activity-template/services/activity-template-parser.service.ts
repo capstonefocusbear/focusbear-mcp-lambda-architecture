@@ -280,9 +280,7 @@ export class ActivityTemplateParserService {
       check_list,
       impact_category,
       tutorial: tutorial && activity_type !== ActivityType.break ? tutorial?.id : undefined,
-      tags: !template_tags
-        ? undefined
-        : template_tags.length
+      tags: template_tags?.length
         ? template_tags.reduce((templateTags, template) => templateTags.concat(template.tags), [])
         : [],
     });

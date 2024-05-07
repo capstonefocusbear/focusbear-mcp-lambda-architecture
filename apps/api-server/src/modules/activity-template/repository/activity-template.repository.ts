@@ -61,18 +61,19 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
   async getActivityTemplatesWithGoalsMatched(getRoutineSuggestionsDto: GetRoutineSuggestionsDto) {
     const duration_seconds = convertMinutesToSeconds(getRoutineSuggestionsDto.routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
-    console.log(JSON.stringify(getRoutineSuggestionsDto.user_goals));
+
     return await this.orm
       .createQueryBuilder('activity_templates')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
-      .where(`template_tags.tags @> :goals::jsonb`)
+      .where('template_tags.tags ?| :goals')
       .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
       .andWhere('activity_templates.duration_seconds <= :duration_seconds')
       .setParameters({
-        goals: JSON.stringify(getRoutineSuggestionsDto.user_goals),
+        goals: getRoutineSuggestionsDto.user_goals,
         allowed_routines,
         duration_seconds,
       })
+      .select('activity_templates')
       .getMany();
   }
 }

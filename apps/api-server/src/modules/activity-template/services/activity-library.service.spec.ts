@@ -57,7 +57,7 @@ describe('ActivityLibraryService', () => {
   });
 
   describe('getLibraryActivities', () => {
-    it('negative: should return that the user does not exist', async () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
@@ -83,7 +83,7 @@ describe('ActivityLibraryService', () => {
   });
 
   describe('updateLibraryActivities', () => {
-    it('negative: should return that the user does not exist', async () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
@@ -136,7 +136,7 @@ describe('ActivityLibraryService', () => {
   });
 
   describe('getActivitiesRelatedToUserGoals', () => {
-    it('negative: should return that the user does not exist', async () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;

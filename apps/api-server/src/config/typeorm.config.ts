@@ -45,7 +45,7 @@ import { Tutorial } from '../modules/activity/entities/tutorial.entity';
 import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
-import { SurveyMetadata } from '../modules/survey/entities/survey-metadata.entity';
+import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -107,7 +107,7 @@ export const typeormConfig = registerAs(
       Feedback,
       Survey,
       SurveyAnswer,
-      SurveyMetadata,
+      SurveyAnswerMetadata,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

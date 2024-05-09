@@ -1,13 +1,13 @@
 import { Connection } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
-import { SurveyMetadata } from '../entities/survey-metadata.entity';
+import { SurveyAnswerMetadata } from '../entities/survey-answer-metadata.entity';
 import { CreateSurveyAnswerMetaDto } from '../dto/create-survey-answer-metadata.dto';
 
 @Injectable()
-export class SurveyMetadataRepository extends BaseRepository<SurveyMetadata> {
+export class SurveyAnswerMetadataRepository extends BaseRepository<SurveyAnswerMetadata> {
   constructor(private readonly connection: Connection) {
-    super(connection, SurveyMetadata);
+    super(connection, SurveyAnswerMetadata);
   }
 
   async createSurveyAnswerMetadata(
@@ -16,7 +16,7 @@ export class SurveyMetadataRepository extends BaseRepository<SurveyMetadata> {
     user_id: string,
     survey_answer_id: string,
   ) {
-    const newSurveyAnswerMetadata = new SurveyMetadata({
+    const newSurveyAnswerMetadata = new SurveyAnswerMetadata({
       ...createSurveyAnswerMetaDto,
       survey_id,
       user_id,

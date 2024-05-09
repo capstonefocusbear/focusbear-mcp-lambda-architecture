@@ -41,6 +41,9 @@ import { Calendar } from '../apps/api-server/src/modules/calendar/entities/calen
 import { TrackEvent } from '../apps/api-server/src/modules/events/entities/track-event.entity';
 import { Tutorial } from '../apps/api-server/src/modules/activity/entities/tutorial.entity';
 import { Feedback } from '../libs/stripe/src/entities/feedback.entity';
+import { Survey } from '../apps/api-server/src/modules/survey/entities/survey.entity';
+import { SurveyAnswer } from '../apps/api-server/src/modules/survey/entities/survey-answer.entity';
+import { SurveyAnswerMetadata } from '../apps/api-server/src/modules/survey/entities/survey-answer-metadata.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -94,6 +97,9 @@ export const CronJobDataSource = new DataSource({
     TrackEvent,
     Tutorial,
     Feedback,
+    Survey,
+    SurveyAnswer,
+    SurveyAnswerMetadata,
   ],
   subscribers: [],
   migrations: [],

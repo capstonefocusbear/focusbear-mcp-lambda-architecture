@@ -4,11 +4,11 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SurveyService } from './survey.service';
 import { SurveyRepository } from '../repositories/survey.repository';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
-import { SurveyMetadataRepository } from '../repositories/survey-metadata.repository';
+import { SurveyAnswerMetadataRepository } from '../repositories/survey-answer-metadata.repository';
 import {
   SentryServiceMock,
   SurveyAnswerRepositoryMock,
-  SurveyMetadataRepositoryMock,
+  SurveyAnswerMetadataRepositoryMock,
   SurveyRepositoryMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
@@ -35,7 +35,7 @@ describe('surveyService', () => {
         SurveyService,
         SurveyRepository,
         SurveyAnswerRepository,
-        SurveyMetadataRepository,
+        SurveyAnswerMetadataRepository,
         UserRepository,
         {
           provide: SENTRY_TOKEN,
@@ -47,8 +47,8 @@ describe('surveyService', () => {
       .useValue(SurveyRepositoryMock)
       .overrideProvider(SurveyAnswerRepository)
       .useValue(SurveyAnswerRepositoryMock)
-      .overrideProvider(SurveyMetadataRepository)
-      .useValue(SurveyMetadataRepositoryMock)
+      .overrideProvider(SurveyAnswerMetadataRepository)
+      .useValue(SurveyAnswerMetadataRepositoryMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .compile();
@@ -64,7 +64,7 @@ describe('surveyService', () => {
   });
 
   describe('createSurvey', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
@@ -86,7 +86,7 @@ describe('surveyService', () => {
   });
 
   describe('updateSurvey', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
@@ -132,7 +132,7 @@ describe('surveyService', () => {
   });
 
   describe('createSurveyAnswer', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
@@ -184,7 +184,7 @@ describe('surveyService', () => {
 
       const { metadata, ...rest } = dummyCreateSurveyAnswerDto.VALID;
       expect(SurveyAnswerRepositoryMock.createSurveyAnswer).toBeCalledWith(rest, dummySurveys[0].id, userDummy.id);
-      expect(SurveyMetadataRepositoryMock.createSurveyAnswerMetadata).toBeCalledWith(
+      expect(SurveyAnswerMetadataRepositoryMock.createSurveyAnswerMetadata).toBeCalledWith(
         metadata,
         dummySurveys[0].id,
         userDummy.id,
@@ -194,7 +194,7 @@ describe('surveyService', () => {
   });
 
   describe('updateSurveyCompletion', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
@@ -252,7 +252,7 @@ describe('surveyService', () => {
   });
 
   describe('getUserUnansweredSurveys', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
@@ -276,7 +276,7 @@ describe('surveyService', () => {
   });
 
   describe('getUserUncompletedSurveys', () => {
-    it("negative: should return that the user couldn't not found", async () => {
+    it("negative: given that the user auth token is invalid, should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       const errorMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;

@@ -17,10 +17,7 @@ export class Survey extends BaseEntity {
   question: string;
 
   @Column({
-    type: 'varchar',
-    array: true,
-    default: [],
-    nullable: false,
+    type: 'jsonb',
   })
   choices?: string[];
 

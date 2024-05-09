@@ -256,7 +256,7 @@ export const SurveyAnswerRepositoryMock = {
   updateSurveyAnswerCompletion: jest.fn(),
 };
 
-export const SurveyMetadataRepositoryMock = {
+export const SurveyAnswerMetadataRepositoryMock = {
   ...BaseRepositoryMock,
   createSurveyAnswerMetadata: jest.fn(),
 };

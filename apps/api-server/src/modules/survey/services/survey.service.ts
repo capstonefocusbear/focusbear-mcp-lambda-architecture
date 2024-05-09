@@ -9,7 +9,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
-import { SurveyMetadataRepository } from '../repositories/survey-metadata.repository';
+import { SurveyAnswerMetadataRepository } from '../repositories/survey-answer-metadata.repository';
 
 @Injectable()
 export class SurveyService {
@@ -18,7 +18,7 @@ export class SurveyService {
     private readonly surveyRepository: SurveyRepository,
     private readonly userRepository: UserRepository,
     private readonly surveyAnswerRepository: SurveyAnswerRepository,
-    private readonly surveyMetadataRepository: SurveyMetadataRepository,
+    private readonly surveyAnswerMetadataRepository: SurveyAnswerMetadataRepository,
   ) {}
 
   async createSurvey(createSurveyDto: CreateSurveyDto, user_id: string) {
@@ -87,7 +87,7 @@ export class SurveyService {
       }
       const { metadata, ...rest } = createSurveyAnswerDto;
       const answer = await this.surveyAnswerRepository.createSurveyAnswer(rest, survey_id, user_id);
-      await this.surveyMetadataRepository.createSurveyAnswerMetadata(metadata, survey_id, user_id, answer.id);
+      await this.surveyAnswerMetadataRepository.createSurveyAnswerMetadata(metadata, survey_id, user_id, answer.id);
       return answer;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

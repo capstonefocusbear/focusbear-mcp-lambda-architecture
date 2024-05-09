@@ -4,9 +4,9 @@ import { User } from '../../user/entities/user.entity';
 import { Survey } from './survey.entity';
 import { SurveyAnswer } from './survey-answer.entity';
 
-@Entity('survey_metadata')
-export class SurveyMetadata extends BaseEntity {
-  constructor({ id, ...surveyMetadata }: Partial<SurveyMetadata> = {}, options = { generateId: false }) {
+@Entity('survey_answer_metadata')
+export class SurveyAnswerMetadata extends BaseEntity {
+  constructor({ id, ...surveyMetadata }: Partial<SurveyAnswerMetadata> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...surveyMetadata });
   }
@@ -47,14 +47,14 @@ export class SurveyMetadata extends BaseEntity {
     type: 'uuid',
     nullable: false,
   })
-  user_id: string;
+  survey_answer_id: string;
 
   @Index()
   @Column({
     type: 'uuid',
     nullable: false,
   })
-  survey_answer_id: string;
+  user_id: string;
 
   @OneToOne(() => Survey, (survey) => survey.id)
   @JoinColumn({ name: 'survey_id' })

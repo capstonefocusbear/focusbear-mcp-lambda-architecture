@@ -129,10 +129,6 @@ export class SyncEventsConsumer extends WorkerHost {
 
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);
-    // Refresh access token using refresh token already provided
-    if (record.data.expiry_date < DateTime.local().toMillis() + 1000) {
-      return [];
-    }
 
     const calendar = Google.calendar({ version: 'v3', auth: oauth2Client });
     const { data: googleCalendars } = await calendar.calendarList.list();

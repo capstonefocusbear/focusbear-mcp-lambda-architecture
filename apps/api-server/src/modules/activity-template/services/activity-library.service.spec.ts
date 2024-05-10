@@ -152,9 +152,8 @@ describe('ActivityLibraryService', () => {
 
     it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
-        dummyActivityTemplatesWithTags.slice(0, 3),
-      );
+      const matchedActivities = dummyActivityTemplatesWithTags.slice(0, 3);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matchedActivities);
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
         dummyGetRoutineSuggestionsDto,
@@ -162,7 +161,7 @@ describe('ActivityLibraryService', () => {
       );
 
       expect(response).toHaveLength(dummyActivityTemplatesWithTags.slice(0, 3).length);
-      expect(response).toMatchObject(dummyActivityTemplatesWithTags);
+      expect(response).toMatchObject(matchedActivities);
     });
   });
 });

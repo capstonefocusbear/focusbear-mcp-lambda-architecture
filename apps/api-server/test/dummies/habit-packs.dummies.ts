@@ -679,16 +679,16 @@ export const uninstalledPackRecordDummy: InstalledPack = {
 };
 
 export const dummyGetRoutineSuggestionsDto = {
-  user_goals: ['increase fitness', 'meditate consistently'],
-  routine_duration: 2,
+  user_goals: ['meditate consistently', 'exercise more', 'improve focus'],
+  routine_duration: 20,
 };
 
 export const dummyActivityTemplatesWithTags = activityTemplateArrayDummy.map((template, idx) => {
   switch (idx) {
     case 0:
-      return { ...template, duration_seconds: 60, tags: ['increase fitness', 'meditate consistently'] };
+      return { ...template, duration_seconds: 1400, tags: ['increase fitness', 'meditate consistently'] };
     case 1:
-      return { ...template, duration_seconds: 120, tags: ['increase fitness'] };
+      return { ...template, duration_seconds: 1600, tags: ['meditate consistently', 'exercise more', 'improve focus'] };
     default:
       return template;
   }

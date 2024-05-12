@@ -1995,3 +1995,35 @@ export const dummySubscriptionCancelFeedback = {
   INVALID_FEEDBACK: 'Short fee',
   VALID_FEEDBACK: 'Long feedback',
 };
+
+export const dummySearchToDosResponse = [
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+  }),
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'testing',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.GOOGLE },
+  }),
+  new ToDo({
+    user_id: adminUserDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.CLICK_UP },
+  }),
+];
+
+export const dummySearchToDosDto = {
+  title: 'te',
+  take: 10,
+};

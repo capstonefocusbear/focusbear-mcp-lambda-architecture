@@ -21,6 +21,8 @@ import { IntegrationFactory } from '../../integration/services/IntegrationFactor
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { Task } from '../../integration/domain/task.model';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { SearchToDosDto } from '../dto/search-to-do.dto';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 
 @Injectable()
 export class ToDoService {
@@ -32,6 +34,7 @@ export class ToDoService {
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
@@ -246,5 +249,24 @@ export class ToDoService {
 
   async generateSubtasks({ task, language }: GenerateSubtasksDto) {
     return this.openAIService.createSubtasks({ task, language });
+  }
+
+  async searchToDos(searchToDosDto: SearchToDosDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Search ToDos',
+        data: {
+          ...searchToDosDto,
+          user_id,
+        },
+      });
+
+      return await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

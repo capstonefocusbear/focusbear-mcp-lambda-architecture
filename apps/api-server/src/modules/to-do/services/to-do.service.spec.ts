@@ -21,6 +21,8 @@ import {
   CompletedFocusBlockDummy,
   QueueMock,
   ToDoDBResponseDummy,
+  dummySearchToDosDto,
+  dummySearchToDosResponse,
   syncedProjectDummy,
   userDummy,
 } from '../../../../test/dummies';
@@ -247,6 +249,20 @@ describe('toDoService', () => {
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
       expect(QueueMock.add).not.toBeCalled();
+    });
+  });
+
+  describe('searchToDos', () => {
+    it('positive: should fetch ToDos matched search title', async () => {
+      const results = dummySearchToDosResponse
+        .filter((todo) => todo.user_id === userDummy.id && todo.title.includes(dummySearchToDosDto.title))
+        .slice(0, dummySearchToDosDto.take);
+      ToDoRepositoryMock.searchUserToDos.mockResolvedValueOnce(results);
+      const response = await toDoService.searchToDos(dummySearchToDosDto, userDummy.id);
+
+      expect(ToDoRepositoryMock.searchUserToDos).toBeCalledWith(dummySearchToDosDto, userDummy.id);
+      expect(response.length).toBeLessThanOrEqual(dummySearchToDosDto.take);
+      expect(response).toEqual(results);
     });
   });
 });

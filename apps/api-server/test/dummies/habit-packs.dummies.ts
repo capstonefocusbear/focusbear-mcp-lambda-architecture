@@ -683,13 +683,52 @@ export const dummyGetRoutineSuggestionsDto = {
   routine_duration: 20,
 };
 
-export const dummyActivityTemplatesWithTags = activityTemplateArrayDummy.map((template, idx) => {
-  switch (idx) {
-    case 0:
-      return { ...template, duration_seconds: 1400, tags: ['increase fitness', 'meditate consistently'] };
-    case 1:
-      return { ...template, duration_seconds: 1600, tags: ['meditate consistently', 'exercise more', 'improve focus'] };
-    default:
-      return template;
-  }
-});
+export const dummyActivityTemplatesWithTags = [
+  {
+    id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.morning,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: false,
+    activity_data: { name: 'Journaling', video_urls: [], choice_type: ActivityChoiceType.random },
+    duration_seconds: 800,
+    parent_id: null,
+    choices: [
+      {
+        id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
+        pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+        activity_type: ActivityType.morning,
+        log_summary_type: LogSummaryType.SUM,
+        log_quantity: true,
+        activity_data: { name: 'Crunches', video_urls: [] },
+        duration_seconds: 300,
+        parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+        choices: [],
+      },
+    ],
+    tags: ['increase fitness', 'meditate consistently'],
+  },
+  {
+    id: 'b9501b60-1286-484a-b0be-5838f52e2ff9',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: false,
+    activity_data: { name: 'Swimming', video_urls: [], choice_type: ActivityChoiceType.random },
+    duration_seconds: 1100,
+    parent_id: null,
+    choices: [],
+    tags: ['meditate consistently', 'exercise more', 'improve focus'],
+  },
+  {
+    id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 600,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+  },
+];

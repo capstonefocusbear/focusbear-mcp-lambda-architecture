@@ -23,6 +23,7 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
+import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -152,16 +153,48 @@ describe('ActivityLibraryService', () => {
 
     it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const matchedActivities = dummyActivityTemplatesWithTags.slice(0, 3);
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matchedActivities);
+      const matched_activities = dummyActivityTemplatesWithTags.slice(0, 2);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
         dummyGetRoutineSuggestionsDto,
         userDummy.id,
       );
+      const response_morning_routine = response.reduce(
+        (routine, template) => {
+          if (template.activity_type === ActivityType.morning) {
+            return {
+              duration: routine.duration + template.duration_seconds,
+              count: ++routine.count,
+            };
+          }
+          return routine;
+        },
+        { duration: 0, count: 0 },
+      );
 
-      expect(response).toHaveLength(dummyActivityTemplatesWithTags.slice(0, 3).length);
-      expect(response).toMatchObject(matchedActivities);
+      const response_evening_routine = response.reduce(
+        (routine, template) => {
+          if (template.activity_type === ActivityType.evening) {
+            return {
+              duration: routine.duration + template.duration_seconds,
+              count: ++routine.count,
+            };
+          }
+          return routine;
+        },
+        { duration: 0, count: 0 },
+      );
+
+      expect(response_morning_routine.duration).toBeLessThanOrEqual(
+        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      );
+      expect(response_evening_routine.duration).toBeLessThanOrEqual(
+        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      );
+      expect(response_morning_routine.count).toBeLessThanOrEqual(5);
+      expect(response_evening_routine.count).toBeLessThanOrEqual(5);
+      expect(response).toMatchObject(matched_activities);
     });
   });
 });

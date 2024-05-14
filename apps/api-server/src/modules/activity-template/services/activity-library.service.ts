@@ -105,28 +105,42 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      return this.formatTemplates(updateActivityTemplates);
+      return this.formatTemplates(updateActivityTemplates, getRoutineSuggestionsDto.routine_duration * 60);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  formatTemplates(activityTemplates: ActivityTemplate[]) {
+  formatTemplates(activityTemplates: ActivityTemplate[], incoming_routine_duration: number) {
     const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
     const morning_routine = [];
     const evening_routine = [];
+    let routine_duration = {
+      morning_routine: 0,
+      evening_routine: 0,
+    }; //@Description: unit of duration is seconds
 
     activityTemplates?.some((activityTemplate) => {
       if (
-        morning_routine.length === MAX_NUMBER_OF_ROUTINE_HABITS &&
-        evening_routine.length === MAX_NUMBER_OF_ROUTINE_HABITS
+        (routine_duration.morning_routine >= incoming_routine_duration &&
+          routine_duration.evening_routine >= incoming_routine_duration) ||
+        (morning_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS &&
+          evening_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS)
       ) {
         return true;
       } else {
-        activityTemplate.activity_type === ActivityType.morning
-          ? morning_routine.push(activityTemplate)
-          : evening_routine.push(activityTemplate);
+        if (activityTemplate.activity_type === ActivityType.morning) {
+          if (routine_duration.morning_routine < incoming_routine_duration) {
+            morning_routine.push(activityTemplate);
+            routine_duration.morning_routine += activityTemplate.duration_seconds;
+          }
+        } else {
+          if (routine_duration.evening_routine < incoming_routine_duration) {
+            evening_routine.push(activityTemplate);
+            routine_duration.evening_routine += activityTemplate.duration_seconds;
+          }
+        }
         return false;
       }
     });

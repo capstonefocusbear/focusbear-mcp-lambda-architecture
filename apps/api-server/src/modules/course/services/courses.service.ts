@@ -9,9 +9,9 @@ import { UpdateCourseDto } from '../dto/update-course.dto';
 import { CoursesRepository } from '../repositories/courses.repository';
 import { UpdateCourseHideDto } from '../dto/update-course-hide.dto';
 import { DeleteCourseDto } from '../dto/delete-course.dto';
-import { PaginationOptionsDto } from '../dto/pagination/pagination-options.dto';
 import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 
 @Injectable()
 export class CoursesService {

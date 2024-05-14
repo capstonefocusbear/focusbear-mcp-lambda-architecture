@@ -1,3 +1,4 @@
+/* eslint-disable linebreak-style */
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Between } from 'typeorm';
 import { DateTime } from 'luxon';
@@ -124,6 +125,7 @@ const updateNotificationStatus = async (id: string) => {
     await Promise.all(sendNotificationsPromises);
     await Promise.all(updateNotificationStatusPromises);
     // give me code to change the code above to send all the push notifications simultaneously
+
     process.exit();
   } catch (error) {
     console.error(error);

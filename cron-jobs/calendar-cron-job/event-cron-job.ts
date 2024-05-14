@@ -1,3 +1,4 @@
+/* eslint-disable linebreak-style */
 import { Queue } from 'bullmq';
 import { BullQueues, BullWorkers } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';

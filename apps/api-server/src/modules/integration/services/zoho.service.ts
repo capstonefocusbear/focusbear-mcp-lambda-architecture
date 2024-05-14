@@ -122,7 +122,7 @@ export class ZohoService extends BaseIntegrationService {
       headers,
     });
 
-    return response.data.projects.map((project) => projectAdapter({ project, portalId }));
+    return response.data.projects ? response.data.projects.map((project) => projectAdapter({ project, portalId })) : [];
   }
 
   protected async tryGetPortals({ integrationRecord }): Promise<Portal[]> {

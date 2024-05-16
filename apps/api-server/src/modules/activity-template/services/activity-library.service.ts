@@ -164,9 +164,8 @@ export class ActivityLibraryService {
   }
 
   isValidTemplateDuration(template_duration: number, routine_duration: number, user_routine_duration: number) {
-    console.log(template_duration, routine_duration);
     const expected_routine_duration = template_duration + routine_duration;
-    return template_duration + routine_duration <= user_routine_duration;
+    return expected_routine_duration <= user_routine_duration;
   }
 
   async validateUser(user_id: string) {

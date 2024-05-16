@@ -105,14 +105,17 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      return this.formatTemplates(updateActivityTemplates, getRoutineSuggestionsDto.routine_duration * 60);
+      return this.userDesiredRoutineDurationMinutes(
+        updateActivityTemplates,
+        getRoutineSuggestionsDto.routine_duration * 60,
+      );
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  formatTemplates(activityTemplates: ActivityTemplate[], incoming_routine_duration: number) {
+  userDesiredRoutineDurationMinutes(activityTemplates: ActivityTemplate[], user_routine_duration: number) {
     const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
     const morning_routine = [];
     const evening_routine = [];
@@ -121,30 +124,49 @@ export class ActivityLibraryService {
       evening_routine: 0,
     }; //@Description: unit of duration is seconds
 
-    activityTemplates?.some((activityTemplate) => {
-      if (
-        (routine_duration.morning_routine >= incoming_routine_duration &&
-          routine_duration.evening_routine >= incoming_routine_duration) ||
-        (morning_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS &&
-          evening_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS)
-      ) {
-        return true;
-      } else {
-        if (activityTemplate.activity_type === ActivityType.morning) {
-          if (routine_duration.morning_routine < incoming_routine_duration) {
-            morning_routine.push(activityTemplate);
-            routine_duration.morning_routine += activityTemplate.duration_seconds;
-          }
+    activityTemplates
+      ?.sort((templateA, templateB) => templateB.duration_seconds - templateA.duration_seconds)
+      ?.some((activityTemplate) => {
+        const template_duration = parseInt(activityTemplate.duration_seconds?.toString());
+        if (
+          (routine_duration.morning_routine >= user_routine_duration &&
+            routine_duration.evening_routine >= user_routine_duration) ||
+          (morning_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS &&
+            evening_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS)
+        ) {
+          return true;
         } else {
-          if (routine_duration.evening_routine < incoming_routine_duration) {
-            evening_routine.push(activityTemplate);
-            routine_duration.evening_routine += activityTemplate.duration_seconds;
+          if (activityTemplate.activity_type === ActivityType.morning) {
+            const isValidDuration = this.isValidTemplateDuration(
+              template_duration,
+              routine_duration.morning_routine,
+              user_routine_duration,
+            );
+            if (isValidDuration) {
+              routine_duration.morning_routine += template_duration;
+              morning_routine.push(activityTemplate);
+            }
+          } else {
+            const isValidDuration = this.isValidTemplateDuration(
+              template_duration,
+              routine_duration.evening_routine,
+              user_routine_duration,
+            );
+            if (isValidDuration) {
+              evening_routine.push(activityTemplate);
+              routine_duration.evening_routine += template_duration;
+            }
           }
+          return false;
         }
-        return false;
-      }
-    });
+      });
     return [...morning_routine, ...evening_routine];
+  }
+
+  isValidTemplateDuration(template_duration: number, routine_duration: number, user_routine_duration: number) {
+    console.log(template_duration, routine_duration);
+    const expected_routine_duration = template_duration + routine_duration;
+    return template_duration + routine_duration <= user_routine_duration;
   }
 
   async validateUser(user_id: string) {

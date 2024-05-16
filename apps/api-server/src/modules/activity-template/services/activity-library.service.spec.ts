@@ -153,47 +153,47 @@ describe('ActivityLibraryService', () => {
 
     it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const matched_activities = dummyActivityTemplatesWithTags.slice(0, 2);
+      const matched_activities = activityLibraryService.userDesiredRoutineDurationMinutes(
+        dummyActivityTemplatesWithTags,
+        dummyGetRoutineSuggestionsDto.routine_duration,
+      );
+
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
         dummyGetRoutineSuggestionsDto,
         userDummy.id,
       );
-      const response_morning_routine = response.reduce(
+      const routine_response = response.reduce(
         (routine, template) => {
           if (template.activity_type === ActivityType.morning) {
             return {
-              duration: routine.duration + template.duration_seconds,
-              count: ++routine.count,
+              morning_routine_duration: routine.duration + template.duration_seconds,
+              morning_routine_count: ++routine.count,
             };
-          }
-          return routine;
-        },
-        { duration: 0, count: 0 },
-      );
-
-      const response_evening_routine = response.reduce(
-        (routine, template) => {
-          if (template.activity_type === ActivityType.evening) {
+          } else {
             return {
-              duration: routine.duration + template.duration_seconds,
-              count: ++routine.count,
+              evening_routine_duration: routine.duration + template.duration_seconds,
+              evening_routine_count: ++routine.count,
             };
           }
-          return routine;
         },
-        { duration: 0, count: 0 },
+        {
+          morning_routine_duration: 0,
+          morning_routine_count: 0,
+          evening_routine_duration: 0,
+          evening_routine_count: 0,
+        },
       );
 
-      expect(response_morning_routine.duration).toBeLessThanOrEqual(
+      expect(routine_response.morning_routine_duration).toBeLessThanOrEqual(
         dummyGetRoutineSuggestionsDto.routine_duration * 60,
       );
-      expect(response_evening_routine.duration).toBeLessThanOrEqual(
+      expect(routine_response.evening_routine_duration).toBeLessThanOrEqual(
         dummyGetRoutineSuggestionsDto.routine_duration * 60,
       );
-      expect(response_morning_routine.count).toBeLessThanOrEqual(5);
-      expect(response_evening_routine.count).toBeLessThanOrEqual(5);
+      expect(routine_response.morning_routine_count).toBeLessThanOrEqual(5);
+      expect(routine_response.evening_routine_count).toBeLessThanOrEqual(5);
       expect(response).toMatchObject(matched_activities);
     });
   });

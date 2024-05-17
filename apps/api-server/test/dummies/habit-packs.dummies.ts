@@ -6,6 +6,7 @@ import { HabitPackType } from '../../src/modules/habit-pack/domain/habit-pack-ty
 import { MarketplaceRequestType } from '../../src/modules/habit-pack/domain/marketplace-request.enum';
 import { InstalledPack } from '../../src/modules/habit-pack/entity/installed-pack.entity';
 import { userDummy } from '.';
+import { ActivityTemplateTag } from '../../src/modules/activity-template/entity/activity-template-tag.entity';
 
 export const standaloneHabitPackDummy = {
   pack_type: HabitPackType.standalone,
@@ -677,3 +678,135 @@ export const uninstalledPackRecordDummy: InstalledPack = {
   user_id: 'uuid-3',
   installation_status: false,
 };
+
+export const dummyGetRoutineSuggestionsDto = {
+  user_goals: ['meditate consistently', 'exercise more', 'improve focus'],
+  routine_duration: 20,
+};
+
+export const dummyActivityTemplatesWithTags = [
+  {
+    id: '64b9a83b-5f38-4811-9f5a-79889274e4e1',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.morning,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: false,
+    activity_data: { name: 'Journaling', video_urls: [], choice_type: ActivityChoiceType.random },
+    duration_seconds: 240,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [
+      {
+        id: '3a9061fa-1cc1-43e9-a0ca-6cbfe6a4da80',
+        pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+        activity_type: ActivityType.morning,
+        log_summary_type: LogSummaryType.SUM,
+        log_quantity: true,
+        activity_data: { name: 'Crunches', video_urls: [] },
+        duration_seconds: 300,
+        parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+        choices: [],
+      },
+    ],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['increase fitness', 'meditate consistently'],
+      }),
+    ],
+  },
+  {
+    id: 'bebe1e58-f3b0-4867-bcf2-8fd3616f40fd',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: false,
+    activity_data: { name: 'Swimming', video_urls: [], choice_type: ActivityChoiceType.random },
+    duration_seconds: 240,
+    parent_id: null,
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['meditate consistently', 'exercise more', 'improve focus'],
+      }),
+    ],
+  },
+  {
+    id: 'e220350e-aaf7-4c2f-a308-7bc82b36bfc0',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.morning,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 240,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['increase fitness', 'meditate consistently'],
+      }),
+    ],
+  },
+  {
+    id: 'b02a0065-6cb6-4a00-8fed-e58e4e8474df',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 60,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['meditate consistently', 'exercise more', 'improve focus'],
+      }),
+    ],
+  },
+  {
+    id: '8c2b55e2-bb3a-4883-882d-56bdc4ec11c6',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.morning,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 600,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['increase fitness', 'meditate consistently'],
+      }),
+    ],
+  },
+  {
+    id: '15268c21-4429-446f-bfd2-7123e35260be',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 600,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['meditate consistently', 'exercise more', 'improve focus'],
+      }),
+    ],
+  },
+  {
+    id: 'e9de160f-44cd-43ea-b721-2bf6ca776b52',
+    pack_id: '8f458a6b-72ad-471b-80cc-22f47fd7c2b4',
+    activity_type: ActivityType.evening,
+    log_summary_type: LogSummaryType.SUM,
+    log_quantity: true,
+    activity_data: { name: 'Crunches', video_urls: [] },
+    duration_seconds: 1200,
+    parent_id: 'b9501b80-1286-464a-b0be-5838f52e2ff8',
+    choices: [],
+    tags: [
+      new ActivityTemplateTag({
+        tags: ['increase fitness', 'meditate consistently'],
+      }),
+    ],
+  },
+];

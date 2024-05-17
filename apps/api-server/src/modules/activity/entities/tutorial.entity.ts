@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, Index, OneToOne, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, Index, OneToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Activity } from './activity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -33,11 +33,11 @@ export class Tutorial extends BaseEntity {
   @JoinColumn({ name: 'activity_id' })
   activity?: Activity;
 
-  @OneToOne(() => User, (user) => user.tutorial)
+  @OneToMany(() => User, (user) => user.tutorials)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => ActivityTemplate, (activityTemplate) => activityTemplate.tutorials, {
+  @OneToOne(() => ActivityTemplate, (activityTemplate) => activityTemplate.tutorial, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })

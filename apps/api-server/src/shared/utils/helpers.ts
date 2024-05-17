@@ -114,3 +114,5 @@ export const FieldTransformer = {
     return decrypted;
   },
 };
+
+export const convertMinutesToSeconds = (minutes: number, seconds?: number) => minutes * 60 + (seconds ?? 0);

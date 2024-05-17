@@ -49,6 +49,7 @@ export const ActivityTemplateRepositoryMock = {
   ...BaseRepositoryMock,
   getActivityTemplateIds: jest.fn(),
   consistentlyUpdateLibraryActivities: jest.fn(),
+  getActivityTemplatesWithGoalsMatched: jest.fn(),
 };
 
 export const CompletedActivityRepositoryMock = {

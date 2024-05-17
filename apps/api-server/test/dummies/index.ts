@@ -881,7 +881,7 @@ export const MorningActivitySequenceDummy = new ActivitySequence(
   {
     type: ActivityType.morning,
     activity_ids: ['856eb9fb-8c12-418d-b12c-fec0f2dae49d', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
-    activities: ActivitiesArrayDummy.morning_activities,
+    activities: ActivitiesArrayDummy.morning_activities.map((activity) => ({ ...activity, tutorial: undefined })),
     user_id: userDummy.id,
     total_duration_seconds: 360,
     id: morningSequenceId,
@@ -893,7 +893,7 @@ export const BreakActivitySequenceDummy = new ActivitySequence(
   {
     type: ActivityType.break,
     activity_ids: ['856eb9fb-8c12-418d-b12c-fec0f2dae49d', 'f01818e3-9e19-4b55-a2ae-15bbf2db2ec1'],
-    activities: ActivitiesArrayDummy.morning_activities,
+    activities: ActivitiesArrayDummy.break_activities.map((activity) => ({ ...activity, tutorial: undefined })),
     user_id: userDummy.id,
     total_duration_seconds: 360,
     id: randomUUID(),

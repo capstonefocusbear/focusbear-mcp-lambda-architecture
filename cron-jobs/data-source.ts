@@ -44,6 +44,7 @@ import { Feedback } from '../libs/stripe/src/entities/feedback.entity';
 import { Survey } from '../apps/api-server/src/modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../apps/api-server/src/modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../apps/api-server/src/modules/survey/entities/survey-answer-metadata.entity';
+import { ActivityTemplateTag } from '../apps/api-server/src/modules/activity-template/entity/activity-template-tag.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -100,6 +101,7 @@ export const CronJobDataSource = new DataSource({
     Survey,
     SurveyAnswer,
     SurveyAnswerMetadata,
+    ActivityTemplateTag,
   ],
   subscribers: [],
   migrations: [],

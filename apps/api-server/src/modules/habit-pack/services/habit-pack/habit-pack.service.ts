@@ -153,21 +153,24 @@ export class HabitPackService {
       let deserializedActivities;
       let questions;
       let tutorials;
+      let tags = [];
       if (upsertHabitPackDto.pack_type === HabitPackType.standalone) {
         const activities = { standalone_activities };
-        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials } =
+        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials, templateTags } =
           this.activityTemplateParserService.deserializeStandaloneActivities(activities, user_id, id);
         deserializedActivities = deserializedActivityTemplates;
         questions = logQuantityQuestions;
         tutorials = packTutorials;
+        tags = templateTags;
       }
       if (upsertHabitPackDto.pack_type === HabitPackType.routine) {
         const activities = { morning_activities, break_activities, evening_activities };
-        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials } =
+        const { deserializedActivityTemplates, logQuantityQuestions, packTutorials, templateTags } =
           this.activityTemplateParserService.deserializeRoutineActivities(activities, user_id, id);
         deserializedActivities = deserializedActivityTemplates;
         questions = logQuantityQuestions;
         tutorials = packTutorials;
+        tags = templateTags;
       }
       const activityIds = [];
       await deserializedActivities.map((activityType) => {
@@ -210,6 +213,7 @@ export class HabitPackService {
         deserializedActivities,
         questions,
         tutorials,
+        tags,
       );
       return await this.getHabitPack(id);
     } catch (error) {

@@ -181,5 +181,5 @@ export class Activity extends BaseEntity {
   activity_template?: ActivityTemplate;
 
   @OneToOne(() => Tutorial, (tutorial) => tutorial.activity)
-  tutorial?: string;
+  tutorial?: Tutorial;
 }

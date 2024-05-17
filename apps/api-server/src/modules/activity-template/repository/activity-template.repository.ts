@@ -5,6 +5,9 @@ import { ActivityTemplate } from '../entity/activity-template.entity';
 import { AppDataSource } from '../../../../ormconfig';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
+import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
+import { convertMinutesToSeconds } from '../../../shared/utils/helpers';
+import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -28,6 +31,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     activityTemplates: ActivityTemplate[],
     user_id: string,
     logQuantityQuestions: LogQuantityQuestion[],
+    templateTags: ActivityTemplateTag[],
   ) {
     await AppDataSource.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(ActivityTemplate, {
@@ -50,6 +54,26 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
         activity_template_id: In(activityTemplateIds),
       });
       await transactionalEntityManager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
+      await transactionalEntityManager.upsert(ActivityTemplateTag, templateTags, ['id']);
     });
+  }
+
+  async getActivityTemplatesWithGoalsMatched(getRoutineSuggestionsDto: GetRoutineSuggestionsDto) {
+    const duration_seconds = convertMinutesToSeconds(getRoutineSuggestionsDto.routine_duration);
+    const allowed_routines = [ActivityType.morning, ActivityType.evening];
+
+    return await this.orm
+      .createQueryBuilder('activity_templates')
+      .leftJoinAndSelect('activity_templates.tags', 'template_tags')
+      .where('template_tags.tags ?| :goals')
+      .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
+      .andWhere('activity_templates.duration_seconds <= :duration_seconds')
+      .setParameters({
+        goals: getRoutineSuggestionsDto.user_goals,
+        allowed_routines,
+        duration_seconds,
+      })
+      .select('activity_templates')
+      .getMany();
   }
 }

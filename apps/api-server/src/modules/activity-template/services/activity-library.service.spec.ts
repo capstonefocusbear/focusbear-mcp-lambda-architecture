@@ -7,6 +7,8 @@ import {
   activityTemplateFromDBDummy,
   activityTemplateFromDBForDifferentUserDummy,
   deserializedStandaloneActivitiesDummy,
+  dummyActivityTemplatesWithTags,
+  dummyGetRoutineSuggestionsDto,
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import {
@@ -21,6 +23,7 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
+import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -55,7 +58,7 @@ describe('ActivityLibraryService', () => {
   });
 
   describe('getLibraryActivities', () => {
-    it('negative: should return that the user does not exist', async () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
@@ -81,7 +84,7 @@ describe('ActivityLibraryService', () => {
   });
 
   describe('updateLibraryActivities', () => {
-    it('negative: should return that the user does not exist', async () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
       let exception: any;
@@ -128,7 +131,70 @@ describe('ActivityLibraryService', () => {
         [],
         userDummy.id,
         [],
+        [],
       );
+    });
+  });
+
+  describe('getActivitiesRelatedToUserGoals', () => {
+    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const matched_activities = activityLibraryService.userDesiredRoutineDurationMinutes(
+        dummyActivityTemplatesWithTags,
+        dummyGetRoutineSuggestionsDto.routine_duration,
+      );
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        dummyGetRoutineSuggestionsDto,
+        userDummy.id,
+      );
+      const routine_response = response.reduce(
+        (routine, template) => {
+          if (template.activity_type === ActivityType.morning) {
+            return {
+              morning_routine_duration: routine.duration + template.duration_seconds,
+              morning_routine_count: ++routine.count,
+            };
+          } else {
+            return {
+              evening_routine_duration: routine.duration + template.duration_seconds,
+              evening_routine_count: ++routine.count,
+            };
+          }
+        },
+        {
+          morning_routine_duration: 0,
+          morning_routine_count: 0,
+          evening_routine_duration: 0,
+          evening_routine_count: 0,
+        },
+      );
+
+      expect(routine_response.morning_routine_duration).toBeLessThanOrEqual(
+        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      );
+      expect(routine_response.evening_routine_duration).toBeLessThanOrEqual(
+        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      );
+      expect(routine_response.morning_routine_count).toBeLessThanOrEqual(5);
+      expect(routine_response.evening_routine_count).toBeLessThanOrEqual(5);
+      expect(response).toMatchObject(matched_activities);
     });
   });
 });

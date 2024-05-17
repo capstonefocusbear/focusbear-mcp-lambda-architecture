@@ -1,6 +1,6 @@
 import { Connection } from 'typeorm';
 import { Injectable } from '@nestjs/common';
-import { PaginationOptionsDto } from '../../../../src/shared/pagination/pagination-options.dto';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Survey } from '../entities/survey.entity';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
@@ -18,7 +18,7 @@ export class SurveyRepository extends BaseRepository<Survey> {
   }
 
   async getUserSurvey(id: string, user_id: string) {
-    return await this.orm.findOne({
+    return this.orm.findOne({
       where: {
         id,
         creator: user_id,
@@ -27,7 +27,7 @@ export class SurveyRepository extends BaseRepository<Survey> {
   }
 
   async getSurvey(id: string) {
-    return await this.orm.findOne({
+    return this.orm.findOne({
       where: {
         id,
       },
@@ -39,7 +39,7 @@ export class SurveyRepository extends BaseRepository<Survey> {
   }
 
   async getUserUnansweredSurveys() {
-    return await this.orm
+    return this.orm
       .createQueryBuilder('survey')
       .select('survey')
       .innerJoin(SurveyAnswer, 'answer', 'answer.survey_id != survey.id')
@@ -47,7 +47,7 @@ export class SurveyRepository extends BaseRepository<Survey> {
   }
 
   async getUserSurveys(user_id: string, completed: boolean) {
-    return await this.orm
+    return this.orm
       .createQueryBuilder('survey')
       .select('survey')
       .leftJoinAndSelect(SurveyAnswer, 'answer', 'survey.id = answer.survey_id')
@@ -57,7 +57,7 @@ export class SurveyRepository extends BaseRepository<Survey> {
   }
 
   async getSurveys({ order, skip, take }: PaginationOptionsDto) {
-    return await this.orm.findAndCount({
+    return this.orm.findAndCount({
       order: { created_at: order },
       skip,
       take,

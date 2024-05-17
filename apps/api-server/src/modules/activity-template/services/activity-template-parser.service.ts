@@ -53,7 +53,6 @@ export class ActivityTemplateParserService {
     const logQuantityQuestions = this.getLogQuantityQuestions(serialized, user_id);
     const packTutorials = this.getTutorials(serialized, user_id);
     const templateTags = this.getPackTemplateTags(serialized);
-    console.log('=====', templateTags);
     return { deserializedActivityTemplates, logQuantityQuestions, packTutorials, templateTags };
   }
 

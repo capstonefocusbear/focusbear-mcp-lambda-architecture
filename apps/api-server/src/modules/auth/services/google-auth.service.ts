@@ -57,7 +57,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/offline'
+      'https://www.googleapis.com/auth/offline',
     ];
     const authorizationUrl = this.oauth2Client.generateAuthUrl({
       access_type: 'offline',

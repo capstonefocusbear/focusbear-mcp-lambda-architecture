@@ -1,5 +1,5 @@
-import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityTemplate } from './activity-template.entity';
 
 @Entity('activity_template_tag')

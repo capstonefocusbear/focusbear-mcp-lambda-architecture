@@ -168,15 +168,14 @@ describe('ActivityLibraryService', () => {
         (routine, template) => {
           if (template.activity_type === ActivityType.morning) {
             return {
-              morning_routine_duration: routine.duration + template.duration_seconds,
-              morning_routine_count: ++routine.count,
-            };
-          } else {
-            return {
-              evening_routine_duration: routine.duration + template.duration_seconds,
-              evening_routine_count: ++routine.count,
+              morning_routine_duration: routine.morning_routine_duration + template.duration_seconds,
+              morning_routine_count: routine.morning_routine_count + 1,
             };
           }
+          return {
+            evening_routine_duration: routine.evening_routine_duration + template.duration_seconds,
+            evening_routine_count: routine.evening_routine_count + 1,
+          };
         },
         {
           morning_routine_duration: 0,

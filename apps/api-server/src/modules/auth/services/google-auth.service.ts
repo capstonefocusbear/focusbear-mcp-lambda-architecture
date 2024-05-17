@@ -13,6 +13,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { User } from '../../user/entities/user.entity';
 import { GoogleCalendarService } from '../../calendar/services/google-calendar.service';
 import { BullQueues } from '../../../shared/utils/constants';
+import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
 
 @Injectable()
 export class GoogleAuthService implements IIntegrationAuthService {
@@ -57,7 +58,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/offline'
+      'https://www.googleapis.com/auth/offline',
     ];
     const authorizationUrl = this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -85,7 +86,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
     try {
-      const data = await this.requestAuthorize(authorizeQuery);
+      const data: PlatformIntegrationMetadataDto = await this.requestAuthorize(authorizeQuery);
       if (!data.access_token) {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }

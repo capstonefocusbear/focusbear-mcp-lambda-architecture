@@ -62,7 +62,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     const duration_seconds = convertMinutesToSeconds(getRoutineSuggestionsDto.routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
 
-    return await this.orm
+    return this.orm
       .createQueryBuilder('activity_templates')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .where('template_tags.tags ?| :goals')

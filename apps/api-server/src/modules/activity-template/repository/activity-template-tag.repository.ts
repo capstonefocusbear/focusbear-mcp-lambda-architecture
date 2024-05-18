@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from '../../../../src/shared/repositories/base-repository.repository';
-import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
 import { Connection } from 'typeorm';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
+import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
 
 @Injectable()
 export class ActivityTemplateTagRepository extends BaseRepository<ActivityTemplateTag> {

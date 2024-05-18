@@ -19,11 +19,11 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
       survey_id,
       user_id,
     });
-    return await this.orm.save(newSurveyAnswer);
+    return this.orm.save(newSurveyAnswer);
   }
 
   async getSurveyAnswer(survey_id: string, user_id: string) {
-    return await this.orm.findOne({
+    return this.orm.findOne({
       where: {
         survey_id,
         user_id,

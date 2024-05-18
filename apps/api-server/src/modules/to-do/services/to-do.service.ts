@@ -4,6 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
 import { OpenAIService } from '@app/openai';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
@@ -22,7 +23,6 @@ import { PlatformIntegrationRepository } from '../../platform-integrations/repos
 import { Task } from '../../integration/domain/task.model';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 
 @Injectable()
 export class ToDoService {

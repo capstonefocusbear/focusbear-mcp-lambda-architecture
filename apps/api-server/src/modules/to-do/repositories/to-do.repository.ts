@@ -72,7 +72,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       ])
       .where('to_do.user_id = :user_id AND to_do.status != :status', { user_id: userId, status: 'COMPLETED' })
       .getMany();
-    //@Description: todo title is an encrypted column
+    // @Description: todo title is an encrypted column
     return result.filter((todo) => todo.title.includes(title)).slice(0, take);
   }
 }

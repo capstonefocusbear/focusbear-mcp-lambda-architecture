@@ -58,22 +58,27 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     });
   }
 
-  async getActivityTemplatesWithGoalsMatched(getRoutineSuggestionsDto: GetRoutineSuggestionsDto) {
-    const duration_seconds = convertMinutesToSeconds(getRoutineSuggestionsDto.routine_duration);
+  async getActivityTemplatesWithGoalsMatched({ routine_duration, user_goals, routine }: GetRoutineSuggestionsDto) {
+    const duration_seconds = convertMinutesToSeconds(routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
 
-    return this.orm
+    const query = this.orm
       .createQueryBuilder('activity_templates')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .where('template_tags.tags ?| :goals')
       .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
       .andWhere('activity_templates.duration_seconds <= :duration_seconds')
       .setParameters({
-        goals: getRoutineSuggestionsDto.user_goals,
+        goals: user_goals,
         allowed_routines,
         duration_seconds,
       })
-      .select('activity_templates')
-      .getMany();
+      .select('activity_templates');
+
+    if (routine) {
+      query.andWhere('activity_templates.activity_type = :activity_type', { activity_type: routine });
+    }
+
+    return query.getMany();
   }
 }

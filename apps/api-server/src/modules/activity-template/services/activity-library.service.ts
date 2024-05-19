@@ -32,7 +32,7 @@ export class ActivityLibraryService {
       await this.validateUser(user_id);
       const libraryActivitiesPromise = this.activityTemplateRepository.orm.find({
         where: { user_id, activity_type: 'library' },
-        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions', 'activity_template_tag'],
+        relations: ['choices', 'choices.log_quantity_questions', 'log_quantity_questions', 'tags'],
       });
       const userActivitiesPromise = this.activityRepository.orm.find({
         where: { user_id },

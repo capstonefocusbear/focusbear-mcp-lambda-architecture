@@ -190,7 +190,7 @@ export class HabitPackRepository extends BaseRepository<HabitPack> {
       .leftJoinAndSelect('activity_templates.choices', 'choices')
       .leftJoinAndSelect('activity_templates.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
-      .leftJoinAndSelect('activity_templates.tutorials', 'tutorial')
+      .leftJoinAndSelect('activity_templates.tutorial', 'tutorial')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
       .select([
         'habit_packs.id',

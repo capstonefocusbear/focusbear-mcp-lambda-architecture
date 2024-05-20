@@ -77,7 +77,12 @@ export class GoogleAuthService implements IIntegrationAuthService {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
     }
 
-    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, data, accountId);
+    const formattedData: PlatformIntegrationMetadataDto = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    }
+    
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, formattedData, accountId);
   }
 
   async getUser(userId: string): Promise<User> {

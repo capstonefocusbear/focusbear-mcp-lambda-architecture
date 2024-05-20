@@ -43,7 +43,7 @@ export class UserFeedbackService {
       app: appPlatform,
       version: appVersion,
       user_id: userId,
-      operating_system: device?.operating_system ?? 'undefined',
+      operating_system: device?.operating_system ?? requestHeaders.operating_system,
     };
     const savedFeedback = new UserFeedback({ user_id: userId, rating, feedback, metadata: combinedMetadata });
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);

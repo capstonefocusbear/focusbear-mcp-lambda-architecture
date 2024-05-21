@@ -136,6 +136,8 @@ export class ActivityLibraryService {
         ) {
           return true;
         }
+        const { activity_data, ...rest } = activityTemplate;
+        const template = { ...activity_data, ...rest };
         if (activityTemplate.activity_type === ActivityType.morning) {
           const isValidDuration = this.isValidTemplateDuration(
             template_duration,
@@ -144,7 +146,7 @@ export class ActivityLibraryService {
           );
           if (isValidDuration) {
             routine_duration.morning_routine += template_duration;
-            morning_routine.push(activityTemplate);
+            morning_routine.push(template);
           }
         } else {
           const isValidDuration = this.isValidTemplateDuration(
@@ -153,7 +155,7 @@ export class ActivityLibraryService {
             user_routine_duration,
           );
           if (isValidDuration) {
-            evening_routine.push(activityTemplate);
+            evening_routine.push(template);
             routine_duration.evening_routine += template_duration;
           }
         }

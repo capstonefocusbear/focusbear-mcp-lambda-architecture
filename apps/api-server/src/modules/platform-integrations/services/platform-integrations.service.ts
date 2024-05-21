@@ -33,7 +33,7 @@ export class PlatformIntegrationsService {
     if (existingRecord) {
       const platformIntegration = new PlatformIntegration({
         ...existingRecord,
-        data: { ...existingRecord.data, ...data },
+        data,
       });
       await this.platformIntegrationsRepository.orm.save(platformIntegration);
       return;

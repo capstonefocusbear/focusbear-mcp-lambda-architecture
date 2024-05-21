@@ -13,6 +13,7 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { User } from '../../user/entities/user.entity';
 import { GoogleCalendarService } from '../../calendar/services/google-calendar.service';
 import { BullQueues } from '../../../shared/utils/constants';
+import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
 
 @Injectable()
 export class GoogleAuthService implements IIntegrationAuthService {
@@ -76,7 +77,12 @@ export class GoogleAuthService implements IIntegrationAuthService {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
     }
 
-    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, data, accountId);
+    const formattedData: PlatformIntegrationMetadataDto = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    }
+    
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, formattedData, accountId);
   }
 
   async getUser(userId: string): Promise<User> {
@@ -85,7 +91,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
     try {
-      const data = await this.requestAuthorize(authorizeQuery);
+      const data: PlatformIntegrationMetadataDto = await this.requestAuthorize(authorizeQuery);
       if (!data.access_token) {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }

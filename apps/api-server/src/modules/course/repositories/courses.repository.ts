@@ -177,7 +177,21 @@ export class CoursesRepository {
       },
       skip: paginationOptionsDto.skip,
       take: paginationOptionsDto.take,
-      relations: ['ratings'],
+      relations: {
+        ratings: true,
+        author: true,
+      },
+      select: {
+        ratings: {
+          rating: true,
+          review: true,
+          user_id: true,
+          created_at: true,
+        },
+        author: {
+          username: true,
+        },
+      },
     });
     const paginationMetaDto = new PaginationMetaDto({ itemCount: entities.length, paginationOptionsDto });
     return new PaginationDto(entities, paginationMetaDto);

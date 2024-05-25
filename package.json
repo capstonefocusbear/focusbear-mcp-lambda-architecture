@@ -59,6 +59,7 @@
     "cheerio": "^1.0.0-rc.12",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.14.0",
+    "dd-trace": "^5.14.1",
     "fastify": "^4.10.2",
     "fastify-cors": "^6.1.0",
     "fastify-helmet": "^7.1.0",

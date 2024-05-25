@@ -197,8 +197,11 @@ export class SyncEventsConsumer extends WorkerHost {
       singleEvents: true,
       orderBy: 'startTime',
     });
+    if (!data?.items?.length) return [];
+    const eventsData = await calendar.events.get({ calendarId, eventId: data?.items[0]?.id });
+    const creatorEmail = eventsData?.data?.creator?.email;
 
-    return data.items.map((event) => this.notificationGoogleAdapter({ event, userId, calendarId }));
+    return data.items.map((event) => this.notificationGoogleAdapter({ event, userId, calendarId, creatorEmail }));
   }
 
   async getMicrosoftEvent({
@@ -228,15 +231,17 @@ export class SyncEventsConsumer extends WorkerHost {
     event,
     userId,
     calendarId,
+    creatorEmail: accountId,
   }: {
     event: calendar_v3.Schema$Event;
     userId: string;
     calendarId: string;
+    creatorEmail: string;
   }) {
-    const { id, summary, description, start, end, creator } = event;
+    const { id, summary, description, start, end } = event;
     const { date, dateTime: event_begins } = start;
     const { dateTime: event_ends } = end;
-    const { email: accountId } = creator;
+
     if (date) {
       return;
     }

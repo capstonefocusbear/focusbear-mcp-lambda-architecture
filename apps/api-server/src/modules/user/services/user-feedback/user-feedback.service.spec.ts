@@ -92,6 +92,7 @@ describe('UserFeedbackService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       DeviceRepositoryMock.orm.findOneBy.mockResolvedValueOnce(DeviceDummy);
+      EventsServiceMock.getLastFiftyEvents.mockResolvedValueOnce([]);
 
       await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
 

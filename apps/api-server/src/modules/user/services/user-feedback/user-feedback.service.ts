@@ -50,7 +50,10 @@ export class UserFeedbackService {
     const saveFeedbackPromise = this.userFeedbackRepository.orm.save(savedFeedback);
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
     const lastFiftyEvents = await this.eventsService.getLastFiftyEvents(userId);
-    const messageData = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
+    // format the event names array to be numbered and a new line after each event name
+    const eventNames = lastFiftyEvents.map((event, index) => `${index + 1}. ${event.event_type}`).join('\n');
+    const operatingSystem = combinedMetadata.operating_system;
+    const emailBody = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
       combinedMetadata,
       null,
       2,
@@ -59,14 +62,15 @@ export class UserFeedbackService {
       null,
       2,
     )}`;
+    const slackMessage = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n OS: ${operatingSystem} \n\n Event Names: \n\n ${eventNames}`;
     const slackLogPromise = this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
-      text: messageData,
+      text: slackMessage,
     });
     const emailPromise = this.emailService.sendEmail({
       to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: auth0User.email,
-      text: JSON.stringify(messageData),
+      text: JSON.stringify(emailBody),
       subject: `${EMAIL_SUBJECTS.USER_SURVEY_FEEDBACK}`,
     });
     await Promise.all([saveFeedbackPromise, updateUserPromise, slackLogPromise, emailPromise]);

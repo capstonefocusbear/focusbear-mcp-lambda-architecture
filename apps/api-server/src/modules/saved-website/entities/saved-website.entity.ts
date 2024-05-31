@@ -22,6 +22,9 @@ export class SavedWebsite extends BaseEntity {
   @Column({ type: 'jsonb', default: null, nullable: true })
   metadata: any;
 
+  @Column({ type: 'varchar', nullable: true, transformer: BaseEntity.encryptField('note') })
+  note?: string;
+
   @ManyToOne(() => User, (user) => user.saved_websites, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

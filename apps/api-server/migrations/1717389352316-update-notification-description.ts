@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class UpdateNotificationDescription1717389352316 implements MigrationInterface {
-  name = 'UpdateTableNotificationsIncreaseFieldCharacterLimits1714450883924';
+  name = 'UpdateNotificationDescription1717389352316';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('ALTER TABLE "notifications" ALTER COLUMN "description" TYPE TEXT;');

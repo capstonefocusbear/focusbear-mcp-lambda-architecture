@@ -56,8 +56,7 @@ export class Notification extends BaseEntity {
   summary?: string;
 
   @Column({
-    type: 'varchar',
-    length: 10000,
+    type: 'text',
     transformer: FieldTransformer,
   })
   description?: string;

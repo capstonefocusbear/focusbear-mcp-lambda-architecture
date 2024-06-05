@@ -10,6 +10,7 @@ import { DeleteToDoQuery } from '../dto/delete-todo-query.dto';
 import { ToDoResponse } from '../dto/to-do-response.dto';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
+import { RecentToDoDto } from '../dto/recent-to-do.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -44,5 +45,10 @@ export class TodoController {
   @Get('search')
   async searchToDos(@Query() searchToDosDto: SearchToDosDto, @AuthContext() { user }: Passport) {
     return this.toDoService.searchToDos(searchToDosDto, user.id);
+  }
+
+  @Get('recent')
+  async recentToDos(@Query() recentToDoDto: RecentToDoDto, @AuthContext() { user }: Passport) {
+    return this.toDoService.getRecentToDos(recentToDoDto, user.id);
   }
 }

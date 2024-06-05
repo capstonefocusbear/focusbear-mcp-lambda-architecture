@@ -157,6 +157,7 @@ export const ToDoRepositoryMock = {
   ...BaseRepositoryMock,
   getUserToDos: jest.fn(),
   searchUserToDos: jest.fn(),
+  getUserRecentToDos: jest.fn(),
 };
 
 export const TaskTimeLogsRepositoryMock = {

@@ -2103,3 +2103,38 @@ export const dummySurveyAnswers = [
 ];
 
 export const dummyPaginationOptionsDto = new PaginationOptionsDto();
+
+export const dummyRecentToDosResponse = [
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+    updated_at: '2024-05-12',
+  }),
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'testing',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.GOOGLE },
+    updated_at: '2024-06-02',
+  }),
+  new ToDo({
+    user_id: adminUserDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.CLICK_UP },
+    updated_at: '2024-05-29',
+  }),
+];
+
+export const dummyRecentToDosDto = {
+  updated_at: '2024-05-25',
+  take: 15,
+};

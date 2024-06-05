@@ -23,6 +23,7 @@ import { PlatformIntegrationRepository } from '../../platform-integrations/repos
 import { Task } from '../../integration/domain/task.model';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
+import { RecentToDoDto } from '../dto/recent-to-do.dto';
 
 @Injectable()
 export class ToDoService {
@@ -264,6 +265,25 @@ export class ToDoService {
       });
 
       return await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getRecentToDos(recentToDoDto: RecentToDoDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Get Recent ToDos',
+        data: {
+          ...recentToDoDto,
+          user_id,
+        },
+      });
+
+      return await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

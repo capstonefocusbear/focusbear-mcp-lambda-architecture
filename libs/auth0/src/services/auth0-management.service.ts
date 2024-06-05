@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { ManagementClient } from 'auth0';
+import { DeviceCredential, ManagementClient } from 'auth0';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService } from '../interfaces';
 
@@ -24,5 +24,15 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
   async deleteAuth0User(auth0Id: string) {
     await this.users.delete({ id: auth0Id });
+  }
+
+  async getDeviceCredentials(auth0Id: string): Promise<any> {
+    try {
+      const response = await this.deviceCredentials.getAll({ user_id: auth0Id });
+      return response.data;
+    } catch (error) {
+      console.log('Failed to fetch device credentials: ', error);
+      return [];
+    }
   }
 }

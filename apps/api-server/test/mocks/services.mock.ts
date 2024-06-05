@@ -40,6 +40,7 @@ export const Auth0ManagementServiceMock = {
   getAuth0User: jest.fn(),
   getAuth0UserWithEmail: jest.fn(),
   deleteAuth0User: jest.fn(),
+  getDeviceCredentials: jest.fn(),
 };
 
 export const UserServiceMock = {

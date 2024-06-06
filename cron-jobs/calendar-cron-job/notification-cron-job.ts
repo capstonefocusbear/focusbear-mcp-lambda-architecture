@@ -11,6 +11,7 @@ import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/ca
 const dotenv = require('dotenv');
 
 dotenv.config();
+const JEREMY_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 async function fetchEvents() {
   const currentTime = DateTime.now().toJSDate();
@@ -20,6 +21,9 @@ async function fetchEvents() {
     relations: ['user'],
     select: ['id', 'summary', 'description', 'event_begins', 'event_ends', 'user_id', 'user'],
   });
+
+  console.log('eventsFromFetchEvents', JSON.stringify(events));
+  
   const allExcludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
     where: {},
   });
@@ -46,15 +50,26 @@ async function fetchEvents() {
         calendar.calendar_id === event.calendar_id
       );
     });
-    if (userCalendars.length === 0) return false;
+    if (userCalendars.length === 0) {
+      if (event.user_id === JEREMY_USER_ID) {
+        console.log('Not triggering event because userCalendars.length is 0 ');
+      }
+      return false;
+    }
     if (excludedKeywords.length === 0) return true;
     let canNotify = true;
     excludedKeywords.forEach((element) => {
       if (element.intitle && event.summary.includes(element.keyword)) {
+        if (event.user_id === JEREMY_USER_ID) {
+          console.log('Not triggering event because of excluded keyword title ', element.keyword);
+        }
         canNotify = false;
       }
       if (element.indescription && event.description.includes(element.keyword)) {
         canNotify = false;
+        if (event.user_id === JEREMY_USER_ID) {
+          console.log('Not triggering event because of excluded keyword description', element.keyword);
+        }
       }
     });
     return canNotify;
@@ -73,6 +88,10 @@ const NOTIFICATION_TITLES = {
 };
 
 const sendBeamsPushNotification = async (userId: string, language: string, notificationData: Notification) => {
+  if (userId === JEREMY_USER_ID) {
+    console.log('Sending Notification to User, ', userId, JSON.stringify(notificationData));
+  }
+  
   try {
     const publishRequest: BeamsPublishRequest = {
       apns: {

@@ -26,7 +26,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     await this.users.delete({ id: auth0Id });
   }
 
-  async getDeviceCredentials(auth0Id: string): Promise<any> {
+  async getDeviceCredentials(auth0Id: string): Promise<DeviceCredential[]> {
     try {
       const response = await this.deviceCredentials.getAll({ user_id: auth0Id });
       return response.data;

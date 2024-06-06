@@ -1,1 +1,9 @@
 export const AUTH0_MODULE_OPTIONS = Symbol('AUTH0_MODULE_OPTIONS');
+export const IOS_OPERATING_SYSTEM = "iOS";
+export const MACOS_OPERATING_SYSTEM = "MacOS";
+export const WINDOWS_OPERATING_SYSTEM = "Windows";
+export const ANDROID_OPERATING_SYSTEM = "Android";
+export const ANDROID_DEVICE_NAME = "okhttp";
+export const MAC_CLIENT_ID = "dgMrlNC5mM634Sxi9SLqIqi0WvgVpwX7";
+export const WINDOWS_CLIENT_ID = "YAYPDa7sAVKuheZy3dYWyzNncOSZq98I";
+export const MOBILE_CLIENT_ID = ["cZ2J5dR8FliHiTyOdlyk18wKottWxPaC", "9hhQ3ymKQQsrAHkHlrVYzMPoJ9VZqrJ8"];

@@ -2,9 +2,11 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -49,11 +51,13 @@ import { PlatformIntegrationsService } from '../../../platform-integrations/serv
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
+import { DeviceService } from '../../../device/services/device/device.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -73,7 +77,9 @@ export class UserService {
     @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly deviceRepository: DeviceRepository,
-  ) {}
+    @Inject(forwardRef(() => DeviceService))
+    private readonly deviceService: DeviceService,
+  ) { }
 
   async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
@@ -132,14 +138,17 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
 
-        const devices = await this.deviceRepository.orm.find({
+        let devicesFromDb = await this.deviceRepository.orm.find({
           where: { user_id: registeredUser?.id },
           order: { created_at: 'ASC' },
         });
 
+        let os = devicesFromDb.length > 0 ? devicesFromDb[0]?.operating_system
+          : await this.deviceService.syncDevicesFromAuth0(userProperties.auth0_id);
+
         const stripeCustomer = await this.stripeService.registerNewCustomer(
           email,
-          devices ? devices[0]?.operating_system : '',
+          os
         );
         stripeId = stripeCustomer.id;
         Object.assign(userProperties, { stripe_customer_id: stripeId });

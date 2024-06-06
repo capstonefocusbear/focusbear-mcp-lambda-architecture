@@ -17,12 +17,23 @@ import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
+import { Auth0Module } from '@app/auth0';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
+      imports: [
+        Auth0Module.forRoot({
+          clientId: process.env.AUTH0_MANAGEMENT_CLIENT_ID,
+          clientSecret: process.env.AUTH0_MANAGEMENT_CLIENT_SECRET,
+          domain: process.env.AUTH0_DOMAIN,
+          connection: process.env.AUTH0_CONNECTION || 'Username-Password-Authentication',
+          identifier: process.env.AUTH0_IDENTIFIER,
+          actionSecret: process.env.AUTH0_ACTION_SECRET,
+        }),
+      ],
       providers: [
         DeviceService,
         DeviceRepository,
@@ -171,6 +182,40 @@ describe('DeviceService', () => {
       await deviceService.getDevicesForAdmin(userDummy.id, userId);
 
       expect(DeviceRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userId } });
+    });
+  });
+
+  describe('syncDevicesFromAuth0', () => {
+    it('if the user logged in via Mac, it should correctly identify the MacOS', async () => {
+      const auth0_id = 'google-oauth2|100067461214713541778';
+
+      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
+
+      expect(os).toEqual('MacOS');
+    });
+
+    it('if the user logged in via iOS, it should correctly identify the iOS', async () => {
+      const auth0_id = 'auth0|65ba88de9e3dda5e3660c1e5';
+
+      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
+
+      expect(os).toEqual('iOS');
+    });
+
+    it('if the user logged in via Android, it should correctly identify the Android', async () => {
+      const auth0_id = 'auth0|6645e9c0980de0bad72157fd';
+
+      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
+
+      expect(os).toEqual('Android');
+    });
+
+    it('if the user logged in via Windows, it should correctly identify the Windows', async () => {
+      const auth0_id = 'auth0|662e0a89a78d71cf0c5ede27';
+
+      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
+
+      expect(os).toEqual('Windows');
     });
   });
 });

@@ -31,7 +31,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       const response = await this.deviceCredentials.getAll({ user_id: auth0Id });
       return response.data;
     } catch (error) {
-      console.log('Failed to fetch device credentials: ', error);
+      console.error('Failed to fetch device credentials: ', error);
       return [];
     }
   }

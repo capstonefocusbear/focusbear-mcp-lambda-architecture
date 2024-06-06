@@ -17,11 +17,10 @@ import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
-import { Auth0ManagementService, Auth0Module } from '@app/auth0';
+import { Auth0Module } from '@app/auth0';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
-  let auth0ManagementService: Auth0ManagementService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -55,7 +54,6 @@ describe('DeviceService', () => {
       .compile();
 
     deviceService = moduleRef.get<DeviceService>(DeviceService);
-    auth0ManagementService = moduleRef.get<Auth0ManagementService>(Auth0ManagementService);
   });
 
   it('should be defined', () => {
@@ -187,7 +185,7 @@ describe('DeviceService', () => {
     });
   });
 
-  describe("syncDevicesFromAuth0", () => {
+  describe('syncDevicesFromAuth0', () => {
     it('if the user logged in via Mac, it should correctly identify the MacOS', async () => {
       const auth0_id = 'google-oauth2|100067461214713541778';
 

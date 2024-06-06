@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { UserProfile as Auth0UserProfile } from 'auth0';
+import { UserProfile as Auth0UserProfile, DeviceCredentialTypeEnum } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
 import { CalendarPlatforms } from '../../src/modules/platform-integrations/domain/calendar-platforms.enum';
@@ -33,6 +33,13 @@ import { SyncedProject } from '../../src/modules/to-do/entities/synced-project.e
 import { PaymentType } from '../../src/modules/team/domain/payment-type.enum';
 import { AnswerType } from '../../src/modules/survey/domain/answer-type.enum';
 import { PaginationOptionsDto } from '../../src/shared/pagination/pagination-options.dto';
+import {
+  ANDROID_DEVICE_NAME,
+  IOS_OPERATING_SYSTEM,
+  MACOS_OPERATING_SYSTEM,
+  UNKNOWN_OPERATING_SYSTEM,
+  WINDOWS_OPERATING_SYSTEM,
+} from '../../../../libs/auth0/src/auth0.constants';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -83,7 +90,7 @@ export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,
-  device: 'Windows',
+  device: MACOS_OPERATING_SYSTEM,
 };
 
 export const deserializedActivitiesDummy = [
@@ -2103,3 +2110,86 @@ export const dummySurveyAnswers = [
 ];
 
 export const dummyPaginationOptionsDto = new PaginationOptionsDto();
+
+export const dummyRecentToDosResponse = [
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.ZOHO },
+    updated_at: '2024-05-12',
+  }),
+  new ToDo({
+    user_id: userDummy.id,
+    id: randomUUID(),
+    title: 'testing',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.GOOGLE },
+    updated_at: '2024-06-02',
+  }),
+  new ToDo({
+    user_id: adminUserDummy.id,
+    id: randomUUID(),
+    title: 'test',
+    details: '',
+    external_task_id: randomUUID(),
+    external_task_metadata: { platform: IntegrationPlatforms.CLICK_UP },
+    updated_at: '2024-05-29',
+  }),
+];
+
+export const dummyRecentToDosDto = {
+  updated_at: '2024-05-25',
+  take: 15,
+};
+
+export const dummyDeviceCredentials = [
+  {
+    id: 'dev_abc123',
+    device_name: MACOS_OPERATING_SYSTEM,
+    type: 'public_key' as DeviceCredentialTypeEnum,
+    user_id: 'auth0|1234567890',
+    client_id: 'dgMrlNC5mM634Sxi9SLqIqi0WvgVpwX7',
+    created_at: '2023-06-01T12:00:00.000Z',
+    updated_at: '2023-06-01T12:00:00.000Z',
+  },
+  {
+    id: 'dev_def456',
+    device_name: WINDOWS_OPERATING_SYSTEM,
+    type: 'public_key' as DeviceCredentialTypeEnum,
+    user_id: 'auth0|1234567890',
+    client_id: 'YAYPDa7sAVKuheZy3dYWyzNncOSZq98I',
+    created_at: '2023-06-02T12:00:00.000Z',
+    updated_at: '2023-06-02T12:00:00.000Z',
+  },
+  {
+    id: 'dev_def789',
+    device_name: ANDROID_DEVICE_NAME,
+    type: 'public_key' as DeviceCredentialTypeEnum,
+    user_id: 'auth0|1234567890',
+    client_id: 'cZ2J5dR8FliHiTyOdlyk18wKottWxPaC',
+    created_at: '2023-06-02T12:00:00.000Z',
+    updated_at: '2023-06-02T12:00:00.000Z',
+  },
+  {
+    id: 'dev_ghi732',
+    device_name: IOS_OPERATING_SYSTEM,
+    type: 'public_key' as DeviceCredentialTypeEnum,
+    user_id: 'auth0|1234567890',
+    client_id: '9hhQ3ymKQQsrAHkHlrVYzMPoJ9VZqrJ8',
+    created_at: '2023-06-02T12:00:00.000Z',
+    updated_at: '2023-06-02T12:00:00.000Z',
+  },
+  {
+    id: 'dev_ghi520',
+    device_name: UNKNOWN_OPERATING_SYSTEM,
+    type: 'public_key' as DeviceCredentialTypeEnum,
+    user_id: 'auth0|1234567890',
+    client_id: 'unknown4934023',
+    created_at: '2023-06-02T12:00:00.000Z',
+    updated_at: '2023-06-02T12:00:00.000Z',
+  },
+];

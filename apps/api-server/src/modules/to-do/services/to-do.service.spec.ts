@@ -4,6 +4,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { getQueueToken } from '@nestjs/bull';
 import { OpenAIService } from '@app/openai';
+import { DateTime } from 'luxon';
 import {
   IntegrationFactoryMock,
   OpenAIServiceMock,
@@ -21,6 +22,8 @@ import {
   CompletedFocusBlockDummy,
   QueueMock,
   ToDoDBResponseDummy,
+  dummyRecentToDosDto,
+  dummyRecentToDosResponse,
   dummySearchToDosDto,
   dummySearchToDosResponse,
   syncedProjectDummy,
@@ -262,6 +265,24 @@ describe('toDoService', () => {
 
       expect(ToDoRepositoryMock.searchUserToDos).toBeCalledWith(dummySearchToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummySearchToDosDto.take);
+      expect(response).toEqual(results);
+    });
+  });
+
+  describe('getRecentToDos', () => {
+    it('positive: should fetch a recently updated ToDos before the specified date', async () => {
+      const results = dummyRecentToDosResponse
+        .filter(
+          (todo) =>
+            todo.user_id === userDummy.id &&
+            DateTime.fromISO(todo.updated_at) >= DateTime.fromISO(dummyRecentToDosDto.updated_at),
+        )
+        .slice(0, dummyRecentToDosDto.take);
+      ToDoRepositoryMock.getUserRecentToDos.mockResolvedValueOnce(results);
+      const response = await toDoService.getRecentToDos(dummyRecentToDosDto, userDummy.id);
+
+      expect(ToDoRepositoryMock.getUserRecentToDos).toBeCalledWith(dummyRecentToDosDto, userDummy.id);
+      expect(response.length).toBeLessThanOrEqual(dummyRecentToDosDto.take);
       expect(response).toEqual(results);
     });
   });

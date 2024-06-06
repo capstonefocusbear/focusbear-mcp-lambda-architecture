@@ -2,8 +2,10 @@ import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
-import { DeviceDummy, userDummy } from '../../../../../test/dummies';
+import { Auth0ManagementService, Auth0Module } from '../../../../../../../libs/auth0/src';
+import { DeviceDummy, dummyDeviceCredentials, userDummy } from '../../../../../test/dummies';
 import {
+  Auth0ManagementServiceMock,
   DeviceRepositoryMock,
   SentryServiceMock,
   UserRepositoryMock,
@@ -17,7 +19,6 @@ import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
-import { Auth0Module } from '@app/auth0';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
@@ -45,12 +46,14 @@ describe('DeviceService', () => {
         },
       ],
     })
-      .overrideProvider(DeviceRepository)
-      .useValue(DeviceRepositoryMock)
       .overrideProvider(UserService)
       .useValue(UserServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(DeviceRepository)
+      .useValue(DeviceRepositoryMock)
       .compile();
 
     deviceService = moduleRef.get<DeviceService>(DeviceService);
@@ -187,35 +190,32 @@ describe('DeviceService', () => {
 
   describe('syncDevicesFromAuth0', () => {
     it('if the user logged in via Mac, it should correctly identify the MacOS', async () => {
-      const auth0_id = 'google-oauth2|100067461214713541778';
-
-      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
-
-      expect(os).toEqual('MacOS');
+      const [mac] = dummyDeviceCredentials;
+      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue(dummyDeviceCredentials);
+      const response = await deviceService.syncDevicesFromAuth0(mac.user_id);
+      expect(response).toEqual(deviceService.parseDeviceFromCredentials(mac));
     });
 
     it('if the user logged in via iOS, it should correctly identify the iOS', async () => {
-      const auth0_id = 'auth0|65ba88de9e3dda5e3660c1e5';
-
-      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
-
-      expect(os).toEqual('iOS');
+      const ios = dummyDeviceCredentials.pop();
+      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue([ios, ...dummyDeviceCredentials]);
+      const response = await deviceService.syncDevicesFromAuth0(ios.user_id);
+      expect(response).toEqual(deviceService.parseDeviceFromCredentials(ios));
     });
 
     it('if the user logged in via Android, it should correctly identify the Android', async () => {
-      const auth0_id = 'auth0|6645e9c0980de0bad72157fd';
-
-      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
-
-      expect(os).toEqual('Android');
+      const android = dummyDeviceCredentials[2];
+      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue([android, ...dummyDeviceCredentials]);
+      const response = await deviceService.syncDevicesFromAuth0(android.user_id);
+      expect(response).toEqual(deviceService.parseDeviceFromCredentials(android));
     });
 
     it('if the user logged in via Windows, it should correctly identify the Windows', async () => {
-      const auth0_id = 'auth0|662e0a89a78d71cf0c5ede27';
-
-      const os = await deviceService.syncDevicesFromAuth0(auth0_id);
-
-      expect(os).toEqual('Windows');
+      const windows = dummyDeviceCredentials[1];
+      dummyDeviceCredentials.unshift(windows);
+      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue(dummyDeviceCredentials);
+      const response = await deviceService.syncDevicesFromAuth0(windows.user_id);
+      expect(response).toEqual(deviceService.parseDeviceFromCredentials(windows));
     });
   });
 });

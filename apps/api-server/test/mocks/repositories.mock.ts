@@ -67,6 +67,7 @@ export const CompletedActivityRepositoryMock = {
 
 export const DeviceRepositoryMock = {
   ...BaseRepositoryMock,
+  syncDevicesFromAuth0: jest.fn(),
 };
 
 export const ActivityRepositoryMock = {
@@ -157,6 +158,7 @@ export const ToDoRepositoryMock = {
   ...BaseRepositoryMock,
   getUserToDos: jest.fn(),
   searchUserToDos: jest.fn(),
+  getUserRecentToDos: jest.fn(),
 };
 
 export const TaskTimeLogsRepositoryMock = {

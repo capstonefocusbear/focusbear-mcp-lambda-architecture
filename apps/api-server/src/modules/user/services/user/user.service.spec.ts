@@ -12,11 +12,11 @@ import { getQueueToken } from '@nestjs/bull';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
-  DeviceDummy,
   QueueMock,
   auth0UserDummy,
+  dummyDeviceCredentials,
   focusModeTemplateDBResponseDummy,
-  userDummy
+  userDummy,
 } from '../../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -35,6 +35,7 @@ import {
   OpenAIServiceMock,
   CompletedActivityServiceMock,
   PlatformIntegrationsServiceMock,
+  DeviceServiceMock,
   DeviceRepositoryMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -57,6 +58,7 @@ import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types
 import { BullQueues } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
+import { DeviceService } from '../../../device/services/device/device.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 
 // Mock axios and set the type
@@ -64,7 +66,6 @@ jest.mock('axios');
 
 describe('UserService', () => {
   let userService: UserService;
-  let auth0ManagementService: Auth0ManagementService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -87,6 +88,7 @@ describe('UserService', () => {
         CompletedActivityService,
         OpenAIService,
         PlatformIntegrationsService,
+        DeviceService,
         DeviceRepository,
         {
           provide: SENTRY_TOKEN,
@@ -128,11 +130,12 @@ describe('UserService', () => {
       .useValue(OpenAIServiceMock)
       .overrideProvider(PlatformIntegrationsService)
       .useValue(PlatformIntegrationsServiceMock)
+      .overrideProvider(DeviceService)
+      .useValue(DeviceServiceMock)
       .overrideProvider(DeviceRepository)
       .useValue(DeviceRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
-    auth0ManagementService = moduleRef.get<Auth0ManagementService>(Auth0ManagementService);
 
     jest.clearAllMocks();
     jest.resetAllMocks();
@@ -140,7 +143,6 @@ describe('UserService', () => {
 
   it('should be defined', () => {
     expect(userService).toBeDefined();
-    expect(auth0ManagementService).toBeDefined();
   });
 
   describe('syncUserAccount', () => {
@@ -187,10 +189,8 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
-      DeviceRepositoryMock.orm.find.mockResolvedValue([
-        // eslint-disable-next-line no-underscore-dangle
-        { ...DeviceDummy, user_id: auth0UserDummy._id, operating_system: auth0UserDummy.device },
-      ]);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.syncDevicesFromAuth0.mockResolvedValue(dummyDeviceCredentials[0].device_name);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 

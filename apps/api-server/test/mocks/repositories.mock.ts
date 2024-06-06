@@ -67,6 +67,7 @@ export const CompletedActivityRepositoryMock = {
 
 export const DeviceRepositoryMock = {
   ...BaseRepositoryMock,
+  syncDevicesFromAuth0: jest.fn(),
 };
 
 export const ActivityRepositoryMock = {

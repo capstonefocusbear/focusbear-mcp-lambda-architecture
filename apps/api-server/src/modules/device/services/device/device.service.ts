@@ -1,13 +1,5 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
-import { OperatingSystem } from '../../domain/operating-system.enum';
-import { CreateDeviceDto } from '../../dto/create-device.dto';
-import { Device } from '../../entities/device.entity';
-import { DeviceRepository } from '../../repositories/device.repository';
-import { UserService } from '../../../user/services/user/user.service';
-import { UserRepository } from '../../../user/repositories/user.repository';
-import { UserTypes } from '../../../user/domain/user-types.enum';
 import { Auth0ManagementService } from '@app/auth0';
 import {
   MAC_CLIENT_ID,
@@ -17,8 +9,18 @@ import {
   MOBILE_CLIENT_ID,
   ANDROID_DEVICE_NAME,
   ANDROID_OPERATING_SYSTEM,
-  IOS_OPERATING_SYSTEM
+  IOS_OPERATING_SYSTEM,
+  UNKNOWN_OPERATING_SYSTEM,
 } from '@app/auth0/auth0.constants';
+import { DeviceCredential } from 'auth0';
+import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
+import { OperatingSystem } from '../../domain/operating-system.enum';
+import { CreateDeviceDto } from '../../dto/create-device.dto';
+import { Device } from '../../entities/device.entity';
+import { DeviceRepository } from '../../repositories/device.repository';
+import { UserService } from '../../../user/services/user/user.service';
+import { UserRepository } from '../../../user/repositories/user.repository';
+import { UserTypes } from '../../../user/domain/user-types.enum';
 
 @Injectable()
 export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
@@ -109,38 +111,24 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 
-  async syncDevicesFromAuth0(auth0_id) {
+  async syncDevicesFromAuth0(auth0_id: string) {
     // fetch credentials from auth0
     const credentials = await this.auth0ManagementService.getDeviceCredentials(auth0_id);
-
-    // parse devices from credentials
-    const devicesFromCredential = await this.parseDeviceFromCredentials(
-      credentials
-    );
-    return devicesFromCredential.length > 0
-      ? devicesFromCredential[0].operating_system
-      : '';
+    return credentials?.length ? this.parseDeviceFromCredentials(credentials[0]) : '';
   }
 
-  parseDeviceFromCredentials = async (credentials) => {
-    const devices = credentials?.map(({ client_id, device_name }) => {
-      switch (client_id) {
-        case MAC_CLIENT_ID:
-          return { operating_system: MACOS_OPERATING_SYSTEM };
-        case WINDOWS_CLIENT_ID:
-          return { operating_system: WINDOWS_OPERATING_SYSTEM };
-        default:
-          if (MOBILE_CLIENT_ID.includes(client_id)) {
-            return {
-              operating_system: device_name === ANDROID_DEVICE_NAME
-                ? ANDROID_OPERATING_SYSTEM
-                : IOS_OPERATING_SYSTEM,
-            };
-          }
-          return null;
+  parseDeviceFromCredentials = ({ client_id, device_name }: DeviceCredential) => {
+    switch (client_id) {
+      case MAC_CLIENT_ID:
+        return MACOS_OPERATING_SYSTEM;
+      case WINDOWS_CLIENT_ID:
+        return WINDOWS_OPERATING_SYSTEM;
+      default: {
+        if (MOBILE_CLIENT_ID.includes(client_id)) {
+          return device_name === ANDROID_DEVICE_NAME ? ANDROID_OPERATING_SYSTEM : IOS_OPERATING_SYSTEM;
+        }
+        return UNKNOWN_OPERATING_SYSTEM;
       }
-    }).filter(Boolean) || [];
-
-    return devices;
+    }
   };
 }

@@ -2,6 +2,8 @@ name: github-ci
 on: 
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 env:
   RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -36,6 +38,7 @@ jobs:
         run: npm run test:cov
 
       - name: Deploy on render.com
+        if: github.event_name == 'push' && github.ref_name == 'main'
         run: npm run render:deploy
 
 

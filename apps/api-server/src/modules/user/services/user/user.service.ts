@@ -50,7 +50,6 @@ import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
-import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { DeviceService } from '../../../device/services/device/device.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
@@ -612,9 +611,8 @@ export class UserService {
   }
 
   async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto, userId: string) {
-    const user = await this.userRepository.orm.findOneBy({ id: userId });
-    const isPaidUser = user.revenue_cat_status !== Entitlement.trial;
-    return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto, isPaidUser);
+    await this.userRepository.orm.findOneBy({ id: userId });
+    return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

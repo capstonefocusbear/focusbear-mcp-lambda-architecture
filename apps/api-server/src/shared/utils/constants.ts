@@ -110,6 +110,8 @@ export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
+export const GPT_4O = 'gpt-4o';
+
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
   REVENUE_CAT_STATUS = 'revenue-cat-status',

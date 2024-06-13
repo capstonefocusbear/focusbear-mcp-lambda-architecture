@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ChatCompletionChunk, ChatCompletionMessageParam } from 'openai/resources';
-import { createActivityFunction, createFocusModeFunction } from '../../../shared/utils/constants';
+import { GPT_4O, createActivityFunction, createFocusModeFunction } from '../../../shared/utils/constants';
 import { UserSettingsService } from '../../user/services/user-settings/user-settings.service';
 import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
 import { CreateFocusModeDto } from '../../focus-mode/dto/create-focus-mode.dto';
@@ -92,7 +92,7 @@ export class AiService {
         };
 
         const chatCompletionStream = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model: GPT_4O,
           messages: chatHistory,
           temperature: 0.2,
           n: 1,
@@ -128,7 +128,7 @@ export class AiService {
 
       const chatCompletionStreamTwo = await openai.chat.completions.create(
         {
-          model: 'gpt-3.5-turbo',
+          model: GPT_4O,
           messages: [
             {
               role: 'system',

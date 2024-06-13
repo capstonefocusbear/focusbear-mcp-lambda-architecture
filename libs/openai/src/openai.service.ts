@@ -9,6 +9,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
+import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -92,7 +93,7 @@ export class OpenAIService {
 
       const chatCompletionStream = await openai.chat.completions.create(
         {
-          model: 'gpt-3.5-turbo',
+          model: GPT_4O,
           messages,
           temperature: 0.7,
           n: 1,
@@ -139,7 +140,7 @@ export class OpenAIService {
         const stream = new Stream.PassThrough();
         const chatCompletionStream = await openai.chat.completions.create(
           {
-            model: 'gpt-3.5-turbo',
+            model: GPT_4O,
             messages: chatHistory,
             temperature: 0.7,
             n: 1,
@@ -166,7 +167,7 @@ export class OpenAIService {
     }
   }
 
-  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto, isPaidUser: boolean) {
+  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
     if (!isUrlSafeDto?.url || !this.isValidURL(isUrlSafeDto?.url)) {
       return null;
     }
@@ -203,7 +204,7 @@ export class OpenAIService {
     let retryCount = 0;
     while (retryCount < 3) {
       try {
-        const model = isPaidUser ? 'gpt-4-turbo' : 'gpt-3.5-turbo';
+        const model = GPT_4O;
         const completions = await openai.chat.completions.create({
           model,
           messages: [defaultChat],
@@ -309,7 +310,7 @@ export class OpenAIService {
       JSON output:`,
     };
     const completions = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: GPT_4O,
       messages: [defaultChat],
       temperature: 0,
       n: 1,
@@ -328,7 +329,7 @@ export class OpenAIService {
       JSON output:`,
     };
     const completions = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: GPT_4O,
       messages: [defaultChat],
       temperature: 0,
       n: 1,

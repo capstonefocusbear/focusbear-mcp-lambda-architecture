@@ -5,6 +5,7 @@ import PushNotifications = require('@pusher/push-notifications-server');
 import OpenAI from 'openai';
 // eslint-disable-next-line import/extensions
 import * as S3 from 'aws-sdk/clients/s3.js';
+import { GPT_4O } from '../../apps/api-server/src/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
@@ -91,7 +92,7 @@ async function generateRoutineNotification(routine: string, fileName: string, la
   for (let i = 0; i <= maxRetries; i++) {
     try {
       const response = await openAiAPI.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: GPT_4O,
         messages: [{ role: 'system', content: getPrompt(routine, language) }],
         temperature: 0.5,
         max_tokens: 100,

@@ -34,12 +34,9 @@ describe('StripeService', () => {
 
   describe('cancelSubscriptionSession', () => {
     it("negative:should throw BadRequestException, if user subscription couldn't be found in Stripe", async () => {
-      const subId = 'sub_1234';
-      const exceptionMessage = `No such subscription: '${subId}'`;
+      const exceptionMessage = `No active subscription found for user ID: ${userDummy.id}`;
       let exception: any;
-      service.customers.retrieve = jest
-        .fn()
-        .mockResolvedValue({ id: userDummy.stripe_customer_id, subscriptions: { data: [{ id: subId }] } });
+      service.subscriptions.list = jest.fn().mockResolvedValue({ data: [] });
 
       try {
         await service.cancelSubscriptionSession(

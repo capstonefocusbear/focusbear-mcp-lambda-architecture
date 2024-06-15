@@ -165,13 +165,12 @@ export class StripeService extends Stripe {
 
   async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
     try {
-      const minimum_feedback_characters_length = 10;
-      if (cancel_subscription_reason?.length < minimum_feedback_characters_length) {
-        throw new BadRequestException(
-          `Feedback number of characters should be greater than or equal to ${minimum_feedback_characters_length}`,
-        );
+      const stripeUser: any = await this.customers.retrieve(user.stripeCustomerId, { expand: ['subscriptions'] });
+      const subscriptionId = stripeUser?.subscriptions?.data[0]?.id ?? null;
+      if (!subscriptionId) {
+        throw new BadRequestException(`No active subscription found for user with ID: ${user.id}`);
       }
-      await this.subscriptions.cancel(user.stripeCustomerId);
+      await this.subscriptions.cancel(subscriptionId);
       const feedback = new Feedback({
         cancel_subscription_reason,
         user_id: user.id,

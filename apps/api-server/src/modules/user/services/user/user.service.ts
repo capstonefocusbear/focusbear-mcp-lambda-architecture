@@ -136,10 +136,10 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
 
-        const devicesFromDb = await this.deviceRepository.orm.find({
-          where: { user_id: registeredUser?.id },
+        const devicesFromDb = registeredUser ? await this.deviceRepository.orm.find({
+          where: { user_id: registeredUser.id },
           order: { created_at: 'ASC' },
-        });
+        }) : [];
 
         const os =
           devicesFromDb.length > 0

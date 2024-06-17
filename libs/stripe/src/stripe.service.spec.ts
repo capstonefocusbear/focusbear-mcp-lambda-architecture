@@ -1,6 +1,5 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IStripeOptions } from './interfaces';
 import { StripeModule } from './stripe.module';
@@ -34,31 +33,10 @@ describe('StripeService', () => {
   });
 
   describe('cancelSubscriptionSession', () => {
-    it('negative:should throw BadRequestException, if user feedback character length less than 10', async () => {
-      const exceptionMessage = 'Feedback number of characters should be greater than or equal to 10';
-      let exception: any;
-      service.subscriptions.cancel = jest.fn().mockRejectedValue(null);
-
-      try {
-        await service.cancelSubscriptionSession(
-          { cancel_subscription_reason: dummySubscriptionCancelFeedback.INVALID_FEEDBACK },
-          { id: userDummy.id, stripeCustomerId: userDummy.stripe_customer_id },
-        );
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toMatch(exceptionMessage);
-    });
-
     it("negative:should throw BadRequestException, if user subscription couldn't be found in Stripe", async () => {
-      const exceptionMessage = `No such subscription: '${userDummy.stripe_customer_id}'`;
+      const exceptionMessage = `No active subscription found for user ID: ${userDummy.id}`;
       let exception: any;
-      service.subscriptions.cancel = jest.fn().mockRejectedValue({
-        message: exceptionMessage,
-      });
+      service.subscriptions.list = jest.fn().mockResolvedValue({ data: [] });
 
       try {
         await service.cancelSubscriptionSession(

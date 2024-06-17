@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
@@ -165,13 +165,13 @@ export class StripeService extends Stripe {
 
   async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
     try {
-      const minimum_feedback_characters_length = 10;
-      if (cancel_subscription_reason?.length < minimum_feedback_characters_length) {
-        throw new BadRequestException(
-          `Feedback number of characters should be greater than or equal to ${minimum_feedback_characters_length}`,
-        );
+      const subscriptions = await this.subscriptions.list({ customer: user.stripeCustomerId, status: 'active' });
+      if (!subscriptions.data.length) {
+        throw new NotFoundException(`No active subscription found for user ID: ${user.id}`);
       }
-      await this.subscriptions.cancel(user.stripeCustomerId);
+      const subscriptionId = subscriptions.data[0].id;
+      await this.cancelSubscription(subscriptionId);
+      await this.subscriptions.cancel(subscriptionId);
       const feedback = new Feedback({
         cancel_subscription_reason,
         user_id: user.id,

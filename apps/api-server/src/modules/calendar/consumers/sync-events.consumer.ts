@@ -14,6 +14,8 @@ import { CalendarRepository } from '../repositories/calendar.repository';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { MicrosoftCalendarEventDto } from '../dto/microsoft-calendar-event.dto';
 import { Notification } from '../../notification/entities/notification.entity';
+import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
+import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 
 @Processor(BullQueues.SYNC_EVENTS)
 export class SyncEventsConsumer extends WorkerHost {
@@ -107,6 +109,20 @@ export class SyncEventsConsumer extends WorkerHost {
     return null;
   }
 
+  async getPlatformIntegrationData(platform: string, userId: string, userExternalId?: string) {
+    let platformRecord;
+    if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
+      platformRecord = await this.platformIntegrationRepository.orm.findOne({
+        where: { user_id: userId, platform, external_user_id: userExternalId },
+      });
+      return platformRecord;
+    }
+    platformRecord = await this.platformIntegrationRepository.orm.findOne({
+      where: { user_id: userId, platform },
+    });
+    return platformRecord;
+  }
+
   async getGoogleEvents(userId: string, account: string) {
     const platform = CalendarPlatforms.GOOGLE;
     // get platform integration data according to userId and accountId.
@@ -129,6 +145,34 @@ export class SyncEventsConsumer extends WorkerHost {
 
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);
+    if (record.data.expiry_date < DateTime.local().toMillis() + 1000) {
+      // Access token is expired
+      // Refresh access token using refresh token already provided
+      oauth2Client.refreshAccessToken(async (err, tokens) => {
+        if (err) {
+          console.error('Error refreshing access token: ', err);
+          return;
+        }
+
+        // Update your storage with new tokens
+        const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
+        if (existingRecord) {
+          const data = {
+            access_token: tokens.access_token,
+            expiry_date: tokens.expiry_date,
+          };
+
+          const platformIntegration = new PlatformIntegration({
+            ...existingRecord,
+            data,
+          });
+          await this.platformIntegrationRepository.orm.save(platformIntegration);
+        }
+
+        // Set the new credentials
+        oauth2Client.setCredentials(tokens);
+      });
+    }
 
     const calendar = Google.calendar({ version: 'v3', auth: oauth2Client });
     const { data: googleCalendars } = await calendar.calendarList.list();

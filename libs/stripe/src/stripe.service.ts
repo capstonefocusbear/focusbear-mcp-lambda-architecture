@@ -169,9 +169,7 @@ export class StripeService extends Stripe {
       if (!subscriptions.data.length) {
         throw new NotFoundException(`No active subscription found for user ID: ${user.id}`);
       }
-      const subscriptionId = subscriptions.data[0].id;
-      await this.cancelSubscription(subscriptionId);
-      await this.subscriptions.cancel(subscriptionId);
+      await this.cancelSubscription(subscriptions.data[0].id);
       const feedback = new Feedback({
         cancel_subscription_reason,
         user_id: user.id,

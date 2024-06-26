@@ -165,7 +165,7 @@ export class StripeService extends Stripe {
 
   async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
     try {
-      const subscriptions = await this.subscriptions.list({ customer: user.stripeCustomerId, status: 'active' });
+      const subscriptions = await this.subscriptions.list({ customer: user.stripeCustomerId });
       if (!subscriptions.data.length) {
         throw new NotFoundException(`No active subscription found for user ID: ${user.id}`);
       }

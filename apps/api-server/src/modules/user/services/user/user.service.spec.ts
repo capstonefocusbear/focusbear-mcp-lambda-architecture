@@ -14,7 +14,7 @@ import {
   ActivityDummy,
   QueueMock,
   auth0UserDummy,
-  dummyDeviceCredentials,
+  dummyAuth0Client,
   focusModeTemplateDBResponseDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -149,6 +149,7 @@ describe('UserService', () => {
     const syncAccountDto: SyncUserAccountDto = {
       auth0_id: 'dcidejd348ryhjeckwx3',
       email: 'some@email.com',
+      auth0_client: dummyAuth0Client[0]
     };
 
     const emptySubscriber = {
@@ -190,14 +191,14 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
-      DeviceServiceMock.syncDevicesFromAuth0.mockResolvedValue(dummyDeviceCredentials[0].device_name);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockResolvedValue(dummyAuth0Client[0]);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 
       await userService.syncUserAccount(syncAccountDto);
 
       expect(UserRepositoryMock.create).toBeCalled();
-      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email, auth0UserDummy.device);
+      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email, auth0UserDummy.auth0_client);
       expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toBeCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toBeCalledWith(userDummy.id);

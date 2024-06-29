@@ -37,9 +37,13 @@ import {
   ANDROID_DEVICE_NAME,
   IOS_OPERATING_SYSTEM,
   MACOS_OPERATING_SYSTEM,
+  MAC_CLIENT_ID,
+  MOBILE_CLIENT_ID,
   UNKNOWN_OPERATING_SYSTEM,
+  WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
+import { Auth0ClientDto } from 'apps/api-server/src/modules/user/dto/auth0-client.dto';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -90,7 +94,10 @@ export const auth0UserDummy: Auth0UserProfile = {
   _id: '1',
   email: 'some@email.com',
   email_verified: true,
-  device: MACOS_OPERATING_SYSTEM,
+  auth0_client: {
+    client_id: MAC_CLIENT_ID,
+    name: 'MacOS device name'
+  },
 };
 
 export const deserializedActivitiesDummy = [
@@ -2193,3 +2200,22 @@ export const dummyDeviceCredentials = [
     updated_at: '2023-06-02T12:00:00.000Z',
   },
 ];
+
+export const dummyAuth0Client: Auth0ClientDto[] = [
+  {
+    client_id: MAC_CLIENT_ID,
+    name: 'MacOS device name'
+  },
+  {
+    client_id: WINDOWS_CLIENT_ID,
+    name: 'Windows device name'
+  },
+  {
+    client_id: MOBILE_CLIENT_ID[0],
+    name: ANDROID_DEVICE_NAME
+  },
+  {
+    client_id: MOBILE_CLIENT_ID[1],
+    name: 'iOS device name'
+  },
+]

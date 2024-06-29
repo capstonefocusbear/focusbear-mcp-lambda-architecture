@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
 import { Auth0ManagementService, Auth0Module } from '../../../../../../../libs/auth0/src';
-import { DeviceDummy, dummyDeviceCredentials, userDummy } from '../../../../../test/dummies';
+import { DeviceDummy, dummyAuth0Client, userDummy } from '../../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
   DeviceRepositoryMock,
@@ -19,9 +19,32 @@ import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
+import {
+  ANDROID_DEVICE_NAME,
+  ANDROID_OPERATING_SYSTEM,
+  IOS_OPERATING_SYSTEM,
+  MACOS_OPERATING_SYSTEM,
+  MAC_CLIENT_ID,
+  MOBILE_CLIENT_ID,
+  WINDOWS_CLIENT_ID,
+  WINDOWS_OPERATING_SYSTEM
+} from '@app/auth0/auth0.constants';
+import { Auth0ClientDto } from '../../../user/dto/auth0-client.dto';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
+
+  const findIosClient = (clients: Auth0ClientDto[], mobileClientIds: string[], androidDeviceName: string) => {
+    return clients.find(f =>
+      mobileClientIds.some(s => s === f.client_id) && f.name !== androidDeviceName
+    );
+  };
+
+  const findAndroidClient = (clients: Auth0ClientDto[], mobileClientIds: string[], androidDeviceName: string) => {
+    return clients.find(f =>
+      mobileClientIds.some(s => s === f.client_id) && f.name === androidDeviceName
+    );
+  };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -188,34 +211,34 @@ describe('DeviceService', () => {
     });
   });
 
-  describe('syncDevicesFromAuth0', () => {
+  describe('parseDeviceFromAuth0Client', () => {
     it('if the user logged in via Mac, it should correctly identify the MacOS', async () => {
-      const [mac] = dummyDeviceCredentials;
-      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue(dummyDeviceCredentials);
-      const response = await deviceService.syncDevicesFromAuth0(mac.user_id);
-      expect(response).toEqual(deviceService.parseDeviceFromCredentials(mac));
+      const mac = dummyAuth0Client.find(client => client.client_id === MAC_CLIENT_ID);
+      const response = await deviceService.parseDeviceFromAuth0Client(mac);
+      expect(response).toEqual(MACOS_OPERATING_SYSTEM);
     });
 
     it('if the user logged in via iOS, it should correctly identify the iOS', async () => {
-      const ios = dummyDeviceCredentials.pop();
-      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue([ios, ...dummyDeviceCredentials]);
-      const response = await deviceService.syncDevicesFromAuth0(ios.user_id);
-      expect(response).toEqual(deviceService.parseDeviceFromCredentials(ios));
+      const ios = findIosClient(dummyAuth0Client, MOBILE_CLIENT_ID, ANDROID_DEVICE_NAME);
+      const response = await deviceService.parseDeviceFromAuth0Client(ios);
+      expect(response).toEqual(IOS_OPERATING_SYSTEM);
     });
 
     it('if the user logged in via Android, it should correctly identify the Android', async () => {
-      const android = dummyDeviceCredentials[2];
-      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue([android, ...dummyDeviceCredentials]);
-      const response = await deviceService.syncDevicesFromAuth0(android.user_id);
-      expect(response).toEqual(deviceService.parseDeviceFromCredentials(android));
+      const android = findAndroidClient(dummyAuth0Client, MOBILE_CLIENT_ID, ANDROID_DEVICE_NAME);
+      const response = await deviceService.parseDeviceFromAuth0Client(android);
+      expect(response).toEqual(ANDROID_OPERATING_SYSTEM);
     });
 
     it('if the user logged in via Windows, it should correctly identify the Windows', async () => {
-      const windows = dummyDeviceCredentials[1];
-      dummyDeviceCredentials.unshift(windows);
-      Auth0ManagementServiceMock.getDeviceCredentials.mockResolvedValue(dummyDeviceCredentials);
-      const response = await deviceService.syncDevicesFromAuth0(windows.user_id);
-      expect(response).toEqual(deviceService.parseDeviceFromCredentials(windows));
+      const windows = dummyAuth0Client.find(client => client.client_id === WINDOWS_CLIENT_ID);
+      const response = await deviceService.parseDeviceFromAuth0Client(windows);
+      expect(response).toEqual(WINDOWS_OPERATING_SYSTEM);
+    });
+
+    it('if auth0 client is null, it should correctly identify the string empty', async () => {
+      const response = await deviceService.parseDeviceFromAuth0Client(null);
+      expect(response).toEqual('');
     });
   });
 });

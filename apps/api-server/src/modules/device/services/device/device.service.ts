@@ -12,7 +12,6 @@ import {
   IOS_OPERATING_SYSTEM,
   UNKNOWN_OPERATING_SYSTEM,
 } from '@app/auth0/auth0.constants';
-import { DeviceCredential } from 'auth0';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { OperatingSystem } from '../../domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
@@ -21,6 +20,7 @@ import { DeviceRepository } from '../../repositories/device.repository';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
+import { Auth0ClientDto } from '../../../user/dto/auth0-client.dto';
 
 @Injectable()
 export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
@@ -111,13 +111,16 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 
-  async syncDevicesFromAuth0(auth0_id: string) {
-    // fetch credentials from auth0
-    const credentials = await this.auth0ManagementService.getDeviceCredentials(auth0_id);
-    return credentials?.length ? this.parseDeviceFromCredentials(credentials[0]) : '';
-  }
+  parseDeviceFromAuth0Client = (auth0ClientDto: Auth0ClientDto | null | undefined) => {
+    if (!auth0ClientDto?.client_id) {
+      return '';
+    }
 
-  parseDeviceFromCredentials = ({ client_id, device_name }: DeviceCredential) => {
+    const { client_id, name } = auth0ClientDto;
+
+    if (!client_id)
+      return '';
+
     switch (client_id) {
       case MAC_CLIENT_ID:
         return MACOS_OPERATING_SYSTEM;
@@ -125,7 +128,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
         return WINDOWS_OPERATING_SYSTEM;
       default: {
         if (MOBILE_CLIENT_ID.includes(client_id)) {
-          return device_name === ANDROID_DEVICE_NAME ? ANDROID_OPERATING_SYSTEM : IOS_OPERATING_SYSTEM;
+          return name === ANDROID_DEVICE_NAME ? ANDROID_OPERATING_SYSTEM : IOS_OPERATING_SYSTEM;
         }
         return UNKNOWN_OPERATING_SYSTEM;
       }

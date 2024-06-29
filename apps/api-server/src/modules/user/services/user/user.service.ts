@@ -79,7 +79,7 @@ export class UserService {
     private readonly deviceService: DeviceService,
   ) {}
 
-  async syncUserAccount({ auth0_id, email }: SyncUserAccountDto): Promise<UserAuthContext> {
+  async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -91,7 +91,7 @@ export class UserService {
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
-      const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email }, registeredUser);
+      const { id, stripe_customer_id } = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
       if (!registeredUser) await this.handleInitialRegistration(id);
       const subscriptionStatus = await this.getSubscription(id);
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
@@ -116,7 +116,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
-  async updateOrCreateUser({ auth0_id, email }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
+  async updateOrCreateUser({ auth0_id, email, auth0_client }: SyncUserAccountDto, registeredUser?: User): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -146,7 +146,7 @@ export class UserService {
         const os =
           devicesFromDb.length > 0
             ? devicesFromDb[0]?.operating_system
-            : await this.deviceService.syncDevicesFromAuth0(userProperties.auth0_id);
+            : await this.deviceService.parseDeviceFromAuth0Client(auth0_client);
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;

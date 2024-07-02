@@ -2,6 +2,16 @@ import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
+import {
+  ANDROID_DEVICE_NAME,
+  ANDROID_OPERATING_SYSTEM,
+  IOS_OPERATING_SYSTEM,
+  MACOS_OPERATING_SYSTEM,
+  MAC_CLIENT_ID,
+  MOBILE_CLIENT_ID,
+  WINDOWS_CLIENT_ID,
+  WINDOWS_OPERATING_SYSTEM,
+} from '@app/auth0/auth0.constants';
 import { Auth0ManagementService, Auth0Module } from '../../../../../../../libs/auth0/src';
 import { DeviceDummy, dummyAuth0Client, userDummy } from '../../../../../test/dummies';
 import {
@@ -19,31 +29,17 @@ import { DeviceService } from './device.service';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
-import {
-  ANDROID_DEVICE_NAME,
-  ANDROID_OPERATING_SYSTEM,
-  IOS_OPERATING_SYSTEM,
-  MACOS_OPERATING_SYSTEM,
-  MAC_CLIENT_ID,
-  MOBILE_CLIENT_ID,
-  WINDOWS_CLIENT_ID,
-  WINDOWS_OPERATING_SYSTEM
-} from '@app/auth0/auth0.constants';
 import { Auth0ClientDto } from '../../../user/dto/auth0-client.dto';
 
 describe('DeviceService', () => {
   let deviceService: DeviceService;
 
   const findIosClient = (clients: Auth0ClientDto[], mobileClientIds: string[], androidDeviceName: string) => {
-    return clients.find(f =>
-      mobileClientIds.some(s => s === f.client_id) && f.name !== androidDeviceName
-    );
+    return clients.find((f) => mobileClientIds.some((s) => s === f.client_id) && f.name !== androidDeviceName);
   };
 
   const findAndroidClient = (clients: Auth0ClientDto[], mobileClientIds: string[], androidDeviceName: string) => {
-    return clients.find(f =>
-      mobileClientIds.some(s => s === f.client_id) && f.name === androidDeviceName
-    );
+    return clients.find((f) => mobileClientIds.some((s) => s === f.client_id) && f.name === androidDeviceName);
   };
 
   beforeEach(async () => {
@@ -213,7 +209,7 @@ describe('DeviceService', () => {
 
   describe('parseDeviceFromAuth0Client', () => {
     it('if the user logged in via Mac, it should correctly identify the MacOS', async () => {
-      const mac = dummyAuth0Client.find(client => client.client_id === MAC_CLIENT_ID);
+      const mac = dummyAuth0Client.find((client) => client.client_id === MAC_CLIENT_ID);
       const response = await deviceService.parseDeviceFromAuth0Client(mac);
       expect(response).toEqual(MACOS_OPERATING_SYSTEM);
     });
@@ -231,7 +227,7 @@ describe('DeviceService', () => {
     });
 
     it('if the user logged in via Windows, it should correctly identify the Windows', async () => {
-      const windows = dummyAuth0Client.find(client => client.client_id === WINDOWS_CLIENT_ID);
+      const windows = dummyAuth0Client.find((client) => client.client_id === WINDOWS_CLIENT_ID);
       const response = await deviceService.parseDeviceFromAuth0Client(windows);
       expect(response).toEqual(WINDOWS_OPERATING_SYSTEM);
     });

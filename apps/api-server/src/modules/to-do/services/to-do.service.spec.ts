@@ -22,6 +22,8 @@ import {
   CompletedFocusBlockDummy,
   QueueMock,
   ToDoDBResponseDummy,
+  dummyConvertBrainDumpDto,
+  dummyConvertBrainDumpToTasksResponse,
   dummyRecentToDosDto,
   dummyRecentToDosResponse,
   dummySearchToDosDto,
@@ -284,6 +286,16 @@ describe('toDoService', () => {
       expect(ToDoRepositoryMock.getUserRecentToDos).toBeCalledWith(dummyRecentToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummyRecentToDosDto.take);
       expect(response).toEqual(results);
+    });
+  });
+
+  describe('createToDosFromBrainDump', () => {
+    it('positive: should convert brain dump contents into a structured array of tasks in this format: [ { "task_name": "name", "estimated_duration_minutes": 20 }]', async () => {
+      OpenAIServiceMock.convertBrainDumpToTasks.mockResolvedValue(dummyConvertBrainDumpToTasksResponse);
+      const response = await toDoService.createToDosFromBrainDump(dummyConvertBrainDumpDto);
+
+      expect(response.length).toBeLessThanOrEqual(dummyConvertBrainDumpToTasksResponse.length);
+      expect(response).toEqual(dummyConvertBrainDumpToTasksResponse);
     });
   });
 });

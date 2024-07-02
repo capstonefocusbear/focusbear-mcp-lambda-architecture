@@ -189,6 +189,7 @@ export const OpenAIServiceMock = {
   createMotivationalSummary: jest.fn(),
   streamChatReply: jest.fn(),
   checkIfUsernameIsValid: jest.fn(),
+  convertBrainDumpToTasks: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

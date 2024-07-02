@@ -118,8 +118,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
 
     const { client_id, name } = auth0ClientDto;
 
-    if (!client_id)
-      return '';
+    if (!client_id) return '';
 
     switch (client_id) {
       case MAC_CLIENT_ID:

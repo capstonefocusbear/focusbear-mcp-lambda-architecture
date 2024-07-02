@@ -149,7 +149,7 @@ describe('UserService', () => {
     const syncAccountDto: SyncUserAccountDto = {
       auth0_id: 'dcidejd348ryhjeckwx3',
       email: 'some@email.com',
-      auth0_client: dummyAuth0Client[0]
+      auth0_client: dummyAuth0Client[0],
     };
 
     const emptySubscriber = {

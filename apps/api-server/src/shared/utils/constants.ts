@@ -254,3 +254,5 @@ export const createFocusModeFunction = {
     required: ['name', 'allowed_apps', 'allowed_urls'],
   },
 };
+
+export const GTP_4_TURBO = 'gpt-4-turbo';

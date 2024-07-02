@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { UserProfile as Auth0UserProfile, DeviceCredentialTypeEnum } from 'auth0';
 import { DateTime } from 'luxon';
 import { FastifyRequest } from 'fastify';
+import { Auth0ClientDto } from 'apps/api-server/src/modules/user/dto/auth0-client.dto';
 import { CalendarPlatforms } from '../../src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { CreateFocusModeTagDto } from '../../src/modules/focus-mode/dto/create-focus-mode-tag.dto';
 import { CreateCompletedActivityDto } from '../../src/modules/activity/dto/create-completed-activity.dto';
@@ -43,7 +44,6 @@ import {
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
-import { Auth0ClientDto } from 'apps/api-server/src/modules/user/dto/auth0-client.dto';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -96,7 +96,7 @@ export const auth0UserDummy: Auth0UserProfile = {
   email_verified: true,
   auth0_client: {
     client_id: MAC_CLIENT_ID,
-    name: 'MacOS device name'
+    name: 'MacOS device name',
   },
 };
 
@@ -2204,18 +2204,37 @@ export const dummyDeviceCredentials = [
 export const dummyAuth0Client: Auth0ClientDto[] = [
   {
     client_id: MAC_CLIENT_ID,
-    name: 'MacOS device name'
+    name: 'MacOS device name',
   },
   {
     client_id: WINDOWS_CLIENT_ID,
-    name: 'Windows device name'
+    name: 'Windows device name',
   },
   {
     client_id: MOBILE_CLIENT_ID[0],
-    name: ANDROID_DEVICE_NAME
+    name: ANDROID_DEVICE_NAME,
   },
   {
     client_id: MOBILE_CLIENT_ID[1],
-    name: 'iOS device name'
+    name: 'iOS device name',
   },
-]
+];
+
+export const dummyConvertBrainDumpToTasksResponse = [
+  {
+    task_name: 'check my morning routines',
+    estimated_duration_minutes: 20,
+  },
+  {
+    task_name: 'checking email',
+    estimated_duration_minutes: 20,
+  },
+  {
+    task_name: 'test new products',
+    estimated_duration_minutes: 20,
+  },
+];
+
+export const dummyConvertBrainDumpDto = {
+  contents: 'check my morning routines, checking email test new products',
+};

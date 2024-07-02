@@ -11,6 +11,7 @@ import { ToDoResponse } from '../dto/to-do-response.dto';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
+import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -50,5 +51,10 @@ export class TodoController {
   @Get('recent')
   async recentToDos(@Query() recentToDoDto: RecentToDoDto, @AuthContext() { user }: Passport) {
     return this.toDoService.getRecentToDos(recentToDoDto, user.id);
+  }
+
+  @Post('convert-brain-dump')
+  async convertBrainDump(@Body() convertBrainDump: ConvertBrainDump) {
+    return this.toDoService.createToDosFromBrainDump(convertBrainDump);
   }
 }

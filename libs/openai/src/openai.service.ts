@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
-import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4O, GTP_4_TURBO } from '../../../apps/api-server/src/shared/utils/constants';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -333,6 +333,26 @@ export class OpenAIService {
       messages: [defaultChat],
       temperature: 0,
       n: 1,
+    });
+    const newMessage = completions.choices[0].message;
+    const { content } = newMessage;
+    return JSON.parse(content);
+  }
+
+  async convertBrainDumpToTasks(brainDumpContents: string) {
+    const openai = new OpenAI({ ...this.options });
+    const defaultChat: ChatCompletionMessageParam = {
+      role: 'system',
+      content: `Please convert this '${brainDumpContents}' into a structured JSON array of tasks in the following format: [ { "task_name": "name", "estimated_duration_minutes": 20 }]`,
+    };
+    const completions = await openai.chat.completions.create({
+      model: GTP_4_TURBO,
+      messages: [defaultChat],
+      temperature: 0,
+      n: 1,
+      response_format: {
+        type: 'json_object',
+      },
     });
     const newMessage = completions.choices[0].message;
     const { content } = newMessage;

@@ -24,6 +24,7 @@ import { Task } from '../../integration/domain/task.model';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
+import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
 
 @Injectable()
 export class ToDoService {
@@ -284,6 +285,25 @@ export class ToDoService {
       });
 
       return await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async createToDosFromBrainDump(
+    convertBrainDump: ConvertBrainDump,
+  ): Promise<{ task_name: string; estimated_duration_minutes: number }[]> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Create To Dos from brain dump',
+        data: {
+          ...convertBrainDump,
+        },
+      });
+      return await this.openAIService.convertBrainDumpToTasks(convertBrainDump.contents);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

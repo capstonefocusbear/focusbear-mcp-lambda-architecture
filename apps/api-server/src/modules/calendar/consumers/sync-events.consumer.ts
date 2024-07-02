@@ -85,7 +85,7 @@ export class SyncEventsConsumer extends WorkerHost {
           await this.notificationRepository.orm.delete({ external_id: In(eventsToRemoveIds) });
         } catch (error) {
           this.sentryService.instance().captureException(error, { level: 'error' });
-          console.error('Problem with calendar events. Error in sync-events-for-platform queued job: ', error, userId, platform, account);
+          console.error('Problem with calendar events. Error in sync-events-for-platform queued job: ', userId, error, platform, account);
         }
         break;
 

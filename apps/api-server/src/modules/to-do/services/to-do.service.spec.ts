@@ -40,6 +40,8 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -120,42 +122,54 @@ describe('toDoService', () => {
 
   describe('getToDos', () => {
     it('positive: should fetch users to dos from DB', async () => {
-      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([]);
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[], 0]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce([]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,
-        page_num: 1,
+        page: 1,
+        take: 50,
+        skip: 0,
         eisenhower_quadrant: 2,
         should_use_cache: true,
       });
 
-      expect(response).toBeArray();
+      expect(response).toEqual(
+        new PaginationDto(
+          [],
+          new PaginationMetaDto({ paginationOptionsDto: { page: 1, skip: 0, take: 50 }, itemCount: 0 }),
+        ),
+      );
     });
 
     it('positive: if to do is linked to an external project, its available statuses should be added to response', async () => {
       const toDoId = 'test-id';
       PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([{ platform: IntegrationPlatforms.ZOHO }]);
       ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([
-        {
-          ...ToDoDBResponseDummy,
-          external_task_metadata: {
-            platform: IntegrationPlatforms.ZOHO,
+        [
+          {
+            ...ToDoDBResponseDummy,
+            external_task_metadata: {
+              platform: IntegrationPlatforms.ZOHO,
+            },
+            external_task_id: toDoId,
           },
-          external_task_id: toDoId,
-        },
+        ],
+        1,
       ]);
       SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(syncedProjectDummy);
       ServiceMock.getAllUserTasks.mockResolvedValueOnce([{ id: toDoId, external_status: 'test-id' }]);
 
       const response = await toDoService.getToDos(userDummy.id, {
         status: ToDoStatus.NOT_STARTED,
-        page_num: 1,
+        page: 1,
+        skip: 0,
         eisenhower_quadrant: 2,
         should_use_cache: false,
       });
 
-      expect(response[0].external_statuses).toEqual(syncedProjectDummy.available_statuses);
-      expect(response[0].current_external_status).toEqual({
+      expect(response.data[0].external_statuses).toEqual(syncedProjectDummy.available_statuses);
+      expect(response.data[0].current_external_status).toEqual({
         label: 'Open',
         status_id: 'test-id',
         should_complete_task: true,

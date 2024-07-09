@@ -2,17 +2,13 @@ import { IsEnum, IsNumber, IsOptional, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { ToDoStatus } from '../domain/to-do-status.enum';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 
-export class GetToDosQueryDto {
+export class GetToDosQueryDto extends PaginationOptionsDto {
   @IsOptional()
   @IsEnum(ToDoStatus)
   @ApiProperty({ enum: ToDoStatus })
   status?: ToDoStatus;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  page_num?: number;
 
   @IsOptional()
   @IsNumber()

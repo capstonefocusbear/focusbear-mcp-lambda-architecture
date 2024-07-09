@@ -12,9 +12,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     super(connection, ToDo);
   }
 
-  async getUserToDos(userId: string, { page_num = 1, status, eisenhower_quadrant }: GetToDosQueryDto) {
-    const take = 50;
-    const skip = page_num * take - take;
+  async getUserToDos(userId: string, { take, skip, status, eisenhower_quadrant }: GetToDosQueryDto) {
     const query = this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
@@ -46,7 +44,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     if (eisenhower_quadrant) {
       query.andWhere('to_do.eisenhower_quadrant = :eisenhower_quadrant', { eisenhower_quadrant });
     }
-    return query.getMany();
+    return query.getManyAndCount();
   }
 
   async searchUserToDos({ title, take }: SearchToDosDto, userId: string) {

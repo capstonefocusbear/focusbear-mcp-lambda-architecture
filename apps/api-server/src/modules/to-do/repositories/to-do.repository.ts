@@ -69,10 +69,10 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.duration',
         'to_do.icon',
       ])
-      .where('to_do.user_id = :user_id AND to_do.status != :status', { user_id: userId })
+      .where('to_do.user_id = :user_id', { user_id: userId })
       .getMany();
     // @Description: todo title is an encrypted column
-    return result.filter((todo) => todo.title.includes(title)).slice(0, take);
+    return result.filter((todo) => todo.title?.toLowerCase().includes(title?.toLowerCase())).slice(0, take);
   }
 
   async getUserRecentToDos({ updated_at, take }: RecentToDoDto, user_id: string) {

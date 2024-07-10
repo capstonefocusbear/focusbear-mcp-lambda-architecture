@@ -12,6 +12,7 @@ import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
 import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 @Controller('to-do')
 @ApiTags('to-do')
@@ -27,10 +28,10 @@ export class TodoController {
 
   @Get()
   async getUserToDos(
-    @Query() { page_num, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
+    @Query() getToDosQueryDto: GetToDosQueryDto,
     @AuthContext() { user }: Passport,
-  ): Promise<ToDoResponse[]> {
-    return this.toDoService.getToDos(user.id, { page_num, status, eisenhower_quadrant, should_use_cache });
+  ): Promise<PaginationDto<ToDoResponse>> {
+    return this.toDoService.getToDos(user.id, getToDosQueryDto);
   }
 
   @Delete()

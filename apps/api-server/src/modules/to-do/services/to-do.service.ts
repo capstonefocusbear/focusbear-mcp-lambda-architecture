@@ -25,6 +25,8 @@ import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
 import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 
 @Injectable()
 export class ToDoService {
@@ -86,13 +88,19 @@ export class ToDoService {
 
   async getToDos(
     user_id: string,
-    { page_num, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
-  ): Promise<ToDoResponse[]> {
-    const toDos = await this.toDoRepository.getUserToDos(user_id, { page_num, status, eisenhower_quadrant });
+    { page, order, skip, take, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
+  ) {
+    const [toDos, total] = await this.toDoRepository.getUserToDos(user_id, { take, skip, status, eisenhower_quadrant });
+    let updateToDos: ToDoResponse[];
     if (should_use_cache) {
-      return this.addCachedStatusesToToDos(toDos, user_id);
+      updateToDos = await this.addCachedStatusesToToDos(toDos, user_id);
+    } else {
+      updateToDos = await this.addProjectStatusesToToDos(toDos, user_id);
     }
-    return this.addProjectStatusesToToDos(toDos, user_id);
+    return new PaginationDto(
+      updateToDos,
+      new PaginationMetaDto({ paginationOptionsDto: { page, order, skip, take }, itemCount: total }),
+    );
   }
 
   async addCachedStatusesToToDos(toDos: ToDo[], userId: string) {

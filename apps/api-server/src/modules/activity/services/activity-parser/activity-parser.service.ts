@@ -82,8 +82,9 @@ export class ActivityParserService {
         tutorial: transformTutorial(tutorial),
         cutoff_time_for_doing_activity,
       });
-      const orderedActivities = activities
-        .filter((activity) => [...new Set(activity_ids)].includes(activity.id))
+      const orderedActivities = [...new Set(activity_ids)]
+        .map((id) => activities.find((e) => e.id === id))
+        .filter(Boolean)
         .map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
     }

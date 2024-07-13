@@ -40,7 +40,6 @@ export class ActivityParserService {
       let key = `${type}_activities`;
       if (type === ActivityType.break) key = 'break_activities';
       const transformTutorial = (tutorial) => (tutorial && typeof tutorial === 'object' ? tutorial.id : tutorial);
-      const findActivity = (id): Activity => activities.find((e) => e.id === id);
       const mapActivity = ({
         id,
         duration_seconds,
@@ -83,7 +82,9 @@ export class ActivityParserService {
         tutorial: transformTutorial(tutorial),
         cutoff_time_for_doing_activity,
       });
-      const orderedActivities = [...new Set(activity_ids)].map(findActivity).map(mapActivity);
+      const orderedActivities = activities
+        .filter((activity) => [...new Set(activity_ids)].includes(activity.id))
+        .map(mapActivity);
       Object.assign(serializedActivities, { [key]: orderedActivities });
     }
     return serializedActivities;

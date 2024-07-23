@@ -61,15 +61,18 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
   async getActivityTemplatesWithGoalsMatched({ routine_duration, user_goals, routine }: GetRoutineSuggestionsDto) {
     const duration_seconds = convertMinutesToSeconds(routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
+    const goals = user_goals.map((goal) => goal.toLowerCase());
 
     const query = this.orm
       .createQueryBuilder('activity_templates')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
-      .where('template_tags.tags ?| :goals')
+      .where(
+        'EXISTS (SELECT 1 FROM jsonb_array_elements_text(template_tags.tags) as tag WHERE LOWER(tag) = ANY (:goals))  ',
+      )
       .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
       .andWhere('activity_templates.duration_seconds <= :duration_seconds')
       .setParameters({
-        goals: user_goals,
+        goals,
         allowed_routines,
         duration_seconds,
       })

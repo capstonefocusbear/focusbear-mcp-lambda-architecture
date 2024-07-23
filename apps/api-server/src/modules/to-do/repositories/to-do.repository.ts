@@ -76,8 +76,8 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     return result.filter((todo) => todo.title?.toLowerCase().includes(title?.toLowerCase())).slice(0, take);
   }
 
-  async getUserRecentToDos({ updated_at, take }: RecentToDoDto, user_id: string) {
-    const query = this.orm
+  async getUserRecentToDos({ updated_at, status, take }: RecentToDoDto, user_id: string) {
+    return this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
       .select([
@@ -99,12 +99,17 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.icon',
         'to_do.updated_at',
       ])
+      .where('to_do.user_id = :user_id', {
+        user_id,
+      })
+      .andWhere('to_do.updated_at >= :updated_at', {
+        updated_at,
+      })
+      .andWhere('to_do.status IN (:...status)', {
+        status,
+      })
       .orderBy('to_do.updated_at', 'DESC')
-      .take(take);
-
-    if (updated_at) {
-      query.where('to_do.user_id = :user_id AND to_do.updated_at >= :updated_at', { user_id, updated_at });
-    }
-    return query.getMany();
+      .take(take)
+      .getMany();
   }
 }

@@ -348,12 +348,7 @@ export class OpenAIService {
                   {
                     "task_name": "name",
                     "estimated_duration_minutes": 20,
-                    "subtasks": [
-                        {
-                            "task_name": "subtask name",
-                            "estimated_duration_minutes": 10
-                        }
-                    ]
+                    "subtasks": ["subtask1", "subtask2"]
                   }
                 ]
               If the content(s) include subtasks, ensure that they are nested within a "subtasks" array of the corresponding "brainDumpContents".`,

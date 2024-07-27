@@ -343,7 +343,20 @@ export class OpenAIService {
     const openai = new OpenAI({ ...this.options });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
-      content: `Please convert this '${brainDumpContents}' into a structured JSON array of tasks in the following format: [ { "task_name": "name", "estimated_duration_minutes": 20 }]`,
+      content: `Please convert this '${brainDumpContents}' into a structured JSON array of tasks in the following format:
+                [
+                  {
+                    "task_name": "name",
+                    "estimated_duration_minutes": 20,
+                    "subtasks": [
+                        {
+                            "task_name": "subtask name",
+                            "estimated_duration_minutes": 10
+                        }
+                    ]
+                  }
+                ]
+              If the content(s) include subtasks, ensure that they are nested within a "subtasks" array of the corresponding "brainDumpContents".`,
     };
     const completions = await openai.chat.completions.create({
       model: GTP_4_TURBO,

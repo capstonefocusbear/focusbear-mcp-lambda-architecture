@@ -341,31 +341,67 @@ export class OpenAIService {
 
   async convertBrainDumpToTasks(brainDumpContents: string) {
     const openai = new OpenAI({ ...this.options });
-    const system_message: ChatCompletionMessageParam = {
-      role: 'system',
-      content: 'You are a JSON output generator. Respond only with valid JSON objects.',
-    };
-    const user_message: ChatCompletionMessageParam = {
+    const userMessage: ChatCompletionMessageParam = {
       role: 'user',
       content: `Please convert this '${brainDumpContents}' into a structured JSON array of tasks in the following format:
-                [
-                  {
-                    "task_name": "name1",
-                    "estimated_duration_minutes": 20,
-                    "subtasks": ["subtask1", "subtask2"]
-                  }
-                ]
-              If the content(s) include subtasks, ensure that they are nested within a "subtasks" array of the corresponding "brainDumpContents".`,
+                  [
+                    {
+                      "task_name": "name1",
+                      "estimated_duration_minutes": 20,
+                      "subtasks": ["subtask1", "subtask2"]
+                    }
+                  ]
+                If the content(s) include subtasks, ensure that they are nested within a "subtasks" array of the corresponding "brainDumpContents".`,
     };
 
-    const completions = await openai.chat.completions.create({
-      model: GPT_4O,
-      messages: [system_message, user_message],
-      temperature: 0,
-      n: 1,
-    });
-    const newMessage = completions.choices[0].message;
-    const { content } = newMessage;
-    return JSON.parse(content);
+    try {
+      const completions = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [userMessage],
+        temperature: 0,
+        max_tokens: 150,
+      });
+
+      const content = completions.choices[0]?.message?.content;
+      const tasks = content ? JSON.parse(content) : [];
+
+      const updatedTasksWithSubtasks = await Promise.allSettled(
+        tasks.map(async (task: { task_name: string; estimated_duration_minutes: number; subtasks: string[] }) => {
+          if (!task.subtasks.length) {
+            const subtaskMessage: ChatCompletionMessageParam = {
+              role: 'user',
+              content: `Break down the task '${task.task_name}' into smaller, actionable subtasks in the following JSON format:
+                        {
+                            "task_name": "${task.task_name}",
+                            "subtasks": ["subtask1", "subtask2"]
+                        }`,
+            };
+
+            try {
+              const subtaskCompletions = await openai.chat.completions.create({
+                model: 'gpt-4',
+                messages: [subtaskMessage],
+                temperature: 0,
+                max_tokens: 100,
+              });
+
+              const subtaskContent = subtaskCompletions.choices[0]?.message?.content;
+              const newTask = subtaskContent ? JSON.parse(subtaskContent) : { subtasks: [] };
+              return { ...task, subtasks: newTask.subtasks };
+            } catch (error) {
+              return task;
+            }
+          } else {
+            return task;
+          }
+        }),
+      );
+
+      return updatedTasksWithSubtasks
+        .map((result) => (result.status === 'fulfilled' ? result.value : undefined))
+        .filter(Boolean);
+    } catch (error) {
+      return [];
+    }
   }
 }

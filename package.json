@@ -155,11 +155,19 @@
       "class-validator": "^0.11.1 || ^0.12.0 || ^0.13.0 || ^0.14.0"
     },
     "ws": "^8.17.1",
-    "socket.io": "^4.6.2"
+    "socket.io": "^4.6.2",
+    "fast-xml-parser": "^4.4.1",
+    "@aws-sdk/client-s3": {
+      "fast-xml-parser": "^4.4.1"
+    },
+    "@aws-sdk/client-sts": {
+      "fast-xml-parser": "^4.4.1"
+    }
   },
   "resolutions": {
     "ws": "^8.17.1",
-    "socket.io": "^4.6.2"
+    "socket.io": "^4.6.2",
+    "fast-xml-parser": "^4.4.1"
   },
   "husky": {
     "hooks": {

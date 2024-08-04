@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
-import { GPT_4O, GTP_4_TURBO } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -341,21 +341,30 @@ export class OpenAIService {
 
   async convertBrainDumpToTasks(brainDumpContents: string) {
     const openai = new OpenAI({ ...this.options });
-    const defaultChat: ChatCompletionMessageParam = {
-      role: 'system',
-      content: `Please convert this '${brainDumpContents}' into a structured JSON array of tasks in the following format: [ { "task_name": "name", "estimated_duration_minutes": 20 }]`,
+    const userMessage: ChatCompletionMessageParam = {
+      role: 'user',
+      content: `The user has done a 'brain dump' of ideas and wants help converting it into tasks and subtasks. Here is the braindump: ${brainDumpContents}. 
+                Structure it into array of JSON tasks for them and come up with subtasks if the task is large. 
+                The user may have ADHD and needs help with task initiation so make the first task really easy.
+                Please use the following JSON structure without any code block formatting or backticks:
+                  [
+                    {
+                      "task_name": "name1",
+                      "estimated_duration_minutes": 20,
+                      "subtasks": ["subtask1", "subtask2"]
+                    }
+                  ]
+                `,
     };
+
     const completions = await openai.chat.completions.create({
-      model: GTP_4_TURBO,
-      messages: [defaultChat],
+      model: GPT_4O,
+      messages: [userMessage],
       temperature: 0,
       n: 1,
-      response_format: {
-        type: 'json_object',
-      },
     });
-    const newMessage = completions.choices[0].message;
-    const { content } = newMessage;
-    return JSON.parse(content);
+
+    const content = completions.choices[0]?.message?.content;
+    return content ? JSON.parse(content) : [];
   }
 }

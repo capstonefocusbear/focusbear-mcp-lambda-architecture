@@ -301,7 +301,7 @@ export class ToDoService {
 
   async createToDosFromBrainDump(
     convertBrainDump: ConvertBrainDump,
-  ): Promise<{ task_name: string; estimated_duration_minutes: number }[]> {
+  ): Promise<{ task_name: string; estimated_duration_minutes: number; subtasks: string[] }[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',

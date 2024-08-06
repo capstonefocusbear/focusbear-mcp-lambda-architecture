@@ -80,6 +80,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
     const formattedData: PlatformIntegrationMetadataDto = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
+      expiry_date: data.expiry_date,
     };
 
     await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, formattedData, accountId);

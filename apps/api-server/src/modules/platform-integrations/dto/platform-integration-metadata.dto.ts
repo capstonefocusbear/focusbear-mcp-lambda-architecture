@@ -5,6 +5,8 @@ export class PlatformIntegrationMetadataDto {
 
   refresh_token?: string;
 
+  expiry_date?: number;
+
   account_server?: string;
 
   accountId?: string;

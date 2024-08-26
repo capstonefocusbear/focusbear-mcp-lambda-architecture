@@ -21,8 +21,6 @@ export class UserFeedbackService {
     private readonly eventsService: EventsService,
   ) {}
 
-  private httpService = axios;
-
   async saveUserFeedback(userId: string, { rating, feedback, metadata }: UserFeedbackDto, headers: any) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) {
@@ -62,10 +60,14 @@ export class UserFeedbackService {
       null,
       2,
     )}`;
-    const slackMessage = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n OS: ${operatingSystem} \n\n Event Names: \n\n ${eventNames}`;
-    const slackLogPromise = this.httpService.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
-      text: slackMessage,
-    });
+
+    const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+    const body = {
+      channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
+      message: `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n OS: ${operatingSystem} \n\n Event Names: \n\n ${eventNames}`,
+    };
+
+    const cliqLogPromise = axios.post(cliqUrl, body);
     const emailPromise = this.emailService.sendEmail({
       to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
@@ -73,6 +75,6 @@ export class UserFeedbackService {
       text: JSON.stringify(emailBody),
       subject: `${EMAIL_SUBJECTS.USER_SURVEY_FEEDBACK}`,
     });
-    await Promise.all([saveFeedbackPromise, updateUserPromise, slackLogPromise, emailPromise]);
+    await Promise.all([saveFeedbackPromise, updateUserPromise, cliqLogPromise, emailPromise]);
   }
 }

@@ -26,9 +26,12 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('UserDataService', () => {
   let service: UserDataService;
+  const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
   process.env = {
-    SLACK_BACKEND_ALERTS_WEBHOOK: 'test-url',
+    ZOHO_CLIQ_BACKEND_BOT_WEBHOOK: 'some-url',
+    ZOHO_CLIQ_API_KEY: 'key',
+    ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL: 'channel',
   };
 
   beforeEach(async () => {
@@ -94,10 +97,10 @@ describe('UserDataService', () => {
       expect(BrevoServiceMock.deleteContactFromBrevo).toBeCalledWith(dummyEmail);
       expect(UserRepositoryMock.orm.delete).toBeCalledWith({ id: userDummy.id });
       expect(StripeServiceMock.deleteStripeCustomer).toBeCalledWith(dummyStripeId);
-      expect(mockedAxios.post).toBeCalledWith('test-url', {
-        text: `Account deleted for user with email: te**@mail.com and ID: ${
-          userDummy.id
-        } \n\n Message: some text \n\n Can contact: ${false}`,
+      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        channel: 'channel',
+        message: `Account deleted for user with email: te**@mail.com and ID: ${userDummy.id
+          } \n\n Message: some text \n\n Can contact: ${false}`,
       });
     });
   });

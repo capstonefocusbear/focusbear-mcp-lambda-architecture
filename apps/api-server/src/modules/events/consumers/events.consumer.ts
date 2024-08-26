@@ -51,7 +51,7 @@ export class EventsConsumer {
           user_id,
           trackEventDto.event_data?.data?.quantity,
         );
-      } 
+      }
       await this.eventsService.handleMobilePostpone(
         user_id,
         event_type as EventTypes,
@@ -91,11 +91,15 @@ export class EventsConsumer {
       await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: `Error in track-event queue for user with ID: ${user_id}\nTrack event: \`\`\`${JSON.stringify(
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `Error in track-event queue for user with ID: ${user_id}\nTrack event: \`\`\`${JSON.stringify(
           trackEventDto,
         )}\`\`\`\nError: \`\`\`${error}\`\`\``,
-      });
+      };
+
+      await axios.post(cliqUrl, body);
     }
   }
 

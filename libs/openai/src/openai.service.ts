@@ -324,8 +324,14 @@ export class OpenAIService {
     const openai = new OpenAI({ ...this.options });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
-      content: `Given the following task, break the task into a couple smaller steps it could take to accomplish the task. Return each subtask as a JSON object in the format: { "name": "name of subtask(should be capitalized)", is_completed: false }. The name should be in the language of ${language}. The final output should be in the format { "task": name of task, "subtasks": array of subtasks }\n\n
-      Task: ${task}\n\n
+      content: `Break down the following task into smaller steps. Each step should be a JSON object with the format: 
+      { "name": "Subtask Name (capitalized and in ${language})", "is_completed": false }. 
+      The final output should be: { "task": "${task}", "subtasks": [array of subtasks] }.
+      
+      Please use the following JSON structure without any code block formatting or backticks:
+    
+      Task: ${task}
+      
       JSON output:`,
     };
     const completions = await openai.chat.completions.create({

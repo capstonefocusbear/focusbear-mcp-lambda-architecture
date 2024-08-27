@@ -63,16 +63,21 @@ export class UserDataService {
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const brevoPromise = this.brevoService.deleteContactFromBrevo(auth0user.email);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
-      const backendAlertPromise = axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: `Account deleted for user with email: ${maskEmail(auth0user?.email)} and ID: ${user_id} \n\n Message: ${
-          message ?? ''
-        } \n\n Can contact: ${can_contact ?? false}`,
-      });
+
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `Account deleted for user with email: ${maskEmail(
+          auth0user?.email,
+        )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${can_contact ?? false}`,
+      };
+      const alertPromise = axios.post(cliqUrl, body);
+
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {
         await this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       }
-      await Promise.all([auth0Promise, revenueCatPromise, brevoPromise, userRepositoryPromise, backendAlertPromise]);
+      await Promise.all([auth0Promise, revenueCatPromise, brevoPromise, userRepositoryPromise, alertPromise]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

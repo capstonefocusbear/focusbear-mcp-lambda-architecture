@@ -47,7 +47,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('EventService', () => {
   let eventsService: EventsService;
   const headersDummy = { app_version: '1.0.0', device_id: randomUUID() };
-  const MOCK_SLACK_WEBHOOK_URL = 'some-url';
+  const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -92,7 +92,9 @@ describe('EventService', () => {
     eventsService = moduleRef.get<EventsService>(EventsService);
 
     process.env = {
-      SLACK_WEBHOOKS_CHANNEL: MOCK_SLACK_WEBHOOK_URL,
+      ZOHO_CLIQ_BACKEND_BOT_WEBHOOK: 'some-url',
+      ZOHO_CLIQ_API_KEY: 'key',
+      ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL: 'channel',
       REDIS_PORT: '6379',
       REDIS__HOSTNAME: 'localhost',
       FIELD_TRANSFORMER_ENCRYPTION_KEY: 'super-secret-key',
@@ -116,8 +118,9 @@ describe('EventService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
 
-      await expect(eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy))
-        .rejects.toThrow(new NotFoundException(errorMessage));
+      await expect(
+        eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy),
+      ).rejects.toThrow(new NotFoundException(errorMessage));
     });
 
     it('positive: should add the incoming track event to the events queue', async () => {
@@ -135,26 +138,28 @@ describe('EventService', () => {
     });
   });
 
-  describe('logEventInSlack', () => {
-    it('positive: should send appropriate message to slack when user disables app for 4 hours', async () => {
+  describe('logEventInCliq', () => {
+    it('positive: should send appropriate message to cliq when user disables app for 4 hours', async () => {
       const dummyEvent = { event_type: EventTypes.GIVE_ME_4HR_BREAK };
       const message = `*User disabled app for 4 hours:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(
         dummyEvent,
       )}\`\`\``;
-      await eventsService.logEventInSlack(userDummy.id, dummyEvent);
+      await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_SLACK_WEBHOOK_URL, {
-        text: message,
+      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        channel: 'channel',
+        message,
       });
     });
 
-    it('positive: should send appropriate message to slack when user quits app', async () => {
+    it('positive: should send appropriate message to cliq when user quits app', async () => {
       const dummyEvent = { event_type: EventTypes.APP_QUIT };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
-      await eventsService.logEventInSlack(userDummy.id, dummyEvent);
+      await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_SLACK_WEBHOOK_URL, {
-        text: message,
+      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        channel: 'channel',
+        message,
       });
     });
   });

@@ -120,7 +120,7 @@ export class EventsService {
         device_id,
         app_version,
         user_language: user.language,
-        user_timezone: user.timezone
+        user_timezone: user.timezone,
       });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -167,12 +167,12 @@ export class EventsService {
     );
   }
 
-  async logEventInSlack(user_id: string, event: TrackEventDto) {
+  async logEventInCliq(user_id: string, event: TrackEventDto) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Logging event in Slack Alerts channel',
+        message: 'Logging event in Cliq Alerts channel',
         data: {
           user_id,
           event,
@@ -181,9 +181,13 @@ export class EventsService {
       const messagePrefix = `*User ${
         event.event_type === EventTypes.GIVE_ME_4HR_BREAK ? 'disabled app for 4 hours' : 'quit app'
       }:*\n*User ID:* ${user_id}\n*Event:*`;
-      const message = `${messagePrefix}\`\`\`${JSON.stringify(event)}\`\`\``;
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `${messagePrefix}\`\`\`${JSON.stringify(event)}\`\`\``,
+      };
 
-      await axios.post(process.env.SLACK_WEBHOOKS_CHANNEL, { text: message });
+      await axios.post(cliqUrl, body);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -195,7 +199,7 @@ export class EventsService {
     const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
     const hasFeedback = !!event_data?.data?.feedback;
     if (shouldLogEvent) {
-      await this.logEventInSlack(userId, trackEventDto);
+      await this.logEventInCliq(userId, trackEventDto);
     }
     if (shouldLogEvent && hasFeedback) {
       await this.emailQuitFeedback(trackEventDto, email);

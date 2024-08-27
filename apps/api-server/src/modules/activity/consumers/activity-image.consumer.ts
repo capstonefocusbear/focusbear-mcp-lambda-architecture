@@ -29,9 +29,12 @@ export class ActivityImageConsumer {
       );
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      await axios.post(process.env.SLACK_BACKEND_ALERTS_WEBHOOK, {
-        text: `Error in delete-activity-image queue for user with ID: ${user_id}\nFile Path: ${filePath}\nError: \`\`\`${error}\`\`\``,
-      });
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `Error in delete-activity-image queue for user with ID: ${user_id}\nFile Path: ${filePath}\nError: \`\`\`${error}\`\`\``,
+      };
+      await axios.post(cliqUrl, body);
     }
   }
 }

@@ -6,6 +6,10 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
+import { Job } from 'bull';
 import { userDummy, QueueMock, auth0UserDummy, DeviceDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -31,11 +35,7 @@ import { DeviceService } from '../../device/services/device/device.service';
 import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { TrackEventRepository } from '../repositories/track-event.repository';
 import { TrackEvent } from '../entities/track-event.entity';
-import { EventsConsumer } from '../consumers/events.consumer';
-import { PusherBeamsService } from '@app/pusher-beams';
-import { I18nService } from 'nestjs-i18n';
-import { mockDeep } from 'jest-mock-extended';
-import { Job } from 'bull';
+import { EventsConsumer } from './events.consumer';
 import { EventsService } from '../services/events.service';
 
 jest.mock('ioredis', () => {
@@ -52,7 +52,7 @@ jest.mock('ioredis', () => {
 // Mock axios and set the type
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-const MOCK_SLACK_WEBHOOK_URL = 'some-url';
+const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
 describe('EventConsumer', () => {
   let eventsConsumer: EventsConsumer;
@@ -111,7 +111,9 @@ describe('EventConsumer', () => {
     eventsConsumer = moduleRef.get<EventsConsumer>(EventsConsumer);
 
     process.env = {
-      SLACK_WEBHOOKS_CHANNEL: MOCK_SLACK_WEBHOOK_URL,
+      ZOHO_CLIQ_BACKEND_BOT_WEBHOOK: 'some-url',
+      ZOHO_CLIQ_API_KEY: 'key',
+      ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL: 'channel',
       REDIS_PORT: '6379',
       REDIS__HOSTNAME: 'localhost',
       FIELD_TRANSFORMER_ENCRYPTION_KEY: 'super-secret-key',
@@ -126,7 +128,7 @@ describe('EventConsumer', () => {
   });
 
   describe('track-event', () => {
-    it('positive: should log event in slack for quit or disable app for 4 hours events', async () => {
+    it('positive: should log event in cliq for quit or disable app for 4 hours events', async () => {
       const dummyEvent = { event_type: EventTypes.APP_QUIT, event_data: { data: { quitReason: 'App is broken' } } };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
       const job = {
@@ -143,7 +145,7 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_SLACK_WEBHOOK_URL, { text: message });
+      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, { channel: 'channel', message });
     });
 
     it('positive: if event is of type postpone_habits_from_mobile, event should be added to queue to send push notification to user', async () => {

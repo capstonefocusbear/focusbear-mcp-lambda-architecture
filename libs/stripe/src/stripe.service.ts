@@ -176,10 +176,12 @@ export class StripeService extends Stripe {
       });
       const response = await this.ormFeedback.save(feedback);
       if (response) {
-        const message = `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`;
-        axios.post(process.env.SLACK_CUSTOMER_SUPPORT_WEBHOOK, {
-          text: message,
-        });
+        const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+        const body = {
+          channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
+          message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`,
+        };
+        axios.post(cliqUrl, body);
       }
       return response;
     } catch (error) {

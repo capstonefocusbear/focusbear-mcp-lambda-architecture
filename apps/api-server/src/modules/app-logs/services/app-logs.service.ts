@@ -51,10 +51,14 @@ export class AppLogsService {
         log_url: presignedUrl,
       });
 
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
+      };
+
       await Promise.all([
-        axios.post(process.env.SLACK_UNINSTALL_FEEDBACK_CHANNEL, {
-          text: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
-        }),
+        axios.post(cliqUrl, body),
         this.emailFeedback(JSON.stringify(uninstallFeedback), auth0User.email),
       ]);
       return await response.send('Upload successful!').status(201);

@@ -99,8 +99,9 @@ describe('UserDataService', () => {
       expect(StripeServiceMock.deleteStripeCustomer).toBeCalledWith(dummyStripeId);
       expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
-        message: `Account deleted for user with email: te**@mail.com and ID: ${userDummy.id
-          } \n\n Message: some text \n\n Can contact: ${false}`,
+        message: `Account deleted for user with email: te**@mail.com and ID: ${
+          userDummy.id
+        } \n\n Message: some text \n\n Can contact: ${false}`,
       });
     });
   });

@@ -52,7 +52,7 @@
     "api": "^4.5.1",
     "auth0": "^4.2.0",
     "aws-sdk": "^2.1292.0",
-    "axios": "^1.4.0",
+    "axios": "^1.7.5",
     "axios-retry": "^3.6.0",
     "bull": "^4.10.2",
     "bullmq": "^5.1.0",
@@ -162,12 +162,14 @@
     },
     "@aws-sdk/client-sts": {
       "fast-xml-parser": "^4.4.1"
-    }
+    },
+    "micromatch": "^4.0.8"
   },
   "resolutions": {
     "ws": "^8.17.1",
     "socket.io": "^4.6.2",
-    "fast-xml-parser": "^4.4.1"
+    "fast-xml-parser": "^4.4.1",
+    "micromatch": "^4.0.8"
   },
   "husky": {
     "hooks": {

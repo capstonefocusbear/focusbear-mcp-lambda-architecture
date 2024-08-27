@@ -120,7 +120,7 @@ export class EventsService {
         device_id,
         app_version,
         user_language: user.language,
-        user_timezone: user.timezone
+        user_timezone: user.timezone,
       });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

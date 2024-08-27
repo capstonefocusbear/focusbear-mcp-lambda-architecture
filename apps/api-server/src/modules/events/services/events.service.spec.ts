@@ -118,8 +118,9 @@ describe('EventService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
       const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
 
-      await expect(eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy))
-        .rejects.toThrow(new NotFoundException(errorMessage));
+      await expect(
+        eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy),
+      ).rejects.toThrow(new NotFoundException(errorMessage));
     });
 
     it('positive: should add the incoming track event to the events queue', async () => {
@@ -147,7 +148,7 @@ describe('EventService', () => {
 
       expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
-        message: message,
+        message,
       });
     });
 
@@ -158,7 +159,7 @@ describe('EventService', () => {
 
       expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
-        message: message,
+        message,
       });
     });
   });

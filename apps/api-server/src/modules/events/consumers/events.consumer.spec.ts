@@ -6,6 +6,10 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
+import { PusherBeamsService } from '@app/pusher-beams';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
+import { Job } from 'bull';
 import { userDummy, QueueMock, auth0UserDummy, DeviceDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -31,11 +35,7 @@ import { DeviceService } from '../../device/services/device/device.service';
 import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { TrackEventRepository } from '../repositories/track-event.repository';
 import { TrackEvent } from '../entities/track-event.entity';
-import { EventsConsumer } from '../consumers/events.consumer';
-import { PusherBeamsService } from '@app/pusher-beams';
-import { I18nService } from 'nestjs-i18n';
-import { mockDeep } from 'jest-mock-extended';
-import { Job } from 'bull';
+import { EventsConsumer } from './events.consumer';
 import { EventsService } from '../services/events.service';
 
 jest.mock('ioredis', () => {

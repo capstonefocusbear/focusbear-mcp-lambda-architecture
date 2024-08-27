@@ -67,8 +67,9 @@ export class UserDataService {
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
-        message: `Account deleted for user with email: ${maskEmail(auth0user?.email)} and ID: ${user_id} \n\n Message: ${message ?? ''
-          } \n\n Can contact: ${can_contact ?? false}`,
+        message: `Account deleted for user with email: ${maskEmail(
+          auth0user?.email,
+        )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${can_contact ?? false}`,
       };
       const alertPromise = axios.post(cliqUrl, body);
 

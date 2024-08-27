@@ -6,7 +6,12 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { TrackEventDto } from '../dto/track-event.dto';
-import { BullQueues, BullWorkers, DISTRACTION_BLOCK_EVENTS, IMPACT_MEASUREMENT_EVENT_TYPES } from '../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  DISTRACTION_BLOCK_EVENTS,
+  IMPACT_MEASUREMENT_EVENT_TYPES,
+} from '../../../shared/utils/constants';
 import { EventTypes } from '../domain/event-types.enum';
 import { EventsService } from '../services/events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -27,10 +32,17 @@ export class EventsConsumer {
   ) {}
 
   @Process(BullWorkers.TRACK_EVENT)
-  async readOperationJob(job: Job<{
-    trackEventDto: TrackEventDto; user_id: string;
-    email: string, device_id: string, app_version: string, user_language: string, user_timezone: string
-  }>) {
+  async readOperationJob(
+    job: Job<{
+      trackEventDto: TrackEventDto;
+      user_id: string;
+      email: string;
+      device_id: string;
+      app_version: string;
+      user_language: string;
+      user_timezone: string;
+    }>,
+  ) {
     const {
       data: { user_id, email, trackEventDto, device_id, app_version, user_language, user_timezone },
     } = job;
@@ -65,7 +77,11 @@ export class EventsConsumer {
       }
 
       await this.eventsService.saveTrackEvent(user_id, trackEventDto, device?.operating_system ?? null);
-      await this.eventsService.saveImpactEvent(event_type as EventTypes, user_id, trackEventDto.event_data?.data?.quantity);
+      await this.eventsService.saveImpactEvent(
+        event_type as EventTypes,
+        user_id,
+        trackEventDto.event_data?.data?.quantity,
+      );
 
       const isDistractionBlockEvent = DISTRACTION_BLOCK_EVENTS.includes(event_type as EventTypes);
       if (isDistractionBlockEvent) {

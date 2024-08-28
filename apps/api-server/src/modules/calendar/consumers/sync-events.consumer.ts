@@ -68,11 +68,11 @@ export class SyncEventsConsumer extends WorkerHost {
             return true;
           });
 
-          if (userId === "9884b0af-dc9f-4207-964e-e4db537a2234") {
+          if (userId === '9884b0af-dc9f-4207-964e-e4db537a2234') {
             // Jeremy's Events
-            console.log("Events From Synced Events: ", eventsFromSyncedEvents.length); // eslint-disable-line no-console
-            console.log("Events To Sync (New): ", eventsToSync); // eslint-disable-line no-console
-            console.log("Events To Remove Ids: ", eventsToRemoveIds); // eslint-disable-line no-console
+            console.log('Events From Synced Events: ', eventsFromSyncedEvents.length); // eslint-disable-line no-console
+            console.log('Events To Sync (New): ', eventsToSync); // eslint-disable-line no-console
+            console.log('Events To Remove Ids: ', eventsToRemoveIds); // eslint-disable-line no-console
           }
 
           await Promise.all(
@@ -158,7 +158,7 @@ export class SyncEventsConsumer extends WorkerHost {
 
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);
-    
+
     if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
       // Access token is expired
       // Refresh access token using refresh token already provided

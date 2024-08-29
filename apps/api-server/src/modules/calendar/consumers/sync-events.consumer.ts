@@ -162,30 +162,26 @@ export class SyncEventsConsumer extends WorkerHost {
     if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
       // Access token is expired
       // Refresh access token using refresh token already provided
-      oauth2Client.refreshAccessToken(async (err, tokens) => {
-        if (err) {
-          console.error('Error refreshing access token: ', err);
-          return;
-        }
+      const response = await oauth2Client.refreshAccessToken();
+      const tokens = response.credentials;
 
-        // Update your storage with new tokens
-        const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
-        if (existingRecord) {
-          const data = {
-            access_token: tokens.access_token,
-            expiry_date: tokens.expiry_date,
-          };
+      // Update your storage with new tokens
+      const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
+      if (existingRecord) {
+        const data = {
+          access_token: tokens.access_token,
+          expiry_date: tokens.expiry_date,
+        };
 
-          const platformIntegration = new PlatformIntegration({
-            ...existingRecord,
-            data,
-          });
-          await this.platformIntegrationRepository.orm.save(platformIntegration);
-        }
+        const platformIntegration = new PlatformIntegration({
+          ...existingRecord,
+          data,
+        });
+        await this.platformIntegrationRepository.orm.save(platformIntegration);
+      }
 
-        // Set the new credentials
-        oauth2Client.setCredentials(tokens);
-      });
+      // Set the new credentials
+      oauth2Client.setCredentials(tokens);
     }
 
     const calendar = Google.calendar({ version: 'v3', auth: oauth2Client });

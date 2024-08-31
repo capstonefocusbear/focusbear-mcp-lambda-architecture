@@ -89,6 +89,7 @@ export const RevenueCatServiceMock = {
   grantTrialAccess: jest.fn(),
   checkSubscriptionStatus: jest.fn(),
   deleteUserFromRevenueCat: jest.fn(),
+  revokeUserEntitlementFromRevenueCat: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {

@@ -1,16 +1,19 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { RevenueCatService } from '@app/revenue-cat';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IStripeOptions } from './interfaces';
 import { StripeModule } from './stripe.module';
 import { StripeService } from './stripe.service';
 import { dummySubscriptionCancelFeedback, userDummy } from '../../../apps/api-server/test/dummies';
+import { RevenueCatServiceMock } from '../../../apps/api-server/test/mocks';
 
 describe('StripeService', () => {
   let service: StripeService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      providers: [RevenueCatService],
       imports: [
         ConfigModule.forRoot({ load: configsArray }),
         StripeModule.registerAsync({
@@ -23,7 +26,10 @@ describe('StripeService', () => {
           }),
         }),
       ],
-    }).compile();
+    })
+      .overrideProvider(RevenueCatService)
+      .useValue(RevenueCatServiceMock)
+      .compile();
 
     service = module.get<StripeService>(StripeService);
   });
@@ -40,7 +46,10 @@ describe('StripeService', () => {
 
       try {
         await service.cancelSubscriptionSession(
-          { cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK },
+          {
+            cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
+            entitlement_id: 'prod_B4DMIzxyNLnP2a',
+          },
           { id: userDummy.id, stripeCustomerId: userDummy.stripe_customer_id },
         );
       } catch (error) {

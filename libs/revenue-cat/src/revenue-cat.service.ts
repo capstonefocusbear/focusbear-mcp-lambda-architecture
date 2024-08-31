@@ -45,10 +45,10 @@ export class RevenueCatService {
   }
 
   checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
-    const emtitlementsEntries = Object.entries(entitlements);
-    const hasNoEntitlements = emtitlementsEntries.length < 1;
+    const entitlementsEntries = Object.entries(entitlements);
+    const hasNoEntitlements = entitlementsEntries.length < 1;
     if (hasNoEntitlements) return new SubscriptionStatus();
-    const activeEntitlementsEntries = emtitlementsEntries.filter(this.validateEntitlement);
+    const activeEntitlementsEntries = entitlementsEntries.filter(this.validateEntitlement);
     const activeEntitlements = Object.keys(Object.fromEntries(activeEntitlementsEntries));
     const expirations = Object.fromEntries(activeEntitlementsEntries.map((e) => this.getExpirations(e)));
     return new SubscriptionStatus({ activeEntitlements, expirations });
@@ -110,5 +110,12 @@ export class RevenueCatService {
     const Authorization = `Bearer ${this.options.secretApiKey}`;
     const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
     await this.httpService.delete(callUrl, { headers });
+  }
+
+  async revokeUserEntitlementFromRevenueCat(app_user_id: string, entitlement_id: string) {
+    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement_id}`;
+    const Authorization = `Bearer ${this.options.secretApiKey}`;
+    const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
+    await this.httpService.post(callUrl, { headers });
   }
 }

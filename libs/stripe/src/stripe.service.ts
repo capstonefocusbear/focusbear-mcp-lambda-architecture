@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import Stripe from 'stripe';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
+import { RevenueCatService } from '@app/revenue-cat';
 import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import { STRIPE_API_VERSION } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
@@ -17,6 +18,7 @@ export class StripeService extends Stripe {
   constructor(
     @Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly revenueCatService: RevenueCatService,
   ) {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
@@ -163,7 +165,10 @@ export class StripeService extends Stripe {
     await this.subscriptions.del(subscriptionId);
   }
 
-  async cancelSubscriptionSession({ cancel_subscription_reason }: CancelSubscriptionSession, user: UserAuthContext) {
+  async cancelSubscriptionSession(
+    { cancel_subscription_reason, entitlement_id }: CancelSubscriptionSession,
+    user: UserAuthContext,
+  ) {
     try {
       const subscriptions = await this.subscriptions.list({ customer: user.stripeCustomerId });
       if (!subscriptions.data.length) {
@@ -174,16 +179,18 @@ export class StripeService extends Stripe {
         cancel_subscription_reason,
         user_id: user.id,
       });
-      const response = await this.ormFeedback.save(feedback);
-      if (response) {
-        const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
-        const body = {
-          channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-          message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`,
-        };
-        axios.post(cliqUrl, body);
-      }
-      return response;
+
+      await Promise.allSettled([
+        this.ormFeedback.save(feedback),
+        this.revenueCatService.revokeUserEntitlementFromRevenueCat(user.id, entitlement_id),
+      ]);
+
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
+        message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${cancel_subscription_reason}`,
+      };
+      axios.post(cliqUrl, body);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

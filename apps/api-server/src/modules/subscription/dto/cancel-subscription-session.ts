@@ -5,4 +5,8 @@ export class CancelSubscriptionSession {
   @IsString()
   @MinLength(10, { message: 'Minimum feedback characters length is 10' })
   cancel_subscription_reason: string;
+
+  @IsNotEmpty()
+  @IsString()
+  entitlement_id: string;
 }

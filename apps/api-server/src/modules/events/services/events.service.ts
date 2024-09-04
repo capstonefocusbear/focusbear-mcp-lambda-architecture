@@ -17,7 +17,7 @@ import {
   BullWorkers,
   EMAIL_SUBJECTS,
   EVENTS_TO_IMPACT_CATEGORIES_MAP,
-  EVENT_TYPES_TO_ALERT_IN_SLACK,
+  EVENT_TYPES_TO_ALERT_IN_SLACK as EVENT_TYPES_TO_ALERT_IN_CLIQ,
   FOCUS_BEAR_EMAILS,
   IMPACT_MEASUREMENT_EVENT_TYPES,
   ONE_DAY_SECONDS,
@@ -128,10 +128,10 @@ export class EventsService {
     }
   }
 
-  shouldEventBeLogged(quitReason: string, event_type: string) {
-    const shouldLogEventType = EVENT_TYPES_TO_ALERT_IN_SLACK.includes(event_type as EventTypes);
+  shouldEventBeLogged(reason: string, event_type: string) {
+    const shouldLogEventType = EVENT_TYPES_TO_ALERT_IN_CLIQ.includes(event_type as EventTypes);
     if (!shouldLogEventType) return false;
-    const sentenceWords = quitReason.toLowerCase().split(/\s+/);
+    const sentenceWords = reason.toLowerCase().split(/\s+/);
     for (const word of WORDS_TO_LOG_FOR) {
       if (sentenceWords.includes(word.toLowerCase())) {
         return true;
@@ -140,13 +140,13 @@ export class EventsService {
     return false;
   }
 
-  async emailQuitFeedback(event: TrackEventDto, email: string) {
+  async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string) {
     await this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
       text: JSON.stringify(event),
-      subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
+      subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${quitReason}`,
     });
   }
 
@@ -178,13 +178,23 @@ export class EventsService {
           event,
         },
       });
-      const messagePrefix = `*User ${
-        event.event_type === EventTypes.GIVE_ME_4HR_BREAK ? 'disabled app for 4 hours' : 'quit app'
-      }:*\n*User ID:* ${user_id}\n*Event:*`;
+
+      let messagePrefix = '*User ';
+      switch (event.event_type) {
+        case EventTypes.GIVE_ME_4HR_BREAK:
+          messagePrefix += 'disabled app for 4 hours';
+          break;
+        case EventTypes.UNINSTALL:
+          messagePrefix += 'uninstalled';
+          break;
+        default:
+          messagePrefix += 'quit app';
+      }
+
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
-        message: `${messagePrefix}\`\`\`${JSON.stringify(event)}\`\`\``,
+        message: `${messagePrefix}:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``,
       };
 
       await axios.post(cliqUrl, body);
@@ -196,13 +206,14 @@ export class EventsService {
 
   async handleEventBroadcast(userId: string, trackEventDto: TrackEventDto, email: string) {
     const { event_data, event_type } = trackEventDto;
-    const shouldLogEvent = this.shouldEventBeLogged(event_data?.data?.quitReason, event_type);
+    const reason = event_data?.data?.quitReason || event_data?.data?.uninstallDescription;
+    const shouldLogEvent = this.shouldEventBeLogged(reason, event_type);
     const hasFeedback = !!event_data?.data?.feedback;
     if (shouldLogEvent) {
       await this.logEventInCliq(userId, trackEventDto);
     }
-    if (shouldLogEvent && hasFeedback) {
-      await this.emailQuitFeedback(trackEventDto, email);
+    if (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback)) {
+      await this.emailQuitFeedback(trackEventDto, email, reason);
     }
   }
 

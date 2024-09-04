@@ -14,6 +14,7 @@ export class TrackEventDto {
       quantity?: number;
       quitReason?: string;
       feedback?: string;
+      uninstallDescription?: string;
     };
   };
 }

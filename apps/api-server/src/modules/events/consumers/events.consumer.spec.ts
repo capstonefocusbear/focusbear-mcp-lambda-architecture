@@ -252,7 +252,7 @@ describe('EventConsumer', () => {
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
         text: JSON.stringify(dummyEvent),
-        subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}`,
+        subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${dummyEvent.event_data.data.quitReason}`,
       });
     });
 

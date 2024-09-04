@@ -8,6 +8,7 @@ import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
+import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import {
   Auth0ManagementServiceMock,
   EventsRepositoryMock,
@@ -26,7 +27,7 @@ import { EventTypes } from '../domain/event-types.enum';
 import { EventsRepository } from '../repositories/events.repository';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
 import { DeviceService } from '../../device/services/device/device.service';
-import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+
 import { TrackEventRepository } from '../repositories/track-event.repository';
 
 jest.mock('ioredis', () => {
@@ -108,6 +109,106 @@ describe('EventService', () => {
     expect(eventsService).toBeDefined();
   });
 
+  describe('handleEventBroadcast', () => {
+    const reason = 'muy dañado';
+    const testCases = [
+      {
+        description: 'positive: should broadcast to cliq and email on an app quit event with feedback',
+        msgPrefix: '*User quit app:*',
+        dummyEvent: {
+          event_type: EventTypes.APP_QUIT,
+          event_data: { data: { quitReason: reason, feedback: 'me gustan los ponis' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+      },
+      {
+        description: 'positive: should broadcast to cliq on an app quit event with no feedback',
+        msgPrefix: '*User quit app:*',
+        dummyEvent: {
+          event_type: EventTypes.APP_QUIT,
+          event_data: { data: { quitReason: reason } },
+        },
+        expectCliq: true,
+        expectEmail: false,
+      },
+      {
+        description: 'positive: should broadcast to cliq and email on a 4 hr break event with feedback',
+        msgPrefix: '*User disabled app for 4 hours:*',
+        dummyEvent: {
+          event_type: EventTypes.GIVE_ME_4HR_BREAK,
+          event_data: { data: { quitReason: reason, feedback: 'me gustan los ponis' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+      },
+      {
+        description: 'positive: should broadcast to cliq on a 4 hour break event with no feedback',
+        msgPrefix: '*User disabled app for 4 hours:*',
+        dummyEvent: {
+          event_type: EventTypes.GIVE_ME_4HR_BREAK,
+          event_data: { data: { quitReason: reason } },
+        },
+        expectCliq: true,
+        expectEmail: false,
+      },
+      {
+        description: 'positive: should broadcast to cliq and email on an uninstall event with feedback',
+        msgPrefix: '*User uninstalled:*',
+        dummyEvent: {
+          event_type: EventTypes.UNINSTALL,
+          event_data: { data: { uninstallDescription: reason, feedback: 'me gustan los ponis' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+      },
+      {
+        description: 'positive: should broadcast to cliq and email on an uninstall event with no feedback',
+        msgPrefix: '*User uninstalled:*',
+        dummyEvent: {
+          event_type: EventTypes.UNINSTALL,
+          event_data: { data: { uninstallDescription: reason } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+      },
+      {
+        description: 'negative: should not broadcast to cliq or email on non matching event type',
+        dummyEvent: {
+          event_type: EventTypes.BLOCK_DISTRACTING_APP,
+          event_data: { data: { quitReason: reason, feedback: 'me gustan los ponis' } },
+        },
+        expectCliq: false,
+        expectEmail: false,
+      },
+    ];
+
+    it.each(testCases)('$description', async (tc) => {
+      await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
+
+      if (tc.expectCliq) {
+        expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+          channel: 'channel',
+          message: `${tc.msgPrefix}\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(tc.dummyEvent)}\`\`\``,
+        });
+      } else {
+        expect(mockedAxios.post).not.toBeCalled();
+      }
+
+      if (tc.expectEmail) {
+        expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+          to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
+          from: FOCUS_BEAR_EMAILS.SUPPORT,
+          replyTo: auth0UserDummy.email,
+          text: JSON.stringify(tc.dummyEvent),
+          subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
+        });
+      } else {
+        expect(SendGridServiceMock.sendEmail).not.toBeCalled();
+      }
+    });
+  });
+
   describe('handleIncomingEvent', () => {
     beforeEach(() => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
@@ -152,8 +253,27 @@ describe('EventService', () => {
       });
     });
 
+    it('positive: should send appropriate message to cliq when user uninstalls', async () => {
+      const dummyEvent = {
+        event_type: EventTypes.UNINSTALL,
+        event_data: { data: { uninstallDescription: '2 awesum 4 m3' } },
+      };
+      const message = `*User uninstalled:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(
+        dummyEvent,
+      )}\`\`\``;
+      await eventsService.logEventInCliq(userDummy.id, dummyEvent);
+
+      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        channel: 'channel',
+        message,
+      });
+    });
+
     it('positive: should send appropriate message to cliq when user quits app', async () => {
-      const dummyEvent = { event_type: EventTypes.APP_QUIT };
+      const dummyEvent = {
+        event_type: EventTypes.APP_QUIT,
+        event_data: { data: { quitReason: '2 awesum 4 m3' } },
+      };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
       await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 

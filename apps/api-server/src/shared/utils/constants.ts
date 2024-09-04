@@ -18,7 +18,7 @@ export const EMAIL_TEMPLATE_IDS = {
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
   INACTIVE_ACCOUNT: 'Inactive Account',
-  APP_QUIT_FEEDBACK: 'App Quit Feedback',
+  APP_QUIT_FEEDBACK: 'Focus Bear Feedback',
   USER_FEEDBACK_AND_APP_LOGS: 'User Feedback Add App Logs',
   USER_SURVEY_FEEDBACK: 'User Survey Feedback',
 };
@@ -82,7 +82,7 @@ export const IDS_TO_LOG_FOR = [JEREMYS_USER_ID, DEON_USER_ID];
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK];
+export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK, EventTypes.UNINSTALL];
 
 export const IMPACT_MEASUREMENT_EVENT_TYPES = [
   EventTypes.UNLOCK_SUPER_DISTRACTING_WEBSITE,

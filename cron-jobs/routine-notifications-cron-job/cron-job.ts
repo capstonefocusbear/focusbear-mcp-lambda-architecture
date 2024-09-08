@@ -3,6 +3,7 @@
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
 import OpenAI from 'openai';
+import { MoreThanOrEqual } from 'typeorm';
 // eslint-disable-next-line import/extensions
 import * as S3 from 'aws-sdk/clients/s3.js';
 import { GPT_4O } from '../../apps/api-server/src/shared/utils/constants';
@@ -144,10 +145,12 @@ async function getUsersForStartup(language: string) {
   for (let i = 0; i <= 30; i++) {
     timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
   }
+  const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const users = await CronJobDataSource.manager.find(User, {
     where: [
       { utc_startup_time: timeStamp, language },
       { utc_startup_time: timeStampPlusMinute, language },
+      { updated_at: MoreThanOrEqual(thirtyDaysBeforeNow.toISO()) },
       ...timeStrings.map((ts) => ({ utc_startup_time: ts, language })),
     ],
   });
@@ -173,10 +176,12 @@ async function getUsersForShutdown(language: string) {
   for (let i = 0; i <= 30; i++) {
     timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
   }
+  const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const users = await CronJobDataSource.manager.find(User, {
     where: [
       { utc_shutdown_time: timeStamp, language },
       { utc_shutdown_time: timeStampPlusMinute, language },
+      { updated_at: MoreThanOrEqual(thirtyDaysBeforeNow.toISO()) },
       ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language })),
     ],
   });
@@ -211,7 +216,7 @@ async function updateUsersEveningRoutineNotification(users: User[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
-function publishToUsersByLanguage(
+async function publishToUsersByLanguage(
   users: User[],
   language: string,
   routine: string,
@@ -229,7 +234,11 @@ function publishToUsersByLanguage(
     });
     console.log('Users to receive routine push notifications: ', userIDs);
     console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
-    return beamsClient.publishToUsers(userIDs, publishRequest);
+    // chunk in groups of 1000
+    const chunkSz = 1000;
+    for (let i = 0; i < userIDs.length; i += chunkSz) {
+      await beamsClient.publishToUsers(userIDs.slice(i, i + chunkSz), publishRequest)
+    }
   }
 }
 

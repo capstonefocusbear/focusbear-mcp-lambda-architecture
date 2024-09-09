@@ -146,12 +146,12 @@ async function getUsersForStartup(language: string) {
     timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
   }
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
+  const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
   const users = await CronJobDataSource.manager.find(User, {
     where: [
-      { utc_startup_time: timeStamp, language },
-      { utc_startup_time: timeStampPlusMinute, language },
-      { updated_at: MoreThanOrEqual(thirtyDaysBeforeNow.toISO()) },
-      ...timeStrings.map((ts) => ({ utc_startup_time: ts, language })),
+      { utc_startup_time: timeStamp, language, updated_at },
+      { utc_startup_time: timeStampPlusMinute, language, updated_at },
+      ...timeStrings.map((ts) => ({ utc_startup_time: ts, language, updated_at })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {
@@ -177,12 +177,12 @@ async function getUsersForShutdown(language: string) {
     timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
   }
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
+  const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
   const users = await CronJobDataSource.manager.find(User, {
     where: [
-      { utc_shutdown_time: timeStamp, language },
-      { utc_shutdown_time: timeStampPlusMinute, language },
-      { updated_at: MoreThanOrEqual(thirtyDaysBeforeNow.toISO()) },
-      ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language })),
+      { utc_shutdown_time: timeStamp, language, updated_at },
+      { utc_shutdown_time: timeStampPlusMinute, language, updated_at },
+      ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language, updated_at })),
     ],
   });
   const usersToReceiveNotification = users.filter((user) => {

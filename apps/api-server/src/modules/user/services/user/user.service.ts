@@ -681,9 +681,11 @@ export class UserService {
 
   isValidURL(string: string) {
     const validUrl = new RegExp(
-      '^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?',
+      '^(https?|ftp):\\/\\/(?!-)([^:\\/\\s]+)(?![^@]*@)(([\\w\\-]+\\.)+\\w{2,})(:\\d{1,5})?(\\/.*)?$',
     );
-    const validUrlWithoutProtocol = new RegExp('^([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?');
+    const validUrlWithoutProtocol = new RegExp(
+      '^(?!-)[a-zA-Z0-9-@:%._+~#=]{1,256}\\.[a-zA-Z]{2,6}\\b(?:/[a-zA-Z0-9-@:%_+.~#?&//=]*)?$',
+    );
     if (validUrl.test(string) || validUrlWithoutProtocol.test(string)) {
       return true;
     }

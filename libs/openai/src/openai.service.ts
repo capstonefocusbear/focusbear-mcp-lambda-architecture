@@ -168,39 +168,64 @@ export class OpenAIService {
   }
 
   async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
-    if (!isUrlSafeDto?.url || !this.isValidURL(isUrlSafeDto?.url)) {
-      return null;
-    }
     const openai = new OpenAI({ ...this.options });
-    let metaDescriptionToUse = isUrlSafeDto.meta_description;
-    let titleToUse = isUrlSafeDto.tab_title;
-    if (!metaDescriptionToUse || !titleToUse) {
-      const { title, description } = await this.getMetadata(isUrlSafeDto.url);
+    const { url, meta_description, tab_title, focus_mode, intention } = isUrlSafeDto;
+
+    let metaDescriptionToUse = meta_description;
+    let titleToUse = tab_title;
+    if (!meta_description) {
+      const { title, description } = await this.getMetadata(url);
       metaDescriptionToUse = description;
-      titleToUse = title;
+      if (!titleToUse) {
+        titleToUse = title;
+      }
     }
+
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
-      content: `Please provide a JSON response indicating whether the following website is related to the user's Focus Mode:
-    JSON response format:
-    { allowed_probability: number between 0 and 1, reason: the reason why the website and focus mode are related or unrelated in first person talking to the user }
+      content: `Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.
 
-    Website data:
-      URL: ${isUrlSafeDto.url}
-      Tab Title: ${titleToUse}
-      Meta Description: ${metaDescriptionToUse}
+                JSON response format:
+                {
+                  "allowed_probability": number (0 to 1),
+                  "reason": string (explain why the website is related or unrelated to Focus Mode)
+                }
 
-    Focus Mode data:
-      Focus Mode: ${isUrlSafeDto.focus_mode}
-      Intention (what the user wants to focus on): ${isUrlSafeDto.intention}
+                ${
+                  tab_title
+                    ? `
+                Website data (from Focus Bear app):
+                  URL: ${url}
+                  Tab Title: ${titleToUse}
 
-    If the meta description or tab title are related to the Focus Mode Intention, allow it.
-    If you are sure that the URL is related to the focus mode or intention, you can also allow the site.
-       
-    If the website is not directly related to the focus mode and intention, allowed_probability should have a low score (below 0.6), if the website data and focus mode are somewhat related allowed_probability should be from 0.6 to 0.8, and if the website and focus mode are definitely related, allowed_probability should be from 0.9 to 1.
-      
-    JSON Response:`,
+                Website data (from scraping):
+                  URL: ${url}
+                  Meta Description: ${metaDescriptionToUse}
+                  `
+                    : `
+                Website data (from scraping):
+                  URL: ${url}
+                  Tab Title: ${titleToUse}
+                  Meta Description: ${metaDescriptionToUse}
+                  `
+                }
+
+                Focus Mode data:
+                  Focus Mode: ${focus_mode}
+                  Intention (what the user wants to focus on): ${intention}
+
+                Assessment Criteria:
+                 Allow if meta description or tab title relates to the Focus Mode Intention.
+                 Allow if URL strongly relates to the Focus Mode or Intention.
+
+                Scoring:
+                 Low relevance: allowed_probability < 0.6
+                 Moderate relevance: 0.6 <= allowed_probability <= 0.8
+                 High relevance: allowed_probability > 0.8
+                  
+                JSON Response:`,
     };
+
     let retryCount = 0;
     while (retryCount < 3) {
       try {
@@ -213,11 +238,7 @@ export class OpenAIService {
         });
         const newMessage = completions.choices[0].message;
         const { content } = newMessage;
-        // extract JSON string from generated content to avoid having extra text
-        const openingBracketIndex = content.indexOf('{');
-        const closingBracketIndex = content.indexOf('}');
-        const jsonString = content.substring(openingBracketIndex, closingBracketIndex + 1);
-        return JSON.parse(jsonString);
+        return JSON.parse(content);
       } catch (error) {
         retryCount++;
       }
@@ -285,17 +306,6 @@ export class OpenAIService {
     } catch (error) {
       return { title: null, description: null };
     }
-  }
-
-  isValidURL(string: string) {
-    const validUrl = new RegExp(
-      '^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?',
-    );
-    const validUrlWithoutProtocol = new RegExp('^([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?');
-    if (validUrl.test(string) || validUrlWithoutProtocol.test(string)) {
-      return true;
-    }
-    return false;
   }
 
   async checkIfUsernameIsValid(username: string): Promise<{ allowed: boolean }> {

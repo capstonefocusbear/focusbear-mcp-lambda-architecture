@@ -618,8 +618,10 @@ export class UserService {
     await this.openAIService.streamChatReply(response, messages, language);
   }
 
-  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto, userId: string) {
-    await this.userRepository.orm.findOneBy({ id: userId });
+  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto) {
+    if (!this.isValidURL(isUrlSafeDto?.url)) {
+      return null;
+    }
     return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
   }
 
@@ -675,5 +677,16 @@ export class UserService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
+  }
+
+  isValidURL(string: string) {
+    const validUrl = new RegExp(
+      '^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?',
+    );
+    const validUrlWithoutProtocol = new RegExp('^([0-9A-Za-z-\\.@:%_+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?');
+    if (validUrl.test(string) || validUrlWithoutProtocol.test(string)) {
+      return true;
+    }
+    return false;
   }
 }

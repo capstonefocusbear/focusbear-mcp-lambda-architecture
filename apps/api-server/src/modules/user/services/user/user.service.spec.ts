@@ -834,4 +834,30 @@ describe('UserService', () => {
       });
     });
   });
+
+  describe('isValidUrl', () => {
+    it('negative: should return false for empty string', () => {
+      const isUrl = userService.isValidURL('');
+
+      expect(isUrl).toBeFalse();
+    });
+
+    it('negative: should return false for invalid URL', () => {
+      const isUrl = userService.isValidURL('just-some-text');
+
+      expect(isUrl).toBeFalse();
+    });
+
+    it('positive: should return true for valid URL without protocol', () => {
+      const isUrl = userService.isValidURL('messagemedia.zoom.us');
+
+      expect(isUrl).toBeTrue();
+    });
+
+    it('positive: should return true for valid URL with protocol', () => {
+      const isUrl = userService.isValidURL('https://github.com');
+
+      expect(isUrl).toBeTrue();
+    });
+  });
 });

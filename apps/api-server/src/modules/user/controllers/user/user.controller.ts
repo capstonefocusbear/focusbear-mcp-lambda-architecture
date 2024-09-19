@@ -128,12 +128,14 @@ export class UserController {
 
   @Put('consent')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
     return this.userConsentService.upsertUserConsent(userConsent, user.id);
   }
 
   @Get('stats/onboarding')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async getUserStats(@AuthContext() { user }: Passport): Promise<OnboardingStatsResponseDto> {
     return this.userDailyStatsService.CalculateUserStatsResponse(user.id);
   }
@@ -141,6 +143,7 @@ export class UserController {
   @Post('access-request')
   @UseGuards(IsAdmin)
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async saveAdminAccessRequest(
     @Body() { access_reason }: { access_reason: string },
     @AuthContext() { user }: Passport,
@@ -150,6 +153,7 @@ export class UserController {
 
   @Get('subscription')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async getUserSubscription(@AuthContext() { user }: Passport) {
     return this.userService.getSubscription(user.id);
   }
@@ -157,6 +161,7 @@ export class UserController {
   @Get('/motivational-summary')
   @Sse()
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async getMotivationalSummary(
     @Res() response: FastifyReply,
     @Query() { language, tone, routine, device_type }: MotivationalSummaryQueryDto,
@@ -168,6 +173,7 @@ export class UserController {
   @Post('/chat')
   @Sse()
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   getCompletion(
     @Res() response: FastifyReply,
     @Body() { chat, language }: GenerateChatBotResponseDto,
@@ -176,32 +182,37 @@ export class UserController {
     return this.userService.generateChatReply(response, user.id, chat, language);
   }
 
-  @Post('/is-url-safe-to-use')
   @UseGuards(IsAuth)
-  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto, @AuthContext() { user }: Passport) {
-    return this.userService.checkIsUrlSafe(isUrlSafeDto, user.id);
+  @ApiSecurity('Auth0AccessToken')
+  @Post('/is-url-safe-to-use')
+  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
+    return this.userService.checkIsUrlSafe(isUrlSafeDto);
   }
 
   @Patch('/long-term-goals')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async updateUserLongTermGoals(@Body() { goals }: UpdateLongTermGoalsDto, @AuthContext() { user }: Passport) {
     return this.userService.updateLongTermGoals(user.id, { goals });
   }
 
   @Put('/long-term-goals')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async updateLongTermGoals(@Body() { goals }: UpdateLongTermGoalsDto, @AuthContext() { user }: Passport) {
     return this.userService.updateLongTermGoals(user.id, { goals });
   }
 
   @Get('/long-term-goals')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async getLongTermGoals(@AuthContext() { user }: Passport) {
     return this.userService.getUserLongTermGoals(user.id);
   }
 
   @Put('/username')
   @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
   async updateUsername(@Body() { username }: UpdateUsernameDto, @AuthContext() { user }: Passport) {
     return this.userService.updateUsername(user.id, { username });
   }

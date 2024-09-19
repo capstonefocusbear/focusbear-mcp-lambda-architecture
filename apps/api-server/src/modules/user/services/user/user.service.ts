@@ -680,13 +680,10 @@ export class UserService {
   }
 
   isValidURL(string: string) {
-    const validUrl = new RegExp('^(https?|ftp):\\/\\/[a-zA-Z0-9-\\.]+\\.[a-zA-Z]{2,6}(\\/\\S*)?$');
-    const validUrlWithoutProtocol = new RegExp(
-      '^(?!-)[a-zA-Z0-9-@:%._+~#=]{1,256}\\.[a-zA-Z]{2,6}\\b(?:/[a-zA-Z0-9-@:%_+.~#?&//=]*)?$',
-    );
-    if (validUrl.test(string) || validUrlWithoutProtocol.test(string)) {
-      return true;
-    }
-    return false;
+    /* eslint-disable no-useless-escape */
+    const validUrl = /^(https?|ftp):\/\/[a-zA-Z0-9-\\.]+\.[a-zA-Z]{2,6}(\/\S*)?$/;
+    const validUrlWithoutProtocol = /^([0-9A-Za-z-\.@:%_+~#=]+)+((\.[a-zA-Z]{2,3})+)(\/.*)?(\?.*)?$/;
+    /* eslint-enable no-useless-escape */
+    return validUrl.test(string) || validUrlWithoutProtocol.test(string);
   }
 }

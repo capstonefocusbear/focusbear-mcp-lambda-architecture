@@ -618,9 +618,14 @@ export class UserService {
     await this.openAIService.streamChatReply(response, messages, language);
   }
 
-  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto, userId: string) {
-    await this.userRepository.orm.findOneBy({ id: userId });
-    return this.openAIService.checkIfUrlIsSafeToUse(isUrlSafeDto);
+  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto) {
+    if (!this.isValidURL(isUrlSafeDto?.url)) {
+      return null;
+    }
+    return this.openAIService.checkIfUrlIsSafeToUse({
+      ...isUrlSafeDto,
+      url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
+    });
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {
@@ -675,5 +680,29 @@ export class UserService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
+  }
+
+  isValidURL(string: string) {
+    /* eslint-disable no-useless-escape */
+    const validUrl = /^(https?|ftp):\/\/[a-zA-Z0-9-\\.]+\.[a-zA-Z]{2,6}(\/\S*)?$/;
+    const validUrlWithoutProtocol =
+      /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]*(\.[a-zA-Z]{2,3})?(\/[a-zA-Z0-9@:%_\+.~#?&//=]*)?$/;
+    /* eslint-enable no-useless-escape */
+    return validUrl.test(string) || validUrlWithoutProtocol.test(string);
+  }
+
+  getRefactoredURLWithRespectToPrivacy(url: string) {
+    let incomingURL = url;
+    if (!incomingURL.startsWith('http://') && !incomingURL.startsWith('https://')) {
+      incomingURL = `https://${incomingURL}`;
+    }
+    const oldURL = new URL(incomingURL);
+    if (oldURL.hostname.includes('youtube.com')) {
+      const firstParam = oldURL.searchParams.entries().next().value;
+      if (firstParam) {
+        return `${oldURL.origin}${oldURL.pathname}?${firstParam[0]}=${firstParam[1]}`;
+      }
+    }
+    return oldURL.origin + oldURL.pathname;
   }
 }

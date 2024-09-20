@@ -686,7 +686,7 @@ export class UserService {
     /* eslint-disable no-useless-escape */
     const validUrl = /^(https?|ftp):\/\/[a-zA-Z0-9-\\.]+\.[a-zA-Z]{2,6}(\/\S*)?$/;
     const validUrlWithoutProtocol =
-      /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,3}(\.[a-zA-Z]{2,3})?(\/[a-zA-Z0-9@:%_\+.~#?&//=]*)?$/;
+      /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]*(\.[a-zA-Z]{2,3})?(\/[a-zA-Z0-9@:%_\+.~#?&//=]*)?$/;
     /* eslint-enable no-useless-escape */
     return validUrl.test(string) || validUrlWithoutProtocol.test(string);
   }

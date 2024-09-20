@@ -199,7 +199,6 @@ export class OpenAIService {
                   Tab Title: ${titleToUse}
 
                 Website data (from scraping):
-                  URL: ${url}
                   Meta Description: ${metaDescriptionToUse}
                   `
                     : `

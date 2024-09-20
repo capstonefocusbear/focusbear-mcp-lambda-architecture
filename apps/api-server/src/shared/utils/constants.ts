@@ -21,6 +21,7 @@ export const EMAIL_SUBJECTS = {
   APP_QUIT_FEEDBACK: 'Focus Bear Feedback',
   USER_FEEDBACK_AND_APP_LOGS: 'User Feedback Add App Logs',
   USER_SURVEY_FEEDBACK: 'User Survey Feedback',
+  USER_UNSUBSCRIBE_FEEDBACK: 'User Unsubscribe Feedback',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_MINUTE = 60000;

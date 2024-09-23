@@ -14,6 +14,8 @@ import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dt
 import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 import { CoursePlatform } from '../domain/course-platform.enum';
 import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
+import { Lesson } from '../../lesson/entities/lesson.entity';
+import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
 
 @Injectable()
 export class CoursesRepository {
@@ -24,6 +26,10 @@ export class CoursesRepository {
   private readonly ormCourseRating = AppDataSource.getRepository(CourseRating);
 
   private readonly ormUser = AppDataSource.getRepository(User);
+
+  private readonly ormLessons = AppDataSource.getRepository(Lesson);
+
+  private readonly ormLessonCompletions = AppDataSource.getRepository(LessonCompletion);
 
   async getAllAuthorCourses({ hidden, deleted }: GetUserCoursesDto, user_id: string): Promise<Course[]> {
     return this.ormCourse.find({
@@ -46,12 +52,26 @@ export class CoursesRepository {
         },
       },
     });
-
     const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    return this.ormCourse.find({
-      where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
-      relations: ['ratings', 'lessons', 'lessonCompletions', 'enrollments'],
-    });
+    const [courses, ratings, lessons, lessonCompletions, enrollments] = await Promise.all([
+      this.ormCourse.find({
+        where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
+      }),
+      this.ormCourseRating.find({ where: { course_id: In(enrolledCoursesIds) } }),
+      this.ormLessons.find({ where: { course_id: In(enrolledCoursesIds) } }),
+      this.ormLessonCompletions.find({ where: { course_id: In(enrolledCoursesIds) } }),
+      this.ormCourseEnrolment.find({ where: { course_id: In(enrolledCoursesIds) } }),
+    ]);
+
+    const coursesWithRelations = courses.map((course) => ({
+      ...course,
+      ratings: ratings.filter((rating) => rating.course_id === course.id),
+      lessons: lessons.filter((lesson) => lesson.course_id === course.id),
+      lessonCompletions: lessonCompletions.filter((lessonCompletion) => lessonCompletion.course_id === course.id),
+      enrollments: enrollments.filter((enrollment) => enrollment.course_id === course.id),
+    }));
+
+    return coursesWithRelations;
   }
 
   async getRatings(course_id: string): Promise<CourseRating[]> {

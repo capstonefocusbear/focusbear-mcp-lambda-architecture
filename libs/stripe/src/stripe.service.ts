@@ -177,9 +177,9 @@ export class StripeService extends Stripe {
       channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
       message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${session.cancel_subscription_reason}`,
     };
-    axios.post(cliqUrl, body);
+    await axios.post(cliqUrl, body);
 
-    this.emailService.sendEmail({
+    await this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       text: prettyJson(session),

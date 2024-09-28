@@ -116,3 +116,27 @@ export const FieldTransformer = {
 };
 
 export const convertMinutesToSeconds = (minutes: number, seconds?: number) => minutes * 60 + (seconds ?? 0);
+
+export const prettyJson = (obj: any, mode: string | undefined = 'standard'): string | null => {
+  // different modes of formatting (only 'standard' for now but can be extended later on)
+  switch (mode.toLowerCase()) {
+    case 'standard': {
+      // Build string with format `${key}: ${value}`
+      let result = '';
+
+      for (const [key, value] of Object.entries(obj)) {
+        result += `${key}: ${value}\n`;
+      }
+
+      return result;
+    }
+
+    case 'prettyjson': {
+      return JSON.stringify(obj, null, 2);
+    }
+
+    default: {
+      throw new Error('Invalid mode: Supported modes include: [standard, prettyjson]');
+    }
+  }
+};

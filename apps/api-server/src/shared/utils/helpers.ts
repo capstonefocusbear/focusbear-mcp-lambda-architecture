@@ -121,18 +121,27 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard'): str
   // different modes of formatting (only 'standard' for now but can be extended later on)
   switch (mode.toLowerCase()) {
     case 'standard': {
-      // Build string with format `${key}: ${value}`
-      let result = '';
+      const formatObject = (thisObj: any, indent = 0): string => {
+        let result = '';
+        const indentation = '  '.repeat(indent);
 
-      for (const [key, value] of Object.entries(obj)) {
-        result += `${key}: ${value}\n`;
-      }
+        for (const [key, value] of Object.entries(thisObj)) {
+          if (typeof value === 'object' && value !== null) {
+            result += `${indentation}${key}:\n`;
+            result += formatObject(value, indent + 2);
+          } else {
+            result += `${indentation}${key}: ${value}\n`;
+          }
+        }
 
-      return result;
+        return result;
+      };
+
+      return formatObject(obj);
     }
 
-    case 'prettyjson': {
-      return JSON.stringify(obj, null, 2);
+    case 'pretty': {
+      return JSON.stringify(obj, null, 4);
     }
 
     default: {

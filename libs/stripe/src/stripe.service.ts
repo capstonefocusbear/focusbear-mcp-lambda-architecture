@@ -12,7 +12,7 @@ import {
 } from '../../../apps/api-server/src/shared/utils/constants';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
-import { findNonZeroTotal } from '../../../apps/api-server/src/shared/utils/helpers';
+import { findNonZeroTotal, prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';
 import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session';
 import { UserAuthContext } from '../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
 import { Feedback } from './entities/feedback.entity';
@@ -182,7 +182,7 @@ export class StripeService extends Stripe {
     this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
-      text: JSON.stringify(session),
+      text: prettyJson(session),
       subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${session.cancel_subscription_reason}`,
     });
   }

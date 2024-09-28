@@ -7,5 +7,5 @@ export enum AiToneOptions {
   CHEERLEADER = 'cheerleader',
   UPBEAT = 'upbeat',
   FACTUAL = 'factual',
-  SARCASTIC = 'sarcastic',
+  SASSY = 'sassy',
 }

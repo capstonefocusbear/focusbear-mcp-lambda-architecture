@@ -284,6 +284,31 @@ export class User extends BaseEntity {
   micro_breaks_streak?: number;
 
   @Column({
+    type: 'decimal',
+    default: 0,
+  })
+  morning_percent_number_day_of_stats_completed?: number;
+
+  @Column({
+    type: 'decimal',
+    default: 0,
+  })
+  evening_percent_number_day_of_stats_completed?: number;
+
+  @Column({
+    type: 'decimal',
+    default: 0,
+  })
+  micro_percent_number_day_of_stats_completed?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  num_days_of_stats?: number;
+
+  @Column({
     type: 'boolean',
     default: false,
   })

@@ -1,0 +1,8 @@
+// Test constants representing IDs for a user, activity sequences, individual activities, and a device,
+// used in unit or integration tests to simulate real data scenarios.
+export const TEST_USER_ID = '2636a216-f363-493e-aeb8-d275a0a9016d';
+export const TEST_MORNING_ACTIVITY_SEQUENCE_ID = '114100c9-5326-4ff6-b18f-39b4a7c7f4ef';
+export const TEST_EVENING_ACTIVITY_SEQUENCE_ID = 'd73a5642-e1b0-4782-a53d-5e8f65d618bd';
+export const TEST_MORNING_ACTIVITY_ID = 'f3c02045-12ed-4029-b6c7-1ffa16c14fa9';
+export const TEST_EVENING_ACTIVITY_ID = '15b87c8a-6a21-4a64-898e-def533eabcb9';
+export const TEST_DEVICE_ID = '65cbbc6c-4f77-49c4-b761-f79e2608775e';

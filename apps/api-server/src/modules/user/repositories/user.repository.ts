@@ -238,35 +238,54 @@ export class UserRepository extends BaseRepository<User> {
   }: GetLeaderBoardQuery) {
     return this.orm.query(
       `
-      SELECT 
-          id, 
-          username, 
-          morning_routines_streak,
-          evening_routines_streak,
-          focus_modes_streak,
-          micro_breaks_streak,
-          ROW_NUMBER() OVER (ORDER BY 
-              CASE 
-                WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-                WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-                WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-                ELSE micro_breaks_streak
-              END 
-            DESC,
-            username
-          ) as rank
-      FROM 
-          users
-      ORDER BY
-          CASE 
-            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-            ELSE micro_breaks_streak
-          END
-      DESC,
-      username
-      LIMIT $2
+      SELECT
+      id, 
+      username, 
+      morning_routines_streak,
+      evening_routines_streak,
+      focus_modes_streak,
+      micro_breaks_streak,
+      morning_percent_number_day_of_stats_completed,
+      evening_percent_number_day_of_stats_completed,
+      micro_percent_number_day_of_stats_completed,
+      num_days_of_stats,
+      item_count,
+      ROW_NUMBER() OVER (ORDER BY
+            CASE 
+              WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+              WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+              WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+              ELSE micro_percent_number_day_of_stats_completed
+            END
+        DESC,
+        CASE 
+          WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+          WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+          WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+          ELSE micro_breaks_streak
+        END
+        DESC,
+        username) AS rank
+      FROM
+      (
+        SELECT 
+        users.id, 
+        users.username, 
+        users.morning_routines_streak,
+        users.evening_routines_streak,
+        users.focus_modes_streak,
+        users.micro_breaks_streak,
+        users.morning_percent_number_day_of_stats_completed,
+        users.evening_percent_number_day_of_stats_completed,
+        users.micro_percent_number_day_of_stats_completed,
+        users.num_days_of_stats,
+        COUNT(daily_stats.id) AS item_count
+        FROM users
+        LEFT JOIN daily_stats ON daily_stats.user_id = users.id
+        WHERE users.created_at >= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+        GROUP BY users.id
+        LIMIT $2
+      ) as result
     `,
       [streak_type, limit],
     );
@@ -275,39 +294,71 @@ export class UserRepository extends BaseRepository<User> {
   async getUserLeaderboardRank(userId: string, streakType: StreakTypes): Promise<any> {
     const result = await this.orm.query(
       `
-        SELECT 
-            id, 
-            username, 
-            morning_routines_streak,
-            evening_routines_streak,
-            focus_modes_streak,
-            micro_breaks_streak,
-            rank
-        FROM 
-            (
-                SELECT 
-                    id, 
-                    username, 
-                    morning_routines_streak,
-                    evening_routines_streak,
-                    focus_modes_streak,
-                    micro_breaks_streak,
-                    RANK() OVER (
-                        ORDER BY 
-                          CASE 
-                            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-                            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-                            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-                            ELSE micro_breaks_streak
-                          END 
-                        DESC,
-                        username
-                    ) rank
-                FROM 
-                    users
-            ) ranked_users
-        WHERE 
-            id = $2;
+        WITH leaderBoard AS
+        (
+          SELECT
+          id, 
+          username, 
+          morning_routines_streak,
+          evening_routines_streak,
+          focus_modes_streak,
+          micro_breaks_streak,
+          morning_percent_number_day_of_stats_completed,
+          evening_percent_number_day_of_stats_completed,
+          micro_percent_number_day_of_stats_completed,
+          num_days_of_stats,
+          item_count,
+          ROW_NUMBER() OVER (ORDER BY
+                CASE 
+                  WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+                  WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+                  WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+                  ELSE micro_percent_number_day_of_stats_completed
+                END
+            DESC,
+              CASE 
+                WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+                WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+                WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+                ELSE micro_breaks_streak
+              END
+            DESC,
+            username) AS rank
+          FROM
+          (
+            SELECT 
+            users.id, 
+            users.username, 
+            users.morning_routines_streak,
+            users.evening_routines_streak,
+            users.focus_modes_streak,
+            users.micro_breaks_streak,
+            users.morning_percent_number_day_of_stats_completed,
+            users.evening_percent_number_day_of_stats_completed,
+            users.micro_percent_number_day_of_stats_completed,
+            users.num_days_of_stats,
+            COUNT(daily_stats.id) AS item_count
+            FROM 
+                users
+            LEFT JOIN daily_stats ON daily_stats.user_id = users.id
+            WHERE 
+              users.created_at >= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+            GROUP BY users.id
+          ) as result 
+        )
+
+      SELECT 
+        id, 
+        username, 
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
+        micro_breaks_streak,
+        morning_percent_number_day_of_stats_completed,
+        evening_percent_number_day_of_stats_completed,
+        rank
+      FROM leaderBoard
+      WHERE id = $2
     `,
       [streakType, userId],
     );

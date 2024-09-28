@@ -19,13 +19,13 @@ export class seedTestUserActivities1670206269374 implements MigrationInterface {
                     "activity_template_id",
                     "is_default")
         VALUES      
-                    ('a7e6f2e9-d783-4443-864e-22071b853700',
+                    ('d9553a8c-ba80-4d2b-8372-46613fe49b78',
                     '2636a216-f363-493e-aeb8-d275a0a9016d',
                     'morning',
                     'SUM',
                     '0',
                     300,
-                    '{"encrypted": "b1jFdGxVNys6gkQRrifQY3zBCDqmVHNsRfR3XxBN3PcBeida/3AuXDEYesSa/AFvmANZ0ZPGncgTLW5YWIVkyAwpH9jlem/bwlPX6Y1oZb85sPYHLcUz57Cf78lH4cLPxfZgj+MGZFxi8pisHlUyzyc9TwlVP4fmBy01qCGadS40wl0iJkXd5ll6KAai+/0y"}'
+                    '{"encrypted": "vzYTq2dWYCcRYEBg+ghV80xo4j8JeVSmxXqKC/eKziTHmwCYh2UgCfHhHXArWwzTcNZhBo5CyLVj2n5TxitJtBg+8daIdCDJHOB5mvM3NY54VizL/DaucgT+evaxAspRet24AjjCilTEwWZj2PuW9VLiJmlpzkgsMkzcDg0k4ETXLclE+AeuFRWFywK1FcXabA3sg6p/cYZJuVl5panufmbWVWKMbrkbuvdOgM2k2e7jf/ZD1DPKddREvLKPAGDANreeBPt1DSFghqiCCKCx2g=="}'
                     ,
                     '2022-12-04 03:54:15.696804+00',
                     '2022-12-04 03:54:15.696804+00',
@@ -386,6 +386,6 @@ export class seedTestUserActivities1670206269374 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
         DELETE FROM "activities" WHERE "user_id" = '2636a216-f363-493e-aeb8-d275a0a9016d';
-`);
+    `);
   }
 }

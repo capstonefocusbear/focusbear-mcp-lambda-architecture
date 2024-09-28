@@ -25,6 +25,8 @@ export const UserRepositoryMock = {
   getUserCurrentActivityProps: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),
   getUserForAdmin: jest.fn(),
+  getLeaderboardRankingsByStreakType: jest.fn(),
+  getUserLeaderboardRank: jest.fn(),
 };
 
 export const UserConsentRepositoryMock = {

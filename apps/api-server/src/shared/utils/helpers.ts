@@ -144,6 +144,15 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard'): str
       return JSON.stringify(obj, null, 4);
     }
 
+    case 'jsonarray': {
+      let result = '';
+      for (let i = 0; i < obj.length; i++) {
+        result += `${i + 1}: ${JSON.stringify(obj[i])}\n\n`;
+      }
+
+      return result;
+    }
+
     default: {
       throw new Error('Invalid mode: Supported modes include: [standard, prettyjson]');
     }

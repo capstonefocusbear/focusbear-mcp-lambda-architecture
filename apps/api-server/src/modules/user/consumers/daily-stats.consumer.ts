@@ -20,7 +20,7 @@ export class DailyStatsConsumer {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userRepository: UserRepository,
     private readonly activitySequenceService: ActivitySequenceService,
-  ) {}
+  ) { }
 
   @Process(BullWorkers.DAILY_STATS_ACTIVITY_COMPLETED)
   async readOperationJob(
@@ -128,17 +128,22 @@ export class DailyStatsConsumer {
         });
         await this.dailyStatsRepository.create(newDailyStats);
       }
+
       const userDailyStats = await this.dailyStatsRepository.orm.find({
         where: {
           user_id: user.id,
         },
         order: { date_completed: 'DESC' },
       });
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+
+      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak,
+        percent_morning_routines_streak_complete_in_90days, percent_evening_routines_streak_complete_in_90days,
+        percent_micro_breaks_streak_complete_in_90days, num_days_of_stats
+      } =
         calculateStreaks(userDailyStats, user.timezone, {
           morningRoutineDailyDurations,
           eveningRoutineDailyDurations,
-          microBreaksDailyDurations,
+          microBreaksDailyDurations
         });
       const updatedLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,
@@ -148,6 +153,10 @@ export class DailyStatsConsumer {
       });
       await this.userRepository.update(user.id, {
         onboarding_progress: { ...user.onboarding_progress, level: updatedLevel },
+        morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,
+        evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
+        micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
+        num_days_of_stats: num_days_of_stats
       });
     } catch (error) {
       // eslint-disable-next-line no-console

@@ -141,98 +141,22 @@ export class EventsService {
     return false;
   }
 
-  async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string) {
-    // find recent 50 events for current user (this will be used for later when including events in email)
-    // const events = await this.getLastFiftyEvents(userId);
+  async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string, userId?: string) {
+    // find recent 50 events for current user
+    const events = await this.getLastFiftyEvents(userId);
+
+    // construct 50 events string
+    const eventsStr =
+      events === undefined || events === null
+        ? 'Cannot find the last 50 events.'
+        : prettyJson(events, 'jsonarray', 'event_type');
 
     await this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
-      text: JSON.stringify(event),
+      text: `${prettyJson(event, 'pretty')}\n\nLast 50 Events:\n\n${eventsStr}`,
       subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${quitReason}`,
-    });
-  }
-
-  async emailQuitFeedbackStub() {
-    // incoming event
-    const dummyEvent = {
-      event_type: EventTypes.APP_QUIT,
-      user_properties: { USES_MAC_APP: true, id: 'a4f84h34', USERNAME: '' },
-      event_data: { data: { quitReason: "I didn't like", feedback: 'me gustan los ponis' } },
-    };
-
-    // get last 50 events
-    const last50dummy = [
-      {
-        user_id: '123456',
-        event_type: 'FOCUS_MODE_DISABLED',
-        event_data: {
-          app_version: '1.0.3',
-          platform: 'iOS',
-        },
-        user_properties: {
-          language: 'en',
-          timezone: 'UTC+10',
-        },
-        created_at: '2024-09-29T14:35:20Z',
-        operating_system: 'iOS',
-      },
-      {
-        user_id: '123456',
-        event_type: 'FOCUS_MODE_ENABLED',
-        event_data: {
-          focus_duration: 60,
-          app_version: '1.0.2',
-        },
-        user_properties: {
-          language: 'en',
-          timezone: 'UTC+10',
-        },
-        created_at: '2024-09-28T12:20:15Z',
-        operating_system: 'iOS',
-      },
-      {
-        user_id: '123456',
-        event_type: 'APP_QUIT',
-        event_data: {
-          reason: 'App was buggy',
-          feedback: 'I experienced crashes frequently.',
-        },
-        user_properties: {
-          language: 'en',
-          timezone: 'UTC+10',
-        },
-        created_at: '2024-09-27T18:10:45Z',
-        operating_system: 'iOS',
-      },
-      {
-        user_id: '123456',
-        event_type: 'APP_QUIT',
-        event_data: {
-          quitReason: 'Too distracting',
-          feedback: 'Too many notifications during work.',
-        },
-        user_properties: {
-          language: 'en',
-          timezone: 'UTC+10',
-        },
-        created_at: '2024-09-26T08:45:32Z',
-        operating_system: 'iOS',
-      },
-    ];
-
-    // send email
-    await this.emailService.sendEmail({
-      to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
-      from: FOCUS_BEAR_EMAILS.SUPPORT,
-      replyTo: 'example@example.com', // this should be passed in as an argument similar to the actual function
-      text: `${prettyJson(dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(
-        last50dummy,
-        'jsonarray',
-        'event_type',
-      )}`,
-      subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${dummyEvent.event_data.data.quitReason}`,
     });
   }
 
@@ -299,7 +223,7 @@ export class EventsService {
       await this.logEventInCliq(userId, trackEventDto);
     }
     if (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback)) {
-      await this.emailQuitFeedback(trackEventDto, email, reason);
+      await this.emailQuitFeedback(trackEventDto, email, reason, userId);
     }
   }
 

@@ -180,6 +180,7 @@ export class StripeService extends Stripe {
     axios.post(cliqUrl, body);
 
     // Not having an await may cause emails to not be sent sometimes
+    // TODO: - Create new Issue: Move email logic to a background job via BULL
     this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,

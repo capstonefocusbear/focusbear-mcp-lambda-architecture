@@ -109,8 +109,8 @@ describe('helpers', () => {
         morning_routine_completion_percentage: stat.morning,
         evening_routine_completion_percentage: stat.evening,
         micro_breaks_routine_completion_percentage: stat.microBreaks,
-        created_at: new Date(currentDate.getFullYear(), currentDate.getMonth() - 2).toISOString(),
-        updated_at: new Date(currentDate.getFullYear(), currentDate.getMonth() - 2).toISOString(),
+        created_at: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1).toISOString(),
+        updated_at: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1).toISOString(),
       }));
 
       const expected = {

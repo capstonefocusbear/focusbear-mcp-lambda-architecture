@@ -20,6 +20,7 @@ import {
   SendGridServiceMock,
   DeviceServiceMock,
   TrackEventRepositoryMock,
+  EventsServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -196,16 +197,18 @@ describe('EventService', () => {
         expect(mockedAxios.post).not.toBeCalled();
       }
 
-      // Hardcoded for now
-      // TODO: - Mock the events array using getLastFiftyEvents function
+      const lastFiftyEvents = await EventsServiceMock.getLastFiftyEvents();
+      const eventsStr =
+        lastFiftyEvents === undefined || lastFiftyEvents === null
+          ? 'Cannot find the last 50 events.'
+          : prettyJson(lastFiftyEvents, 'jsonarray', 'event_type');
 
-      const hardcodedEventString = 'Cannot find the last 50 events.';
       if (tc.expectEmail) {
         expect(SendGridServiceMock.sendEmail).toBeCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${hardcodedEventString}`,
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${eventsStr}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
       } else {

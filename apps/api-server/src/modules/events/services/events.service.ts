@@ -224,8 +224,8 @@ export class EventsService {
 
     // send email
     await this.emailService.sendEmail({
-      to: 'asof0006@student.monash.edu',
-      from: 'austinsofaer@gmail.com',
+      to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: 'example@example.com', // this should be passed in as an argument similar to the actual function
       text: `${prettyJson(dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(
         last50dummy,

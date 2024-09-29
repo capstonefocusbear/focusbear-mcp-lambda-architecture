@@ -6,7 +6,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '@app/send-grid';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
-import { prettyJson } from 'apps/api-server/src/shared/utils/helpers';
+import { prettyJson } from '../../../shared/utils/helpers';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { TrackEventDto } from '../dto/track-event.dto';
@@ -141,15 +141,15 @@ export class EventsService {
     return false;
   }
 
-  async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string, userId: string) {
+  async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string) {
     // find recent 50 events for current user (this will be used for later when including events in email)
-    const events = await this.getLastFiftyEvents(userId);
+    // const events = await this.getLastFiftyEvents(userId);
 
     await this.emailService.sendEmail({
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
-      text: `${prettyJson(event, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(events, 'jsonarray')}`,
+      text: JSON.stringify(event),
       subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${quitReason}`,
     });
   }
@@ -295,7 +295,7 @@ export class EventsService {
       await this.logEventInCliq(userId, trackEventDto);
     }
     if (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback)) {
-      await this.emailQuitFeedback(trackEventDto, email, reason, userId);
+      await this.emailQuitFeedback(trackEventDto, email, reason);
     }
   }
 

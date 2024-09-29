@@ -117,7 +117,7 @@ export const FieldTransformer = {
 
 export const convertMinutesToSeconds = (minutes: number, seconds?: number) => minutes * 60 + (seconds ?? 0);
 
-export const prettyJson = (obj: any, mode: string | undefined = 'standard'): string | null => {
+export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyOnTop?: string): string | null => {
   // different modes of formatting (only 'standard' for now but can be extended later on)
   switch (mode.toLowerCase()) {
     case 'standard': {
@@ -145,16 +145,33 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard'): str
     }
 
     case 'jsonarray': {
+      let reorder = false;
+      if (keyOnTop !== undefined || keyOnTop !== null) {
+        reorder = true;
+      }
       let result = '';
       for (let i = 0; i < obj.length; i++) {
-        result += `${i + 1}: ${JSON.stringify(obj[i])}\n\n`;
+        if (reorder) {
+          result += `${i + 1}: ${JSON.stringify(prettyJson(obj[i], 'reorder', keyOnTop))}\n\n`;
+        } else {
+          result += `${i + 1}: ${JSON.stringify(obj[i])}\n\n`;
+        }
       }
 
       return result;
     }
 
+    case 'reorder': {
+      const reorderedObj = {
+        [keyOnTop]: obj[keyOnTop],
+        ...obj,
+      };
+
+      return reorderedObj;
+    }
+
     default: {
-      throw new Error('Invalid mode: Supported modes include: [standard, prettyjson]');
+      throw new Error('Invalid mode: Supported modes include: [standard, pretty, jsonarray, reorder]');
     }
   }
 };

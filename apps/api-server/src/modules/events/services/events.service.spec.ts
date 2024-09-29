@@ -7,6 +7,7 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
+import { prettyJson } from '../../../shared/utils/helpers';
 import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import {
@@ -195,12 +196,16 @@ describe('EventService', () => {
         expect(mockedAxios.post).not.toBeCalled();
       }
 
+      // Hardcoded for now
+      // TODO: - Mock the events array using getLastFiftyEvents function
+
+      const hardcodedEventString = 'Cannot find the last 50 events.';
       if (tc.expectEmail) {
         expect(SendGridServiceMock.sendEmail).toBeCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: JSON.stringify(tc.dummyEvent),
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${hardcodedEventString}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
       } else {

@@ -197,20 +197,17 @@ describe('EventService', () => {
         expect(mockedAxios.post).not.toBeCalled();
       }
 
-      const lastFiftyEvents = await EventsServiceMock.getLastFiftyEvents();
-      const eventsStr =
-        lastFiftyEvents === undefined || lastFiftyEvents === null
-          ? 'Cannot find the last 50 events.'
-          : prettyJson(lastFiftyEvents, 'jsonarray', 'event_type');
+      const lastFiftyEvents = (await EventsServiceMock.getLastFiftyEvents()) || 'Cannot find the last 50 events.';
 
       if (tc.expectEmail) {
         expect(SendGridServiceMock.sendEmail).toBeCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${eventsStr}`,
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${lastFiftyEvents}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
+        expect(EventsServiceMock.getLastFiftyEvents).toBeCalled();
       } else {
         expect(SendGridServiceMock.sendEmail).not.toBeCalled();
       }

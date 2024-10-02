@@ -8,7 +8,7 @@ import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
 import { prettyJson } from '../../../shared/utils/helpers';
-import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
+import { userDummy, QueueMock, auth0UserDummy, lastFiftyEventsDummy } from '../../../../test/dummies';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import {
   Auth0ManagementServiceMock,
@@ -186,6 +186,8 @@ describe('EventService', () => {
     ];
 
     it.each(testCases)('$description', async (tc) => {
+      EventsServiceMock.getLastFiftyEvents.mockResolvedValue(lastFiftyEventsDummy);
+
       await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
 
       if (tc.expectCliq) {
@@ -197,14 +199,15 @@ describe('EventService', () => {
         expect(mockedAxios.post).not.toBeCalled();
       }
 
-      const lastFiftyEvents = (await EventsServiceMock.getLastFiftyEvents()) || 'Cannot find the last 50 events.';
+      const lastFiftyEvents = await EventsServiceMock.getLastFiftyEvents();
+      const eventStr = prettyJson(lastFiftyEvents, 'jsonarray', 'event_type');
 
       if (tc.expectEmail) {
         expect(SendGridServiceMock.sendEmail).toBeCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${lastFiftyEvents}`,
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${eventStr}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
         expect(EventsServiceMock.getLastFiftyEvents).toBeCalled();

@@ -187,7 +187,7 @@ describe('EventService', () => {
 
     it.each(testCases)('$description', async (tc) => {
       EventsServiceMock.getLastFiftyEvents.mockResolvedValue(lastFiftyEventsDummy);
-
+      TrackEventRepositoryMock.orm.find.mockResolvedValue(lastFiftyEventsDummy);
       await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
 
       if (tc.expectCliq) {
@@ -199,15 +199,18 @@ describe('EventService', () => {
         expect(mockedAxios.post).not.toBeCalled();
       }
 
-      const lastFiftyEvents = await EventsServiceMock.getLastFiftyEvents();
-      const eventStr = prettyJson(lastFiftyEvents, 'jsonarray', 'event_type');
+      const events = await EventsServiceMock.getLastFiftyEvents('user123');
 
       if (tc.expectEmail) {
         expect(SendGridServiceMock.sendEmail).toBeCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${eventStr}`,
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(
+            events,
+            'jsonarray',
+            'event_type',
+          )}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
         expect(EventsServiceMock.getLastFiftyEvents).toBeCalled();

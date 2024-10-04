@@ -232,12 +232,12 @@ export function calculateStreaks(
       timeZone,
       microBreaksDailyDurations,
     ),
-    percent_morning_routines_streak_complete_in_90days: userDailyStats.length > 0 ? Math.round(daysWhereMorningRoutinesWereCompletedIn90Days.length
-      / userDailyStats.length * 100): 0,
-    percent_evening_routines_streak_complete_in_90days: userDailyStats.length > 0 ? Math.round(daysWhereEveningRoutinesWereCompletedIn90Days.length
-      / userDailyStats.length * 100):0,
-    percent_micro_breaks_streak_complete_in_90days: userDailyStats.length > 0 ? Math.round(daysWhereMicroBreaksWereCompletedIn90Days.length
-      / userDailyStats.length * 100): 0,
+    percent_morning_routines_streak_complete_in_90days: userDailyStatsFromLast90Days.length > 0 ? Math.round(daysWhereMorningRoutinesWereCompletedIn90Days.length
+      / userDailyStatsFromLast90Days.length * 100) : 0,
+    percent_evening_routines_streak_complete_in_90days: userDailyStatsFromLast90Days.length > 0 ? Math.round(daysWhereEveningRoutinesWereCompletedIn90Days.length
+      / userDailyStatsFromLast90Days.length * 100) : 0,
+    percent_micro_breaks_streak_complete_in_90days: userDailyStatsFromLast90Days.length > 0 ? Math.round(daysWhereMicroBreaksWereCompletedIn90Days.length
+      / userDailyStatsFromLast90Days.length * 100) : 0,
     num_days_of_stats: num_days_of_stats
   };
 }

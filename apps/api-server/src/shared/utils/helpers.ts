@@ -146,7 +146,7 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyO
 
     case 'jsonarray': {
       if (!Array.isArray(obj)) {
-        throw new Error('This mode requires an array argument');
+        return obj;
       }
       let reorder = false;
       if (keyOnTop !== undefined || keyOnTop !== null) {

@@ -116,3 +116,65 @@ export const FieldTransformer = {
 };
 
 export const convertMinutesToSeconds = (minutes: number, seconds?: number) => minutes * 60 + (seconds ?? 0);
+
+export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyOnTop?: string): string | null => {
+  // different modes of formatting (only 'standard' for now but can be extended later on)
+  switch (mode.toLowerCase()) {
+    case 'standard': {
+      const formatObject = (thisObj: any, indent = 0): string => {
+        let result = '';
+        const indentation = '  '.repeat(indent);
+
+        for (const [key, value] of Object.entries(thisObj)) {
+          if (typeof value === 'object' && value !== null) {
+            result += `${indentation}${key}:\n`;
+            result += formatObject(value, indent + 2);
+          } else {
+            result += `${indentation}${key}: ${value}\n`;
+          }
+        }
+
+        return result;
+      };
+
+      return formatObject(obj);
+    }
+
+    case 'pretty': {
+      return JSON.stringify(obj, null, 4);
+    }
+
+    case 'jsonarray': {
+      if (!Array.isArray(obj)) {
+        return obj;
+      }
+      let reorder = false;
+      if (keyOnTop !== undefined || keyOnTop !== null) {
+        reorder = true;
+      }
+      let result = '';
+      for (let i = 0; i < obj.length; i++) {
+        if (reorder) {
+          result += `${i + 1}: ${JSON.stringify(prettyJson(obj[i], 'reorder', keyOnTop))}\n\n`;
+        } else {
+          result += `${i + 1}: ${JSON.stringify(obj[i])}\n\n`;
+        }
+      }
+
+      return result;
+    }
+
+    case 'reorder': {
+      const reorderedObj = {
+        [keyOnTop]: obj[keyOnTop],
+        ...obj,
+      };
+
+      return reorderedObj;
+    }
+
+    default: {
+      throw new Error('Invalid mode: Supported modes include: [standard, pretty, jsonarray, reorder]');
+    }
+  }
+};

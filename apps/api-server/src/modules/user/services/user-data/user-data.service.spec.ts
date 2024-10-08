@@ -5,11 +5,13 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
 import { BrevoService } from '@app/brevo/brevo.service';
+import { SendGridService } from '@app/send-grid';
 import axios from 'axios';
 import {
   Auth0ManagementServiceMock,
   BrevoServiceMock,
   RevenueCatServiceMock,
+  SendGridServiceMock,
   SentryServiceMock,
   StripeServiceMock,
   UserRepositoryMock,
@@ -51,6 +53,7 @@ describe('UserDataService', () => {
           provide: getQueueToken(BullQueues.USER_DATA),
           useValue: QueueMock,
         },
+        SendGridService,
       ],
     })
       .overrideProvider(UserRepository)
@@ -63,6 +66,8 @@ describe('UserDataService', () => {
       .useValue(StripeServiceMock)
       .overrideProvider(BrevoService)
       .useValue(BrevoServiceMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
 
     service = module.get<UserDataService>(UserDataService);

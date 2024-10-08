@@ -7,11 +7,12 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
 import { BrevoService } from '@app/brevo/brevo.service';
+import { SendGridService } from '@app/send-grid';
 import { UserRepository } from '../../repositories/user.repository';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 import { maskEmail } from '../../../../shared/utils/helpers';
-import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class UserDataService {
@@ -21,6 +22,7 @@ export class UserDataService {
     private readonly revenueCatService: RevenueCatService,
     private readonly stripeService: StripeService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly emailService: SendGridService,
     @InjectQueue(BullQueues.USER_DATA) private userDataQueue: Queue,
     private readonly brevoService: BrevoService,
   ) {}
@@ -63,6 +65,19 @@ export class UserDataService {
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
       const brevoPromise = this.brevoService.deleteContactFromBrevo(auth0user.email);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
+
+      if (can_contact) {
+        // email payload for notification
+        const emailPayload = {
+          to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+          from: FOCUS_BEAR_EMAILS.SUPPORT,
+          text: `Account deleted for user with email: ${auth0user.email} and ID: ${user.id}\n\nMessage: ${message}\n\nCan contact: ${can_contact}`,
+          subject: `${EMAIL_SUBJECTS.INACTIVE_ACCOUNT}`,
+        };
+
+        // send email payload
+        await this.emailService.sendEmail(emailPayload);
+      }
 
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {

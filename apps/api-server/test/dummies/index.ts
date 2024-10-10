@@ -100,6 +100,65 @@ export const auth0UserDummy: Auth0UserProfile = {
   },
 };
 
+export const lastFiftyEventsDummy = [
+  {
+    user_id: '123456',
+    event_type: 'FOCUS_MODE_DISABLED',
+    event_data: {
+      app_version: '1.0.3',
+      platform: 'iOS',
+    },
+    user_properties: {
+      language: 'en',
+      timezone: 'UTC+10',
+    },
+    created_at: '2024-09-29T14:35:20Z',
+    operating_system: 'iOS',
+  },
+  {
+    user_id: '123456',
+    event_type: 'FOCUS_MODE_ENABLED',
+    event_data: {
+      focus_duration: 60,
+      app_version: '1.0.2',
+    },
+    user_properties: {
+      language: 'en',
+      timezone: 'UTC+10',
+    },
+    created_at: '2024-09-28T12:20:15Z',
+    operating_system: 'iOS',
+  },
+  {
+    user_id: '123456',
+    event_type: 'APP_QUIT',
+    event_data: {
+      reason: 'App was buggy',
+      feedback: 'I experienced crashes frequently.',
+    },
+    user_properties: {
+      language: 'en',
+      timezone: 'UTC+10',
+    },
+    created_at: '2024-09-27T18:10:45Z',
+    operating_system: 'iOS',
+  },
+  {
+    user_id: '123456',
+    event_type: 'APP_QUIT',
+    event_data: {
+      quitReason: 'Too distracting',
+      feedback: 'Too many notifications during work.',
+    },
+    user_properties: {
+      language: 'en',
+      timezone: 'UTC+10',
+    },
+    created_at: '2024-09-26T08:45:32Z',
+    operating_system: 'iOS',
+  },
+];
+
 export const deserializedActivitiesDummy = [
   {
     sequence: {

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RevenueCatService } from '@app/revenue-cat';
 import { SendGridService } from '@app/send-grid';
+import { prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IStripeOptions } from './interfaces';
 import { StripeModule } from './stripe.module';
@@ -76,7 +77,7 @@ describe('StripeService', () => {
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
-        text: JSON.stringify(dummySession),
+        text: prettyJson(dummySession),
         subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${dummySession.cancel_subscription_reason}`,
       });
     });

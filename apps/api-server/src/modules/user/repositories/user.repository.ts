@@ -282,7 +282,7 @@ export class UserRepository extends BaseRepository<User> {
         COUNT(daily_stats.id) AS item_count
         FROM users
         LEFT JOIN daily_stats ON daily_stats.user_id = users.id
-        WHERE users.created_at >= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+        WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
         GROUP BY users.id
         LIMIT $2
       ) as result
@@ -342,7 +342,7 @@ export class UserRepository extends BaseRepository<User> {
                 users
             LEFT JOIN daily_stats ON daily_stats.user_id = users.id
             WHERE 
-              users.created_at >= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+              users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
             GROUP BY users.id
           ) as result 
         )

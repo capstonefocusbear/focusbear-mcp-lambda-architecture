@@ -7,7 +7,8 @@ import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
-import { userDummy, QueueMock, auth0UserDummy } from '../../../../test/dummies';
+import { prettyJson } from '../../../shared/utils/helpers';
+import { userDummy, QueueMock, auth0UserDummy, lastFiftyEventsDummy } from '../../../../test/dummies';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import {
   Auth0ManagementServiceMock,
@@ -19,6 +20,7 @@ import {
   SendGridServiceMock,
   DeviceServiceMock,
   TrackEventRepositoryMock,
+  EventsServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -184,6 +186,7 @@ describe('EventService', () => {
     ];
 
     it.each(testCases)('$description', async (tc) => {
+      TrackEventRepositoryMock.orm.find.mockResolvedValue(lastFiftyEventsDummy);
       await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
 
       if (tc.expectCliq) {
@@ -200,7 +203,11 @@ describe('EventService', () => {
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
-          text: JSON.stringify(tc.dummyEvent),
+          text: `${prettyJson(tc.dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(
+            lastFiftyEventsDummy,
+            'jsonarray',
+            'event_type',
+          )}`,
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
       } else {

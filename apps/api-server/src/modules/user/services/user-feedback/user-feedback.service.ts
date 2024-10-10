@@ -48,8 +48,9 @@ export class UserFeedbackService {
     const saveFeedbackPromise = this.userFeedbackRepository.orm.save(savedFeedback);
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
     const lastFiftyEvents = await this.eventsService.getLastFiftyEvents(userId);
+    const lastFifteenEvents = lastFiftyEvents.slice(0, 15);
     // format the event names array to be numbered and a new line after each event name
-    const eventNames = lastFiftyEvents.map((event, index) => `${index + 1}. ${event.event_type}`).join('\n');
+    const eventNames = lastFifteenEvents.map((event, index) => `${index + 1}. ${event.event_type}`).join('\n');
     const operatingSystem = combinedMetadata.operating_system;
     const emailBody = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
       combinedMetadata,

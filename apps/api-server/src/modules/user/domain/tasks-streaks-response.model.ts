@@ -20,7 +20,10 @@ export class TasksStreaksResponse {
   micro_breaks_streak: number;
 
   percent_morning_routines_streak_complete_in_90days?: number;
+
   percent_evening_routines_streak_complete_in_90days?: number;
+
   percent_micro_breaks_streak_complete_in_90days?: number;
+
   num_days_of_stats?: number;
 }

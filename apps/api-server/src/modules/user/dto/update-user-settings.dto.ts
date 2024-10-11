@@ -1,7 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsMilitaryTime, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsMilitaryTime,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
+import { LanguageOptions } from '../domain/language-options.enum';
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -47,4 +58,8 @@ export class UpdateUserSettingsDto {
   @Type(() => UpdateActivityDto)
   @ApiProperty({ isArray: true, type: UpdateActivityDto })
   break_activities?: UpdateActivityDto[];
+
+  @IsOptional()
+  @IsIn(['en', 'es'], { message: 'Supported languages are "en" and "es" only.' })
+  language?: LanguageOptions;
 }

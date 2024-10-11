@@ -299,7 +299,7 @@ describe('UserSettingsService', () => {
           morning_activities: [],
           evening_activities: [],
           break_activities: [],
-          cutoff_time_for_non_high_priority_activities: '20:00',
+          cutoff_time_for_non_high_priority_activities: '21:00',
         },
         true,
         { is_onboarding: true },
@@ -585,8 +585,8 @@ describe('UserSettingsService', () => {
 
   describe('calculateRelaxActivityDuration', () => {
     it('Positive: should calculate the correct time difference between cutoff and shutdown time', () => {
-      const cutoffTime = '20:00';
-      const shutdownTime = '23:00';
+      const cutoffTime = '23:00';
+      const shutdownTime = '20:00';
       const eveningActivities = [
         { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
         { duration_seconds: 1800, id: randomUUID(), name: 'Name Two' }, // 30 minutes
@@ -597,8 +597,8 @@ describe('UserSettingsService', () => {
     });
 
     it('Positive: should handle time difference with no activities', () => {
-      const cutoffTime = '20:00';
-      const shutdownTime = '22:00';
+      const cutoffTime = '22:00';
+      const shutdownTime = '20:00';
       const eveningActivities = [];
       const result = userSettingsService.calculateRelaxActivityDuration(cutoffTime, shutdownTime, eveningActivities);
 
@@ -606,8 +606,8 @@ describe('UserSettingsService', () => {
     });
 
     it('Positive: should handle time difference where activity time is equal to difference', () => {
-      const cutoffTime = '20:00';
-      const shutdownTime = '22:00';
+      const cutoffTime = '22:00';
+      const shutdownTime = '20:00';
       const eveningActivities = [
         { duration_seconds: 7200, id: randomUUID(), name: 'Name One', priority: ActivityPriority.HIGH },
       ]; // 2 hours
@@ -617,8 +617,8 @@ describe('UserSettingsService', () => {
     });
 
     it('Positive: should calculate the correct time difference between cutoff and shutdown time', () => {
-      const cutoffTime = '20:00';
-      const shutdownTime = '23:00';
+      const cutoffTime = '23:00';
+      const shutdownTime = '20:00';
       const eveningActivities = [
         { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
         { duration_seconds: 1800, id: randomUUID(), name: 'Name Two', priority: ActivityPriority.HIGH }, // 30 minutes

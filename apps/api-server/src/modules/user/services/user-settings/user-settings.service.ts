@@ -152,6 +152,7 @@ export class UserSettingsService {
         morning_activities,
         evening_activities,
         break_activities,
+        language,
       } = updateSettingsData;
 
       const tutorialIds = []
@@ -219,7 +220,10 @@ export class UserSettingsService {
         if (relaxActivityDuration > 0) {
           const relaxActivity: UpdateActivityDto = {
             id: randomUUID(),
-            name: 'Free Time - no distraction blocking',
+            name:
+              language === LanguageOptions.SPANISH
+                ? 'Tiempo libre - no bloquees nada'
+                : 'Free Time - no distraction blocking',
             duration_seconds: relaxActivityDuration,
             show_saved_distracting_websites: true,
           };
@@ -271,7 +275,7 @@ export class UserSettingsService {
   calculateRelaxActivityDuration(cutoffTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
     const cutoffDateTime = DateTime.fromFormat(cutoffTime, 'HH:mm');
     const shutdownDateTime = DateTime.fromFormat(shutdownTime, 'HH:mm');
-    const differenceSeconds = shutdownDateTime.diff(cutoffDateTime, 'seconds').seconds;
+    const differenceSeconds = cutoffDateTime.diff(shutdownDateTime, 'seconds').seconds;
     if (differenceSeconds > 0) {
       // @Description: Check for any high priority activities
       /* eslint-disable no-param-reassign */

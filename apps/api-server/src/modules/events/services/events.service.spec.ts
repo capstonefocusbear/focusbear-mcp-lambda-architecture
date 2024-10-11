@@ -20,7 +20,6 @@ import {
   SendGridServiceMock,
   DeviceServiceMock,
   TrackEventRepositoryMock,
-  EventsServiceMock,
 } from '../../../../test/mocks';
 import { EventsService } from './events.service';
 import { UserRepository } from '../../user/repositories/user.repository';

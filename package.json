@@ -159,13 +159,15 @@
       "send": "^0.19.0"
     },
     "find-my-way": "^8.2.2",
-    "path-to-regexp": "^6.2.2"
+    "path-to-regexp": "^6.2.2",
+    "cookie": "^0.7.0"
   },
   "resolutions": {
     "ws": "^8.17.1",
     "socket.io": "^4.6.2",
     "fast-xml-parser": "^4.4.1",
-    "micromatch": "^4.0.8"
+    "micromatch": "^4.0.8",
+    "cookie": "^0.7.0"
   },
   "husky": {
     "hooks": {

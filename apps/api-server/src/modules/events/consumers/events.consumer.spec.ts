@@ -10,7 +10,8 @@ import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
 import { Job } from 'bull';
-import { userDummy, QueueMock, auth0UserDummy, DeviceDummy } from '../../../../test/dummies';
+import { prettyJson } from '../../../shared/utils/helpers';
+import { userDummy, QueueMock, auth0UserDummy, DeviceDummy, lastFiftyEventsDummy } from '../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
   EventsRepositoryMock,
@@ -228,6 +229,8 @@ describe('EventConsumer', () => {
     });
 
     it('positive: if event type is app-quit and feedback is sent, email should be sent to customer support channel', async () => {
+      TrackEventRepositoryMock.orm.find.mockResolvedValue(lastFiftyEventsDummy);
+
       const dummyEvent = {
         event_type: EventTypes.APP_QUIT,
         event_data: { data: { quitReason: 'App is broken', feedback: 'Test feedback' } },
@@ -251,7 +254,11 @@ describe('EventConsumer', () => {
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
-        text: JSON.stringify(dummyEvent),
+        text: `${prettyJson(dummyEvent, 'pretty')}\n\nLast 50 Events:\n\n${prettyJson(
+          lastFiftyEventsDummy,
+          'jsonarray',
+          'event_type',
+        )}`,
         subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${dummyEvent.event_data.data.quitReason}`,
       });
     });

@@ -52,6 +52,7 @@ import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { UserService } from '../user/user.service';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
+import { ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -284,6 +285,7 @@ describe('UserSettingsService', () => {
     });
 
     it('positive: if cutoff_time_for_non_high_priority_activities is sent "Free Time - no distraction blocking" activity should be added to evening routine', async () => {
+      i18nServiceMock.t.mockReturnValue('Free Time - no distraction blocking');
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: [],
@@ -310,10 +312,10 @@ describe('UserSettingsService', () => {
           morning_activities: [],
           evening_activities: [
             {
-              duration_seconds: 1800,
+              duration_seconds: ONE_HOUR_SECONDS * 0.5,
               name: 'Free Time - no distraction blocking',
               show_saved_distracting_websites: true,
-              id: expect.toBeString(),
+              id: expect.any(String),
             },
           ],
           break_activities: [],
@@ -588,12 +590,12 @@ describe('UserSettingsService', () => {
       const cutoffTime = '23:00';
       const shutdownTime = '20:00';
       const eveningActivities = [
-        { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
-        { duration_seconds: 1800, id: randomUUID(), name: 'Name Two' }, // 30 minutes
+        { duration_seconds: ONE_HOUR_SECONDS, id: randomUUID(), name: 'Name One' }, // 1 hour
+        { duration_seconds: ONE_HOUR_SECONDS * 0.5, id: randomUUID(), name: 'Name Two' }, // 30 minutes
       ];
       const result = userSettingsService.calculateRelaxActivityDuration(cutoffTime, shutdownTime, eveningActivities);
 
-      expect(result).toBe(10800); // 3 hours of relax time
+      expect(result).toBe(ONE_HOUR_SECONDS * 3);
     });
 
     it('Positive: should handle time difference with no activities', () => {
@@ -602,14 +604,14 @@ describe('UserSettingsService', () => {
       const eveningActivities = [];
       const result = userSettingsService.calculateRelaxActivityDuration(cutoffTime, shutdownTime, eveningActivities);
 
-      expect(result).toBe(7200); // 2 hours of relax time
+      expect(result).toBe(ONE_HOUR_SECONDS * 2);
     });
 
     it('Positive: should handle time difference where activity time is equal to difference', () => {
       const cutoffTime = '22:00';
       const shutdownTime = '20:00';
       const eveningActivities = [
-        { duration_seconds: 7200, id: randomUUID(), name: 'Name One', priority: ActivityPriority.HIGH },
+        { duration_seconds: ONE_HOUR_SECONDS * 2, id: randomUUID(), name: 'Name One', priority: ActivityPriority.HIGH },
       ]; // 2 hours
       const result = userSettingsService.calculateRelaxActivityDuration(cutoffTime, shutdownTime, eveningActivities);
 
@@ -620,12 +622,17 @@ describe('UserSettingsService', () => {
       const cutoffTime = '23:00';
       const shutdownTime = '20:00';
       const eveningActivities = [
-        { duration_seconds: 3600, id: randomUUID(), name: 'Name One' }, // 1 hour
-        { duration_seconds: 1800, id: randomUUID(), name: 'Name Two', priority: ActivityPriority.HIGH }, // 30 minutes
+        { duration_seconds: ONE_HOUR_SECONDS, id: randomUUID(), name: 'Name One' },
+        {
+          duration_seconds: ONE_HOUR_SECONDS * 0.5,
+          id: randomUUID(),
+          name: 'Name Two',
+          priority: ActivityPriority.HIGH,
+        },
       ];
       const result = userSettingsService.calculateRelaxActivityDuration(cutoffTime, shutdownTime, eveningActivities);
 
-      expect(result).toBe(9000); // 2 hours and 30 minutes of relax time
+      expect(result).toBe(ONE_HOUR_SECONDS * 2.5);
     });
   });
 

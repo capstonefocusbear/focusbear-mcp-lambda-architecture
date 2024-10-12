@@ -61,5 +61,5 @@ export class UpdateUserSettingsDto {
 
   @IsOptional()
   @IsIn(['en', 'es'], { message: 'Supported languages are "en" and "es" only.' })
-  language?: LanguageOptions;
+  language?: LanguageOptions = LanguageOptions.ENGLISH;
 }

@@ -72,7 +72,6 @@ services:
 
 databases:
   - name: eyst-postgres
-    plan: Standard
-    previewPlan: basic-1gb
+    plan: standard
     databaseName: eyst_production
     user: some_user

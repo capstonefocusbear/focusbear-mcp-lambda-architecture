@@ -220,10 +220,7 @@ export class UserSettingsService {
         if (relaxActivityDuration > 0) {
           const relaxActivity: UpdateActivityDto = {
             id: randomUUID(),
-            name:
-              language === LanguageOptions.SPANISH
-                ? 'Tiempo libre - no bloquees nada'
-                : 'Free Time - no distraction blocking',
+            name: this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language }),
             duration_seconds: relaxActivityDuration,
             show_saved_distracting_websites: true,
           };

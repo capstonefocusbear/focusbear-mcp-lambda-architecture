@@ -71,8 +71,9 @@ export class UserDataService {
         const emailPayload = {
           to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
           from: FOCUS_BEAR_EMAILS.SUPPORT,
+          replyTo: auth0user.email,
           text: `Account deleted for user with email: ${auth0user.email} and ID: ${user.id}\n\nMessage: ${message}\n\nCan contact: ${can_contact}`,
-          subject: `${EMAIL_SUBJECTS.INACTIVE_ACCOUNT}`,
+          subject: `${EMAIL_SUBJECTS.USER_ACCOUNT_DELETE} ${user.id}`,
         };
 
         // send email payload

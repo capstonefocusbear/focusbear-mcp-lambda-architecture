@@ -2,77 +2,76 @@ previewsEnabled: true
 previewsExpireAfterDays: 5
 
 services:
-- type: web
-  name: eyst-backend-prod
-  env: docker
-  plan: standard
-  healthCheckPath: /healthcheck
-  autoDeploy: false
-  scaling:
-    minInstances: 1
-    maxInstances: 5
-    targetMemoryPercent: 60 
-    targetCPUPercent: 60 
-  envVars:
-  - key: SERVER_PORT
-    value: 4000
-  - key: SERVER_HOST
-    value: 0.0.0.0
-  - key: NODE_ENV
-    value: prod
-    previewValue: dev
-  - key: REDIS_HOSTNAME
-    fromService:
-      type: redis
-      name: focus-bear-redis
-      property: host
-  - key: REDIS_PORT
-    fromService:
-      type: redis
-      name: focus-bear-redis
-      property: port
-  - key: POSTGRES_HOST
-    fromDatabase:
-      name: eyst-postgres
-      property: host
-  - key: POSTGRES_PORT
-    fromDatabase:
-      name: eyst-postgres
-      property: port
-  - key: POSTGRES_USERNAME
-    fromDatabase:
-      name: eyst-postgres
-      property: user
-  - key: POSTGRES_PASSWORD
-    fromDatabase:
-      name: eyst-postgres
-      property: password
-  - key: POSTGRES_DB
-    fromDatabase:
-      name: eyst-postgres
-      property: database
-  - key: AUTH0_DOMAIN
-    sync: false
-  - key: AUTH0_CONNECTION
-    sync: false
-  - key: AUTH0_INDENTIFIER
-    sync: false
-  - key: AUTH0_MANAGEMENT_CLIENT_ID
-    sync: false
-  - key: AUTH0_MANAGEMENT_CLIENT_SECRET
-    sync: false
-  - fromGroup: backend-env-group
-- type: redis
-  name: focus-bear-redis
-  ipAllowList: [] # only allows internal connections, check https://docs.render.com/blueprint-spec for allowing external connections
-  region: oregon # optional (defaults to oregon)
-  plan: starter # optional (defaults to starter instance type)
-  previewPlan: starter # optional (defaults to the value specified by 'plan')
-  maxmemoryPolicy: allkeys-lru # optional (defaults to allkeys-lru)
-
+  - type: web
+    name: eyst-backend-prod
+    env: docker
+    plan: standard
+    healthCheckPath: /healthcheck
+    autoDeploy: false
+    scaling:
+      minInstances: 1
+      maxInstances: 5
+      targetMemoryPercent: 60
+      targetCPUPercent: 60
+    envVars:
+      - key: SERVER_PORT
+        value: 4000
+      - key: SERVER_HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: prod
+        previewValue: dev
+      - key: REDIS_HOSTNAME
+        fromService:
+          type: redis
+          name: focus-bear-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: focus-bear-redis
+          property: port
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: eyst-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: eyst-postgres
+          property: port
+      - key: POSTGRES_USERNAME
+        fromDatabase:
+          name: eyst-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: eyst-postgres
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: eyst-postgres
+          property: database
+      - key: AUTH0_DOMAIN
+        sync: false
+      - key: AUTH0_CONNECTION
+        sync: false
+      - key: AUTH0_INDENTIFIER
+        sync: false
+      - key: AUTH0_MANAGEMENT_CLIENT_ID
+        sync: false
+      - key: AUTH0_MANAGEMENT_CLIENT_SECRET
+        sync: false
+      - fromGroup: backend-env-group
+  - type: redis
+    name: focus-bear-redis
+    ipAllowList: [] # only allows internal connections, check https://docs.render.com/blueprint-spec for allowing external connections
+    region: oregon # optional (defaults to oregon)
+    plan: starter # optional (defaults to starter instance type)
+    previewPlan: starter # optional (defaults to the value specified by 'plan')
+    maxmemoryPolicy: allkeys-lru # optional (defaults to allkeys-lru)
 
 databases:
-- name: eyst-postgres
-  plan: standard
-  databaseName: eyst_production
-  user: some_user
+  - name: eyst-postgres
+    plan: standard
+    databaseName: eyst_production
+    user: some_user

@@ -152,6 +152,7 @@ export class UserSettingsService {
         morning_activities,
         evening_activities,
         break_activities,
+        language,
       } = updateSettingsData;
 
       const tutorialIds = []
@@ -209,19 +210,20 @@ export class UserSettingsService {
         has_received_inactivity_warning: false,
       });
       let eveningActivities = evening_activities;
-      if (updateSettingsData?.sleep_time) {
+      if (updateSettingsData?.cutoff_time_for_non_high_priority_activities) {
         const relaxActivityDuration = this.calculateRelaxActivityDuration(
-          updateSettingsData.sleep_time,
+          updateSettingsData.cutoff_time_for_non_high_priority_activities,
           updateSettingsData.shutdown_time,
           updateSettingsData.evening_activities,
         );
-        const relaxActivity: UpdateActivityDto = {
-          id: randomUUID(),
-          name: 'Relax',
-          duration_seconds: relaxActivityDuration,
-          show_saved_distracting_websites: true,
-        };
+
         if (relaxActivityDuration > 0) {
+          const relaxActivity: UpdateActivityDto = {
+            id: randomUUID(),
+            name: this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language }),
+            duration_seconds: relaxActivityDuration,
+            show_saved_distracting_websites: true,
+          };
           eveningActivities = [relaxActivity, ...evening_activities];
         }
       }
@@ -267,27 +269,25 @@ export class UserSettingsService {
     // await this.pusherBeams.publishToUsers([userId], publishRequest);
   }
 
-  calculateRelaxActivityDuration(sleepTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
-    const [sleepHours, sleepMinutes] = sleepTime.split(':');
-    const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
-    const sleepDateTime = DateTime.local().set({
-      hour: this.formatTime(sleepHours),
-      minute: this.formatTime(sleepMinutes),
-    });
-    const shutdownDateTime = DateTime.local().set({
-      hour: this.formatTime(shutdownHours),
-      minute: this.formatTime(shutdownMinutes),
-    });
-    const differenceSeconds = sleepDateTime.diff(shutdownDateTime, 'seconds').toObject().seconds;
-    const eveningRoutineDuration = eveningActivities.reduce(
-      (totalDuration, activity) => totalDuration + activity.duration_seconds,
-      0,
-    );
-    let remainingTime = Math.round(differenceSeconds - eveningRoutineDuration);
-    if (Object.is(remainingTime, -0)) {
-      remainingTime = 0;
+  calculateRelaxActivityDuration(cutoffTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
+    const cutoffDateTime = DateTime.fromFormat(cutoffTime, 'HH:mm');
+    const shutdownDateTime = DateTime.fromFormat(shutdownTime, 'HH:mm');
+    const differenceSeconds = cutoffDateTime.diff(shutdownDateTime, 'seconds').seconds;
+    if (differenceSeconds > 0) {
+      // @Description: Check for any high priority activities
+      /* eslint-disable no-param-reassign */
+      const eveningRoutineHighPriorityActivitiesDuration = eveningActivities.reduce((totalDuration, activity) => {
+        if (activity.priority === ActivityPriority.HIGH) {
+          totalDuration += activity.duration_seconds;
+        }
+        return totalDuration;
+      }, 0);
+      /* eslint-enable no-param-reassign */
+
+      const remainingDuration = differenceSeconds - eveningRoutineHighPriorityActivitiesDuration;
+      return remainingDuration > 0 ? remainingDuration : 0;
     }
-    return remainingTime;
+    return 0;
   }
 
   formatTime(formattedHour) {

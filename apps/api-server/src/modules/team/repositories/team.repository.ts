@@ -23,8 +23,10 @@ export class TeamRepository extends BaseRepository<Team> {
     adminId: string,
   ): Promise<{ team: Team; members: User[]; admins: User[] }> {
     const team = await this.orm.findOne({ where: { id: teamId } });
-    const members = await this.getTeamMembers(teamId);
-    const admins = await this.getTeamAdmins(teamId);
+    if (!team) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not an admin member of this team!`);
+    }
+    const [members, admins] = await Promise.all([this.getTeamMembers(teamId), this.getTeamAdmins(teamId)]);
     const adminMemberIds = admins.map((admin) => admin.id);
     const isUserAdmin = adminMemberIds.includes(adminId);
     if (!isUserAdmin) {

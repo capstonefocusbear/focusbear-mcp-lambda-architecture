@@ -256,3 +256,6 @@ export const createFocusModeFunction = {
     required: ['name', 'allowed_apps', 'allowed_urls'],
   },
 };
+
+export const DAYS_IN_WEEK = 7;
+export const DAYS_IN_MONTH = 30;

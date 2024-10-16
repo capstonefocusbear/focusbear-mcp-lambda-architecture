@@ -8,7 +8,7 @@ import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
 import { StripeService } from '@app/stripe';
 import { Auth0ManagementService } from '@app/auth0';
-import { TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
+import { DailyStatsDummy, TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
 import {
   JwtServiceMock,
   RevenueCatServiceMock,
@@ -21,6 +21,7 @@ import {
   ConfigServiceMock,
   TeamToMemberRepositoryMock,
   TeamToAdminRepositoryMock,
+  UserDailyStatsServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
@@ -33,6 +34,7 @@ import { TeamToAdminRepository } from '../../repositories/team-to-admin.reposito
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { TeamToMember } from '../../entities/team-to-member.entity';
 import { PaymentType } from '../../domain/payment-type.enum';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
@@ -59,6 +61,7 @@ describe('TeamManagementService', () => {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
         },
+        UserDailyStatsService,
       ],
     })
       .overrideProvider(UserRepository)
@@ -81,6 +84,8 @@ describe('TeamManagementService', () => {
       .useValue(TeamToMemberRepositoryMock)
       .overrideProvider(TeamToAdminRepository)
       .useValue(TeamToAdminRepositoryMock)
+      .overrideProvider(UserDailyStatsService)
+      .useValue(UserDailyStatsServiceMock)
       .compile();
 
     jest.clearAllMocks();
@@ -689,6 +694,8 @@ describe('TeamManagementService', () => {
         evening_routines_streak: userDummy.evening_routines_streak,
         focus_modes_streak: userDummy.focus_modes_streak,
       });
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(DailyStatsDummy);
 
       const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
 

@@ -73,6 +73,7 @@ services:
 
 databases:
 - name: eyst-postgres
-  plan: free
+  plan: standard
+  previewPlan: free
   databaseName: eyst_production
   user: some_user

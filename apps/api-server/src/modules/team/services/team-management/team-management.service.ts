@@ -13,7 +13,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
-import { TEAM_A, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { TEAM_A, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS, DAYS_IN_MONTH } from '../../../../shared/utils/constants';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { InviteTeamMemberDto } from '../../dto/invite-team-member.dto';
 import { TeamToMemberRepository } from '../../repositories/team-to-member.repository';
@@ -22,6 +22,7 @@ import { TeamToMember } from '../../entities/team-to-member.entity';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
 import { PaymentType } from '../../domain/payment-type.enum';
+import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 
 @Injectable()
 export class TeamManagementService {
@@ -37,6 +38,7 @@ export class TeamManagementService {
     private readonly stripeService: StripeService,
     private readonly teamToMemberRepository: TeamToMemberRepository,
     private readonly teamToAdminRepository: TeamToAdminRepository,
+    private readonly userDailyStatsService: UserDailyStatsService,
   ) {}
 
   async addTeamMember(
@@ -410,11 +412,13 @@ export class TeamManagementService {
     const { members, admins } = team;
     const membersData = [];
     const adminData = [];
+
     for await (const member of members) {
       const [
         { email },
         { first_name, last_name, member_expiry_date, created_at },
         { morning_routines_streak, evening_routines_streak, focus_modes_streak },
+        last90DaysDailyStats,
       ] = await Promise.all([
         this.auth0ManagementService.getAuth0User(member.auth0_id),
         this.teamToMemberRepository.orm.findOne({
@@ -425,7 +429,9 @@ export class TeamManagementService {
             id: member.id,
           },
         }),
+        this.userDailyStatsService.getLastNDaysDailyStats(member.id, DAYS_IN_MONTH * 3),
       ]);
+
       membersData.push({
         id: member.id,
         email,
@@ -437,6 +443,7 @@ export class TeamManagementService {
         morning_routines_streak,
         evening_routines_streak,
         focus_modes_streak,
+        last90DaysDailyStats,
       });
     }
 
@@ -445,6 +452,7 @@ export class TeamManagementService {
         { email },
         { first_name, last_name, created_at },
         { morning_routines_streak, evening_routines_streak, focus_modes_streak },
+        last90DaysDailyStats,
       ] = await Promise.all([
         this.auth0ManagementService.getAuth0User(adminMember.auth0_id),
         this.teamToAdminRepository.orm.findOne({
@@ -455,6 +463,7 @@ export class TeamManagementService {
             id: adminMember.id,
           },
         }),
+        this.userDailyStatsService.getLastNDaysDailyStats(adminMember.id, DAYS_IN_MONTH * 3),
       ]);
       adminData.push({
         id: adminMember.id,
@@ -466,6 +475,7 @@ export class TeamManagementService {
         morning_routines_streak,
         evening_routines_streak,
         focus_modes_streak,
+        last90DaysDailyStats,
       });
     }
 

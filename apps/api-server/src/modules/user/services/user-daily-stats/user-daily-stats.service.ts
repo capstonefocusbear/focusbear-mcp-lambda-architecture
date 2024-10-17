@@ -423,9 +423,9 @@ export class UserDailyStatsService {
     return { user_rank, users_rankings };
   }
 
-  generateLast7Days(): Date[] {
+  generateLastNDaysDates(days: number): Date[] {
     const dates: Date[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = days; i >= 1; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       dates.push(date);
@@ -442,17 +442,17 @@ export class UserDailyStatsService {
     return stats.find((stat) => stat.date_completed.toISOString().startsWith(date.toISOString().slice(0, 10)));
   }
 
-  getWeekStartAndEndDates(zone: string) {
+  getNDaysRangeForZone(zone: string, days: number) {
     const currentTime = DateTime.local().set({ hour: 23, minute: 59 }).setZone(zone);
-    const end_date = currentTime.endOf('day').toJSDate();
-    const start_date = currentTime.minus({ days: 6 }).toJSDate();
+    const end_date = currentTime.minus({ days: 1 }).endOf('day').toJSDate();
+    const start_date = currentTime.minus({ days }).toJSDate();
     return { start_date, end_date };
   }
 
-  async getLastWeekDailyStats(user_id: string) {
+  async getLastNDaysDailyStats(user_id: string, days: number) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    const { start_date, end_date } = this.getWeekStartAndEndDates(user.timezone);
-    const last7Days = this.generateLast7Days();
+    const { start_date, end_date } = this.getNDaysRangeForZone(user.timezone, days);
+    const lastNDays = this.generateLastNDaysDates(days);
     const stats = await this.dailyStatsRepository.orm.find({
       where: { user_id, date_completed: Between(start_date, end_date) },
     });
@@ -462,7 +462,7 @@ export class UserDailyStatsService {
     }
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
-    const last7DaysSummary = last7Days.map((date) => {
+    const lastNDaysSummary = lastNDays.map((date) => {
       const dayStat = this.findDayStat(stats, date);
       const dayOfWeek = DAYS_OF_WEEK[date.getUTCDay()];
       const morningTotalMinutes = Math.round(morningRoutineDailyDurations[dayOfWeek] / ONE_MINUTE_SECONDS);
@@ -498,6 +498,6 @@ export class UserDailyStatsService {
         micro_breaks_total_minutes: microBreaksTotalMinutes,
       });
     });
-    return last7DaysSummary;
+    return lastNDaysSummary;
   }
 }

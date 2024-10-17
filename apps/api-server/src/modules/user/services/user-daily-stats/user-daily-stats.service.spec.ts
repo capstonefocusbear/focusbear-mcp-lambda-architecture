@@ -3,7 +3,7 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { getQueueToken } from '@nestjs/bull';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
-import { BullQueues, BullWorkers, TEN_MINUTES } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, DAYS_IN_WEEK, TEN_MINUTES } from '../../../../shared/utils/constants';
 import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { UserDailyStatsService } from './user-daily-stats.service';
 import {
@@ -511,10 +511,12 @@ describe('UserDailyStatsService', () => {
   });
 
   describe('generateLast7Days', () => {
-    it('should return last 7 dates including today', () => {
-      const dates = service.generateLast7Days();
+    it('should return last 7 dates', () => {
+      const dates = service.generateLastNDaysDates(DAYS_IN_WEEK);
+      const endOfLast7DaysDate = new Date();
+      endOfLast7DaysDate.setDate(endOfLast7DaysDate.getDate() - 1);
       expect(dates.length).toBe(7);
-      expect(dates[6].toISOString().slice(0, 10)).toBe(new Date().toISOString().slice(0, 10));
+      expect(dates[6].toISOString().slice(0, 10)).toBe(endOfLast7DaysDate.toISOString().slice(0, 10));
     });
   });
 
@@ -541,7 +543,7 @@ describe('UserDailyStatsService', () => {
         eveningRoutineDailyDurations: DailyDurationsDummy,
         microBreaksDailyDurations: routineDurationsDummy,
       });
-      const stats = await service.getLastWeekDailyStats(userDummy.id);
+      const stats = await service.getLastNDaysDailyStats(userDummy.id, DAYS_IN_WEEK);
       expect(stats.length).toBe(7);
       expect(stats[0]).toBeInstanceOf(DailyStatSummary);
     });

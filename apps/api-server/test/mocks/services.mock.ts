@@ -183,6 +183,7 @@ export const UserDailyStatsServiceMock = {
   updateDailyStatsRoutineCompletion: jest.fn(),
   updateDistractionBlockCount: jest.fn(),
   updateTimeSpentInBreaks: jest.fn(),
+  getLastNDaysDailyStats: jest.fn(),
 };
 
 export const OpenAIServiceMock = {

@@ -5,6 +5,7 @@ import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
+import { DAYS_IN_WEEK } from '../../../../shared/utils/constants';
 
 @Controller('user-stats')
 @UseGuards(IsAuth)
@@ -20,6 +21,6 @@ export class UserStatsController {
 
   @Get('daily-summary')
   async getWeeklyStats(@AuthContext() { user }: Passport) {
-    return this.userDailyStatsService.getLastWeekDailyStats(user.id);
+    return this.userDailyStatsService.getLastNDaysDailyStats(user.id, DAYS_IN_WEEK);
   }
 }

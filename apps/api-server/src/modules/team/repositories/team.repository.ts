@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Connection, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Team } from '../entities/team.entity';
@@ -23,8 +23,10 @@ export class TeamRepository extends BaseRepository<Team> {
     adminId: string,
   ): Promise<{ team: Team; members: User[]; admins: User[] }> {
     const team = await this.orm.findOne({ where: { id: teamId } });
-    const members = await this.getTeamMembers(teamId);
-    const admins = await this.getTeamAdmins(teamId);
+    if (!team) {
+      throw new NotFoundException(`Team with ID: ${teamId} doesn't exists!`);
+    }
+    const [members, admins] = await Promise.all([this.getTeamMembers(teamId), this.getTeamAdmins(teamId)]);
     const adminMemberIds = admins.map((admin) => admin.id);
     const isUserAdmin = adminMemberIds.includes(adminId);
     if (!isUserAdmin) {

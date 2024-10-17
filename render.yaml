@@ -71,7 +71,8 @@ services:
     maxmemoryPolicy: allkeys-lru # optional (defaults to allkeys-lru)
 
 databases:
-  - name: eyst-postgres
-    plan: standard
-    databaseName: eyst_production
-    user: some_user
+- name: eyst-postgres
+  plan: standard
+  previewPlan: Basic-1gb
+  databaseName: eyst_production
+  user: some_user

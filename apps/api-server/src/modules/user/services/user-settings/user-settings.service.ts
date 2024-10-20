@@ -211,11 +211,19 @@ export class UserSettingsService {
       });
 
       let eveningActivities = evening_activities;
-
-      if (updateSettingsData?.cutoff_time_for_non_high_priority_activities && !user.is_relax_activity_generated) {
+      if (updateSettingsData?.cutoff_time_for_non_high_priority_activities) {
         const relax_activity_name = this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language });
-        const found_relax_activity = evening_activities.some((activity) => activity.name === relax_activity_name);
-        if (!found_relax_activity) {
+        const prev_user_settings = await this.userRepository.getUserSettings(user_id);
+        const prev_serialized_settings = this.serializeSettings(prev_user_settings);
+        const found_relax_activity_in_existing_settings = prev_serialized_settings.evening_activities?.some(
+          (activity) => activity.name === relax_activity_name,
+        );
+
+        const found_relax_activity_in_request_payload = evening_activities?.some(
+          (activity) => activity.name === relax_activity_name,
+        );
+
+        if (!found_relax_activity_in_existing_settings && !found_relax_activity_in_request_payload) {
           const relaxActivityDuration = this.calculateRelaxActivityDuration(
             updateSettingsData.cutoff_time_for_non_high_priority_activities,
             updateSettingsData.shutdown_time,
@@ -232,8 +240,8 @@ export class UserSettingsService {
             eveningActivities = [relaxActivity, ...evening_activities];
           }
         }
-        updatedUser.is_relax_activity_generated = true;
       }
+
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,

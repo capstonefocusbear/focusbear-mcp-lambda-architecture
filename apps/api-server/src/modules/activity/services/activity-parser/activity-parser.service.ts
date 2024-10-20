@@ -81,6 +81,7 @@ export class ActivityParserService {
         ...activity_data,
         tutorial: transformTutorial(tutorial),
         cutoff_time_for_doing_activity,
+        type,
       });
       const orderedActivities = [...new Set(activity_ids)]
         .map((id) => activities.find((e) => e.id === id))

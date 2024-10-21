@@ -10,6 +10,7 @@ import { ActivityRepository } from '../../activity/repositories/activity.reposit
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
+import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -107,7 +108,7 @@ export class ActivityLibraryService {
       );
       return this.userDesiredRoutineDurationMinutes(
         updateActivityTemplates,
-        getRoutineSuggestionsDto.routine_duration * 60,
+        getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
       );
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -125,7 +126,7 @@ export class ActivityLibraryService {
     }; // @Description: unit of duration is seconds
 
     activityTemplates
-      ?.sort((templateA, templateB) => templateB.duration_seconds - templateA.duration_seconds)
+      ?.sort((templateA, templateB) => templateA.duration_seconds - templateB.duration_seconds)
       ?.some((activityTemplate) => {
         const template_duration = parseInt(activityTemplate.duration_seconds?.toString(), 10);
         if (

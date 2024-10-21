@@ -212,18 +212,15 @@ export class UserSettingsService {
 
       let eveningActivities = evening_activities;
       if (updateSettingsData?.cutoff_time_for_non_high_priority_activities) {
-        const relax_activity_name = this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language });
         const prev_user_settings = await this.userRepository.getUserSettings(user_id);
         const prev_serialized_settings = this.serializeSettings(prev_user_settings);
-        const found_relax_activity_in_existing_settings = prev_serialized_settings.evening_activities?.some(
-          (activity) => activity.name === relax_activity_name,
-        );
 
-        const found_relax_activity_in_request_payload = evening_activities?.some(
-          (activity) => activity.name === relax_activity_name,
-        );
+        const hasRelaxActivityWithSavedSites = [
+          ...prev_serialized_settings.evening_activities,
+          ...evening_activities,
+        ]?.some((activity) => activity.show_saved_distracting_websites);
 
-        if (!found_relax_activity_in_existing_settings && !found_relax_activity_in_request_payload) {
+        if (!hasRelaxActivityWithSavedSites) {
           const relaxActivityDuration = this.calculateRelaxActivityDuration(
             updateSettingsData.cutoff_time_for_non_high_priority_activities,
             updateSettingsData.shutdown_time,
@@ -233,7 +230,7 @@ export class UserSettingsService {
           if (relaxActivityDuration > 0) {
             const relaxActivity: UpdateActivityDto = {
               id: randomUUID(),
-              name: relax_activity_name,
+              name: this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language }),
               duration_seconds: relaxActivityDuration,
               show_saved_distracting_websites: true,
             };

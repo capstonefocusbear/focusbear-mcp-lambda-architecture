@@ -25,6 +25,7 @@ export const EMAIL_SUBJECTS = {
   USER_ACCOUNT_DELETE: 'User deleted account but gave permission to contact RE feedback',
 };
 export const ONE_HOUR_SECONDS = 3600;
+export const ONE_HOUR_MILLIS = 3600000;
 export const ONE_MINUTE = 60000;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
@@ -35,6 +36,8 @@ export const TWENTY = 20;
 export const TRIAL_COST_CENTS = 0;
 export const TRIAL_LENGTH_DAYS = 7;
 export const PERSONAL_PLAN_COST_CENTS = 500;
+export const USER_QUIT_TRACKING_DURATION_HOURS = 48;
+export const USER_QUIT_TRACKING_DURATION_MILLIS = USER_QUIT_TRACKING_DURATION_HOURS * ONE_HOUR_MILLIS;
 export const DEFAULT_IANA_TIMEZONE = 'Etc/UTC';
 export const MONTH = 'month';
 export const USD = 'USD';

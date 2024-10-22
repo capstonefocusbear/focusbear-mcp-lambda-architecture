@@ -24,6 +24,7 @@ import {
   ONE_DAY_SECONDS,
   ONE_MINUTE,
   WORDS_TO_LOG_FOR,
+  USER_QUIT_TRACKING_DURATION_MILLIS,
 } from '../../../shared/utils/constants';
 import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 import { TrackEventRepository } from '../repositories/track-event.repository';
@@ -141,6 +142,20 @@ export class EventsService {
     return false;
   }
 
+  async shouldNewUserEventBeLogged(event_type: string, userId: string) {
+    //check if user signup date is less than 48 hours
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) throw new NotFoundException(`User with ID: ${userId} does not exist!`);
+    const signupDate = new Date(user.created_at);
+    const currentDate = new Date();
+    const timeDifferenceInMilliSeconds = currentDate.getTime() - signupDate.getTime();
+    const isNewUser = timeDifferenceInMilliSeconds <= USER_QUIT_TRACKING_DURATION_MILLIS;
+
+    const shouldLogEventType = EVENT_TYPES_TO_ALERT_IN_CLIQ.includes(event_type as EventTypes);
+    if (!shouldLogEventType) return false;
+    return isNewUser;
+  }
+
   async emailQuitFeedback(event: TrackEventDto, email: string, quitReason: string, userId?: string) {
     // find recent 50 events for current user
     const events = await this.getLastFiftyEvents(userId);
@@ -218,11 +233,14 @@ export class EventsService {
     const { event_data, event_type } = trackEventDto;
     const reason = event_data?.data?.quitReason || event_data?.data?.uninstallDescription;
     const shouldLogEvent = this.shouldEventBeLogged(reason, event_type);
+    const shouldLogNewUserEvent = await this.shouldNewUserEventBeLogged(event_type, userId);
     const hasFeedback = !!event_data?.data?.feedback;
-    if (shouldLogEvent) {
+    //log all quit events in cliq if user is new. If user is not new, log only if the event is quit event and reason contains any of the words in WORDS_TO_LOG_FOR
+    if (shouldLogNewUserEvent || shouldLogEvent) {
       await this.logEventInCliq(userId, trackEventDto);
     }
-    if (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback)) {
+    //log all quit events in email if user is new. If user is not new, log only if the event is uninstall or contains feedback
+    if (shouldLogNewUserEvent || (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback))) {
       await this.emailQuitFeedback(trackEventDto, email, reason, userId);
     }
   }

@@ -129,6 +129,12 @@ describe('EventConsumer', () => {
   });
 
   describe('track-event', () => {
+    beforeEach(() => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue({
+        ...userDummy,
+        created_at: new Date('22/10/2023'),
+      });
+    });
     it('positive: should log event in cliq for quit or disable app for 4 hours events', async () => {
       const dummyEvent = { event_type: EventTypes.APP_QUIT, event_data: { data: { quitReason: 'App is broken' } } };
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;

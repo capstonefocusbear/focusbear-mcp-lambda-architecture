@@ -9,7 +9,13 @@ import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
 import { prettyJson } from '../../../shared/utils/helpers';
 import { userDummy, QueueMock, auth0UserDummy, lastFiftyEventsDummy } from '../../../../test/dummies';
-import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import {
+  EMAIL_SUBJECTS,
+  FOCUS_BEAR_EMAILS,
+  BullQueues,
+  BullWorkers,
+  ONE_HOUR_MILLIS,
+} from '../../../shared/utils/constants';
 import {
   Auth0ManagementServiceMock,
   EventsRepositoryMock,
@@ -45,6 +51,7 @@ jest.mock('ioredis', () => {
 // Mock axios and set the type
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+const currentDate = new Date();
 
 describe('EventService', () => {
   let eventsService: EventsService;
@@ -112,9 +119,10 @@ describe('EventService', () => {
 
   describe('handleEventBroadcast', () => {
     const reason = 'muy dañado';
+
     const testCases = [
       {
-        description: 'positive: should broadcast to cliq and email on an app quit event with feedback',
+        description: 'positive: should broadcast to cliq and email on an app quit event with feedback (old user)',
         msgPrefix: '*User quit app:*',
         dummyEvent: {
           event_type: EventTypes.APP_QUIT,
@@ -122,9 +130,10 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: true,
+        isOldUser: true,
       },
       {
-        description: 'positive: should broadcast to cliq on an app quit event with no feedback',
+        description: 'positive: should broadcast to cliq on an app quit event with no feedback (old user)',
         msgPrefix: '*User quit app:*',
         dummyEvent: {
           event_type: EventTypes.APP_QUIT,
@@ -132,9 +141,10 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: false,
+        isOldUser: true,
       },
       {
-        description: 'positive: should broadcast to cliq and email on a 4 hr break event with feedback',
+        description: 'positive: should broadcast to cliq and email on a 4 hr break event with feedback (old user)',
         msgPrefix: '*User disabled app for 4 hours:*',
         dummyEvent: {
           event_type: EventTypes.GIVE_ME_4HR_BREAK,
@@ -142,9 +152,10 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: true,
+        isOldUser: true,
       },
       {
-        description: 'positive: should broadcast to cliq on a 4 hour break event with no feedback',
+        description: 'positive: should broadcast to cliq on a 4 hour break event with no feedback (old user)',
         msgPrefix: '*User disabled app for 4 hours:*',
         dummyEvent: {
           event_type: EventTypes.GIVE_ME_4HR_BREAK,
@@ -152,9 +163,10 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: false,
+        isOldUser: true,
       },
       {
-        description: 'positive: should broadcast to cliq and email on an uninstall event with feedback',
+        description: 'positive: should broadcast to cliq and email on an uninstall event with feedback (old user)',
         msgPrefix: '*User uninstalled:*',
         dummyEvent: {
           event_type: EventTypes.UNINSTALL,
@@ -162,9 +174,10 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: true,
+        isOldUser: true,
       },
       {
-        description: 'positive: should broadcast to cliq and email on an uninstall event with no feedback',
+        description: 'positive: should broadcast to cliq and email on an uninstall event with no feedback (old user)',
         msgPrefix: '*User uninstalled:*',
         dummyEvent: {
           event_type: EventTypes.UNINSTALL,
@@ -172,19 +185,111 @@ describe('EventService', () => {
         },
         expectCliq: true,
         expectEmail: true,
+        isOldUser: true,
       },
       {
-        description: 'negative: should not broadcast to cliq or email on non matching event type',
+        description: 'negative: should not broadcast to cliq or email on non-matching event type (old user)',
         dummyEvent: {
           event_type: EventTypes.BLOCK_DISTRACTING_APP,
           event_data: { data: { quitReason: reason, feedback: 'me gustan los ponis' } },
         },
         expectCliq: false,
         expectEmail: false,
+        isOldUser: true,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (APP_QUIT with feedback, new user)',
+        msgPrefix: '*User quit app:*',
+        dummyEvent: {
+          event_type: EventTypes.APP_QUIT,
+          event_data: { data: { quitReason: reason, feedback: 'test feedback' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (APP_QUIT without feedback, new user)',
+        msgPrefix: '*User quit app:*',
+        dummyEvent: {
+          event_type: EventTypes.APP_QUIT,
+          event_data: { data: { quitReason: reason } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (GIVE_ME_4HR_BREAK with feedback, new user)',
+        msgPrefix: '*User disabled app for 4 hours:*',
+        dummyEvent: {
+          event_type: EventTypes.GIVE_ME_4HR_BREAK,
+          event_data: { data: { quitReason: reason, feedback: 'test feedback' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (GIVE_ME_4HR_BREAK without feedback, new user)',
+        msgPrefix: '*User disabled app for 4 hours:*',
+        dummyEvent: {
+          event_type: EventTypes.GIVE_ME_4HR_BREAK,
+          event_data: { data: { quitReason: reason } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (UNINSTALL with feedback, new user)',
+        msgPrefix: '*User uninstalled:*',
+        dummyEvent: {
+          event_type: EventTypes.UNINSTALL,
+          event_data: { data: { uninstallDescription: reason, feedback: 'test feedback' } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should broadcast to Cliq and send email (UNINSTALL without feedback, new user)',
+        msgPrefix: '*User uninstalled:*',
+        dummyEvent: {
+          event_type: EventTypes.UNINSTALL,
+          event_data: { data: { uninstallDescription: reason } },
+        },
+        expectCliq: true,
+        expectEmail: true,
+        isOldUser: false,
+      },
+      {
+        description: 'should not broadcast to cliq or email on non-matching event type (new user)',
+        dummyEvent: {
+          event_type: EventTypes.BLOCK_DISTRACTING_APP,
+          event_data: { data: { quitReason: reason, feedback: 'test feedback' } },
+        },
+        expectCliq: false,
+        expectEmail: false,
+        isOldUser: false,
       },
     ];
 
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     it.each(testCases)('$description', async (tc) => {
+      // Dynamically set the user creation time based on whether the user is old or new
+      const userCreationTime = tc.isOldUser
+        ? currentDate.getTime() - 49 * ONE_HOUR_MILLIS // Old user: created 49 hours ago
+        : currentDate.getTime() - 47 * ONE_HOUR_MILLIS; // New user: created 47 hours ago
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue({
+        ...userDummy,
+        created_at: new Date(userCreationTime),
+      });
+
       TrackEventRepositoryMock.orm.find.mockResolvedValue(lastFiftyEventsDummy);
       await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
 

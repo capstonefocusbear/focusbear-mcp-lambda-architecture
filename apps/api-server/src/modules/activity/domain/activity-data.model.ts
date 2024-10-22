@@ -33,7 +33,7 @@ export class ActivityData {
     this.category = data?.category;
     this.text_instructions = data?.text_instructions;
     this.image_urls = data?.image_urls;
-    this.priority = data?.priority;
+    this.priority = data?.priority ?? ActivityPriority.STANDARD;
     this.current_competency_level = data?.current_competency_level;
     this.competency_level = data?.competency_level;
     this.break_type = data?.break_type;

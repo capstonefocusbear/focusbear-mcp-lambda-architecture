@@ -13,7 +13,13 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
 import { TeamRepository } from '../../repositories/team.repository';
-import { TEAM_A, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS, DAYS_IN_MONTH } from '../../../../shared/utils/constants';
+import {
+  TEAM_A,
+  EMAIL_TEMPLATE_IDS,
+  FOCUS_BEAR_EMAILS,
+  DAYS_IN_MONTH,
+  DECIMAL_PRECISION,
+} from '../../../../shared/utils/constants';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { InviteTeamMemberDto } from '../../dto/invite-team-member.dto';
 import { TeamToMemberRepository } from '../../repositories/team-to-member.repository';
@@ -440,7 +446,7 @@ export class TeamManagementService {
       ]);
       const totalFocusModes = last90DaysDailyStats.reduce((acc, curr) => acc + curr.focus_modes, 0);
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-        ? totalFocusModes / last90DaysDailyStats.length
+        ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
       membersData.push({
         id: member.id,

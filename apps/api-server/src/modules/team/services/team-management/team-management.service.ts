@@ -417,7 +417,14 @@ export class TeamManagementService {
       const [
         { email },
         { first_name, last_name, member_expiry_date, created_at },
-        { morning_routines_streak, evening_routines_streak, focus_modes_streak },
+        {
+          morning_routines_streak,
+          evening_routines_streak,
+          focus_modes_streak,
+          morning_percent_number_day_of_stats_completed,
+          evening_percent_number_day_of_stats_completed,
+          micro_percent_number_day_of_stats_completed,
+        },
         last90DaysDailyStats,
       ] = await Promise.all([
         this.auth0ManagementService.getAuth0User(member.auth0_id),
@@ -431,7 +438,10 @@ export class TeamManagementService {
         }),
         this.userDailyStatsService.getLastNDaysDailyStats(member.id, DAYS_IN_MONTH * 3),
       ]);
-
+      const totalFocusModes = last90DaysDailyStats.reduce((acc, curr) => acc + curr.focus_modes, 0);
+      const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
+        ? totalFocusModes / last90DaysDailyStats.length
+        : 0;
       membersData.push({
         id: member.id,
         email,
@@ -443,7 +453,10 @@ export class TeamManagementService {
         morning_routines_streak,
         evening_routines_streak,
         focus_modes_streak,
-        last90DaysDailyStats,
+        morning_percent_number_day_of_stats_completed,
+        micro_percent_number_day_of_stats_completed,
+        evening_percent_number_day_of_stats_completed,
+        focus_modes_percent_number_day_of_stats_completed,
       });
     }
 

@@ -57,10 +57,10 @@ export class CoursesRepository {
       this.ormCourse.find({
         where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
       }),
-      this.ormCourseRating.find({ where: { course_id: In(enrolledCoursesIds) } }),
+      this.ormCourseRating.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
       this.ormLessons.find({ where: { course_id: In(enrolledCoursesIds) } }),
-      this.ormLessonCompletions.find({ where: { course_id: In(enrolledCoursesIds) } }),
-      this.ormCourseEnrolment.find({ where: { course_id: In(enrolledCoursesIds) } }),
+      this.ormLessonCompletions.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
+      this.ormCourseEnrolment.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
     ]);
 
     const coursesWithRelations = courses.map((course) => ({

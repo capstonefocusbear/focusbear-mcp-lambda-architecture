@@ -262,3 +262,4 @@ export const createFocusModeFunction = {
 
 export const DAYS_IN_WEEK = 7;
 export const DAYS_IN_MONTH = 30;
+export const DECIMAL_PRECISION = 1;

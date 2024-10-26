@@ -118,7 +118,6 @@ export const FieldTransformer = {
 export const convertMinutesToSeconds = (minutes: number, seconds?: number) => minutes * 60 + (seconds ?? 0);
 
 export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyOnTop?: string): string | null => {
-  // different modes of formatting (only 'standard' for now but can be extended later on)
   switch (mode.toLowerCase()) {
     case 'standard': {
       const formatObject = (thisObj: any, indent = 0): string => {
@@ -147,6 +146,9 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyO
     case 'jsonarray': {
       if (!Array.isArray(obj)) {
         return obj;
+      }
+      if (Array.isArray(obj) && obj.length === 0) {
+        return '[]';
       }
       let reorder = false;
       if (keyOnTop !== undefined || keyOnTop !== null) {

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
+import { prettyJson } from '../../../../shared/utils/helpers';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
@@ -52,14 +53,13 @@ export class UserFeedbackService {
     // format the event names array to be numbered and a new line after each event name
     const eventNames = lastFifteenEvents.map((event, index) => `${index + 1}. ${event.event_type}`).join('\n');
     const operatingSystem = combinedMetadata.operating_system;
-    const emailBody = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${JSON.stringify(
+    const emailBody = `User feedback: \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${prettyJson(
       combinedMetadata,
-      null,
-      2,
-    )} \n\n Headers: ${JSON.stringify(requestHeaders, null, 2)} \n\n Last 50 events: ${JSON.stringify(
+      'pretty',
+    )} \n\n Headers: ${prettyJson(requestHeaders, 'pretty')} \n\n Last 50 events:\n ${prettyJson(
       lastFiftyEvents,
-      null,
-      2,
+      'jsonarray',
+      'event_type',
     )}`;
 
     const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
@@ -73,7 +73,7 @@ export class UserFeedbackService {
       to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: auth0User.email,
-      text: JSON.stringify(emailBody),
+      text: emailBody,
       subject: `${EMAIL_SUBJECTS.USER_SURVEY_FEEDBACK}`,
     });
     await Promise.all([saveFeedbackPromise, updateUserPromise, cliqLogPromise, emailPromise]);

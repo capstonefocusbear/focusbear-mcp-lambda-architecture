@@ -284,8 +284,8 @@ export class UserRepository extends BaseRepository<User> {
         LEFT JOIN daily_stats ON daily_stats.user_id = users.id
         WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
         GROUP BY users.id
+        ) as result
         LIMIT $2
-      ) as result
     `,
       [streak_type, limit],
     );

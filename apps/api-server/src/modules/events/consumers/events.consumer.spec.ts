@@ -141,7 +141,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: dummyEvent,
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,
@@ -165,7 +165,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: dummyEvent,
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,
@@ -196,7 +196,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: dummyEvent,
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,
@@ -220,7 +220,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: { event_type: EventTypes.BLOCK_DISTRACTING_APP },
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,
@@ -245,7 +245,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: dummyEvent,
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,
@@ -280,7 +280,7 @@ describe('EventConsumer', () => {
       const job = {
         data: {
           user_id: userDummy.id,
-          email: auth0UserDummy.email,
+          user_auth0_id: userDummy.auth0_id,
           trackEventDto: dummyEvent,
           device_id: headersDummy.device_id,
           app_version: headersDummy.app_version,

@@ -5,7 +5,6 @@ import axios from 'axios';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '@app/send-grid';
 import Redis from 'ioredis';
-import * as crypto from 'crypto';
 import { prettyJson } from '../../../shared/utils/helpers';
 import { Auth0ManagementService } from '../../../../../../libs/auth0/src';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -21,10 +20,9 @@ import {
   EVENT_TYPES_TO_ALERT_IN_SLACK as EVENT_TYPES_TO_ALERT_IN_CLIQ,
   FOCUS_BEAR_EMAILS,
   IMPACT_MEASUREMENT_EVENT_TYPES,
-  ONE_DAY_SECONDS,
   ONE_MINUTE,
-  WORDS_TO_LOG_FOR,
   USER_QUIT_TRACKING_DURATION_MILLIS,
+  WORDS_TO_LOG_FOR,
 } from '../../../shared/utils/constants';
 import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 import { TrackEventRepository } from '../repositories/track-event.repository';
@@ -49,51 +47,6 @@ export class EventsService {
     private readonly trackEventRepository: TrackEventRepository,
   ) {}
 
-  async findEmail(userId: string, auth0Id: string): Promise<string> {
-    // Try to get the encrypted email from Redis
-    let encryptedEmail = await this.redisClient.get(`user:${userId}:email`);
-    if (encryptedEmail) {
-      // Decrypt and return the email if found in cache
-      return this.decryptEmail(encryptedEmail);
-    }
-    // Fetch the email from Auth0 if not in cache
-    const { email } = await this.auth0ManagementService.getAuth0User(auth0Id);
-
-    // Encrypt and save the email in Redis
-    encryptedEmail = this.encryptEmail(email);
-    await this.redisClient.set(`user:${userId}:email`, encryptedEmail, 'EX', ONE_DAY_SECONDS);
-
-    return email;
-  }
-
-  private encryptEmail(email: string): string {
-    // Ensure the secret key is 32 bytes long using SHA-256
-    const hash = crypto.createHash('sha256');
-    hash.update(this.secretKey);
-    const key = hash.digest();
-
-    const iv = crypto.randomBytes(16); // AES block size is 16 bytes
-    const cipher = crypto.createCipheriv(this.algorithm, key, iv);
-    let encrypted = cipher.update(email, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return `${iv.toString('hex')}:${encrypted}`;
-  }
-
-  private decryptEmail(encryptedEmail: string): string {
-    // Ensure the secret key is 32 bytes long using SHA-256
-    const hash = crypto.createHash('sha256');
-    hash.update(this.secretKey);
-    const key = hash.digest();
-
-    const parts = encryptedEmail.split(':');
-    const iv = Buffer.from(parts.shift(), 'hex');
-    const encryptedText = parts.join(':');
-    const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  }
-
   async handleIncomingEvent(
     trackEventDto: TrackEventDto,
     user_id: string,
@@ -113,11 +66,10 @@ export class EventsService {
 
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      const email = await this.findEmail(user_id, user.auth0_id);
 
       await this.eventsQueue.add(BullWorkers.TRACK_EVENT, {
         user_id,
-        email,
+        user_auth0_id: user.auth0_id,
         trackEventDto,
         device_id,
         app_version,

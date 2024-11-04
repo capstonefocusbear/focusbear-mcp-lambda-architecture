@@ -340,7 +340,7 @@ describe('EventService', () => {
 
       expect(QueueMock.add).toBeCalledWith(BullWorkers.TRACK_EVENT, {
         user_id: userDummy.id,
-        email: auth0UserDummy.email,
+        user_auth0_id: userDummy.auth0_id,
         trackEventDto: { event_type: 'test-event' },
         device_id: headersDummy.device_id,
         app_version: headersDummy.app_version,

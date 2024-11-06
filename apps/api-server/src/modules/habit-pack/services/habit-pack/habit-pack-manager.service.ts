@@ -134,17 +134,17 @@ export class HabitPackManagerService {
   ) {
     const newSettings = _.cloneDeep(userSettings);
     newSettings.morning_activities = this.formatAndMergeTemplatesWithActivities(
-      userSettings.morning_activities,
+      userSettings?.morning_activities ?? [],
       habitPack.morning_activities,
       { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
     );
     newSettings.break_activities = this.formatAndMergeTemplatesWithActivities(
-      userSettings.break_activities,
+      userSettings?.break_activities ?? [],
       habitPack.break_activities,
       { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
     );
     newSettings.evening_activities = this.formatAndMergeTemplatesWithActivities(
-      userSettings.evening_activities,
+      userSettings?.evening_activities ?? [],
       habitPack.evening_activities,
       { templatesNewIdsMap, templatesChoicesNewIdsMap, logQuantityQuestionsNewIdsMap },
     );

@@ -80,13 +80,13 @@ export class UserSettingsService {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
       const settings = this.serializeSettings(userSettings);
-      settings.morning_activities = settings?.morning_activities?.map(
+      settings.morning_activities = (settings?.morning_activities ?? []).map(
         ({ cutoff_time_for_doing_activity, ...rest }) => rest,
       );
-      settings.break_activities = settings?.break_activities?.map(
+      settings.break_activities = (settings?.break_activities ?? []).map(
         ({ cutoff_time_for_doing_activity, tutorial, ...rest }) => rest,
       );
-      return settings;
+      return { ...settings, evening_activities: settings?.evening_activities ?? [] };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

@@ -2,10 +2,11 @@
 
 exports[`UserSettingsService getSettings positive: should return serialized user settings data 1`] = `
 {
-  "break_activities": undefined,
+  "break_activities": [],
   "break_after_minutes": 15,
+  "evening_activities": [],
   "id": "e1477f9a-515f-49f5-be2b-0c39af087324",
-  "morning_activities": undefined,
+  "morning_activities": [],
   "shutdown_time": "20:30",
   "startup_time": "06:15",
 }

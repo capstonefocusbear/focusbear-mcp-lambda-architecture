@@ -145,6 +145,7 @@ export class DailyStatsConsumer {
         percent_evening_routines_streak_complete_in_90days,
         percent_micro_breaks_streak_complete_in_90days,
         num_days_of_stats,
+        number_days_completed
       } = calculateStreaks(userDailyStats, user.timezone, {
         morningRoutineDailyDurations,
         eveningRoutineDailyDurations,
@@ -162,6 +163,7 @@ export class DailyStatsConsumer {
         evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
         micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
         num_days_of_stats,
+        number_days_completed
       });
     } catch (error) {
       // eslint-disable-next-line no-console

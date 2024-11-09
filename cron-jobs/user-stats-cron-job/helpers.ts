@@ -204,16 +204,25 @@ export function calculateStreaks(
   const currentDate = new Date();
   currentDate.setDate(currentDate.getDate() - 90);
   const userDailyStatsFromLast90Days = userDailyStats.filter(f => new Date(f.created_at) >= currentDate);
+
   const daysWhereMorningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
+
   const daysWhereEveningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
+
   const daysWhereMicroBreaksWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
+
   const num_days_of_stats = userDailyStatsFromLast90Days.length;
+
+  const number_days_completed = userDailyStats.filter(f =>
+    f.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD
+    || f.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD
+  ).length;
 
   return {
     focus_modes_streak: calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone),
@@ -238,7 +247,8 @@ export function calculateStreaks(
       / userDailyStatsFromLast90Days.length * 100) : 0,
     percent_micro_breaks_streak_complete_in_90days: userDailyStatsFromLast90Days.length > 0 ? Math.round(daysWhereMicroBreaksWereCompletedIn90Days.length
       / userDailyStatsFromLast90Days.length * 100) : 0,
-    num_days_of_stats: num_days_of_stats
+    num_days_of_stats: num_days_of_stats,
+    number_days_completed: number_days_completed
   };
 }
 

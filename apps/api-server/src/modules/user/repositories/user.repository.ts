@@ -249,6 +249,7 @@ export class UserRepository extends BaseRepository<User> {
       evening_percent_number_day_of_stats_completed,
       micro_percent_number_day_of_stats_completed,
       num_days_of_stats,
+      number_days_completed,
       item_count,
       ROW_NUMBER() OVER (ORDER BY
             CASE 
@@ -279,6 +280,7 @@ export class UserRepository extends BaseRepository<User> {
         users.evening_percent_number_day_of_stats_completed,
         users.micro_percent_number_day_of_stats_completed,
         users.num_days_of_stats,
+        users.number_days_completed,
         COUNT(daily_stats.id) AS item_count
         FROM users
         LEFT JOIN daily_stats ON daily_stats.user_id = users.id
@@ -307,6 +309,7 @@ export class UserRepository extends BaseRepository<User> {
           evening_percent_number_day_of_stats_completed,
           micro_percent_number_day_of_stats_completed,
           num_days_of_stats,
+          number_days_completed,
           item_count,
           ROW_NUMBER() OVER (ORDER BY
                 CASE 
@@ -337,6 +340,7 @@ export class UserRepository extends BaseRepository<User> {
             users.evening_percent_number_day_of_stats_completed,
             users.micro_percent_number_day_of_stats_completed,
             users.num_days_of_stats,
+            users.number_days_completed,
             COUNT(daily_stats.id) AS item_count
             FROM 
                 users

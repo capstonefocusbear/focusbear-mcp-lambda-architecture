@@ -156,14 +156,12 @@ export class UserService {
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
-        Object.assign(userProperties, { stripe_customer_id: stripeId });
-      } else {
-        Object.assign(userProperties, { stripe_customer_id: stripeId });
       }
+      Object.assign(userProperties, { stripe_customer_id: stripeId });
       if (registeredUser) {
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
-      const newUser = new User({ auth0_id });
+      const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
       return newlySavedUser;
     } catch (error) {

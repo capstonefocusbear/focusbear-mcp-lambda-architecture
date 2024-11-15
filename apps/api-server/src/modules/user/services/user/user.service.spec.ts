@@ -185,19 +185,25 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
+    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned with stripe id', async () => {
+      const stripeCustomerId = randomUUID();
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockResolvedValue(dummyAuth0Client[0]);
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: randomUUID() });
+      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
 
       await userService.syncUserAccount(syncAccountDto);
 
-      expect(UserRepositoryMock.create).toBeCalled();
+      expect(UserRepositoryMock.create).toBeCalledWith(
+        expect.objectContaining({
+          auth0_id: syncAccountDto.auth0_id,
+          stripe_customer_id: stripeCustomerId,
+        }),
+      );
       expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email, auth0UserDummy.auth0_client);
       expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toBeCalled();

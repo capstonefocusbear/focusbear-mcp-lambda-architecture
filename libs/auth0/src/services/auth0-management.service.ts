@@ -13,8 +13,17 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
   }
 
   async getAuth0User(auth0Id: string) {
-    const { data: user } = await this.users.get({ id: auth0Id });
-    return user;
+    try {
+      const { data: user } = await this.users.get({ id: auth0Id });
+      return user;
+    } catch (error) {
+      
+      if (error.message.includes('does not exist')) {
+        return null;
+      }
+      
+      throw new Error(`Error fetching user with Auth0 ID ${auth0Id}: ${error}`);
+    }
   }
 
   async getAuth0UserWithEmail(email: string) {

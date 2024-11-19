@@ -309,6 +309,13 @@ export class User extends BaseEntity {
   num_days_of_stats?: number;
 
   @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  number_days_completed?: number;
+
+  @Column({
     type: 'boolean',
     default: false,
   })

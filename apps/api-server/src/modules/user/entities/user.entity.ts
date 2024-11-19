@@ -391,6 +391,12 @@ export class User extends BaseEntity {
   })
   last_date_gave_feedback?: Date;
 
+  @Column({
+    type: 'boolean',
+    nullable: true,
+  })
+  is_relax_activity_generated?: boolean;
+
   @OneToMany(() => SyncedProject, (syncedProject) => syncedProject.user)
   synced_projects?: SyncedProject[];
 

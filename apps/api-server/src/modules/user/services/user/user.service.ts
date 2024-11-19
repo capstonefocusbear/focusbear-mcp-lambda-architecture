@@ -149,10 +149,27 @@ export class UserService {
             })
           : [];
 
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Getting user OS',
+          data: {
+            devicesFromDb,
+            auth0_client,
+          },
+        });
+
         const os =
           devicesFromDb.length > 0
             ? devicesFromDb[0]?.operating_system
             : await this.deviceService.parseDeviceFromAuth0Client(auth0_client);
+
+        if (!os) {
+          const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
+          this.sentryService.instance().captureException(new Error('Could not determine user OS from' + clientId), {
+            level: 'error',
+          });
+        }
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;

@@ -11,6 +11,7 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogQuantityQuestion } from './log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
 import { Tutorial } from './tutorial.entity';
+import { CustomRoutine } from '../../user/entities/custom-routine';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -136,6 +137,12 @@ export class Activity extends BaseEntity {
   })
   cutoff_time_for_doing_activity?: string;
 
+  @Index()
+  @Column({
+    type: 'uuid',
+  })
+  custom_routine_id?: string;
+
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
@@ -182,4 +189,11 @@ export class Activity extends BaseEntity {
 
   @OneToOne(() => Tutorial, (tutorial) => tutorial.activity)
   tutorial?: Tutorial;
+
+  @ManyToOne(() => CustomRoutine, (custom_routine) => custom_routine.standalone_activities, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'custom_routine_id' })
+  custom_routine?: CustomRoutine;
 }

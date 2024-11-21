@@ -69,6 +69,9 @@ export class UserSettingsService {
         },
       });
       const userSettings = await this.userRepository.getUserSettings(user_id);
+      console.log('================================================================');
+      console.log(JSON.stringify(userSettings));
+      console.log('================================================================');
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -153,6 +156,7 @@ export class UserSettingsService {
         evening_activities,
         break_activities,
         language,
+        custom_routines,
       } = updateSettingsData;
 
       const tutorialIds = []
@@ -239,7 +243,19 @@ export class UserSettingsService {
         }
       }
 
-      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
+      const { activities: standalone_activities, routines } = custom_routines?.reduce(
+        ({ activities, routines }, { standalone_activities, ...rest }) => ({
+          activities: activities.concat(standalone_activities),
+          routines: routines.concat({ ...rest }),
+        }),
+        { activities: [], routines: [] },
+      );
+      const serializedActivities = {
+        morning_activities,
+        evening_activities: eveningActivities,
+        break_activities,
+        standalone_activities,
+      };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
@@ -249,6 +265,7 @@ export class UserSettingsService {
         deserializedActivities,
         logQuantityQuestions,
         tutorials,
+        routines,
       );
       if (should_update_has_edited_settings) {
         await Promise.all([

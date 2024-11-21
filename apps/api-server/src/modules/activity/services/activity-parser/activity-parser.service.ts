@@ -9,6 +9,7 @@ import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
 import { Tutorial } from '../../entities/tutorial.entity';
+import { CustomRoutine } from '../../../user/entities/custom-routine';
 
 export interface DeserializedActivity {
   sequence: ActivitySequence;
@@ -20,6 +21,7 @@ export interface SerializedActivity {
   evening_activities?: UpdateActivityDto[];
   break_activities?: UpdateActivityDto[];
   standalone_activities?: UpdateActivityDto[];
+  custom_routines?: CustomRoutine[];
 }
 
 @Injectable()

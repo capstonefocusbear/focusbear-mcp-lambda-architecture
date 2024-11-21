@@ -11,6 +11,7 @@ import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questi
 import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
+import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -23,6 +24,7 @@ export class UserRepository extends BaseRepository<User> {
     activitiesData: DeserializedActivity[],
     logQuantityQuestions: LogQuantityQuestion[],
     tutorials: Tutorial[],
+    custom_routines: CustomRoutine[],
   ) {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -87,6 +89,7 @@ export class UserRepository extends BaseRepository<User> {
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
       await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
+      await queryRunner.manager.upsert(CustomRoutine, custom_routines, ['id']);
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -109,6 +112,7 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .leftJoinAndSelect('activities.tutorial', 'tutorial')
+      .leftJoinAndSelect('activities.custom_routine', 'custom_routines_activities')
       .select([
         'users.startup_time',
         'users.shutdown_time',
@@ -161,6 +165,7 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.id',
         'activity_sequences.activity_ids',
         'tutorial.id',
+        'custom_routines_activities',
       ])
       .where('users.id = :id', { id })
       .getOne();

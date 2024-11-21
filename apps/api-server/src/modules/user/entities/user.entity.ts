@@ -38,6 +38,7 @@ import { TeamToMember } from '../../team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
 import { Feedback } from '../../../../../../libs/stripe/src/entities/feedback.entity';
+import { CustomRoutine } from './custom-routine';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -508,4 +509,7 @@ export class User extends BaseEntity {
 
   @OneToOne(() => Feedback, (feedback) => feedback.cancel_subscription_reason)
   cancel_subscription_feedback?: Feedback;
+
+  @OneToMany(() => CustomRoutine, (custom_routine) => custom_routine.user)
+  custom_routines?: CustomRoutine[];
 }

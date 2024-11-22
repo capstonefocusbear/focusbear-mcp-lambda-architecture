@@ -101,19 +101,21 @@ export class EventsConsumer {
       const email = await this.findEmail(user_id, user_auth0_id);
       await this.eventsService.handleEventBroadcast(user_id, trackEventDto, email);
 
-      const brevoResponse = await this.brevoService.registerBrevoEvent(email, trackEventDto);
+      const brevoResponse = await this.safeRegisterBrevoEvent(email, trackEventDto);
 
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: `Save Brevo event response status: ${brevoResponse.status} Data: ${JSON.stringify(
-          brevoResponse.data,
-        )}`,
-        data: {
-          user_id,
-          track_event: trackEventDto,
-        },
-      });
+      if (brevoResponse) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: `Save Brevo event response status: ${brevoResponse.status} Data: ${JSON.stringify(
+            brevoResponse.data,
+          )}`,
+          data: {
+            user_id,
+            track_event: trackEventDto,
+          },
+        });
+      }
 
       // update user updated_at field to indicate activity
       await this.userRepository.update(user_id, { updated_at: new Date().toISOString() });
@@ -212,5 +214,14 @@ export class EventsConsumer {
     let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
+  }
+
+  private async safeRegisterBrevoEvent(email: string, trackEventDto: TrackEventDto) {
+    try {
+      return await this.brevoService.registerBrevoEvent(email, trackEventDto);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      return { status: 'error', message: 'Failed to register Brevo event', error, data: {} };
+    }
   }
 }

@@ -230,7 +230,9 @@ export class UserSettingsService {
         (oldUserSettingsSerialized.morning_activities?.length > 0 && morning_activities.length === 0) ||
         (oldUserSettingsSerialized.evening_activities?.length > 0 && eveningActivities.length === 0)
       ) {
-        this.sentryService.instance().captureException(new Error('User settings are overwritten'), { level: 'error' });
+        this.sentryService
+          .instance()
+          .captureException(new Error('User settings are overwritten to be blank'), { level: 'error' });
       }
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(

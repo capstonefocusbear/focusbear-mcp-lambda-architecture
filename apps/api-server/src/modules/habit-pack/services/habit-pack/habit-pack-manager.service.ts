@@ -97,12 +97,36 @@ export class HabitPackManagerService {
     const templatesNewIdsMap = new Map<string, string>([]);
     const templatesChoicesNewIdsMap = new Map<string, string>([]);
     const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
+    //log current user seeting
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'User settings before installing habit pack',
+      data: {
+        'Morning activities length': userSettings?.morning_activities?.length || 0,
+        'Evening activities length': userSettings?.evening_activities?.length || 0,
+        'Break activities length': userSettings?.break_activities?.length || 0,
+      },
+    });
     // convert templates to normal activities and merge them with user's current settings
     const newSettings = this.addTemplatesToUserSettings(userSettings, habitPack, {
       templatesNewIdsMap,
       templatesChoicesNewIdsMap,
       logQuantityQuestionsNewIdsMap,
     });
+
+    //log new user setting
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'User settings after installing habit pack',
+      data: {
+        'Morning activities length': newSettings?.morning_activities?.length || 0,
+        'Evening activities length': newSettings?.evening_activities?.length || 0,
+        'Break activities length': newSettings?.break_activities?.length || 0,
+      },
+    });
+
     // link converted activities and questions to their canonical versions
     const linkedSettings = this.linkInstalledActivitiesAndLogQuestions(newSettings, {
       templatesNewIdsMap,

@@ -4,7 +4,7 @@ FROM node:20
 # Prepare data
 WORKDIR /app/backend
 COPY ["package.json", "package-lock.json*", "./"]
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build

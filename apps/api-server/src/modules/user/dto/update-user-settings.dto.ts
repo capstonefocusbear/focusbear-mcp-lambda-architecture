@@ -14,6 +14,7 @@ import {
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../domain/language-options.enum';
 import { CustomRoutine } from '../entities/custom-routine';
+import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -67,7 +68,7 @@ export class UpdateUserSettingsDto {
   @IsNotEmpty()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CustomRoutine)
-  @ApiProperty({ isArray: true, type: CustomRoutine })
-  custom_routines?: CustomRoutine[];
+  @Type(() => UpdateCustomRoutineDto)
+  @ApiProperty({ isArray: true, type: UpdateCustomRoutineDto })
+  custom_routines?: UpdateCustomRoutineDto[];
 }

@@ -41,6 +41,8 @@ export class ActivityParserService {
     for (const { type, activities, activity_ids } of activity_sequences) {
       let key = `${type}_activities`;
       if (type === ActivityType.break) key = 'break_activities';
+      if (type === ActivityType.standalone && activities.every((activity) => Boolean(activity.custom_routine_id)))
+        key = 'custom_routines';
       const transformTutorial = (tutorial) => (tutorial && typeof tutorial === 'object' ? tutorial.id : tutorial);
       const mapActivity = ({
         id,

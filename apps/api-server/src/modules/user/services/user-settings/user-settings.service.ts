@@ -39,6 +39,8 @@ import { FunctionCallParametersDto } from '../../../ai/dto/function-call-paramet
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
+import { Activity } from '../../../activity/entities/activity.entity';
+import { CustomRoutine } from '../../entities/custom-routine';
 
 @Injectable()
 export class UserSettingsService {
@@ -69,9 +71,6 @@ export class UserSettingsService {
         },
       });
       const userSettings = await this.userRepository.getUserSettings(user_id);
-      console.log('================================================================');
-      console.log(JSON.stringify(userSettings));
-      console.log('================================================================');
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -115,7 +114,7 @@ export class UserSettingsService {
     updateSettingsData: UpdateUserSettingsDto,
     should_update_has_edited_settings: boolean,
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
-  ): Promise<UpdateUserSettingsDto> {
+  ) {
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -243,18 +242,22 @@ export class UserSettingsService {
         }
       }
 
-      const { activities: standalone_activities, routines } = custom_routines?.reduce(
-        ({ activities, routines }, { standalone_activities, ...rest }) => ({
-          activities: activities.concat(standalone_activities),
-          routines: routines.concat({ ...rest }),
-        }),
-        { activities: [], routines: [] },
-      );
+      const { activities, routines: customRoutines }: { activities: UpdateActivityDto[]; routines: CustomRoutine[] } =
+        custom_routines?.reduce(
+          ({ activities, routines }, { standalone_activities, id, ...rest }) => ({
+            activities: activities.concat(
+              standalone_activities.map((activity) => ({ ...activity, custom_routine_id: id })),
+            ),
+            routines: routines.concat({ id, ...rest, user_id: updatedUser.id }),
+          }),
+          { activities: [], routines: [] },
+        );
+
       const serializedActivities = {
         morning_activities,
         evening_activities: eveningActivities,
         break_activities,
-        standalone_activities,
+        standalone_activities: activities,
       };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
@@ -265,7 +268,7 @@ export class UserSettingsService {
         deserializedActivities,
         logQuantityQuestions,
         tutorials,
-        routines,
+        customRoutines,
       );
       if (should_update_has_edited_settings) {
         await Promise.all([

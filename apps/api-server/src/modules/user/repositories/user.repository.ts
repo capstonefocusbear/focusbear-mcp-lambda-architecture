@@ -24,7 +24,7 @@ export class UserRepository extends BaseRepository<User> {
     activitiesData: DeserializedActivity[],
     logQuantityQuestions: LogQuantityQuestion[],
     tutorials: Tutorial[],
-    custom_routines: CustomRoutine[],
+    customRoutines: CustomRoutine[],
   ) {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -89,7 +89,7 @@ export class UserRepository extends BaseRepository<User> {
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
       await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
-      await queryRunner.manager.upsert(CustomRoutine, custom_routines, ['id']);
+      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -102,12 +102,8 @@ export class UserRepository extends BaseRepository<User> {
   async getUserSettings(id: string): Promise<User> {
     return this.orm
       .createQueryBuilder('users')
-      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences', 'activity_sequences.type != :standalone', {
-        standalone: 'standalone',
-      })
-      .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.activity_type != :standalone', {
-        standalone: 'standalone',
-      })
+      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences')
+      .leftJoinAndSelect('activity_sequences.activities', 'activities')
       .leftJoinAndSelect('activities.choices', 'choices')
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')

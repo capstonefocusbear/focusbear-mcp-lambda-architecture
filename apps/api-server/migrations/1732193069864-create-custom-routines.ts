@@ -5,7 +5,7 @@ export class CreateCustomRoutines1732193069864 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-            CREATE TYPE "public"."custom_routine_trigger_enum" AS ENUM('ON_DEMAND', 'ON_SCHEDULED');
+            CREATE TYPE "public"."custom_routine_trigger_enum" AS ENUM('ON_DEMAND', 'ON_SCHEDULE');
           `);
 
     await queryRunner.query(`
@@ -13,9 +13,9 @@ export class CreateCustomRoutines1732193069864 implements MigrationInterface {
               "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
               "name" VARCHAR NOT NULL,
               "trigger" "public"."custom_routine_trigger_enum" NOT NULL DEFAULT 'ON_DEMAND',
-              "days_of_week" JSONB NOT NULL DEFAULT '[]',
-              "start_time" VARCHAR(255) NOT NULL,
-              "end_time" VARCHAR(255) NOT NULL,
+              "days_of_week" JSONB NOT NULL DEFAULT '["ALL"]'::jsonb,
+              "start_time" VARCHAR(255),
+              "end_time" VARCHAR(255),
               "user_id" uuid NOT NULL,
               "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
               "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -38,6 +38,7 @@ export class CreateCustomRoutines1732193069864 implements MigrationInterface {
             DROP TYPE IF EXISTS "public"."IDX_zabc9tUdnbxe3zlOtx4Zy23z4YP";
             DROP TYPE IF EXISTS "public"."IDX_hvMmToO4T5tiNXK7QzA4BiW1Yns";
             DROP TABLE IF EXISTS "custom_routines";
+            DROP TYPE IF EXISTS "public"."custom_routine_trigger_enum";
           `);
   }
 }

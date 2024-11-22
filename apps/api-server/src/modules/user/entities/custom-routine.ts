@@ -4,6 +4,7 @@ import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
 import { Activity } from '../../activity/entities/activity.entity';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
 import { User } from './user.entity';
+import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 
 @Entity('custom_routines')
 export class CustomRoutine extends BaseEntity {
@@ -15,7 +16,7 @@ export class CustomRoutine extends BaseEntity {
   @Column({
     type: 'varchar',
     nullable: false,
-    transformer: BaseEntity.encryptJSONField('name'),
+    transformer: BaseEntity.encryptField('name'),
   })
   name: string;
 
@@ -26,12 +27,13 @@ export class CustomRoutine extends BaseEntity {
     default: CustomRoutineTrigger.ON_DEMAND,
     nullable: false,
   })
-  trigger: string;
+  trigger: CustomRoutineTrigger;
 
   @Column({
     type: 'jsonb',
     nullable: false,
-    default: [],
+    default: [DaysOfWeek.ALL],
+    transformer: BaseEntity.encryptJSONField('days_of_week'),
   })
   days_of_week: DaysOfWeek[];
 
@@ -57,7 +59,7 @@ export class CustomRoutine extends BaseEntity {
   user_id: string;
 
   @OneToMany(() => Activity, (activity) => activity.custom_routine)
-  standalone_activities?: Activity[];
+  standalone_activities?: UpdateActivityDto[];
 
   @ManyToOne(() => User, (user) => user.custom_routines, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

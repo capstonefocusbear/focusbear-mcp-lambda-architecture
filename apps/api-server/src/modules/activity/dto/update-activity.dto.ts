@@ -24,6 +24,7 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
+import { CustomRoutine } from '../../user/entities/custom-routine';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -41,6 +42,32 @@ function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOpti
           if (!hasChoices) return true;
           if (!fieldValue) return true;
           return fieldValue === property;
+        },
+      },
+    });
+  };
+}
+
+function IsSubsetOfCustomRoutineDays(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'IsSubsetOfCustomRoutineDays',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          const customRoutine = args.object as CustomRoutine;
+          if (customRoutine?.days_of_week?.length) {
+            const parentDaysOfWeek = customRoutine.days_of_week;
+            return parentDaysOfWeek.includes(DaysOfWeek.ALL)
+              ? true
+              : value.every((day: string) => parentDaysOfWeek.includes(day as DaysOfWeek));
+          }
+          return true;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `${args.property} must be a subset of the parent CustomRoutine's days_of_week.`;
         },
       },
     });
@@ -103,6 +130,7 @@ export class UpdateActivityDto extends ActivityData {
   @IsArray()
   @IsOptional()
   @ArrayMinSize(1)
+  @IsSubsetOfCustomRoutineDays({ message: 'days_of_week must be a subset of the CustomRoutine days_of_week.' })
   days_of_week?: DaysOfWeek[];
 
   @IsArray()

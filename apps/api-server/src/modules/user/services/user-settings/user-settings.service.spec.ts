@@ -291,7 +291,10 @@ describe('UserSettingsService', () => {
         logQuantityQuestions: [],
         tutorials: [],
       });
-      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserRepositoryMock.getUserSettings.mockResolvedValue({
+        ...userSettingsDummy,
+        is_relax_activity_generated: false,
+      });
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
 
       await userSettingsService.updateSettings(

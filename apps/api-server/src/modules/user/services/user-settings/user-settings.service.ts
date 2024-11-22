@@ -152,7 +152,6 @@ export class UserSettingsService {
         morning_activities,
         evening_activities,
         break_activities,
-        language,
       } = updateSettingsData;
 
       const tutorialIds = []
@@ -191,6 +190,11 @@ export class UserSettingsService {
         user.timezone,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
+      const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
+        updateSettingsData,
+        user,
+      );
+
       const updatedUser = new User({
         startup_time,
         shutdown_time,
@@ -208,36 +212,8 @@ export class UserSettingsService {
         utc_shutdown_time,
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
+        is_relax_activity_generated,
       });
-
-      let eveningActivities = evening_activities;
-      if (updateSettingsData?.cutoff_time_for_non_high_priority_activities) {
-        const prev_user_settings = await this.userRepository.getUserSettings(user_id);
-        const prev_serialized_settings = this.serializeSettings(prev_user_settings);
-
-        const hasRelaxActivityWithSavedSites = [
-          ...prev_serialized_settings.evening_activities,
-          ...evening_activities,
-        ]?.some((activity) => activity.show_saved_distracting_websites);
-
-        if (!hasRelaxActivityWithSavedSites) {
-          const relaxActivityDuration = this.calculateRelaxActivityDuration(
-            updateSettingsData.cutoff_time_for_non_high_priority_activities,
-            updateSettingsData.shutdown_time,
-            updateSettingsData.evening_activities,
-          );
-
-          if (relaxActivityDuration > 0) {
-            const relaxActivity: UpdateActivityDto = {
-              id: randomUUID(),
-              name: this.i18nService.t('common.free_time_no_distraction_blocking', { lang: language }),
-              duration_seconds: relaxActivityDuration,
-              show_saved_distracting_websites: true,
-            };
-            eveningActivities = [relaxActivity, ...evening_activities];
-          }
-        }
-      }
 
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
@@ -576,4 +552,45 @@ export class UserSettingsService {
     }
     return false;
   };
+
+  private async optimizeEveningActivities(updateSettingsData: UpdateUserSettingsDto, user: User) {
+    let eveningActivities = [...updateSettingsData.evening_activities];
+    let is_relax_activity_generated = user.is_relax_activity_generated;
+
+    // Check if user opts to re-add relax activity, even if previously generated
+    const hasRelaxActivityInCurrent = eveningActivities.some((activity) => activity.show_saved_distracting_websites);
+
+    if (!updateSettingsData?.cutoff_time_for_non_high_priority_activities || hasRelaxActivityInCurrent) {
+      return { eveningActivities, is_relax_activity_generated };
+    }
+
+    // Backward compatibility: Handle existing relax activities
+    const prev_user_settings = await this.userRepository.getUserSettings(user.id);
+    const hasRelaxActivityInPrevious = this.serializeSettings(prev_user_settings).evening_activities?.some(
+      (activity) => activity.show_saved_distracting_websites,
+    );
+
+    const shouldAddRelaxActivity = !hasRelaxActivityInPrevious && !user.is_relax_activity_generated;
+
+    if (shouldAddRelaxActivity) {
+      const relaxActivityDuration = this.calculateRelaxActivityDuration(
+        updateSettingsData.cutoff_time_for_non_high_priority_activities,
+        updateSettingsData.shutdown_time,
+        updateSettingsData.evening_activities,
+      );
+
+      if (relaxActivityDuration) {
+        const relaxActivity = {
+          id: randomUUID(),
+          name: this.i18nService.t('common.free_time_no_distraction_blocking', { lang: updateSettingsData.language }),
+          duration_seconds: relaxActivityDuration,
+          show_saved_distracting_websites: true,
+        };
+        eveningActivities = [relaxActivity, ...eveningActivities];
+        is_relax_activity_generated = true;
+      }
+    }
+
+    return { eveningActivities, is_relax_activity_generated };
+  }
 }

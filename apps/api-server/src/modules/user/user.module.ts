@@ -63,7 +63,7 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserFeedbackService,
     CustomRoutineRepository,
   ],
-  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
+  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
     TypeOrmModule.forFeature([User]),
     Auth0Module.registerAsync({

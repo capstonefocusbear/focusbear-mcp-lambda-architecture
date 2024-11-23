@@ -10,6 +10,8 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
 import { Tutorial } from '../../entities/tutorial.entity';
 import { CustomRoutine } from '../../../user/entities/custom-routine';
+import { UpdateCustomRoutineDto } from '../../../user/dto/update-custom-routine.dto.dto';
+import { CustomRoutineRepository } from '../../../user/repositories/custom-routine.repository';
 
 export interface DeserializedActivity {
   sequence: ActivitySequence;
@@ -21,7 +23,7 @@ export interface SerializedActivity {
   evening_activities?: UpdateActivityDto[];
   break_activities?: UpdateActivityDto[];
   standalone_activities?: UpdateActivityDto[];
-  custom_routines?: CustomRoutine[];
+  customRoutines?: CustomRoutine[];
 }
 
 @Injectable()
@@ -29,6 +31,7 @@ export class ActivityParserService {
   constructor(
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly customRoutineRepository: CustomRoutineRepository,
   ) {}
 
   serialize(activity_sequences: Partial<ActivitySequence>[]): SerializedActivity {
@@ -38,11 +41,7 @@ export class ActivityParserService {
       message: 'Serializing activities (formatting activities to be sent to front end)',
     });
     const serializedActivities: SerializedActivity = {};
-    for (const { type, activities, activity_ids } of activity_sequences) {
-      let key = `${type}_activities`;
-      if (type === ActivityType.break) key = 'break_activities';
-      if (type === ActivityType.standalone && activities.every((activity) => Boolean(activity.custom_routine_id)))
-        key = 'custom_routines';
+    activity_sequences.forEach(async ({ type, activities, activity_ids, pack_id }) => {
       const transformTutorial = (tutorial) => (tutorial && typeof tutorial === 'object' ? tutorial.id : tutorial);
       const mapActivity = ({
         id,
@@ -91,8 +90,22 @@ export class ActivityParserService {
         .map((id) => activities.find((e) => e.id === id))
         .filter(Boolean)
         .map(mapActivity);
-      Object.assign(serializedActivities, { [key]: orderedActivities });
-    }
+
+      if (type === ActivityType.standalone) {
+        const custom_routine = await this.customRoutineRepository.getCustomRoutine(pack_id);
+        if (custom_routine) {
+          custom_routine.standalone_activities = orderedActivities;
+          serializedActivities.customRoutines.push(custom_routine);
+        } else {
+          serializedActivities.standalone_activities = orderedActivities;
+        }
+      } else {
+        let key = `${type}_activities`;
+        if (type === ActivityType.break) key = 'break_activities';
+        Object.assign(serializedActivities, { [key]: orderedActivities });
+      }
+    });
+
     return serializedActivities;
   }
 
@@ -199,7 +212,7 @@ export class ActivityParserService {
       cutoff_time_for_doing_activity,
       ...rest
     }: UpdateActivityDto,
-    { type, user_id, activity_sequence_id },
+    { type, user_id, activity_sequence_id, custom_routine_id },
   ): Activity[] {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -230,6 +243,7 @@ export class ActivityParserService {
       check_list,
       impact_category,
       cutoff_time_for_doing_activity,
+      custom_routine_id: custom_routine_id ?? null,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -294,15 +308,10 @@ export class ActivityParserService {
     });
     const activity_ids = serializedActivities.map(({ id }) => id);
     const total_duration_seconds = this.calculateSequenceDuration(serializedActivities);
-    let sequenceItem;
-    /*
-      If activities are of type "standalone", searching in DB for a sequence to update should be skipped.
-      A new activity sequence needs to be created each time a standalone habit pack is installed
-      to ensure that activities from different standalone packs aren't merged
-    */
-    if (type !== ActivityType.standalone) {
-      sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
-    }
+
+    // Implementing custom routines based on standalone activities
+    const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+
     const sequence = new ActivitySequence(
       { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id, pack_id },
       { generateId: !sequenceItem?.id },
@@ -331,5 +340,20 @@ export class ActivityParserService {
       }
       return tutorials;
     }, []);
+  }
+
+  async deserializeCustomRoutineActivities(customRoutines: UpdateCustomRoutineDto[], user_id: string) {
+    return await Promise.all(
+      customRoutines.map(async (routine) => {
+        const type = ActivityType.standalone;
+        const routine_activities = routine?.standalone_activities as any;
+        const sequence = await this.createActivitySequence(routine_activities, { type, user_id, pack_id: routine.id }); // @TODO: replace pack_id with custom_routine_id
+        const activity_sequence_id = sequence.id;
+        const context = { type, user_id, activity_sequence_id, custom_routine_id: routine.id };
+        const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
+        const activities = routine_activities.flatMap(createActivity(context));
+        return { sequence, activities };
+      }),
+    );
   }
 }

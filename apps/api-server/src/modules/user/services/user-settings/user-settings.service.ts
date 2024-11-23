@@ -71,6 +71,9 @@ export class UserSettingsService {
         },
       });
       const userSettings = await this.userRepository.getUserSettings(user_id);
+      console.log('===================================================');
+      console.log(userSettings);
+      console.log('===================================================');
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -242,30 +245,29 @@ export class UserSettingsService {
         }
       }
 
-      const { activities, routines: customRoutines }: { activities: UpdateActivityDto[]; routines: CustomRoutine[] } =
-        custom_routines?.reduce(
-          ({ activities, routines }, { standalone_activities, id, ...rest }) => ({
-            activities: activities.concat(
-              standalone_activities.map((activity) => ({ ...activity, custom_routine_id: id })),
-            ),
-            routines: routines.concat({ id, ...rest, user_id: updatedUser.id }),
-          }),
-          { activities: [], routines: [] },
+      let customRoutines = [];
+      let deserializeCustomRoutineActivities = [];
+      if (custom_routines?.length) {
+        customRoutines = custom_routines?.map(({ standalone_activities, ...rest }) => ({ ...rest, user_id }));
+        deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
+          custom_routines,
+          user_id,
         );
+      }
 
       const serializedActivities = {
         morning_activities,
         evening_activities: eveningActivities,
         break_activities,
-        standalone_activities: activities,
       };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
       );
+
       await this.userRepository.consistentlyUpdateUserSettings(
         updatedUser,
-        deserializedActivities,
+        deserializedActivities.concat(deserializeCustomRoutineActivities),
         logQuantityQuestions,
         tutorials,
         customRoutines,

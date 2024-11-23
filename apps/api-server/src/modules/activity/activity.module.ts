@@ -26,6 +26,7 @@ import { LogQuantityAnswersRepository } from './repositories/log-quantity-answer
 import { LogQuantityQuestionsRepository } from './repositories/log-quantity-questions.repository';
 import { BullQueues } from '../../shared/utils/constants';
 import { TutorialsRepository } from './repositories/tutorial.repository';
+import { CustomRoutineRepository } from '../user/repositories/custom-routine.repository';
 
 @Module({
   providers: [
@@ -43,6 +44,7 @@ import { TutorialsRepository } from './repositories/tutorial.repository';
     LogQuantityAnswersRepository,
     LogQuantityQuestionsRepository,
     TutorialsRepository,
+    CustomRoutineRepository,
   ],
   exports: [
     ActivityParserService,

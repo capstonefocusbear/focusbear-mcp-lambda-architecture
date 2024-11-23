@@ -34,9 +34,9 @@ export class CreateCustomRoutines1732193069864 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
             ALTER TABLE "custom_routines" DROP CONSTRAINT IF EXISTS "FK_oW9MddBEb0sRCA9KbuQ0upFWQ95";
-            DROP TYPE IF EXISTS "public"."IDX_D5RRBIpEoX16Af70wnkTqAGgR15";
-            DROP TYPE IF EXISTS "public"."IDX_zabc9tUdnbxe3zlOtx4Zy23z4YP";
-            DROP TYPE IF EXISTS "public"."IDX_hvMmToO4T5tiNXK7QzA4BiW1Yns";
+            DROP INDEX IF EXISTS "public"."IDX_D5RRBIpEoX16Af70wnkTqAGgR15";
+            DROP INDEX IF EXISTS "public"."IDX_zabc9tUdnbxe3zlOtx4Zy23z4YP";
+            DROP INDEX IF EXISTS "public"."IDX_hvMmToO4T5tiNXK7QzA4BiW1Yns";
             DROP TABLE IF EXISTS "custom_routines";
             DROP TYPE IF EXISTS "public"."custom_routine_trigger_enum";
           `);

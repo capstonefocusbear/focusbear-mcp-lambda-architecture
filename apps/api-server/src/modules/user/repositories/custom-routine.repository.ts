@@ -16,4 +16,12 @@ export class CustomRoutineRepository extends BaseRepository<CustomRoutine> {
       },
     });
   }
+
+  async getCustomRoutine(id: string) {
+    return this.orm.findOne({
+      where: {
+        id,
+      },
+    });
+  }
 }

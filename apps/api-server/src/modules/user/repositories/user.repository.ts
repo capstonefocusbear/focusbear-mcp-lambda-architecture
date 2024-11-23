@@ -108,7 +108,7 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .leftJoinAndSelect('activities.tutorial', 'tutorial')
-      .leftJoinAndSelect('activities.custom_routine', 'custom_routines_activities')
+      .leftJoinAndSelect('activities.custom_routine', 'custom_routine')
       .select([
         'users.startup_time',
         'users.shutdown_time',
@@ -161,7 +161,7 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.id',
         'activity_sequences.activity_ids',
         'tutorial.id',
-        'custom_routines_activities',
+        'custom_routine',
       ])
       .where('users.id = :id', { id })
       .getOne();

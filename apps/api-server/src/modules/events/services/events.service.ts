@@ -95,7 +95,7 @@ export class EventsService {
   }
 
   async shouldNewUserEventBeLogged(event_type: string, userId: string) {
-    //check if user signup date is less than 48 hours
+    // check if user signup date is less than 48 hours
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) throw new NotFoundException(`User with ID: ${userId} does not exist!`);
     const signupDate = new Date(user.created_at);
@@ -187,11 +187,11 @@ export class EventsService {
     const shouldLogEvent = this.shouldEventBeLogged(reason, event_type);
     const shouldLogNewUserEvent = await this.shouldNewUserEventBeLogged(event_type, userId);
     const hasFeedback = !!event_data?.data?.feedback;
-    //log all quit events in cliq if user is new. If user is not new, log only if the event is quit event and reason contains any of the words in WORDS_TO_LOG_FOR
+    // log all quit events in cliq if user is new. If user is not new, log only if the event is quit event and reason contains any of the words in WORDS_TO_LOG_FOR
     if (shouldLogNewUserEvent || shouldLogEvent) {
       await this.logEventInCliq(userId, trackEventDto);
     }
-    //log all quit events in email if user is new. If user is not new, log only if the event is uninstall or contains feedback
+    // log all quit events in email if user is new. If user is not new, log only if the event is uninstall or contains feedback
     if (shouldLogNewUserEvent || (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback))) {
       await this.emailQuitFeedback(trackEventDto, email, reason, userId);
     }

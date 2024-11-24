@@ -24,7 +24,7 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogSummaryType } from '../domain/log-summary-type.enum';
 import { LogQuantityQuestion } from '../entities/log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
-import { CustomRoutine } from '../../user/entities/custom-routine';
+import { UpdateCustomRoutineDto } from '../../user/dto/update-custom-routine.dto.dto';
 
 function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOptions) {
   return (object: any, propertyName: string) => {
@@ -49,15 +49,15 @@ function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOpti
 }
 
 function IsSubsetOfCustomRoutineDays(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: Record<string, any>, propertyName: string) {
     registerDecorator({
       name: 'IsSubsetOfCustomRoutineDays',
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName,
       options: validationOptions,
       validator: {
         validate(value: any, args: ValidationArguments) {
-          const customRoutine = args.object as CustomRoutine;
+          const customRoutine = { ...args.object } as UpdateCustomRoutineDto;
           if (customRoutine?.days_of_week?.length) {
             const parentDaysOfWeek = customRoutine.days_of_week;
             return parentDaysOfWeek.includes(DaysOfWeek.ALL)

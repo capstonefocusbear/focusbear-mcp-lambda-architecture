@@ -166,7 +166,7 @@ export class UserService {
 
         if (!os) {
           const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-          this.sentryService.instance().captureException(new Error('Could not determine user OS from' + clientId), {
+          this.sentryService.instance().captureException(new Error(`Could not determine user OS from${clientId}`), {
             level: 'error',
           });
         }

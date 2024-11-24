@@ -13,22 +13,22 @@ import {
   ValidationOptions,
   ValidationArguments,
 } from 'class-validator';
+import { DateTime } from 'luxon';
 import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
-import { DateTime } from 'luxon';
 
 function IsEndTimeAfterStartTime(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: Record<string, any>, propertyName: string) {
     registerDecorator({
       name: 'IsEndTimeAfterStartTime',
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName,
       options: validationOptions,
       validator: {
         validate(value: any, args: ValidationArguments) {
-          const object = args.object as any;
-          const startTime = object.start_time;
+          const payload = args.object as any;
+          const startTime = payload.start_time;
           const endTime = value;
 
           if (!startTime || !endTime) {
@@ -42,8 +42,8 @@ function IsEndTimeAfterStartTime(validationOptions?: ValidationOptions) {
           }
           return end > start;
         },
-        defaultMessage(args: ValidationArguments) {
-          return `end_time must be later than start_time.`;
+        defaultMessage() {
+          return 'end_time must be later than start_time.';
         },
       },
     });
@@ -64,8 +64,8 @@ export class UpdateCustomRoutineDto {
   @IsEnum(CustomRoutineTrigger)
   @Transform(({ value, obj }) => {
     if (obj.trigger === CustomRoutineTrigger.ON_DEMAND) {
-      obj.start_time = undefined;
-      obj.end_time = undefined;
+      const updatedObj = { ...obj, start_time: undefined, end_time: undefined }; // Create a modified copy
+      Object.assign(obj, updatedObj);
     }
     return value;
   })

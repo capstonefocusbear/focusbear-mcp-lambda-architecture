@@ -95,7 +95,7 @@ export class ActivityParserService {
         if (custom_routine) {
           const { user_id, ...rest } = custom_routine;
           const updateCustomRoutineDto = { ...rest, standalone_activities: orderedActivities };
-          serializedActivities['custom_routines'] = [
+          serializedActivities.custom_routines = [
             ...(serializedActivities.custom_routines ?? []),
             updateCustomRoutineDto,
           ];
@@ -218,7 +218,7 @@ export class ActivityParserService {
       cutoff_time_for_doing_activity,
       ...rest
     }: UpdateActivityDto,
-    { type, user_id, activity_sequence_id, custom_routine_id },
+    { type, user_id, activity_sequence_id },
   ): Activity[] {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
@@ -356,7 +356,7 @@ export class ActivityParserService {
     customRoutines: UpdateCustomRoutineDto[],
     user_id: string,
   ): Promise<{ sequence: ActivitySequence; activities: Activity[] }[]> {
-    return await Promise.all(
+    return Promise.all(
       customRoutines.map(async (routine) => {
         const type = ActivityType.standalone;
         const routine_activities = routine?.standalone_activities as any;

@@ -1,5 +1,5 @@
-import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
 import { User } from './user.entity';

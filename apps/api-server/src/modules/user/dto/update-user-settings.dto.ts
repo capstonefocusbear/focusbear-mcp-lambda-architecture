@@ -13,7 +13,6 @@ import {
 } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../domain/language-options.enum';
-import { CustomRoutine } from '../entities/custom-routine';
 import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 
 export class UpdateUserSettingsDto {

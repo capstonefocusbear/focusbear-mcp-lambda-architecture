@@ -1,10 +1,8 @@
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
-import { Activity } from '../../activity/entities/activity.entity';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
 import { User } from './user.entity';
-import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 
 @Entity('custom_routines')

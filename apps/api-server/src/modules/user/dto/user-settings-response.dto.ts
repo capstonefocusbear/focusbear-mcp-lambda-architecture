@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
+import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 
 export class UserSettingsResponseDto {
   @IsNotEmpty()
@@ -58,4 +59,11 @@ export class UserSettingsResponseDto {
   @IsBoolean()
   @IsOptional()
   has_edited_settings?: boolean;
+
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateCustomRoutineDto)
+  @ApiProperty({ isArray: true, type: UpdateCustomRoutineDto })
+  custom_routines?: UpdateCustomRoutineDto[];
 }

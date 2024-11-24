@@ -53,7 +53,7 @@ function IsEndTimeAfterStartTime(validationOptions?: ValidationOptions) {
 export class UpdateCustomRoutineDto {
   @IsNotEmpty()
   @ApiProperty()
-  id: string;
+  id?: string;
 
   @IsNotEmpty()
   @ApiProperty()

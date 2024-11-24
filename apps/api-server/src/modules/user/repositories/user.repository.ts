@@ -30,6 +30,7 @@ export class UserRepository extends BaseRepository<User> {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
       await queryRunner.manager.update(User, { id }, { ...updateData });
       await Promise.all(
         activitiesData.map(async ({ sequence, activities }) => {
@@ -89,7 +90,7 @@ export class UserRepository extends BaseRepository<User> {
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
       await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
-      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
+
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -108,7 +109,6 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .leftJoinAndSelect('activities.tutorial', 'tutorial')
-      .leftJoinAndSelect('activities.custom_routine', 'custom_routine')
       .select([
         'users.startup_time',
         'users.shutdown_time',
@@ -160,8 +160,8 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',
+        'activity_sequences.custom_routine_id',
         'tutorial.id',
-        'custom_routine',
       ])
       .where('users.id = :id', { id })
       .getOne();

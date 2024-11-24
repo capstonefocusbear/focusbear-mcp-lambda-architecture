@@ -65,7 +65,7 @@ export class UpdateUserSettingsDto {
   @IsIn(['en', 'es'], { message: 'Supported languages are "en" and "es" only.' })
   language?: LanguageOptions = LanguageOptions.ENGLISH;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UpdateCustomRoutineDto)

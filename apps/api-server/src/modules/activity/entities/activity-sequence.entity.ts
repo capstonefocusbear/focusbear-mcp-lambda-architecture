@@ -6,6 +6,7 @@ import { Activity } from './activity.entity';
 import { CompletedActivity } from './completed-activity.entity';
 import { CompletedActivitySequence } from './completed-activity-sequence.entity';
 import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
+import { CustomRoutine } from '../../user/entities/custom-routine';
 
 @Entity('activity_sequences')
 export class ActivitySequence extends BaseEntity {
@@ -60,6 +61,12 @@ export class ActivitySequence extends BaseEntity {
   })
   pack_id?: string;
 
+  @Index()
+  @Column({
+    type: 'uuid',
+  })
+  custom_routine_id?: string;
+
   @ManyToOne(() => User, (user) => user.activity_sequences, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
@@ -76,6 +83,13 @@ export class ActivitySequence extends BaseEntity {
 
   @OneToMany(() => CompletedActivitySequence, (completed_sequence) => completed_sequence.activity_sequence)
   completed_activity_sequences?: CompletedActivitySequence[];
+
+  @ManyToOne(() => CustomRoutine, (custom_routine) => custom_routine.activitySequences, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'custom_routine_id' })
+  custom_routine?: CustomRoutine;
 
   get sequenceActivityIds() {
     return this.generated_sequence_activity_ids || this.activity_ids;

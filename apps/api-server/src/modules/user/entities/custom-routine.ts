@@ -4,6 +4,8 @@ import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
 import { Activity } from '../../activity/entities/activity.entity';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
 import { User } from './user.entity';
+import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
+import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 
 @Entity('custom_routines')
 export class CustomRoutine extends BaseEntity {
@@ -57,11 +59,10 @@ export class CustomRoutine extends BaseEntity {
   })
   user_id: string;
 
-  // @TODO: move this implementation to activity_sequence
-  @OneToMany(() => Activity, (activity) => activity.custom_routine)
-  standalone_activities?: Activity[];
-
   @ManyToOne(() => User, (user) => user.custom_routines, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @OneToMany(() => ActivitySequence, (activity_sequence) => activity_sequence.custom_routine_id)
+  activitySequences?: ActivitySequence[];
 }

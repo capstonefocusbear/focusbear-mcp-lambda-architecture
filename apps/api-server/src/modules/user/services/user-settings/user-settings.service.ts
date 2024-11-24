@@ -41,6 +41,7 @@ import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 import { Activity } from '../../../activity/entities/activity.entity';
 import { CustomRoutine } from '../../entities/custom-routine';
+import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 
 @Injectable()
 export class UserSettingsService {
@@ -58,6 +59,7 @@ export class UserSettingsService {
     private readonly pusher: PusherService,
     private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
+    private readonly customRoutineRepository: CustomRoutineRepository,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -70,10 +72,10 @@ export class UserSettingsService {
           user_id,
         },
       });
-      const userSettings = await this.userRepository.getUserSettings(user_id);
-      console.log('===================================================');
-      console.log(userSettings);
-      console.log('===================================================');
+      const [userSettings, userCustomRoutines] = await Promise.all([
+        this.userRepository.getUserSettings(user_id),
+        this.customRoutineRepository.getUserCustomRoutines(user_id),
+      ]);
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -84,7 +86,7 @@ export class UserSettingsService {
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
-      const settings = this.serializeSettings(userSettings);
+      const settings = this.serializeSettings(userSettings, userCustomRoutines);
       settings.morning_activities = (settings?.morning_activities ?? []).map(
         ({ cutoff_time_for_doing_activity, ...rest }) => rest,
       );
@@ -98,13 +100,16 @@ export class UserSettingsService {
     }
   }
 
-  private serializeSettings({ activity_sequences, ...user }: User): UpdateUserSettingsDto {
+  private serializeSettings(
+    { activity_sequences, ...user }: User,
+    userCustomRoutines?: CustomRoutine[],
+  ): UpdateUserSettingsDto {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Serializing user settings',
     });
-    const serializedActivities = this.activityParserService.serialize(activity_sequences);
+    const serializedActivities = this.activityParserService.serialize(activity_sequences, userCustomRoutines);
     const settings: UserSettingsResponseDto = {
       ...user,
       ...serializedActivities,
@@ -219,7 +224,7 @@ export class UserSettingsService {
       let eveningActivities = evening_activities;
       if (updateSettingsData?.cutoff_time_for_non_high_priority_activities) {
         const prev_user_settings = await this.userRepository.getUserSettings(user_id);
-        const prev_serialized_settings = this.serializeSettings(prev_user_settings);
+        const prev_serialized_settings = await this.serializeSettings(prev_user_settings);
 
         const hasRelaxActivityWithSavedSites = [
           ...prev_serialized_settings.evening_activities,

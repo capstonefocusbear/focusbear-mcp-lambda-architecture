@@ -268,3 +268,9 @@ export const SurveyAnswerMetadataRepositoryMock = {
   ...BaseRepositoryMock,
   createSurveyAnswerMetadata: jest.fn(),
 };
+
+export const CustomRoutineRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserCustomRoutines: jest.fn(),
+  getCustomRoutine: jest.fn(),
+};

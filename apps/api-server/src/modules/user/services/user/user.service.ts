@@ -166,8 +166,14 @@ export class UserService {
 
         if (!os) {
           const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-          this.sentryService.instance().captureException(new Error(`Could not determine user OS from${clientId}`), {
+          this.sentryService.instance().captureEvent({
+            message: 'OS not found',
             level: 'error',
+            extra: {
+              auth0_id,
+              email,
+              clientId,
+            },
           });
         }
 
@@ -175,7 +181,14 @@ export class UserService {
         stripeId = stripeCustomer.id;
       }
       if (!stripeId) {
-        this.sentryService.instance().captureException(new Error('No stripe ID Created'), { level: 'error' });
+        this.sentryService.instance().captureEvent({
+          message: 'Stripe ID not found',
+          level: 'error',
+          extra: {
+            auth0_id,
+            email,
+          },
+        });
       }
 
       const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };

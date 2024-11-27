@@ -21,6 +21,7 @@ import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
+import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
 import { UserSettingsService } from '../user-settings/user-settings.service';
@@ -132,7 +133,6 @@ export class UserService {
           auth0_id,
         },
       });
-      const userProperties = { auth0_id };
       let stripeId = await this.stripeService.getStripeCustomerId(email);
 
       if (!stripeId) {
@@ -166,15 +166,32 @@ export class UserService {
 
         if (!os) {
           const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-          this.sentryService.instance().captureException(new Error('Could not determine user OS from' + clientId), {
+          this.sentryService.instance().captureEvent({
+            message: 'OS not found',
             level: 'error',
+            extra: {
+              auth0_id,
+              email,
+              clientId,
+            },
           });
         }
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
       }
-      Object.assign(userProperties, { stripe_customer_id: stripeId });
+      if (!stripeId) {
+        this.sentryService.instance().captureEvent({
+          message: 'Stripe ID not found',
+          level: 'error',
+          extra: {
+            auth0_id,
+            email,
+          },
+        });
+      }
+
+      const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
       if (registeredUser) {
         return await this.userRepository.update(registeredUser.id, userProperties);
       }
@@ -543,8 +560,34 @@ export class UserService {
 
   async getSubscription(user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    // TODO add breadcrumbs here
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Getting user subscription',
+      data: {
+        user_id,
+      },
+    });
+
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    // get stripe customer id from user
+    const stripeCustomerId = user.stripe_customer_id;
+    if (!stripeCustomerId) {
+      console.log('No stripe customer ID found. Creating new stripe customer on user subscription');
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'No stripe customer ID found. Creating new stripe customer on user subscription',
+        data: {
+          user_id,
+        },
+      });
+      // get value from auth token
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+      const { email } = auth0User;
+      await this.updateOrCreateUser({ auth0_id: user.auth0_id, email }, user);
+    }
+
     const shouldUpdateCache = this.shouldSyncWithRevenueCat(user);
     if (shouldUpdateCache) {
       await this.revenueCatQueue.add(BullWorkers.UPDATE_REVENUE_CAT_STATUS, { user_id });

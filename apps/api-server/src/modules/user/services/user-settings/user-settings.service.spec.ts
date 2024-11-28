@@ -350,7 +350,7 @@ describe('UserSettingsService', () => {
         },
       );
 
-      //check if sentury serivce is called
+      // check if sentury serivce is called
       expect(SentryServiceMock.instance().captureException).toBeCalled();
     });
   });

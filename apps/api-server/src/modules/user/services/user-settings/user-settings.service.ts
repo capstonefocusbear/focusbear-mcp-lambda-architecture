@@ -574,7 +574,7 @@ export class UserSettingsService {
 
   private async optimizeEveningActivities(updateSettingsData: UpdateUserSettingsDto, user: User) {
     let eveningActivities = [...updateSettingsData.evening_activities];
-    let is_relax_activity_generated = user.is_relax_activity_generated;
+    let { is_relax_activity_generated } = user;
 
     // Check if user opts to re-add relax activity, even if previously generated
     const hasRelaxActivityInCurrent = eveningActivities.some((activity) => activity.show_saved_distracting_websites);

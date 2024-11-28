@@ -97,7 +97,7 @@ export class HabitPackManagerService {
     const templatesNewIdsMap = new Map<string, string>([]);
     const templatesChoicesNewIdsMap = new Map<string, string>([]);
     const logQuantityQuestionsNewIdsMap = new Map<string, string>([]);
-    //log current user seeting
+    // log current user seeting
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -115,7 +115,7 @@ export class HabitPackManagerService {
       logQuantityQuestionsNewIdsMap,
     });
 
-    //log new user setting
+    // log new user setting
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',

@@ -5,6 +5,9 @@ import axios from 'axios';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { I18nService } from 'nestjs-i18n';
 import { PusherBeamsService } from '@app/pusher-beams';
+import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
+import * as crypto from 'crypto';
+import Redis from 'ioredis';
 import { TrackEventDto } from '../dto/track-event.dto';
 import {
   BullQueues,
@@ -18,15 +21,13 @@ import { EventsService } from '../services/events.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { DeviceService } from '../../device/services/device/device.service';
 import { UserDailyStatsService } from '../../user/services/user-daily-stats/user-daily-stats.service';
-import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
-import * as crypto from 'crypto';
-import Redis from 'ioredis';
 
 @Processor(BullQueues.EVENTS)
 export class EventsConsumer {
-
   private readonly secretKey = process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY;
+
   private readonly algorithm = 'aes-256-cbc';
+
   private redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
 
   constructor(

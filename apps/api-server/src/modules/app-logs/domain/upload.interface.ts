@@ -1,11 +1,5 @@
 import { FastifyRequest } from 'fastify';
-
-interface MultipartFile {
-  toBuffer: () => Promise<Buffer>;
-  file: any;
-  filename: string;
-  mimetype: string;
-}
+import { MultipartFile } from '@fastify/multipart';
 
 interface QueryParams {
   app_platform: string;

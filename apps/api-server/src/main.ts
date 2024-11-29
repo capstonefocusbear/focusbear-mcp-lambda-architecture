@@ -5,7 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
-import fastifyMultiPart = require('fastify-multipart');
+import fastifyMultiPart from '@fastify/multipart';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';

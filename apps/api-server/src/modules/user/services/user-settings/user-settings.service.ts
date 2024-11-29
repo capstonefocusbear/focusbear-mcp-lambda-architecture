@@ -86,6 +86,16 @@ export class UserSettingsService {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
       const settings = this.serializeSettings(userSettings, userCustomRoutines);
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'User settings fetched',
+        data: {
+          'Morning activities length': settings?.morning_activities?.length || 0,
+          'Evening activities length': settings?.evening_activities?.length || 0,
+          'Break activities length': settings?.break_activities?.length || 0,
+        },
+      });
       settings.morning_activities = (settings?.morning_activities ?? []).map(
         ({ cutoff_time_for_doing_activity, ...rest }) => rest,
       );
@@ -224,6 +234,17 @@ export class UserSettingsService {
         has_received_inactivity_warning: false,
         is_relax_activity_generated,
       });
+      const oldUserSettings = await this.userRepository.getUserSettings(user_id);
+      const oldUserSettingsSerialized = this.serializeSettings(oldUserSettings);
+      if (
+        (oldUserSettingsSerialized.morning_activities?.length > 0 && morning_activities.length === 0) ||
+        (oldUserSettingsSerialized.evening_activities?.length > 0 && eveningActivities.length === 0)
+      ) {
+        this.sentryService
+          .instance()
+          .captureException(new Error('User settings are overwritten to be blank'), { level: 'error' });
+      }
+      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
 
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
@@ -234,12 +255,6 @@ export class UserSettingsService {
           user_id,
         );
       }
-
-      const serializedActivities = {
-        morning_activities,
-        evening_activities: eveningActivities,
-        break_activities,
-      };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,

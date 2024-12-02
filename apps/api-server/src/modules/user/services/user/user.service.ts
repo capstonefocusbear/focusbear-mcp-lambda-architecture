@@ -266,6 +266,7 @@ export class UserService {
         },
       });
       let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
+
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const initialCurrentActivity = partialUser.current_activity_id;
       let current_sequence_completed_activities = [];
@@ -297,6 +298,7 @@ export class UserService {
 
   private async recalculateActivityProps(partialUser: User) {
     const { activity, shouldRefetchUser } = await this.completedActivityService.recalculateCurrentActivity(partialUser);
+
     let updatedUser: Partial<User> = partialUser;
     if (partialUser.id === JEREMYS_USER_ID) {
       console.log("Jeremy's values for recalculateActivityProps: ");

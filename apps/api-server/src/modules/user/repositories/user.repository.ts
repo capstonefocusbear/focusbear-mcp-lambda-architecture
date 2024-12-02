@@ -186,6 +186,7 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('completing_focus_block.to_dos', 'to_dos')
       .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
+      .leftJoinAndSelect('users.custom_routines', 'custom_routines')
       .where('users.id = :id', { id })
       .getOne();
   }

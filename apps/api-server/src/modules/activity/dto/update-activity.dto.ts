@@ -131,7 +131,7 @@ export class UpdateActivityDto extends ActivityData {
   @IsOptional()
   @ArrayMinSize(1)
   @IsSubsetOfCustomRoutineDays({ message: 'days_of_week must be a subset of the CustomRoutine days_of_week.' })
-  days_of_week?: DaysOfWeek[];
+  days_of_week?: DaysOfWeek[] = [DaysOfWeek.ALL];
 
   @IsArray()
   @IsOptional()

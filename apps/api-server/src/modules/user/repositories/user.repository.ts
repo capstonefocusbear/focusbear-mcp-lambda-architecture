@@ -178,7 +178,7 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async getUserCurrentActivityProps(id: string): Promise<Partial<User>> {
-    return this.orm
+    const user = await this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.current_activity', 'current_activity')
       .leftJoinAndSelect('users.current_focus_mode', 'current_focus_mode')
@@ -186,9 +186,15 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('completing_focus_block.to_dos', 'to_dos')
       .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
-      .leftJoinAndSelect('users.custom_routines', 'custom_routines')
+      .leftJoinAndSelect('current_activity_sequence.custom_routine', 'custom_routine')
+      .leftJoinAndSelect('last_completed_sequence.custom_routine', 'last_completed_sequence.custom_routine')
       .where('users.id = :id', { id })
       .getOne();
+
+    this.removeUnwantedProperties(user?.current_activity_sequence);
+    this.removeUnwantedProperties(user?.last_completed_sequence);
+
+    return user;
   }
 
   async getUsersList({ search }: GetUsersQueryDto): Promise<User[]> {
@@ -370,4 +376,15 @@ export class UserRepository extends BaseRepository<User> {
     );
     return result[0] || null;
   }
+
+  /* eslint-disable no-param-reassign */
+  private removeUnwantedProperties(sequence?: ActivitySequence) {
+    if (sequence?.custom_routine) {
+      sequence.custom_routine.user_id = undefined;
+    }
+    if (sequence?.custom_routine_id) {
+      sequence.custom_routine_id = undefined;
+    }
+  }
+  /* eslint-enable no-param-reassign */
 }

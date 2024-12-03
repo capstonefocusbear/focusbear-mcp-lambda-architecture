@@ -441,11 +441,11 @@ export class UserSettingsService {
       });
       let { current_completing_sequence_log_id, current_activity_sequence_id, current_activity_id } = user;
       const { cutoff_time_for_non_high_priority_activities: cutOffTime, timezone } = user;
-      const { morning_activities, break_activities, evening_activities, custom_routines } = updateSettingsData;
+      const { morning_activities, break_activities, evening_activities } = updateSettingsData;
       const morningActivityIds = morning_activities.map((activity) => activity.id);
       const breakActivityIds = break_activities.map((activity) => activity.id);
       const eveningActivityIds = evening_activities.map((activity) => activity.id);
-      const standaloneActivitiesIds = custom_routines
+      const standaloneActivitiesIds = (updateSettingsData?.custom_routines ?? [])
         .flatMap(({ standalone_activities }) => standalone_activities)
         .map((activity) => activity.id);
       const activityIds = [

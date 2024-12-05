@@ -95,7 +95,7 @@
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.8",
     "@types/auth0": "^2.34.19",
-    "@types/jest": "^27.5.2",
+    "@types/jest": "^29.5.14",
     "@types/luxon": "^3.0.2",
     "@types/node": "^16.0.0",
     "@types/pg": "^8.6.5",
@@ -134,7 +134,8 @@
     },
     "ws": "^8.17.1",
     "glob": "^10.4.5",
-    "cookie": "^0.7.0"
+    "cookie": "^0.7.0",
+    "test-exclude": "7.0.1"
   },
   "resolutions": {
     "auth0": {
@@ -146,7 +147,8 @@
     },
     "ws": "^8.17.1",
     "glob": "^10.4.5",
-    "cookie": "^0.7.0"
+    "cookie": "^0.7.0",
+    "test-exclude": "7.0.1"
   },
   "husky": {
     "hooks": {
@@ -209,7 +211,6 @@
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
       "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
-    },
-    "coverageProvider": "v8"
+    }
   }
 }

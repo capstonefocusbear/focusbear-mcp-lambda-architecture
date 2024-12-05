@@ -213,6 +213,7 @@ export class UserSettingsService {
       const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
         updateSettingsData,
         user,
+        is_onboarding,
       );
 
       const updatedUser = new User({
@@ -602,14 +603,22 @@ export class UserSettingsService {
     return false;
   };
 
-  private async optimizeEveningActivities(updateSettingsData: UpdateUserSettingsDto, user: User) {
+  private async optimizeEveningActivities(
+    updateSettingsData: UpdateUserSettingsDto,
+    user: User,
+    is_onboarding?: boolean,
+  ) {
     let eveningActivities = [...updateSettingsData.evening_activities];
     let { is_relax_activity_generated } = user;
 
     // Check if user opts to re-add relax activity, even if previously generated
     const hasRelaxActivityInCurrent = eveningActivities.some((activity) => activity.show_saved_distracting_websites);
 
-    if (!updateSettingsData?.cutoff_time_for_non_high_priority_activities || hasRelaxActivityInCurrent) {
+    if (
+      is_onboarding ||
+      !updateSettingsData?.cutoff_time_for_non_high_priority_activities ||
+      hasRelaxActivityInCurrent
+    ) {
       return { eveningActivities, is_relax_activity_generated };
     }
 

@@ -31,8 +31,7 @@ $ touch .env
 ```
 
 2. Copy environment variables from .env.example to .env
-
-3. Update .env file with actual values for PostgreSQL
+3. Update .env file with actual values for PostgreSQL and Redis
 
 - In case of using docker-compose - take values from docker-compose.yml
 - If you don't use docker take values from your system
@@ -77,6 +76,34 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+### Setting Up Development with Auth0
+
+> **Disclaimer**: This setup guide is intended for creating a new Auth0 account for development purposes. If you are using the staging environment, an existing Auth0 account configuration has already been provided in `.env.sample`.
+
+#### 1. Setting Up OAuth Application on Auth0
+
+1. Navigate to the [Auth0 dashboard](https://manage.auth0.com/dashboard) and log in. Create an account if you don't have one.
+2. On the dashboard, create a new **Regular Web Application**.
+3. Enable the **Password** grant type:
+   - Scroll down to **Advanced Settings**.
+   - Go to the **Grant Types** tab and select **Password**.
+4. Copy the following details from the application settings:
+   - Domain
+   - Client ID
+   - Client Secret
+5. Replace these values in your `.env` file:
+   - `AUTH0_DOMAIN`
+   - `AUTH0_MANAGEMENT_CLIENT_ID`
+   - `AUTH0_MANAGEMENT_CLIENT_SECRET`
+
+#### 2. Adding Users on the Auth0 Dashboard
+
+1. Navigate to the **Auth0 dashboard**.
+2. Go to the **User Management** section.
+3. Click the **Create User** button.
+4. Enter the email address and password for the new user.
+5. You can view the newly created user in the **User Management** section.
+
 ### Obtain an API access token
 
 1. Navigate to `apps/api-server/test/integrations/auth0.e2e-spec.ts`
@@ -104,11 +131,9 @@ $ npm run test:e2e auth0.e2e
 
 #### 5. Insert final new line
 
-1.  Open Visual Studio Code and go to File (Code if using a Mac) -> Preferences -> Settings; you should now be viewing a settings page
-
-2.  Enter 'insert final newline' in to the search bar
-
-3.  Select the checkbox under the heading 'Files: Insert Final Newline' in the 'Workspace Settings' and/or 'User Settings' tab(s) as required
+1. Open Visual Studio Code and go to File (Code if using a Mac) -> Preferences -> Settings; you should now be viewing a settings page
+2. Enter 'insert final newline' in to the search bar
+3. Select the checkbox under the heading 'Files: Insert Final Newline' in the 'Workspace Settings' and/or 'User Settings' tab(s) as required
 
 ### Making DB Changes
 
@@ -138,10 +163,12 @@ $ npm run migration:up
 
 This command will run all migration files that aren't already reflected in the DB
 
-To revert a migration, run 
+To revert a migration, run
+
 ```bash
 $ npm run migration:down
 ```
+
 This reverts only the latest migration script reflected in the DB.
 
 To see which migrations are already reflected in the DB, view the entries of the `migrations` table in your local or production DB.
@@ -151,21 +178,29 @@ To connect to the production database locally, update .env config for database c
 ### Running Unit Tests
 
 To run all unit tests, open the terminal and run
+
 ```bash
 $ npm run test
 ```
+
 To run a specific file's unit tests, run
+
 ```bash
 $ npm run test {file-name}
 ```
+
 Example
+
 ```bash
 $ npm run test user.service
 ```
+
 The CI/CD pipeline set up in GitHub is set up to fail if unit test coverage is below 80%. To test coverage locally, run
+
 ```bash
 $ npm run test:cov
 ```
+
 This will output the coverage of each file and which lines aren't covered by existing unit tests.
 
 When creating test files for services within the NestJS project scope, create the test file in the same folder as the service folder and append the file name with `.spec.ts`
@@ -211,12 +246,3 @@ For any events that trigger the webhook, the local POST `/subscription/webhooks/
 ### Example Video of Making Change
 
 [Google Doc containing video links](https://docs.google.com/document/d/1ZiiIcFibBE3fQXuY18tFXiIoSFqq1mfYo6CQkzpZgEk/edit?usp=sharing)
-
-
-
-
-
-
-
-
-

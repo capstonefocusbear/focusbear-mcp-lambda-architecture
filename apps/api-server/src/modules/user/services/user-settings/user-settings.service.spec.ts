@@ -38,6 +38,7 @@ import {
   UserServiceMock,
   PusherBeamsServiceMock,
   PusherServiceMock,
+  CustomRoutineRepositoryMock,
 } from '../../../../../test/mocks';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -53,6 +54,7 @@ import { UserService } from '../user/user.service';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
 import { ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
+import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 
 describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
@@ -84,6 +86,7 @@ describe('UserSettingsService', () => {
           provide: I18nService,
           useValue: i18nServiceMock,
         },
+        CustomRoutineRepository,
       ],
     })
       .overrideProvider(UserRepository)
@@ -110,6 +113,8 @@ describe('UserSettingsService', () => {
       .useValue(PusherBeamsServiceMock)
       .overrideProvider(PusherService)
       .useValue(PusherServiceMock)
+      .overrideProvider(CustomRoutineRepository)
+      .useValue(CustomRoutineRepositoryMock)
       .compile();
 
     userSettingsService = moduleRef.get<UserSettingsService>(UserSettingsService);
@@ -281,6 +286,7 @@ describe('UserSettingsService', () => {
         deserializedActivitiesDummy,
         logQuantityQuestionsDummy,
         dummyTutorials,
+        [],
       );
     });
 

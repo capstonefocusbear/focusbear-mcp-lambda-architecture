@@ -39,6 +39,8 @@ import { FunctionCallParametersDto } from '../../../ai/dto/function-call-paramet
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
+import { CustomRoutine } from '../../entities/custom-routine';
+import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 
 @Injectable()
 export class UserSettingsService {
@@ -56,6 +58,7 @@ export class UserSettingsService {
     private readonly pusher: PusherService,
     private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
+    private readonly customRoutineRepository: CustomRoutineRepository,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -68,7 +71,10 @@ export class UserSettingsService {
           user_id,
         },
       });
-      const userSettings = await this.userRepository.getUserSettings(user_id);
+      const [userSettings, userCustomRoutines] = await Promise.all([
+        this.userRepository.getUserSettings(user_id),
+        this.customRoutineRepository.getUserCustomRoutines(user_id),
+      ]);
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -79,7 +85,7 @@ export class UserSettingsService {
       if (timezone || language) {
         await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
       }
-      const settings = this.serializeSettings(userSettings);
+      const settings = this.serializeSettings(userSettings, userCustomRoutines);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -103,13 +109,16 @@ export class UserSettingsService {
     }
   }
 
-  private serializeSettings({ activity_sequences, ...user }: User): UpdateUserSettingsDto {
+  private serializeSettings(
+    { activity_sequences, ...user }: User,
+    userCustomRoutines?: CustomRoutine[],
+  ): UpdateUserSettingsDto {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
       message: 'Serializing user settings',
     });
-    const serializedActivities = this.activityParserService.serialize(activity_sequences);
+    const serializedActivities = this.activityParserService.serialize(activity_sequences, userCustomRoutines);
     const settings: UserSettingsResponseDto = {
       ...user,
       ...serializedActivities,
@@ -122,7 +131,7 @@ export class UserSettingsService {
     updateSettingsData: UpdateUserSettingsDto,
     should_update_has_edited_settings: boolean,
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
-  ): Promise<UpdateUserSettingsDto> {
+  ) {
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -162,6 +171,7 @@ export class UserSettingsService {
         morning_activities,
         evening_activities,
         break_activities,
+        custom_routines,
       } = updateSettingsData;
 
       const tutorialIds = []
@@ -236,15 +246,27 @@ export class UserSettingsService {
           .captureException(new Error('User settings are overwritten to be blank'), { level: 'error' });
       }
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
+
+      let customRoutines = [];
+      let deserializeCustomRoutineActivities = [];
+      if (custom_routines?.length) {
+        customRoutines = custom_routines?.map(({ standalone_activities, ...rest }) => ({ ...rest, user_id }));
+        deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
+          custom_routines,
+          user_id,
+        );
+      }
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
       );
+
       await this.userRepository.consistentlyUpdateUserSettings(
         updatedUser,
-        deserializedActivities,
+        deserializedActivities.concat(deserializeCustomRoutineActivities),
         logQuantityQuestions,
         tutorials,
+        customRoutines,
       );
       if (should_update_has_edited_settings) {
         await Promise.all([
@@ -424,7 +446,15 @@ export class UserSettingsService {
       const morningActivityIds = morning_activities.map((activity) => activity.id);
       const breakActivityIds = break_activities.map((activity) => activity.id);
       const eveningActivityIds = evening_activities.map((activity) => activity.id);
-      const activityIds = [...morningActivityIds, ...breakActivityIds, ...eveningActivityIds];
+      const standaloneActivitiesIds = (updateSettingsData?.custom_routines ?? [])
+        .flatMap(({ standalone_activities }) => standalone_activities)
+        .map((activity) => activity.id);
+      const activityIds = [
+        ...morningActivityIds,
+        ...breakActivityIds,
+        ...eveningActivityIds,
+        ...standaloneActivitiesIds,
+      ];
       // check if user current activity is not included in incoming activities
       // if so - recalculate current activity
       if (this.isCurrentActivityDeleted(current_activity_id, activityIds)) {

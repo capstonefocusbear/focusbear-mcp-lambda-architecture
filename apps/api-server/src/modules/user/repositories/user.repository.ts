@@ -11,6 +11,7 @@ import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questi
 import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
+import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -23,11 +24,13 @@ export class UserRepository extends BaseRepository<User> {
     activitiesData: DeserializedActivity[],
     logQuantityQuestions: LogQuantityQuestion[],
     tutorials: Tutorial[],
+    customRoutines: CustomRoutine[],
   ) {
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
       await queryRunner.manager.update(User, { id }, { ...updateData });
       await Promise.all(
         activitiesData.map(async ({ sequence, activities }) => {
@@ -87,6 +90,7 @@ export class UserRepository extends BaseRepository<User> {
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
       await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
       await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
+
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -99,12 +103,8 @@ export class UserRepository extends BaseRepository<User> {
   async getUserSettings(id: string): Promise<User> {
     return this.orm
       .createQueryBuilder('users')
-      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences', 'activity_sequences.type != :standalone', {
-        standalone: 'standalone',
-      })
-      .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.activity_type != :standalone', {
-        standalone: 'standalone',
-      })
+      .leftJoinAndSelect('users.activity_sequences', 'activity_sequences')
+      .leftJoinAndSelect('activity_sequences.activities', 'activities')
       .leftJoinAndSelect('activities.choices', 'choices')
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
@@ -160,6 +160,7 @@ export class UserRepository extends BaseRepository<User> {
         'activity_sequences.type',
         'activity_sequences.id',
         'activity_sequences.activity_ids',
+        'activity_sequences.custom_routine_id',
         'tutorial.id',
       ])
       .where('users.id = :id', { id })
@@ -177,7 +178,7 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async getUserCurrentActivityProps(id: string): Promise<Partial<User>> {
-    return this.orm
+    const user = await this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.current_activity', 'current_activity')
       .leftJoinAndSelect('users.current_focus_mode', 'current_focus_mode')
@@ -185,8 +186,15 @@ export class UserRepository extends BaseRepository<User> {
       .leftJoinAndSelect('completing_focus_block.to_dos', 'to_dos')
       .leftJoinAndSelect('users.last_completed_sequence', 'last_completed_sequence')
       .leftJoinAndSelect('users.current_activity_sequence', 'current_activity_sequence')
+      .leftJoinAndSelect('current_activity_sequence.custom_routine', 'custom_routine')
+      .leftJoinAndSelect('last_completed_sequence.custom_routine', 'last_completed_sequence.custom_routine')
       .where('users.id = :id', { id })
       .getOne();
+
+    this.removeUnwantedProperties(user?.current_activity_sequence);
+    this.removeUnwantedProperties(user?.last_completed_sequence);
+
+    return user;
   }
 
   async getUsersList({ search }: GetUsersQueryDto): Promise<User[]> {
@@ -368,4 +376,15 @@ export class UserRepository extends BaseRepository<User> {
     );
     return result[0] || null;
   }
+
+  /* eslint-disable no-param-reassign */
+  private removeUnwantedProperties(sequence?: ActivitySequence) {
+    if (sequence?.custom_routine) {
+      sequence.custom_routine.user_id = undefined;
+    }
+    if (sequence?.custom_routine_id) {
+      sequence.custom_routine_id = undefined;
+    }
+  }
+  /* eslint-enable no-param-reassign */
 }

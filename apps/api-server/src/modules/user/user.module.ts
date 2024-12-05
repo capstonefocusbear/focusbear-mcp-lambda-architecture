@@ -43,6 +43,7 @@ import { ToDoModule } from '../to-do/to-do.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 import { BullQueues } from '../../shared/utils/constants';
 import { EventsModule } from '../events/events.module';
+import { CustomRoutineRepository } from './repositories/custom-routine.repository';
 
 @Module({
   providers: [
@@ -60,8 +61,9 @@ import { EventsModule } from '../events/events.module';
     RevenueCatStatusConsumer,
     UserFeedbackRepository,
     UserFeedbackService,
+    CustomRoutineRepository,
   ],
-  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService],
+  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
     TypeOrmModule.forFeature([User]),
     Auth0Module.registerAsync({

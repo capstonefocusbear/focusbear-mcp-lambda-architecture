@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../domain/language-options.enum';
+import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -62,4 +63,11 @@ export class UpdateUserSettingsDto {
   @IsOptional()
   @IsIn(['en', 'es'], { message: 'Supported languages are "en" and "es" only.' })
   language?: LanguageOptions = LanguageOptions.ENGLISH;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateCustomRoutineDto)
+  @ApiProperty({ isArray: true, type: UpdateCustomRoutineDto })
+  custom_routines?: UpdateCustomRoutineDto[];
 }

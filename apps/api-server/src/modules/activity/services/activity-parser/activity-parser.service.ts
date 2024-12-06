@@ -91,7 +91,7 @@ export class ActivityParserService {
         .map(mapActivity);
 
       if (type === ActivityType.standalone) {
-        const custom_routine = userCustomRoutines.find((routine) => routine.id === custom_routine_id);
+        const custom_routine = userCustomRoutines?.find((routine) => routine.id === custom_routine_id);
         if (custom_routine) {
           const { user_id, ...rest } = custom_routine;
           const updateCustomRoutineDto = { ...rest, standalone_activities: orderedActivities };

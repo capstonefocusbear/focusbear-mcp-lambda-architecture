@@ -23,6 +23,7 @@ import {
   userSettingsDBResponseDummy,
   userSettingsDummy,
   dummyUserCutoffTimeActivities,
+  dummyFreeTimeActivity,
 } from '../../../../../test/dummies';
 import {
   ActivityParserServiceMock,
@@ -308,7 +309,7 @@ describe('UserSettingsService', () => {
         {
           ...userSettingsDummy,
           morning_activities: [],
-          evening_activities: [],
+          evening_activities: [dummyFreeTimeActivity],
           break_activities: [],
           cutoff_time_for_non_high_priority_activities: '21:00',
         },

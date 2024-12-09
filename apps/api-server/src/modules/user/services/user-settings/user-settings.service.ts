@@ -75,6 +75,7 @@ export class UserSettingsService {
         this.userRepository.getUserSettings(user_id),
         this.customRoutineRepository.getUserCustomRoutines(user_id),
       ]);
+
       if (!userSettings) {
         throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       }
@@ -123,6 +124,16 @@ export class UserSettingsService {
       ...user,
       ...serializedActivities,
     };
+    // validate and add custom routines that do not contain any associated activities
+    userCustomRoutines.forEach((customRoutine) => {
+      const customRoutineWithActivities = settings?.custom_routines?.findIndex(
+        (routine) => routine.id === customRoutine.id,
+      );
+      if (customRoutineWithActivities === -1) {
+        const { user_id, ...rest } = customRoutine;
+        settings.custom_routines.push(rest);
+      }
+    });
     return settings;
   }
 

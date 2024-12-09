@@ -2310,3 +2310,10 @@ export const dummyConvertBrainDumpToTasksResponse = [
 export const dummyConvertBrainDumpDto = {
   contents: 'check my morning routines, checking email test new products',
 };
+
+export const dummyFreeTimeActivity = {
+  id: '13076480-7cf3-48e9-ab40-56fcf8a8b2a7',
+  name: 'Free Time - no distraction blocking',
+  duration_seconds: 1800,
+  show_saved_distracting_websites: true,
+};

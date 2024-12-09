@@ -133,7 +133,6 @@
       "jsonwebtoken": "9.0.0"
     },
     "ws": "^8.17.1",
-    "glob": "^10.4.5",
     "cookie": "^0.7.0",
     "test-exclude": "7.0.1",
     "dd-trace": {
@@ -149,7 +148,6 @@
       "jsonwebtoken": "9.0.0"
     },
     "ws": "^8.17.1",
-    "glob": "^10.4.5",
     "cookie": "^0.7.0",
     "test-exclude": "7.0.1",
     "dd-trace": {
@@ -217,6 +215,9 @@
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
       "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
-    }
+    },
+    "coveragePathIgnorePatterns": [
+      "node_modules"
+    ]
   }
 }

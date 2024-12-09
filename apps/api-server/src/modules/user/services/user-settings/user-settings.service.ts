@@ -125,7 +125,7 @@ export class UserSettingsService {
       ...serializedActivities,
     };
     // validate and add custom routines that do not contain any associated activities
-    userCustomRoutines.forEach((customRoutine) => {
+    userCustomRoutines?.forEach((customRoutine) => {
       const customRoutineWithActivities = settings?.custom_routines?.findIndex(
         (routine) => routine.id === customRoutine.id,
       );

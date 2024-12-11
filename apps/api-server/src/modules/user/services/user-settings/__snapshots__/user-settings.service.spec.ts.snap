@@ -4,6 +4,7 @@ exports[`UserSettingsService getSettings positive: should return serialized user
 {
   "break_activities": [],
   "break_after_minutes": 15,
+  "custom_routines": [],
   "evening_activities": [],
   "id": "e1477f9a-515f-49f5-be2b-0c39af087324",
   "morning_activities": [],

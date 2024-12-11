@@ -679,9 +679,6 @@ export class UserService {
   }
 
   async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto) {
-    if (!this.isValidURL(isUrlSafeDto?.url)) {
-      return null;
-    }
     return this.openAIService.checkIfUrlIsSafeToUse({
       ...isUrlSafeDto,
       url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),

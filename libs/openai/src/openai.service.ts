@@ -242,6 +242,12 @@ export class OpenAIService {
         retryCount++;
       }
     }
+
+    // Fallback response if retries fail - potential OpenAI throttling?
+    return {
+      allowed_probability: 0,
+      reason: 'The OpenAI request failed after multiple (3) attempts. Please try again later.',
+    };
   }
 
   addHttpsProtocol(url: string): string {
@@ -276,9 +282,17 @@ export class OpenAIService {
       let response;
       try {
         response = await axios.get(urlWithProtocol);
+        // If the content is restricted or behind a login wall, return sensible metadata
+        if (response.status === 401 || response.status === 403) {
+          return { title: 'Restricted Content', description: 'This content is behind a login wall.' };
+        }
       } catch (error) {
         try {
           response = await axios.get(urlWithProtocolAndSubdomain);
+          // If the content is restricted or behind a login wall, return sensible metadata
+          if (response.status === 401 || response.status === 403) {
+            return { title: 'Restricted Content', description: 'This content is behind a login wall.' };
+          }
         } catch (nestedError) {
           return { title: '', description: '' };
         }

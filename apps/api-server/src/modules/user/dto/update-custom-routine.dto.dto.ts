@@ -62,26 +62,42 @@ export class UpdateCustomRoutineDto {
   @IsNotEmpty()
   @ApiProperty()
   @IsEnum(CustomRoutineTrigger)
+  trigger: CustomRoutineTrigger;
+
   @Transform(({ value, obj }) => {
     if (obj.trigger === CustomRoutineTrigger.ON_DEMAND) {
-      const updatedObj = { ...obj, start_time: undefined, end_time: undefined }; // Create a modified copy
+      const updatedObj = { ...obj, days_of_week: undefined };
       Object.assign(obj, updatedObj);
     }
     return value;
   })
-  trigger: CustomRoutineTrigger;
-
+  @ValidateIf((o) => o.trigger === CustomRoutineTrigger.ON_SCHEDULE)
+  @IsNotEmpty()
   @IsArray()
   @IsEnum(DaysOfWeek, { each: true })
   @ApiProperty({ isArray: true, enum: DaysOfWeek })
-  days_of_week: DaysOfWeek[];
+  days_of_week?: DaysOfWeek[];
 
+  @Transform(({ value, obj }) => {
+    if (obj.trigger === CustomRoutineTrigger.ON_DEMAND) {
+      const updatedObj = { ...obj, start_time: undefined };
+      Object.assign(obj, updatedObj);
+    }
+    return value;
+  })
   @ValidateIf((o) => o.trigger === CustomRoutineTrigger.ON_SCHEDULE)
   @IsNotEmpty()
   @IsString()
   @IsMilitaryTime()
   start_time?: string;
 
+  @Transform(({ value, obj }) => {
+    if (obj.trigger === CustomRoutineTrigger.ON_DEMAND) {
+      const updatedObj = { ...obj, end_time: undefined };
+      Object.assign(obj, updatedObj);
+    }
+    return value;
+  })
   @ValidateIf((o) => o.trigger === CustomRoutineTrigger.ON_SCHEDULE)
   @IsNotEmpty()
   @IsString()

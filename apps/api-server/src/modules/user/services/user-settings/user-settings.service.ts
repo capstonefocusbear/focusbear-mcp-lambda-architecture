@@ -41,6 +41,7 @@ import { ActivityType } from '../../../activity/domain/activity-type.enum';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 import { CustomRoutine } from '../../entities/custom-routine';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
+import { UpdateCustomRoutineDto } from '../../dto/update-custom-routine.dto.dto';
 
 @Injectable()
 export class UserSettingsService {
@@ -134,7 +135,7 @@ export class UserSettingsService {
         settings.custom_routines.push(rest);
       }
     });
-    return settings;
+    return { ...settings, custom_routines: this.sortCustomRoutinesByDate(settings.custom_routines ?? []) };
   }
 
   async updateSettings(
@@ -661,5 +662,12 @@ export class UserSettingsService {
     }
 
     return { eveningActivities, is_relax_activity_generated };
+  }
+
+  private sortCustomRoutinesByDate(customRoutines: UpdateCustomRoutineDto[]) {
+    return (customRoutines as CustomRoutine[]).sort(
+      (routineA, routineB) =>
+        DateTime.fromISO(routineA.created_at).toMillis() - DateTime.fromISO(routineB.created_at).toMillis(),
+    );
   }
 }

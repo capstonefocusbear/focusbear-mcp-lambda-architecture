@@ -34,7 +34,7 @@ export class CustomRoutine extends BaseEntity {
     default: [DaysOfWeek.ALL],
     transformer: BaseEntity.encryptJSONField('days_of_week'),
   })
-  days_of_week: DaysOfWeek[];
+  days_of_week?: DaysOfWeek[];
 
   @Index()
   @Column({

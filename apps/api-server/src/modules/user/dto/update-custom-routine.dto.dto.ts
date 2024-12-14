@@ -12,6 +12,7 @@ import {
   ValidateNested,
   ValidationOptions,
   ValidationArguments,
+  IsUUID,
 } from 'class-validator';
 import { DateTime } from 'luxon';
 import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
@@ -111,4 +112,9 @@ export class UpdateCustomRoutineDto {
   @IsArray()
   @ApiProperty({ isArray: true, type: UpdateActivityDto })
   standalone_activities?: UpdateActivityDto[];
+
+  @IsNotEmpty()
+  @IsString()
+  @IsUUID()
+  activity_sequence_id?: string;
 }

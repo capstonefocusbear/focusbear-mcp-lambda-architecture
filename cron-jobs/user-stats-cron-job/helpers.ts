@@ -286,7 +286,8 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
           morning_routine_completion_percentage: current.morning_routine_completion_percentage,
           evening_routine_completion_percentage: current.evening_routine_completion_percentage,
           micro_breaks_routine_completion_percentage: current.micro_breaks_routine_completion_percentage,
-          focus_modes_completed: current.focus_modes_completed
+          focus_modes_completed: current.focus_modes_completed,
+          seconds_spent_doing_breaks: current.seconds_spent_doing_breaks
         };
       } else {
         acc[createdAtDate].morning_routine_completion_percentage = Math.max(
@@ -304,6 +305,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
         acc[createdAtDate].focus_modes_completed = Math.max(
           acc[createdAtDate].focus_modes_completed,
           current.focus_modes_completed
+        );
+        acc[createdAtDate].seconds_spent_doing_breaks = Math.max(
+          acc[createdAtDate].seconds_spent_doing_breaks,
+          current.seconds_spent_doing_breaks
         );
       }
       return acc;
@@ -327,7 +332,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
 
   const num_days_of_stats = userDailyStatsFromLast90Days.length;
 
-  const number_days_completed = distinctUserDailyStats.filter(f =>
+  const number_days_completed = userDailyStatsFromLast90Days.filter(f =>
     f.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD
     || f.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD
     || f.seconds_spent_doing_breaks > 0

@@ -98,6 +98,15 @@ export class UserService {
       );
       if (!registeredUser) await this.handleInitialRegistration(id);
       const subscriptionStatus = await this.getSubscription(id);
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'User Subscription Status',
+        data: {
+          subscriptionStatus,
+        },
+      });
+
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -594,16 +603,37 @@ export class UserService {
     if (shouldUpdateCache) {
       await this.revenueCatQueue.add(BullWorkers.UPDATE_REVENUE_CAT_STATUS, { user_id });
     }
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Checking user subscription status',
+      data: {
+        revenueCatData: user.revenue_cat_data,
+      },
+    });
     if (!shouldUpdateCache && user.revenue_cat_data) {
       return user.revenue_cat_data;
     }
     try {
       const subscriber = await this.revenueCatService.getOrCreateSubscriber(user_id);
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Checking user subscription status',
+        data: {
+          subscriber,
+        },
+      });
       if (!subscriber) throw new NotFoundException('No user found in RevenueCat!');
       return this.revenueCatService.checkSubscriptionStatus(subscriber.subscriber);
     } catch (error) {
       // Return user subscription status as trialing if error getting status from Revenue Cat
       if (error?.statusCode === 429 || error?.response?.status === 429) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Returning user subscription status as trialing',
+        });
         return this.revenueCatService.getTrialSubscription();
       }
       this.sentryService.instance().captureException(error, { level: 'error' });

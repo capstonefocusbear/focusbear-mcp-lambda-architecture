@@ -2,6 +2,8 @@ import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } f
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { OpenAIService } from '@app/openai';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLIS } from 'apps/api-server/src/shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
@@ -42,6 +44,7 @@ export class UserController {
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly openAIService: OpenAIService,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
   @Put('/account-sync')
@@ -155,7 +158,19 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   async getUserSubscription(@AuthContext() { user }: Passport) {
-    return this.userService.getSubscription(user.id);
+    const subscription = await this.userService.getSubscription(user.id);
+    // check if its a new user within 7 days
+    const userDetails = await this.userService.getUserDetails(user.id);
+    const userCreatedDate = new Date(userDetails.created_at);
+    const currentDate = new Date();
+    const diffInMilliS = currentDate.getTime() - userCreatedDate.getTime();
+    // caputre errror on sentry if sucscriptions is []on new user
+    if (subscription.activeEntitlements.length === 0 && diffInMilliS < TRIAL_LENGTH_DAYS * ONE_HOUR_MILLIS * 24) {
+      this.sentryService.instance().captureMessage('User has no subscription', {
+        extra: { user_id: user.id, subscription },
+      });
+    }
+    return subscription;
   }
 
   @Get('/motivational-summary')

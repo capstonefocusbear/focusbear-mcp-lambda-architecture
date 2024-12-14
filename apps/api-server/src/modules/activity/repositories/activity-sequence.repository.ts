@@ -30,4 +30,12 @@ export class ActivitySequenceRepository extends BaseRepository<ActivitySequence>
       )
       .then(([{ total }]) => Number(total));
   }
+
+  async findOneByTypeAndCustomRoutineForUser(
+    type: ActivityType,
+    user_id: string,
+    custom_routine_id: string,
+  ): Promise<ActivitySequence> {
+    return this.orm.findOne({ where: { type, user_id, custom_routine_id } });
+  }
 }

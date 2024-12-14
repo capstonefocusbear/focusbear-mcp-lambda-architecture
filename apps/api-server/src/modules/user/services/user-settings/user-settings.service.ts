@@ -125,16 +125,6 @@ export class UserSettingsService {
       ...user,
       ...serializedActivities,
     };
-    // validate and add custom routines that do not contain any associated activities
-    userCustomRoutines?.forEach((customRoutine) => {
-      const customRoutineWithActivities = settings?.custom_routines?.findIndex(
-        (routine) => routine.id === customRoutine.id,
-      );
-      if (customRoutineWithActivities === -1) {
-        const { user_id, ...rest } = customRoutine;
-        settings.custom_routines.push(rest);
-      }
-    });
     return { ...settings, custom_routines: this.sortCustomRoutinesByDate(settings.custom_routines ?? []) };
   }
 
@@ -247,22 +237,16 @@ export class UserSettingsService {
         has_received_inactivity_warning: false,
         is_relax_activity_generated,
       });
-      const oldUserSettings = await this.userRepository.getUserSettings(user_id);
-      const oldUserSettingsSerialized = this.serializeSettings(oldUserSettings);
-      if (
-        (oldUserSettingsSerialized.morning_activities?.length > 0 && morning_activities.length === 0) ||
-        (oldUserSettingsSerialized.evening_activities?.length > 0 && eveningActivities.length === 0)
-      ) {
-        this.sentryService
-          .instance()
-          .captureException(new Error('User settings are overwritten to be blank'), { level: 'error' });
-      }
+
       const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
 
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
       if (custom_routines?.length) {
-        customRoutines = custom_routines?.map(({ standalone_activities, ...rest }) => ({ ...rest, user_id }));
+        customRoutines = custom_routines?.map(({ standalone_activities, activity_sequence_id, ...rest }) => ({
+          ...rest,
+          user_id,
+        }));
         deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
           custom_routines,
           user_id,

@@ -39,7 +39,7 @@ export class ActivityParserService {
       message: 'Serializing activities (formatting activities to be sent to front end)',
     });
     const serializedActivities: SerializedActivity = {};
-    for (const { type, activities, activity_ids, custom_routine_id } of activity_sequences) {
+    for (const { type, activities, activity_ids, custom_routine_id, id: sequence_id } of activity_sequences) {
       const transformTutorial = (tutorial: any) => (tutorial && typeof tutorial === 'object' ? tutorial.id : tutorial);
 
       const mapActivity = ({
@@ -94,7 +94,11 @@ export class ActivityParserService {
         const custom_routine = userCustomRoutines?.find((routine) => routine.id === custom_routine_id);
         if (custom_routine) {
           const { user_id, ...rest } = custom_routine;
-          const updateCustomRoutineDto = { ...rest, standalone_activities: orderedActivities };
+          const updateCustomRoutineDto = {
+            ...rest,
+            standalone_activities: orderedActivities,
+            activity_sequence_id: sequence_id,
+          };
           serializedActivities.custom_routines = [
             ...(serializedActivities.custom_routines ?? []),
             updateCustomRoutineDto,
@@ -318,9 +322,21 @@ export class ActivityParserService {
     });
     const activity_ids = serializedActivities.map(({ id }) => id);
     const total_duration_seconds = this.calculateSequenceDuration(serializedActivities);
-
-    // Implementing custom routines based on standalone activities
-    const sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+    let sequenceItem;
+    if (custom_routine_id) {
+      sequenceItem = await this.activitySequenceRepository.findOneByTypeAndCustomRoutineForUser(
+        type,
+        user_id,
+        custom_routine_id,
+      );
+    } else if (type !== ActivityType.standalone) {
+      /*
+        If activities are of type "standalone", searching in DB for a sequence to update should be skipped.
+        A new activity sequence needs to be created each time a standalone habit pack is installed
+        to ensure that activities from different standalone packs aren't merged
+      */
+      sequenceItem = await this.activitySequenceRepository.findOneByTypeForUser(type, user_id);
+    }
 
     const sequence = new ActivitySequence(
       { type, activity_ids, user_id, total_duration_seconds, id: sequenceItem?.id, pack_id, custom_routine_id },

@@ -32,6 +32,11 @@ export class UserRepository extends BaseRepository<User> {
     try {
       await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
       const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id);
+      await queryRunner.manager.delete(CustomRoutine, {
+        user_id: id,
+        id: Not(In(customRoutinesIdsToKeep)),
+      });
+
       await queryRunner.manager.update(User, { id }, { ...updateData });
       await Promise.all(
         activitiesData.map(async ({ sequence, activities }) => {
@@ -41,10 +46,6 @@ export class UserRepository extends BaseRepository<User> {
             user_id: id,
             id: Not(In(activityIdsToKeep)),
             type: sequence.type,
-          });
-          await queryRunner.manager.delete(CustomRoutine, {
-            user_id: id,
-            id: Not(In(customRoutinesIdsToKeep)),
           });
         }),
       );

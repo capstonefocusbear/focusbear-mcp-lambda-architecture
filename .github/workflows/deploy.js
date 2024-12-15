@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ debug: true });
 const sdk = require('api')('@render-api/v1.0#3b3esy2lm4n34b62');
 
 const DeployStatus = {

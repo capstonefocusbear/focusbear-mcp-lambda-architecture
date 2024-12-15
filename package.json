@@ -137,7 +137,9 @@
     "test-exclude": "7.0.1",
     "dd-trace": {
       "path-to-regexp": "6.3.0"
-    }
+    },
+    "cross-spawn": "7.0.6",
+    "jsonpath-plus": "10.2.0"
   },
   "resolutions": {
     "auth0": {
@@ -152,7 +154,9 @@
     "test-exclude": "7.0.1",
     "dd-trace": {
       "path-to-regexp": "6.3.0"
-    }
+    },
+    "cross-spawn": "7.0.6",
+    "jsonpath-plus": "10.2.0"
   },
   "husky": {
     "hooks": {

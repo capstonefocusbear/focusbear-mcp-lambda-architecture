@@ -1,4 +1,4 @@
-require('dotenv').config({ debug: true });
+require('dotenv').config();
 const sdk = require('api')('@render-api/v1.0#3b3esy2lm4n34b62');
 
 const DeployStatus = {
@@ -6,10 +6,6 @@ const DeployStatus = {
   update_in_progress: 'update_in_progress',
   live: 'live',
 };
-
-console.log('======================= secrets ===========================');
-console.log('values: ', process.env.RENDER_SERVICE_ID, process.env.RENDER_API_KEY);
-console.log('======================= secrets ===========================');
 
 const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min

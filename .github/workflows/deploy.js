@@ -1,3 +1,4 @@
+require('dotenv').config();
 const sdk = require('api')('@render-api/v1.0#3b3esy2lm4n34b62');
 
 const DeployStatus = {
@@ -10,12 +11,17 @@ const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min
 
 sdk.auth(RENDER_API_KEY);
+const originalRequest = sdk.request.bind(sdk);
+sdk.request = async function (options) {
+  console.log(`Making request to URL: ${JSON.stringify(options)}`);
+  return originalRequest(options);
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const triggerDeploy = async () => {
   const { id, status } = await sdk.createDeploy({ clearCache: 'clear' }, { serviceId });
-  console.log(`Deploy has been started! id: ${id}, currentStatus: ${status}`);
+  console.log(`Deploy has beed started! id: ${id}, currectStatus: ${status}`);
   return { id, status };
 };
 
@@ -25,13 +31,8 @@ const checkDeployStatus = async ({ id: deployId, status, finishedAt }) => {
   if (finishedAt) throw new Error(`Check the deployment! Current status: ${status}`);
   console.log(`Await ${TIMEOUT / 60 / 1000} minutes... `);
   await sleep(TIMEOUT);
-  try {
-    const deploy = await sdk['get-deploy']({ serviceId, deployId });
-    return checkDeployStatus({ ...deploy });
-  } catch (error) {
-    console.error('Error checking deploy status:', error);
-    throw new Error('Failed to check deploy status');
-  }
+  const deploy = await sdk['get-deploy']({ serviceId, deployId });
+  return checkDeployStatus({ ...deploy });
 };
 
 const bootstrap = async () => {

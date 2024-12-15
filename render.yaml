@@ -61,6 +61,10 @@ services:
         sync: false
       - key: AUTH0_MANAGEMENT_CLIENT_SECRET
         sync: false
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
       - fromGroup: backend-env-group
   - type: redis
     name: focus-bear-redis

@@ -8,7 +8,7 @@ const DeployStatus = {
 };
 
 console.log('======================= secrets ===========================');
-console.log('values: ', (process.env.RENDER_SERVICE_ID ?? '').length, (process.env.RENDER_API_KEY ?? '').length);
+console.log('values: ', process.env.RENDER_SERVICE_ID, process.env.RENDER_API_KEY);
 console.log('======================= secrets ===========================');
 
 const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;

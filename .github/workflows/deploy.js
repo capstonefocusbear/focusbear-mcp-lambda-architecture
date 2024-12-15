@@ -7,8 +7,11 @@ const DeployStatus = {
   live: 'live',
 };
 
-const { RENDER_SERVICE_ID, RENDER_API_KEY } = process.env;
-const serviceId = 'srv-ca9s3hrru51i04k30fkg';
+console.log('======================= secrets ===========================');
+console.log('values: ', (process.env.RENDER_SERVICE_ID ?? '').length, (process.env.RENDER_API_KEY ?? '').length);
+console.log('======================= secrets ===========================');
+
+const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min
 
 sdk.auth(RENDER_API_KEY);

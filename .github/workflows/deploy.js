@@ -12,6 +12,13 @@ const TIMEOUT = 3 * 60 * 1000; // 5 min
 
 sdk.auth(RENDER_API_KEY);
 
+// DEBUGGING: Override the request method to log the URL
+const originalRequest = sdk.request.bind(sdk);
+sdk.request = async function (options) {
+  console.log(`Making request to URL: ${options.url}`);
+  return originalRequest(options);
+};
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const triggerDeploy = async () => {

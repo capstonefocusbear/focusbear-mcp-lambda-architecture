@@ -34,12 +34,6 @@ jobs:
       # - name: Run unit tests and check coverage (should be > 80%)
       #   run: npm run test:cov
 
-      - name: Debug environment variables
-        run: echo "RENDER_SERVICE_ID=${{ secrets.RENDER_SERVICE_ID }}" >> $GITHUB_ENV
-        env:
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
       - name: Deploy on render.com
         env:
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}

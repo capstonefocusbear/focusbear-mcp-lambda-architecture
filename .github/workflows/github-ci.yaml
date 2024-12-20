@@ -28,14 +28,14 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
       
-      # - name: Security audit of dependencies
-      #   run: npm audit --production
+      - name: Security audit of dependencies
+        run: npm audit --production
       
-      # - name: Lint code
-      #   run: npm run lint
+      - name: Lint code
+        run: npm run lint
       
-      # - name: Run unit tests and check coverage (should be > 80%)
-      #   run: npm run test:cov
+      - name: Run unit tests and check coverage (should be > 80%)
+        run: npm run test:cov
 
       - name: Deploy on render.com
         # if: github.event_name == 'push' && github.ref_name == 'main'

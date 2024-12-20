@@ -263,3 +263,4 @@ export const createFocusModeFunction = {
 export const DAYS_IN_WEEK = 7;
 export const DAYS_IN_MONTH = 30;
 export const DECIMAL_PRECISION = 1;
+export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';

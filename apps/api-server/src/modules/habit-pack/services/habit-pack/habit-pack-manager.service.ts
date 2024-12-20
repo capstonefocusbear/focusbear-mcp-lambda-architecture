@@ -27,6 +27,7 @@ import { InstalledStandalonePackResponse } from '../../domain/installed-standalo
 import { LogQuantityQuestion } from '../../../activity/entities/log-quantity-questions';
 import { UpdateUserSettingsDto } from '../../../user/dto/update-user-settings.dto';
 import { ConvertedTemplatesNewIdsMaps } from '../../domain/converted-templates-new-ids-maps.model';
+import { FOCUS_ONLY_HABIT_PACK_ID } from '../../../../shared/utils/constants';
 
 @Injectable()
 export class HabitPackManagerService {
@@ -145,7 +146,7 @@ export class HabitPackManagerService {
       { ...linkedSettings, break_activities, morning_activities },
       false,
       {
-        is_onboarding: true,
+        is_onboarding: pack_id === FOCUS_ONLY_HABIT_PACK_ID,
       },
     );
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);

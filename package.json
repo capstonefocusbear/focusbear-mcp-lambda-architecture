@@ -51,7 +51,7 @@
     "@sendgrid/mail": "^8.1.0",
     "@sentry/node": "^7.22.0",
     "@types/html-to-text": "^9.0.0",
-    "api": "^4.5.1",
+    "api": "^6.1.2",
     "auth0": "^4.2.0",
     "aws-sdk": "^2.1292.0",
     "axios": "^1.7.5",
@@ -137,7 +137,9 @@
     "test-exclude": "7.0.1",
     "dd-trace": {
       "path-to-regexp": "6.3.0"
-    }
+    },
+    "cross-spawn": "7.0.6",
+    "jsonpath-plus": "10.2.0"
   },
   "resolutions": {
     "auth0": {
@@ -152,7 +154,9 @@
     "test-exclude": "7.0.1",
     "dd-trace": {
       "path-to-regexp": "6.3.0"
-    }
+    },
+    "cross-spawn": "7.0.6",
+    "jsonpath-plus": "10.2.0"
   },
   "husky": {
     "hooks": {

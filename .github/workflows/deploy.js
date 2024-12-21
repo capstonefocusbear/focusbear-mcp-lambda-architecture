@@ -1,5 +1,5 @@
 require('dotenv').config();
-const sdk = require('api')('@render-api/v1.0#2ye4wum37lk2jqyiz');
+const sdk = require('api')('@render-api/v1.0#3b3esy2lm4n34b62');
 
 const DeployStatus = {
   build_in_progress: 'build_in_progress',
@@ -11,6 +11,11 @@ const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min
 
 sdk.auth(RENDER_API_KEY);
+const originalRequest = sdk.request.bind(sdk);
+sdk.request = async function (options) {
+  console.log(`Making request to URL: ${JSON.stringify(options)}`);
+  return originalRequest(options);
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

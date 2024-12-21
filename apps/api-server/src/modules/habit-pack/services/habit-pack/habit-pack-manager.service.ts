@@ -146,7 +146,7 @@ export class HabitPackManagerService {
       { ...linkedSettings, break_activities, morning_activities },
       false,
       {
-        is_onboarding: pack_id === FOCUS_ONLY_HABIT_PACK_ID,
+        is_onboarding: pack_id === FOCUS_ONLY_HABIT_PACK_ID, // Skip generating the relax time activity during onboarding for users with the focus-only pack installed
       },
     );
     return new ResponseMessage(`Habit pack with ID: ${pack_id} successfully installed for user with ID: ${user_id}!`);

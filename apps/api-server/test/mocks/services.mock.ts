@@ -96,7 +96,6 @@ export const UserSettingsServiceMock = {
   getOrCreateSubscriber: jest.fn(),
   updateSettings: jest.fn(),
   getSettings: jest.fn(),
-  clearUserActivities: jest.fn(),
   updateUserTimezoneAndLanguage: jest.fn(),
   addActivityToRoutine: jest.fn(),
 };

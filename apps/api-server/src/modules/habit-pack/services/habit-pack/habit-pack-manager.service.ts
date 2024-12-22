@@ -483,7 +483,7 @@ export class HabitPackManagerService {
           donotloginslack: true,
         });
       }
-      await this.userSettingsService.clearUserActivities(user_id);
+
       await this.installHabitPack(user_id, pack_id);
       const updatedSettings = await this.userSettingsService.getSettings({ user_id });
       return updatedSettings;

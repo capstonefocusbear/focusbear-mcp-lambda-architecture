@@ -352,8 +352,6 @@ describe('HabitPackManagerService', () => {
         userDummy.id,
         routineHabitPackDummy.id,
       );
-
-      expect(UserSettingsServiceMock.clearUserActivities).toBeCalledWith(userDummy.id);
       expect(response).toBe(userSettingsDummy);
       expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
       expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);

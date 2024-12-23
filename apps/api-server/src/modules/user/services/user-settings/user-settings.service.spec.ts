@@ -17,7 +17,6 @@ import {
   dummyTutorials,
   logQuantityQuestionsDummy,
   serializedActivityDummy,
-  serializedActivityDummyWithDefaultActivities,
   UncompletedSequenceLogDummy,
   userDummy,
   userSettingsDBResponseDummy,
@@ -332,70 +331,6 @@ describe('UserSettingsService', () => {
         },
         userDummy.id,
       );
-    });
-  });
-
-  describe('clearUserActivities', () => {
-    it('positive: should remove all default activities for user and call activityParserService.deserialize only with non-default activities (case where user only has default activities)', async () => {
-      const serializedActivities = { morning_activities: [], break_activities: [], evening_activities: [] };
-      UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
-      ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummy);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
-        deserializedActivities: deserializedActivitiesDummy,
-        logQuantityQuestions: [],
-        tutorials: [],
-      });
-      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
-        isVerboseLoggingAllowed: false,
-        user: userDummy,
-      });
-
-      await userSettingsService.clearUserActivities(userDummy.id);
-
-      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(serializedActivities, userDummy.id);
-    });
-
-    it('positive: should remove default activities for user and call activityParserService.deserialize only with non-default activities (case where user has default and non-default activities)', async () => {
-      const serializedActivities = {
-        morning_activities: [
-          {
-            id: '3b57f802-23b0-47e2-a188-b07001db8e1f',
-            duration_seconds: 180,
-            video_urls: ['https://www.youtube.com/watch?v=BWk_hqFGxfE'],
-            name: 'Deep breathing',
-            log_quantity: false,
-            is_default: false,
-          },
-        ],
-        break_activities: [
-          {
-            duration_seconds: 40,
-            id: '6b57f802-23b0-47e2-a188-b07001db8e1f',
-            log_quantity: false,
-            name: "Dance like no-one's watching",
-            video_urls: [],
-            is_default: false,
-          },
-        ],
-        evening_activities: [],
-      };
-      UserRepositoryMock.getUserSettings.mockResolvedValue({ break_after_minutes: 20, ...userSettingsDBResponseDummy });
-      ActivityParserServiceMock.serialize.mockReturnValueOnce(serializedActivityDummyWithDefaultActivities);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      ActivityParserServiceMock.deserialize.mockResolvedValueOnce({
-        deserializedActivities: deserializedActivitiesDummy,
-        logQuantityQuestions: [],
-        tutorials: [],
-      });
-      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
-        isVerboseLoggingAllowed: false,
-        user: userDummy,
-      });
-
-      await userSettingsService.clearUserActivities(userDummy.id);
-
-      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(serializedActivities, userDummy.id);
     });
   });
 

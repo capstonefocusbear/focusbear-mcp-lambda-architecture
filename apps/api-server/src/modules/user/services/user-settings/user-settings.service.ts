@@ -7,7 +7,6 @@ import {
   ValidationError,
   forwardRef,
 } from '@nestjs/common';
-import * as _ from 'lodash';
 import { DateTime } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { plainToClass } from 'class-transformer';
@@ -321,24 +320,6 @@ export class UserSettingsService {
       return parseInt(formattedHour.substring(1), 10);
     }
     return parseInt(formattedHour, 10);
-  }
-
-  async clearUserActivities(user_id: string) {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Removing user activities',
-      data: {
-        user_id,
-      },
-    });
-    const userSettings = await this.getSettings({ user_id });
-    const newSettings: UpdateUserSettingsDto = _.cloneDeep(userSettings);
-    newSettings.break_after_minutes = 20;
-    newSettings.morning_activities = userSettings.morning_activities.filter((activity) => !activity.is_default);
-    newSettings.break_activities = userSettings.break_activities.filter((activity) => !activity.is_default);
-    newSettings.evening_activities = userSettings.evening_activities.filter((activity) => !activity.is_default);
-    await this.updateSettings({ user_id }, newSettings, false, { is_onboarding: false });
   }
 
   async updateUserTimezoneAndLanguage(

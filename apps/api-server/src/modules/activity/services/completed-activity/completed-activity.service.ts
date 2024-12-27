@@ -559,9 +559,8 @@ export class CompletedActivityService {
       });
       const { activity_id, choice_id } = skippedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
-      const skippedActivityMetadata = { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
-        { ...skippedActivity, metadata: skippedActivityMetadata },
+        skippedActivity,
         { user_id },
         user,
         sequence,
@@ -569,7 +568,7 @@ export class CompletedActivityService {
         choice,
       );
       const createdItem = await this.saveCompletedLog(
-        { ...skippedActivity, metadata: skippedActivityMetadata },
+        skippedActivity,
         activity,
         choice,
         user_id,
@@ -613,6 +612,7 @@ export class CompletedActivityService {
     });
     const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
+
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       updatedUser,
       sequence.id,
@@ -625,12 +625,15 @@ export class CompletedActivityService {
       completingSequenceLog.id,
       activityData,
     );
-    const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
+
     await this.deviceService.markAsLeader(device_id, user_id);
+
+    const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     const skippedActivityIds = updatedUser.current_sequence_skipped_activities ?? [];
     if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
       skippedActivityIds.push(activity_id);
     }
+
     await this.userRepository.orm.update(user_id, {
       ...currentState,
       current_completing_sequence_log_id,
@@ -638,6 +641,7 @@ export class CompletedActivityService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
+
     if (!nextActivityId) {
       if (IDS_TO_LOG_FOR.includes(user_id)) {
         console.log('Completing sequence - updateUserAndSequence');
@@ -663,22 +667,32 @@ export class CompletedActivityService {
         choice_id,
       },
     });
-    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
-    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
-    const [sequence, user, choice] = await Promise.all([
+
+    const user = await this.userRepository.orm.findOne({
+      where: { id: user_id },
+      relations: ['completing_sequence_log'],
+    });
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+
+    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id, user_id });
+    if (!activity) {
+      throw new NotFoundException(`Activity with id: ${activity_id}  does not exist for the User with id: ${user_id}!`);
+    }
+    const [sequence, choice] = await Promise.all([
       this.activitySequenceRepository.orm.findOne({
         where: { id: activity.activity_sequence_id },
         relations: ['activities'],
       }),
-      this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
     ]);
+
     if (!sequence) {
       throw new NotFoundException(`Activity Sequence with id: ${activity.activity_sequence_id} does not exist!`);
     }
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+
     const invalidSequenceMsg = `Activity with id: ${activity_id} is not a part of the sequence with id: ${sequence.id}!`;
     if (activity.activity_sequence_id !== sequence.id) throw new BadRequestException(invalidSequenceMsg);
+
     return [sequence, activity, user, choice];
   }
 

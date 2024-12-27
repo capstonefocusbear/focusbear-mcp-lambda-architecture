@@ -3,7 +3,7 @@ import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { OpenAIService } from '@app/openai';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLIS } from 'apps/api-server/src/shared/utils/constants';
+import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
@@ -165,7 +165,7 @@ export class UserController {
     const currentDate = new Date();
     const diffInMilliS = currentDate.getTime() - userCreatedDate.getTime();
     // caputre errror on sentry if sucscriptions is []on new user
-    if (subscription.activeEntitlements.length === 0 && diffInMilliS < TRIAL_LENGTH_DAYS * ONE_HOUR_MILLIS * 24) {
+    if (subscription.activeEntitlements.length === 0 && diffInMilliS < TRIAL_LENGTH_DAYS * ONE_HOUR_MILLISECONDS * 24) {
       this.sentryService.instance().captureMessage('User has no subscription', {
         extra: { user_id: user.id, subscription },
       });

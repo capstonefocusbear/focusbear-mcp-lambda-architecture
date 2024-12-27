@@ -559,8 +559,9 @@ export class CompletedActivityService {
       });
       const { activity_id, choice_id } = skippedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
+      const skippedActivityMetadata = { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
-        skippedActivity,
+        { ...skippedActivity, metadata: skippedActivityMetadata },
         { user_id },
         user,
         sequence,
@@ -667,32 +668,22 @@ export class CompletedActivityService {
         choice_id,
       },
     });
-
-    const user = await this.userRepository.orm.findOne({
-      where: { id: user_id },
-      relations: ['completing_sequence_log'],
-    });
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-
     const activity = await this.activityRepository.orm.findOneBy({ id: activity_id, user_id });
-    if (!activity) {
-      throw new NotFoundException(`Activity with id: ${activity_id}  does not exist for the User with id: ${user_id}!`);
-    }
-    const [sequence, choice] = await Promise.all([
+    if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
+    const [sequence, user, choice] = await Promise.all([
       this.activitySequenceRepository.orm.findOne({
         where: { id: activity.activity_sequence_id },
         relations: ['activities'],
       }),
+      this.userRepository.orm.findOne({ where: { id: user_id }, relations: ['completing_sequence_log'] }),
       choice_id ? this.activityRepository.orm.findOneBy({ id: choice_id }) : null,
     ]);
-
     if (!sequence) {
       throw new NotFoundException(`Activity Sequence with id: ${activity.activity_sequence_id} does not exist!`);
     }
-
+    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     const invalidSequenceMsg = `Activity with id: ${activity_id} is not a part of the sequence with id: ${sequence.id}!`;
     if (activity.activity_sequence_id !== sequence.id) throw new BadRequestException(invalidSequenceMsg);
-
     return [sequence, activity, user, choice];
   }
 
@@ -1634,7 +1625,7 @@ export class CompletedActivityService {
 
   convertUtcToIana(timezone: string) {
     // if the input is already in IANA format, just return it
-    if (IANAZone.isValidZone(timezone)) {
+    if (IANAZone.isValidZone(timezone) && !Object.keys(UTC_TO_IANA_MAP).includes(timezone)) {
       return timezone;
     }
     // get UTC offset

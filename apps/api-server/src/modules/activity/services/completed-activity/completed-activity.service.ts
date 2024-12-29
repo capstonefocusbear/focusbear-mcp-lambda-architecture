@@ -569,7 +569,7 @@ export class CompletedActivityService {
         choice,
       );
       const createdItem = await this.saveCompletedLog(
-        { ...skippedActivity, metadata: skippedActivityMetadata },
+        skippedActivity,
         activity,
         choice,
         user_id,
@@ -613,6 +613,7 @@ export class CompletedActivityService {
     });
     const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
+
     const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       updatedUser,
       sequence.id,
@@ -625,12 +626,15 @@ export class CompletedActivityService {
       completingSequenceLog.id,
       activityData,
     );
-    const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
+
     await this.deviceService.markAsLeader(device_id, user_id);
+
+    const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     const skippedActivityIds = updatedUser.current_sequence_skipped_activities ?? [];
     if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
       skippedActivityIds.push(activity_id);
     }
+
     await this.userRepository.orm.update(user_id, {
       ...currentState,
       current_completing_sequence_log_id,
@@ -638,6 +642,7 @@ export class CompletedActivityService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
+
     if (!nextActivityId) {
       if (IDS_TO_LOG_FOR.includes(user_id)) {
         console.log('Completing sequence - updateUserAndSequence');
@@ -663,7 +668,7 @@ export class CompletedActivityService {
         choice_id,
       },
     });
-    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id });
+    const activity = await this.activityRepository.orm.findOneBy({ id: activity_id, user_id });
     if (!activity) throw new NotFoundException(`Activity with id: ${activity_id} does not exist!`);
     const [sequence, user, choice] = await Promise.all([
       this.activitySequenceRepository.orm.findOne({
@@ -1620,7 +1625,7 @@ export class CompletedActivityService {
 
   convertUtcToIana(timezone: string) {
     // if the input is already in IANA format, just return it
-    if (IANAZone.isValidZone(timezone)) {
+    if (IANAZone.isValidZone(timezone) && !Object.keys(UTC_TO_IANA_MAP).includes(timezone)) {
       return timezone;
     }
     // get UTC offset

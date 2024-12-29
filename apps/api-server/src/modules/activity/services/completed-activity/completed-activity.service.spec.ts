@@ -1102,7 +1102,10 @@ describe('CompletedActivityService', () => {
         activity_note: completedActivity.note_logged,
       };
 
-      await completedActivityService.skipActivity(completedActivity, { user_id });
+      await completedActivityService.skipActivity(
+        { ...completedActivity, metadata: { skipped_did_not_complete: true } },
+        { user_id },
+      );
 
       expect(CompletedActivityRepositoryMock.upsert).toBeCalledWith(updatedCompletedActivity, [
         'activity_id',

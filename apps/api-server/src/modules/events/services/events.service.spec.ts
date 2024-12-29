@@ -14,7 +14,7 @@ import {
   FOCUS_BEAR_EMAILS,
   BullQueues,
   BullWorkers,
-  ONE_HOUR_MILLIS,
+  ONE_HOUR_MILLISECONDS,
 } from '../../../shared/utils/constants';
 import {
   Auth0ManagementServiceMock,
@@ -282,8 +282,8 @@ describe('EventService', () => {
     it.each(testCases)('$description', async (tc) => {
       // Dynamically set the user creation time based on whether the user is old or new
       const userCreationTime = tc.isOldUser
-        ? currentDate.getTime() - 49 * ONE_HOUR_MILLIS // Old user: created 49 hours ago
-        : currentDate.getTime() - 47 * ONE_HOUR_MILLIS; // New user: created 47 hours ago
+        ? currentDate.getTime() - 49 * ONE_HOUR_MILLISECONDS // Old user: created 49 hours ago
+        : currentDate.getTime() - 47 * ONE_HOUR_MILLISECONDS; // New user: created 47 hours ago
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue({
         ...userDummy,

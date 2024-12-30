@@ -7,10 +7,20 @@ import { ActivityFactory } from './activity.factory';
 import { DailyStatsFactory } from './daily-stats.factory';
 import { ActivitySequenceFactory } from './activity-sequence.factory';
 import { DeviceFactory } from './devices.factory';
+import { ActivityTemplateFactory } from './activity-template.factory';
+import { ActivityTemplateTagFactory } from './activity-template-tag.factory';
 
 const options: DataSourceOptions & SeederOptions = {
   ...typeormConfig(),
-  factories: [UserFactory, ActivityFactory, DailyStatsFactory, ActivitySequenceFactory, DeviceFactory],
+  factories: [
+    UserFactory,
+    ActivityFactory,
+    DailyStatsFactory,
+    ActivitySequenceFactory,
+    DeviceFactory,
+    ActivityTemplateFactory,
+    ActivityTemplateTagFactory,
+  ],
   seeds: [MainSeeder],
 };
 

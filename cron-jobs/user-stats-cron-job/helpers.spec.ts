@@ -98,12 +98,28 @@ describe('helpers', () => {
   });
 
   describe('calculateStreaks', () => {
-    const setupTest = (stats: {
-      date: string; focusModes: number; morning: number; evening: number;
-      microBreaks: number
-    }[], numDays: number, numDaysComplete: number, percentMorning: number,
-      percentEvening: number, percentMicro: number) => {
-      const userDailyStats = stats.map(stat => ({
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const before_yesterday = new Date(today);
+    before_yesterday.setDate(today.getDate() - 2);
+    const before_three_days = new Date(today);
+    before_three_days.setDate(today.getDate() - 2);
+    const setupTest = (
+      stats: {
+        date: string;
+        focusModes: number;
+        morning: number;
+        evening: number;
+        microBreaks: number;
+      }[],
+      numDays: number,
+      numDaysComplete: number,
+      percentMorning: number,
+      percentEvening: number,
+      percentMicro: number,
+    ) => {
+      const userDailyStats = stats.map((stat) => ({
         date_completed: new Date(stat.date),
         focus_modes_completed: stat.focusModes,
         morning_routine_completion_percentage: stat.morning,
@@ -122,7 +138,7 @@ describe('helpers', () => {
         percent_evening_routines_streak_complete_in_90days: percentEvening,
         percent_micro_breaks_streak_complete_in_90days: percentMicro,
         num_days_of_stats: numDays,
-        number_days_completed: numDaysComplete
+        number_days_completed: numDaysComplete,
       };
 
       return { userDailyStats, expected };
@@ -132,16 +148,23 @@ describe('helpers', () => {
       const result = calculateStreaks(dailyStats, timeZone, {
         morningRoutineDailyDurations: morningRoutineDailyDurations,
         eveningRoutineDailyDurations: eveningRoutineDailyDurations,
-        microBreaksDailyDurations: microBreaksDailyDurations
+        microBreaksDailyDurations: microBreaksDailyDurations,
       });
       expect(result).toEqual(expected);
     };
 
     it('should calculate streaks correctly for given daily stats', () => {
-      const { userDailyStats, expected } = setupTest([
-        { date: '2024-10-01', focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-        { date: '2024-10-02', focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-      ], 2, 2, 100, 100, 100);
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: before_yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+        ],
+        2,
+        2,
+        100,
+        100,
+        100,
+      );
 
       runTest(userDailyStats, expected);
     });
@@ -153,38 +176,64 @@ describe('helpers', () => {
     });
 
     it('should return zero streaks when no routines are completed', () => {
-      const { userDailyStats, expected } = setupTest([
-        { date: '2024-10-01', focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
-      ], 1, 0, 0, 0, 0);
+      const { userDailyStats, expected } = setupTest(
+        [{ date: yesterday.toISOString(), focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
 
       runTest(userDailyStats, expected);
     });
 
     it('should calculate streaks correctly with partial completions', () => {
-      const { userDailyStats, expected } = setupTest([
-        { date: '2024-10-01', focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
-        { date: '2024-10-02', focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
-      ], 2, 2, 50, 100, 100);
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
+          { date: before_yesterday.toISOString(), focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
+        ],
+        2,
+        2,
+        50,
+        100,
+        100,
+      );
 
       runTest(userDailyStats, expected);
     });
 
     it('should handle cases with less than 90 days of stats', () => {
-      const { userDailyStats, expected } = setupTest([
-        { date: '2024-10-01', focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-        { date: '2024-10-02', focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-        { date: '2024-10-02', focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
-      ], 2, 2, 100, 100, 100);
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: before_yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: before_three_days.toISOString(), focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
+        ],
+        2,
+        2,
+        100,
+        100,
+        100,
+      );
 
       runTest(userDailyStats, expected);
     });
 
     it('should calculate number_days_completed correctly', () => {
-      const { userDailyStats, expected } = setupTest([
-        { date: '2024-10-01', focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-        { date: '2024-10-02', focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
-        { date: '2024-10-03', focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
-      ], 3, 2, 67, 33, 67);
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: before_yesterday.toISOString(), focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
+          { date: before_three_days.toISOString(), focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
+        ],
+        3,
+        2,
+        67,
+        33,
+        67,
+      );
 
       runTest(userDailyStats, expected);
     });

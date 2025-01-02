@@ -45,6 +45,7 @@ import { Survey } from '../apps/api-server/src/modules/survey/entities/survey.en
 import { SurveyAnswer } from '../apps/api-server/src/modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../apps/api-server/src/modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../apps/api-server/src/modules/activity-template/entity/activity-template-tag.entity';
+import { CustomRoutine } from '../apps/api-server/src/modules/user/entities/custom-routine';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -102,6 +103,7 @@ export const CronJobDataSource = new DataSource({
     SurveyAnswer,
     SurveyAnswerMetadata,
     ActivityTemplateTag,
+    CustomRoutine,
   ],
   subscribers: [],
   migrations: [],

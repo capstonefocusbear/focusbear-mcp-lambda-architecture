@@ -62,10 +62,22 @@ export class UserDataService {
       });
 
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
+      const promises: any[] = [this.userRepository.orm.delete({ id: user_id })];
+
       const auth0user = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-      const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
-      const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
-      const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
+      if (auth0user) {
+        const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
+        promises.push(auth0Promise);
+      }
+
+      const revenueCatUser = await this.revenueCatService.getSubscriberFromRevenueCat(user_id);
+      if (revenueCatUser) {
+        const entitlements = Object.values(revenueCatUser.subscriber?.entitlements ?? []);
+        const entitlementPromises = entitlements.map((entitlement: { product_identifier: string }) => {
+          return this.revenueCatService.revokeUserEntitlementFromRevenueCat(user_id, entitlement.product_identifier);
+        });
+        promises.push([...entitlementPromises, this.revenueCatService.deleteUserFromRevenueCat(user_id)]);
+      }
 
       if (can_contact) {
         // email payload for notification
@@ -78,7 +90,7 @@ export class UserDataService {
         };
 
         // send email payload
-        await this.emailService.sendEmail(emailPayload);
+        promises.push(this.emailService.sendEmail(emailPayload));
       }
 
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
@@ -88,16 +100,23 @@ export class UserDataService {
           auth0user?.email,
         )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${can_contact ?? false}`,
       };
-      const alertPromise = axios.post(cliqUrl, body);
+      promises.push(axios.post(cliqUrl, body));
 
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {
-        await this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
+        const subscriptions = await this.stripeService.subscriptions.list({ customer: user.stripe_customer_id });
+        const deleteStripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
+        const subscriptionPromises = (subscriptions?.data ?? [])?.map((subscription) => {
+          return this.stripeService.cancelSubscription(subscription.id);
+        });
+        promises.push([...subscriptionPromises, deleteStripePromise]);
       }
+
       if (auth0user?.email) {
-        await this.brevoService.deleteContactFromBrevo(auth0user.email);
+        promises.push(this.brevoService.deleteContactFromBrevo(auth0user.email));
       }
-      await Promise.allSettled([auth0Promise, revenueCatPromise, userRepositoryPromise, alertPromise]);
+
+      await Promise.allSettled(promises);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

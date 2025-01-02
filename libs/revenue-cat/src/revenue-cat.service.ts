@@ -12,10 +12,17 @@ import { REVENUE_CAT_MODULE_OPTIONS } from './revenue-cat.constants';
 export class RevenueCatService {
   constructor(@Inject(REVENUE_CAT_MODULE_OPTIONS) private options: IRevenueCatOptions) {}
 
-  private httpService = axios;
+  private httpService = axios.create({
+    baseURL: '`https://api.revenuecat.com/v1/',
+    headers: {
+      Authorization: `Bearer ${this.options.secretApiKey}`,
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+  });
 
   async getOrCreateSubscriber(app_user_id: string): Promise<any> {
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}`;
+    const callUrl = `subscribers/${app_user_id}`;
     const Authorization = `Bearer ${this.options.publicApiKey}`;
     const headers = { Authorization };
     return this.httpService.get(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
@@ -25,23 +32,15 @@ export class RevenueCatService {
     await this.getOrCreateSubscriber(app_user_id);
     const trialAccess = Entitlement.trial;
     const duration = 'weekly';
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${trialAccess}/promotional`;
-    const Authorization = `Bearer ${this.options.secretApiKey}`;
-    const headers = { Authorization };
-    return this.httpService
-      .post(callUrl, { duration }, { headers })
-      .then(({ data }: AxiosResponse<unknown, any>): any => data);
+    const callUrl = `subscribers/${app_user_id}/entitlements/${trialAccess}/promotional`;
+    return this.httpService.post(callUrl, { duration }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   async grantTeamMembership(app_user_id: string, entitlement: Entitlement) {
     await this.getOrCreateSubscriber(app_user_id);
     const duration = 'lifetime';
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement}/promotional`;
-    const Authorization = `Bearer ${this.options.secretApiKey}`;
-    const headers = { Authorization };
-    return this.httpService
-      .post(callUrl, { duration }, { headers })
-      .then(({ data }: AxiosResponse<unknown, any>): any => data);
+    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement}/promotional`;
+    return this.httpService.post(callUrl, { duration }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
@@ -82,11 +81,9 @@ export class RevenueCatService {
   }
 
   async revokeTeamMembership(app_user_id: string, entitlement: Entitlement) {
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement}/revoke_promotionals`;
-    const Authorization = `Bearer ${this.options.secretApiKey}`;
-    const headers = { Authorization };
+    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement}/revoke_promotionals`;
     return this.httpService
-      .post(callUrl, {}, { headers })
+      .post(callUrl)
       .then(({ data }: AxiosResponse<unknown, any>): any => data)
       .catch((e) => console.error(e?.response));
   }
@@ -106,16 +103,18 @@ export class RevenueCatService {
   }
 
   async deleteUserFromRevenueCat(app_user_id: string) {
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}`;
-    const Authorization = `Bearer ${this.options.secretApiKey}`;
-    const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
-    await this.httpService.delete(callUrl, { headers });
+    const callUrl = `subscribers/${app_user_id}`;
+    await this.httpService.delete(callUrl);
   }
 
   async revokeUserEntitlementFromRevenueCat(app_user_id: string, entitlement_id: string) {
-    const callUrl = `https://api.revenuecat.com/v1/subscribers/${app_user_id}/entitlements/${entitlement_id}`;
-    const Authorization = `Bearer ${this.options.secretApiKey}`;
-    const headers = { Authorization, accept: 'application/json', 'Content-Type': 'application/json' };
-    await this.httpService.post(callUrl, { headers });
+    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement_id}`;
+    await this.httpService.post(callUrl);
+  }
+
+  // using a secret API key to fetch the customer's attributes.
+  async getSubscriberFromRevenueCat(app_user_id: string): Promise<any> {
+    const callUrl = `subscribers/${app_user_id}`;
+    return this.httpService.get(callUrl).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 }

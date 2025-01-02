@@ -159,7 +159,7 @@ export class UserSettingsService {
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
 
-      const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
+      const foundTutorialInMicroBreaks = updateSettingsData.break_activities?.some(
         (break_activity) => 'tutorial' in break_activity,
       );
       if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
@@ -176,7 +176,7 @@ export class UserSettingsService {
       } = updateSettingsData;
 
       const tutorialIds = []
-        .concat(morning_activities, evening_activities, break_activities)
+        .concat(morning_activities, evening_activities, break_activities ?? [])
         .map((activity) => activity.tutorial)
         .filter(Boolean);
       const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
@@ -184,7 +184,7 @@ export class UserSettingsService {
         throw new BadRequestException('Activities tutorial value should be unique');
       }
 
-      const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
+      const foundActivityWithCutOffTime = [...morning_activities, ...(break_activities ?? [])].some(
         (activity) => 'cutoff_time_for_doing_activity' in activity,
       );
 

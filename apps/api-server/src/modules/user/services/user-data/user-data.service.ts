@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
 import { Queue } from 'bull';
@@ -60,10 +60,11 @@ export class UserDataService {
       const user = await this.userRepository.orm.findOne({
         where: { id: user_id },
       });
+
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
       const auth0user = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
       const revenueCatPromise = this.revenueCatService.deleteUserFromRevenueCat(user_id);
-      const brevoPromise = this.brevoService.deleteContactFromBrevo(auth0user.email);
       const userRepositoryPromise = this.userRepository.orm.delete({ id: user_id });
 
       if (can_contact) {
@@ -93,7 +94,10 @@ export class UserDataService {
       if (user.stripe_customer_id) {
         await this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
       }
-      await Promise.all([auth0Promise, revenueCatPromise, brevoPromise, userRepositoryPromise, alertPromise]);
+      if (auth0user?.email) {
+        await this.brevoService.deleteContactFromBrevo(auth0user.email);
+      }
+      await Promise.allSettled([auth0Promise, revenueCatPromise, userRepositoryPromise, alertPromise]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

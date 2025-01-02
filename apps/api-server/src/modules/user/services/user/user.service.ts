@@ -247,7 +247,7 @@ export class UserService {
       });
       const userDetails = await this.userRepository.getUserDetails(id);
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
-      const { email } = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
+      const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const { focus_modes } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
@@ -257,7 +257,12 @@ export class UserService {
         return focusMode;
       });
       const syncedPlatformsMap = await this.platformIntegrationsService.getUserSyncedPlatforms(id);
-      return { ...userDetails, email, focus_modes: formattedFocusModes, synced_platforms: syncedPlatformsMap };
+      return {
+        ...userDetails,
+        email: auth0User?.email ?? '',
+        focus_modes: formattedFocusModes,
+        synced_platforms: syncedPlatformsMap,
+      };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

@@ -220,7 +220,11 @@ export class UserSettingsService {
         );
       }
 
-      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
+      const serializedActivities = {
+        morning_activities,
+        evening_activities: eveningActivities,
+        break_activities: break_activities ?? [],
+      };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
@@ -607,12 +611,10 @@ export class UserSettingsService {
   }
 
   private validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData: UpdateUserSettingsDto) {
-    const { cutoff_time_for_non_high_priority_activities, morning_activities, evening_activities, break_activities } =
-      updateSettingsData;
+    const { cutoff_time_for_non_high_priority_activities, morning_activities, evening_activities } = updateSettingsData;
+    const break_activities = updateSettingsData?.break_activities ?? [];
 
-    const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
-      (break_activity) => 'tutorial' in break_activity,
-    );
+    const foundTutorialInMicroBreaks = break_activities.some((break_activity) => 'tutorial' in break_activity);
     if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
 
     const tutorialIds = []

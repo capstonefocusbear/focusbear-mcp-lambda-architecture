@@ -159,49 +159,19 @@ export class UserSettingsService {
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
 
-      const foundTutorialInMicroBreaks = updateSettingsData.break_activities?.some(
-        (break_activity) => 'tutorial' in break_activity,
-      );
-      if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
-
       const {
         startup_time,
         shutdown_time,
         cutoff_time_for_non_high_priority_activities,
         break_after_minutes,
         morning_activities,
-        evening_activities,
         break_activities,
         custom_routines,
       } = updateSettingsData;
 
-      const tutorialIds = []
-        .concat(morning_activities, evening_activities, break_activities ?? [])
-        .map((activity) => activity.tutorial)
-        .filter(Boolean);
-      const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
-      if (foundActivitiesWithTheSameTutorialIds) {
-        throw new BadRequestException('Activities tutorial value should be unique');
+      if (!is_onboarding) {
+        this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
       }
-
-      const foundActivityWithCutOffTime = [...morning_activities, ...(break_activities ?? [])].some(
-        (activity) => 'cutoff_time_for_doing_activity' in activity,
-      );
-
-      if (foundActivityWithCutOffTime) {
-        throw new BadRequestException('Morning and break activities cannot have a cutoff_time_for_doing_activity');
-      }
-
-      const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
-        ({ cutoff_time_for_doing_activity }) =>
-          this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_non_high_priority_activities),
-      );
-      if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
-        throw new BadRequestException(
-          'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities',
-        );
-      }
-
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
 
@@ -237,8 +207,6 @@ export class UserSettingsService {
         is_relax_activity_generated,
       });
 
-      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
-
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
       if (custom_routines?.length) {
@@ -251,6 +219,8 @@ export class UserSettingsService {
           user_id,
         );
       }
+
+      const serializedActivities = { morning_activities, evening_activities: eveningActivities, break_activities };
       const { deserializedActivities, logQuantityQuestions, tutorials } = await this.activityParserService.deserialize(
         serializedActivities,
         user_id,
@@ -634,5 +604,42 @@ export class UserSettingsService {
       (routineA, routineB) =>
         DateTime.fromISO(routineA.created_at).toMillis() - DateTime.fromISO(routineB.created_at).toMillis(),
     );
+  }
+
+  private validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData: UpdateUserSettingsDto) {
+    const { cutoff_time_for_non_high_priority_activities, morning_activities, evening_activities, break_activities } =
+      updateSettingsData;
+
+    const foundTutorialInMicroBreaks = updateSettingsData.break_activities.some(
+      (break_activity) => 'tutorial' in break_activity,
+    );
+    if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
+
+    const tutorialIds = []
+      .concat(morning_activities, evening_activities, break_activities)
+      .map((activity) => activity.tutorial)
+      .filter(Boolean);
+    const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
+    if (foundActivitiesWithTheSameTutorialIds) {
+      throw new BadRequestException('Activities tutorial value should be unique');
+    }
+
+    const foundActivityWithCutOffTime = [...morning_activities, ...break_activities].some(
+      (activity) => 'cutoff_time_for_doing_activity' in activity,
+    );
+
+    if (foundActivityWithCutOffTime) {
+      throw new BadRequestException('Morning and break activities cannot have a cutoff_time_for_doing_activity');
+    }
+
+    const foundActivityCutOffTimeLessThanGlobalCutOffTime = evening_activities?.some(
+      ({ cutoff_time_for_doing_activity }) =>
+        this.isValidTimeForActivity(cutoff_time_for_doing_activity, cutoff_time_for_non_high_priority_activities),
+    );
+    if (foundActivityCutOffTimeLessThanGlobalCutOffTime) {
+      throw new BadRequestException(
+        'Evening activities cutoff time should be after cutoff_time_for_non_high_priority_activities',
+      );
+    }
   }
 }

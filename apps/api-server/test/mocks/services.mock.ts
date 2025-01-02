@@ -90,6 +90,7 @@ export const RevenueCatServiceMock = {
   checkSubscriptionStatus: jest.fn(),
   deleteUserFromRevenueCat: jest.fn(),
   revokeUserEntitlementFromRevenueCat: jest.fn(),
+  getSubscriberFromRevenueCat: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {
@@ -115,6 +116,9 @@ export const StripeServiceMock = {
   updateSubscription: jest.fn(),
   cancelSubscription: jest.fn(),
   deleteStripeCustomer: jest.fn(),
+  subscriptions: {
+    list: jest.fn(),
+  },
 };
 
 export const ActivityTemplateServiceMock = {

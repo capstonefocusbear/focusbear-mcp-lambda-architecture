@@ -15,7 +15,11 @@ describe('RevenueCatService', () => {
         RevenueCatModule.registerAsync({
           imports: [ConfigModule],
           inject: [ConfigService],
-          useFactory: (configService: ConfigService): IRevenueCatOptions => configService.get('revenueCatConfig'),
+          useFactory: (configService: ConfigService): IRevenueCatOptions => ({
+            ...configService.get('revenueCatConfig'),
+            secretApiKey: '',
+            publicApiKey: '',
+          }),
         }),
       ],
     }).compile();

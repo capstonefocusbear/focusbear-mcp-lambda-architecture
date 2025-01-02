@@ -4,9 +4,9 @@ import { UserOnboardingProgress } from '../../apps/api-server/src/modules/user/d
 import { LEVEL_THRESHOLDS } from './constants';
 import { calculateStreaks, determineUserLevel } from './helpers';
 import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { DateTime } from 'luxon';
 
 describe('helpers', () => {
-  const currentDate = new Date();
   const morningRoutineDailyDurations = new DailySequenceDurations();
   const eveningRoutineDailyDurations = new DailySequenceDurations();
   const microBreaksDailyDurations = new DailySequenceDurations();
@@ -98,13 +98,12 @@ describe('helpers', () => {
   });
 
   describe('calculateStreaks', () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const before_yesterday = new Date(today);
-    before_yesterday.setDate(today.getDate() - 2);
-    const before_three_days = new Date(today);
-    before_three_days.setDate(today.getDate() - 2);
+    const today = DateTime.local();
+    const beforeYesterday = today.minus({ days: 2 }).toISODate();
+    const beforeThreeDays = today.minus({ days: 3 }).toISODate();
+    const beforeFourDays = today.minus({ days: 4 }).toISODate();
+    const beforeNinetyOneDays = today.minus({ days: 4 }).toISODate();
+
     const setupTest = (
       stats: {
         date: string;
@@ -156,8 +155,14 @@ describe('helpers', () => {
     it('should calculate streaks correctly for given daily stats', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: before_yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          {
+            date: beforeThreeDays,
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            microBreaks: 100,
+          },
         ],
         2,
         2,
@@ -177,7 +182,7 @@ describe('helpers', () => {
 
     it('should return zero streaks when no routines are completed', () => {
       const { userDailyStats, expected } = setupTest(
-        [{ date: yesterday.toISOString(), focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
+        [{ date: beforeYesterday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
         1,
         0,
         0,
@@ -191,8 +196,8 @@ describe('helpers', () => {
     it('should calculate streaks correctly with partial completions', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
-          { date: before_yesterday.toISOString(), focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
+          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
+          { date: beforeThreeDays, focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
         ],
         2,
         2,
@@ -207,12 +212,12 @@ describe('helpers', () => {
     it('should handle cases with less than 90 days of stats', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: before_yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: before_three_days.toISOString(), focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
+          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: beforeThreeDays, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: beforeNinetyOneDays, focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
         ],
-        2,
-        2,
+        3,
+        3,
         100,
         100,
         100,
@@ -224,9 +229,9 @@ describe('helpers', () => {
     it('should calculate number_days_completed correctly', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: yesterday.toISOString(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: before_yesterday.toISOString(), focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
-          { date: before_three_days.toISOString(), focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
+          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: beforeThreeDays, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
+          { date: beforeFourDays, focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
         ],
         3,
         2,

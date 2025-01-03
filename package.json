@@ -221,7 +221,8 @@
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
     },
     "coveragePathIgnorePatterns": [
-      "node_modules"
+      "/node_modules/",
+      "/dist/"
     ]
   }
 }

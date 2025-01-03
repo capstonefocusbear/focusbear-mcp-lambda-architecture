@@ -105,7 +105,17 @@ async function calculateRoutineCompletionPercentage(
     0,
   );
   const sequenceDurationForCurrentDay = await getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
-  const completionPercentage = (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
+
+  // Validate to prevent "Infinity" or NaN
+  if (!Number.isFinite(sequenceDurationForCurrentDay) || sequenceDurationForCurrentDay <= 0) {
+    console.warn(
+      `Invalid sequenceDurationForCurrentDay for user_id: ${user_id}, completed_activity_log_id: ${completed_activity_log_id}.`,
+    );
+    return 0;
+  }
+
+  const completionPercentage =
+    sequenceDurationForCurrentDay > 0 ? (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100 : 0;
   return Math.round(completionPercentage);
 }
 

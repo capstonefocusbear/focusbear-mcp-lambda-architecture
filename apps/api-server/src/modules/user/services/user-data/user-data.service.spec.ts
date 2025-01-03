@@ -18,7 +18,7 @@ import {
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserDataService } from './user-data.service';
-import { QueueMock, userDummy } from '../../../../../test/dummies';
+import { dummyRevenueCatCustomer, QueueMock, userDummy } from '../../../../../test/dummies';
 import { LanguageOptions } from '../../domain/language-options.enum';
 import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
@@ -94,6 +94,8 @@ describe('UserDataService', () => {
       const dummyStripeId = 'cus_12345';
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...userDummy, stripe_customer_id: dummyStripeId });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: dummyEmail });
+      RevenueCatServiceMock.getSubscriberFromRevenueCat.mockResolvedValueOnce(dummyRevenueCatCustomer);
+      StripeServiceMock.subscriptions.list.mockResolvedValue({ data: [] });
 
       await service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' });
 

@@ -11,11 +11,6 @@ const { RENDER_SERVICE_ID: serviceId, RENDER_API_KEY } = process.env;
 const TIMEOUT = 3 * 60 * 1000; // 5 min
 
 sdk.auth(RENDER_API_KEY);
-const originalRequest = sdk.request.bind(sdk);
-sdk.request = async function (options) {
-  console.log(`Making request to URL: ${JSON.stringify(options)}`);
-  return originalRequest(options);
-};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -26,7 +21,7 @@ const triggerDeploy = async () => {
 };
 
 const checkDeployStatus = async ({ id: deployId, status, finishedAt }) => {
-  if (!deployId) throw new Error('DeployId was not provided!');
+  if (!deployId) console.warn('DeployId was not provided!');
   if (status === DeployStatus.live) return console.log(`Deploy status: ${status}`);
   if (finishedAt) throw new Error(`Check the deployment! Current status: ${status}`);
   console.log(`Await ${TIMEOUT / 60 / 1000} minutes... `);

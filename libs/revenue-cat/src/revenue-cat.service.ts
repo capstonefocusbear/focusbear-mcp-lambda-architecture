@@ -13,7 +13,7 @@ export class RevenueCatService {
   constructor(@Inject(REVENUE_CAT_MODULE_OPTIONS) private options: IRevenueCatOptions) {}
 
   private httpService = axios.create({
-    baseURL: '`https://api.revenuecat.com/v1/',
+    baseURL: 'https://api.revenuecat.com/v1/',
     headers: {
       Authorization: `Bearer ${this.options.secretApiKey}`,
       'Content-Type': 'application/json',

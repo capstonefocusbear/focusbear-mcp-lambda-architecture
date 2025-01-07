@@ -27,6 +27,7 @@ export const EMAIL_SUBJECTS = {
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_HOUR_MILLISECONDS = 3600000;
 export const ONE_MINUTE = 60000;
+export const ONE_DAY_MILLISECONDS = ONE_HOUR_MILLISECONDS * 24;
 export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
 export const ONE_DAY_SECONDS = 86400;

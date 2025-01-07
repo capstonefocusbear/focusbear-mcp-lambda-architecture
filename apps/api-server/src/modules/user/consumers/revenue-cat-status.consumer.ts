@@ -4,7 +4,7 @@ import { Job } from 'bull';
 import { RevenueCatService } from '@app/revenue-cat';
 import { UserRepository } from '../repositories/user.repository';
 import { Entitlement } from '../../subscription/domain/entitlement.enum';
-import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, ONE_DAY_MILLISECONDS, TRIAL_LENGTH_DAYS } from '../../../shared/utils/constants';
 
 @Processor(BullQueues.REVENUE_CAT_STATUS)
 export class RevenueCatStatusConsumer {
@@ -51,9 +51,15 @@ export class RevenueCatStatusConsumer {
       });
       const user = await this.userRepository.orm.findOneBy({ id: job.data.user_id });
       if (!user) return;
-
-      const revenueCatUser = await this.revenueCatService.getOrCreateSubscriber(job.data.user_id);
-      const subscriptionInfo = this.revenueCatService.checkSubscriptionStatus(revenueCatUser.subscriber);
+      let revenueCatUser = await this.revenueCatService.getOrCreateSubscriber(job.data.user_id);
+      // Check if new users have trial subscription
+      if (new Date(user.created_at) > new Date(new Date().getTime() - TRIAL_LENGTH_DAYS * ONE_DAY_MILLISECONDS)) {
+        // Check if the object has a trial entitlement
+        if (!revenueCatUser.entitlements[Entitlement.trial]) {
+          revenueCatUser = await this.revenueCatService.grantTrialAccess(job.data.user_id);
+        }
+      }
+      const subscriptionInfo = this.revenueCatService.checkSubscriptionStatus(revenueCatUser);
       const userActiveSubscription = this.getHighestRankingSubscription(subscriptionInfo.activeEntitlements);
       await this.updateRevenueCatInfo(user.id, subscriptionInfo, userActiveSubscription);
     } catch (error) {

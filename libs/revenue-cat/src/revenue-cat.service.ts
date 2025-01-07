@@ -5,7 +5,7 @@ import { TRIAL_DURATION_DAYS } from '../../../apps/api-server/src/shared/utils/c
 import { SubscriptionProvider } from '../../../apps/api-server/src/modules/subscription/domain/subscription-provider.enum';
 import { Entitlement } from '../../../apps/api-server/src/modules/subscription/domain/entitlement.enum';
 import { SubscriptionStatus } from '../../../apps/api-server/src/modules/subscription/domain/subscription-status.model';
-import { IRevenueCatOptions } from './interfaces';
+import { IRevenueCatOptions, IRevenueCatCustomer } from './interfaces';
 import { REVENUE_CAT_MODULE_OPTIONS } from './revenue-cat.constants';
 
 @Injectable()
@@ -21,11 +21,15 @@ export class RevenueCatService {
     },
   });
 
-  async getOrCreateSubscriber(app_user_id: string): Promise<any> {
+  async getOrCreateSubscriber(app_user_id: string): Promise<IRevenueCatCustomer> {
     const callUrl = `subscribers/${app_user_id}`;
     const Authorization = `Bearer ${this.options.publicApiKey}`;
     const headers = { Authorization };
-    return this.httpService.get(callUrl, { headers }).then(({ data }: AxiosResponse<unknown, any>): any => data);
+    const response = await this.httpService.get(callUrl, { headers });
+    if (response.status === 400 || response.status === 401) {
+      throw new BadRequestException(response);
+    }
+    return { ...response.data.subscriber };
   }
 
   async grantTrialAccess(app_user_id: string) {
@@ -33,7 +37,12 @@ export class RevenueCatService {
     const trialAccess = Entitlement.trial;
     const duration = 'weekly';
     const callUrl = `subscribers/${app_user_id}/entitlements/${trialAccess}/promotional`;
-    return this.httpService.post(callUrl, { duration }).then(({ data }: AxiosResponse<unknown, any>): any => data);
+    const response = await this.httpService.post(callUrl, { duration });
+    if (response.status !== 201) {
+      throw new BadRequestException(response);
+    }
+    const revenueCatCustomer: IRevenueCatCustomer = { ...response.data.subscriber };
+    return revenueCatCustomer;
   }
 
   async grantTeamMembership(app_user_id: string, entitlement: Entitlement) {

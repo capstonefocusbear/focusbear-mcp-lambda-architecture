@@ -194,21 +194,24 @@ describe('UserService', () => {
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockResolvedValue(dummyAuth0Client[0]);
       StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
-      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber);
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
 
       await userService.syncUserAccount(syncAccountDto);
 
-      expect(UserRepositoryMock.create).toBeCalledWith(
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           auth0_id: syncAccountDto.auth0_id,
           stripe_customer_id: stripeCustomerId,
         }),
       );
-      expect(StripeServiceMock.registerNewCustomer).toBeCalledWith(auth0UserDummy.email, auth0UserDummy.auth0_client);
-      expect(RevenueCatServiceMock.grantTrialAccess).toBeCalledWith(userDummy.id);
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
-      expect(RevenueCatServiceMock.getOrCreateSubscriber).toBeCalledWith(userDummy.id);
-      expect(RevenueCatServiceMock.checkSubscriptionStatus).toBeCalledWith(emptySubscriber.subscriber);
+      expect(StripeServiceMock.registerNewCustomer).toHaveBeenCalledWith(
+        auth0UserDummy.email,
+        auth0UserDummy.auth0_client,
+      );
+      expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
+      expect(RevenueCatServiceMock.getOrCreateSubscriber).toHaveBeenCalledWith(userDummy.id);
+      expect(RevenueCatServiceMock.checkSubscriptionStatus).toHaveBeenCalledWith(emptySubscriber.subscriber);
     });
   });
 
@@ -225,7 +228,7 @@ describe('UserService', () => {
 
       await userService.getUserDetails(id);
 
-      expect(UserRepositoryMock.getUserDetails).toBeCalledWith(id);
+      expect(UserRepositoryMock.getUserDetails).toHaveBeenCalledWith(id);
     });
 
     it('negative: if user account does not exist, throw the NotFoundException', async () => {
@@ -358,7 +361,7 @@ describe('UserService', () => {
 
       await userService.updateUserLocalDeviceSettings(userDummy.id, localSettings);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         local_device_settings: localSettings,
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
@@ -373,7 +376,7 @@ describe('UserService', () => {
         MacOS: { has_edited_blocked_urls: true },
       });
 
-      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toHaveBeenCalledWith(
         userDummy.id,
         UserProgressUpdateTypes.EDIT_BLOCKED_URLS,
       );
@@ -441,7 +444,7 @@ describe('UserService', () => {
 
       await userService.getUsers({ search });
 
-      expect(UserRepositoryMock.getUsersList).toBeCalledWith({ search });
+      expect(UserRepositoryMock.getUsersList).toHaveBeenCalledWith({ search });
     });
   });
 
@@ -523,7 +526,7 @@ describe('UserService', () => {
 
       await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         signed_up_via_habit_pack: routineHabitPackDBResponseDummy.id,
       });
     });
@@ -537,7 +540,7 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         signed_up_via_focus_mode: focusModeTemplateDBResponseDummy.id,
       });
     });
@@ -564,7 +567,7 @@ describe('UserService', () => {
 
       await userService.getListOfUsers(userDummy.id, 100, 0);
 
-      expect(UserRepositoryMock.orm.find).toBeCalledWith({
+      expect(UserRepositoryMock.orm.find).toHaveBeenCalledWith({
         order: { created_at: { direction: 'DESC' } },
         take: 100,
         skip: 0,
@@ -577,8 +580,8 @@ describe('UserService', () => {
 
       await userService.getListOfUsers(userDummy.id, 100, 0, UsersOrderByOptions.LAST_COMPLETED_ROUTINE);
 
-      expect(Auth0ManagementServiceMock.getAuth0User).toBeCalledWith(userDummy.auth0_id);
-      expect(UserRepositoryMock.orm.find).toBeCalledWith({
+      expect(Auth0ManagementServiceMock.getAuth0User).toHaveBeenCalledWith(userDummy.auth0_id);
+      expect(UserRepositoryMock.orm.find).toHaveBeenCalledWith({
         order: { last_completed_sequence_started_at: { direction: 'DESC', nulls: 'LAST' } },
         take: 100,
         skip: 0,
@@ -596,7 +599,7 @@ describe('UserService', () => {
 
       await userService.generateChatReply(reply, userDummy.id, [], 'english');
 
-      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toHaveBeenCalledWith(
         userDummy.id,
         UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR,
       );
@@ -644,7 +647,7 @@ describe('UserService', () => {
 
       await userService.updateUsername(userDummy.id, { username });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
         username,
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
@@ -672,7 +675,7 @@ describe('UserService', () => {
 
       await userService.getFocusBlockSummary(userDummy.id);
 
-      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, {
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toHaveBeenCalledWith(userDummy.id, {
         from_time: expect.toBeDate(),
         to_time: expect.toBeDate(),
       });
@@ -699,7 +702,7 @@ describe('UserService', () => {
 
       await userService.getCompletedActivitySummary(userDummy.id);
 
-      expect(CompletedActivityRepositoryMock.getWeekSummary).toBeCalledWith(userDummy.id);
+      expect(CompletedActivityRepositoryMock.getWeekSummary).toHaveBeenCalledWith(userDummy.id);
     });
   });
 
@@ -747,7 +750,7 @@ describe('UserService', () => {
         email: 'test@email.com',
       });
 
-      expect(UserRepositoryMock.getUserForAdmin).toBeCalledWith(undefined, dummyStripeId);
+      expect(UserRepositoryMock.getUserForAdmin).toHaveBeenCalledWith(undefined, dummyStripeId);
     });
 
     it('positive: if no matching user is found in Stripe when searching by email, null should be returned', async () => {
@@ -775,7 +778,7 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         metadata: { profile_image: profileImageDummy, description: descriptionDummy },
         updated_at: expect.toBeDateString(),
         has_received_inactivity_warning: false,
@@ -806,7 +809,7 @@ describe('UserService', () => {
 
       await userService.saveAdminAccessRequest(userDummy.id, accessReasonDummy);
 
-      expect(AdminAccessRequestRepositoryMock.create).toBeCalledWith(
+      expect(AdminAccessRequestRepositoryMock.create).toHaveBeenCalledWith(
         new AdminAccessRequest({ admin_user_id: userDummy.id, access_reason: accessReasonDummy }),
       );
     });
@@ -833,7 +836,7 @@ describe('UserService', () => {
       const longTermGoalsDummy = ['Finish task x'];
       await userService.updateLongTermGoals(userDummy.id, { goals: longTermGoalsDummy });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
         long_term_goals: longTermGoalsDummy,
         updated_at: expect.toBeDateString(),
         has_received_inactivity_warning: false,

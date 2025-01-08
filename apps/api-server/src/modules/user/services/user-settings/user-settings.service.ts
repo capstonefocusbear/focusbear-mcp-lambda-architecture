@@ -159,6 +159,10 @@ export class UserSettingsService {
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
 
+      if (!is_onboarding) {
+        this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
+      }
+
       const {
         startup_time,
         shutdown_time,
@@ -169,9 +173,6 @@ export class UserSettingsService {
         custom_routines,
       } = updateSettingsData;
 
-      if (!is_onboarding) {
-        this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
-      }
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
 

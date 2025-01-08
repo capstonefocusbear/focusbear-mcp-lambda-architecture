@@ -618,8 +618,8 @@ export class UserSettingsService {
     if (foundTutorialInMicroBreaks) throw new BadRequestException("Break activities don't have a tutorial");
 
     const tutorialIds = []
-      .concat(morning_activities, evening_activities, break_activities)
-      .map((activity) => activity.tutorial)
+      .concat(morning_activities, evening_activities)
+      .map((activity) => activity?.tutorial)
       .filter(Boolean);
     const foundActivitiesWithTheSameTutorialIds = new Set(tutorialIds).size !== tutorialIds.length;
     if (foundActivitiesWithTheSameTutorialIds) {

@@ -1,5 +1,5 @@
 require('dotenv').config();
-const sdk = require('api')('@render-api/v1.0#3b3esy2lm4n34b62');
+const sdk = require('api')('@render-api/v1.0#2ye4wum37lk2jqyiz');
 
 const DeployStatus = {
   build_in_progress: 'build_in_progress',
@@ -21,7 +21,7 @@ const triggerDeploy = async () => {
 };
 
 const checkDeployStatus = async ({ id: deployId, status, finishedAt }) => {
-  if (!deployId) console.warn('DeployId was not provided!');
+  if (!deployId) throw new Error('DeployId was not provided!');
   if (status === DeployStatus.live) return console.log(`Deploy status: ${status}`);
   if (finishedAt) throw new Error(`Check the deployment! Current status: ${status}`);
   console.log(`Await ${TIMEOUT / 60 / 1000} minutes... `);

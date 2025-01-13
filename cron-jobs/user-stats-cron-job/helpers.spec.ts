@@ -98,11 +98,17 @@ describe('helpers', () => {
   });
 
   describe('calculateStreaks', () => {
+    function getLastWeekSpecificDay(date: DateTime, weekday: number, weeks?: number): DateTime {
+      const startOfThisWeek = date.startOf('week');
+      const startOfLastWeek = startOfThisWeek.minus({ weeks: weeks || 1 });
+      return startOfLastWeek.plus({ days: weekday - 1 });
+    }
+
     const today = DateTime.local();
-    const beforeYesterday = today.minus({ days: 2 }).toISODate();
-    const beforeThreeDays = today.minus({ days: 3 }).toISODate();
-    const beforeFourDays = today.minus({ days: 4 }).toISODate();
-    const beforeNinetyOneDays = today.minus({ days: 4 }).toISODate();
+    const lastWeekMonday = getLastWeekSpecificDay(today, 1).toISODate();
+    const lastWeekTuesday = getLastWeekSpecificDay(today, 2).toISODate();
+    const lastWeekWednesday = getLastWeekSpecificDay(today, 3).toISODate();
+    const beforeNinetyOneDays = getLastWeekSpecificDay(today, 5, 6).toISODate();
 
     const setupTest = (
       stats: {
@@ -155,9 +161,9 @@ describe('helpers', () => {
     it('should calculate streaks correctly for given daily stats', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
           {
-            date: beforeThreeDays,
+            date: lastWeekTuesday,
             focusModes: 1,
             morning: 100,
             evening: 100,
@@ -182,7 +188,7 @@ describe('helpers', () => {
 
     it('should return zero streaks when no routines are completed', () => {
       const { userDailyStats, expected } = setupTest(
-        [{ date: beforeYesterday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
+        [{ date: lastWeekMonday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
         1,
         0,
         0,
@@ -196,8 +202,8 @@ describe('helpers', () => {
     it('should calculate streaks correctly with partial completions', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
-          { date: beforeThreeDays, focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
+          { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
+          { date: lastWeekTuesday, focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
         ],
         2,
         2,
@@ -212,8 +218,8 @@ describe('helpers', () => {
     it('should handle cases with less than 90 days of stats', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: beforeThreeDays, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: lastWeekTuesday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: lastWeekWednesday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
           { date: beforeNinetyOneDays, focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
         ],
         3,
@@ -229,9 +235,9 @@ describe('helpers', () => {
     it('should calculate number_days_completed correctly', () => {
       const { userDailyStats, expected } = setupTest(
         [
-          { date: beforeYesterday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
-          { date: beforeThreeDays, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
-          { date: beforeFourDays, focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
+          { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: lastWeekTuesday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
+          { date: lastWeekWednesday, focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
         ],
         3,
         2,

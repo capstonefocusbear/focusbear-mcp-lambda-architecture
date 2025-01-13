@@ -153,18 +153,22 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
     const startOfCheckedDay = nextExpectedDate.startOf('day');
     const endOfCheckedDay = nextExpectedDate.endOf('day');
 
-    if (
-      (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||
-      !LUXON_WEEK_DAYS.includes(nextExpectedDate.weekday)
-    ) {
-      if (
-        currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()
-      ) {
+    const currentStatTime = currentStat.date_completed.valueOf();
+    const startOfCheckedDayMillis = startOfCheckedDay.toMillis();
+    const endOfCheckedDayMillis = endOfCheckedDay.toMillis();
+
+    const isStatWithInExpectedDay =
+      currentStatTime >= startOfCheckedDayMillis && currentStatTime <= endOfCheckedDayMillis;
+    if (isStatWithInExpectedDay || !LUXON_WEEK_DAYS.includes(nextExpectedDate.weekday)) {
+      if (isStatWithInExpectedDay) {
         streak += 1;
-        currentStat = userDailyStats[index + 1];
+      }
+
+      if (index + 1 < userDailyStats.length) {
         index += 1;
+        currentStat = userDailyStats[index];
+      } else {
+        break;
       }
 
       nextExpectedDate = nextExpectedDate.minus({ days: 1 });

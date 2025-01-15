@@ -175,7 +175,6 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
 
   return streak;
 }
-
 export function calculateStreaks(
   userDailyStats: DailyStats[],
   timeZone: string,

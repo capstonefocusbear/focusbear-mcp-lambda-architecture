@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
@@ -138,7 +139,8 @@ export class ActivityLibraryService {
           return true;
         }
         const { activity_data, ...rest } = activityTemplate;
-        const template = { ...activity_data, ...rest };
+        // replace activity template id with random UUID to avoid duplicate id
+        const template = { ...activity_data, ...rest, id: randomUUID() };
         if (activityTemplate.activity_type === ActivityType.morning) {
           const isValidDuration = this.isValidTemplateDuration(
             template_duration,

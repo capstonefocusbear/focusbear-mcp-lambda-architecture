@@ -9,6 +9,7 @@ import { ActivityType } from '../modules/activity/domain/activity-type.enum';
 import { ActivityPriority } from '../modules/activity/domain/activity-priority.enum';
 import { ActivityData } from '../modules/activity/domain/activity-data.model';
 import { Device } from '../modules/device/entities/device.entity';
+import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
 import {
   TEST_USER_ID,
   TEST_MORNING_ACTIVITY_SEQUENCE_ID,
@@ -17,6 +18,7 @@ import {
   TEST_EVENING_ACTIVITY_ID,
   TEST_DEVICE_ID,
 } from './seeding-constant';
+import { ActivityTemplateTag } from '../modules/activity-template/entity/activity-template-tag.entity';
 
 export class MainSeeder implements Seeder {
   public async run(dataSource: DataSource, factoryManager: SeederFactoryManager): Promise<void> {
@@ -30,6 +32,8 @@ export class MainSeeder implements Seeder {
     const dailyStatsPromises = [];
     const devicePromises = [];
     const activitySequencePromises = [];
+    const activityTemplateFactory = factoryManager.get(ActivityTemplate);
+    const activityTemplateTagFactory = factoryManager.get(ActivityTemplateTag);
 
     for (const user of users) {
       devicePromises.push(
@@ -150,5 +154,15 @@ export class MainSeeder implements Seeder {
     await dailyStatsFactory.saveMany(30, {
       user_id: TEST_USER_ID,
     });
+
+    const activityTemplates = await activityTemplateFactory.saveMany(5);
+
+    await Promise.all(
+      activityTemplates.map(async (activityTemplate) => {
+        return activityTemplateTagFactory.save({
+          activity_template_id: activityTemplate.id,
+        });
+      }),
+    );
   }
 }

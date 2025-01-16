@@ -14,6 +14,7 @@ import {
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { LanguageOptions } from '../domain/language-options.enum';
 import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
+import { IsValidCutoffTime } from '../../../shared/decorators/is-valid-cutoff-time.decorator';
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -32,6 +33,12 @@ export class UpdateUserSettingsDto {
   sleep_time?: string;
 
   @IsOptional()
+  @IsString()
+  @IsMilitaryTime()
+  @IsValidCutoffTime({
+    message:
+      'Invalid cutoff time. Must satisfy the condition (cutoff < startup && cutoff < shutdown) || cutoff > shutdown.',
+  })
   cutoff_time_for_non_high_priority_activities?: string;
 
   @IsNotEmpty()

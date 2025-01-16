@@ -1,0 +1,324 @@
+meta {
+  name: insert suggested routines
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseURL}}/user-settings
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}
+
+body:json {
+  {
+    "shutdown_time": "20:30",
+    "startup_time": "05:15",
+    "cutoff_time_for_non_high_priority_activities": "",
+    "morning_activities": [
+      {
+        "name": "Deep breathing",
+        "video_urls": [
+          "https://www.youtube.com/watch?v=36mnXAQGRzc"
+        ],
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "id": "54418b99-78b9-40eb-b942-45dd8321092c",
+        "created_at": "2024-04-20T12:55:15.087Z",
+        "updated_at": "2024-04-20T12:55:15.087Z",
+        "pack_id": "6917070b-9ae3-4217-b894-bafc4958cf47",
+        "user_id": "f38d9bd1-d9cd-4078-9bc5-dab660d7ee25",
+        "activity_type": "morning",
+        "log_summary_type": "SUM",
+        "log_quantity": false,
+        "has_choices": false,
+        "duration_seconds": 180,
+        "completion_requirements": null,
+        "parent_id": null,
+        "linked_activity_template_id": null,
+        "sequence_index": "1",
+        "impact_category": null,
+        "deleted_at": null
+      },
+      {
+        "name": "Daily Work Intention",
+        "video_urls": [],
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "text_instructions": "Set a specific intention or theme for the workday (e.g., \"Today, I will prioritize collaboration\")",
+        "id": "f80e330d-6120-454c-830d-1086d580dd73",
+        "created_at": "2024-08-13T21:09:34.668Z",
+        "updated_at": "2024-08-13T21:09:34.668Z",
+        "pack_id": "9e624269-8498-46b4-8dde-b091c8588845",
+        "user_id": "9c06fad2-cffb-456b-9d94-5f6b61863c4f",
+        "activity_type": "morning",
+        "log_summary_type": "SUM",
+        "log_quantity": false,
+        "has_choices": false,
+        "duration_seconds": 300,
+        "completion_requirements": null,
+        "parent_id": null,
+        "linked_activity_template_id": null,
+        "sequence_index": "9",
+        "impact_category": null,
+        "deleted_at": null
+      }
+    ],
+    "break_after_minutes": 15,
+    "break_activities": [
+      {
+        "id": "52007987-f1b5-46e1-b011-c145aaf8de5e",
+        "activity_sequence_id": "f141eda2-f483-49d1-b8d1-d64063b51ab5",
+        "name": "Micro-workout",
+        "duration_seconds": 30,
+        "include_in_every_break": true,
+        "video_urls": [],
+        "choice_type": "random",
+        "choices": [
+          {
+            "id": "3aaf1587-54a1-42d0-b22a-db8d696361f7",
+            "name": "Pushups",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=StXac04arIc",
+              "https://www.youtube.com/watch?v=dOY-VkXbJCY"
+            ],
+            "log_quantity": true
+          },
+          {
+            "id": "7b0b7f64-0165-489a-b926-b26521f37f0f",
+            "name": "Situps",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=ueSWOFxOZSc"
+            ],
+            "log_quantity": true
+          },
+          {
+            "id": "cef3ab2f-7f35-4c03-a11c-f50b4e037f6b",
+            "name": "Squats",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=EL1wNBsEHiY",
+              "https://www.youtube.com/watch?v=R0Ut6nldt9g",
+              "https://www.youtube.com/watch?v=VciI0zL6TAo"
+            ],
+            "log_quantity": true
+          },
+          {
+            "id": "de1496eb-a771-495f-bcac-fdba994aef92",
+            "name": "Lunges",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=AZWPE5D1hHQ",
+              "https://www.youtube.com/watch?v=9StkRofe0HE",
+              "https://www.youtube.com/watch?v=aLgQiruL6nQ"
+            ],
+            "log_quantity": true
+          },
+          {
+            "id": "b26ee162-c5b2-480c-8a52-a439254239f9",
+            "name": "Stretching",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=s5V_sVvagrM",
+              "https://www.youtube.com/watch?v=_BJFBz-NlFU",
+              "https://www.youtube.com/watch?v=RH3La6XK1u4",
+              "https://www.youtube.com/watch?v=ZYmJTpwQrCU",
+              "https://www.youtube.com/watch?v=vetZTx-76So",
+              "https://www.youtube.com/watch?v=pSXVJwcH-eY",
+              "https://www.youtube.com/watch?v=XAyuDBV5fYM",
+              "https://www.youtube.com/watch?v=EKeCZoCUs2M",
+              "https://www.youtube.com/watch?v=cHBZbYlR490"
+            ],
+            "log_quantity": true
+          },
+          {
+            "id": "7ffe7e45-7dcf-4a35-8af5-8e820c13faf7",
+            "name": "Move Your Body",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=2LVjYfxwz4c",
+              "https://www.youtube.com/watch?v=GapAX8tOe2s"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "3a092fba-deae-4297-b602-70cd7b115c36",
+            "name": "Abs",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=cymGONhOFuQ",
+              "https://www.youtube.com/watch?v=f97P6JDr1c8"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "3631df47-4615-4501-acd4-594931ced1af",
+            "name": "Dips",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=C9r55uFuQhU"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "e08a32b9-f1e2-4f7b-8c10-fb2ee1dd7837",
+            "name": "Legs",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=ysRa2bc4FNA",
+              "https://www.youtube.com/watch?v=OQZkH6bS8sk",
+              "https://www.youtube.com/watch?v=v2xJyrOLAgo",
+              "https://www.youtube.com/watch?v=2jurEGsCPpU"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          }
+        ],
+        "log_quantity": false,
+        "log_quantity_question": "",
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "is_office_friendly": false
+      },
+      {
+        "id": "db1bf1b2-e905-4da8-8b23-1da67da355c0",
+        "activity_sequence_id": "f141eda2-f483-49d1-b8d1-d64063b51ab5",
+        "name": "Deep breathing",
+        "duration_seconds": 30,
+        "is_office_friendly": true,
+        "include_in_every_break": true,
+        "video_urls": [
+          "https://youtu.be/HhMXYsk_Pvo"
+        ],
+        "log_quantity": false,
+        "log_quantity_question": "",
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "choice_type": "random",
+        "choices": []
+      },
+      {
+        "id": "7af8e877-fe39-4a38-b9f7-f0f114207b7e",
+        "activity_sequence_id": "f141eda2-f483-49d1-b8d1-d64063b51ab5",
+        "name": "Office Exercises",
+        "duration_seconds": 55,
+        "log_quantity": false,
+        "video_urls": [],
+        "log_quantity_question": "",
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "include_in_every_break": true,
+        "is_office_friendly": true,
+        "choice_type": "random",
+        "choices": [
+          {
+            "id": "53e6a608-2438-4863-bf00-02bb86e59292",
+            "name": "Upper Body Twist",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=0V6jabZ7vT0"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "011ed3c7-3d08-4d23-b750-019f0d832e5f",
+            "name": "Neck Rotation",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=swypmUBr-ak"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "44154505-2171-4962-9674-b8509026c107",
+            "name": "Hip Marching",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=xq1VYNb1qmg"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "c3c2d8b2-15c2-445b-964c-622fc68fce3b",
+            "name": "Chest Stretch",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=GJP2_2do2nA"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "e1505fe7-e84d-45cd-ad81-5977ea817913",
+            "name": "Arm Raises",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=Iqel5RkbVNw"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          },
+          {
+            "id": "872cc9af-71cb-4a58-a34a-9cd745d4985d",
+            "name": "Rest Eyes",
+            "video_urls": [
+              "https://www.youtube.com/watch?v=5hNoCxonFbc"
+            ],
+            "log_quantity": true,
+            "log_quantity_question": ""
+          }
+        ]
+      }
+    ],
+    "evening_activities": [
+      {
+        "name": "Journal about day",
+        "video_urls": [],
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "id": "f11982e3-3d0e-4d22-9081-fd29f6e8727e",
+        "created_at": "2024-04-20T12:55:15.087Z",
+        "updated_at": "2024-04-20T12:55:15.087Z",
+        "pack_id": "6917070b-9ae3-4217-b894-bafc4958cf47",
+        "user_id": "f38d9bd1-d9cd-4078-9bc5-dab660d7ee25",
+        "activity_type": "evening",
+        "log_summary_type": "SUM",
+        "log_quantity": false,
+        "has_choices": false,
+        "duration_seconds": 300,
+        "completion_requirements": null,
+        "parent_id": null,
+        "linked_activity_template_id": null,
+        "sequence_index": "1",
+        "impact_category": null,
+        "deleted_at": null
+      },
+      {
+        "name": "Evening Brain Dump",
+        "video_urls": [
+          "https://youtu.be/BudTyyIV7hc?feature=shared",
+          "https://youtu.be/f3arQ3GY83k?feature=shared",
+          "https://youtu.be/C7XOqd84v5o?feature=shared",
+          "https://youtu.be/VojM_91bxaI?feature=shared"
+        ],
+        "allowed_apps": [],
+        "allowed_urls": [],
+        "text_instructions": "Write down any lingering thoughts or ideas related to work to clear your mind before bed.",
+        "id": "786655c9-ba9f-4e74-9f5c-60b536baddef",
+        "created_at": "2024-08-15T07:12:25.395Z",
+        "updated_at": "2024-08-15T07:12:25.395Z",
+        "pack_id": "9e624269-8498-46b4-8dde-b091c8588845",
+        "user_id": "9c06fad2-cffb-456b-9d94-5f6b61863c4f",
+        "activity_type": "evening",
+        "log_summary_type": "SUM",
+        "log_quantity": false,
+        "has_choices": false,
+        "duration_seconds": 300,
+        "completion_requirements": null,
+        "parent_id": null,
+        "linked_activity_template_id": null,
+        "sequence_index": "9",
+        "impact_category": null,
+        "deleted_at": null
+      }
+    ]
+  }
+}

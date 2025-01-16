@@ -688,11 +688,19 @@ export class UserService {
     await this.openAIService.streamChatReply(response, messages, language);
   }
 
-  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto) {
-    return this.openAIService.checkIfUrlIsSafeToUse({
-      ...isUrlSafeDto,
-      url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
-    });
+  async checkIsUrlSafe(isUrlSafeDto: IsUrlSafeDto, user_id: string) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    }
+
+    return this.openAIService.checkIfUrlIsSafeToUse(
+      {
+        ...isUrlSafeDto,
+        url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
+      },
+      user.language,
+    );
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

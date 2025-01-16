@@ -13,5 +13,6 @@
   "focus_mode_completed_message": "Good job on completing {focus_mode_name}!",
   "settings_updated": "Settings updated!",
   "settings_updated_message": "Your settings have been saved.",
-  "free_time_no_distraction_blocking": "Free Time - no distraction blocking"
+  "free_time_no_distraction_blocking": "Free Time - no distraction blocking",
+  "ai_decision_fail": "Unable to get a decision from AI. Trusting you to decide whether the site is relevant 😅"
 }

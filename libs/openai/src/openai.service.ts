@@ -9,6 +9,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
+import { I18nService } from 'nestjs-i18n';
 import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
@@ -23,6 +24,7 @@ export class OpenAIService {
   constructor(
     @Inject(OPENAI_MODULE_OPTIONS) private options: ClientOptions,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly i18nService: I18nService,
   ) {}
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -167,7 +169,7 @@ export class OpenAIService {
     }
   }
 
-  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto) {
+  async checkIfUrlIsSafeToUse(isUrlSafeDto: IsUrlSafeDto, prefLanguage: string) {
     const openai = new OpenAI({ ...this.options });
     const { url, meta_description, tab_title, focus_mode, intention } = isUrlSafeDto;
 
@@ -244,9 +246,10 @@ export class OpenAIService {
     }
 
     // Fallback response if retries fail - potential OpenAI throttling?
+    const translatedReason = this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage });
     return {
       allowed_probability: 0,
-      reason: 'The OpenAI request failed after multiple (3) attempts. Please try again later.',
+      reason: translatedReason,
     };
   }
 

@@ -13,5 +13,6 @@
   "focus_mode_completed_message": "¡Felicidades por completar {focus_mode_name}!",
   "settings_updated": "¡Configuración actualizada!",
   "settings_updated_message": "Tu configuración se ha guardado.",
-  "free_time_no_distraction_blocking": "Tiempo libre - no bloquees nada"
+  "free_time_no_distraction_blocking": "Tiempo libre - no bloquees nada",
+  "ai_decision_fail": "No es posible obtener una decisión de la IA. Confío en que tú decidas si el sitio es relevante 😅"
 }

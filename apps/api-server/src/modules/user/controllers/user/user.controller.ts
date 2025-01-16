@@ -200,8 +200,8 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   @Post('/is-url-safe-to-use')
-  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto) {
-    return this.userService.checkIsUrlSafe(isUrlSafeDto);
+  async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto, @AuthContext() { user }: Passport) {
+    return this.userService.checkIsUrlSafe(isUrlSafeDto, user.id);
   }
 
   @Patch('/long-term-goals')

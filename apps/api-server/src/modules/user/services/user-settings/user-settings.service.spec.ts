@@ -607,7 +607,7 @@ describe('UserSettingsService', () => {
 
       UserRepositoryMock.getUserSettings.mockResolvedValueOnce({
         ...userSettingsDBResponseDummy,
-        cutoff_time_for_non_high_priority_activities: '20:30',
+        cutoff_time_for_non_high_priority_activities: '21:30',
       });
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({

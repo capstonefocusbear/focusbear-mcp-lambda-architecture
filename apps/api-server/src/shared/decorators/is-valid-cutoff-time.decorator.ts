@@ -12,7 +12,7 @@ export function IsValidCutoffTime(validationOptions?: ValidationOptions) {
         validate(cutoffTime: any, args: ValidationArguments) {
           const { startup_time, shutdown_time } = args.object as any;
 
-          if (!cutoffTime || !startup_time || !shutdown_time) {
+          if (!cutoffTime) {
             return true;
           }
 

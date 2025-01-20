@@ -149,7 +149,7 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   let currentStat = userDailyStats[index];
   let nextExpectedDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
 
-  while (currentStat) {
+  while (currentStat && index < userDailyStats.length) {
     const startOfCheckedDay = nextExpectedDate.startOf('day');
     const endOfCheckedDay = nextExpectedDate.endOf('day');
 
@@ -209,23 +209,29 @@ export function calculateStreaks(
     userDailyStatsFromLast90Days,
   } = calculateRoutineStatsIn90Days(userDailyStats);
 
+  const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
+  const morning_routines_streak = calculateStreakForRoutine(
+    daysWhereMorningRoutinesWereCompleted,
+    timeZone,
+    morningRoutineDailyDurations,
+  );
+  const evening_routines_streak = calculateStreakForRoutine(
+    daysWhereEveningRoutinesWereCompleted,
+    timeZone,
+    eveningRoutineDailyDurations,
+  );
+
+  const micro_breaks_streak = calculateStreakForRoutine(
+    daysWhereMicroBreaksWereCompleted,
+    timeZone,
+    microBreaksDailyDurations,
+  );
+
   return {
-    focus_modes_streak: calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone),
-    morning_routines_streak: calculateStreakForRoutine(
-      daysWhereMorningRoutinesWereCompleted,
-      timeZone,
-      morningRoutineDailyDurations,
-    ),
-    evening_routines_streak: calculateStreakForRoutine(
-      daysWhereEveningRoutinesWereCompleted,
-      timeZone,
-      eveningRoutineDailyDurations,
-    ),
-    micro_breaks_streak: calculateStreakForRoutine(
-      daysWhereMicroBreaksWereCompleted,
-      timeZone,
-      microBreaksDailyDurations,
-    ),
+    focus_modes_streak: isValidStreak(focus_modes_streak) ? focus_modes_streak : 0,
+    morning_routines_streak: isValidStreak(morning_routines_streak) ? morning_routines_streak : 0,
+    evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
+    micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
     percent_morning_routines_streak_complete_in_90days:
       userDailyStatsFromLast90Days.length > 0
         ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
@@ -354,4 +360,8 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     number_days_completed,
     userDailyStatsFromLast90Days,
   };
+}
+
+function isValidStreak(streak: number): boolean {
+  return !isNaN(streak) && streak !== Infinity && streak !== -Infinity;
 }

@@ -1,0 +1,35 @@
+meta {
+  name: get suggested routines
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/activity-library/routine-suggestions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "routine_duration": 10,
+    "user_goals": [
+      "Build healthy habits",
+      "Stay focused at work"
+    ]
+  }
+}
+
+script:post-response {
+  if(req.body){
+    const activites = res.body;
+    const morningActivites = activites.filter((activity)=>activity.activity_type=="morning");
+    const eveningActivites = activites.filter((activity)=>activity.activity_type=="eveneing");
+    bru.setVar("morning_activities",morningActivites)
+    bru.setVar("evening_acitivities", eveningActivites)
+  }
+}

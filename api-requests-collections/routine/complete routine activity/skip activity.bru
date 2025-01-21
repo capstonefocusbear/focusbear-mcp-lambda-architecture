@@ -1,17 +1,17 @@
 meta {
-  name: skip habit
+  name: skip activity
   type: http
-  seq: 3
+  seq: 1
 }
 
 post {
-  url: {{baseURL}}/completed-activity/skip
+  url: {{base_url}}/completed-activity/skip
   body: json
-  auth: none
+  auth: bearer
 }
 
-headers {
-  Authorization: Bearer {{access_token}}
+auth:bearer {
+  token: {{access_token}}
 }
 
 body:json {

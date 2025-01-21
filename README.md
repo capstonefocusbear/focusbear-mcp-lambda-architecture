@@ -106,6 +106,8 @@ $ npm run test:cov
 
 ### Obtain an API access token
 
+#### Option 1
+
 1. Navigate to `apps/api-server/test/integrations/auth0.e2e-spec.ts`
 2. Replace test user email with your registered test account's email
 3. Add AUTH0_TEST_USER_PASSWORD in .env file and use your test account's password as the value
@@ -118,6 +120,10 @@ $ npm run test:e2e auth0.e2e
 
 6. Copy access token from logged response
 7. Remove console.log statement
+
+#### Option 2
+
+Use API collection, make sure to update collection environment with the appropriate value e.g. auth domain, client id, client secret... [See API request collection section for more details](#api-requests-collections)
 
 ### VS Code Extensions and Settings
 
@@ -174,6 +180,35 @@ This reverts only the latest migration script reflected in the DB.
 To see which migrations are already reflected in the DB, view the entries of the `migrations` table in your local or production DB.
 
 To connect to the production database locally, update .env config for database connection and set `ssl: true` in `apps/api-server/src/config/typeorm.config.ts` before starting local server.
+
+### API Requests Collections
+
+Bruno, an alternative to Postman, is used to create the API collections. To get started, ensure that Bruno is installed. Link to the executable can be found [here](https://www.usebruno.com/downloads).
+
+The collection contains two environments: one for local development and one for production. You can modify the values as needed.
+
+Run the auth request first to generate the JWT token that will be used for the following requests.
+
+#### Getting Started with Bruno
+
+1. **Install Bruno**:
+
+   - Download and install Bruno from the [official website](https://www.usebruno.com/downloads).
+
+2. **Import the Collection**:
+
+   - Open Bruno and import the provided API collection file.
+
+3. **Configure Environments**:
+
+   - The collection includes two environments: `local` and `production`.
+   - Modify the environment variables to match your setup.
+
+4. **Collection Documentation**:
+
+   - After importing the collection, navigate to the **Docs** tab within Bruno.
+   - The **Docs** tab provides detailed information about each endpoint, including descriptions, request parameters, and example responses.
+   - Use this documentation to understand how to interact with the API and to see examples of how to structure your requests.
 
 ### Running Unit Tests
 

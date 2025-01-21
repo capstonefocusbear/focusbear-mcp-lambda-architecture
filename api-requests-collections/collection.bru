@@ -1,0 +1,50 @@
+auth {
+  mode: oauth2
+}
+
+auth:oauth2 {
+  grant_type: password
+  access_token_url: {{token_endpoint}}
+  username: {{email}}
+  password: {{password}}
+  client_id: {{client_id}}
+  client_secret: {{client_secret}}
+  scope: 
+}
+
+script:post-response {
+  if(req.getAuthMode() == 'oauth2' && res.body.access_token) {
+      bru.setVar('access_token', res.body.access_token);
+  }
+}
+
+docs {
+  ### Environments
+  
+  | Environment    | Description                                      | Example Variables                                                                 |
+  |----------------|--------------------------------------------------|-----------------------------------------------------------------------------------|
+  | **Local**      | Use this environment for testing and development | `baseUrl`: `http://localhost:3000`<br>`apiKey`: `your-local-api-key`              |
+  | **Production** | Use this environment for production API requests | `baseUrl`: `https://api.yourdomain.com`<br>`apiKey`: `your-production-api-key`    |
+  
+  ### Authentication
+  
+  1. **Run the Auth Request**:
+     - Before making other API requests, run the authentication request to generate a JWT token.
+     - The token will be used for subsequent requests.
+  
+  2. **Set the Token**:
+     - The JWT token will be automatically set in the environment variables after a successful authentication request.
+  
+  ### Folders
+  
+  | Folder       | Description                                                                                                                  |
+  | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+  | Routine      | Contains endpoints used to retrieve suggestion routines, inserting/updating users routines and completing routines(skipping) |
+  | User         | Contains endpoints used to retrieve user related data including<br />- user setting                                          |
+  | Authenticate | This request is used to retrieve the access token using password grant type                                                  |
+  
+  ### Notes
+  
+  - Ensure that you have the correct environment selected before making requests.
+  - Update the environment variables e.g. email, password, device id
+}

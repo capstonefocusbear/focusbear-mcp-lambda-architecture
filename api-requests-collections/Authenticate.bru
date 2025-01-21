@@ -1,0 +1,39 @@
+meta {
+  name: Authenticate
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{token_endpoint}}
+  body: formUrlEncoded
+  auth: none
+}
+
+body:json {
+  {
+    "grant_type": "password",
+    "user_name": "{{email}}",
+    "password": "{{password}}",
+    "cliend_id": "{{client_id}}",
+    "client_secret": "{{client_secret}}",
+    "audience": "{{audience}}",
+    "connection": "Username-Password-Authentication"
+  }
+}
+
+body:form-urlencoded {
+  grant_type: password
+  username: {{email}}
+  password: {{password}}
+  client_id: {{client_id}}
+  client_secret: {{client_secret}}
+  audience: {{audience}}
+  ~connection: Username-Password-Authentication
+}
+
+script:post-response {
+  if(res.body.access_token) {
+      bru.setEnvVar('access_token', res.body.access_token);
+  }
+}

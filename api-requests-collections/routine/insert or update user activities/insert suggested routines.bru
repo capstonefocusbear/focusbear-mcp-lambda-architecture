@@ -1,17 +1,17 @@
 meta {
   name: insert suggested routines
   type: http
-  seq: 2
+  seq: 1
 }
 
 put {
-  url: {{baseURL}}/user-settings
+  url: {{base_url}}/user-settings
   body: json
-  auth: none
+  auth: bearer
 }
 
-headers {
-  Authorization: Bearer {{access_token}}
+auth:bearer {
+  token: {{access_token}}
 }
 
 body:json {

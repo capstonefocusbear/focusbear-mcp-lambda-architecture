@@ -23,6 +23,12 @@ import { CompletedActivityService } from '../services/completed-activity/complet
 import { GetLogQuantityAnswerLogsDto } from '../dto/get-log-quantity-answer-logs.dto';
 import { OfflineSyncActivitiesDto } from '../dto/offline-sync-activities.dto';
 
+/**
+ * @TODO
+ * - Add a constraint to ensure duration_logged is a whole number.
+ * - Set duration_logged to zero for null values.
+ * - Update `CreateCompletedActivityDto` to validate that `duration_logged` is a whole number.
+ */
 @Controller('completed-activity')
 @UseGuards(IsAuth)
 @ApiTags('completed-activity')

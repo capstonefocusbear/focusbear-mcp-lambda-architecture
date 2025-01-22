@@ -10,7 +10,7 @@
   "focus_mode_started": "¡Modo de enfoque iniciado!",
   "focus_mode_completed": "¡Modo de enfoque completado!",
   "focus_mode_started_message": "{focus_mode_name} ha iniciado.",
-  "focus_mode_completed_message": "¡Felicidades por completar {focus_mode_name}!",
+  "focus_mode_completed_message": "¡Buen trabajo al completar tu sesión de concentración con la intención: {intention}!",
   "settings_updated": "¡Configuración actualizada!",
   "settings_updated_message": "Tu configuración se ha guardado.",
   "free_time_no_distraction_blocking": "Tiempo libre - no bloquees nada",

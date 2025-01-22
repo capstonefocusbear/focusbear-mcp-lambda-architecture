@@ -194,10 +194,11 @@ export class FocusModeManagerService {
         device_id = headers.device_id;
       }
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
-      const [{ name }, user] = await this.validateFinishingFocusMode(focus_mode_id, user_id);
+      const user = await this.validateFinishingFocusMode(focus_mode_id, user_id);
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
         id: user.current_completing_focus_block_id,
       });
+      const { intention } = completingFocusBlock;
       await this.toDoService.logToDosTime(to_dos, user_id, completingFocusBlock.id);
       const isDurationPassedAsParam = typeof focus_duration_seconds === 'number';
       const durationToUse = isDurationPassedAsParam
@@ -224,7 +225,7 @@ export class FocusModeManagerService {
           language: user.language,
           device_id,
           completedMode,
-          name,
+          intention,
         });
       }
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
@@ -248,13 +249,13 @@ export class FocusModeManagerService {
     user_id,
     language,
     completedMode,
-    name,
+    intention,
     device_id,
   }: {
     user_id: string;
     language: string;
     completedMode: CompletedFocusBlock;
-    name: string;
+    intention: string;
     device_id: string;
   }) {
     const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
@@ -262,7 +263,7 @@ export class FocusModeManagerService {
     });
     const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
       lang: language,
-      args: { focus_mode_name: name },
+      args: { intention },
     });
     const notificationData = { ...completedMode, device_id };
     const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
@@ -288,7 +289,7 @@ export class FocusModeManagerService {
     return end.diff(start, 'seconds').toObject().seconds;
   }
 
-  private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<[FocusMode, User]> | never {
+  private async validateFinishingFocusMode(focus_mode_id: string, user_id: string): Promise<User> | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -305,7 +306,7 @@ export class FocusModeManagerService {
     const isCurrentMode = focus_mode_id === current_focus_mode_id;
     const isNotCurrentMsg = `Focus mode with id: ${focus_mode_id} is not current, the current one is ${current_focus_mode_id}!`;
     if (!isCurrentMode) throw new BadRequestException({ message: isNotCurrentMsg, donotloginslack: true });
-    return [focusMode, user];
+    return user;
   }
 
   private async nullifyCurrentFocusModeForUser(user_id: string): Promise<void> {

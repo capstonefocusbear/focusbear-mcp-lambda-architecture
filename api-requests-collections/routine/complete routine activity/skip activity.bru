@@ -1,0 +1,29 @@
+meta {
+  name: skip activity
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/completed-activity/skip
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+    {
+      "activity_id": "54418b99-78b9-40eb-b942-45dd8321092c",
+      "activity_sequence_id": "4626f6a9-e710-4d1f-9e2b-69102b58afdf",
+      "device_id": {{device_id}},
+      "metadata": {
+        "skipped_did_complete": true
+      },
+      "start_time": "2025-01-16T05:33:42Z",
+      "finish_time": "2025-01-16T05:36:42Z",
+      "duration_logged": 180
+    }
+}

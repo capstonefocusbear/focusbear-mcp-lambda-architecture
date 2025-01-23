@@ -98,7 +98,8 @@ async function calculateRoutineCompletionPercentage(
     where: { completed_sequence_id: existingRoutineLog.id },
   });
   const activitiesThatWereCompleted = activitiesFromRoutine.filter(
-    (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
+    (activity) =>
+      !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete && activity.duration_logged > 0,
   );
   const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
     (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),
@@ -107,15 +108,19 @@ async function calculateRoutineCompletionPercentage(
   const sequenceDurationForCurrentDay = await getSequenceDurationForCurrentDay(existingRoutineLog, user_id);
 
   // Validate to prevent "Infinity" or NaN
-  if (!Number.isFinite(sequenceDurationForCurrentDay) || sequenceDurationForCurrentDay <= 0) {
+  if (
+    !Number.isFinite(sequenceDurationForCurrentDay) ||
+    sequenceDurationForCurrentDay <= 0 ||
+    !Number.isFinite(totalDurationOfCompletedActivities) ||
+    totalDurationOfCompletedActivities <= 0
+  ) {
     console.warn(
-      `Invalid sequenceDurationForCurrentDay for user_id: ${user_id}, completed_activity_log_id: ${completed_activity_log_id}.`,
+      `Invalid sequenceDurationForCurrentDay or totalDurationOfCompletedActivities for user_id: ${user_id}, completed_activity_log_id: ${completed_activity_log_id}.`,
     );
     return 0;
   }
 
-  const completionPercentage =
-    sequenceDurationForCurrentDay > 0 ? (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100 : 0;
+  const completionPercentage = (totalDurationOfCompletedActivities / sequenceDurationForCurrentDay) * 100;
   return Math.round(completionPercentage);
 }
 

@@ -149,8 +149,18 @@ async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {
 }
 
 async function calculateOfflineActivitiesCompletionPercentage() {
-  const dailyStats = await CronJobDataSource.manager.find(DailyStats, { where: { should_recalculate: true } });
-  await Promise.all(dailyStats.map((dailyStat) => recalculateDailyStatRoutineCompletions(dailyStat)));
+  try {
+    const dailyStats = await CronJobDataSource.manager.find(DailyStats, { where: { should_recalculate: true } });
+    for (const dailyStat of dailyStats) {
+      try {
+        await recalculateDailyStatRoutineCompletions(dailyStat);
+      } catch (error) {
+        console.error(`Failed to recalculate for dailyStat id ${dailyStat.id}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating offline activities completion percentage:', error);
+  }
 }
 
 (async () => {

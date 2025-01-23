@@ -82,43 +82,32 @@ export function calculateStreakForRoutine(
     return 0;
   }
   const { latestStatStartTime, startOfPreviousDay } = getLatestStatAndStartOfPrevDay(userDailyStats, timeZone);
-  let streak = 0;
   if (latestStatStartTime.valueOf() < startOfPreviousDay.valueOf()) {
     return 0;
   }
+
+  let streak = 0;
   let index = 0;
-  let currentStat = userDailyStats[index];
-  let nextExpectedDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
-  let dayBeingCheckedNumber = nextExpectedDate.weekday;
-  let prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
-  let doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
+  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
 
-  while (currentStat && index < userDailyStats.length) {
-    const startOfCheckedDay = nextExpectedDate.startOf('day');
-    const endOfCheckedDay = nextExpectedDate.endOf('day');
-    if (
-      (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||
-      !doesDayHaveActivities
-    ) {
-      if (
-        currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()
-      ) {
+  while (index < userDailyStats.length) {
+    let currentStat = userDailyStats[index];
+    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    let prevDayOfWeek = DAYS_OF_WEEK[currentDate.weekday - 1];
+    let doesPrevDayHasActivities = dailySequenceDurations[prevDayOfWeek] > 0;
+
+    if (currentStatDate.hasSame(currentDate, 'day') || !doesPrevDayHasActivities) {
+      if (doesPrevDayHasActivities) {
         streak += 1;
-        currentStat = userDailyStats[index + 1];
-        index += 1;
+      } else {
+        index++;
       }
-
-      nextExpectedDate = nextExpectedDate.minus({ days: 1 });
-      dayBeingCheckedNumber = nextExpectedDate.weekday;
-      prevDayOfWeek = DAYS_OF_WEEK[dayBeingCheckedNumber - 1];
-      doesDayHaveActivities = dailySequenceDurations[prevDayOfWeek] > 0;
     } else {
       break;
     }
+    currentDate = currentDate.minus({ days: 1 });
   }
-  return streak;
+  return isValidStreak(streak) ? streak : 0;
 }
 
 const getStartOfPrevWeekDay = (startOfPrevDay: Date) => {
@@ -146,35 +135,34 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
 
   let streak = 0;
   let index = 0;
-  let currentStat = userDailyStats[index];
-  let nextExpectedDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
 
-  while (currentStat && index < userDailyStats.length) {
-    const startOfCheckedDay = nextExpectedDate.startOf('day');
-    const endOfCheckedDay = nextExpectedDate.endOf('day');
+  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
 
-    if (
-      (currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()) ||
-      !LUXON_WEEK_DAYS.includes(nextExpectedDate.weekday)
-    ) {
-      if (
-        currentStat.date_completed.valueOf() >= startOfCheckedDay.toMillis() &&
-        currentStat.date_completed.valueOf() <= endOfCheckedDay.toMillis()
-      ) {
+  while (index < userDailyStats.length) {
+    const currentStat = userDailyStats[index];
+    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    const isNonWeekday = !LUXON_WEEK_DAYS.includes(currentDate.weekday);
+
+    if (currentStatDate.hasSame(currentDate, 'day') || isNonWeekday) {
+      if (!isNonWeekday) {
         streak += 1;
-        currentStat = userDailyStats[index + 1];
-        index += 1;
+      } else {
+        index++;
       }
-
-      nextExpectedDate = nextExpectedDate.minus({ days: 1 });
     } else {
       break;
     }
+
+    currentDate = currentDate.minus({ days: 1 });
+
+    while (isNonWeekday) {
+      currentDate = currentDate.minus({ days: 1 });
+    }
   }
 
-  return streak;
+  return isValidStreak(streak) ? streak : 0;
 }
+
 export function calculateStreaks(
   userDailyStats: DailyStats[],
   timeZone: string,
@@ -250,7 +238,7 @@ export function calculateStreaks(
 }
 
 export function calculateRoutineCompletionPercentageAverage(dailyStats: DailyStats[], routineType: ActivityType) {
-  let routineToCount;
+  let routineToCount = 'micro_breaks_routine_completion_percentage';
   if (routineType === ActivityType.morning) {
     routineToCount = 'morning_routine_completion_percentage';
   } else if (routineType === ActivityType.evening) {
@@ -260,7 +248,7 @@ export function calculateRoutineCompletionPercentageAverage(dailyStats: DailySta
     (total, stat) => total + (!Number.isNaN(stat[routineToCount]) ? stat[routineToCount] : 0),
     0,
   );
-  const averageCompletion = totalCompletion / dailyStats.length;
+  const averageCompletion = dailyStats.length > 0 ? totalCompletion / dailyStats.length : 0;
   const percentage = Math.round(averageCompletion);
   return percentage > 100 ? 100 : percentage;
 }
@@ -270,7 +258,7 @@ export function calculateAverageFocusModesCompleted(dailyStats: DailyStats[]) {
     (total, currentStat) => total + currentStat.focus_modes_completed,
     0,
   );
-  return Number((totalFocusModesCompleted / dailyStats.length).toFixed(1));
+  return dailyStats?.length > 0 ? Number((totalFocusModesCompleted / dailyStats.length).toFixed(1)) : 0;
 }
 
 export function getRoutinesAndFocusModesAverages(dailyStats: DailyStats[]) {

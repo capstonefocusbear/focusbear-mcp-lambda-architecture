@@ -194,13 +194,9 @@ export class CalendarService {
 
   async getCalendarDatas(userId: string, platform: CalendarPlatforms) {
     const keywords = await this.getCalendarExcludedKeywords(platform, userId);
-
-    let accounts;
-    if (platform === CalendarPlatforms.GOOGLE) {
-      accounts = await this.platformIntegrationService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userId);
-    } else {
-      accounts = await this.platformIntegrationService.getPlatformAccounts(IntegrationPlatforms.MICROSOFT, userId);
-    }
+    const integrationPlatform =
+      platform === CalendarPlatforms.GOOGLE ? IntegrationPlatforms.GOOGLE : IntegrationPlatforms.MICROSOFT;
+    const accounts = await this.platformIntegrationService.getPlatformAccounts(integrationPlatform, userId);
     const calendars = await Promise.all(
       accounts.map(async (account) => {
         const items = await this.getCalendars(userId, platform, account.email);

@@ -29,6 +29,9 @@ export class CalendarController {
 
   @Get(':platform/calendar-datas')
   async getCalendarDatas(@Param('platform') platform: CalendarPlatforms, @AuthContext() { user }: Passport) {
+    if (platform !== CalendarPlatforms.GOOGLE && platform !== CalendarPlatforms.MICROSOFT) {
+      throw new Error('Invalid platform');
+    }
     return this.calendarService.getCalendarDatas(user.id, platform);
   }
 

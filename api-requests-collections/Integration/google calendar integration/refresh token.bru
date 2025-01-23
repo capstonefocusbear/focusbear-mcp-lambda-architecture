@@ -1,0 +1,18 @@
+meta {
+  name: refresh token
+  type: http
+  seq: 6
+}
+
+post {
+  url: https://oauth2.googleapis.com/token
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  refresh_token: 1//0gPS_kceoRInhCgYIARAAGBASNwF-L9Irc8oH9O-LrT4rp7PVe7GIN7eH7PAEBh7U_B9yLZTJmgJ9D3HoMoDrQOQCZlyzUTRSmFo
+  client_id: {{google_client_id}}
+  grant_type: refresh_token
+  client_secret: {{google_client_secret}}
+}

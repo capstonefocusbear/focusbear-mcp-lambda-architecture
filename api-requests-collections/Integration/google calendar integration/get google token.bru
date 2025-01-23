@@ -1,0 +1,24 @@
+meta {
+  name: get google token
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://oauth2.googleapis.com/token?code=4%2F0AanRRrt1nIBg2lO4taBZ2oocyNjeuASxDzOnpHsjqkSYZLWdpPFBmzL3A3kg5lB5WZ5F-w
+  body: formUrlEncoded
+  auth: none
+}
+
+params:query {
+  code: 4%2F0AanRRrt1nIBg2lO4taBZ2oocyNjeuASxDzOnpHsjqkSYZLWdpPFBmzL3A3kg5lB5WZ5F-w
+}
+
+body:form-urlencoded {
+  client_id: {{google_client_id}}
+  client_secret: {{google_client_secret}}
+  redirect_uri: {{google_callback_url}}
+  grant_type: authorization_code
+  code_verifier: 
+  code: 4%2F0AanRRrt1nIBg2lO4taBZ2oocyNjeuASxDzOnpHsjqkSYZLWdpPFBmzL3A3kg5lB5WZ5F-w
+}

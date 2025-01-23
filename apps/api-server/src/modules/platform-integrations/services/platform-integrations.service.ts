@@ -69,10 +69,14 @@ export class PlatformIntegrationsService {
     const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { platform, user_id: userId },
     });
+    // microsoft token has no expiry date, no refresh token requiered
+    // google token has expiry date, refresh token required
     const accountInfos = await integrationRecords.map((account) => {
       const data = {
         email: account.external_user_id,
-        expired: account.data.expiry_date < DateTime.local().toMillis() + 1000,
+        expired:
+          account.data.expiry_date < DateTime.local().toMillis() + 1000 ||
+          (account.platform === IntegrationPlatforms.GOOGLE && !account.data.refresh_token),
       };
       return data;
     });

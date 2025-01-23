@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { google } from 'googleapis';
-
 import axios from 'axios';
+import { OAuth2Client } from 'google-auth-library';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
@@ -23,7 +23,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   protected readonly callbackUrl: string;
 
-  private readonly oauth2Client;
+  private readonly oauth2Client: OAuth2Client;
 
   private readonly platform = IntegrationPlatforms.GOOGLE;
 
@@ -92,21 +92,26 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   async authorize(userId: string, authorizeQuery: AuthorizeQuery) {
     try {
-      const data: PlatformIntegrationMetadataDto = await this.requestAuthorize(authorizeQuery);
-      if (!data.access_token) {
+      const authData: PlatformIntegrationMetadataDto = await this.requestAuthorize(authorizeQuery);
+      if (!authData.access_token) {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no access token returned`);
       }
 
+      if (!authData.refresh_token) {
+        throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no refresh token returned`);
+      }
+
       const { data: userInfo } = await axios.get(
-        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${data.access_token}`,
+        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${authData.access_token}`,
       );
       const accountId = userInfo.email;
 
-      await this.saveUserData(userId, data, accountId);
+      await this.saveUserData(userId, authData, accountId);
 
       if (accountId) {
         await this.googleCalendarService.updateEvents(userId, accountId);
       }
+      return { message: 'Successfully authenticated with Google' };
     } catch (error) {
       console.error(error);
     }

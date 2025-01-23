@@ -16,6 +16,7 @@ import { MicrosoftCalendarEventDto } from '../dto/microsoft-calendar-event.dto';
 import { Notification } from '../../notification/entities/notification.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
+import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
 
 @Processor(BullQueues.SYNC_EVENTS)
 export class SyncEventsConsumer extends WorkerHost {
@@ -123,14 +124,13 @@ export class SyncEventsConsumer extends WorkerHost {
   }
 
   async getPlatformIntegrationData(platform: string, userId: string, userExternalId?: string) {
-    let platformRecord;
     if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
-      platformRecord = await this.platformIntegrationRepository.orm.findOne({
+      const platformRecord = await this.platformIntegrationRepository.orm.findOne({
         where: { user_id: userId, platform, external_user_id: userExternalId },
       });
       return platformRecord;
     }
-    platformRecord = await this.platformIntegrationRepository.orm.findOne({
+    const platformRecord = await this.platformIntegrationRepository.orm.findOne({
       where: { user_id: userId, platform },
     });
     return platformRecord;
@@ -142,46 +142,59 @@ export class SyncEventsConsumer extends WorkerHost {
     const record = await this.platformIntegrationRepository.orm.findOne({
       where: { user_id: userId, platform, external_user_id: account },
     });
-    const nodeEnv = this.configService.get('NODE_ENV');
+    if (!record) throw new Error('No platform integration data found');
+    const nodeEnv = this.configService.get('NODE_ENV') ? this.configService.get('NODE_ENV') : 'dev';
     const clientId =
-      nodeEnv !== undefined && nodeEnv === 'dev'
+      nodeEnv === 'dev'
         ? this.configService.get('GOOGLE_DEVELOPMENT_CLIENT_ID')
         : this.configService.get('GOOGLE_CLIENT_ID');
     const clientSecret =
-      nodeEnv !== undefined && nodeEnv === 'dev'
+      nodeEnv === 'dev'
         ? this.configService.get('GOOGLE_DEVELOPMENT_CLIENT_SECRET')
         : this.configService.get('GOOGLE_CLIENT_SECRET');
     const callbackUrl =
-      nodeEnv !== undefined && nodeEnv === 'dev'
+      nodeEnv === 'dev'
         ? this.configService.get('GOOGLE_DEVELOPMENT_CALLBACK_URL')
         : this.configService.get('GOOGLE_CALLBACK_URL');
 
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);
 
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Token data',
+      data: {
+        platform,
+        hasAccessToken: !!record.data.access_token,
+        hasRefreshToken: !!record.data.refresh_token,
+        expiryDate: DateTime.fromMillis(record.data.expiry_date).toISO(),
+      },
+    });
+
     if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
+      if (!record.data.refresh_token) {
+        throw new Error('No refresh token found');
+      }
       // Access token is expired
       // Refresh access token using refresh token already provided
-      const response = await oauth2Client.refreshAccessToken();
-      const tokens = response.credentials;
+      try {
+        const response = await oauth2Client.refreshAccessToken();
+        const authToken: PlatformIntegrationMetadataDto = response.credentials;
 
-      // Update your storage with new tokens
-      const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
-      if (existingRecord) {
-        const data = {
-          access_token: tokens.access_token,
-          expiry_date: tokens.expiry_date,
-        };
-
+        // Update your storage with new tokens
+        const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
         const platformIntegration = new PlatformIntegration({
           ...existingRecord,
-          data,
+          data: authToken,
         });
         await this.platformIntegrationRepository.orm.save(platformIntegration);
-      }
 
-      // Set the new credentials
-      oauth2Client.setCredentials(tokens);
+        // Set the new credentials
+        oauth2Client.setCredentials(authToken);
+      } catch (error) {
+        throw new Error('Error refreshing access token');
+      }
     }
 
     const calendar = Google.calendar({ version: 'v3', auth: oauth2Client });

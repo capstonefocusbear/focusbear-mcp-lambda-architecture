@@ -1,0 +1,22 @@
+meta {
+  name: auth callback
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/auth/google/callback?code=4%2F0AanRRrtqlSOk0LsWSbwkKGuKnA9_YYpB3VwESq2IHvorZYJDrq0iveT2XbhwLARnYqP2kA&scope=email+profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent
+  body: none
+  auth: bearer
+}
+
+params:query {
+  code: 4/0AanRRrtqlSOk0LsWSbwkKGuKnA9_YYpB3VwESq2IHvorZYJDrq0iveT2XbhwLARnYqP2kA
+  scope: email profile openid https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email
+  authuser: 0
+  prompt: consent
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

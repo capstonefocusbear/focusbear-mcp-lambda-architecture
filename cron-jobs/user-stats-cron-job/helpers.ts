@@ -93,13 +93,14 @@ export function calculateStreakForRoutine(
   while (index < userDailyStats.length) {
     let currentStat = userDailyStats[index];
     const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
-    let prevDayOfWeek = DAYS_OF_WEEK[currentDate.weekday - 1];
+    let correctedPrevDayIndex = (currentDate.weekday - 1 + 6) % 7; // // luxon currentDate.weekday is 1-7 for Monday-Sunday
+    let prevDayOfWeek = DAYS_OF_WEEK[correctedPrevDayIndex];
     let doesPrevDayHasActivities = dailySequenceDurations[prevDayOfWeek] > 0;
+    let doesCurrentDayHasActivities = dailySequenceDurations[DAYS_OF_WEEK[currentDate.weekday - 1]] > 0; // Prevents streak reset by treating the previous day as the current day in the next iteration.
 
-    if (currentStatDate.hasSame(currentDate, 'day') || !doesPrevDayHasActivities) {
-      if (doesPrevDayHasActivities) {
+    if (currentStatDate.hasSame(currentDate, 'day') || !doesPrevDayHasActivities || !doesCurrentDayHasActivities) {
+      if (currentStatDate.hasSame(currentDate, 'day')) {
         streak += 1;
-      } else {
         index++;
       }
     } else {
@@ -141,22 +142,19 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   while (index < userDailyStats.length) {
     const currentStat = userDailyStats[index];
     const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
-    const isNonWeekday = !LUXON_WEEK_DAYS.includes(currentDate.weekday);
+    const isNonWeekday = !LUXON_WEEK_DAYS.includes(currentStatDate.weekday);
 
     if (currentStatDate.hasSame(currentDate, 'day') || isNonWeekday) {
-      if (!isNonWeekday) {
+      if (currentStatDate.hasSame(currentDate, 'day')) {
         streak += 1;
-      } else {
-        index++;
+        currentDate = currentDate.minus({ days: 1 });
+        while (!LUXON_WEEK_DAYS.includes(currentDate.weekday)) {
+          currentDate = currentDate.minus({ days: 1 });
+        }
       }
+      index++;
     } else {
       break;
-    }
-
-    currentDate = currentDate.minus({ days: 1 });
-
-    while (isNonWeekday) {
-      currentDate = currentDate.minus({ days: 1 });
     }
   }
 

@@ -279,6 +279,7 @@ describe('UserDailyStatsService', () => {
 
   describe('CalculateUserStatsResponse', () => {
     Settings.now = () => 1676254469000;
+
     it('positive: user streaks of routines in continuous days should be returned', async () => {
       const mockOnboardingProgress = {
         level: 1,
@@ -332,7 +333,7 @@ describe('UserDailyStatsService', () => {
 
       const userStats = await service.CalculateUserStatsResponse(userDummy.id);
 
-      expect(userStats.focus_mode_completion_streak_days).toBe(10);
+      expect(userStats.focus_mode_completion_streak_days).toBe(7);
     });
 
     it('positive: if user has mobile device installed, has_installed_mobile_app value should be true', async () => {
@@ -411,7 +412,7 @@ describe('UserDailyStatsService', () => {
         morning_routines_streak: 3,
         evening_routines_streak: 3,
         micro_breaks_streak: 0,
-        focus_modes_streak: 10,
+        focus_modes_streak: 7,
         onboarding_progress: {
           has_installed_desktop_app: false,
           has_installed_mobile_app: false,

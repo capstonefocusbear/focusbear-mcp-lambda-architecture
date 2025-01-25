@@ -1591,7 +1591,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.toJSDate(), // Monday
   },
   // this stat is mocked to fall over a weekend and has no completed focus modes
   // to test streak not being reset if FM not done over weekend
@@ -1607,7 +1607,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 1 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1621,7 +1621,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 2 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1635,7 +1635,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 3 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1649,7 +1649,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 4 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1663,7 +1663,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 5 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1677,7 +1677,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 6 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1691,7 +1691,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 7 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1705,7 +1705,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 8 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1719,7 +1719,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 9 }).toJSDate(),
   },
   {
     id: randomUUID(),
@@ -1733,7 +1733,7 @@ export const dailyStatsArrayDummy = [
     evening_sequence_log_id: randomUUID(),
     seconds_spent_in_focus_sessions: 0,
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 10 }).toJSDate(),
   },
 ];
 
@@ -1749,7 +1749,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.toJSDate(), // Monday
   },
   {
     id: randomUUID(),
@@ -1762,7 +1762,7 @@ export const dailyStatsArrayDummyWithSkippedDay = [
     morning_sequence_log_id: null,
     evening_sequence_log_id: randomUUID(),
     break_sequence_log_id: null,
-    created_at: '2024-10-04',
+    created_at: latestDateInStatsStreak.minus({ days: 2 }).toJSDate(), // Saturday
   },
 ];
 

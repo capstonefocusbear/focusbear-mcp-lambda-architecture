@@ -52,6 +52,7 @@ describe('CompletedFocusBlockService', () => {
         achievements: CompletedFocusBlockDummy.achievements,
         distractions: CompletedFocusBlockDummy.distractions,
         tags: CompletedFocusBlockDummy.tags?.map((tag) => tag.text),
+        metadata: {},
       });
     });
   });

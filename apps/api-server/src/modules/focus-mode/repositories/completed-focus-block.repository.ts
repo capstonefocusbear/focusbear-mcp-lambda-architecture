@@ -25,6 +25,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
         'distractions',
         'created_at',
         'updated_at',
+        'metadata',
       ],
       where: {
         user_id,

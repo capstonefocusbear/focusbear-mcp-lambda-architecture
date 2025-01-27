@@ -69,6 +69,12 @@ export class CompletedFocusBlock extends BaseEntity {
   })
   focus_duration_seconds?: number;
 
+  @Column({
+    type: 'jsonb',
+    transformer: BaseEntity.encryptJSONField('metadata'),
+  })
+  metadata?: any;
+
   @ManyToOne(() => User, (user) => user.completed_focus_blocks, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

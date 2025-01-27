@@ -27,5 +27,10 @@ export class FinishFocusModeDto {
   @IsArray()
   tags?: CreateFocusModeTagDto[];
 
+  @IsOptional()
+  @IsArray()
   to_dos?: ToDoTimeLogDto[];
+
+  @IsOptional()
+  metadata?: any;
 }

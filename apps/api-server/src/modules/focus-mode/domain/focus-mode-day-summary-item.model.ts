@@ -18,4 +18,7 @@ export class FocusModeDaySummaryItem {
 
   @ApiProperty()
   tags: string[];
+
+  @ApiProperty()
+  metadata: any;
 }

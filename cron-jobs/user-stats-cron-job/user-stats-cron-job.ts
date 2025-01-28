@@ -5,7 +5,7 @@ import { CompletedActivity } from '../../apps/api-server/src/modules/activity/en
 import { CompletedActivitySequence } from '../../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { CronJobDataSource } from '../data-source';
-import { calculateStreaks, determineUserLevel } from './helpers';
+import { calculateStreaks, determineUserLevel, isValidUUID } from './helpers';
 import { DailyStats } from '../../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
 import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
@@ -85,6 +85,10 @@ async function calculateRoutineCompletionPercentage(
   user_id: string,
   completed_activity_log_id: string,
 ): Promise<number> {
+  if (!isValidUUID(completed_activity_log_id)) {
+    return 0;
+  }
+
   const existingRoutineLog = await CronJobDataSource.manager.findOne(CompletedActivitySequence, {
     where: {
       user_id,

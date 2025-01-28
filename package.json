@@ -61,7 +61,7 @@
     "cheerio": "^1.0.0-rc.12",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.14.0",
-    "dd-trace": "^5.14.1",
+    "dd-trace": "^5.32.0",
     "fastify-raw-body": "^5.0.0",
     "googleapis": "^105.0.0",
     "html-to-text": "^9.0.4",
@@ -135,9 +135,6 @@
     "ws": "^8.17.1",
     "cookie": "^0.7.0",
     "test-exclude": "7.0.1",
-    "dd-trace": {
-      "path-to-regexp": "6.3.0"
-    },
     "cross-spawn": "7.0.6",
     "jsonpath-plus": "10.2.0",
     "undici": "6.21.1"
@@ -153,9 +150,6 @@
     "ws": "^8.17.1",
     "cookie": "^0.7.0",
     "test-exclude": "7.0.1",
-    "dd-trace": {
-      "path-to-regexp": "6.3.0"
-    },
     "cross-spawn": "7.0.6",
     "jsonpath-plus": "10.2.0",
     "undici": "6.21.1"

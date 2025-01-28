@@ -85,10 +85,6 @@ async function calculateRoutineCompletionPercentage(
   user_id: string,
   completed_activity_log_id: string,
 ): Promise<number> {
-  if (!isValidUUID(completed_activity_log_id)) {
-    return 0;
-  }
-
   const existingRoutineLog = await CronJobDataSource.manager.findOne(CompletedActivitySequence, {
     where: {
       user_id,
@@ -130,19 +126,19 @@ async function calculateRoutineCompletionPercentage(
 
 async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {
   const updatedDailyStat = dailyStat;
-  if (dailyStat.morning_sequence_log_id) {
+  if (isValidUUID(dailyStat.morning_sequence_log_id)) {
     updatedDailyStat.morning_routine_completion_percentage = await calculateRoutineCompletionPercentage(
       dailyStat.user_id,
       dailyStat.morning_sequence_log_id,
     );
   }
-  if (dailyStat.evening_sequence_log_id) {
+  if (isValidUUID(dailyStat.evening_sequence_log_id)) {
     updatedDailyStat.evening_routine_completion_percentage = await calculateRoutineCompletionPercentage(
       dailyStat.user_id,
       dailyStat.evening_sequence_log_id,
     );
   }
-  if (dailyStat.break_sequence_log_id) {
+  if (isValidUUID(dailyStat.break_sequence_log_id)) {
     updatedDailyStat.micro_breaks_routine_completion_percentage = await calculateRoutineCompletionPercentage(
       dailyStat.user_id,
       dailyStat.break_sequence_log_id,

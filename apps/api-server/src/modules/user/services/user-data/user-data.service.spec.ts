@@ -97,7 +97,8 @@ describe('UserDataService', () => {
       RevenueCatServiceMock.getSubscriberFromRevenueCat.mockResolvedValueOnce(dummyRevenueCatCustomer);
       StripeServiceMock.subscriptions.list.mockResolvedValue({ data: [] });
 
-      await service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' });
+      const dummyHeaders = { 'app-version': '1.0.100', platform: 'Windows' };
+      await service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' }, dummyHeaders);
 
       expect(RevenueCatServiceMock.deleteUserFromRevenueCat).toBeCalledWith(userDummy.id);
       expect(Auth0ManagementServiceMock.deleteAuth0User).toBeCalledWith(userDummy.auth0_id);
@@ -108,7 +109,7 @@ describe('UserDataService', () => {
         channel: 'channel',
         message: `Account deleted for user with email: te**@mail.com and ID: ${
           userDummy.id
-        } \n\n Message: some text \n\n Can contact: ${false}`,
+        } \n\n Message: some text \n\n Can contact: ${false} \n\n Platform: ${dummyHeaders.platform}`,
       });
     });
   });

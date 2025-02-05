@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Query, UseGuards, Headers } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
@@ -27,7 +27,8 @@ export class UserDataController {
   async deleteAllUserData(
     @Query() { message, can_contact }: DeleteUserQueryParamDto,
     @AuthContext() { user }: Passport,
+    @Headers() headers: any,
   ) {
-    return this.userDataService.deleteUser(user.id, { message, can_contact });
+    return this.userDataService.deleteUser(user.id, { message, can_contact }, headers);
   }
 }

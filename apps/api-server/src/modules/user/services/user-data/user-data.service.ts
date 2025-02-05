@@ -47,7 +47,13 @@ export class UserDataService {
     }
   }
 
-  async deleteUser(user_id: string, { message, can_contact }: DeleteUserQueryParamDto) {
+  async deleteUser(user_id: string, { message, can_contact }: DeleteUserQueryParamDto, headers: any) {
+    // extracting App_platform from the header
+    const requestHeaders = { ...headers };
+    const appPlatform = requestHeaders.platform;
+    // remove user access token from logged headers - better security
+    delete requestHeaders.authorization;
+
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -93,12 +99,15 @@ export class UserDataService {
         promises.push(this.emailService.sendEmail(emailPayload));
       }
 
+      // Cliq message included user's plaform
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
         message: `Account deleted for user with email: ${maskEmail(
           auth0user?.email,
-        )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${can_contact ?? false}`,
+        )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${
+          can_contact ?? false
+        } \n\n Platform: ${appPlatform}`,
       };
       promises.push(axios.post(cliqUrl, body));
 

@@ -26,11 +26,19 @@ describe('PlatformIntegrationsService', () => {
 
   describe('getPlatformIntegrationData', () => {
     it('positive: should query the DB for a matching record', async () => {
-      await platformIntegrationsService.getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userDummy.id);
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
+      );
+      const platformData = await platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+      );
 
       expect(PlatformIntegrationsRepositoryMock.orm.findOne).toBeCalledWith({
         where: { platform: IntegrationPlatforms.ZOHO, user_id: userDummy.id },
       });
+
+      expect(platformData).toBeInstanceOf(PlatformIntegration);
     });
   });
 
@@ -79,7 +87,8 @@ describe('PlatformIntegrationsService', () => {
         dummyZohoData.accountId,
       );
 
-      expect(PlatformIntegrationsRepositoryMock.orm.save).toBeCalledWith(
+      expect(PlatformIntegrationsRepositoryMock.orm.update).toHaveBeenCalledWith(
+        { user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, external_user_id: dummyZohoData.accountId },
         new PlatformIntegration({
           user_id: userDummy.id,
           platform: IntegrationPlatforms.ZOHO,

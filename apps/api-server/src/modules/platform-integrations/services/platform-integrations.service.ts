@@ -9,42 +9,53 @@ import { PlatformIntegrationMetadataDto } from '../dto/platform-integration-meta
 export class PlatformIntegrationsService {
   constructor(private readonly platformIntegrationsRepository: PlatformIntegrationRepository) {}
 
-  async getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
-    let platformRecord;
+  async getPlatformIntegrationData(
+    platform: IntegrationPlatforms,
+    userId: string,
+    userExternalId?: string,
+  ): Promise<PlatformIntegration> {
     if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
-      platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+      const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
         where: { user_id: userId, platform, external_user_id: userExternalId },
       });
       return platformRecord;
     }
-    platformRecord = await this.platformIntegrationsRepository.orm.findOne({
+    const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
       where: { user_id: userId, platform },
     });
+
     return platformRecord;
   }
 
   async updatePlatformIntegration(
     userId: string,
     platform: IntegrationPlatforms,
-    data: PlatformIntegrationMetadataDto,
+    authData: PlatformIntegrationMetadataDto,
     userExternalId?: string,
   ) {
     const existingRecord = await this.getPlatformIntegrationData(platform, userId, userExternalId);
-    if (existingRecord) {
+
+    if (!existingRecord) {
       const platformIntegration = new PlatformIntegration({
-        ...existingRecord,
-        data,
+        user_id: userId,
+        platform,
+        ...(userExternalId && { external_user_id: userExternalId }),
+        data: authData,
       });
-      await this.platformIntegrationsRepository.orm.save(platformIntegration);
-      return;
+      return this.platformIntegrationsRepository.orm.save(platformIntegration);
     }
+
     const platformIntegration = new PlatformIntegration({
-      user_id: userId,
-      platform,
-      ...(userExternalId && { external_user_id: userExternalId }),
-      data,
+      user_id: existingRecord.user_id,
+      platform: existingRecord.platform,
+      external_user_id: existingRecord.external_user_id,
+      data: authData,
     });
-    await this.platformIntegrationsRepository.orm.save(platformIntegration);
+
+    return this.platformIntegrationsRepository.orm.update(
+      { user_id: userId, platform, external_user_id: userExternalId },
+      platformIntegration,
+    );
   }
 
   async getUserSyncedPlatforms(userId: string) {

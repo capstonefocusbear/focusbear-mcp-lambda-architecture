@@ -5,6 +5,8 @@ import { Queue } from 'bull';
 import { google } from 'googleapis';
 import axios from 'axios';
 import { OAuth2Client } from 'google-auth-library';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { DateTime } from 'luxon';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
@@ -35,6 +37,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
     @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly googleCalendarService: GoogleCalendarService,
+    @InjectSentry() private readonly sentryService: SentryService,
   ) {
     this.nodeEnv = this.configService.get('NODE_ENV');
     this.clientId =
@@ -71,19 +74,13 @@ export class GoogleAuthService implements IIntegrationAuthService {
     return { redirect_url: authorizationUrl };
   }
 
-  async saveUserData(userId: string, data: any, accountId: string): Promise<any> {
+  async saveUserData(userId: string, authData: PlatformIntegrationMetadataDto, accountId: string): Promise<any> {
     const existingUser = await this.getUser(userId);
     if (!existingUser) {
       throw new NotFoundException(`User with ID: ${userId} not found!`);
     }
 
-    const formattedData: PlatformIntegrationMetadataDto = {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expiry_date: data.expiry_date,
-    };
-
-    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, formattedData, accountId);
+    await this.platformIntegrationsService.updatePlatformIntegration(userId, this.platform, authData, accountId);
   }
 
   async getUser(userId: string): Promise<User> {
@@ -100,14 +97,23 @@ export class GoogleAuthService implements IIntegrationAuthService {
       if (!authData.refresh_token) {
         throw new Error(`Failed to authenticate user with ID: ${userId} with platform, no refresh token returned`);
       }
+      if (authData.expiry_date && authData.expiry_date < DateTime.now().toSeconds()) {
+        throw new Error(`Failed to authenticate user with ID: ${userId} with platform, token expired`);
+      }
 
       const { data: userInfo } = await axios.get(
         `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${authData.access_token}`,
       );
       const accountId = userInfo.email;
-
+      this.sentryService.instance().addBreadcrumb({
+        message: 'User authenticated with Google',
+        data: {
+          hasAccesss_token: !!authData.access_token,
+          hasRefresh_token: !!authData.refresh_token,
+          expiresIn: DateTime.fromSeconds(authData.expiry_date).toISO(),
+        },
+      });
       await this.saveUserData(userId, authData, accountId);
-
       if (accountId) {
         await this.googleCalendarService.updateEvents(userId, accountId);
       }

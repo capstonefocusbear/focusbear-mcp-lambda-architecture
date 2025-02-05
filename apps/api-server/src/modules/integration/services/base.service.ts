@@ -21,7 +21,8 @@ import { Task } from '../domain/task.model';
 import { BaseIntegrationAuthService } from '../../auth/services/base-integration.auth.service';
 import { Portal } from '../domain/portal.model';
 import { ExternalTaskStatus } from '../../to-do/domain/external-task-status.model';
-import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
+
+import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
 
 @Injectable()
 @UseGuards(IsAuth)
@@ -82,13 +83,13 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     throw new Error(`Failed to add ${this.platform} task time entry after trying to get new access token.`);
   }
 
-  protected async getPlatformIntegrationRecord(platform, userId): Promise<PlatformIntegration | null> {
+  protected async getPlatformIntegrationRecord(platform, userId): Promise<PlatformIntegrationMetadataDto | null> {
     const platformIntegrationRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
       platform,
       userId,
     );
 
-    return platformIntegrationRecord?.data;
+    return platformIntegrationRecord?.data ?? null;
   }
 
   protected abstract tryAddTimeEntry({

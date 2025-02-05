@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { PlatformIntegrationMetadataDto } from '../dto/platform-integration-metadata.dto';
 
 @Entity('platform_integrations')
 export class PlatformIntegration extends BaseEntity {
@@ -35,7 +36,7 @@ export class PlatformIntegration extends BaseEntity {
     nullable: true,
     transformer: BaseEntity.encryptJSONField('data'),
   })
-  data?: any;
+  data?: PlatformIntegrationMetadataDto;
 
   @Column({
     type: 'boolean',

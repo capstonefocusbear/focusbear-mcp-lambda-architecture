@@ -107,7 +107,7 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      return this.userDesiredRoutineDurationMinutes(
+      return this.userDesiredRoutineDurationSeconds(
         updateActivityTemplates,
         getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
       );
@@ -117,54 +117,54 @@ export class ActivityLibraryService {
     }
   }
 
-  userDesiredRoutineDurationMinutes(activityTemplates: ActivityTemplate[], user_routine_duration: number) {
+  /**
+   * selects activities that fit the user's desired routine duration for morning and evening routines
+   * @param activityTemplates the suggested activities that match the user's goals
+   * @param userRoutineDurationSeconds the user's desired routine duration in seconds
+   * @returns activities that fit the user's desired routine duration
+   */
+  userDesiredRoutineDurationSeconds(activityTemplates: ActivityTemplate[], userRoutineDurationSeconds: number) {
     const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
-    const morning_routine = [];
-    const evening_routine = [];
-    const routine_duration = {
-      morning_routine: 0,
-      evening_routine: 0,
+    const routineLength = {
+      [ActivityType.morning]: 0,
+      [ActivityType.evening]: 0,
+    };
+    const allValidActivities = [];
+    const routineDuration = {
+      [ActivityType.morning]: 0,
+      [ActivityType.evening]: 0,
     }; // @Description: unit of duration is seconds
 
-    activityTemplates
+    const morningAndEveningActivityTemplates = activityTemplates.filter(
+      (activityTemplate) =>
+        activityTemplate.activity_type === ActivityType.morning ||
+        activityTemplate.activity_type === ActivityType.evening,
+    );
+    morningAndEveningActivityTemplates
       ?.sort((templateA, templateB) => templateA.duration_seconds - templateB.duration_seconds)
       ?.some((activityTemplate) => {
         const template_duration = parseInt(activityTemplate.duration_seconds?.toString(), 10);
         if (
-          (routine_duration.morning_routine >= user_routine_duration &&
-            routine_duration.evening_routine >= user_routine_duration) ||
-          (morning_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS &&
-            evening_routine.length >= MAX_NUMBER_OF_ROUTINE_HABITS)
+          (routineDuration[ActivityType.morning] >= userRoutineDurationSeconds &&
+            routineDuration[ActivityType.evening] >= userRoutineDurationSeconds) ||
+          (routineLength[ActivityType.morning] >= MAX_NUMBER_OF_ROUTINE_HABITS &&
+            routineLength[ActivityType.evening] >= MAX_NUMBER_OF_ROUTINE_HABITS)
         ) {
           return true;
         }
-        const { activity_data, ...rest } = activityTemplate;
-        // replace activity template id with random UUID to avoid duplicate id
-        const template = { ...activity_data, ...rest, id: randomUUID() };
-        if (activityTemplate.activity_type === ActivityType.morning) {
-          const isValidDuration = this.isValidTemplateDuration(
-            template_duration,
-            routine_duration.morning_routine,
-            user_routine_duration,
-          );
-          if (isValidDuration) {
-            routine_duration.morning_routine += template_duration;
-            morning_routine.push(template);
-          }
-        } else {
-          const isValidDuration = this.isValidTemplateDuration(
-            template_duration,
-            routine_duration.evening_routine,
-            user_routine_duration,
-          );
-          if (isValidDuration) {
-            evening_routine.push(template);
-            routine_duration.evening_routine += template_duration;
-          }
+        const isValidDuration = this.isValidTemplateDuration(
+          template_duration,
+          routineDuration[activityTemplate.activity_type],
+          userRoutineDurationSeconds,
+        );
+        if (isValidDuration) {
+          routineDuration[activityTemplate.activity_type] += template_duration;
+          allValidActivities.push({ ...activityTemplate, id: randomUUID() });
+          routineLength[activityTemplate.activity_type] += 1;
         }
         return false;
       });
-    return [...morning_routine, ...evening_routine];
+    return allValidActivities;
   }
 
   isValidTemplateDuration(template_duration: number, routine_duration: number, user_routine_duration: number) {

@@ -7,8 +7,11 @@ import {
   activityTemplateFromDBDummy,
   activityTemplateFromDBForDifferentUserDummy,
   deserializedStandaloneActivitiesDummy,
+  dummyActivityTemplatesForBuildHealthyHabits,
   dummyActivityTemplatesWithTags,
   dummyGetRoutineSuggestionsDto,
+  expectedActivityWithUserDuration20,
+  expectedDummyActivityTemplatesForBuildHealthyHabits,
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import {
@@ -23,7 +26,6 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
-import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -153,9 +155,9 @@ describe('ActivityLibraryService', () => {
 
     it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const matched_activities = activityLibraryService.userDesiredRoutineDurationMinutes(
+      const matched_activities = activityLibraryService.userDesiredRoutineDurationSeconds(
         dummyActivityTemplatesWithTags,
-        dummyGetRoutineSuggestionsDto.routine_duration,
+        dummyGetRoutineSuggestionsDto.routine_duration * 60, // convert minutes to seconds
       );
 
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
@@ -164,36 +166,64 @@ describe('ActivityLibraryService', () => {
         dummyGetRoutineSuggestionsDto,
         userDummy.id,
       );
-      const routine_response = response.reduce(
-        (routine, template) => {
-          if (template.activity_type === ActivityType.morning) {
-            return {
-              morning_routine_duration: routine.morning_routine_duration + template.duration_seconds,
-              morning_routine_count: routine.morning_routine_count + 1,
-            };
-          }
-          return {
-            evening_routine_duration: routine.evening_routine_duration + template.duration_seconds,
-            evening_routine_count: routine.evening_routine_count + 1,
-          };
-        },
-        {
-          morning_routine_duration: 0,
-          morning_routine_count: 0,
-          evening_routine_duration: 0,
-          evening_routine_count: 0,
-        },
+
+      const expectedWithoutIds = expectedActivityWithUserDuration20.map((activity) => {
+        const { id, ...rest } = activity;
+        return rest;
+      });
+      const responseWithoutIds = response.map((activity) => {
+        const { id, ...rest } = activity;
+        return rest;
+      });
+
+      expect(response).toHaveLength(expectedActivityWithUserDuration20.length);
+
+      // The response should contain all expected objects, regardless of order.
+      expect(responseWithoutIds).toEqual(expect.arrayContaining(expectedWithoutIds));
+
+      // verify that all returned activity IDs are unique.
+      const responseIds = response.map((activity) => activity.id);
+      const uniqueIds = new Set(responseIds);
+      expect(uniqueIds.size).toBe(responseIds.length);
+    });
+
+    it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration for all routines, activity ids should also be unique', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesForBuildHealthyHabits,
       );
 
-      expect(routine_response.morning_routine_duration).toBeLessThanOrEqual(
-        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        { ...dummyGetRoutineSuggestionsDto },
+        userDummy.id,
       );
-      expect(routine_response.evening_routine_duration).toBeLessThanOrEqual(
-        dummyGetRoutineSuggestionsDto.routine_duration * 60,
+      const responseWithoutIds = response.map((activity) => {
+        const { id, pack_id, ...rest } = activity;
+        return rest;
+      });
+      expect(response).toHaveLength(expectedDummyActivityTemplatesForBuildHealthyHabits.length);
+      expect(responseWithoutIds).toEqual(expect.arrayContaining(expectedDummyActivityTemplatesForBuildHealthyHabits));
+
+      const activityIds = response.map((activity) => activity.id);
+      const dummyActivityIds = dummyActivityTemplatesForBuildHealthyHabits.map((activity) => activity.id);
+      const hasDuplicates = activityIds.some((activityId) => dummyActivityIds.includes(activityId));
+      expect(hasDuplicates).toBe(false);
+    });
+
+    it('negative: should return empty if routine duration are less than activities duration', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesForBuildHealthyHabits,
       );
-      expect(routine_response.morning_routine_count).toBeLessThanOrEqual(5);
-      expect(routine_response.evening_routine_count).toBeLessThanOrEqual(5);
-      expect(response).toMatchObject(matched_activities);
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
+        userDummy.id,
+      );
+
+      expect(response).toEqual([]);
     });
   });
 });

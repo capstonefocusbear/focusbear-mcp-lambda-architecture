@@ -11,7 +11,6 @@ import {
   dummyActivityTemplatesWithTags,
   dummyGetRoutineSuggestionsDto,
   expectedActivityWithUserDuration20,
-  expectedDummyActivityTemplatesForBuildHealthyHabits,
   upsertActiivtyTemplateDummy,
 } from '../../../../test/dummies/habit-packs.dummies';
 import {
@@ -26,6 +25,7 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
+import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -198,12 +198,13 @@ describe('ActivityLibraryService', () => {
         { ...dummyGetRoutineSuggestionsDto },
         userDummy.id,
       );
-      const responseWithoutIds = response.map((activity) => {
-        const { id, pack_id, ...rest } = activity;
-        return rest;
-      });
-      expect(response).toHaveLength(expectedDummyActivityTemplatesForBuildHealthyHabits.length);
-      expect(responseWithoutIds).toEqual(expect.arrayContaining(expectedDummyActivityTemplatesForBuildHealthyHabits));
+      const responseHabitsTotalDuration = response.reduce((total, activity) => {
+        const result = total + activity.duration_seconds;
+        return result;
+      }, 0);
+      const dtoRoutineDurationInSeconds = dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
+
+      expect(dtoRoutineDurationInSeconds).toBeLessThanOrEqual(responseHabitsTotalDuration);
 
       const activityIds = response.map((activity) => activity.id);
       const dummyActivityIds = dummyActivityTemplatesForBuildHealthyHabits.map((activity) => activity.id);

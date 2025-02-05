@@ -159,7 +159,8 @@ export class ActivityLibraryService {
         );
         if (isValidDuration) {
           routineDuration[activityTemplate.activity_type] += template_duration;
-          allValidActivities.push({ ...activityTemplate, id: randomUUID() });
+          const { activity_data, ...rest } = activityTemplate;
+          allValidActivities.push({ ...rest, ...activity_data, id: randomUUID() });
           routineLength[activityTemplate.activity_type] += 1;
         }
         return false;

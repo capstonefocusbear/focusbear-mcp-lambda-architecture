@@ -10,6 +10,7 @@ import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
 import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
+import { BadGatewayExceptionFilter } from './shared/exceptions/badGatewayExceptionFilter ';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder()
@@ -32,6 +33,7 @@ async function bootstrap(): Promise<void> {
   const HELMET: unknown = configService.get('helmet');
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 
+  app.useGlobalFilters(new BadGatewayExceptionFilter());
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.useGlobalInterceptors(new LoggerErrorInterceptor());

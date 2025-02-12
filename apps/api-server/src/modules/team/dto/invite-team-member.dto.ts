@@ -2,9 +2,9 @@ import { Type } from 'class-transformer';
 import { IsBoolean, IsDate, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class InviteTeamMemberDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsNotEmpty()
   @IsUUID()
@@ -30,4 +30,8 @@ export class InviteTeamMemberDto {
   @IsNotEmpty()
   @IsBoolean()
   is_member: boolean;
+
+  @IsOptional()
+  @IsUUID('4')
+  user_id?: string;
 }

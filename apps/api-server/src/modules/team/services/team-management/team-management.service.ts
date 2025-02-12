@@ -234,13 +234,24 @@ export class TeamManagementService {
 
   async inviteTeamMember(
     adminId: string,
-    { team_id, email, first_name, last_name, member_expiry_date, is_admin, is_member }: InviteTeamMemberDto,
+    { team_id, email, first_name, last_name, member_expiry_date, is_admin, is_member, user_id }: InviteTeamMemberDto,
   ): Promise<any> {
     try {
+      if (!email && !user_id) {
+        throw new BadRequestException(
+          'Both email and user_id cannot be empty. Please provide either an email or a user_id.',
+        );
+      }
+
       const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
+      let member_email = email;
+      if (!member_email) {
+        member_email = await this.getUserEmailFromAuth0(user_id);
+      }
+
       const payload = new MemberInvitationPayload({
         admin_id: adminId,
-        email,
+        email: member_email,
         team_id,
         first_name,
         last_name,
@@ -249,6 +260,7 @@ export class TeamManagementService {
         is_member,
         team_name: team?.name ?? TEAM_A,
       });
+
       // check whether team has available space if offline payment type
       const { team_size_limit, team_size, payment_type } = team;
       if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
@@ -592,5 +604,17 @@ export class TeamManagementService {
     }
     linkedMemberRecord.member_expiry_date = expiry_date;
     await this.teamToMemberRepository.orm.save(linkedMemberRecord);
+  }
+
+  async getUserEmailFromAuth0(user_id: string) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    }
+    const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+    if (!auth0User) {
+      throw new NotFoundException(`User with id: ${user_id} and auth0_id: ${user.auth0_id} does not exists in auth0!`);
+    }
+    return auth0User.email;
   }
 }

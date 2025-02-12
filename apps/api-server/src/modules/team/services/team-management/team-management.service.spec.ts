@@ -305,6 +305,82 @@ describe('TeamManagementService', () => {
   describe('inviteTeamMember', () => {
     const email = 'test@gamil.com';
 
+    it('negative: if either email or user not provided, error should be thrown', async () => {
+      let exception;
+      const errorMessage = 'Both email and user_id cannot be empty. Please provide either an email or a user_id.';
+
+      try {
+        await teamManagementService.inviteTeamMember(userDummy.id, {
+          team_id: TeamWithMembersDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+          is_admin: false,
+          is_member: true,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user not found, error should be thrown', async () => {
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
+      });
+      UserRepositoryMock.orm.findOne.mockReturnValueOnce(null);
+
+      let exception;
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+
+      try {
+        await teamManagementService.inviteTeamMember(userDummy.id, {
+          team_id: TeamWithMembersDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+          is_admin: false,
+          is_member: true,
+          user_id: userDummy.id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user registration not found in auth0, error should be thrown', async () => {
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
+      });
+      UserRepositoryMock.orm.findOne.mockReturnValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User(null);
+
+      let exception;
+      const errorMessage = `User with id: ${userDummy.id} and auth0_id: ${userDummy.auth0_id} does not exists in auth0!`;
+
+      try {
+        await teamManagementService.inviteTeamMember(userDummy.id, {
+          team_id: TeamWithMembersDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+          is_admin: false,
+          is_member: true,
+          user_id: userDummy.id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('negative: if team payment_type is OFFLINE and capacity is full, error should be thrown', async () => {
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
         team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },

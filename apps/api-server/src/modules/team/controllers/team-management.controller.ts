@@ -15,6 +15,7 @@ import { InviteTeamMemberDto } from '../dto/invite-team-member.dto';
 import { TeamManagementService } from '../services/team-management/team-management.service';
 import { UpdateTeamNameDto } from '../dto/update-team-name.dto';
 import { UpdateMemberExpiryDateDto } from '../dto/update-member-expiry-date.dto';
+import { AddTeamManuallyDto } from '../dto/add-team-member-manually.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -120,5 +121,15 @@ export class TeamManagementController {
     @AuthContext() { user: adminUser }: Passport,
   ) {
     return this.teamManagementService.updateMemberExpiryDate(adminUser.id, updateExpiryDateData);
+  }
+
+  @Post('/add-member-manually')
+  @UseGuards(HasSubscription)
+  @RequireEntitlements([Entitlement.team_admin])
+  async addTeamMemberManually(
+    @Body() addTeamManuallyDto: AddTeamManuallyDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.addTeamMemberManually(adminId, addTeamManuallyDto);
   }
 }

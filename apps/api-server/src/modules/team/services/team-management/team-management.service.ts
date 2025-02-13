@@ -48,7 +48,7 @@ export class TeamManagementService {
   ) {}
 
   async addTeamMember(
-    memberId: string,
+    user: User,
     adminId: string,
     teamId: string,
     firstName: string,
@@ -61,22 +61,21 @@ export class TeamManagementService {
         level: 'debug',
         message: 'Adding team member',
         data: {
-          memberId,
+          user,
           adminId,
         },
       });
-      const [user, { members, team }] = await Promise.all([
-        this.userRepository.orm.findOne({
-          where: { id: memberId },
-        }),
-        this.teamRepository.findActiveTeamWithMembers(teamId, adminId),
-      ]);
-      this.validateTeamMembership(user, members, {
+
+      const memberId = user.id;
+      const { members, team } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+
+      this.validateTeamMembership(members, {
         member_id: memberId,
         owner_id: adminId,
         teamId,
         team,
       });
+
       // Save user as part of team
       const connectedMemberRecord = new TeamToMember({
         member_id: memberId,
@@ -86,7 +85,7 @@ export class TeamManagementService {
         member_expiry_date: expiryDate,
       });
       await this.teamToMemberRepository.orm.save(connectedMemberRecord);
-      await this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_member);
+      await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
       await this.updateTeamSize(adminId, teamId, ++members.length);
       return user;
     } catch (error) {
@@ -95,7 +94,7 @@ export class TeamManagementService {
     }
   }
 
-  private validateTeamMembership(user: User, members: User[], { member_id, owner_id, teamId, team }): void | never {
+  private validateTeamMembership(members: User[], { member_id, owner_id, teamId, team }): void | never {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -105,7 +104,6 @@ export class TeamManagementService {
         owner_id,
       },
     });
-    if (!user) throw new NotFoundException(`The User with id: ${member_id} does not exist!`);
     const teamMemberIds = members.map((member) => member.id);
     const isUserAlreadyInTeam = teamMemberIds.includes(member_id);
     if (isUserAlreadyInTeam) {
@@ -243,11 +241,12 @@ export class TeamManagementService {
         );
       }
 
-      const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
       let member_email = email;
       if (!member_email) {
         member_email = await this.getUserEmailFromAuth0(user_id);
       }
+
+      const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
 
       const payload = new MemberInvitationPayload({
         admin_id: adminId,
@@ -286,16 +285,26 @@ export class TeamManagementService {
 
   async acceptInvitation(token: string, user_id: string) {
     try {
-      const userPromise = this.userRepository.orm.findOneBy({ id: user_id });
-      const payloadPromise: Promise<MemberInvitationPayload> = this.jwtService.asyncVerify(token);
-      const [user, { admin_id, email, team_id, first_name, last_name, member_expiry_date, is_admin, is_member }] =
-        await Promise.all([userPromise, payloadPromise]);
-      const userAuth0Data = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
-      const hasInvitationEmail = true;
-      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${userAuth0Data.email}.`;
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`The User with id: ${user_id} does not exist!`);
+
+      const tokenPayload = await this.jwtService.asyncVerify(token);
+
+      const { admin_id, email, team_id, first_name, last_name, member_expiry_date, is_admin, is_member } = tokenPayload;
+      const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
+
+      if (!auth0User) {
+        throw new NotFoundException(
+          `The User with id: ${user.id} and auth0_id: ${user.auth0_id} does not exists in auth0!`,
+        );
+      }
+
+      const hasInvitationEmail = !!auth0User.email;
+      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${auth0User.email}.`;
       if (!hasInvitationEmail) throw new BadRequestException(hasInvalidEmailMsg);
+
       if (is_member) {
-        await this.addTeamMember(user_id, admin_id, team_id, first_name, last_name, member_expiry_date);
+        await this.addTeamMember(user, admin_id, team_id, first_name, last_name, member_expiry_date);
       }
       if (is_admin) {
         await this.assignNewMemberAsAdmin(user_id, team_id, first_name, last_name);

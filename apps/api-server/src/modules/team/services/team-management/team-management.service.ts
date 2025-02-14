@@ -270,11 +270,22 @@ export class TeamManagementService {
       const secretKey = this.configService.get('tokens.secret');
       const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
       const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
+
+      let bcc = FOCUS_BEAR_EMAILS.SUPPORT;
+
+      const userTeamOwner = await this.userRepository.orm.findOneBy({ id: adminId });
+
+      if (userTeamOwner) {
+        const auth0TeamOwner = await this.auth0ManagementService.getAuth0User(userTeamOwner.auth0_id);
+        bcc = auth0TeamOwner?.email || FOCUS_BEAR_EMAILS.SUPPORT;
+      }
+
       await this.emailService.sendEmail({
         to: email,
         from: FOCUS_BEAR_EMAILS.MARKETING,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
         dynamicTemplateData: { invite_url: inviteUrl, team_name: team?.name ?? TEAM_A },
+        bcc,
       });
       return inviteUrl;
     } catch (error) {

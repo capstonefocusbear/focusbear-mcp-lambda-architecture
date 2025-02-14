@@ -5,11 +5,7 @@ module.exports = {
     sourceType: 'module',
   },
   plugins: ['@typescript-eslint/eslint-plugin', 'prettier'],
-  extends: [
-    'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
-    'airbnb-typescript/base',
-  ],
+  extends: ['plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended', 'airbnb-typescript/base'],
   root: true,
   env: {
     node: true,
@@ -25,7 +21,7 @@ module.exports = {
     'import/prefer-default-export': 'off',
     'class-methods-use-this': 'off',
     'object-curly-newline': 'off',
-    "no-console": ["error", { "allow": ["error"] }],
+    'no-console': ['error', { allow: ['error'] }],
     '@typescript-eslint/indent': 'off',
     'implicit-arrow-linebreak': 'off',
     'import/no-extraneous-dependencies': 'off',
@@ -36,9 +32,10 @@ module.exports = {
     'import/no-cycle': 'off',
     '@typescript-eslint/naming-convention': 'off',
     'consistent-return': 'off',
-    "@typescript-eslint/no-unused-expressions": 'off',
+    '@typescript-eslint/no-unused-expressions': 'off',
     'max-len': [0, 120, 2, { ignoreUrls: true }],
-    "arrow-body-style": "off",
-    'operator-linebreak': 'off'
+    'arrow-body-style': 'off',
+    'operator-linebreak': 'off',
+    'function-paren-newline':'off', 
   },
 };

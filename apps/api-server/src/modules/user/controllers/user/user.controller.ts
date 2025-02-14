@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
-import { OpenAIService } from '@app/openai';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -35,6 +34,7 @@ import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
+import { Disabled } from '../../../../shared/decorators/disabled.decorator';
 
 @Controller('user')
 @ApiTags('user')
@@ -43,7 +43,6 @@ export class UserController {
     private readonly userService: UserService,
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
-    private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -185,6 +184,7 @@ export class UserController {
     return this.userService.getMotivationalMessage(response, user.id, { language, tone, routine, device_type });
   }
 
+  @Disabled()
   @Post('/chat')
   @Sse()
   @UseGuards(IsAuth)

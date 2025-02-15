@@ -8,7 +8,13 @@ import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
 import { StripeService } from '@app/stripe';
 import { Auth0ManagementService } from '@app/auth0';
-import { DailyStatsDummy, TeamMemberDummy, TeamWithMembersDummy, userDummy } from '../../../../../test/dummies';
+import {
+  auth0UserDummy,
+  DailyStatsDummy,
+  TeamMemberDummy,
+  TeamWithMembersDummy,
+  userDummy,
+} from '../../../../../test/dummies';
 import {
   JwtServiceMock,
   RevenueCatServiceMock,
@@ -406,6 +412,8 @@ describe('TeamManagementService', () => {
       const singedJwt = 'some.test.jwt.string';
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
 
       await teamManagementService.inviteTeamMember(userDummy.id, {
         email,
@@ -425,6 +433,7 @@ describe('TeamManagementService', () => {
           invite_url: expect.toInclude(`?token=${singedJwt}`),
           team_name: TeamWithMembersDummy.name,
         },
+        bcc: auth0UserDummy.email,
       });
     });
 
@@ -434,6 +443,8 @@ describe('TeamManagementService', () => {
       });
       const singedJwt = 'some.test.jwt.string';
       JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
 
       await teamManagementService.inviteTeamMember(userDummy.id, {
         email,
@@ -453,9 +464,12 @@ describe('TeamManagementService', () => {
           invite_url: expect.toInclude(`?token=${singedJwt}`),
           team_name: TeamWithMembersDummy.name,
         },
+        bcc: auth0UserDummy.email,
       });
     });
   });
+
+  // TODO: Implement unit tests for acceptInvitation function
 
   describe('assignMemberAsAdmin', () => {
     it('negative: if user is already admin member of team, error should be thrown', async () => {

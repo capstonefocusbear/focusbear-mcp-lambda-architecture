@@ -98,6 +98,8 @@ export const auth0UserDummy: Auth0UserProfile = {
     client_id: MAC_CLIENT_ID,
     name: 'MacOS device name',
   },
+  given_name: 'First Name',
+  family_name: 'Last Name',
 };
 
 export const lastFiftyEventsDummy = [

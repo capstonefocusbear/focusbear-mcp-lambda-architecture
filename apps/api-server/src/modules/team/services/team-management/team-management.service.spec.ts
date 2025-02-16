@@ -1006,4 +1006,70 @@ describe('TeamManagementService', () => {
       expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberId, Entitlement.team_admin);
     });
   });
+
+  describe('addTeamMemberManually', () => {
+    it('negative: if user not found, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      let exception;
+      const errorMessage = `The user with id: ${userDummy.id} doesn't exists!`;
+
+      try {
+        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
+          team_id: TeamWithMembersDummy.id,
+          user_id: userDummy.id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user registration not found in auth0, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(null);
+
+      let exception;
+      const errorMessage = `The user with id: ${userDummy.id} and auth0_id: ${userDummy.auth0_id} does not exists in auth0!`;
+
+      try {
+        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
+          team_id: TeamWithMembersDummy.id,
+          user_id: userDummy.id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
+      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMember);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+        team: TeamWithMembersDummy,
+        members: [userDummy],
+      });
+
+      await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
+        team_id: TeamWithMembersDummy.id,
+        user_id: newMember.id,
+      });
+
+      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith(
+        new TeamToMember({
+          member_id: newMember.id,
+          team_id: TeamWithMembersDummy.id,
+          first_name: auth0UserDummy.given_name,
+          last_name: auth0UserDummy.family_name,
+        }),
+      );
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(newMember.id, Entitlement.team_member);
+    });
+  });
 });

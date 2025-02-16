@@ -29,6 +29,7 @@ import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { AddTeamManuallyDto } from '../../dto/add-team-member-manually.dto';
 
 @Injectable()
 export class TeamManagementService {
@@ -53,7 +54,7 @@ export class TeamManagementService {
     teamId: string,
     firstName: string,
     lastName: string,
-    expiryDate: Date,
+    expiryDate?: Date,
   ): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -82,11 +83,11 @@ export class TeamManagementService {
         team_id: teamId,
         first_name: firstName,
         last_name: lastName,
-        member_expiry_date: expiryDate,
+        member_expiry_date: expiryDate ?? (team.expires_date as Date),
       });
       await this.teamToMemberRepository.orm.save(connectedMemberRecord);
       await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
-      await this.updateTeamSize(adminId, teamId, ++members.length);
+      await this.syncTeamSizeWithSubscription(team, ++members.length);
       return user;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -427,22 +428,16 @@ export class TeamManagementService {
 
   async updateTeamSize(userId: string, teamId: string, teamSize: number) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
-    const { team } = await this.teamRepository.findActiveTeamWithMembers(teamId, userId);
     if (!user) {
       throw new NotFoundException(`User with ID: ${userId} does not exist!`);
     }
+
+    const { team } = await this.teamRepository.findActiveTeamWithMembers(teamId, userId);
     if (!team) {
       throw new NotFoundException(`Team with ID: ${teamId} does not exist!`);
     }
-    if (team.payment_type === PaymentType.STRIPE) {
-      const subId = team?.stripe_data?.subscriptionId;
-      const subItemId = team?.stripe_data?.subscriptionItemId;
-      if (!subId || !subItemId) {
-        throw new Error(`Missing stripe data for team with ID: ${teamId}`);
-      }
-      await this.stripeService.updateSubscription(subId, subItemId, teamSize);
-    }
-    await this.teamRepository.update(teamId, { team_size: teamSize });
+
+    return this.syncTeamSizeWithSubscription(team, teamSize);
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
@@ -636,5 +631,41 @@ export class TeamManagementService {
       throw new NotFoundException(`User with id: ${user_id} and auth0_id: ${user.auth0_id} does not exists in auth0!`);
     }
     return auth0User.email;
+  }
+
+  async addTeamMemberManually(adminId: string, { team_id, user_id, member_expiry_date }: AddTeamManuallyDto) {
+    try {
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) {
+        throw new NotFoundException(`The user with id: ${user_id} doesn't exists!`);
+      }
+
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+      if (!auth0User) {
+        throw new NotFoundException(
+          `The user with id: ${user.id} and auth0_id: ${user.auth0_id} does not exists in auth0!`,
+        );
+      }
+
+      const first_name = auth0User.given_name;
+      const last_name = auth0User.family_name;
+
+      return await this.addTeamMember(user, adminId, team_id, first_name, last_name, member_expiry_date);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async syncTeamSizeWithSubscription(team: Team, teamSize: number) {
+    if (team.payment_type === PaymentType.STRIPE) {
+      const subId = team?.stripe_data?.subscriptionId;
+      const subItemId = team?.stripe_data?.subscriptionItemId;
+      if (!subId || !subItemId) {
+        throw new Error(`Missing stripe data for team with ID: ${team.id}`);
+      }
+      await this.stripeService.updateSubscription(subId, subItemId, teamSize);
+    }
+    await this.teamRepository.update(team.id, { team_size: teamSize });
   }
 }

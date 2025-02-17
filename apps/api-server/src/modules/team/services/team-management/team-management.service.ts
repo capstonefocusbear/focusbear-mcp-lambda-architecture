@@ -281,7 +281,7 @@ export class TeamManagementService {
       const devFrontendUrl = this.configService.get('devFrontendUrl');
       const inviteUrl = `${
         devFrontendUrl === origin ? devFrontendUrl : this.configService.get('frontEndUrl')
-      }?token=${token}`;
+      }/accept-invite?token=${token}`;
 
       let bcc = FOCUS_BEAR_EMAILS.SUPPORT;
 

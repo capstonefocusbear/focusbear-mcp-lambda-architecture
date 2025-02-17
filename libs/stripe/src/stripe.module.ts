@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { SentryModule } from '@ntegral/nestjs-sentry';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
 import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { ISendGridOptions, SendGridModule } from '@app/send-grid';
-import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { Auth0Module } from '@app/auth0';
+import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { DynamicModuleFactory } from '../../dynamic-module/src';
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
@@ -14,6 +15,9 @@ import { StripeService } from './stripe.service';
   providers: [StripeService, UserRepository],
   exports: [StripeService],
   imports: [
+    BullModule.registerQueue({
+      name: 'emailQueue',
+    }),
     SentryModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

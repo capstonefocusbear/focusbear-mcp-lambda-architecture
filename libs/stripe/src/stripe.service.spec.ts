@@ -1,11 +1,13 @@
 import axios from 'axios';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule, getQueueToken } from '@nestjs/bull';
+import { Queue, Job } from 'bull';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RevenueCatService } from '@app/revenue-cat';
-import { SendGridService } from '@app/send-grid';
-import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
+import { SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0ManagementService } from '@app/auth0';
+import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IStripeOptions } from './interfaces';
@@ -20,102 +22,140 @@ import {
   SendGridServiceMock,
 } from '../../../apps/api-server/test/mocks';
 
-// Mock axios and set the type
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('StripeService', () => {
   let service: StripeService;
+  let mockEmailQueue: jest.Mocked<Pick<Queue, 'add'>>;
   const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
   beforeEach(async () => {
+    mockEmailQueue = {
+      add: jest.fn().mockImplementation(() => Promise.resolve({} as Job)),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RevenueCatService, Auth0ManagementService, UserRepository],
       imports: [
         ConfigModule.forRoot({ load: configsArray }),
+        BullModule.forRoot({
+          redis: {
+            host: 'localhost',
+            port: 6379,
+          },
+        }),
         StripeModule.registerAsync({
           imports: [ConfigModule],
           inject: [ConfigService],
-          useFactory: (configService: ConfigService): IStripeOptions => ({
-            ...configService.get('stripeConfig'),
+          useFactory: (): IStripeOptions => ({
             secretKey: 'sk_test_4eC39HqLyjWDarjtT1zdp7dc',
             apiVersion: '2022-08-01',
+            checkout: {
+              success_url: 'http://localhost:3000/success',
+              cancel_url: 'http://localhost:3000/cancel',
+            },
+            webhook: {
+              secret: 'whsec_test',
+            },
           }),
         }),
       ],
     })
-      .overrideProvider(UserRepository)
-      .useValue(UserRepositoryMock)
-      .overrideProvider(Auth0ManagementService)
-      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(getQueueToken('emailQueue'))
+      .useValue(mockEmailQueue)
+      .overrideProvider(SentryService)
+      .useValue({
+        instance: () => ({
+          captureException: jest.fn(),
+        }),
+      })
       .overrideProvider(RevenueCatService)
       .useValue(RevenueCatServiceMock)
-      .overrideProvider(SendGridService)
-      .useValue(SendGridServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     service = module.get<StripeService>(StripeService);
+
     process.env = {
       ZOHO_CLIQ_BACKEND_BOT_WEBHOOK: 'some-url',
       ZOHO_CLIQ_API_KEY: 'key',
       ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL: 'channel',
     };
 
-    jest.clearAllMocks();
-    jest.resetAllMocks();
-  });
+    // Mock Stripe methods
+    service.subscriptions = {
+      list: jest.fn(),
+      del: jest.fn(),
+    } as any;
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    jest.clearAllMocks();
   });
 
   describe('logCancellation', () => {
-    it('negative: should throw not found error if user not returned from DB', async () => {
+    const mockSession = {
+      cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
+      entitlement_id: 'prod_B4DMIzxyNLnP2a',
+    };
+    const mockUserAuthCtx = {
+      id: userDummy.id,
+    };
+
+    it('should throw NotFoundException if user not found', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      let exception: any;
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
 
-      try {
-        await service.logCancellation(
-          {
-            cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
-            entitlement_id: 'prod_B4DMIzxyNLnP2a',
-          },
-          { id: userDummy.id },
-        );
-      } catch (error) {
-        exception = error;
-      }
+      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(
+        new NotFoundException(`User with ID: ${userDummy.id} does not exist!`),
+      );
 
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
+      expect(mockEmailQueue.add).not.toHaveBeenCalled();
+      expect(mockedAxios.post).not.toHaveBeenCalled();
     });
 
-    it('positive: sends a message to cliq and an email', async () => {
+    it('should successfully log cancellation and queue email', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
-      const dummySession = {
-        cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
-        entitlement_id: 'prod_B4DMIzxyNLnP2a',
-      };
-      const dummyUserAuthCtx = {
-        id: userDummy.id,
-      };
-      const message = `Subscription canceled\n\n User:${dummyUserAuthCtx.id} \n\n Reason:${dummySession.cancel_subscription_reason}`;
-      await service.logCancellation(dummySession, dummyUserAuthCtx);
+      mockedAxios.post.mockResolvedValueOnce({ data: {} });
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+      await service.logCancellation(mockSession, mockUserAuthCtx);
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
-        message,
+        message: `Subscription canceled\n\n User:${mockUserAuthCtx.id} \n\n Reason:${mockSession.cancel_subscription_reason}`,
       });
 
-      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+      expect(mockEmailQueue.add).toHaveBeenCalledWith('sendEmail', {
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
-        text: `User ID: ${dummyUserAuthCtx.id}\n\n${prettyJson(dummySession)}`,
-        subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${dummySession.cancel_subscription_reason}`,
+        text: `User ID: ${mockUserAuthCtx.id}\n\n${prettyJson(mockSession)}`,
+        subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${mockSession.cancel_subscription_reason}`,
       });
+    });
+
+    it('should throw error if axios post fails', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+
+      const mockError = new Error('Network error');
+      mockedAxios.post.mockRejectedValueOnce(mockError);
+
+      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(mockError);
+
+      expect(mockEmailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should throw error if email queueing fails', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      mockedAxios.post.mockResolvedValueOnce({ data: {} });
+
+      const mockError = new Error('Queue error');
+      mockEmailQueue.add.mockImplementationOnce(() => Promise.reject(mockError));
+
+      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(mockError);
     });
   });
 

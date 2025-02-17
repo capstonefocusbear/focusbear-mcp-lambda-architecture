@@ -36,6 +36,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { SurveyModule } from './modules/survey/survey.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { SurveyModule } from './modules/survey/survey.module';
     IntegrationModule,
     CalendarModule,
     SurveyModule,
+    EmailModule,
   ],
   controllers: [AppController],
 })

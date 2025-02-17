@@ -3,9 +3,10 @@ import Stripe from 'stripe';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import axios from 'axios';
 import { RevenueCatService } from '@app/revenue-cat';
-import { SendGridService } from '@app/send-grid';
-import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import {
   EMAIL_SUBJECTS,
@@ -24,9 +25,9 @@ import { AppDataSource } from '../../../apps/api-server/ormconfig';
 export class StripeService extends Stripe {
   constructor(
     @Inject(STRIPE_MODULE_OPTIONS) private options: IStripeOptions,
+    @InjectQueue('emailQueue') private readonly emailQueue: Queue,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly revenueCatService: RevenueCatService,
-    private readonly emailService: SendGridService,
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
   ) {
@@ -175,8 +176,6 @@ export class StripeService extends Stripe {
     await this.subscriptions.del(subscriptionId);
   }
 
-  // Not having an await may cause emails to not be sent sometimes
-  // TODO: - Move email logic to a background job via BULL. Issue #951 - https://github.com/Focus-Bear/backend/issues/951
   async logCancellation(session: CancelSubscriptionSession, user: UserAuthContext) {
     const cancelledUser = await this.userRepository.orm.findOneBy({ id: user.id });
     if (!cancelledUser) {
@@ -188,17 +187,17 @@ export class StripeService extends Stripe {
       channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
       message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${session.cancel_subscription_reason}`,
     };
+    await axios.post(cliqUrl, body);
 
     const auth0User = await this.auth0ManagementService.getAuth0User(cancelledUser.auth0_id);
 
-    axios.post(cliqUrl, body);
-
-    this.emailService.sendEmail({
+    // Queue the email job using Bull
+    await this.emailQueue.add('sendEmail', {
       to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: auth0User.email,
-      text: `User ID: ${user.id}\n\n${prettyJson(session)}`,
       subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${session.cancel_subscription_reason}`,
+      text: `User ID: ${user.id}\n\n${prettyJson(session)}`,
     });
   }
 

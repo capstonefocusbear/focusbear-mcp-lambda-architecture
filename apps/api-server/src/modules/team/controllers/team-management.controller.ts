@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -51,8 +51,10 @@ export class TeamManagementController {
   async inviteTeamMember(
     @Body() inviteMemberDto: InviteTeamMemberDto,
     @AuthContext() { user: { id: adminId } }: Passport,
+    @Req() request: Request,
   ): Promise<any> {
-    return this.teamManagementService.inviteTeamMember(adminId, inviteMemberDto);
+    const { origin } = request.headers as { origin?: string };
+    return this.teamManagementService.inviteTeamMember(adminId, inviteMemberDto, origin);
   }
 
   @Post('/accept-invitation')

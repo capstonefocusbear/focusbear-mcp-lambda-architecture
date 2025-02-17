@@ -233,6 +233,7 @@ export class TeamManagementService {
   async inviteTeamMember(
     adminId: string,
     { team_id, email, first_name, last_name, member_expiry_date, is_admin, is_member, user_id }: InviteTeamMemberDto,
+    origin?: string,
   ): Promise<any> {
     try {
       if (!email && !user_id) {
@@ -241,19 +242,25 @@ export class TeamManagementService {
         );
       }
 
-      let member_email = email;
-      if (!member_email) {
-        member_email = await this.getUserEmailFromAuth0(user_id);
+      let memberEmail = email;
+      let memberFirstName = first_name;
+      let memberLastName = last_name;
+
+      if (user_id) {
+        const { email: authOEmail, given_name, family_name } = await this.getUserDetailsFromAuth0(user_id);
+        memberFirstName = given_name;
+        memberLastName = family_name;
+        memberEmail = authOEmail;
       }
 
       const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
 
       const payload = new MemberInvitationPayload({
         admin_id: adminId,
-        email: member_email,
+        email: memberEmail,
         team_id,
-        first_name,
-        last_name,
+        first_name: memberFirstName,
+        last_name: memberLastName,
         member_expiry_date,
         is_admin,
         is_member,
@@ -269,7 +276,11 @@ export class TeamManagementService {
       }
       const secretKey = this.configService.get('tokens.secret');
       const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
-      const inviteUrl = `${this.configService.get('server.frontEndUrl')}?token=${token}`;
+
+      const devFrontendUrl = this.configService.get('devFrontendUrl');
+      const inviteUrl = `${
+        devFrontendUrl === origin ? this.configService.get('devFrontendUrl') : this.configService.get('frontEndUrl')
+      }?token=${token}`;
 
       let bcc = FOCUS_BEAR_EMAILS.SUPPORT;
 
@@ -281,7 +292,7 @@ export class TeamManagementService {
       }
 
       await this.emailService.sendEmail({
-        to: email,
+        to: memberEmail,
         from: FOCUS_BEAR_EMAILS.MARKETING,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
         dynamicTemplateData: { invite_url: inviteUrl, team_name: team?.name ?? TEAM_A },
@@ -626,7 +637,7 @@ export class TeamManagementService {
     await this.teamToMemberRepository.orm.save(linkedMemberRecord);
   }
 
-  async getUserEmailFromAuth0(user_id: string) {
+  async getUserDetailsFromAuth0(user_id: string) {
     const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
     if (!user) {
       throw new NotFoundException(`User with id: ${user_id} does not exist!`);
@@ -635,6 +646,7 @@ export class TeamManagementService {
     if (!auth0User) {
       throw new NotFoundException(`User with id: ${user_id} and auth0_id: ${user.auth0_id} does not exists in auth0!`);
     }
-    return auth0User.email;
+    const { email, given_name, family_name } = auth0User;
+    return { email, given_name, family_name };
   }
 }

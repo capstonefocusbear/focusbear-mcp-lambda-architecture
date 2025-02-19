@@ -1,5 +1,6 @@
 import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
-import { IsOptional, IsString, MaxLength, IsArray } from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsArray, IsEnum } from 'class-validator';
+import { UrlSafePromptType } from '@app/openai/domain/url-safe-prompt-type.enum';
 
 export class IsUrlSafeDto {
   @IsOptional()
@@ -37,4 +38,8 @@ export class IsUrlSafeDto {
   @IsString({ each: true })
   @MaxLength(MAX_WORD_LENGTH.justification, { each: true })
   lastFiveJustificationsInThisFocusSession?: string[];
+
+  @IsOptional()
+  @IsEnum(UrlSafePromptType)
+  promptType?: UrlSafePromptType = UrlSafePromptType.DEFAULT;
 }

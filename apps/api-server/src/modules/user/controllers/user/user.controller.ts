@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } f
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { UrlSafePromptType } from '@app/openai/domain/url-safe-prompt-type.enum';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -201,7 +202,24 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   @Post('/is-url-safe-to-use')
   async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto, @AuthContext() { user }: Passport) {
-    return this.userService.checkIsUrlSafe(isUrlSafeDto, user.id);
+    const { focus_mode } = isUrlSafeDto;
+
+    // Determine which prompt type to use based on focus mode
+    let promptType = UrlSafePromptType.DEFAULT;
+
+    if (focus_mode === 'work' || focus_mode === 'study') {
+      promptType = UrlSafePromptType.STRICT;
+    } else if (focus_mode === 'relax' || focus_mode === 'break') {
+      promptType = UrlSafePromptType.LENIENT;
+    }
+
+    // Add prompt type to the DTO
+    const enhancedUrlSafeDto = {
+      ...isUrlSafeDto,
+      promptType,
+    };
+
+    return this.userService.checkIsUrlSafe(enhancedUrlSafeDto, user.id);
   }
 
   @Patch('/long-term-goals')

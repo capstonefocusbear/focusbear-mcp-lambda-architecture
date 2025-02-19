@@ -1,0 +1,53 @@
+{
+    "validResponses": {
+      "workWebsites": {
+        "docs.google.com": {
+          "minProbability": 0.8,
+          "maxProbability": 1.0,
+          "requiredKeywords": ["documentation", "work", "project"]
+        },
+        "github.com": {
+          "minProbability": 0.8,
+          "maxProbability": 1.0,
+          "requiredKeywords": ["code", "development", "project"]
+        },
+        "stackoverflow.com": {
+          "minProbability": 0.7,
+          "maxProbability": 1.0,
+          "requiredKeywords": ["debugging", "solution", "programming"]
+        }
+      },
+      "learningWebsites": {
+        "youtube.com/watch?v=coding_tutorial": {
+          "minProbability": 0.6,
+          "maxProbability": 0.9,
+          "requiredKeywords": ["learning", "tutorial", "education"]
+        },
+        "chat.openai.com": {
+          "minProbability": 0.6,
+          "maxProbability": 0.9,
+          "requiredKeywords": ["assistance", "help", "code"]
+        }
+      },
+      "distractionWebsites": {
+        "netflix.com": {
+          "maxProbability": 0.3,
+          "requiredKeywords": ["entertainment", "distraction", "break"]
+        },
+        "facebook.com": {
+          "maxProbability": 0.4,
+          "requiredKeywords": ["social", "distraction", "break"]
+        }
+      }
+    },
+    "errorCases": {
+      "missingMetadata": {
+        "maxProbability": 0.1,
+        "requiredKeywords": ["missing", "incomplete", "metadata"]
+      },
+      "maliciousInput": {
+        "maxProbability": 0,
+        "requiredKeywords": ["invalid", "suspicious", "rejected"]
+      }
+    }
+  }

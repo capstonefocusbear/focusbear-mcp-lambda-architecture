@@ -11,6 +11,8 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -197,114 +199,69 @@ export class OpenAIService {
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
     } = isUrlSafeDto;
-    const metaData: { title: string; description: string } = meta_description
+
+    const metaData = meta_description
       ? { title: tab_title, description: meta_description }
       : await this.getMetadata(url);
-    const titleToUse = metaData.title || tab_title;
-    const metaDescriptionToUse = metaData.description || meta_description;
 
-    const isMetaDescriptionValid = this.isValidInput(metaDescriptionToUse, MAX_WORD_LENGTH.default);
-    const isTabTitleValid = this.isValidInput(titleToUse, MAX_WORD_LENGTH.default);
-    const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
-    const isJustificationValid = justificationForThisUrl
-      ? this.isValidInput(justificationForThisUrl, MAX_WORD_LENGTH.justification)
-      : true;
-    const isLastFiveJustificationsValid =
-      lastFiveJustificationsInThisFocusSession?.length > 0
-        ? lastFiveJustificationsInThisFocusSession?.every((justification) =>
-            this.isValidInput(justification, MAX_WORD_LENGTH.justification),
-          )
-        : true;
-    if (
-      !isMetaDescriptionValid ||
-      !isTabTitleValid ||
-      !isIntentionValid ||
-      !isJustificationValid ||
-      !isLastFiveJustificationsValid
-    ) {
-      throw new Error('Invalid input');
-    }
+    try {
+      const configPath = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
+      const fileContent = await fs.readFile(configPath, 'utf8');
+      const config = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
 
-    const defaultChat: ChatCompletionMessageParam = {
-      role: 'system',
-      content: `Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.
+      const promptName = (isUrlSafeDto as any).promptType || 'default';
+      const selectedPrompt = config.prompts.find((p) => p.name === promptName);
 
-                JSON response format:
-                {
-                  "allowed_probability": number (0 to 1),
-                  "reason": string (explain why the website is related or unrelated to Focus Mode)
-                }
-
-                ${
-                  tab_title
-                    ? `
-                Website data (from Focus Bear app):
-                  URL: ${this.wrapUserInput(url)}
-                  Tab Title: ${this.wrapUserInput(tab_title)}
-
-                Website data (from scraping):
-                  Meta Description:${this.wrapUserInput(metaDescriptionToUse)}
-                  `
-                    : `
-                Website data (from scraping):
-                  URL: ${this.wrapUserInput(url)}
-                  Tab Title: ${this.wrapUserInput(titleToUse)}
-                  Meta Description: ${this.wrapUserInput(metaDescriptionToUse)}
-                  `
-                }
-
-                Focus Mode data:
-                  Focus Mode: ${this.wrapUserInput(focus_mode)}
-                  Intention (what the user wants to focus on): ${this.wrapUserInput(intention)}
-                ${
-                  justificationForThisUrl
-                    ? `The user gave this explanation for why they need to use this website: ${this.wrapUserInput(
-                        justificationForThisUrl,
-                      )}. `
-                    : null
-                }
-                ${
-                  lastFiveJustificationsInThisFocusSession?.length > 0
-                    ? `They also gave these other explanations recently that may be relevant: ${this.wrapUserInput(
-                        JSON.stringify(lastFiveJustificationsInThisFocusSession),
-                      )}`
-                    : null
-                }
-                Assessment Criteria:
-                 Allow if meta description or tab title relates to the Focus Mode Intention.
-                 Allow if URL strongly relates to the Focus Mode or Intention.
-
-                Scoring:
-                 Low relevance: allowed_probability < 0.6
-                 Moderate relevance: 0.6 <= allowed_probability <= 0.8
-                 High relevance: allowed_probability > 0.8
-                  
-                JSON Response:`,
-    };
-    let retryCount = 0;
-    while (retryCount < 3) {
-      try {
-        const completions = await this.getOpenAIChatCompletionsNonStreaming(
-          [defaultChat],
-          this.options,
-          OPENAI_PARAMS.checkURL as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
-        );
-        const newMessage = completions.choices[0].message;
-        const { content } = newMessage;
-        const parsedResponse = JSON.parse(content);
-
-        return plainToClass(URLSafeProbabilityResponseDto, parsedResponse);
-      } catch (error) {
-        retryCount++;
+      if (!selectedPrompt) {
+        throw new Error(`Prompt type ${promptName} not found`);
       }
-    }
 
-    // Fallback response if retries fail - potential OpenAI throttling?
-    const translatedReason = this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage });
-    return {
-      allowed_probability: 0,
-      reason: translatedReason,
-    };
+      const promptContent = selectedPrompt.content
+        .replace('{{url}}', url)
+        .replace('{{tab_title}}', metaData.title || tab_title || '')
+        .replace('{{meta_description}}', metaData.description || meta_description || '')
+        .replace('{{focus_mode}}', focus_mode || '')
+        .replace('{{intention}}', intention || '')
+        .replace('{{justificationForThisUrl}}', justificationForThisUrl || '')
+        .replace(
+          '{{lastFiveJustificationsInThisFocusSession}}',
+          JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+        );
+
+      const basePrompt: ChatCompletionMessageParam = {
+        role: 'system',
+        content: promptContent,
+      };
+
+      let retryCount = 0;
+      while (retryCount < 3) {
+        try {
+          const completions = await this.getOpenAIChatCompletionsNonStreaming(
+            [basePrompt],
+            this.options,
+            OPENAI_PARAMS.checkURL as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+          );
+
+          const { content } = completions.choices[0].message;
+          return plainToClass(URLSafeProbabilityResponseDto, JSON.parse(content));
+        } catch (error) {
+          retryCount++;
+          this.sentryService.instance().captureException(error, {
+            extra: { retryCount, promptName },
+          });
+        }
+      }
+
+      return {
+        allowed_probability: 0,
+        reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        extra: { isUrlSafeDto },
+      });
+      throw error;
+    }
   }
 
   addHttpsProtocol(url: string): string {

@@ -12,6 +12,7 @@ import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
 import { CustomRoutine } from '../entities/custom-routine';
+import { Device } from '../../device/entities/device.entity';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -173,10 +174,24 @@ export class UserRepository extends BaseRepository<User> {
       .getOne();
   }
 
+  /**
+   * @TODO: Remove 'devices' from this query to improve performance.
+   * all apps should migrate to a dedicated endpoint for retrieving user devices.
+   */
   async getUserDetails(id: string): Promise<User> {
+    // Define a subquery to limit devices to the latest 10 devices
+    const subQuery = this.orm
+      .createQueryBuilder()
+      .select('device.id')
+      .from(Device, 'device')
+      .where('device.user_id = :id', { id })
+      .orderBy('device.updated_at', 'DESC')
+      .limit(10)
+      .getQuery();
+
     return this.orm
       .createQueryBuilder('users')
-      .leftJoinAndSelect('users.devices', 'devices')
+      .leftJoinAndSelect('users.devices', 'device', `device.id IN (${subQuery})`)
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .leftJoinAndSelect('focus_modes.tags', 'tags')
       .where('users.id = :id', { id })

@@ -231,4 +231,11 @@ export class UserController {
   async updateUsername(@Body() { username }: UpdateUsernameDto, @AuthContext() { user }: Passport) {
     return this.userService.updateUsername(user.id, { username });
   }
+
+  @Get('/synced-external-platforms')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getSyncedExternalPlatforms(@AuthContext() { user }: Passport) {
+    return this.userService.getSyncedExternalPlatforms(user.id);
+  }
 }

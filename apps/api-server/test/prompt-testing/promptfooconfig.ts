@@ -1,5 +1,6 @@
-import { URLSafePrompt } from './prompt';
 import type { UnifiedConfig } from 'promptfoo';
+import { URLSafePrompt } from './prompt';
+
 const config: UnifiedConfig = {
   description: "Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.",
   prompts: [

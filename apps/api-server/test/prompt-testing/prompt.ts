@@ -1,4 +1,4 @@
-export async function URLSafePrompt({ vars, provider }) {
+export async function URLSafePrompt({ vars }) {
   return [
     {
       role: 'system',

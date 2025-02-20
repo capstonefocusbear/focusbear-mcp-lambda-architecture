@@ -10,6 +10,7 @@ import { Device } from '../../entities/device.entity';
 import { DeviceService } from '../../services/device/device.service';
 import { IsAdmin } from '../../../auth/guards/is-admin/is-admin.guard';
 import { GetDevicesQueryDto } from '../../dto/get-devices-query.dto';
+import { SearchDeviceQueryDto } from '../../dto/search-device-query.dto';
 
 @Controller('device')
 @ApiTags('device')
@@ -32,5 +33,10 @@ export class DeviceController {
   @UseGuards(IsAdmin)
   async getDevicesForAdmin(@Query() { user_id }: GetDevicesQueryDto, @AuthContext() { user: admin }: Passport) {
     return this.deviceService.getDevicesForAdmin(admin.id, user_id);
+  }
+
+  @Get('/search')
+  async searchUserDevice(@Query() searchDeviceQueryDto: SearchDeviceQueryDto, @AuthContext() { user }: Passport) {
+    return this.deviceService.searchUserDevice(searchDeviceQueryDto, user.id);
   }
 }

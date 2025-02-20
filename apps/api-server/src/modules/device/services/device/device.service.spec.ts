@@ -237,4 +237,32 @@ describe('DeviceService', () => {
       expect(response).toEqual('');
     });
   });
+
+  describe('searchUserDevice', () => {
+    it('negative: if user account does not exist, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await deviceService.searchUserDevice({ device_id: DeviceDummy.id }, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return the user’s device when both user and device exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(DeviceDummy);
+
+      const response = await deviceService.searchUserDevice({ device_id: DeviceDummy.id }, userDummy.id);
+
+      expect(DeviceRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { id: DeviceDummy.id, user_id: userDummy.id },
+      });
+      expect(response).toEqual(DeviceDummy);
+    });
+  });
 });

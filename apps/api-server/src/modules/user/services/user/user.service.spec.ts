@@ -869,4 +869,37 @@ describe('UserService', () => {
       expect(isUrl).toBeTrue();
     });
   });
+
+  describe('getSyncedExternalPlatforms', () => {
+    it('negative: if user account does not exist, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.getSyncedExternalPlatforms(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return the correct synced external platforms for a given user', async () => {
+      const expectedResponse = {
+        zoho: true,
+        jira: false,
+        clickup: false,
+        trello: false,
+        asana: false,
+        monday: false,
+        google: true,
+        microsoft: false,
+      };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      PlatformIntegrationsServiceMock.getUserSyncedPlatforms.mockResolvedValue(expectedResponse);
+      const response = await userService.getSyncedExternalPlatforms(userDummy.id);
+      expect(response).toEqual(expectedResponse);
+    });
+  });
 });

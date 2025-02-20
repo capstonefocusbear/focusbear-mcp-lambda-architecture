@@ -425,7 +425,7 @@ export class User extends BaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications?: Notification[];
 
-  @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
+  @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user, { eager: true })
   focus_modes?: FocusMode[];
 
   @OneToMany(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.author)

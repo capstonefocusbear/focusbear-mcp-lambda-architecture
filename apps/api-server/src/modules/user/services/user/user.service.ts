@@ -781,9 +781,9 @@ export class UserService {
   }
 
   async getSyncedExternalPlatforms(user_id: string) {
-    const user = this.userRepository.orm.findOneBy({ id: user_id });
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) {
-      throw new NotFoundException(`User with id: ${user_id} does not exists!`);
+      throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     }
     return this.platformIntegrationsService.getUserSyncedPlatforms(user_id);
   }

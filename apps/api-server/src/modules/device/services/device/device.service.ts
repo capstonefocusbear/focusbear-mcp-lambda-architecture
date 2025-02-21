@@ -21,6 +21,7 @@ import { UserService } from '../../../user/services/user/user.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { UserTypes } from '../../../user/domain/user-types.enum';
 import { Auth0ClientDto } from '../../../user/dto/auth0-client.dto';
+import { SearchDeviceQueryDto } from '../../dto/search-device-query.dto';
 
 @Injectable()
 export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
@@ -133,4 +134,15 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
       }
     }
   };
+
+  async searchUserDevice(searchDeviceQueryDto: SearchDeviceQueryDto, userId: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with id: ${userId} does not exist!`);
+    }
+    const { device_id, is_leader, app_version, operating_system } = searchDeviceQueryDto;
+    return this.deviceRepository.orm.findOne({
+      where: { id: device_id, user_id: userId, is_leader, app_version, operating_system },
+    });
+  }
 }

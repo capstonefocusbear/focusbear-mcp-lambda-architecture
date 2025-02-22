@@ -82,7 +82,7 @@ describe('DeviceService', () => {
     expect(deviceService).toBeDefined();
   });
 
-  describe('createDevice', () => {
+  describe('createOrUpdateDevice', () => {
     const createDeviceDto: CreateDeviceDto = {
       operating_system: OperatingSystem.Android,
       metadata: {},
@@ -91,9 +91,20 @@ describe('DeviceService', () => {
 
     it('positive: new item should be created', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
-      await deviceService.createDevice(createDeviceDto, user_id);
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(null);
 
-      expect(DeviceRepositoryMock.create).toBeCalledWith(new Device({ ...createDeviceDto, user_id }));
+      await deviceService.createOrUpdateDevice(createDeviceDto, user_id);
+
+      expect(DeviceRepositoryMock.create).toHaveBeenCalledWith(new Device({ ...createDeviceDto, user_id }));
+    });
+
+    it('positive: existing item should be updated', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(DeviceDummy);
+
+      await deviceService.createOrUpdateDevice(createDeviceDto, user_id);
+
+      expect(DeviceRepositoryMock.orm.save).toHaveBeenCalledWith(DeviceDummy);
     });
   });
 

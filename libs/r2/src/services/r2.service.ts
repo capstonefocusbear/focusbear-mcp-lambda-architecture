@@ -1,23 +1,25 @@
 import { Injectable, Inject } from '@nestjs/common';
-// eslint-disable-next-line import/extensions
-import * as S3 from 'aws-sdk/clients/s3.js';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { R2_MODULE_OPTIONS } from '../r2.constants';
 import { IR2Options } from '../interfaces';
+import { ONE_WEEK_IN_SECONDS } from '../../../../apps/api-server/src/shared/utils/constants';
 
 @Injectable()
 export class R2Service {
-  private s3: S3;
+  private s3Client: S3Client;
 
   constructor(@Inject(R2_MODULE_OPTIONS) private readonly r2Options: IR2Options) {
-    this.s3 = new S3({ ...this.r2Options });
+    this.s3Client = new S3Client({ ...this.r2Options, region: this.r2Options.region || 'us-east-1' });
   }
 
   async getPresignedUrl(bucket: string, key: string) {
-    const url = await this.s3.getSignedUrlPromise('getObject', {
+    const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
-      Expires: 604800,
     });
+
+    const url = await getSignedUrl(this.s3Client, command, { expiresIn: ONE_WEEK_IN_SECONDS });
     return url;
   }
 
@@ -31,7 +33,9 @@ export class R2Service {
       ContentType: 'application/json',
       ContentDisposition: 'attachment',
     };
-    await this.s3.upload(objectData).promise();
+
+    const command = new PutObjectCommand(objectData);
+    await this.s3Client.send(command);
   }
 
   async uploadFileToBucket(bucket: string, key: string, body: any, contentType: string) {
@@ -41,6 +45,23 @@ export class R2Service {
       Key: key,
       ContentType: contentType,
     };
-    await this.s3.upload(fileData).promise();
+
+    const command = new PutObjectCommand(fileData);
+    await this.s3Client.send(command);
+  }
+
+  async getPresignedUploadUrl(bucket: string, key: string, contentType: string) {
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    try {
+      const url = await getSignedUrl(this.s3Client, command, { expiresIn: ONE_WEEK_IN_SECONDS });
+      return url;
+    } catch (error) {
+      throw new Error(`Could not get presigned URL: ${error.message}`);
+    }
   }
 }

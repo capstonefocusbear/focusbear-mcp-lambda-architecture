@@ -35,7 +35,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     super(deviceRepository);
   }
 
-  async createDevice({ operating_system, metadata }: CreateDeviceDto, user_id: string): Promise<Device> {
+  async createOrUpdateDevice({ operating_system, metadata }: CreateDeviceDto, user_id: string): Promise<Device> {
     try {
       const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -47,6 +47,15 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
           ...(isVerboseLoggingAllowed && { operating_system, metadata }),
         },
       });
+      const existingDevice = await this.deviceRepository.orm.findOne({
+        where: { user_id, operating_system },
+        order: { created_at: 'DESC' },
+      });
+
+      if (existingDevice) {
+        Object.assign(existingDevice, { metadata });
+        return await this.deviceRepository.orm.save(existingDevice);
+      }
       const newDevice = new Device({ operating_system, user_id, metadata });
       const createdDevice = await this.deviceRepository.create(newDevice);
       return createdDevice;

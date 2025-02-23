@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch, Post, Get, UseGuards, Query } from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Get, UseGuards, Query, Put } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
@@ -19,9 +19,10 @@ import { SearchDeviceQueryDto } from '../../dto/search-device-query.dto';
 export class DeviceController {
   constructor(private readonly deviceService: DeviceService) {}
 
-  @Post()
-  createDevice(@Body() createDeviceDto: CreateDeviceDto, @AuthContext() { user }: Passport): Promise<Device> {
-    return this.deviceService.createDevice({ ...createDeviceDto }, user.id);
+  @Post() // needs to removed after couple  of months
+  @Put()
+  createOrUpdateDevice(@Body() createDeviceDto: CreateDeviceDto, @AuthContext() { user }: Passport): Promise<Device> {
+    return this.deviceService.createOrUpdateDevice({ ...createDeviceDto }, user.id);
   }
 
   @Patch(':device_id')

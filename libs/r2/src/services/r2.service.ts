@@ -10,7 +10,14 @@ export class R2Service {
   private s3Client: S3Client;
 
   constructor(@Inject(R2_MODULE_OPTIONS) private readonly r2Options: IR2Options) {
-    this.s3Client = new S3Client({ ...this.r2Options, region: this.r2Options.region || 'us-east-1' });
+    this.s3Client = new S3Client({
+      region: this.r2Options.region || 'auto',
+      endpoint: this.r2Options.endpoint,
+      credentials: {
+        accessKeyId: this.r2Options.accessKeyId,
+        secretAccessKey: this.r2Options.secretAccessKey,
+      },
+    });
   }
 
   async getPresignedUrl(bucket: string, key: string) {

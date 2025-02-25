@@ -716,7 +716,7 @@ export class UserService {
 
   async getUserLongTermGoals(user_id: string) {
     const partialUser = await this.userRepository.orm.findOne({ where: { id: user_id }, select: ['long_term_goals'] });
-    return partialUser?.long_term_goals;
+    return partialUser?.long_term_goals ?? [];
   }
 
   async isVerboseLoggingAllowed(user_id: string) {

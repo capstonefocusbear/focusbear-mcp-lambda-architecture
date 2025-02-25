@@ -155,6 +155,7 @@ export class UserSettingsService {
         });
       }
       if (validationErrors.length > 0) {
+        this.sentryService.instance().captureException(JSON.stringify(validationErrors), { level: 'error' });
         throw new BadRequestException({ validationErrors });
       }
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);

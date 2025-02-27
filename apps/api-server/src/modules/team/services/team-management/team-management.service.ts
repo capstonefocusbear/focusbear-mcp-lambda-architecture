@@ -582,13 +582,14 @@ export class TeamManagementService {
 
       if (stripeResult.status === 'fulfilled' && stripeResult.value) {
         const stripeData = stripeResult.value;
+        const firstPlanItem = stripeData.items?.data?.[0];
         stripeSubscriptionInfo = {
           start_date: stripeData.start_date ? DateTime.fromSeconds(stripeData.start_date).toISO() : undefined,
           ended_at: stripeData.ended_at ? DateTime.fromSeconds(stripeData.ended_at).toISO() : undefined,
           canceled_at: stripeData.canceled_at ? DateTime.fromSeconds(stripeData.canceled_at).toISO() : undefined,
           status: stripeData.status ?? undefined,
-          product_id: stripeData?.plan?.product ?? undefined,
-          product_name: stripeData?.plan?.nickname ?? '',
+          product_id: (firstPlanItem?.plan?.product as string) ?? undefined,
+          product_name: (firstPlanItem?.plan?.nickname as string) ?? '',
         };
       }
       const { stripe_data, stripe_subscription_id, ...rest } = team;

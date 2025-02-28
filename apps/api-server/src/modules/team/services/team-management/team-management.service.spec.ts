@@ -895,6 +895,8 @@ describe('TeamManagementService', () => {
     });
   });
 
+  // TODO: Implement unit tests for getAdminUserTeams function
+
   describe('deleteTeam', () => {
     it('positive: owner and members entitlements should be revoked and team should be deleted', async () => {
       const memberOneId = randomUUID();

@@ -188,22 +188,11 @@ tests:
       max_probability: 1.0
 
 providers:
-  - id: 'http://localhost:1234/v1/chat/completions'
+  - id: openrouter:google/gemini-2.0-flash-lite-preview-02-05:free
     config:
-      method: 'POST'
-      headers:
-        'Content-Type': 'application/json'
-      body:
-        messages:
-          - role: 'system'
-            content: 'You are an AI assistant.'
-          - role: 'user'
-            content: '{{ prompt }}'
-        model: 'deepseek-r1-distill-llama-8b'
-        temperature: 0
-        max_tokens: 1024
-      transformResponse: 'json.choices[0].message.content'
-
+      temperature: 0
+      max_tokens: 1024
+      apiKey:
 output:
   - debug
   - json

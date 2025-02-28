@@ -188,11 +188,11 @@ tests:
       max_probability: 1.0
 
 providers:
-  - id: openrouter:google/gemini-2.0-flash-lite-preview-02-05:free
+  - id: openai:gpt-4o-mini
     config:
       temperature: 0
       max_tokens: 1024
-      apiKey:
+      apiKeyEnvar: $OPENAI_API_KEY
 output:
   - debug
   - json

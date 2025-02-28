@@ -11,9 +11,10 @@ import { HasSubscription } from './guards/has-subscription/has-subscription.guar
 import { WebhookHandlerStrategy } from './services/webhook-handler/webhook-handler.strategy';
 import { StripeController } from './controllers/webhooks/stripe.controller';
 import { BullQueues } from '../../shared/utils/constants';
+import { HasTeamSubscription } from './guards/has-team-subscription/has-team-subscription.guard';
 
 @Module({
-  providers: [WebhookHandlerStrategy, HasSubscription],
+  providers: [WebhookHandlerStrategy, HasSubscription, HasTeamSubscription],
   exports: [HasSubscription],
   imports: [
     ConfigModule.forRoot({ load: [constants, stripeConfig, revenueCatConfig] }),

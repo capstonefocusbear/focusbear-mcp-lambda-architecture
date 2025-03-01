@@ -16,6 +16,7 @@ import { TeamManagementService } from '../services/team-management/team-manageme
 import { UpdateTeamNameDto } from '../dto/update-team-name.dto';
 import { UpdateMemberExpiryDateDto } from '../dto/update-member-expiry-date.dto';
 import { AddTeamManuallyDto } from '../dto/add-team-member-manually.dto';
+import { HasTeamSubscription } from '../../subscription/guards/has-team-subscription/has-team-subscription.guard';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -47,7 +48,7 @@ export class TeamManagementController {
   }
 
   @Post('/invite-member')
-  @UseGuards(HasSubscription)
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   async inviteTeamMember(
     @Body() inviteMemberDto: InviteTeamMemberDto,
@@ -126,7 +127,7 @@ export class TeamManagementController {
   }
 
   @Post('/add-member-manually')
-  @UseGuards(HasSubscription)
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   async addTeamMemberManually(
     @Body() addTeamManuallyDto: AddTeamManuallyDto,

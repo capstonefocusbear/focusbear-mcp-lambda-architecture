@@ -726,4 +726,8 @@ export class TeamManagementService {
     }
     await this.teamRepository.update(team.id, { team_size: teamSize });
   }
+
+  async getTeamById(team_id: string) {
+    return this.teamRepository.orm.findOne({ where: { id: team_id } });
+  }
 }

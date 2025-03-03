@@ -2,6 +2,11 @@ import OpenAI from 'openai';
 import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
+export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
+export const TEST_CONSTANTS = {
+  ZERO_PROBABILITY: 0,
+  MOCK_ERROR_RESPONSE_PREFIX: 'AI decision failed for',
+};
 export const MAX_WORD_LENGTH = { brainDump: 1000, intention: 500, default: 200, longTermGoal: 200, justification: 500 };
 export const PROMPT_INJECTION_PATTERNS = {
   SYSTEM_OVERRIDE: /(\b(override|sudo|root)\b|(\bas\s+(admin|system))\b)/i,

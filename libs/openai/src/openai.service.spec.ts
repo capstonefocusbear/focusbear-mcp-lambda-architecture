@@ -8,7 +8,7 @@ import * as yaml from 'js-yaml';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IOpenAIOptions } from './interfaces';
-import { OPENAI_MODULE_OPTIONS } from './openai.constants';
+import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS } from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { UrlSafePromptType } from './domain/url-safe-prompt-type.enum';
 
@@ -75,8 +75,8 @@ describe('OpenAIService', () => {
           provide: I18nService,
           useValue: {
             t: jest.fn().mockImplementation((key: string, options: any) => {
-              if (key === 'common.ai_decision_fail') {
-                return `AI decision failed for ${options.lang}`;
+              if (key === TRANSLATION_KEYS.AI_DECISION_FAIL) {
+                return `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} ${options.lang}`;
               }
               return key;
             }),
@@ -117,8 +117,8 @@ describe('OpenAIService', () => {
       const result = await service.checkIfUrlIsSafeToUse(isUrlSafeDto, prefLanguage);
 
       expect(result).toEqual({
-        allowed_probability: 0,
-        reason: 'AI decision failed for en',
+        allowed_probability: TEST_CONSTANTS.ZERO_PROBABILITY,
+        reason: `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} en`,
       });
     }, 10000);
 
@@ -136,8 +136,8 @@ describe('OpenAIService', () => {
       const result = await service.checkIfUrlIsSafeToUse(isUrlSafeDto, prefLanguage);
 
       expect(result).toEqual({
-        allowed_probability: 0,
-        reason: 'AI decision failed for es',
+        allowed_probability: TEST_CONSTANTS.ZERO_PROBABILITY,
+        reason: `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} es`,
       });
     }, 10000);
 

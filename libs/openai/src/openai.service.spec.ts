@@ -10,7 +10,6 @@ import { configsArray } from '../../../apps/api-server/src/config';
 import { IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS } from './openai.constants';
 import { OpenAIService } from './openai.service';
-import { UrlSafePromptType } from './domain/url-safe-prompt-type.enum';
 
 // Mock fs and yaml for our prompt config loading
 jest.mock('fs/promises');
@@ -21,10 +20,6 @@ const mockPrompts = {
     {
       name: 'default',
       content: 'Default prompt content {{url}} {{focus_mode}}',
-    },
-    {
-      name: 'strict',
-      content: 'Strict prompt content {{url}} {{focus_mode}}',
     },
   ],
 };
@@ -141,7 +136,7 @@ describe('OpenAIService', () => {
       });
     }, 10000);
 
-    it('should use correct prompt based on type', async () => {
+    it('should use the default prompt', async () => {
       const isUrlSafeDto = {
         url: 'http://example.com',
         meta_description: 'Test Description',
@@ -149,7 +144,6 @@ describe('OpenAIService', () => {
         focus_mode: 'work',
         intention: 'focus',
         language: 'en',
-        promptType: UrlSafePromptType.DEFAULT,
       };
 
       // This call will use the already-loaded configuration.

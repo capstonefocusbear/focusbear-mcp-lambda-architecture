@@ -209,11 +209,11 @@ export class OpenAIService {
       const fileContent = await fs.readFile(configPath, 'utf8');
       const config = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
 
-      const promptName = (isUrlSafeDto as any).promptType || 'default';
-      const selectedPrompt = config.prompts.find((p) => p.name === promptName);
+      // Always use the default prompt
+      const selectedPrompt = config.prompts.find((p) => p.name === 'default');
 
       if (!selectedPrompt) {
-        throw new Error(`Prompt type ${promptName} not found`);
+        throw new Error('Default prompt not found in config');
       }
 
       const promptContent = selectedPrompt.content
@@ -247,7 +247,7 @@ export class OpenAIService {
         } catch (error) {
           retryCount++;
           this.sentryService.instance().captureException(error, {
-            extra: { retryCount, promptName },
+            extra: { retryCount, prompt: 'default' },
           });
         }
       }

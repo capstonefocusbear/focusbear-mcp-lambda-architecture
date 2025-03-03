@@ -1,8 +1,7 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN, SentryModule } from '@ntegral/nestjs-sentry';
-import { I18nModule, I18nService, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
-import * as path from 'path';
+import { I18nService } from 'nestjs-i18n';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
@@ -24,6 +23,16 @@ const mockPrompts = {
   ],
 };
 
+// Create a mock for I18nService
+const mockI18nService = {
+  t: jest.fn().mockImplementation((key, options) => {
+    if (key === TRANSLATION_KEYS.AI_DECISION_FAIL) {
+      return `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} ${options.lang}`;
+    }
+    return key;
+  }),
+};
+
 describe('OpenAIService', () => {
   let service: OpenAIService;
   let module: TestingModule;
@@ -39,19 +48,7 @@ describe('OpenAIService', () => {
     (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockPrompts));
 
     module = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({ load: configsArray }),
-        SentryModule.forRoot({ dsn: '' }),
-        I18nModule.forRoot({
-          fallbackLanguage: 'en',
-          loaderOptions: {
-            // Using a dummy path to avoid file not found errors.
-            path: path.join(__dirname, 'dummy-i18n'),
-            watch: false,
-          },
-          resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
-        }),
-      ],
+      imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot({ dsn: '' })],
       providers: [
         OpenAIService,
         {
@@ -65,17 +62,9 @@ describe('OpenAIService', () => {
           } as IOpenAIOptions,
         },
         ConfigService,
-        // Override I18nService with a simple mock to avoid translation file loading issues.
         {
           provide: I18nService,
-          useValue: {
-            t: jest.fn().mockImplementation((key: string, options: any) => {
-              if (key === TRANSLATION_KEYS.AI_DECISION_FAIL) {
-                return `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} ${options.lang}`;
-              }
-              return key;
-            }),
-          },
+          useValue: mockI18nService,
         },
       ],
     }).compile();

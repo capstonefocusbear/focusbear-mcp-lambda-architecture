@@ -11,8 +11,6 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -29,6 +27,7 @@ import { AiToneOptions } from './domain/ai-tones.enum';
 import { URLSafeProbabilityResponseDto } from './dto/url-safe-probability-response.dto';
 import { BraindumpTaskDto } from './dto/braindump-task-response.dto';
 import { SubtasksDto } from './dto/subtasks-response.dto';
+import { PromptCacheService } from './prompt-cache.service';
 
 @Injectable()
 export class OpenAIService {
@@ -36,6 +35,7 @@ export class OpenAIService {
     @Inject(OPENAI_MODULE_OPTIONS) private options: ClientOptions,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly i18nService: I18nService,
+    private readonly promptCacheService: PromptCacheService,
   ) {}
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -205,18 +205,23 @@ export class OpenAIService {
       : await this.getMetadata(url);
 
     try {
-      const configPath = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
-      const fileContent = await fs.readFile(configPath, 'utf8');
-      const config = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
+      // Get the default prompt from the cache service
+      const promptContent = this.promptCacheService.getPrompt('default');
 
-      // Always use the default prompt
-      const selectedPrompt = config.prompts.find((p) => p.name === 'default');
-
-      if (!selectedPrompt) {
-        throw new Error('Default prompt not found in config');
+      if (!promptContent) {
+        this.sentryService.instance().captureMessage('Default prompt not found in cache', {
+          level: 'error',
+          extra: { isUrlSafeDto },
+        });
+        // Return a safe default response instead of throwing
+        return {
+          allowed_probability: 0,
+          reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
+        };
       }
 
-      const promptContent = selectedPrompt.content
+      // Fill in the prompt template with actual values
+      const filledPromptContent = promptContent
         .replace('{{url}}', url)
         .replace('{{tab_title}}', metaData.title || tab_title || '')
         .replace('{{meta_description}}', metaData.description || meta_description || '')
@@ -230,7 +235,7 @@ export class OpenAIService {
 
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
-        content: promptContent,
+        content: filledPromptContent,
       };
 
       let retryCount = 0;
@@ -260,7 +265,12 @@ export class OpenAIService {
       this.sentryService.instance().captureException(error, {
         extra: { isUrlSafeDto },
       });
-      throw error;
+
+      // Return a safe default response
+      return {
+        allowed_probability: 0,
+        reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
+      };
     }
   }
 

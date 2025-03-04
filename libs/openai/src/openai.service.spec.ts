@@ -2,35 +2,36 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN, SentryModule } from '@ntegral/nestjs-sentry';
 import { I18nService } from 'nestjs-i18n';
-import * as fs from 'fs/promises';
-import * as yaml from 'js-yaml';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS } from './openai.constants';
 import { OpenAIService } from './openai.service';
+import { PromptCacheService } from './prompt-cache.service';
 
-// Mock fs and yaml for our prompt config loading
-jest.mock('fs/promises');
-jest.mock('js-yaml');
-
+// Idk if I should inline this here or put it in a separate file
+// Define mock prompt data that will be returned
 const mockPrompts = {
   prompts: [
     {
       name: 'default',
-      content: 'Default prompt content {{url}} {{focus_mode}}',
+      content:
+        'Default prompt content {{url}} {{focus_mode}} {{tab_title}} {{meta_description}} {{intention}} {{justificationForThisUrl}} {{lastFiveJustificationsInThisFocusSession}}',
     },
   ],
 };
 
-// Create a mock for I18nService
-const mockI18nService = {
-  t: jest.fn().mockImplementation((key, options) => {
-    if (key === TRANSLATION_KEYS.AI_DECISION_FAIL) {
-      return `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} ${options.lang}`;
-    }
-    return key;
+const promptCacheServiceMock = {
+  getPrompt: jest.fn().mockImplementation((name: string) => {
+    const prompt = mockPrompts.prompts.find((p) => p.name === name);
+    return prompt ? prompt.content : null;
   }),
+
+  getAllPrompts: jest.fn().mockReturnValue(mockPrompts.prompts),
+
+  reloadPrompts: jest.fn().mockResolvedValue(undefined),
+
+  onModuleInit: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('OpenAIService', () => {
@@ -40,12 +41,6 @@ describe('OpenAIService', () => {
   beforeEach(async () => {
     // Reset mocks
     jest.clearAllMocks();
-
-    // Setup yaml mock so that when configuration is loaded it returns our dummy prompts.
-    (yaml.load as jest.Mock).mockReturnValue(mockPrompts);
-
-    // Setup fs mock to resolve with a JSON string of our dummy prompts.
-    (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockPrompts));
 
     module = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot({ dsn: '' })],
@@ -62,9 +57,22 @@ describe('OpenAIService', () => {
           } as IOpenAIOptions,
         },
         ConfigService,
+        // Override I18nService with a simple mock to avoid translation file loading issues.
         {
           provide: I18nService,
-          useValue: mockI18nService,
+          useValue: {
+            t: jest.fn().mockImplementation((key: string, options: any) => {
+              if (key === TRANSLATION_KEYS.AI_DECISION_FAIL) {
+                return `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} ${options.lang}`;
+              }
+              return key;
+            }),
+          },
+        },
+
+        {
+          provide: PromptCacheService,
+          useValue: promptCacheServiceMock,
         },
       ],
     }).compile();
@@ -104,6 +112,8 @@ describe('OpenAIService', () => {
         allowed_probability: TEST_CONSTANTS.ZERO_PROBABILITY,
         reason: `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} en`,
       });
+
+      expect(promptCacheServiceMock.getPrompt).toHaveBeenCalledWith('default');
     }, 10000);
 
     it('should return fallback response if retries fail (Spanish)', async () => {
@@ -123,27 +133,11 @@ describe('OpenAIService', () => {
         allowed_probability: TEST_CONSTANTS.ZERO_PROBABILITY,
         reason: `${TEST_CONSTANTS.MOCK_ERROR_RESPONSE_PREFIX} es`,
       });
+      expect(promptCacheServiceMock.getPrompt).toHaveBeenCalledWith('default');
     }, 10000);
 
-    it('should use the default prompt', async () => {
-      const isUrlSafeDto = {
-        url: 'http://example.com',
-        meta_description: 'Test Description',
-        tab_title: 'Test Title',
-        focus_mode: 'work',
-        intention: 'focus',
-        language: 'en',
-      };
-
-      // This call will use the already-loaded configuration.
-      await service.checkIfUrlIsSafeToUse(isUrlSafeDto, 'en');
-
-      // No explicit assertions on fs.readFile or yaml.load here since configuration is loaded once during initialization.
-    });
-
-    it('should handle missing config file gracefully', async () => {
-      // Simulate missing config file by making fs.readFile reject.
-      (fs.readFile as jest.Mock).mockRejectedValueOnce(new Error('ENOENT'));
+    it('should handle missing prompt gracefully', async () => {
+      promptCacheServiceMock.getPrompt.mockReturnValueOnce(null);
 
       const isUrlSafeDto = {
         url: 'http://example.com',
@@ -155,7 +149,7 @@ describe('OpenAIService', () => {
       };
 
       const result = await service.checkIfUrlIsSafeToUse(isUrlSafeDto, 'en');
-      expect(result.allowed_probability).toBe(0);
+      expect(result.allowed_probability).toBe(TEST_CONSTANTS.ZERO_PROBABILITY);
     });
   });
 });

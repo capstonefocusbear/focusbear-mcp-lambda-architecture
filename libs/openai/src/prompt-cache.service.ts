@@ -1,0 +1,54 @@
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import * as path from 'path';
+import * as fs from 'fs/promises';
+import * as yaml from 'js-yaml';
+
+@Injectable()
+export class PromptCacheService implements OnModuleInit {
+  private readonly logger = new Logger(PromptCacheService.name);
+
+  private promptCache: { prompts: Array<{ name: string; content: string }> } = { prompts: [] };
+
+  private configPath: string;
+
+  constructor(private configService: ConfigService, @InjectSentry() private readonly sentryService: SentryService) {
+    this.configPath = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
+  }
+
+  async onModuleInit() {
+    await this.loadPrompts();
+  }
+
+  getPrompt(name: string): string | null {
+    const prompt = this.promptCache.prompts.find((p) => p.name === name);
+    return prompt ? prompt.content : null;
+  }
+
+  // Return all cached prompts
+  getAllPrompts() {
+    return this.promptCache.prompts;
+  }
+
+  // Force reload prompts from disk
+  async reloadPrompts() {
+    await this.loadPrompts();
+  }
+
+  private async loadPrompts() {
+    try {
+      this.logger.log(`Loading prompts from ${this.configPath}`);
+      const fileContent = await fs.readFile(this.configPath, 'utf8');
+      this.promptCache = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
+      this.logger.log(`Loaded ${this.promptCache.prompts.length} prompts`);
+    } catch (error) {
+      this.logger.error(`Failed to load prompts: ${error.message}`);
+      this.sentryService.instance().captureException(error, {
+        extra: { message: 'Failed to load prompts', configPath: this.configPath },
+      });
+      // Initialize with empty prompts
+      this.promptCache = { prompts: [] };
+    }
+  }
+}

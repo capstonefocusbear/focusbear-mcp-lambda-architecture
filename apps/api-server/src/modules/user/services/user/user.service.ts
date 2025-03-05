@@ -19,7 +19,7 @@ import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { callPromiseWithTimeout } from 'apps/api-server/src/shared/utils/helpers';
+import { callPromiseWithTimeout } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';

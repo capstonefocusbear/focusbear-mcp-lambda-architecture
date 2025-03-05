@@ -19,6 +19,7 @@ import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
+import { callPromiseWithTimeout } from 'apps/api-server/src/shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
@@ -44,7 +45,12 @@ import { CompletedActivityService } from '../../../activity/services/completed-a
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
-import { BullQueues, BullWorkers, USERNAME_VALIDATION_TIMEOUT } from '../../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  DEFAULT_AI_RESPONSE_TIMEOUT_MS,
+  USERNAME_VALIDATION_TIMEOUT,
+} from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
@@ -52,6 +58,7 @@ import { PlatformIntegrationsService } from '../../../platform-integrations/serv
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { DeviceService } from '../../../device/services/device/device.service';
+import { Streak } from '../../intefaces/streak.interface';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -621,29 +628,46 @@ export class UserService {
   }
 
   async getMotivationalMessage(
-    response: FastifyReply,
+    fastifyReply: FastifyReply,
     user_id: string,
     { language = 'english', tone, routine, device_type }: MotivationalSummaryQueryDto,
   ) {
     try {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-      const streakData = await this.constructStreaksArray(routine, user);
-      const longTermGoals = await this.getUserLongTermGoals(user_id);
-      return await this.openAIService.createMotivationalSummary(response, streakData, longTermGoals, {
-        language,
-        tone,
-        device_type,
-      });
+
+      const [longTermGoalsResponse, streaksResponse] = await Promise.allSettled([
+        this.getUserLongTermGoals(user_id),
+        this.userDailyStatsService.getUserStreaks(user),
+      ]);
+
+      const longTermGoals = (longTermGoalsResponse as PromiseFulfilledResult<string[]>).value || [];
+      const streaks = (streaksResponse as PromiseFulfilledResult<Streak>).value || {
+        focus_modes_streak: 0,
+        morning_routines_streak: 0,
+        evening_routines_streak: 0,
+      };
+
+      const streakData = this.constructStreaksArray(streaks, routine);
+
+      const response = await callPromiseWithTimeout(
+        this.openAIService.createMotivationalSummary(fastifyReply, streakData, longTermGoals, {
+          language,
+          tone,
+          device_type,
+        }),
+        DEFAULT_AI_RESPONSE_TIMEOUT_MS,
+      );
+
+      return response;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  async constructStreaksArray(routineType: RoutineType, user: User): Promise<HabitOption[]> {
-    const { morning_routines_streak, evening_routines_streak, focus_modes_streak } =
-      await this.userDailyStatsService.getUserStreaks(user);
+  constructStreaksArray(streaks: Streak, routineType: RoutineType) {
+    const { morning_routines_streak, evening_routines_streak, focus_modes_streak } = streaks;
     const morningStreak = {
       name: 'Morning routine',
       streak_days: morning_routines_streak,
@@ -656,7 +680,7 @@ export class UserService {
       name: 'Focus blocks',
       streak_days: focus_modes_streak,
     };
-    let streakData = [];
+    let streakData: HabitOption[] = [];
     switch (routineType) {
       case RoutineType.MORNING_ROUTINE:
         streakData = [morningStreak];

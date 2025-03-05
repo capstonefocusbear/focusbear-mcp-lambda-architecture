@@ -176,7 +176,6 @@ export class UserRepository extends BaseRepository<User> {
   async getUserDetails(id: string): Promise<User> {
     return this.orm
       .createQueryBuilder('users')
-      .leftJoinAndSelect('users.devices', 'devices')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .leftJoinAndSelect('focus_modes.tags', 'tags')
       .where('users.id = :id', { id })

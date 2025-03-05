@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
@@ -11,6 +11,7 @@ export class PlatformIntegration extends BaseEntity {
     Object.assign(this, { ...platformData });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -18,12 +19,14 @@ export class PlatformIntegration extends BaseEntity {
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'varchar',
     nullable: true,
   })
   platform?: string;
 
+  @Index()
   @Column({
     type: 'varchar',
     nullable: true,

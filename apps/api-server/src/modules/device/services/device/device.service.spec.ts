@@ -82,7 +82,7 @@ describe('DeviceService', () => {
     expect(deviceService).toBeDefined();
   });
 
-  describe('createDevice', () => {
+  describe('createOrUpdateDevice', () => {
     const createDeviceDto: CreateDeviceDto = {
       operating_system: OperatingSystem.Android,
       metadata: {},
@@ -91,9 +91,20 @@ describe('DeviceService', () => {
 
     it('positive: new item should be created', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
-      await deviceService.createDevice(createDeviceDto, user_id);
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(null);
 
-      expect(DeviceRepositoryMock.create).toBeCalledWith(new Device({ ...createDeviceDto, user_id }));
+      await deviceService.createOrUpdateDevice(createDeviceDto, user_id);
+
+      expect(DeviceRepositoryMock.create).toHaveBeenCalledWith(new Device({ ...createDeviceDto, user_id }));
+    });
+
+    it('positive: existing item should be updated', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(DeviceDummy);
+
+      await deviceService.createOrUpdateDevice(createDeviceDto, user_id);
+
+      expect(DeviceRepositoryMock.orm.save).toHaveBeenCalledWith(DeviceDummy);
     });
   });
 
@@ -235,6 +246,34 @@ describe('DeviceService', () => {
     it('if auth0 client is null, it should correctly identify the string empty', async () => {
       const response = await deviceService.parseDeviceFromAuth0Client(null);
       expect(response).toEqual('');
+    });
+  });
+
+  describe('searchUserDevice', () => {
+    it('negative: if user account does not exist, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await deviceService.searchUserDevice({ device_id: DeviceDummy.id }, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should return the user’s device when both user and device exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.findOne.mockResolvedValue(DeviceDummy);
+
+      const response = await deviceService.searchUserDevice({ device_id: DeviceDummy.id }, userDummy.id);
+
+      expect(DeviceRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { id: DeviceDummy.id, user_id: userDummy.id },
+      });
+      expect(response).toEqual(DeviceDummy);
     });
   });
 });

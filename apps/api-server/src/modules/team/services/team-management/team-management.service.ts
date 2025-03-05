@@ -8,6 +8,7 @@ import { StripeService } from '@app/stripe';
 import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
 import { In } from 'typeorm';
 import { Auth0ManagementService } from '@app/auth0';
+import { DateTime } from 'luxon';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
@@ -545,12 +546,57 @@ export class TeamManagementService {
   }
 
   async getAdminUserTeams(adminId: string) {
-    const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: adminId } });
-    const teamIds = teamsAdminOf.map((team) => team.team_id);
-    const teams = await this.teamRepository.orm.find({ where: { id: In(teamIds) } });
-    return teams.map(({ id, name, team_size, team_size_limit, owner_id, payment_type, expires_date }) => {
-      return { id, name, team_size, owner_id, payment_type, team_size_limit, expires_date };
+    const teamsAdminOf = await this.teamToAdminRepository.orm.find({
+      where: { admin_id: adminId },
+      select: ['team_id'],
     });
+
+    if (!teamsAdminOf.length) return [];
+
+    const teamIds = teamsAdminOf.map((team) => team.team_id);
+    const teams = await this.teamRepository.orm.find({
+      where: { id: In(teamIds) },
+      select: ['id', 'name', 'team_size', 'team_size_limit', 'owner_id', 'payment_type', 'expires_date', 'stripe_data'],
+    });
+
+    const subscriptionsResults = await Promise.allSettled(
+      teams.map(async (team) => {
+        if (team.stripe_data?.subscriptionId && team.payment_type === 'stripe') {
+          return this.stripeService.subscriptions.retrieve(team.stripe_data.subscriptionId);
+        }
+        return null;
+      }),
+    );
+
+    const teamsWithSubscription = teams.map((team, index) => {
+      const stripeResult = subscriptionsResults[index];
+
+      let stripeSubscriptionInfo: {
+        start_date?: string;
+        ended_at?: string;
+        canceled_at?: string;
+        status?: string;
+        product_id?: string;
+        product_name?: string;
+      };
+
+      if (stripeResult.status === 'fulfilled' && stripeResult.value) {
+        const stripeData = stripeResult.value;
+        const firstPlanItem = stripeData.items?.data?.[0];
+        stripeSubscriptionInfo = {
+          start_date: stripeData.start_date ? DateTime.fromSeconds(stripeData.start_date).toISO() : undefined,
+          ended_at: stripeData.ended_at ? DateTime.fromSeconds(stripeData.ended_at).toISO() : undefined,
+          canceled_at: stripeData.canceled_at ? DateTime.fromSeconds(stripeData.canceled_at).toISO() : undefined,
+          status: stripeData.status ?? undefined,
+          product_id: (firstPlanItem?.plan?.product as string) ?? undefined,
+          product_name: (firstPlanItem?.plan?.nickname as string) ?? '',
+        };
+      }
+      const { stripe_data, stripe_subscription_id, ...rest } = team;
+      return { ...rest, ...stripeSubscriptionInfo };
+    });
+
+    return teamsWithSubscription;
   }
 
   async handleChangeInTeamSubscription(eventType: string, payload: any) {
@@ -679,5 +725,9 @@ export class TeamManagementService {
       await this.stripeService.updateSubscription(subId, subItemId, teamSize);
     }
     await this.teamRepository.update(team.id, { team_size: teamSize });
+  }
+
+  async getTeamById(team_id: string) {
+    return this.teamRepository.orm.findOne({ where: { id: team_id } });
   }
 }

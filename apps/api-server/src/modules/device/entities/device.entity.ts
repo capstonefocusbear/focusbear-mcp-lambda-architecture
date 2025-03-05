@@ -18,6 +18,7 @@ export class Device extends BaseEntity {
   })
   user_id?: string;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: OperatingSystem,
@@ -25,6 +26,7 @@ export class Device extends BaseEntity {
   })
   operating_system?: OperatingSystem;
 
+  @Index()
   @Column({
     type: 'boolean',
     nullable: false,
@@ -32,6 +34,7 @@ export class Device extends BaseEntity {
   })
   is_leader?: boolean;
 
+  @Index()
   @Column({
     type: 'varchar',
     nullable: true,

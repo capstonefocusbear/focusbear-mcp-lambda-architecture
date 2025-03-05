@@ -3,4 +3,5 @@ export interface IR2Options {
   accessKeyId: string;
   secretAccessKey: string;
   signatureVersion: string;
+  region: string;
 }

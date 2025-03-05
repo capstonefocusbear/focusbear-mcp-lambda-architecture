@@ -249,12 +249,11 @@ export class UserService {
         }
         return focusMode;
       });
-      const syncedPlatformsMap = await this.platformIntegrationsService.getUserSyncedPlatforms(id);
+
       return {
         ...userDetails,
         email,
         focus_modes: formattedFocusModes,
-        synced_platforms: syncedPlatformsMap,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -717,7 +716,7 @@ export class UserService {
 
   async getUserLongTermGoals(user_id: string) {
     const partialUser = await this.userRepository.orm.findOne({ where: { id: user_id }, select: ['long_term_goals'] });
-    return partialUser?.long_term_goals;
+    return partialUser?.long_term_goals ?? [];
   }
 
   async isVerboseLoggingAllowed(user_id: string) {
@@ -779,5 +778,13 @@ export class UserService {
       }
     }
     return oldURL.origin + oldURL.pathname;
+  }
+
+  async getSyncedExternalPlatforms(user_id: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    if (!user) {
+      throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+    }
+    return this.platformIntegrationsService.getUserSyncedPlatforms(user_id);
   }
 }

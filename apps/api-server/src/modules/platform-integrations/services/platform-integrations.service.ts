@@ -59,11 +59,11 @@ export class PlatformIntegrationsService {
   }
 
   async getUserSyncedPlatforms(userId: string) {
-    const syncedProjects = await this.platformIntegrationsRepository.orm.find({
+    const syncedPlatforms = await this.platformIntegrationsRepository.orm.find({
       where: { user_id: userId },
       select: ['platform'],
     });
-    const platforms = syncedProjects.map((project) => project.platform);
+    const platforms = syncedPlatforms.map((syncedPlatform) => syncedPlatform.platform);
     return {
       zoho: platforms.includes(IntegrationPlatforms.ZOHO),
       jira: platforms.includes(IntegrationPlatforms.JIRA),

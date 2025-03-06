@@ -267,3 +267,4 @@ export const DECIMAL_PRECISION = 1;
 export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';
 export const ONE_WEEK_IN_SECONDS = 604800;
 export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
+export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;

@@ -4,7 +4,6 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { google } from 'googleapis';
 import axios from 'axios';
-import { OAuth2Client } from 'google-auth-library';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -25,7 +24,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
 
   protected readonly callbackUrl: string;
 
-  private readonly oauth2Client: OAuth2Client;
+  private readonly oauth2Client: typeof google.auth.OAuth2.prototype;
 
   private readonly platform = IntegrationPlatforms.GOOGLE;
 
@@ -123,8 +122,8 @@ export class GoogleAuthService implements IIntegrationAuthService {
     }
   }
 
-  protected async requestAuthorize(authorizeQuery: AuthorizeQuery) {
+  protected async requestAuthorize(authorizeQuery: AuthorizeQuery): Promise<PlatformIntegrationMetadataDto> {
     const { tokens } = await this.oauth2Client.getToken(authorizeQuery.code);
-    return tokens;
+    return tokens as PlatformIntegrationMetadataDto;
   }
 }

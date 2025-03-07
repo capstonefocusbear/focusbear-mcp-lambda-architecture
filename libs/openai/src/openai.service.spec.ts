@@ -152,4 +152,24 @@ describe('OpenAIService', () => {
       expect(result.allowed_probability).toBe(TEST_CONSTANTS.ZERO_PROBABILITY);
     });
   });
+
+  describe('isValidInput', () => {
+    it('should return true for valid input under word count limit', () => {
+      const validInput = 'This is a valid input';
+      expect(service.isValidInput(validInput)).toBe(true);
+    });
+
+    it('should return false for input exceeding word count limit', () => {
+      const longInput = 'a'.repeat(10000);
+      expect(service.isValidInput(longInput)).toBe(false);
+    });
+
+    it('should respect custom word count limit', () => {
+      const input = 'Short input';
+
+      expect(service.isValidInput(input, 5)).toBe(false);
+
+      expect(service.isValidInput(input, 20)).toBe(true);
+    });
+  });
 });

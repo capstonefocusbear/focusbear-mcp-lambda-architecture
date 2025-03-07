@@ -153,23 +153,27 @@ describe('OpenAIService', () => {
     });
   });
 
-  describe('isValidInput', () => {
-    it('should return true for valid input under word count limit', () => {
-      const validInput = 'This is a valid input';
-      expect(service.isValidInput(validInput)).toBe(true);
+  describe('addHttpsProtocol', () => {
+    it('should add https:// to URLs without protocol', () => {
+      expect(service.addHttpsProtocol('example.com')).toBe('https://example.com');
     });
 
-    it('should return false for input exceeding word count limit', () => {
-      const longInput = 'a'.repeat(10000);
-      expect(service.isValidInput(longInput)).toBe(false);
+    it('should not modify URLs that already have https://', () => {
+      expect(service.addHttpsProtocol('https://example.com')).toBe('https://example.com');
+    });
+  });
+
+  describe('addHttpsProtocolAndWWW', () => {
+    it('should add https:// and www. to URLs without protocol and www', () => {
+      expect(service.addHttpsProtocolAndWWW('example.com')).toBe('https://www.example.com');
     });
 
-    it('should respect custom word count limit', () => {
-      const input = 'Short input';
+    it('should only add https:// to URLs without protocol but with www', () => {
+      expect(service.addHttpsProtocolAndWWW('www.example.com')).toBe('https://www.example.com');
+    });
 
-      expect(service.isValidInput(input, 5)).toBe(false);
-
-      expect(service.isValidInput(input, 20)).toBe(true);
+    it('should not modify URLs that already have https:// and www', () => {
+      expect(service.addHttpsProtocolAndWWW('https://www.example.com')).toBe('https://www.example.com');
     });
   });
 });

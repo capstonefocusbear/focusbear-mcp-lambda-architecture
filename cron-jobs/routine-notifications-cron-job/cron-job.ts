@@ -154,6 +154,7 @@ async function getUsersForStartup(language: string) {
       ...timeStrings.map((ts) => ({ utc_startup_time: ts, language, updated_at })),
     ],
     take: 500,
+    select: ['id', 'language', 'routine_notification_times'],
   });
   console.log({ USERS_FETCHED_FOR_STARTUP: users.length });
   const usersToReceiveNotification = users.filter((user) => {
@@ -187,6 +188,7 @@ async function getUsersForShutdown(language: string) {
       ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language, updated_at })),
     ],
     take: 500,
+    select: ['id', 'language', 'routine_notification_times'],
   });
   console.log({ USERS_FETCHED_FOR_SHUTDOWN: users.length });
 

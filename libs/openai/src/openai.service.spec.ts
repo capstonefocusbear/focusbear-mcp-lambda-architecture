@@ -9,7 +9,6 @@ import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS } from './opena
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 
-// Idk if I should inline this here or put it in a separate file
 // Define mock prompt data that will be returned
 const mockPrompts = {
   prompts: [

@@ -1,9 +1,10 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
+
+const PROMPT_CONFIG_PATH = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
 
 @Injectable()
 export class PromptCacheService implements OnModuleInit {
@@ -11,11 +12,7 @@ export class PromptCacheService implements OnModuleInit {
 
   private promptCache: { prompts: Array<{ name: string; content: string }> } = { prompts: [] };
 
-  private configPath: string;
-
-  constructor(private configService: ConfigService, @InjectSentry() private readonly sentryService: SentryService) {
-    this.configPath = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
-  }
+  constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
   async onModuleInit() {
     await this.loadPrompts();
@@ -38,14 +35,14 @@ export class PromptCacheService implements OnModuleInit {
 
   private async loadPrompts() {
     try {
-      this.logger.log(`Loading prompts from ${this.configPath}`);
-      const fileContent = await fs.readFile(this.configPath, 'utf8');
+      this.logger.log(`Loading prompts from ${PROMPT_CONFIG_PATH}`);
+      const fileContent = await fs.readFile(PROMPT_CONFIG_PATH, 'utf8');
       this.promptCache = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
       this.logger.log(`Loaded ${this.promptCache.prompts.length} prompts`);
     } catch (error) {
       this.logger.error(`Failed to load prompts: ${error.message}`);
       this.sentryService.instance().captureException(error, {
-        extra: { message: 'Failed to load prompts', configPath: this.configPath },
+        extra: { message: 'Failed to load prompts', configPath: PROMPT_CONFIG_PATH },
       });
       // Initialize with empty prompts
       this.promptCache = { prompts: [] };

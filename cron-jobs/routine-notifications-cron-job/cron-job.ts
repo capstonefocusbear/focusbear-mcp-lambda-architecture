@@ -153,7 +153,6 @@ async function getUsersForStartup(language: string) {
       { utc_startup_time: timeStampPlusMinute, language, updated_at },
       ...timeStrings.map((ts) => ({ utc_startup_time: ts, language, updated_at })),
     ],
-    take: 500,
     select: ['id', 'language', 'routine_notification_times'],
   });
   console.log({ USERS_FETCHED_FOR_STARTUP: users.length });
@@ -187,7 +186,6 @@ async function getUsersForShutdown(language: string) {
       { utc_shutdown_time: timeStampPlusMinute, language, updated_at },
       ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language, updated_at })),
     ],
-    take: 500,
     select: ['id', 'language', 'routine_notification_times'],
   });
   console.log({ USERS_FETCHED_FOR_SHUTDOWN: users.length });

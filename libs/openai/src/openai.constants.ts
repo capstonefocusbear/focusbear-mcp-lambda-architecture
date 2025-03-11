@@ -17,6 +17,7 @@ export const PROMPT_INJECTION_PATTERNS = {
     /(\b(DAN|jailbreak|hypothetical|roleplay)\b|(what if|ignore (previous|prior))|(\/\*|\*\/|%%%\*\/)|(?=.*\bignore\b)(?=.*\binstructions?\b).+)/i,
 };
 export const INPUT_WRAPPER = '%%%';
+export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
     model: GPT_4O,

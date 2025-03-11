@@ -1,10 +1,8 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
-
-const PROMPT_CONFIG_PATH = path.join(process.cwd(), 'apps/api-server/test/prompt-testing/url-safety/config.yaml');
+import { PROMPT_CONFIG_PATH } from './openai.constants';
 
 @Injectable()
 export class PromptCacheService implements OnModuleInit {

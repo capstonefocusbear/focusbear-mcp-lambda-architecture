@@ -30,6 +30,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
     "@aws-sdk/s3-request-presigner": "^3.750.0",
+    "@braintree/sanitize-url": "^7.1.1",
     "@fastify/cors": "^8.5.0",
     "@fastify/helmet": "^10.0.0",
     "@fastify/multipart": "^8.3.1",
@@ -215,7 +216,8 @@
       "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
       "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
-      "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
+      "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs",
+      "sanitize-url": "<rootDir>/node_modules/@braintree/sanitize-url/dist/index.js"
     },
     "coveragePathIgnorePatterns": [
       "/node_modules/",

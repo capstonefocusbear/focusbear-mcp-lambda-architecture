@@ -11,6 +11,7 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI, { ClientOptions } from 'openai';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
+import { sanitizeUrl } from '@braintree/sanitize-url';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -221,12 +222,12 @@ export class OpenAIService {
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
     } = isUrlSafeDto;
+    const sanitizedUrl = sanitizeUrl(url);
     const metaData: { title: string; description: string } = meta_description
       ? { title: tab_title, description: meta_description }
-      : await this.getMetadata(url);
+      : await this.getMetadata(sanitizedUrl);
     const titleToUse = metaData.title || tab_title;
     const metaDescriptionToUse = metaData.description || meta_description;
-
     const isMetaDescriptionValid = this.isValidInput(metaDescriptionToUse, MAX_WORD_LENGTH.default);
     const isTabTitleValid = this.isValidInput(titleToUse, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -252,31 +253,31 @@ export class OpenAIService {
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.
-
+  
                 JSON response format:
                 {
                   "allowed_probability": number (0 to 1),
                   "reason": string (explain why the website is related or unrelated to Focus Mode)
                 }
-
+  
                 ${
                   tab_title
                     ? `
                 Website data (from Focus Bear app):
-                  URL: ${this.wrapUserInput(url)}
+                  URL: ${this.wrapUserInput(sanitizedUrl)}
                   Tab Title: ${this.wrapUserInput(tab_title)}
-
+  
                 Website data (from scraping):
                   Meta Description:${this.wrapUserInput(metaDescriptionToUse)}
                   `
                     : `
                 Website data (from scraping):
-                  URL: ${this.wrapUserInput(url)}
+                  URL: ${this.wrapUserInput(sanitizedUrl)}
                   Tab Title: ${this.wrapUserInput(titleToUse)}
                   Meta Description: ${this.wrapUserInput(metaDescriptionToUse)}
                   `
                 }
-
+  
                 Focus Mode data:
                   Focus Mode: ${this.wrapUserInput(focus_mode)}
                   Intention (what the user wants to focus on): ${this.wrapUserInput(intention)}
@@ -297,7 +298,7 @@ export class OpenAIService {
                 Assessment Criteria:
                  Allow if meta description or tab title relates to the Focus Mode Intention.
                  Allow if URL strongly relates to the Focus Mode or Intention.
-
+  
                 Scoring:
                  Low relevance: allowed_probability < 0.6
                  Moderate relevance: 0.6 <= allowed_probability <= 0.8
@@ -347,6 +348,11 @@ export class OpenAIService {
     return newUrl;
   }
 
+  /**
+   *
+   * @param url
+   * @returns {title: (size max 200), description: (size max 500)}
+   */
   async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
     try {
       const cacheFile = join(this.cacheDir, `${encodeURIComponent(url)}.json`);
@@ -383,13 +389,21 @@ export class OpenAIService {
 
       const title = $('head title').text().trim() || null;
 
-      let description = $('meta[name="description"]').attr('content');
-      if (!description) {
-        const textContent = $('body').text().replace(/\s+/g, ' ').trim();
-        description = textContent.slice(0, 180) || null;
-      }
+      // Add null check before calling replace
+      const metaDescriptionContent = $('meta[name="description"]').attr('content');
+      const metadataDescription = metaDescriptionContent ? metaDescriptionContent.replace(/\s+/g, ' ') : null;
 
-      const metadata = { title, description };
+      const selectedDescription = metadataDescription
+        ? metadataDescription.trim()
+        : $('body').text().replace(/\s+/g, ' ').trim(); // if no meta description, use body text
+
+      const truncatedDescription = selectedDescription ? selectedDescription.slice(0, MAX_WORD_LENGTH.metadata) : null;
+
+      // Sanitize both metadata and description
+      const sanitizedTitle = this.sanitizeMetadata(title);
+      const sanitizedDescription = this.sanitizeMetadata(truncatedDescription);
+
+      const metadata = { title: sanitizedTitle, description: sanitizedDescription };
 
       if (metadata.title || metadata.description) {
         await fs.mkdir(this.cacheDir, { recursive: true });
@@ -400,6 +414,46 @@ export class OpenAIService {
     } catch (error) {
       return { title: null, description: null };
     }
+  }
+
+  // Add a basic sanitization method for metadata
+  private sanitizeMetadata(text: string | null): string | null {
+    if (!text) return null;
+
+    // Normalize whitespace
+    let sanitized = text.replace(/\s+/g, ' ').trim();
+
+    // Check for critical patterns and remove them
+    for (const pattern of PROMPT_INJECTION_PATTERNS.CRITICAL) {
+      if (pattern.test(sanitized)) {
+        this.sentryService.instance().captureMessage('Critical pattern detected in metadata', {
+          extra: { text: sanitized, pattern: pattern.toString() },
+        });
+        sanitized = sanitized.replace(pattern, '[filtered]');
+      }
+    }
+
+    // Check for suspicious patterns
+    for (const pattern of PROMPT_INJECTION_PATTERNS.SUSPICIOUS) {
+      if (pattern.test(sanitized)) {
+        this.sentryService.instance().captureMessage('Suspicious pattern detected in metadata', {
+          extra: { text: sanitized, pattern: pattern.toString() },
+        });
+        sanitized = sanitized.replace(pattern, '[filtered]');
+      }
+    }
+
+    // Check encoding patterns
+    for (const pattern of PROMPT_INJECTION_PATTERNS.CONTEXT_SPECIFIC.ALWAYS_CHECK) {
+      if (pattern.test(sanitized)) {
+        this.sentryService.instance().captureMessage('Encoding pattern detected in metadata', {
+          extra: { text: sanitized, pattern: pattern.toString() },
+        });
+        sanitized = sanitized.replace(pattern, '[filtered]');
+      }
+    }
+
+    return sanitized;
   }
 
   async checkIfUsernameIsValid(username: string): Promise<{ allowed: boolean }> {
@@ -517,20 +571,48 @@ export class OpenAIService {
     );
   }
 
-  isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default): boolean {
+  isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {
+    // Skip validation for empty strings or null/undefined
+    if (!input) {
+      return true;
+    }
+
+    // Check input length
     if (input.length > wordCount) {
       this.sentryService.instance().captureMessage('Invalid user input: User input exceeds word count limit', {
-        extra: { input },
+        extra: { input, context },
       });
       return false;
     }
 
-    const containsMaliciousPrompts = Object.values(PROMPT_INJECTION_PATTERNS).some((pattern) => pattern.test(input));
-    if (containsMaliciousPrompts) {
-      this.sentryService.instance().captureMessage('Invalid user input: User input is flagged', {
-        extra: { input },
-      });
-      return false;
+    // Always check critical patterns regardless of context
+    for (const pattern of PROMPT_INJECTION_PATTERNS.CRITICAL) {
+      if (pattern.test(input)) {
+        this.sentryService.instance().captureMessage('Invalid user input: Critical pattern detected', {
+          extra: { input, pattern: pattern.toString(), context },
+        });
+        return false;
+      }
+    }
+
+    // Always check encoding patterns
+    for (const pattern of PROMPT_INJECTION_PATTERNS.CONTEXT_SPECIFIC.ALWAYS_CHECK) {
+      if (pattern.test(input)) {
+        this.sentryService.instance().captureMessage('Invalid input: Encoding pattern detected', {
+          extra: { input, pattern: pattern.toString(), context },
+        });
+        return false;
+      }
+    }
+
+    // Check suspicious patterns for ALL contexts
+    for (const pattern of PROMPT_INJECTION_PATTERNS.SUSPICIOUS) {
+      if (pattern.test(input)) {
+        this.sentryService.instance().captureMessage('Invalid user input: Suspicious pattern detected', {
+          extra: { input, pattern: pattern.toString(), context },
+        });
+        return false;
+      }
     }
 
     return true;

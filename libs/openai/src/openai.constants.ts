@@ -12,6 +12,13 @@ export const MAX_WORD_LENGTH = {
 };
 export const INPUT_WRAPPER = '%%%';
 
+export enum OpenAIKeyType {
+  GENERAL = 'general',
+  MOTIVATIONAL_MESSAGE = 'motivationalMessage',
+  URL_SAFETY = 'urlSafety',
+  PUSH_NOTIFICATION = 'pushNotification',
+}
+
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
   CRITICAL: [

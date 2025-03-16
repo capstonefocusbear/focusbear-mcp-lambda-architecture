@@ -1,13 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
 import { PlatformIntegrationMetadataDto } from '../dto/platform-integration-metadata.dto';
+import { GoogleAuthService } from '../../auth/services/google-auth.service';
 
 @Injectable()
 export class PlatformIntegrationsService {
-  constructor(private readonly platformIntegrationsRepository: PlatformIntegrationRepository) {}
+  constructor(
+    private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
+    @Inject(forwardRef(() => GoogleAuthService))
+    private readonly googleAuthService: GoogleAuthService,
+  ) {}
 
   async getPlatformIntegrationData(
     platform: IntegrationPlatforms,
@@ -30,11 +35,10 @@ export class PlatformIntegrationsService {
   async updatePlatformIntegration(
     userId: string,
     platform: IntegrationPlatforms,
-    authData: PlatformIntegrationMetadataDto,
+    authData: Partial<PlatformIntegrationMetadataDto>,
     userExternalId?: string,
   ) {
     const existingRecord = await this.getPlatformIntegrationData(platform, userId, userExternalId);
-
     if (!existingRecord) {
       const platformIntegration = new PlatformIntegration({
         user_id: userId,
@@ -45,16 +49,17 @@ export class PlatformIntegrationsService {
       return this.platformIntegrationsRepository.orm.save(platformIntegration);
     }
 
-    const platformIntegration = new PlatformIntegration({
-      user_id: existingRecord.user_id,
-      platform: existingRecord.platform,
-      external_user_id: existingRecord.external_user_id,
-      data: authData,
-    });
+    // Update only relevant fields
+    const updatedData = {
+      ...existingRecord.data,
+      ...(authData.access_token && { access_token: authData.access_token }),
+      ...(authData.refresh_token && { refresh_token: authData.refresh_token }),
+      ...(authData.expiry_date && { expiry_date: authData.expiry_date }),
+    };
 
     return this.platformIntegrationsRepository.orm.update(
       { user_id: userId, platform, external_user_id: userExternalId },
-      platformIntegration,
+      { data: updatedData },
     );
   }
 
@@ -80,17 +85,35 @@ export class PlatformIntegrationsService {
     const integrationRecords = await this.platformIntegrationsRepository.orm.find({
       where: { platform, user_id: userId },
     });
-    // microsoft token has no expiry date, no refresh token requiered
-    // google token has expiry date, refresh token required
-    const accountInfos = await integrationRecords.map((account) => {
-      const data = {
-        email: account.external_user_id,
-        expired:
+
+    const accountInfos = await Promise.all(
+      integrationRecords.map(async (account) => {
+        let isExpired =
           account.data.expiry_date < DateTime.local().toMillis() + 1000 ||
-          (account.platform === IntegrationPlatforms.GOOGLE && !account.data.refresh_token),
-      };
-      return data;
-    });
+          (account.platform === IntegrationPlatforms.GOOGLE && !account.data.refresh_token);
+
+        // If Google token is expired, attempt refresh
+        if (isExpired && account.platform === IntegrationPlatforms.GOOGLE) {
+          try {
+            const newAccessToken = await this.googleAuthService.refreshToken(userId, account.external_user_id);
+            if (newAccessToken) {
+              isExpired = false; // Token successfully refreshed
+            }
+          } catch (refreshError) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `Failed to refresh token for user ${userId} (account: ${account.external_user_id}):`,
+              refreshError,
+            );
+          }
+        }
+
+        return {
+          email: account.external_user_id,
+          expired: isExpired,
+        };
+      }),
+    );
     return accountInfos;
   }
 

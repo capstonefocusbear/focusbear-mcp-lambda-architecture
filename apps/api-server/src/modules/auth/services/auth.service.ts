@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Auth0AuthenticationService } from '@app/auth0';
+import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { Passport } from '../domain/passport.model';
 
 @Injectable()
@@ -8,6 +8,7 @@ export class AuthService {
   constructor(
     private readonly auth0AuthService: Auth0AuthenticationService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -62,5 +63,9 @@ export class AuthService {
     const parsedCustomClaimsEntries = customClaims.map(parseCustomClaim);
     const parsedCustomClaims = Object.fromEntries(parsedCustomClaimsEntries);
     return parsedCustomClaims;
+  }
+
+  async requestPasswordReset(email: string) {
+    return this.auth0ManagementService.initiatePasswordReset(email);
   }
 }

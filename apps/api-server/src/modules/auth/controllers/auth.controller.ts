@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Query, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query, Param, Post, Body } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
@@ -8,6 +8,8 @@ import { AuthorizeQuery } from '../dto/authorize-query.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { AuthServiceFactory } from '../services/auth.service.factory';
 import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
+import { ResetPasswordDto } from '../dto/password-reset.dto';
+import { AuthService } from '../services/auth.service';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -16,7 +18,13 @@ export class AuthController {
   constructor(
     private readonly authServiceFactory: AuthServiceFactory,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly authService: AuthService,
   ) {}
+
+  @Post('/reset-password')
+  async requestPasswordReset(@Body() { email }: ResetPasswordDto) {
+    return this.authService.requestPasswordReset(email);
+  }
 
   @Get(':platform')
   login(@Param('platform') platform: IntegrationPlatforms, @Query() { is_development }: IntegrationLoginQuery) {

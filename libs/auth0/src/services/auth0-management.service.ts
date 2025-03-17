@@ -1,5 +1,6 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { DeviceCredential, ManagementClient } from 'auth0';
+import axios from 'axios';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService } from '../interfaces';
 
@@ -23,6 +24,19 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
       throw new Error(`Error fetching user with Auth0 ID ${auth0Id}: ${error}`);
     }
+  }
+
+  async initiatePasswordReset(email: string) {
+    const users = await this.getAuth0UserWithEmail(email);
+    if (users.length < 1) {
+      throw new NotFoundException(`User with email: ${email} does not exist!`);
+    }
+    const PASSWORD_RESET_URL = `https://${this.options.domain}/dbconnections/change_password`;
+    await axios.post(PASSWORD_RESET_URL, {
+      client_id: this.options.clientId,
+      email,
+      connection: 'Username-Password-Authentication',
+    });
   }
 
   async getAuth0UserWithEmail(email: string) {

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
@@ -56,6 +56,7 @@ import { BullQueues } from '../../shared/utils/constants';
     AsanaAuthService,
     ClickUpAuthService,
     TrelloAuthService,
+    GoogleAuthService,
   ],
   controllers: [PusherAuthController, AuthController],
   imports: [
@@ -81,7 +82,7 @@ import { BullQueues } from '../../shared/utils/constants';
     }),
     HelperModule,
     ConfigModule,
-    PlatformIntegrationsModule,
+    forwardRef(() => PlatformIntegrationsModule),
     CalendarModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],

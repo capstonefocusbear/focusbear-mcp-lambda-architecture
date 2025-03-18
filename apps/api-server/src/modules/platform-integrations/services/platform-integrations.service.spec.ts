@@ -1,20 +1,24 @@
 import { Test } from '@nestjs/testing';
-import { PlatformIntegrationsRepositoryMock } from '../../../../test/mocks/index';
+import { DateTime } from 'luxon';
+import { GoogleAuthServiceMock, PlatformIntegrationsRepositoryMock } from '../../../../test/mocks/index';
 import { PlatformIntegrationsService } from './platform-integrations.service';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { userDummy } from '../../../../test/dummies';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
+import { GoogleAuthService } from '../../auth/services/google-auth.service';
 
 describe('PlatformIntegrationsService', () => {
   let platformIntegrationsService: PlatformIntegrationsService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [PlatformIntegrationsService, PlatformIntegrationRepository],
+      providers: [PlatformIntegrationsService, PlatformIntegrationRepository, GoogleAuthService],
     })
       .overrideProvider(PlatformIntegrationRepository)
       .useValue(PlatformIntegrationsRepositoryMock)
+      .overrideProvider(GoogleAuthService)
+      .useValue(GoogleAuthServiceMock)
       .compile();
 
     platformIntegrationsService = moduleRef.get<PlatformIntegrationsService>(PlatformIntegrationsService);
@@ -89,12 +93,7 @@ describe('PlatformIntegrationsService', () => {
 
       expect(PlatformIntegrationsRepositoryMock.orm.update).toHaveBeenCalledWith(
         { user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, external_user_id: dummyZohoData.accountId },
-        new PlatformIntegration({
-          user_id: userDummy.id,
-          platform: IntegrationPlatforms.ZOHO,
-          external_user_id: dummyZohoData.accountId,
-          data: updatedZohoDataDummy,
-        }),
+        { data: updatedZohoDataDummy },
       );
     });
   });
@@ -146,6 +145,55 @@ describe('PlatformIntegrationsService', () => {
       expect(response).toEqual([
         { email: 'firstgmail@gmail.com', expired: true },
         { email: 'secondgmail@gmail.com', expired: true },
+      ]);
+    });
+
+    it('positive: should attempt to refresh expired token for Google accounts', async () => {
+      const dummyExternalId = 'expired@gmail.com';
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          external_user_id: dummyExternalId,
+          platform: IntegrationPlatforms.GOOGLE,
+          data: {
+            expiry_date: DateTime.local().minus({ minutes: 10 }).toMillis(), // Expired token
+            refresh_token: 'valid-refresh-token',
+          },
+        },
+      ]);
+
+      GoogleAuthServiceMock.refreshToken.mockResolvedValueOnce('new-access-token');
+
+      const response = await platformIntegrationsService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userDummy.id);
+
+      expect(GoogleAuthServiceMock.refreshToken).toHaveBeenCalledWith(userDummy.id, dummyExternalId);
+
+      expect(response).toEqual([
+        { email: dummyExternalId, expired: false }, // Token should be refreshed
+      ]);
+    });
+
+    it('negative: should mark account as expired if token refresh fails', async () => {
+      const dummyExternalId = 'expired@gmail.com';
+      // Mock expired token scenario
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          external_user_id: dummyExternalId,
+          platform: IntegrationPlatforms.GOOGLE,
+          data: {
+            expiry_date: DateTime.local().minus({ minutes: 10 }).toMillis(), // Expired token
+            refresh_token: 'valid-refresh-token',
+          },
+        },
+      ]);
+
+      GoogleAuthServiceMock.refreshToken.mockRejectedValueOnce(new Error('Refresh failed'));
+
+      const response = await platformIntegrationsService.getPlatformAccounts(IntegrationPlatforms.GOOGLE, userDummy.id);
+
+      expect(GoogleAuthServiceMock.refreshToken).toHaveBeenCalledWith(userDummy.id, dummyExternalId);
+
+      expect(response).toEqual([
+        { email: dummyExternalId, expired: true }, // Token remains expired
       ]);
     });
   });

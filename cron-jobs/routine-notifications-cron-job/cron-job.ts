@@ -153,7 +153,9 @@ async function getUsersForStartup(language: string) {
       { utc_startup_time: timeStampPlusMinute, language, updated_at },
       ...timeStrings.map((ts) => ({ utc_startup_time: ts, language, updated_at })),
     ],
+    select: ['id', 'language', 'routine_notification_times'],
   });
+  console.log({ USERS_FETCHED_FOR_STARTUP: users.length });
   const usersToReceiveNotification = users.filter((user) => {
     const lastMorningRoutineNotification = DateTime.fromJSDate(
       new Date(user.routine_notification_times.last_time_notified_of_morning_routine),
@@ -184,7 +186,10 @@ async function getUsersForShutdown(language: string) {
       { utc_shutdown_time: timeStampPlusMinute, language, updated_at },
       ...timeStrings.map((ts) => ({ utc_shutdown_time: ts, language, updated_at })),
     ],
+    select: ['id', 'language', 'routine_notification_times'],
   });
+  console.log({ USERS_FETCHED_FOR_SHUTDOWN: users.length });
+
   const usersToReceiveNotification = users.filter((user) => {
     const lastEveningRoutineNotification = DateTime.fromJSDate(
       new Date(user.routine_notification_times.last_time_notified_of_evening_routine),
@@ -223,22 +228,17 @@ async function publishToUsersByLanguage(
   translationData: TranslationDataType,
 ) {
   const userIDs = users.map((user) => user.id);
-  console.log('USER-IDS:', userIDs);
-  if (userIDs.length !== 0) {
-    const { title, message } = translationData[language][routine];
-    const publishRequest = new BeamsPublishRequest({
-      apns: {
-        aps: { alert: { title, body: message } },
-      },
-      fcm: { notification: { title, body: message } },
-    });
-    console.log('Users to receive routine push notifications: ', userIDs);
-    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
-    // chunk in groups of 1000
-    const chunkSz = 1000;
-    for (let i = 0; i < userIDs.length; i += chunkSz) {
-      await beamsClient.publishToUsers(userIDs.slice(i, i + chunkSz), publishRequest)
-    }
+  if (userIDs.length === 0) return;
+
+  const { title, message } = translationData[language][routine];
+  const publishRequest = new BeamsPublishRequest({
+    apns: { aps: { alert: { title, body: message } } },
+    fcm: { notification: { title, body: message } },
+  });
+  console.log('USER-IDS:', userIDs, 'LANGUAGE:', language);
+  const chunkSize = 500;
+  for (let i = 0; i < userIDs.length; i += chunkSize) {
+    await beamsClient.publishToUsers(userIDs.slice(i, i + chunkSize), publishRequest);
   }
 }
 
@@ -267,18 +267,14 @@ function createFileName(routine: string, language: string) {
     };
     const startupUsers = await getUsersForStartup(language);
     const shutdownUsers = await getUsersForShutdown(language);
-    const [beamsResponseOne, beamsResponseTwo] = await Promise.all([
-      publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData),
-      publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData),
-    ]);
-    console.log('Routine push notification response One: ', beamsResponseOne);
-    console.log('Routine push notification response Two: ', beamsResponseTwo);
+
+    await publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData);
+    await publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData);
 
     await Promise.all([
       updateUsersMorningRoutineNotification(startupUsers),
       updateUsersEveningRoutineNotification(shutdownUsers),
     ]);
   }
-
   process.exit();
 })();

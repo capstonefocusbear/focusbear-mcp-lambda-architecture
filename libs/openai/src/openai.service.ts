@@ -22,8 +22,8 @@ import {
   MAX_WORD_LENGTH,
   OPENAI_MODULE_OPTIONS,
   OPENAI_PARAMS,
-  OpenAIKeyType,
   PROMPT_INJECTION_PATTERNS,
+  OpenAIKeyType,
 } from './openai.constants';
 import { AiToneOptions } from './domain/ai-tones.enum';
 import { URLSafeProbabilityResponseDto } from './dto/url-safe-probability-response.dto';
@@ -42,8 +42,6 @@ export class OpenAIService {
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
-
-  private openAIInstance: OpenAI;
 
   private UNTRUSTED_USER_INPUT_PROMPT: ChatCompletionMessageParam = {
     role: 'system',
@@ -136,20 +134,31 @@ export class OpenAIService {
           language,
         },
       });
+
+      const stream = new Stream.PassThrough();
+
+      // Optimize performance by bypassing the overhead introduced by Fastify
+      if (!response.raw.headersSent) {
+        response.raw.setHeader('Content-Type', 'text/event-stream');
+        response.raw.setHeader('Cache-Control', 'no-cache');
+        response.raw.setHeader('Connection', 'keep-alive');
+      }
+
+      response.raw.on('close', () => {
+        if (!stream.destroyed) {
+          stream.end();
+          stream.destroy();
+        }
+      });
+
       const prompt = this.constructMotivationalMessagePrompt(input, longTermGoals, { language, tone, device_type });
-      // clear up prompt formatting to stream to client as string
-      const promptWithoutNewLines = prompt.replace(/\n/g, ' ');
-      const formattedPrompt = promptWithoutNewLines
-        .split(' ')
-        .filter((word) => word !== '')
-        .join(' ');
+      const formattedPrompt = prompt.replace(/\s+/g, ' ').trim();
       const messages: ChatCompletionMessageParam[] = [
         {
           content: prompt,
           role: 'system',
         },
       ];
-      const stream = new Stream.PassThrough();
 
       const chatCompletionStream = await this.getOpenAIChatCompletionsStreaming(
         messages,
@@ -157,23 +166,36 @@ export class OpenAIService {
         OPENAI_PARAMS.createMotivation as OpenAI.Chat.ChatCompletionCreateParamsStreaming,
       );
 
+      stream.on('error', (streamError) => {
+        this.sentryService.instance().captureException(streamError, { level: 'error' });
+        response.raw.end();
+      });
+
       for await (const chunk of chatCompletionStream) {
         const { choices } = chunk;
         const {
           finish_reason,
           delta: { content },
         } = choices[0];
-        stream.write(`data: ${!finish_reason ? content : '[DONE]'}\n\n`);
+
         if (finish_reason) {
+          stream.write('data: [DONE]\n\n');
           stream.write(`data: PROMPT: ${formattedPrompt}\n\n`);
           stream.end();
+          break;
+        } else {
+          stream.write(`data: ${content}\n\n`);
         }
       }
 
       return await response.send(stream);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
+      if (error.message === 'Request timed out') {
+        response.status(504).send('AI service is currently taking too long to respond. Please try again later.');
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -543,6 +565,12 @@ export class OpenAIService {
   }
 
   isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {
+    // Skip validation for empty strings or null/undefined
+    if (!input) {
+      return true;
+    }
+
+    // Check input length
     if (input.length > wordCount) {
       this.sentryService.instance().captureMessage('Invalid user input: User input exceeds word count limit', {
         extra: { input, context },

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
@@ -19,9 +19,13 @@ import { UserRepository } from '../user/repositories/user.repository';
 import { User } from '../user/entities/user.entity';
 import { SyncEventsConsumer } from './consumers/sync-events.consumer';
 import { BullQueues } from '../../shared/utils/constants';
+import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    forwardRef(() => PlatformIntegrationsModule),
+    forwardRef(() => AuthModule),
     NotificationModule,
     TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User]),
     BullModule.registerQueue({

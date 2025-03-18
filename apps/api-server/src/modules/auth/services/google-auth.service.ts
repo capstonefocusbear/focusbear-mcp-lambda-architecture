@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -34,6 +34,7 @@ export class GoogleAuthService implements IIntegrationAuthService {
     protected readonly configService: ConfigService,
     protected readonly userRepository: UserRepository,
     @InjectQueue(BullQueues.TIME_LOGS) protected timeLogsQueue: Queue,
+    @Inject(forwardRef(() => PlatformIntegrationsService))
     protected readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly googleCalendarService: GoogleCalendarService,
     @InjectSentry() private readonly sentryService: SentryService,
@@ -125,5 +126,48 @@ export class GoogleAuthService implements IIntegrationAuthService {
   protected async requestAuthorize(authorizeQuery: AuthorizeQuery): Promise<PlatformIntegrationMetadataDto> {
     const { tokens } = await this.oauth2Client.getToken(authorizeQuery.code);
     return tokens as PlatformIntegrationMetadataDto;
+  }
+
+  async refreshToken(userId: string, userExternalId?: string) {
+    try {
+      const existingRecord = await this.platformIntegrationsService.getPlatformIntegrationData(
+        this.platform,
+        userId,
+        userExternalId,
+      );
+
+      if (!existingRecord || !existingRecord.data.refresh_token) {
+        throw new Error(`No valid refresh token found for user ${userId}`);
+      }
+
+      this.oauth2Client.setCredentials({ refresh_token: existingRecord.data.refresh_token });
+      const { credentials } = await this.oauth2Client.refreshAccessToken();
+
+      if (!credentials.access_token) {
+        throw new Error(`Failed to refresh access token for user ${userId}`);
+      }
+
+      // Update the integration record with the new tokens
+      const updatedAuthData: Partial<PlatformIntegrationMetadataDto> = {
+        access_token: credentials.access_token,
+        expiry_date: credentials.expiry_date,
+      };
+
+      if (credentials.refresh_token) {
+        updatedAuthData.refresh_token = credentials.refresh_token;
+      }
+
+      await this.platformIntegrationsService.updatePlatformIntegration(
+        userId,
+        this.platform,
+        updatedAuthData as PlatformIntegrationMetadataDto,
+        userExternalId,
+      );
+
+      return credentials.access_token;
+    } catch (error) {
+      this.sentryService.instance().captureException(error);
+      throw new Error(`Could not refresh access token for user ${userId}`);
+    }
   }
 }

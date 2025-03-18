@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarDto } from '../dto/calendar.dto';
@@ -16,6 +16,7 @@ export class CalendarService {
     private readonly calendarExcludedKeywordRepository: CalendarExcluededKeywordRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly userRepository: UserRepository,
+    @Inject(forwardRef(() => PlatformIntegrationsService))
     private readonly platformIntegrationService: PlatformIntegrationsService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { calendar_v3, google } from 'googleapis';
 import { PlatformIntegrationsService } from '../../platform-integrations/services/platform-integrations.service';
@@ -43,6 +43,7 @@ const notificationAdapter = ({
 export class GoogleCalendarService extends BaseCalendarService {
   constructor(
     protected readonly configService: ConfigService,
+    @Inject(forwardRef(() => PlatformIntegrationsService))
     protected readonly platformIntegrationService: PlatformIntegrationsService,
     protected readonly notificationRepository: NotificationRepository,
     protected readonly notificationService: NotificationService,

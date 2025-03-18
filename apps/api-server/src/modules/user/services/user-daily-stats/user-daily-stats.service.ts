@@ -36,6 +36,7 @@ import { GetLeaderBoardQuery } from '../../dto/get-leader-board-query.dto';
 import { StreakTypes } from '../../domain/StreakTypes.enum';
 import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
+import { DailySequenceDurations } from '../../../activity/domain/daily-sequence-durations.model';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -194,13 +195,23 @@ export class UserDailyStatsService {
   }
 
   async getUserStreaks(user: User) {
-    const userDailyStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
-    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
-      await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
+    const [userDailyStatsResponse, routineDurationsResponse] = await Promise.allSettled([
+      this.dailyStatsRepository.getUserDailyStats(user.id),
+      this.activitySequenceService.getUserRoutineDailyDurations(user.id),
+    ]);
+    const userDailyStats = (userDailyStatsResponse as PromiseFulfilledResult<DailyStats[]>).value || [];
+    const routineDurations = (
+      routineDurationsResponse as PromiseFulfilledResult<{
+        morningRoutineDailyDurations: DailySequenceDurations;
+        eveningRoutineDailyDurations: DailySequenceDurations;
+        microBreaksDailyDurations: DailySequenceDurations;
+      }>
+    ).value;
+
     const { focus_modes_streak, morning_routines_streak, evening_routines_streak } = calculateStreaks(
       userDailyStats,
       user.timezone,
-      { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations },
+      routineDurations,
     );
     return { focus_modes_streak, morning_routines_streak, evening_routines_streak };
   }

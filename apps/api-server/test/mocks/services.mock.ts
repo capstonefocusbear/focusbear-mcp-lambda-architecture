@@ -338,3 +338,7 @@ export const CalendarServiceMock = {
   deleteCalendarExcludedKeyword: jest.fn(),
   getCalendarDatas: jest.fn(),
 };
+
+export const GoogleAuthServiceMock = {
+  refreshToken: jest.fn(),
+};

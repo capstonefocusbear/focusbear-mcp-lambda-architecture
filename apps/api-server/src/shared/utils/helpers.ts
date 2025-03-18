@@ -180,3 +180,10 @@ export const prettyJson = (obj: any, mode: string | undefined = 'standard', keyO
     }
   }
 };
+
+export const callPromiseWithTimeout = async <T>(apiCall: Promise<T>, timeoutMs: number): Promise<T> => {
+  const timeoutPromise = new Promise<T>((_, reject) =>
+    setTimeout(() => reject(new Error('Request timed out')), timeoutMs),
+  );
+  return Promise.race([apiCall, timeoutPromise]);
+};

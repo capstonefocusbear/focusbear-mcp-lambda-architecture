@@ -7,16 +7,66 @@ export const TEST_CONSTANTS = {
   ZERO_PROBABILITY: 0,
   MOCK_ERROR_RESPONSE_PREFIX: 'AI decision failed for',
 };
-export const MAX_WORD_LENGTH = { brainDump: 1000, intention: 500, default: 200, longTermGoal: 200, justification: 500 };
+export const MAX_WORD_LENGTH = {
+  brainDump: 1000,
+  intention: 500,
+  default: 200,
+  longTermGoal: 200,
+  justification: 500,
+  metadata: 500,
+};
 export const PROMPT_INJECTION_PATTERNS = {
-  SYSTEM_OVERRIDE: /(\b(override|sudo|root)\b|(\bas\s+(admin|system))\b)/i,
-  CODE_EXECUTION: /(\brun\b|\bexec(ute)?\b|\beval\b|\bscript\b)/i,
-  DATA_THEFT: /(\b(password|SSN|API key|CVV)\b|(\b\d{3}-\d{2}-\d{4}\b))/i,
-  ENCODING: /(base64:|%[0-9a-fA-F]{2}|\\x[0-9a-fA-F]{2})/i,
-  JAILBREAK:
-    /(\b(DAN|jailbreak|hypothetical|roleplay)\b|(what if|ignore (previous|prior))|(\/\*|\*\/|%%%\*\/)|(?=.*\bignore\b)(?=.*\binstructions?\b).+)/i,
+  // Critical patterns - these are almost always malicious
+  CRITICAL: [
+    /ignore\s+(all\s+)?(?:previous|prior)\s+instructions/i,
+    /disregard\s+(all\s+)?(?:previous|prior)\s+instructions/i,
+    /forget\s+(all\s+)?(?:previous|prior)\s+instructions/i,
+    /\bDAN\b/i,
+    /\bjailbreak\b/i,
+    /\bhypothetical\s+scenario\s+where\s+you\s+ignore\b/i,
+    /(?=.*\bignore\b)(?=.*\binstructions?\b)/i,
+  ],
+
+  // Suspicious patterns - potentially problematic but need more context
+  SUSPICIOUS: [
+    /\bsudo\s/i, // Add space after to avoid matching "sub"
+    /\broot\s+access\b/i,
+    /\boverride\s+system\b/i,
+    /\bas\s+(an?\s+)?(admin|system)\b/i,
+    /\bexec(ute)?\s+code\b/i,
+    /\beval\s+/i,
+    /\bwhat\s+if\s+you\s+ignored\b/i,
+  ],
+
+  // Context-specific patterns - different treatment based on context
+  CONTEXT_SPECIFIC: {
+    ALWAYS_CHECK: [
+      // Encoding patterns
+      /base64:/i,
+      /%[0-9a-fA-F]{2}/,
+      /\\x[0-9a-fA-F]{2}/,
+    ],
+
+    // Common in website contexts but suspicious elsewhere
+    COMMON_IN_WEBSITES: [
+      /\breset\s+password\b/i,
+      /\blogin\b/i,
+      /\bsign\s+in\b/i,
+      /\bcreate\s+account\b/i,
+      /\bCSS\s+override\b/i,
+      /\bstyle\s+override\b/i,
+    ],
+  },
 };
 export const INPUT_WRAPPER = '%%%';
+
+export enum OpenAIKeyType {
+  GENERAL = 'general',
+  MOTIVATIONAL_MESSAGE = 'motivationalMessage',
+  URL_SAFETY = 'urlSafety',
+  PUSH_NOTIFICATION = 'pushNotification',
+}
+
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {

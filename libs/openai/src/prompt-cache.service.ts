@@ -8,7 +8,7 @@ import { PROMPT_CONFIG_PATH } from './openai.constants';
 export class PromptCacheService implements OnModuleInit {
   private readonly logger = new Logger(PromptCacheService.name);
 
-  private promptCache: { prompts: Array<{ name: string; content: string }> } = { prompts: [] };
+  private promptCache: { prompts: Array<{ id: string; raw: string }> } = { prompts: [] };
 
   constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
@@ -17,8 +17,8 @@ export class PromptCacheService implements OnModuleInit {
   }
 
   getPrompt(name: string): string | null {
-    const prompt = this.promptCache.prompts.find((p) => p.name === name);
-    return prompt ? prompt.content : null;
+    const prompt = this.promptCache.prompts.find((p) => p.id === name);
+    return prompt ? prompt.raw : null;
   }
 
   // Return all cached prompts
@@ -35,7 +35,7 @@ export class PromptCacheService implements OnModuleInit {
     try {
       this.logger.log(`Loading prompts from ${PROMPT_CONFIG_PATH}`);
       const fileContent = await fs.readFile(PROMPT_CONFIG_PATH, 'utf8');
-      this.promptCache = yaml.load(fileContent) as { prompts: Array<{ name: string; content: string }> };
+      this.promptCache = yaml.load(fileContent) as { prompts: Array<{ id: string; raw: string }> };
       this.logger.log(`Loaded ${this.promptCache.prompts.length} prompts`);
     } catch (error) {
       this.logger.error(`Failed to load prompts: ${error.message}`);

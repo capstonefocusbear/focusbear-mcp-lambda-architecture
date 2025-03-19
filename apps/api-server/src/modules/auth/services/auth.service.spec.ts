@@ -1,7 +1,11 @@
 import { Test } from '@nestjs/testing';
-import { Auth0AuthenticationService } from '@app/auth0';
+import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { Auth0AuthenticationServiceMock, SentryServiceMock } from '../../../../test/mocks/index';
+import {
+  Auth0AuthenticationServiceMock,
+  Auth0ManagementServiceMock,
+  SentryServiceMock,
+} from '../../../../test/mocks/index';
 import { AuthService } from './auth.service';
 import { Passport } from '../domain/passport.model';
 
@@ -13,6 +17,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         Auth0AuthenticationService,
+        Auth0ManagementService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -21,6 +26,8 @@ describe('AuthService', () => {
     })
       .overrideProvider(Auth0AuthenticationService)
       .useValue(Auth0AuthenticationServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);

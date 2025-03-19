@@ -471,38 +471,5 @@ describe('OpenAIService', () => {
       mockMkdir.mockRestore();
       mockWriteFile.mockRestore();
     });
-
-    //   const mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' });
-    //   const mockAxiosGet = jest
-    //     .spyOn(axios, 'get')
-    //     .mockRejectedValueOnce(new Error('Failed without www'))
-    //     .mockResolvedValueOnce({
-    //       status: 200,
-    //       data: `
-    //       <html>
-    //         <head>
-    //           <title>Test Title</title>
-    //           <meta name="description" content="Test Description">
-    //         </head>
-    //       </html>
-    //     `,
-    //     });
-
-    //   const mockMkdir = jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-    //   const mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-
-    //   const result = await service.getMetadata('example.com');
-
-    //   expect(result.title).toBe('Test Title');
-    //   expect(result.description).toBe('Test Description');
-    //   expect(mockAxiosGet).toHaveBeenCalledTimes(2);
-    //   expect(mockAxiosGet).toHaveBeenNthCalledWith(1, 'https://example.com');
-    //   expect(mockAxiosGet).toHaveBeenNthCalledWith(2, 'https://www.example.com');
-
-    //   mockReadFile.mockRestore();
-    //   mockAxiosGet.mockRestore();
-    //   mockMkdir.mockRestore();
-    //   mockWriteFile.mockRestore();
-    // });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DeviceCredential, ManagementClient } from 'auth0';
 import axios from 'axios';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
@@ -31,6 +31,18 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     if (users.length < 1) {
       throw new NotFoundException(`User with email: ${email} does not exist!`);
     }
+
+    const user = users[0];
+    if (!user.email_verified) {
+      throw new BadRequestException('This email has not been verified.');
+    }
+
+    // Check if the user is using a third-party provider
+    const isThirdPartyUser = user.identities.some((identity) => identity.isSocial);
+    if (isThirdPartyUser) {
+      throw new BadRequestException('Password reset is not allowed for third-party email logins.');
+    }
+
     const PASSWORD_RESET_URL = `https://${this.options.domain}/dbconnections/change_password`;
     await axios.post(PASSWORD_RESET_URL, {
       client_id: this.options.clientId,

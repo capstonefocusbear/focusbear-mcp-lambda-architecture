@@ -13,4 +13,13 @@ export const openAiConfig = registerAs('openai', () => ({
   pushNotification: {
     apiKey: process.env.OPENAI_PUSH_API_KEY || process.env.OPENAI_API_KEY,
   },
+  usernameValidation: {
+    apiKey: process.env.OPENAI_USERNAME_VALIDATION_API_KEY || process.env.OPENAI_API_KEY,
+  },
+  subtasksGeneration: {
+    apiKey: process.env.OPENAI_SUBTASKS_GENERATION_API_KEY || process.env.OPENAI_API_KEY,
+  },
+  brainDumpConversion: {
+    apiKey: process.env.OPENAI_BRAIN_DUMP_CONVERSION_API_KEY || process.env.OPENAI_API_KEY,
+  },
 }));

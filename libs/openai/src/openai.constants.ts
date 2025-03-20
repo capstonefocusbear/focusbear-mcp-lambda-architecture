@@ -22,6 +22,9 @@ export enum OpenAIKeyType {
   MOTIVATIONAL_MESSAGE = 'motivationalMessage',
   URL_SAFETY = 'urlSafety',
   PUSH_NOTIFICATION = 'pushNotification',
+  USERNAME_VALIDATION = 'usernameValidation',
+  SUBTASKS_GENERATION = 'subtasksGeneration',
+  BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
 }
 
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';

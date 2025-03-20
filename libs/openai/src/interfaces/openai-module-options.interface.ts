@@ -5,6 +5,9 @@ export interface IOpenAIOptions {
   motivationalMessage?: OpenAI.ClientOptions;
   urlSafety?: OpenAI.ClientOptions;
   pushNotification?: OpenAI.ClientOptions;
+  usernameValidation?: OpenAI.ClientOptions;
+  subtasksGeneration?: OpenAI.ClientOptions;
+  brainDumpConversion?: OpenAI.ClientOptions;
   // Backward compatibility
   apiKey?: string;
 }

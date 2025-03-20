@@ -39,6 +39,9 @@ export class OpenAIService {
     [OpenAIKeyType.MOTIVATIONAL_MESSAGE]?: OpenAI;
     [OpenAIKeyType.URL_SAFETY]?: OpenAI;
     [OpenAIKeyType.PUSH_NOTIFICATION]?: OpenAI;
+    [OpenAIKeyType.USERNAME_VALIDATION]?: OpenAI;
+    [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
+    [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -66,11 +69,25 @@ export class OpenAIService {
   // Helper method to get the appropriate OpenAI instance
   private getOpenAIInstance(type: OpenAIKeyType): OpenAI {
     if (!this.openAIInstances[type]) {
-      const config = this.options[type] || this.options[OpenAIKeyType.GENERAL];
+      // Get the config for this key type - now the enum value directly matches the property name
+      const config = this.options[type];
+
+      // If no specific key, fall back to general key
       if (!config) {
-        throw new Error(`No OpenAI configuration found for type: ${type}`);
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: `No specific OpenAI API key found for ${type}, falling back to general key`,
+        });
+
+        const generalConfig = this.options.general;
+        if (!generalConfig) {
+          throw new Error(`No OpenAI configuration found for type: ${type} and no general fallback available`);
+        }
+        this.openAIInstances[type] = new OpenAI(generalConfig);
+      } else {
+        this.openAIInstances[type] = new OpenAI(config);
       }
-      this.openAIInstances[type] = new OpenAI({ ...config });
     }
     return this.openAIInstances[type];
   }
@@ -456,6 +473,16 @@ export class OpenAIService {
     if (!isValid) {
       throw new Error('Invalid Input');
     }
+
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Checking username validity using OpenAI API',
+      data: {
+        username_length: username.length,
+      },
+    });
+
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Given the following username, determine whether it uses curse words, sexual language, or could be offensive to anyone, if it is deemed fine, return true, if offensive, return false.
@@ -465,34 +492,53 @@ export class OpenAIService {
       username: ${this.wrapUserInput(username)},
       JSON output:`,
     };
+
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
-      OpenAIKeyType.GENERAL, // Using the general API key,
+      OpenAIKeyType.USERNAME_VALIDATION,
       OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
     );
+
     const newMessage = completions.choices[0].message;
     const { content } = newMessage;
     return JSON.parse(content);
   }
 
   async createSubtasks({ task, language = 'english' }: GenerateSubtasksDto): Promise<SubtasksDto> {
+    const isValid = this.isValidInput(task, MAX_WORD_LENGTH.default);
+    if (!isValid) {
+      throw new Error('Invalid Input');
+    }
+
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Generating subtasks using OpenAI API',
+      data: {
+        task_length: task.length,
+        language,
+      },
+    });
+
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: `Break down the following task into smaller steps. Each step should be a JSON object with the format: 
       { "name": "Subtask Name (capitalized and in ${language})", "is_completed": false }. 
       The final output should be: { "task": "${task}", "subtasks": [array of subtasks] }.
       
-      Please use the following JSON structure without any code block formatt/ing or backticks:
+      Please use the following JSON structure without any code block formatting or backticks:
     
       Task: ${this.wrapUserInput(task)}
       
       JSON output:`,
     };
+
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
-      OpenAIKeyType.GENERAL, // Using the general API key,
+      OpenAIKeyType.SUBTASKS_GENERATION,
       OPENAI_PARAMS.createSubtasks as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
     );
+
     const newMessage = completions.choices[0].message;
     const { content } = newMessage;
     const parsedResponse = JSON.parse(content);
@@ -504,6 +550,16 @@ export class OpenAIService {
     if (!isValid) {
       throw new Error('Invalid input');
     }
+
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Converting brain dump to tasks using OpenAI API',
+      data: {
+        content_length: brainDumpContents.length,
+      },
+    });
+
     const userMessage: ChatCompletionMessageParam = {
       role: 'user',
       content: `The user has done a 'brain dump' of ideas and wants help converting it into tasks and subtasks. 
@@ -524,7 +580,7 @@ export class OpenAIService {
 
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [userMessage],
-      OpenAIKeyType.GENERAL, // Using the general API key
+      OpenAIKeyType.BRAIN_DUMP_CONVERSION,
       {
         ...OPENAI_PARAMS.convertBrainDumpToTasks,
         stream: false,

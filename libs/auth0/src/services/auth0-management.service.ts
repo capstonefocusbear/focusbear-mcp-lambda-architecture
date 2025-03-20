@@ -1,5 +1,6 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { DeviceCredential, ManagementClient } from 'auth0';
+import axios from 'axios';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService } from '../interfaces';
 
@@ -23,6 +24,45 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
       throw new Error(`Error fetching user with Auth0 ID ${auth0Id}: ${error}`);
     }
+  }
+
+  async initiatePasswordReset(email: string) {
+    const users = await this.getAuth0UserWithEmail(email);
+    if (users.length < 1) {
+      throw new NotFoundException(`User with email: ${email} does not exist!`);
+    }
+
+    const user = users[0];
+    if (!user.email_verified) {
+      throw new HttpException(
+        {
+          error: 'EMAIL_NOT_VERIFIED',
+          message: 'You need to verify your email before proceeding.',
+          statusCode: HttpStatus.FORBIDDEN,
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Check if the user is using a third-party provider
+    const isThirdPartyUser = user.identities.some((identity) => identity.isSocial);
+    if (isThirdPartyUser) {
+      throw new HttpException(
+        {
+          error: 'THIRD_PARTY_EMAIL',
+          message: 'Cannot reset password from a third-party email.',
+          statusCode: HttpStatus.BAD_REQUEST,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const PASSWORD_RESET_URL = `https://${this.options.domain}/dbconnections/change_password`;
+    await axios.post(PASSWORD_RESET_URL, {
+      client_id: this.options.clientId,
+      email,
+      connection: 'Username-Password-Authentication',
+    });
   }
 
   async getAuth0UserWithEmail(email: string) {

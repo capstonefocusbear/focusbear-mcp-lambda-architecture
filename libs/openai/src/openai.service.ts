@@ -265,6 +265,7 @@ export class OpenAIService {
       tab_title,
       focus_mode,
       intention,
+      currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
     } = isUrlSafeDto;
@@ -298,6 +299,7 @@ export class OpenAIService {
         .replace('{{focus_mode}}', focus_mode || '')
         .replace('{{intention}}', intention || '')
         .replace('{{justificationForThisUrl}}', justificationForThisUrl || '')
+        .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '')
         .replace(
           '{{lastFiveJustificationsInThisFocusSession}}',
           JSON.stringify(lastFiveJustificationsInThisFocusSession || []),

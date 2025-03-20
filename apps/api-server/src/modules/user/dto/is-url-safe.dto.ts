@@ -37,4 +37,8 @@ export class IsUrlSafeDto {
   @IsString({ each: true })
   @MaxLength(MAX_WORD_LENGTH.justification, { each: true })
   lastFiveJustificationsInThisFocusSession?: string[];
+
+  @IsOptional()
+  @IsString()
+  currentTaskInToDoPlayer?: string;
 }

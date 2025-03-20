@@ -10,6 +10,7 @@ prompts:
 
       User Context:
       Focus Mode: {{focus_mode}}
+      Current Task In Todo Player: {{currentTaskInToDoPlayer}}
       Intention: {{intention}}
       User Justification: {{justificationForThisUrl}}
       Recent Justifications: {{lastFiveJustificationsInThisFocusSession}}
@@ -21,7 +22,7 @@ prompts:
       }
 
       Assessment Criteria:
-      - Primary: Direct relevance to Focus Mode and intention
+      - Primary: Direct relevance to Focus Mode, current task, and intention
       - Secondary: User's provided justification
       - Tertiary: Historical justification patterns
 

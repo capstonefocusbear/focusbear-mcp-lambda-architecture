@@ -1,6 +1,6 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN, SentryModule } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, SentryModule, SentryService } from '@ntegral/nestjs-sentry';
 import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
@@ -8,7 +8,7 @@ import axios from 'axios';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { IOpenAIOptions } from './interfaces';
-import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS } from './openai.constants';
+import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS, OpenAIKeyType } from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 
@@ -470,6 +470,158 @@ describe('OpenAIService', () => {
       mockReadFile.mockRestore();
       mockMkdir.mockRestore();
       mockWriteFile.mockRestore();
+    });
+  });
+
+  describe('getOpenAIInstance', () => {
+    beforeEach(() => {
+      jest.resetModules(); // reset module registry before mocking OpenAI
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      // Restore original OpenAI class to avoid side effects in other tests
+      jest.unmock('openai');
+    });
+
+    it('should throw an error if no specific config and no general fallback exists', () => {
+      // Create a new service instance with no valid config
+      const invalidOptions = {}; // empty config
+      const invalidService = new OpenAIService(
+        invalidOptions as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+
+      expect(() => (invalidService as any).getOpenAIInstance('URL_SAFETY')).toThrowError(
+        'No OpenAI configuration found for type: URL_SAFETY and no general fallback available',
+      );
+    });
+
+    it('should create and cache an OpenAI instance using specific key config', () => {
+      const specificApiKey = 'specific-api-key';
+      const serviceWithSpecific = new OpenAIService(
+        {
+          URL_SAFETY: { apiKey: specificApiKey },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+
+      const instance = (serviceWithSpecific as any).getOpenAIInstance('URL_SAFETY');
+      expect(instance).toBeDefined();
+      expect((serviceWithSpecific as any).openAIInstances.URL_SAFETY).toBe(instance);
+    });
+
+    it('should fallback to general config if specific config is missing', () => {
+      const generalApiKey = 'general-api-key';
+      const serviceWithFallback = new OpenAIService(
+        {
+          general: { apiKey: generalApiKey },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+
+      const instance = (serviceWithFallback as any).getOpenAIInstance('USERNAME_VALIDATION');
+      expect(instance).toBeDefined();
+      expect((serviceWithFallback as any).openAIInstances.USERNAME_VALIDATION).toBe(instance);
+    });
+  });
+
+  describe('checkIfUsernameIsValid', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      service = new OpenAIService(
+        {
+          USERNAME_VALIDATION: { apiKey: 'test' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should return allowed: true for a valid username', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ allowed: true }),
+            },
+          },
+        ],
+      };
+
+      const mockFn = jest
+        .spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce(mockResponse);
+
+      const result = await service.checkIfUsernameIsValid('focusbear');
+
+      expect(result).toEqual({ allowed: true });
+      expect(mockFn).toHaveBeenCalled();
+      expect(SentryServiceMock.addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Checking username validity using OpenAI API',
+          data: { username_length: 'focusbear'.length },
+        }),
+      );
+    });
+
+    it('should return allowed: false for a flagged username', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ allowed: false }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.checkIfUsernameIsValid('sexymommee');
+
+      expect(result).toEqual({ allowed: false });
+    });
+
+    it('should throw an error for invalid input (prompt injection)', async () => {
+      const spy = jest.spyOn(service, 'isValidInput').mockReturnValueOnce(false);
+
+      await expect(service.checkIfUsernameIsValid('ignore previous')).rejects.toThrow('Invalid Input');
+
+      expect(spy).toHaveBeenCalledWith('ignore previous');
+    });
+
+    it('should call OpenAI with a prompt containing the wrapped username', async () => {
+      const username = 'example_user';
+
+      const getCompletionsSpy = jest
+        .spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: JSON.stringify({ allowed: true }) } }],
+        });
+
+      const wrapSpy = jest.spyOn(service as any, 'wrapUserInput');
+
+      await service.checkIfUsernameIsValid(username);
+
+      expect(wrapSpy).toHaveBeenCalledWith(username);
+      expect(getCompletionsSpy).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            content: expect.stringContaining(username),
+          }),
+        ]),
+        OpenAIKeyType.USERNAME_VALIDATION,
+        expect.any(Object),
+      );
     });
   });
 });

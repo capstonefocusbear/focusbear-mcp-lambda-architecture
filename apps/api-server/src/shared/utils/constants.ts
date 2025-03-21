@@ -117,6 +117,7 @@ export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
 export const GPT_4O = 'gpt-4o';
+export const GPT_4O_MINI = 'gpt-4o-mini';
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',

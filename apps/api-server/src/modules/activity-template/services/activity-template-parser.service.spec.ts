@@ -26,7 +26,7 @@ import { ActivityTemplateParserService } from './activity-template-parser.servic
 describe('ActivityTemplateParserService', () => {
   let activityTemplateParserService: ActivityTemplateParserService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityTemplateParserService,

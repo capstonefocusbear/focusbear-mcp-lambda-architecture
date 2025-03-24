@@ -42,7 +42,7 @@ describe('DeviceService', () => {
     return clients.find((f) => mobileClientIds.some((s) => s === f.client_id) && f.name === androidDeviceName);
   };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         Auth0Module.forRoot({

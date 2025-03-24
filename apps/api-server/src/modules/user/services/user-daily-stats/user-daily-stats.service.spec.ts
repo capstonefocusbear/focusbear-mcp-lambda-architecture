@@ -41,7 +41,7 @@ import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
 describe('UserDailyStatsService', () => {
   let service: UserDailyStatsService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserDailyStatsService,
@@ -79,9 +79,6 @@ describe('UserDailyStatsService', () => {
       .compile();
 
     service = module.get<UserDailyStatsService>(UserDailyStatsService);
-
-    jest.clearAllMocks();
-    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -189,6 +186,10 @@ describe('UserDailyStatsService', () => {
   });
 
   describe('calculateRoutineCompletionPercentage', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+    });
+
     it('positive: If the user has not completed any activities for the routine, completion percentage of 0 should be returned', async () => {
       const mockOnboardingProgress = {
         level: 1,
@@ -278,6 +279,10 @@ describe('UserDailyStatsService', () => {
   });
 
   describe('CalculateUserStatsResponse', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+    });
+
     Settings.now = () => 1676254469000;
 
     it('positive: user streaks of routines in continuous days should be returned', async () => {

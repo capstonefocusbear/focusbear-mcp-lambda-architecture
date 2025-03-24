@@ -22,7 +22,7 @@ import { CalendarService } from './calendar.service';
 describe('MicrosoftCalendarService', () => {
   let microsoftCalendarService: MicrosoftCalendarService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         MicrosoftCalendarService,

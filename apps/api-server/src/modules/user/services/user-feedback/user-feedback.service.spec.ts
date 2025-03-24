@@ -29,7 +29,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('UserFeedbackService', () => {
   let service: UserFeedbackService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserFeedbackService,

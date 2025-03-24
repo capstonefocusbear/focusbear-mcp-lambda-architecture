@@ -46,7 +46,7 @@ import { PaginationDto } from '../../../shared/pagination/index.dto';
 describe('toDoService', () => {
   let toDoService: ToDoService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         PlatformIntegrationRepository,

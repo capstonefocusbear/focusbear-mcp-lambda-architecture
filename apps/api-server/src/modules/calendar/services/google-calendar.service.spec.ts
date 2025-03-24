@@ -22,7 +22,7 @@ import { CalendarService } from './calendar.service';
 describe('GoogleCalendarService', () => {
   let googleCalendarService: GoogleCalendarService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         GoogleCalendarService,

@@ -11,7 +11,7 @@ import { GoogleAuthService } from '../../auth/services/google-auth.service';
 describe('PlatformIntegrationsService', () => {
   let platformIntegrationsService: PlatformIntegrationsService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [PlatformIntegrationsService, PlatformIntegrationRepository, GoogleAuthService],
     })

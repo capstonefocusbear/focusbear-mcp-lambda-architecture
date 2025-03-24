@@ -23,10 +23,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('MicrosfotService', () => {
   let microsoftAuthService: MicrosoftAuthService;
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,

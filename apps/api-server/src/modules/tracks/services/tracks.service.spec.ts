@@ -11,7 +11,7 @@ import { TracksService } from './tracks.service';
 describe('TracksService', () => {
   let tracksService: TracksService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         TracksService,

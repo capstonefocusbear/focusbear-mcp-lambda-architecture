@@ -10,7 +10,7 @@ import { SavedWebsite } from '../entities/saved-website.entity';
 describe('SavedWebsiteService', () => {
   let savedWebsiteService: SavedWebsiteService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [SavedWebsiteService, SavedWebsiteRepository],
     })

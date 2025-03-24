@@ -39,7 +39,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 describe('HabitPackManagerService', () => {
   let habitPackManagerService: HabitPackManagerService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         HabitPackService,

@@ -58,7 +58,7 @@ describe('EventService', () => {
   const headersDummy = { app_version: '1.0.0', device_id: randomUUID() };
   const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         EventsService,
@@ -108,9 +108,6 @@ describe('EventService', () => {
       REDIS__HOSTNAME: 'localhost',
       FIELD_TRANSFORMER_ENCRYPTION_KEY: 'super-secret-key',
     };
-
-    jest.clearAllMocks();
-    jest.resetAllMocks();
   });
 
   it('should be defined', () => {

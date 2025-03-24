@@ -25,10 +25,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('JiraService', () => {
   let jiraAuthService: JiraAuthService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -57,6 +54,11 @@ describe('JiraService', () => {
       .compile();
     // ConfigServiceMock.get.mockReturnValueOnce('jira-client-id');
     jiraAuthService = moduleRef.get<JiraAuthService>(JiraAuthService);
+  });
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('positive: should be defined', () => {

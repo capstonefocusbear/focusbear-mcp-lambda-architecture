@@ -8,7 +8,7 @@ import { TabKeywordsService } from './tab-keywords.service';
 describe('TabKeywordsService', () => {
   let service: TabKeywordsService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TabKeywordsService,

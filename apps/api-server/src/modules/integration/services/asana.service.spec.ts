@@ -28,10 +28,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('asanaService', () => {
   let asanaService: AsanaService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         AsanaService,
@@ -65,6 +62,11 @@ describe('asanaService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .compile();
     asanaService = moduleRef.get<AsanaService>(AsanaService);
+  });
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('positive: should be defined', () => {

@@ -49,7 +49,7 @@ describe('TeamManagementService', () => {
   const lastName = 'last';
   const expiryDate = new Date('2023-11-16');
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         UserRepository,
@@ -94,10 +94,12 @@ describe('TeamManagementService', () => {
       .useValue(UserDailyStatsServiceMock)
       .compile();
 
+    teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
+  });
+
+  beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
-
-    teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
   });
 
   it('should be defined', () => {

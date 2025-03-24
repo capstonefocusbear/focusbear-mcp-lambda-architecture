@@ -60,7 +60,7 @@ describe('UserSettingsService', () => {
   let userSettingsService: UserSettingsService;
   const i18nServiceMock = mockDeep<I18nService>();
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         UserRepository,

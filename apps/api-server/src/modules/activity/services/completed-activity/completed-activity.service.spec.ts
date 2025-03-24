@@ -85,7 +85,7 @@ describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
   const i18nServiceMock = mockDeep<I18nService>();
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CompletedActivityService,
@@ -146,7 +146,9 @@ describe('CompletedActivityService', () => {
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
+  });
 
+  beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
   });
@@ -156,11 +158,6 @@ describe('CompletedActivityService', () => {
   });
 
   describe('completeActivity', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      jest.resetAllMocks();
-    });
-
     const startTime = new Date(Date.now() - 60);
     const finishTime = new Date(Date.now() - 1);
 
@@ -706,7 +703,6 @@ describe('CompletedActivityService', () => {
     it("positive: if user's current sequence is from current day, sequence should NOT be force completed", async () => {
       jest.clearAllMocks();
       jest.clearAllTimers();
-      jest.resetAllMocks();
       Settings.now = () => 1670477400000;
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);

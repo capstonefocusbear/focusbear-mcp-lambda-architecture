@@ -42,7 +42,7 @@ describe('OpenAIService', () => {
   let service: OpenAIService;
   let module: TestingModule;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     jest.clearAllMocks();
 
     (sanitizeUrl as jest.Mock).mockImplementation((url: string) => {

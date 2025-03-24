@@ -30,7 +30,7 @@ import { FocusModeTag } from '../../entities/focus-mode-tags';
 describe('FocusModeService', () => {
   let focusModeService: FocusModeService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         FocusModeService,

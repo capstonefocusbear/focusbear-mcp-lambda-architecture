@@ -30,7 +30,7 @@ describe('StripeService', () => {
   let mockEmailQueue: jest.Mocked<Pick<Queue, 'add'>>;
   const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     mockEmailQueue = {
       add: jest.fn().mockImplementation(() => Promise.resolve({} as Job)),
     };
@@ -90,7 +90,9 @@ describe('StripeService', () => {
       list: jest.fn(),
       del: jest.fn(),
     } as any;
+  });
 
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 

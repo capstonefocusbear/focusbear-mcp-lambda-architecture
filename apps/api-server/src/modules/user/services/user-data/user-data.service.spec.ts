@@ -36,7 +36,7 @@ describe('UserDataService', () => {
     ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL: 'channel',
   };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserDataService,

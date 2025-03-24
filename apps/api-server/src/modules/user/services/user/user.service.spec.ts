@@ -67,7 +67,7 @@ jest.mock('axios');
 describe('UserService', () => {
   let userService: UserService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ load: configsArray })],
       providers: [
@@ -136,9 +136,10 @@ describe('UserService', () => {
       .useValue(DeviceRepositoryMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
+  });
 
+  beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetAllMocks();
   });
 
   it('should be defined', () => {

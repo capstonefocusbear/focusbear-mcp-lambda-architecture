@@ -14,7 +14,7 @@ import { LogSummaryType } from '../../domain/log-summary-type.enum';
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityParserService,

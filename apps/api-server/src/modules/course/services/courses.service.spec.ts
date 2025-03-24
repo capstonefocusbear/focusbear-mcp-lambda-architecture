@@ -24,7 +24,7 @@ import { CoursePlatform } from '../domain/course-platform.enum';
 describe('CoursesService', () => {
   let coursesService: CoursesService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CoursesService,

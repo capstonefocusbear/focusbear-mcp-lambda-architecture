@@ -16,7 +16,7 @@ import { Notification } from '../entities/notification.entity';
 describe('NotificationService', () => {
   let notificationService: NotificationService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         NotificationService,

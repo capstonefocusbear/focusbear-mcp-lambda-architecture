@@ -25,10 +25,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('AsanaService', () => {
   let asanaAuthService: AsanaAuthService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -57,6 +54,11 @@ describe('AsanaService', () => {
       .compile();
 
     asanaAuthService = moduleRef.get<AsanaAuthService>(AsanaAuthService);
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('positive: should be defined', () => {

@@ -160,14 +160,11 @@ export const BrevoServiceMock = {
   deleteContactFromBrevo: jest.fn(),
 };
 
-const mockSentryInstance = {
-  addBreadcrumb: jest.fn(),
+export const SentryServiceMock = {
   captureMessage: jest.fn(),
   captureException: jest.fn(),
-};
-
-export const SentryServiceMock = {
-  instance: () => mockSentryInstance,
+  addBreadcrumb: jest.fn(),
+  instance: () => SentryServiceMock,
 };
 
 export const FocusModeServiceMock = {

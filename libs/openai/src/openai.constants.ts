@@ -1,7 +1,12 @@
 import OpenAI from 'openai';
-import { GPT_4O } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4O, GPT_4O_MINI } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
+export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
+export const TEST_CONSTANTS = {
+  ZERO_PROBABILITY: 0,
+  MOCK_ERROR_RESPONSE_PREFIX: 'AI decision failed for',
+};
 export const MAX_WORD_LENGTH = {
   brainDump: 1000,
   intention: 500,
@@ -22,6 +27,7 @@ export enum OpenAIKeyType {
   BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
 }
 
+export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
   CRITICAL: [
@@ -94,7 +100,7 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     messages: null,
   },
   checkURL: {
-    model: GPT_4O,
+    model: GPT_4O_MINI,
     temperature: 0,
     n: 1,
     messages: null,

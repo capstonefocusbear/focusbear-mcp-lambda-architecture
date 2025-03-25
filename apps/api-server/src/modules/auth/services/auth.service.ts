@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { Passport } from '../domain/passport.model';
+import { UserRepository } from '../../user/repositories/user.repository';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +10,7 @@ export class AuthService {
     private readonly auth0AuthService: Auth0AuthenticationService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -67,5 +69,15 @@ export class AuthService {
 
   async requestPasswordReset(email: string) {
     return this.auth0ManagementService.initiatePasswordReset(email);
+  }
+
+  async resendEmailVerification(userId: string) {
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) throw new NotFoundException(`User with id: ${userId} does not exist!`);
+    const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+    if (auth0User.email_verified) {
+      return;
+    }
+    await this.auth0ManagementService.resendEmailVerification(user.auth0_id);
   }
 }

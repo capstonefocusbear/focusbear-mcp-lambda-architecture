@@ -26,6 +26,10 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     }
   }
 
+  async resendEmailVerification(auth0Id: string) {
+    await this.jobs.verifyEmail({ user_id: auth0Id });
+  }
+
   async initiatePasswordReset(email: string) {
     const users = await this.getAuth0UserWithEmail(email);
     if (users.length < 1) {

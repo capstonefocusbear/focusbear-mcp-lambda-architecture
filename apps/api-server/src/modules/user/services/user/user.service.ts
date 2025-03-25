@@ -261,6 +261,7 @@ export class UserService {
         ...userDetails,
         email,
         focus_modes: formattedFocusModes,
+        email_verified: auth0User.email_verified,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

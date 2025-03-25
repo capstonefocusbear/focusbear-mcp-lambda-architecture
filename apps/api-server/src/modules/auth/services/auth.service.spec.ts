@@ -5,9 +5,11 @@ import {
   Auth0AuthenticationServiceMock,
   Auth0ManagementServiceMock,
   SentryServiceMock,
+  UserRepositoryMock,
 } from '../../../../test/mocks/index';
 import { AuthService } from './auth.service';
 import { Passport } from '../domain/passport.model';
+import { UserRepository } from '../../user/repositories/user.repository';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -18,6 +20,7 @@ describe('AuthService', () => {
         AuthService,
         Auth0AuthenticationService,
         Auth0ManagementService,
+        UserRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -28,6 +31,8 @@ describe('AuthService', () => {
       .useValue(Auth0AuthenticationServiceMock)
       .overrideProvider(Auth0ManagementService)
       .useValue(Auth0ManagementServiceMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);

@@ -1,10 +1,7 @@
 import { Controller, Get, UseGuards, Query, Param, Post, Body } from '@nestjs/common';
 import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import {
-  API_RESPONSE_EMAIL_NOT_VERIFIED,
-  API_RESPONSE_THIRD_PARTY_EMAIL,
-} from 'apps/api-server/src/shared/utils/error-constants';
+import { API_RESPONSE_EMAIL_NOT_VERIFIED, API_RESPONSE_THIRD_PARTY_EMAIL } from '../../../shared/utils/error-constants';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../domain/passport.model';
 import { IsAuth } from '../guards/is-auth/is-auth.guard';
@@ -30,6 +27,12 @@ export class AuthController {
   @ApiResponse(API_RESPONSE_THIRD_PARTY_EMAIL)
   async requestPasswordReset(@Body() { email }: ResetPasswordDto) {
     return this.authService.requestPasswordReset(email);
+  }
+
+  @Post('/email-confirmation')
+  @UseGuards(IsAuth)
+  async resendEmailVerification(@AuthContext() { user }: Passport) {
+    return this.authService.resendEmailVerification(user.id);
   }
 
   @Get(':platform')

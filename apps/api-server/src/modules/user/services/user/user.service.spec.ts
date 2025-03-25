@@ -220,14 +220,18 @@ describe('UserService', () => {
 
     it('positive: getUserDetails should be called', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: auth0UserDummy.email });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        email: auth0UserDummy.email,
+        email_verified: true,
+      });
       PlatformIntegrationsServiceMock.getUserSyncedPlatforms({
         zoho: true,
         jira: false,
       });
 
-      await userService.getUserDetails(id);
+      const response = await userService.getUserDetails(id);
 
+      expect(response.email_verified).toBeTrue();
       expect(UserRepositoryMock.getUserDetails).toHaveBeenCalledWith(id);
     });
 

@@ -26,6 +26,7 @@ import { GoogleAuthService } from './services/google-auth.service';
 import { MicrosoftAuthService } from './services/microsoft-auth.service';
 import { CalendarModule } from '../calendar/calendar.module';
 import { BullQueues } from '../../shared/utils/constants';
+import { UserModule } from '../user/user.module';
 
 @Module({
   providers: [
@@ -92,6 +93,7 @@ import { BullQueues } from '../../shared/utils/constants';
     BullModule.registerQueue({
       name: BullQueues.TIME_LOGS,
     }),
+    UserModule,
   ],
 })
 export class AuthModule {}

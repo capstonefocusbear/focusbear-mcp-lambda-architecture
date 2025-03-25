@@ -29,6 +29,12 @@ export class AuthController {
     return this.authService.requestPasswordReset(email);
   }
 
+  @Post('/email-confirmation')
+  @UseGuards(IsAuth)
+  async resendEmailVerification(@AuthContext() { user }: Passport) {
+    return this.authService.resendEmailVerification(user.id);
+  }
+
   @Get(':platform')
   login(@Param('platform') platform: IntegrationPlatforms, @Query() { is_development }: IntegrationLoginQuery) {
     const service = this.authServiceFactory.get(platform);

@@ -19,6 +19,8 @@ import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
+import { SendGridService } from '@app/send-grid';
+import { GetUsers200ResponseOneOfInner } from 'auth0';
 import { callPromiseWithTimeout } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -49,6 +51,8 @@ import {
   BullQueues,
   BullWorkers,
   DEFAULT_AI_RESPONSE_TIMEOUT_MS,
+  EMAIL_SUBJECTS,
+  FOCUS_BEAR_EMAILS,
   USERNAME_VALIDATION_TIMEOUT,
 } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
@@ -85,6 +89,7 @@ export class UserService {
     private readonly deviceRepository: DeviceRepository,
     @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
+    private readonly emailService: SendGridService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -99,11 +104,16 @@ export class UserService {
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
+      const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UserWithEmail(email);
       const { id, stripe_customer_id } = await this.updateOrCreateUser(
         { auth0_id, email, auth0_client },
         registeredUser,
       );
       if (!registeredUser) await this.handleInitialRegistration(id);
+      // Send email to support if user signs up with existing email
+      if (!registeredUser && accountsWithSameEmail?.length > 1) {
+        await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
+      }
       const subscriptionStatus = await this.getSubscription(id);
 
       return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
@@ -811,5 +821,19 @@ export class UserService {
       throw new NotFoundException(`User with id: ${user_id} does not exist!`);
     }
     return this.platformIntegrationsService.getUserSyncedPlatforms(user_id);
+  }
+
+  private async sendDuplicatesEmail(auth0Id: string, accountsWithSameEmail: GetUsers200ResponseOneOfInner[]) {
+    const body = `New sign up is associated with multiple Auth0 accounts. Current: ${auth0Id}, Others: ${accountsWithSameEmail
+      .map((u) => u.user_id)
+      .join(', ')}`;
+    const emailPayload = {
+      to: [FOCUS_BEAR_EMAILS.SUPPORT],
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      text: body,
+      subject: `${EMAIL_SUBJECTS.DUPLICATE_EMAIL_SIGN_UP}`,
+    };
+
+    await this.emailService.sendEmail(emailPayload);
   }
 }

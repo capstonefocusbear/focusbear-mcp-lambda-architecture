@@ -9,6 +9,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
+import { SendGridService } from '@app/send-grid';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -37,6 +38,7 @@ import {
   PlatformIntegrationsServiceMock,
   DeviceServiceMock,
   DeviceRepositoryMock,
+  SendGridServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -55,7 +57,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { BullQueues } from '../../../../shared/utils/constants';
+import { BullQueues, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -90,6 +92,7 @@ describe('UserService', () => {
         PlatformIntegrationsService,
         DeviceService,
         DeviceRepository,
+        SendGridService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -134,6 +137,8 @@ describe('UserService', () => {
       .useValue(DeviceServiceMock)
       .overrideProvider(DeviceRepository)
       .useValue(DeviceRepositoryMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
 
@@ -212,6 +217,35 @@ describe('UserService', () => {
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toHaveBeenCalledWith(userDummy.id);
       expect(RevenueCatServiceMock.checkSubscriptionStatus).toHaveBeenCalledWith(emptySubscriber.subscriber);
+    });
+
+    it('positive: if user is new sign up and accounts with same email exist in auth0, duplicate email should be sent to support', async () => {
+      const stripeCustomerId = randomUUID();
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockResolvedValue(dummyAuth0Client[0]);
+      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+      // mock 2 users to exist in auth0 with same email
+      const dummyAuth0Response = [auth0UserDummy, auth0UserDummy];
+      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce(dummyAuth0Response);
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      const body = `New sign up is associated with multiple Auth0 accounts. Current: ${
+        syncAccountDto.auth0_id
+      }, Others: ${dummyAuth0Response.map((u) => u.user_id).join(', ')}`;
+      const emailPayload = {
+        to: [FOCUS_BEAR_EMAILS.SUPPORT],
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        text: body,
+        subject: `${EMAIL_SUBJECTS.DUPLICATE_EMAIL_SIGN_UP}`,
+      };
+
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(emailPayload);
     });
   });
 

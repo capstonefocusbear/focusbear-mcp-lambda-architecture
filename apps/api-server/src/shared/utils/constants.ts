@@ -23,6 +23,7 @@ export const EMAIL_SUBJECTS = {
   USER_SURVEY_FEEDBACK: 'User Survey Feedback',
   USER_UNSUBSCRIBE_FEEDBACK: 'User Unsubscribe Feedback',
   USER_ACCOUNT_DELETE: 'User deleted account but gave permission to contact RE feedback',
+  DUPLICATE_EMAIL_SIGN_UP: 'Duplicate EMail Sign Up',
 };
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_HOUR_MILLISECONDS = 3600000;

@@ -2449,3 +2449,11 @@ export const dummySubscriptionTeamWithMembers = {
   trial_start: null,
   lastResponse: null,
 };
+
+export const dummyUninstallApplicationQueryDto = {
+  app_platform: 'platform',
+  app_version: '1.0.1',
+  feedback_message: 'dummy feedback',
+  log_url: 'https://logurl.com',
+  email: auth0UserDummy.email,
+};

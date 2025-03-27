@@ -852,20 +852,17 @@ export class UserService {
       });
 
       const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
-      const email = user ? maskEmail((await this.auth0ManagementService.getAuth0User(user.auth0_id)).email) : '';
+      const email = user ? (await this.auth0ManagementService.getAuth0User(user.auth0_id)).email : '';
 
-      const uninstallFeedback = {
+      const stringifiedUninstallFeedback = JSON.stringify({
         ...uninstallApplicationQueryDto,
-        email,
-      };
+        email: maskEmail(email),
+      });
 
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
-        message: `*Uninstalling User feedback *\n\`\`\`${JSON.stringify({
-          ...uninstallApplicationQueryDto,
-          email,
-        })}\`\`\``,
+        message: `*Uninstalling User feedback *\n\`\`\`${stringifiedUninstallFeedback}\`\`\``,
       };
 
       await Promise.allSettled(
@@ -876,7 +873,7 @@ export class UserService {
                   to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
                   from: FOCUS_BEAR_EMAILS.SUPPORT,
                   replyTo: email,
-                  text: JSON.stringify(uninstallFeedback),
+                  text: stringifiedUninstallFeedback,
                   subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
                 }),
               ]

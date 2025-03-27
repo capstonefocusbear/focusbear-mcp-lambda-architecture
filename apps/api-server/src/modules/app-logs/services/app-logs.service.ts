@@ -9,7 +9,7 @@ import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, S3_BUCKET_APP_USAGE_LOGS } from '../
 import { maskEmail } from '../../../shared/utils/helpers';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { UninstallFeedback } from '../domain/uninstall-feedback.model';
+import { UninstallFeedback } from '../../user/domain/uninstall-feedback.model';
 import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned-url-query.dto';
 
 @Injectable()

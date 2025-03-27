@@ -35,6 +35,7 @@ import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { Disabled } from '../../../../shared/decorators/disabled.decorator';
+import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -237,5 +238,15 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getSyncedExternalPlatforms(@AuthContext() { user }: Passport) {
     return this.userService.getSyncedExternalPlatforms(user.id);
+  }
+
+  @Post('/uninstall')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async uninstallApplication(
+    @Query() uninstallApplicationQueryDto: UninstallApplicationQueryDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.userService.uninstallApplication(uninstallApplicationQueryDto, user.id);
   }
 }

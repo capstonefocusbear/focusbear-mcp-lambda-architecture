@@ -21,7 +21,8 @@ import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
-import { callPromiseWithTimeout } from '../../../../shared/utils/helpers';
+import axios from 'axios';
+import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
@@ -63,6 +64,7 @@ import { DeviceRepository } from '../../../device/repositories/device.repository
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
+import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -835,5 +837,55 @@ export class UserService {
     };
 
     await this.emailService.sendEmail(emailPayload);
+  }
+
+  async uninstallApplication(uninstallApplicationQueryDto: UninstallApplicationQueryDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'uninstall Application',
+        data: {
+          ...uninstallApplicationQueryDto,
+          user_id,
+        },
+      });
+
+      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+      const email = user ? maskEmail((await this.auth0ManagementService.getAuth0User(user.auth0_id)).email) : '';
+
+      const uninstallFeedback = {
+        ...uninstallApplicationQueryDto,
+        email,
+      };
+
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `*Uninstalling User feedback *\n\`\`\`${JSON.stringify({
+          ...uninstallApplicationQueryDto,
+          email,
+        })}\`\`\``,
+      };
+
+      await Promise.allSettled(
+        [axios.post(cliqUrl, body)].concat(
+          !email.includes('internaltest')
+            ? [
+                this.emailService.sendEmail({
+                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                  from: FOCUS_BEAR_EMAILS.SUPPORT,
+                  replyTo: email,
+                  text: JSON.stringify(uninstallFeedback),
+                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+                }),
+              ]
+            : [],
+        ),
+      );
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

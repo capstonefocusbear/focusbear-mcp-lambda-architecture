@@ -15,6 +15,7 @@ import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned
 export class AppLogsController {
   constructor(private readonly appLogsService: AppLogsService) {}
 
+  // Deprecated: Use the user/uninstall endpoint instead
   @Post()
   async uploadFile(
     @Req() request: FileUploadRequest,

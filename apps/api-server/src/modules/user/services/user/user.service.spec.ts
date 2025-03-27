@@ -962,7 +962,7 @@ describe('UserService', () => {
       await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
 
       expect(axios.post).toHaveBeenCalledWith(
-        expect.stringContaining(process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK),
+        expect.stringContaining(String(process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK || '')),
         expectedCliqBody,
       );
       expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({

@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import { DateTime } from 'luxon';
-import { Equal } from 'typeorm';
+import { Between } from 'typeorm';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { DailyStats } from '../entities/user-daily-stats.entity';
 import { calculateStreaks, determineUserLevel } from '../../../../../../cron-jobs/user-stats-cron-job/helpers';
@@ -63,11 +63,12 @@ export class DailyStatsConsumer {
       if (shutDown < startUp) {
         startTimeToUse = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).minus({ days: 1 }).toJSDate();
       }
-      const startOfDate = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
+      const dayStart = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
+      const dayEnd = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).endOf('day').toJSDate();
       // eslint-disable-next-line no-console
-      console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, startOfDate });
+      console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, dayStart, dayEnd });
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
-        where: { user_id: user.id, date_completed: Equal(startOfDate) },
+        where: { user_id: user.id, date_completed: Between(dayStart, dayEnd) },
       });
       const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
         await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
@@ -97,7 +98,8 @@ export class DailyStatsConsumer {
         level: 'debug',
         message: 'Debug values in daily stats queue',
         data: {
-          startOfDate,
+          dayStart,
+          dayEnd,
           dailyStats,
           routineCompletionPercentage,
         },
@@ -118,7 +120,7 @@ export class DailyStatsConsumer {
         const break_sequence_log_id = activityType === ActivityType.break ? completed_activity_log_id : null;
         const newDailyStats = new DailyStats({
           user_id: user.id,
-          date_completed: startOfDate,
+          date_completed: dayStart,
           [routineToUpdate]: routineCompletionPercentage,
           should_recalculate: shouldStatsBeRecalculated,
           morning_sequence_log_id,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
@@ -7,6 +7,7 @@ import { FileUploadRequest } from '../domain/upload.interface';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned-url-query.dto';
+import { NotifyLogsUploadSuccess } from '../dto/notify-logs-upload-success.dto';
 
 @Controller('app-logs')
 @ApiTags('app-logs')
@@ -34,5 +35,10 @@ export class AppLogsController {
     @Query() createUploadPresignedUrlQueryDto: CreateUploadPresignedUrlQueryDto,
   ) {
     return this.appLogsService.createUploadPresignedUrl(createUploadPresignedUrlQueryDto, user.id);
+  }
+
+  @Post('/notify-upload-success')
+  async notifyLogsUploadSuccess(@Body() notifyLogsUploadSuccess: NotifyLogsUploadSuccess) {
+    return this.appLogsService.notifyLogsUploadSuccess(notifyLogsUploadSuccess);
   }
 }

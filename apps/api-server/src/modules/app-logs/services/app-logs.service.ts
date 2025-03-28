@@ -11,6 +11,7 @@ import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UninstallFeedback } from '../../user/domain/uninstall-feedback.model';
 import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned-url-query.dto';
+import { NotifyLogsUploadSuccess } from '../dto/notify-logs-upload-success.dto';
 
 @Injectable()
 export class AppLogsService {
@@ -94,5 +95,19 @@ export class AppLogsService {
     const key = `${user_id}-${new Date().toISOString()}-${filename}`;
     const uploadURL = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_APP_USAGE_LOGS, key, mimetype);
     return uploadURL;
+  }
+
+  async notifyLogsUploadSuccess({ uploaded_file_url }: NotifyLogsUploadSuccess) {
+    try {
+      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+      const body = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `*User app logs*\n\`\`\`url:${uploaded_file_url}\`\`\``,
+      };
+      return await axios.post(cliqUrl, body);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

@@ -6,6 +6,8 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
 import fastifyMultiPart from '@fastify/multipart';
+import helmet from '@fastify/helmet';
+import cors from '@fastify/cors';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
@@ -38,10 +40,10 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new TypeOrmExceptionFilter());
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
   app.useGlobalInterceptors(new TimeoutInterceptor());
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  await app.register(require('@fastify/helmet'), HELMET);
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  app.register(require('@fastify/cors'));
+
+  await app.register(helmet, HELMET);
+  await app.register(cors, { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] });
+
   app.register(fastifyMultiPart);
   app.useLogger(app.get(Pino));
 

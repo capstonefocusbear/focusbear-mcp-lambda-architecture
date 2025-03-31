@@ -100,6 +100,6 @@ import { EmailModule } from './modules/email/email.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(PassportMiddleware).forRoutes(':splat*');
+    consumer.apply(PassportMiddleware).forRoutes('*');
   }
 }

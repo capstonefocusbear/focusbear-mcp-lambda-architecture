@@ -986,17 +986,5 @@ describe('UserService', () => {
 
       expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
     });
-
-    // it('should handle error and capture it in sentry', async () => {
-    //   const uninstallApplicationQueryDto = { appId: 'test-app', reason: 'test-reason' };
-    //   const user_id = 'user123';
-
-    //   userRepositoryMock.orm.findOne.mockRejectedValue(new Error('Database error'));
-
-    //   await expect(uninstallApplication(uninstallApplicationQueryDto, user_id)).rejects.toThrow('Database error');
-
-    //   // Assert Sentry captureException was called
-    //   expect(sentryServiceMock.instance().captureException).toHaveBeenCalledWith(expect.any(Error), { level: 'error' });
-    // });
   });
 });

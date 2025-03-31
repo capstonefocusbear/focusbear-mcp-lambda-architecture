@@ -10,12 +10,14 @@ import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
+import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
   QueueMock,
   auth0UserDummy,
   dummyAuth0Client,
+  dummyUninstallApplicationQueryDto,
   focusModeTemplateDBResponseDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -62,6 +64,7 @@ import { AdminAccessRequest } from '../../entities/admin-access-requests.entity'
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
+import { maskEmail } from '../../../../shared/utils/helpers';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -938,6 +941,50 @@ describe('UserService', () => {
       PlatformIntegrationsServiceMock.getUserSyncedPlatforms.mockResolvedValue(expectedResponse);
       const response = await userService.getSyncedExternalPlatforms(userDummy.id);
       expect(response).toEqual(expectedResponse);
+    });
+  });
+
+  describe('uninstallApplication', () => {
+    it('positive: should send uninstall feedback and make the correct API calls', async () => {
+      const stringifiedDummyUninstallApplicationQueryDtoWithMaskedEmail = JSON.stringify({
+        ...dummyUninstallApplicationQueryDto,
+        email: maskEmail(dummyUninstallApplicationQueryDto.email),
+      });
+      const expectedCliqBody = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+        message: `*Uninstalling User feedback *\n\`\`\`${stringifiedDummyUninstallApplicationQueryDtoWithMaskedEmail}\`\`\``,
+      };
+
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
+      (axios.post as jest.Mock).mockResolvedValue({ status: 200 });
+
+      await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
+
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining(String(process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK || '')),
+        expectedCliqBody,
+      );
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({
+        to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        replyTo: auth0UserDummy.email,
+        text: stringifiedDummyUninstallApplicationQueryDtoWithMaskedEmail,
+        subject: EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS,
+      });
+    });
+
+    it('negative: should not send email for internaltest email addresses', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({
+        ...auth0UserDummy,
+        email: 'internaltest@company.com',
+      });
+      (axios.post as jest.Mock).mockResolvedValue({ status: 200 });
+
+      await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
+
+      expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
     });
   });
 });

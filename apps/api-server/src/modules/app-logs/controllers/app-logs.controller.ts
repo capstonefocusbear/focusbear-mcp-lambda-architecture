@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { AppLogsService } from '../services/app-logs.service';
 import { FileUploadRequest } from '../domain/upload.interface';
@@ -15,6 +15,10 @@ import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned
 export class AppLogsController {
   constructor(private readonly appLogsService: AppLogsService) {}
 
+  // Deprecated: Use the user/uninstall endpoint instead
+  @ApiOperation({
+    summary: 'Deprecated: Use the user/uninstall endpoint instead',
+  })
   @Post()
   async uploadFile(
     @Req() request: FileUploadRequest,

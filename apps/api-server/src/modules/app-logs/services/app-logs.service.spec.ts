@@ -3,6 +3,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { R2Service } from '@app/r2';
 import { SendGridService } from '@app/send-grid';
+import axios from 'axios';
 import {
   Auth0ManagementServiceMock,
   R2ServiceMock,
@@ -13,8 +14,11 @@ import {
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AppLogsService } from './app-logs.service';
 
+jest.mock('axios');
+
 describe('AppLogsService', () => {
   let appLogsService: AppLogsService;
+  const uploaded_file_url = 'https://logs.dummy.com/log.txt';
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -45,5 +49,37 @@ describe('AppLogsService', () => {
 
   it('should be defined', () => {
     expect(appLogsService).toBeDefined();
+  });
+
+  describe('notifyLogsUploadSuccess', () => {
+    it('positive: should send a successful request to Zoho Cliq', async () => {
+      const expectedUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK || ''}?zapikey=${
+        process.env.ZOHO_CLIQ_API_KEY || ''
+      }`;
+      const expectedBody = {
+        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL || '',
+        message: `*User app logs*\n\`\`\`url:${uploaded_file_url}\`\`\``,
+      };
+
+      (axios.post as jest.Mock).mockResolvedValue({ status: 200 });
+
+      await appLogsService.notifyLogsUploadSuccess({ uploaded_file_url });
+
+      expect(axios.post).toHaveBeenCalledWith(expect.stringContaining(expectedUrl), expectedBody);
+    });
+
+    it('negative: should handle errors and log them to Sentry', async () => {
+      let error;
+      try {
+        (axios.post as jest.Mock).mockRejectedValue('Server Error');
+        await appLogsService.notifyLogsUploadSuccess({ uploaded_file_url });
+      } catch (err) {
+        error = err;
+      }
+
+      expect(SentryServiceMock.instance().captureException).toHaveBeenCalledWith(error, {
+        level: 'error',
+      });
+    });
   });
 });

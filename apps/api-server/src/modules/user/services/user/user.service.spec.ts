@@ -148,6 +148,7 @@ describe('UserService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {

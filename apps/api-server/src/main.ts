@@ -42,7 +42,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new TimeoutInterceptor());
 
   await app.register(helmet, HELMET);
-  await app.register(cors, { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] });
+  await app.register(cors, { origin: '*', methods: ['*'] });
 
   app.register(fastifyMultiPart);
   app.useLogger(app.get(Pino));

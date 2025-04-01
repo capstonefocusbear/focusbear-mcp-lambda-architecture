@@ -2457,3 +2457,10 @@ export const dummyUninstallApplicationQueryDto = {
   log_url: 'https://logurl.com',
   email: auth0UserDummy.email,
 };
+
+export const dummyNotifyLogsUploadSuccessDto = {
+  app_platform: 'android',
+  app_version: '1.0.1',
+  feedback_message: 'dummy feedback',
+  uploaded_file_url: 'https://dummylogs.com/log.txt',
+};

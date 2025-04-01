@@ -53,11 +53,9 @@ describe('AppLogsService', () => {
 
   describe('notifyLogsUploadSuccess', () => {
     it('positive: should send a successful request to Zoho Cliq', async () => {
-      const expectedUrl = `${String(process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK || '')}?zapikey=${String(
-        process.env.ZOHO_CLIQ_API_KEY || '',
-      )}`;
+      const expectedUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const expectedBody = {
-        channel: String(process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL || ''),
+        channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
         message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${dummyNotifyLogsUploadSuccessDto.app_platform} \n\nversion: ${dummyNotifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${dummyNotifyLogsUploadSuccessDto.feedback_message}  \n\nuploaded_file_url: ${dummyNotifyLogsUploadSuccessDto.uploaded_file_url}\`\`\``,
       };
 

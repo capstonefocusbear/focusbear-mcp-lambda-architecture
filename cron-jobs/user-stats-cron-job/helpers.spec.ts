@@ -1,10 +1,10 @@
+import { DateTime } from 'luxon';
 import { DummyTasksStreaksResponse } from '../../apps/api-server/test/dummies';
 import { TasksStreaksResponse } from '../../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
 import { UserOnboardingProgress } from '../../apps/api-server/src/modules/user/domain/user-onboarding-progress.model';
 import { LEVEL_THRESHOLDS } from './constants';
 import { calculateStreaks, determineUserLevel } from './helpers';
 import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
-import { DateTime } from 'luxon';
 
 describe('helpers', () => {
   const morningRoutineDailyDurations = new DailySequenceDurations();
@@ -151,9 +151,9 @@ describe('helpers', () => {
 
     const runTest = (dailyStats, expected) => {
       const result = calculateStreaks(dailyStats, timeZone, {
-        morningRoutineDailyDurations: morningRoutineDailyDurations,
-        eveningRoutineDailyDurations: eveningRoutineDailyDurations,
-        microBreaksDailyDurations: microBreaksDailyDurations,
+        morningRoutineDailyDurations,
+        eveningRoutineDailyDurations,
+        microBreaksDailyDurations,
       });
       expect(result).toEqual(expected);
     };

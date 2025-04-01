@@ -17,7 +17,7 @@ import { UserRepository } from '../../user/repositories/user.repository';
 describe('ActivityTemplateService', () => {
   let activityTemplateService: ActivityTemplateService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityTemplateService,

@@ -30,7 +30,7 @@ import { ActivityType } from '../../domain/activity-type.enum';
 describe('CompletedActivitySequenceService', () => {
   let completedActivitySequenceService: CompletedActivitySequenceService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CompletedActivitySequenceService,
@@ -57,7 +57,9 @@ describe('CompletedActivitySequenceService', () => {
     completedActivitySequenceService = moduleRef.get<CompletedActivitySequenceService>(
       CompletedActivitySequenceService,
     );
+  });
 
+  beforeEach(() => {
     jest.resetAllMocks();
     jest.clearAllMocks();
   });

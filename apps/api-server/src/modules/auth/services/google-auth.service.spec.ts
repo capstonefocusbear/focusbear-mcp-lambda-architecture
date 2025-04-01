@@ -28,7 +28,7 @@ describe('GoogleAuthService', () => {
     updateEvents: jest.fn(),
   };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     jest.resetAllMocks();
     jest.clearAllMocks();
 

@@ -8,7 +8,7 @@ import { ActivitySequenceService } from './activity-sequence.service';
 describe('ActivitySequenceService', () => {
   let activitySequenceService: ActivitySequenceService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivitySequenceService,

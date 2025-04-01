@@ -28,7 +28,7 @@ import { PlatformIntegrationsService } from '../../platform-integrations/service
 describe('CalendarService', () => {
   let calendarService: CalendarService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CalendarService,

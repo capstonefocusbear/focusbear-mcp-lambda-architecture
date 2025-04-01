@@ -27,10 +27,7 @@ describe('ZohoService', () => {
   let zohoAuthService: ZohoAuthService;
   process.env = { JWT_SECRET: 'test-secret' };
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         JwtModule.register({
@@ -66,6 +63,11 @@ describe('ZohoService', () => {
       .useValue(PlatformIntegrationsServiceMock)
       .compile();
     zohoAuthService = moduleRef.get<ZohoAuthService>(ZohoAuthService);
+  });
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('positive: should be defined', () => {

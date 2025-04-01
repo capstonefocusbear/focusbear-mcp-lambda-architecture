@@ -21,7 +21,7 @@ import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 describe('ActivityService', () => {
   let activityService: ActivityService;
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityService,

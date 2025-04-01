@@ -38,7 +38,7 @@ import { ActivitySequenceRepository } from '../../../activity/repositories/activ
 describe('HabitPackService', () => {
   let habitPackService: HabitPackService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         HabitPackService,

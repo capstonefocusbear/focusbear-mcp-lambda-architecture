@@ -18,7 +18,7 @@ import { IntegrationFactory } from '../../integration/services/IntegrationFactor
 describe('SyncedProjectsService', () => {
   let service: SyncedProjectsService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         IntegrationFactory,

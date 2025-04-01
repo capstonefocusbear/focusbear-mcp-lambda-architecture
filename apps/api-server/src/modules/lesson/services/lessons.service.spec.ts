@@ -18,10 +18,7 @@ import { UserTypes } from '../../user/domain/user-types.enum';
 describe('LessonsService', () => {
   let lessonsService: LessonsService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         LessonsService,

@@ -27,10 +27,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('MondayService', () => {
   let mondayAuthService: MondayAuthService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,

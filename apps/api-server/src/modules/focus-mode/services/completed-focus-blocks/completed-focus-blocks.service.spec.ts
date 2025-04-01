@@ -9,7 +9,7 @@ import { CompletedFocusBlockDummy, userDummy } from '../../../../../test/dummies
 describe('CompletedFocusBlockService', () => {
   let completedFocusBlocksService: CompletedFocusBlockService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CompletedFocusBlockService,

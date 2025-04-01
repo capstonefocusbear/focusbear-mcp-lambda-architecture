@@ -12,7 +12,7 @@ import { UserConsentService } from './user-consent.service';
 describe('UserConsentService', () => {
   let service: UserConsentService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserConsentService,

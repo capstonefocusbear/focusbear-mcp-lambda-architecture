@@ -38,7 +38,7 @@ import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
 describe('FocusModeTemplatesService', () => {
   let focusModeTemplateService: FocusModeTemplatesService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         FocusModeTemplatesService,

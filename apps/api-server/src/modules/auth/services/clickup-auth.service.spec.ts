@@ -25,10 +25,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('ClickUpService', () => {
   let clickUpAuthService: ClickUpAuthService;
 
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    jest.clearAllMocks();
-
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ConfigService,

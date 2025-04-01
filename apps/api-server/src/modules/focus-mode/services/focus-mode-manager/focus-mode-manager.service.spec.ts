@@ -47,7 +47,7 @@ describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
   const i18nServiceMock = mockDeep<I18nService>();
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         FocusModeManagerService,

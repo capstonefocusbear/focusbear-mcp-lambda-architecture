@@ -30,7 +30,7 @@ import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ActivityLibraryService,

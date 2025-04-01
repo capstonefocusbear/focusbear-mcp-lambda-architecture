@@ -7,7 +7,7 @@ import { BullQueues } from '../../../../shared/utils/constants';
 describe('WebhookHandlerStrategy', () => {
   let webhookHandlerStrategy: WebhookHandlerStrategy;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         WebhookHandlerStrategy,

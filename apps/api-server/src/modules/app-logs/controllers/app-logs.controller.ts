@@ -7,7 +7,7 @@ import { FileUploadRequest } from '../domain/upload.interface';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { CreateUploadPresignedUrlQueryDto } from '../dto/create-upload-presigned-url-query.dto';
-import { NotifyLogsUploadSuccess } from '../dto/notify-logs-upload-success.dto';
+import { NotifyLogsUploadSuccessDto } from '../dto/notify-logs-upload-success.dto';
 
 @Controller('app-logs')
 @ApiTags('app-logs')
@@ -37,8 +37,8 @@ export class AppLogsController {
     return this.appLogsService.createUploadPresignedUrl(createUploadPresignedUrlQueryDto, user.id);
   }
 
-  @Post('/notify-upload-success')
-  async notifyLogsUploadSuccess(@Body() notifyLogsUploadSuccess: NotifyLogsUploadSuccess) {
-    return this.appLogsService.notifyLogsUploadSuccess(notifyLogsUploadSuccess);
+  @Post('notify-upload-success')
+  async notifyLogsUploadSuccess(@Body() notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto) {
+    return this.appLogsService.notifyLogsUploadSuccess(notifyLogsUploadSuccessDto);
   }
 }

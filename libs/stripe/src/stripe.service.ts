@@ -18,7 +18,7 @@ import {
 import { IStripeOptions } from './interfaces';
 import { STRIPE_MODULE_OPTIONS } from './stripe.constants';
 import { findNonZeroTotal, prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';
-import { CancelSubscriptionSession } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session';
+import { CancelSubscriptionSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/cancel-subscription-session.dto';
 import { UserAuthContext } from '../../../apps/api-server/src/modules/auth/domain/user-auth-context.model';
 import { Feedback } from './entities/feedback.entity';
 import { AppDataSource } from '../../../apps/api-server/ormconfig';
@@ -178,28 +178,31 @@ export class StripeService extends Stripe {
     return this.subscriptions.del(subscriptionId);
   }
 
-  async logCancellation(session: CancelSubscriptionSession, user_id: string, email?: string) {
+  async logCancellation(cancelSubscriptionSessionDto: CancelSubscriptionSessionDto, user_id: string, email?: string) {
     if (email) {
       // Queue the email job using Bull
       await this.emailQueue.add('sendEmail', {
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: email,
-        subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${session.cancel_subscription_reason}`,
-        text: `User ID: ${user_id}\n\n${prettyJson(session)}`,
+        subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${cancelSubscriptionSessionDto.cancel_subscription_reason}`,
+        text: `User ID: ${user_id}\n\n${prettyJson(cancelSubscriptionSessionDto)}`,
       });
     }
 
     const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
     const body = {
       channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-      message: `Subscription canceled\n\n User:${user_id} \n\n Reason:${session.cancel_subscription_reason}`,
+      message: `Subscription canceled\n\n User:${user_id} \n\n Reason:${cancelSubscriptionSessionDto.cancel_subscription_reason}`,
     };
 
     return axios.post(cliqUrl, body);
   }
 
-  async cancelSubscriptionSession(session: CancelSubscriptionSession, userAuthContext: UserAuthContext) {
+  async cancelSubscriptionSession(
+    cancelSubscriptionSessionDto: CancelSubscriptionSessionDto,
+    userAuthContext: UserAuthContext,
+  ) {
     try {
       const [userResponse, subscriptionsResponse] = await Promise.allSettled([
         this.userRepository.orm.findOneBy({ id: userAuthContext.id }),
@@ -220,7 +223,10 @@ export class StripeService extends Stripe {
 
       const [stripePromiseResponse, revenueCatPromiseResponse] = await Promise.allSettled([
         this.cancelSubscription(subscriptions.data[0].id),
-        await this.revenueCatService.revokeUserEntitlementFromRevenueCat(user.id, session.entitlement_id),
+        await this.revenueCatService.revokeUserEntitlementFromRevenueCat(
+          user.id,
+          cancelSubscriptionSessionDto.entitlement_id,
+        ),
       ]);
 
       const stripeResponse = (stripePromiseResponse as PromiseFulfilledResult<Stripe.Response<Stripe.Subscription>>)
@@ -236,7 +242,7 @@ export class StripeService extends Stripe {
       }
 
       const feedback = new Feedback({
-        cancel_subscription_reason: session.cancel_subscription_reason,
+        cancel_subscription_reason: cancelSubscriptionSessionDto.cancel_subscription_reason,
         user_id: user.id,
       });
 
@@ -256,7 +262,7 @@ export class StripeService extends Stripe {
           });
       }
 
-      return await this.logCancellation(session, user.id, auth0User.email);
+      return await this.logCancellation(cancelSubscriptionSessionDto, user.id, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

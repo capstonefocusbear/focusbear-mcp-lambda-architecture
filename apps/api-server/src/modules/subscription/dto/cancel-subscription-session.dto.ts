@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
-export class CancelSubscriptionSession {
+export class CancelSubscriptionSessionDto {
   @IsNotEmpty()
   @IsString()
   @MinLength(10, { message: 'Minimum feedback characters length is 10' })

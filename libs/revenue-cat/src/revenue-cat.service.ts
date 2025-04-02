@@ -117,8 +117,8 @@ export class RevenueCatService {
   }
 
   async revokeUserEntitlementFromRevenueCat(app_user_id: string, entitlement_id: string) {
-    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement_id}`;
-    await this.httpService.post(callUrl);
+    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement_id}/revoke_promotionals`;
+    return this.httpService.post(callUrl);
   }
 
   // using a secret API key to fetch the customer's attributes.

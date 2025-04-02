@@ -1,11 +1,13 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { User } from 'apps/api-server/src/modules/user/entities/user.entity';
+import { GetUsers200ResponseOneOfInner } from 'auth0';
 import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { CreateStripeCheckoutSessionDto } from '../../../apps/api-server/src/modules/subscription/dto/create-stripe-checkout-session.dto';
 import {
@@ -34,7 +36,7 @@ export class StripeService extends Stripe {
     super(options.secretKey, { apiVersion: STRIPE_API_VERSION });
   }
 
-  private readonly ormFeedback = AppDataSource.getRepository(Feedback);
+  readonly ormFeedback = AppDataSource.getRepository(Feedback);
 
   async createCheckoutSession(
     customer: string,
@@ -173,53 +175,88 @@ export class StripeService extends Stripe {
   }
 
   async cancelSubscription(subscriptionId: string) {
-    await this.subscriptions.del(subscriptionId);
+    return this.subscriptions.del(subscriptionId);
   }
 
-  async logCancellation(session: CancelSubscriptionSession, user: UserAuthContext) {
-    const cancelledUser = await this.userRepository.orm.findOneBy({ id: user.id });
-    if (!cancelledUser) {
-      throw new NotFoundException(`User with ID: ${user.id} does not exist!`);
+  async logCancellation(session: CancelSubscriptionSession, user_id: string, email?: string) {
+    if (email) {
+      // Queue the email job using Bull
+      await this.emailQueue.add('sendEmail', {
+        to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        replyTo: email,
+        subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${session.cancel_subscription_reason}`,
+        text: `User ID: ${user_id}\n\n${prettyJson(session)}`,
+      });
     }
 
     const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
     const body = {
       channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-      message: `Subscription canceled\n\n User:${user.id} \n\n Reason:${session.cancel_subscription_reason}`,
+      message: `Subscription canceled\n\n User:${user_id} \n\n Reason:${session.cancel_subscription_reason}`,
     };
-    await axios.post(cliqUrl, body);
 
-    const auth0User = await this.auth0ManagementService.getAuth0User(cancelledUser.auth0_id);
-
-    // Queue the email job using Bull
-    await this.emailQueue.add('sendEmail', {
-      to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
-      from: FOCUS_BEAR_EMAILS.SUPPORT,
-      replyTo: auth0User.email,
-      subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${session.cancel_subscription_reason}`,
-      text: `User ID: ${user.id}\n\n${prettyJson(session)}`,
-    });
+    return axios.post(cliqUrl, body);
   }
 
-  async cancelSubscriptionSession(session: CancelSubscriptionSession, user: UserAuthContext) {
-    const { cancel_subscription_reason, entitlement_id } = session;
+  async cancelSubscriptionSession(session: CancelSubscriptionSession, userAuthContext: UserAuthContext) {
     try {
-      const subscriptions = await this.subscriptions.list({ customer: user.stripeCustomerId });
+      const [userResponse, subscriptionsResponse] = await Promise.allSettled([
+        this.userRepository.orm.findOneBy({ id: userAuthContext.id }),
+        this.subscriptions.list({ customer: userAuthContext.stripeCustomerId }),
+      ]);
+
+      const user = (userResponse as PromiseFulfilledResult<User>).value;
+      const subscriptions = (subscriptionsResponse as PromiseFulfilledResult<Stripe.ApiList<Stripe.Subscription>>)
+        .value;
+
+      if (!user) {
+        throw new NotFoundException(`User with ID: ${userAuthContext.id} does not exist!`);
+      }
+
       if (!subscriptions.data.length) {
         throw new NotFoundException(`No active subscription found for user ID: ${user.id}`);
       }
-      await this.cancelSubscription(subscriptions.data[0].id);
+
+      const [stripePromiseResponse, revenueCatPromiseResponse] = await Promise.allSettled([
+        this.cancelSubscription(subscriptions.data[0].id),
+        await this.revenueCatService.revokeUserEntitlementFromRevenueCat(user.id, session.entitlement_id),
+      ]);
+
+      const stripeResponse = (stripePromiseResponse as PromiseFulfilledResult<Stripe.Response<Stripe.Subscription>>)
+        .value;
+      const revenueCatResponse = (revenueCatPromiseResponse as PromiseFulfilledResult<AxiosResponse>).value;
+
+      if (stripeResponse.status !== 'canceled') {
+        this.sentryService.instance().captureException(stripeResponse, { level: 'warning' });
+      }
+
+      if (revenueCatResponse.status !== HttpStatus.OK) {
+        this.sentryService.instance().captureException(revenueCatResponse, { level: 'warning' });
+      }
+
       const feedback = new Feedback({
-        cancel_subscription_reason,
+        cancel_subscription_reason: session.cancel_subscription_reason,
         user_id: user.id,
       });
 
-      await Promise.allSettled([
+      const [auth0UserPromiseResponse, feedbackPromiseResponse] = await Promise.allSettled([
+        this.auth0ManagementService.getAuth0User(user.auth0_id),
         this.ormFeedback.save(feedback),
-        this.revenueCatService.revokeUserEntitlementFromRevenueCat(user.id, entitlement_id),
       ]);
 
-      this.logCancellation(session, user);
+      const auth0User = (auth0UserPromiseResponse as PromiseFulfilledResult<GetUsers200ResponseOneOfInner>).value;
+      const feedbackResponse = (feedbackPromiseResponse as PromiseFulfilledResult<Feedback>).value;
+
+      if (!feedbackResponse) {
+        this.sentryService
+          .instance()
+          .captureException('User feedback could not be saved due to missing or invalid response data.', {
+            level: 'warning',
+          });
+      }
+
+      return await this.logCancellation(session, user.id, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

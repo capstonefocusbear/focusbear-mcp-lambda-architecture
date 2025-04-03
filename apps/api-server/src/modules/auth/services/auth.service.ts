@@ -3,6 +3,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { Passport } from '../domain/passport.model';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { OpenEmailConfirmationDto } from '../dto/open-email-confirmation.dto';
 
 @Injectable()
 export class AuthService {
@@ -79,5 +80,20 @@ export class AuthService {
       return;
     }
     await this.auth0ManagementService.resendEmailVerification(user.auth0_id);
+  }
+
+  async openEmailConfirmation({ email }: OpenEmailConfirmationDto) {
+    const [foundUser] = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+
+    if (!foundUser || foundUser.email !== email) {
+      throw new NotFoundException(`User with email: ${email} does not exist!`);
+    }
+
+    let response = { data: 'Email is already verified.', status: 200 };
+    if (!foundUser.email_verified) {
+      await this.auth0ManagementService.resendEmailVerification(foundUser.user_id);
+      response = { data: 'Verification email sent.', status: 200 };
+    }
+    return response;
   }
 }

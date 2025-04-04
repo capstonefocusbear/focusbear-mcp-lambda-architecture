@@ -81,7 +81,7 @@ describe('AuthService', () => {
         status: 200,
       });
 
-      const response = await authService.openEmailConfirmation({ email: auth0UserDummy.email });
+      const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email });
 
       expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
       expect(response).toEqual({ data: 'Verification email sent.', status: 200 });
@@ -91,7 +91,7 @@ describe('AuthService', () => {
       Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValue([{ ...auth0UserDummy, email_verified: true }]);
       Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
-      const response = await authService.openEmailConfirmation({ email: auth0UserDummy.email });
+      const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email });
 
       expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
       expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
@@ -102,7 +102,7 @@ describe('AuthService', () => {
       Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValue([]);
       Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
-      await expect(authService.openEmailConfirmation({ email: auth0UserDummy.email })).rejects.toThrow(
+      await expect(authService.emailConfirmationForGuest({ email: auth0UserDummy.email })).rejects.toThrow(
         NotFoundException,
       );
       expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);

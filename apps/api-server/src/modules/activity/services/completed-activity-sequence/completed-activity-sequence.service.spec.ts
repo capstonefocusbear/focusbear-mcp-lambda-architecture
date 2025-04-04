@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { Settings } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   ActivitySequenceRepositoryMock,
@@ -741,6 +741,40 @@ describe('CompletedActivitySequenceService', () => {
       await completedActivitySequenceService.nullifyCurrentSequenceSkippedActivities(userDummy.id);
 
       expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { current_sequence_skipped_activities: null });
+    });
+  });
+
+  describe('getTodayCompletedSequenceIds', () => {
+    const timezone = 'UTC';
+    const startOfDay = DateTime.now().setZone(timezone).startOf('day').toJSDate();
+    const endOfDay = DateTime.now().setZone(timezone).endOf('day').toJSDate();
+
+    it('positive: should return a list of completed sequence IDs for today', async () => {
+      const mockResults = [CompletedSequenceLogDummy, UncompletedSequenceLogDummy];
+      const mockIds = mockResults.filter((result) => result.is_completed).map((result) => result.id);
+      CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences.mockReturnValueOnce(mockResults);
+
+      const result = await completedActivitySequenceService.getTodayCompletedSequenceIds(userDummy.id, timezone);
+
+      expect(result).toEqual(mockIds);
+      expect(CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences).toHaveBeenCalledWith(
+        startOfDay,
+        endOfDay,
+        userDummy.id,
+      );
+    });
+
+    it('positive: should return an empty array if no completed sequences are found for today', async () => {
+      CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences.mockReturnValueOnce([]);
+
+      const result = await completedActivitySequenceService.getTodayCompletedSequenceIds(userDummy.id, timezone);
+
+      expect(result).toEqual([]);
+      expect(CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences).toHaveBeenCalledWith(
+        startOfDay,
+        endOfDay,
+        userDummy.id,
+      );
     });
   });
 });

@@ -65,6 +65,7 @@ import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
+import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -92,6 +93,8 @@ export class UserService {
     @Inject(forwardRef(() => DeviceService))
     private readonly deviceService: DeviceService,
     private readonly emailService: SendGridService,
+    @Inject(forwardRef(() => CompletedActivitySequenceService))
+    private completedActivitySequenceService: CompletedActivitySequenceService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -306,7 +309,14 @@ export class UserService {
             );
         }
       }
-      const currentActivityProps = new CurrentActivityProps({ ...partialUser, current_sequence_completed_activities });
+      const today_completed_activity_sequence_ids =
+        await this.completedActivitySequenceService.getTodayCompletedSequenceIds(partialUser.id, partialUser.timezone);
+
+      const currentActivityProps = new CurrentActivityProps({
+        ...partialUser,
+        current_sequence_completed_activities,
+        today_completed_activity_sequence_ids,
+      });
       if (id === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console
         console.log('Jeremy current user state', {

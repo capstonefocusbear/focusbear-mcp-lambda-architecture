@@ -7,6 +7,7 @@ import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-b
 
 interface ExtendedActivityProps {
   current_sequence_completed_activities?: string[];
+  today_completed_activity_sequence_ids: string[];
 }
 
 export class CurrentActivityProps {
@@ -23,6 +24,7 @@ export class CurrentActivityProps {
     this.last_time_user_settings_modified = data?.last_time_user_settings_modified || null;
     this.current_sequence_completed_activities = data?.current_sequence_completed_activities;
     this.completing_focus_block = data?.completing_focus_block;
+    this.today_completed_activity_sequence_ids = data.today_completed_activity_sequence_ids;
   }
 
   @ApiProperty()
@@ -60,4 +62,7 @@ export class CurrentActivityProps {
 
   @ApiProperty()
   completing_focus_block?: CompletedFocusBlock;
+
+  @ApiProperty()
+  today_completed_activity_sequence_ids: string[];
 }

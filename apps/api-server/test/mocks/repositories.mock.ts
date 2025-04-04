@@ -93,6 +93,7 @@ export const CompletedActivitySequenceRepositoryMock = {
   getAggregatedDurationLogsPerDay: jest.fn(),
   getUncompletedSequenceLog: jest.fn(),
   getSequenceLogByDate: jest.fn(),
+  getTodayCompletedSequences: jest.fn(),
 };
 
 export const AdminAccessRequestRepositoryMock = {

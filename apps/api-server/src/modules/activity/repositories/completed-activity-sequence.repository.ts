@@ -54,4 +54,19 @@ export class CompletedActivitySequenceRepository extends BaseRepository<Complete
       [activity_sequence_id, days_number, timezone],
     );
   }
+
+  async getTodayCompletedSequences(
+    startOfDay: Date,
+    endOfDay: Date,
+    user_id: string,
+  ): Promise<CompletedActivitySequence[]> {
+    return this.orm
+      .createQueryBuilder('completed_activity_sequences')
+      .select('id')
+      .where('is_completed = true')
+      .andWhere('user_id = :user_id', { user_id })
+      .andWhere('start_time BETWEEN :startOfDay AND :endOfDay', { startOfDay, endOfDay })
+      .orderBy('start_time', 'ASC')
+      .getRawMany();
+  }
 }

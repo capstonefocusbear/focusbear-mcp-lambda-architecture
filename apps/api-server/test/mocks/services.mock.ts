@@ -76,6 +76,7 @@ export const CompletedActivitySequenceServiceMock = {
   completeActivitySequenceByDate: jest.fn(),
   getUserTimes: jest.fn(),
   nullifyUserCurrentActivityProps: jest.fn(),
+  getTodayCompletedSequenceIds: jest.fn(),
 };
 
 export const PusherServiceMock = {

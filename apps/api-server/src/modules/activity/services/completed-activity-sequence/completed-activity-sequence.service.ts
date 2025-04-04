@@ -436,4 +436,16 @@ export class CompletedActivitySequenceService {
     });
     await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
+
+  async getTodayCompletedSequenceIds(user_id: string, timezone = 'UTC'): Promise<string[]> {
+    const startOfDay = DateTime.now().setZone(timezone).startOf('day').toJSDate();
+    const endOfDay = DateTime.now().setZone(timezone).endOf('day').toJSDate();
+
+    const completedActivitySequences = await this.completedActivitySequenceRepository.getTodayCompletedSequences(
+      startOfDay,
+      endOfDay,
+      user_id,
+    );
+    return completedActivitySequences.map((sequence) => sequence.id);
+  }
 }

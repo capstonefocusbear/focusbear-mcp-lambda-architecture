@@ -8,7 +8,7 @@ import { CreateStripeCheckoutSessionDto } from '../../dto/create-stripe-checkout
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { GetStripeProductsDto } from '../../dto/get-stripe-products.dto';
 import { GetStripePricesDto } from '../../dto/get-stripe-prices.dto';
-import { CancelSubscriptionSession } from '../../dto/cancel-subscription-session';
+import { CancelSubscriptionSession } from '../../dto/cancel-subscription-session.dto';
 
 @Controller('subscription/stripe')
 @UseGuards(IsAuth)

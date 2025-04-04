@@ -19,8 +19,8 @@ import {
   UserRepositoryMock,
   Auth0ManagementServiceMock,
   RevenueCatServiceMock,
-  SendGridServiceMock,
 } from '../../../apps/api-server/test/mocks';
+import { Feedback } from './entities/feedback.entity';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -101,87 +101,86 @@ describe('StripeService', () => {
       cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
       entitlement_id: 'prod_B4DMIzxyNLnP2a',
     };
-    const mockUserAuthCtx = {
-      id: userDummy.id,
-    };
-
-    it('should throw NotFoundException if user not found', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-
-      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(
-        new NotFoundException(`User with ID: ${userDummy.id} does not exist!`),
-      );
-
-      expect(mockEmailQueue.add).not.toHaveBeenCalled();
-      expect(mockedAxios.post).not.toHaveBeenCalled();
-    });
 
     it('should successfully log cancellation and queue email', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       mockedAxios.post.mockResolvedValueOnce({ data: {} });
 
-      await service.logCancellation(mockSession, mockUserAuthCtx);
+      await service.logCancellation(mockSession, auth0UserDummy.id, auth0UserDummy.email);
 
       expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
-        message: `Subscription canceled\n\n User:${mockUserAuthCtx.id} \n\n Reason:${mockSession.cancel_subscription_reason}`,
+        message: `Subscription canceled\n\n User:${auth0UserDummy.id} \n\n Reason:${mockSession.cancel_subscription_reason}`,
       });
 
       expect(mockEmailQueue.add).toHaveBeenCalledWith('sendEmail', {
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
-        text: `User ID: ${mockUserAuthCtx.id}\n\n${prettyJson(mockSession)}`,
+        text: `User ID: ${auth0UserDummy.id}\n\n${prettyJson(mockSession)}`,
         subject: `${EMAIL_SUBJECTS.USER_UNSUBSCRIBE_FEEDBACK}: ${mockSession.cancel_subscription_reason}`,
       });
     });
 
     it('should throw error if axios post fails', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
-
       const mockError = new Error('Network error');
-      mockedAxios.post.mockRejectedValueOnce(mockError);
+      mockedAxios.post.mockRejectedValue(mockError);
 
-      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(mockError);
+      await expect(service.logCancellation(mockSession, auth0UserDummy.id)).rejects.toThrow(mockError);
 
       expect(mockEmailQueue.add).not.toHaveBeenCalled();
     });
 
     it('should throw error if email queueing fails', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       mockedAxios.post.mockResolvedValueOnce({ data: {} });
 
       const mockError = new Error('Queue error');
       mockEmailQueue.add.mockImplementationOnce(() => Promise.reject(mockError));
 
-      await expect(service.logCancellation(mockSession, mockUserAuthCtx)).rejects.toThrow(mockError);
+      await expect(service.logCancellation(mockSession, auth0UserDummy.id, auth0UserDummy.email)).rejects.toThrow(
+        mockError,
+      );
     });
   });
 
   describe('cancelSubscriptionSession', () => {
-    it("negative:should throw BadRequestException, if user subscription couldn't be found in Stripe", async () => {
-      const exceptionMessage = `No active subscription found for user ID: ${userDummy.id}`;
-      let exception: any;
+    const userAuthContext = { id: userDummy.id, stripeCustomerId: 'customer_123' };
+    const cancelSubscriptionSessionDto = {
+      cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
+      entitlement_id: 'prod_B4DMIzxyNLnP2a',
+    };
+
+    it('negative: should throw NotFoundException if the user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+
+      await expect(service.cancelSubscriptionSession(cancelSubscriptionSessionDto, userAuthContext)).rejects.toThrow(
+        new NotFoundException(`User with ID: ${userDummy.id} does not exist!`),
+      );
+    });
+
+    it('negative: should throw NotFoundException if no active subscription is found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       service.subscriptions.list = jest.fn().mockResolvedValue({ data: [] });
 
-      try {
-        await service.cancelSubscriptionSession(
-          {
-            cancel_subscription_reason: dummySubscriptionCancelFeedback.VALID_FEEDBACK,
-            entitlement_id: 'prod_B4DMIzxyNLnP2a',
-          },
-          { id: userDummy.id, stripeCustomerId: userDummy.stripe_customer_id },
-        );
-      } catch (error) {
-        exception = error;
-      }
+      await expect(service.cancelSubscriptionSession(cancelSubscriptionSessionDto, userAuthContext)).rejects.toThrow(
+        new NotFoundException(`No active subscription found for user ID: ${userDummy.id}`),
+      );
+    });
 
-      expect(exception).toBeDefined();
-      expect(exception.message).toMatch(exceptionMessage);
-      expect(SendGridServiceMock.sendEmail).not.toBeCalled();
+    it('positive: should handle successful cancellation and save feedback', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
+      RevenueCatServiceMock.revokeUserEntitlementFromRevenueCat.mockResolvedValue({ status: 200, data: {} });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
+
+      service.subscriptions.list = jest.fn().mockResolvedValue({ data: [{ id: 'sub_123' }] });
+      service.cancelSubscription = jest.fn().mockResolvedValue({ status: 'canceled' });
+      service.ormFeedback.save = jest.fn().mockResolvedValue(new Feedback(cancelSubscriptionSessionDto));
+
+      const logCancellationSpy = jest.spyOn(service, 'logCancellation');
+
+      await service.cancelSubscriptionSession(cancelSubscriptionSessionDto, userAuthContext);
+
+      expect(logCancellationSpy).toHaveBeenCalledWith(cancelSubscriptionSessionDto, userDummy.id, auth0UserDummy.email);
     });
   });
 });

@@ -11,7 +11,7 @@ import { AuthServiceFactory } from '../services/auth.service.factory';
 import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
 import { ResetPasswordDto } from '../dto/password-reset.dto';
 import { AuthService } from '../services/auth.service';
-import { OpenEmailConfirmationDto } from '../dto/open-email-confirmation.dto';
+import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -62,9 +62,13 @@ export class AuthController {
     }
   }
 
-  // TODO: implement throttle based on request
-  @Post('open-email-confirmation')
-  async openEmailConfirmation(@Body() openEmailConfirmationDto: OpenEmailConfirmationDto) {
-    return this.authService.openEmailConfirmation(openEmailConfirmationDto);
+  // TODO: Implement request-based throttling to prevent abuse of this endpoint.
+
+  /* This endpoint handles email confirmations for non-logged-in users.
+  It is triggered during the "forgot password" process when an account is found but the email is unverified.
+  The user must verify their email via this endpoint to proceed with resetting their password. */
+  @Post('email-confirmation-guest')
+  async emailConfirmationForGuest(@Body() emailConfirmationForGuestDto: EmailConfirmationForGuestDto) {
+    return this.authService.emailConfirmationForGuest(emailConfirmationForGuestDto);
   }
 }

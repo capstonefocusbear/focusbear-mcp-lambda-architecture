@@ -1,6 +1,6 @@
 import { IsEmail, IsNotEmpty } from 'class-validator';
 
-export class OpenEmailConfirmationDto {
+export class EmailConfirmationForGuestDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;

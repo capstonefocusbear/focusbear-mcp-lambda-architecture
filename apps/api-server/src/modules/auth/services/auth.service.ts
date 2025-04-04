@@ -3,7 +3,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { Passport } from '../domain/passport.model';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { OpenEmailConfirmationDto } from '../dto/open-email-confirmation.dto';
+import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 
 @Injectable()
 export class AuthService {
@@ -82,7 +82,7 @@ export class AuthService {
     await this.auth0ManagementService.resendEmailVerification(user.auth0_id);
   }
 
-  async openEmailConfirmation({ email }: OpenEmailConfirmationDto) {
+  async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto) {
     const [foundUser] = await this.auth0ManagementService.getAuth0UserWithEmail(email);
 
     if (!foundUser || foundUser.email !== email) {

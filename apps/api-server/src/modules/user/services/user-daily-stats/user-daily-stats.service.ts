@@ -322,9 +322,10 @@ export class UserDailyStatsService {
           ...(isVerboseLoggingAllowed && { timeZone }),
         },
       });
-      const startOfDate = DateTime.fromJSDate(finishTime).setZone(timeZone).startOf('day').toJSDate();
+      const dayStart = DateTime.fromJSDate(finishTime).setZone(timeZone).startOf('day').toJSDate();
+      const dayEnd = DateTime.fromJSDate(finishTime).setZone(timeZone).endOf('day').toJSDate();
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
-        where: { user_id, date_completed: Equal(startOfDate) },
+        where: { user_id, date_completed: Between(dayStart, dayEnd) },
       });
       if (dailyStats) {
         await this.dailyStatsRepository.orm.save({
@@ -335,7 +336,7 @@ export class UserDailyStatsService {
       } else {
         const newDailyStats = new DailyStats({
           user_id,
-          date_completed: startOfDate,
+          date_completed: dayStart,
           focus_modes_completed: 1,
           seconds_spent_in_focus_sessions: durationSeconds,
         });

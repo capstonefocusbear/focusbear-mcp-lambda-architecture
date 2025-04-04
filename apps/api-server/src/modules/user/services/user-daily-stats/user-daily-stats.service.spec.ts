@@ -3,6 +3,7 @@ import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { getQueueToken } from '@nestjs/bull';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
+import { Between } from 'typeorm';
 import { BullQueues, BullWorkers, DAYS_IN_WEEK, TEN_MINUTES } from '../../../../shared/utils/constants';
 import { BASE_ONBOARDING_PROGRESS } from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { UserDailyStatsService } from './user-daily-stats.service';
@@ -482,6 +483,23 @@ describe('UserDailyStatsService', () => {
         ...dailyStatDummy,
         focus_modes_completed: dailyStatDummy.focus_modes_completed + 1,
         seconds_spent_in_focus_sessions: 1200,
+      });
+    });
+
+    it('positive: should search for a daily stat record between start and end of date focus mode was completed', async () => {
+      const dailyStatDummy = dailyStatsArrayDummy[0];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      DailyStatsRepositoryMock.orm.findOne.mockResolvedValueOnce(dailyStatDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: false });
+      const timezone = 'UTC';
+      const finishTime = new Date('2023-08-20T15:30:00Z');
+      const dayStart = new Date('2023-08-20T00:00:00.000Z');
+      const dayEnd = new Date('2023-08-20T23:59:59.999Z');
+
+      await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, timezone, 1200);
+
+      expect(DailyStatsRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id, date_completed: Between(dayStart, dayEnd) },
       });
     });
   });

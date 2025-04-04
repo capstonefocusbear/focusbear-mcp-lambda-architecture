@@ -100,6 +100,7 @@ export const auth0UserDummy: Auth0UserProfile = {
   },
   given_name: 'First Name',
   family_name: 'Last Name',
+  user_id: '123456',
 };
 
 export const lastFiftyEventsDummy = [

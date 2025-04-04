@@ -11,10 +11,10 @@ import { AuthServiceFactory } from '../services/auth.service.factory';
 import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
 import { ResetPasswordDto } from '../dto/password-reset.dto';
 import { AuthService } from '../services/auth.service';
+import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 
 @Controller('auth')
 @ApiTags('auth')
-@ApiSecurity('Auth0AccessToken')
 export class AuthController {
   constructor(
     private readonly authServiceFactory: AuthServiceFactory,
@@ -30,18 +30,22 @@ export class AuthController {
   }
 
   @Post('/email-confirmation')
+  @ApiSecurity('Auth0AccessToken')
   @UseGuards(IsAuth)
   async resendEmailVerification(@AuthContext() { user }: Passport) {
     return this.authService.resendEmailVerification(user.id);
   }
 
   @Get(':platform')
+  @ApiSecurity('Auth0AccessToken')
+  @UseGuards(IsAuth)
   login(@Param('platform') platform: IntegrationPlatforms, @Query() { is_development }: IntegrationLoginQuery) {
     const service = this.authServiceFactory.get(platform);
     return service.getLoginUrl(is_development);
   }
 
   @Get(':platform/callback')
+  @ApiSecurity('Auth0AccessToken')
   @UseGuards(IsAuth)
   async callback(
     @Param('platform') platform: IntegrationPlatforms,
@@ -56,5 +60,15 @@ export class AuthController {
 
       return error;
     }
+  }
+
+  // TODO: Implement request-based throttling to prevent abuse of this endpoint.
+
+  /* This endpoint handles email confirmations for non-logged-in users.
+  It is triggered during the "forgot password" process when an account is found but the email is unverified.
+  The user must verify their email via this endpoint to proceed with resetting their password. */
+  @Post('email-confirmation-guest')
+  async emailConfirmationForGuest(@Body() emailConfirmationForGuestDto: EmailConfirmationForGuestDto) {
+    return this.authService.emailConfirmationForGuest(emailConfirmationForGuestDto);
   }
 }

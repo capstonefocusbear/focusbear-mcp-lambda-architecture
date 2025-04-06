@@ -107,4 +107,5 @@ export const CronJobDataSource = new DataSource({
   ],
   subscribers: [],
   migrations: [],
+  ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
 });

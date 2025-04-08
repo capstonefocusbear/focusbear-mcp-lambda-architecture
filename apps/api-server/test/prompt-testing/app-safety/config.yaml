@@ -1,0 +1,237 @@
+prompts:
+  - id: app-default
+    raw: |
+      Evaluate whether the following application aligns with the user's Focus Mode and provide a JSON response.
+
+      JSON response format:
+      {
+        "allowed_probability": number (0 to 1),
+        "reason": string (explain why the application is related or unrelated to Focus Mode)
+      }
+
+      Application data:
+        App Name: {{appName}}
+
+      Focus Mode data:
+        Focus Mode: {{focusMode}}
+        Intention (specific focus goal): {{intention}}
+      {{#currentTaskInToDoPlayer}}
+        Current Task in Todo Player: {{currentTaskInToDoPlayer}}
+      {{/currentTaskInToDoPlayer}}
+      {{#justificationForThisSpecificApp}}
+        The user gave this explanation for why they need to use this application: {{justificationForThisSpecificApp}}
+      {{/justificationForThisSpecificApp}}
+
+      Assessment Criteria:
+        Allow if the application name relates to the Focus Mode Intention or current task.
+        Allow if the application strongly relates to the Focus Mode Intention or current task.
+
+      Scoring:
+        Low relevance: allowed_probability < 0.6
+        Moderate relevance: 0.6 <= allowed_probability <= 0.8
+        High relevance: allowed_probability > 0.8
+        
+      Provide response **ONLY in JSON Response format**, without any additional explanation or text.
+
+tests:
+  - description: "VS Code IDE for Programming"
+    vars:
+      appName: "Visual Studio Code"
+      focusMode: "work"
+      intention: "programming"
+      justificationForThisSpecificApp: "Writing code for my project"
+      currentTaskInToDoPlayer: "Implement feature X for project"
+      language: "English"
+      min_probability: 0.8
+      max_probability: 1.0
+  
+  - description: "Slack During Work Focus"
+    vars:
+      appName: "Slack"
+      focusMode: "work"
+      intention: "team communication"
+      justificationForThisSpecificApp: "Communicating with team members"
+      currentTaskInToDoPlayer: "Discuss implementation details with team"
+      language: "English"
+      min_probability: 0.7
+      max_probability: 0.9
+  
+  - description: "Excel for Data Analysis"
+    vars:
+      appName: "Microsoft Excel"
+      focusMode: "work"
+      intention: "data analysis"
+      justificationForThisSpecificApp: "Working with spreadsheets"
+      currentTaskInToDoPlayer: "Analyze quarterly data reports"
+      language: "English"
+      min_probability: 0.8
+      max_probability: 1.0
+  
+  - description: "Distracting Game During Work"
+    vars:
+      appName: "Minecraft"
+      focusMode: "work"
+      intention: "project tasks"
+      justificationForThisSpecificApp: "Taking a short break"
+      currentTaskInToDoPlayer: "Finalize project deliverables"
+      language: "English"
+      min_probability: 0.1
+      max_probability: 0.4
+  
+  - description: "Social Media During Study"
+    vars:
+      appName: "Instagram"
+      focusMode: "study"
+      intention: "exam preparation"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "Review study materials for exam"
+      language: "English"
+      min_probability: 0.0
+      max_probability: 0.3
+  
+  - description: "YouTube for Learning"
+    vars:
+      appName: "YouTube"
+      focusMode: "study"
+      intention: "learning programming"
+      justificationForThisSpecificApp: "Watching tutorial videos"
+      currentTaskInToDoPlayer: "Complete JavaScript course"
+      language: "English"
+      min_probability: 0.6
+      max_probability: 0.9
+  
+  - description: "Ambiguous App without Justification"
+    vars:
+      appName: "Chrome"
+      focusMode: "study"
+      intention: "research"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "Gather sources for research paper"
+      language: "English"
+      min_probability: 0.5
+      max_probability: 0.8
+
+providers:
+  - id: openai:gpt-4o-mini
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+expected-outputs:
+  - description: "VS Code IDE for Programming"
+    output: '{"allowed_probability": 0.95, "reason": "Visual Studio Code is directly related to programming tasks as it is an IDE specifically designed for coding and software development."}'
+  
+  - description: "Slack During Work Focus"
+    output: '{"allowed_probability": 0.8, "reason": "Slack is a communication tool commonly used in work environments for team collaboration and is relevant to a work-focused intention."}'
+  
+  - description: "Excel for Data Analysis"
+    output: '{"allowed_probability": 0.9, "reason": "Microsoft Excel is directly relevant to data analysis as it is a spreadsheet application designed for working with data."}'
+  
+  - description: "Distracting Game During Work"
+    output: '{"allowed_probability": 0.3, "reason": "Minecraft is a gaming application unrelated to work focus. Despite the justification of taking a break, it represents a significant distraction from work tasks."}'
+  
+  - description: "Social Media During Study"
+    output: '{"allowed_probability": 0.2, "reason": "Instagram is a social media application that is generally distracting and unrelated to studying activities."}'
+  
+  - description: "YouTube for Learning"
+    output: '{"allowed_probability": 0.7, "reason": "YouTube can be relevant to learning programming through tutorial videos, though it can also be distracting with non-educational content."}'
+  
+  - description: "Ambiguous App without Justification"
+    output: '{"allowed_probability": 0.6, "reason": "Chrome is a web browser that can be used for research purposes, but without specific justification, it has moderate relevance to the research intention."}'
+
+assertions:
+  - type: json-schema
+    valid: true
+  - type: contains-json
+    key: allowed_probability
+    condition: number
+  - type: contains-json
+    key: reason
+    condition: string
+  - type: similarity-score
+threshold: 0.8
+value: '{"allowed_probability": 0.95, "reason": "Directly related to programming tasks"}'
+cases:
+  - vars:
+      appName: "Visual Studio Code"
+      focusMode: "work"
+      intention: "programming"
+      justificationForThisSpecificApp: "Writing code for my project"
+      currentTaskInToDoPlayer: "Implement feature X for project"
+      
+  - type: probability-range
+    cases:
+      - description: "VS Code IDE for Programming"
+        vars:
+          appName: "Visual Studio Code"
+          focusMode: "work"
+          intention: "programming"
+          justificationForThisSpecificApp: "Writing code for my project"
+          currentTaskInToDoPlayer: "Implement feature X for project"
+        min_probability: 0.8
+        max_probability: 1.0
+      
+      - description: "Slack During Work Focus"
+        vars:
+          appName: "Slack"
+          focusMode: "work"
+          intention: "team communication"
+          justificationForThisSpecificApp: "Communicating with team members"
+          currentTaskInToDoPlayer: "Discuss implementation details with team"
+        min_probability: 0.7
+        max_probability: 0.9
+      
+      - description: "Excel for Data Analysis"
+        vars:
+          appName: "Microsoft Excel"
+          focusMode: "work"
+          intention: "data analysis"
+          justificationForThisSpecificApp: "Working with spreadsheets"
+          currentTaskInToDoPlayer: "Analyze quarterly data reports"
+        min_probability: 0.8
+        max_probability: 1.0
+      
+      - description: "Distracting Game During Work"
+        vars:
+          appName: "Minecraft"
+          focusMode: "work"
+          intention: "project tasks"
+          justificationForThisSpecificApp: "Taking a short break"
+          currentTaskInToDoPlayer: "Finalize project deliverables"
+        min_probability: 0.1
+        max_probability: 0.4
+      
+      - description: "Social Media During Study"
+        vars:
+          appName: "Instagram"
+          focusMode: "study"
+          intention: "exam preparation"
+          justificationForThisSpecificApp: ""
+          currentTaskInToDoPlayer: "Review study materials for exam"
+        min_probability: 0.0
+        max_probability: 0.3
+      
+      - description: "YouTube for Learning"
+        vars:
+          appName: "YouTube"
+          focusMode: "study"
+          intention: "learning programming"
+          justificationForThisSpecificApp: "Watching tutorial videos"
+          currentTaskInToDoPlayer: "Complete JavaScript course"
+        min_probability: 0.6
+        max_probability: 0.9
+      
+      - description: "Ambiguous App without Justification"
+        vars:
+          appName: "Chrome"
+          focusMode: "study"
+          intention: "research"
+          justificationForThisSpecificApp: ""
+          currentTaskInToDoPlayer: "Gather sources for research paper"
+        min_probability: 0.5
+        max_probability: 0.8

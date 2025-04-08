@@ -13,6 +13,9 @@ export const openAiConfig = registerAs('openai', () => ({
   pushNotification: {
     apiKey: process.env.OPENAI_PUSH_API_KEY || process.env.OPENAI_API_KEY,
   },
+  appSafety: {
+    apiKey: process.env.OPENAI_APP_SAFETY_API_KEY || process.env.OPENAI_API_KEY,
+  },
   usernameValidation: {
     apiKey: process.env.OPENAI_USERNAME_VALIDATION_API_KEY || process.env.OPENAI_API_KEY,
   },

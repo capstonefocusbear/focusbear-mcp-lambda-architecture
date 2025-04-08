@@ -16,6 +16,7 @@ import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
+import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import {
   INPUT_WRAPPER,
@@ -39,6 +40,7 @@ export class OpenAIService {
     [OpenAIKeyType.MOTIVATIONAL_MESSAGE]?: OpenAI;
     [OpenAIKeyType.URL_SAFETY]?: OpenAI;
     [OpenAIKeyType.PUSH_NOTIFICATION]?: OpenAI;
+    [OpenAIKeyType.APP_SAFETY]?: OpenAI;
     [OpenAIKeyType.USERNAME_VALIDATION]?: OpenAI;
     [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
@@ -344,6 +346,79 @@ export class OpenAIService {
         reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
       };
     }
+  }
+
+  async checkIfAppIsSafeToUse(
+    isAppSafeDto: IsAppSafeDto,
+    prefLanguage: string,
+  ): Promise<URLSafeProbabilityResponseDto> {
+    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer } = isAppSafeDto;
+
+    const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
+    const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
+    const isAppNameValid = this.isValidInput(appName, MAX_WORD_LENGTH.default);
+    const isJustificationValid = justificationForThisSpecificApp
+      ? this.isValidInput(justificationForThisSpecificApp, MAX_WORD_LENGTH.justification)
+      : true;
+    const isCurrentTaskValid = currentTaskInToDoPlayer
+      ? this.isValidInput(currentTaskInToDoPlayer, MAX_WORD_LENGTH.default)
+      : true;
+    if (!isFocusModeValid || !isIntentionValid || !isAppNameValid || !isJustificationValid || !isCurrentTaskValid) {
+      throw new Error('Invalid input');
+    }
+
+    // Get the app safety prompt from the cache service
+    const promptContent = this.promptCacheService.getPrompt('app-default');
+
+    if (!promptContent) {
+      this.sentryService.instance().captureMessage('App safety prompt not found in cache', {
+        level: 'error',
+        extra: { isAppSafeDto },
+      });
+      // Return a safe default response
+      return {
+        allowed_probability: 0,
+        reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
+      };
+    }
+
+    // Fill in the prompt template with actual values
+    const filledPromptContent = promptContent
+      .replace('{{appName}}', appName)
+      .replace('{{focusMode}}', focusMode)
+      .replace('{{intention}}', intention || '')
+      .replace('{{justificationForThisSpecificApp}}', justificationForThisSpecificApp || '')
+      .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '');
+
+    const basePrompt: ChatCompletionMessageParam = {
+      role: 'system',
+      content: filledPromptContent,
+    };
+
+    let retryCount = 0;
+    while (retryCount < 3) {
+      try {
+        const completions = await this.getOpenAIChatCompletionsNonStreaming(
+          [basePrompt],
+          OpenAIKeyType.APP_SAFETY, // Using dedicated API key for app safety
+          OPENAI_PARAMS.checkURL as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+        );
+        const newMessage = completions.choices[0].message;
+        const { content } = newMessage;
+        const parsedResponse = JSON.parse(content);
+
+        return plainToClass(URLSafeProbabilityResponseDto, parsedResponse);
+      } catch (error) {
+        retryCount++;
+      }
+    }
+
+    // Fallback response if retries fail - potential OpenAI throttling?
+    const translatedReason = this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage });
+    return {
+      allowed_probability: 0,
+      reason: translatedReason,
+    };
   }
 
   addHttpsProtocol(url: string): string {

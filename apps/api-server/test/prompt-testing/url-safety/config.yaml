@@ -162,7 +162,7 @@ tests:
       max_probability: 0.4
 
 providers:
-  - id: openai:gpt-4o
+  - id: openai:gpt-4o-mini
     config:
       temperature: 0
       max_tokens: 1024

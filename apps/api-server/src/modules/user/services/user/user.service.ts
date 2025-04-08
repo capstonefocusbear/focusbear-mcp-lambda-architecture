@@ -62,6 +62,7 @@ import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
+import { IsAppSafeDto } from '../../dto/is-app-safe.dto';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
@@ -737,6 +738,15 @@ export class UserService {
       },
       user.language,
     );
+  }
+
+  async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
+    const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+    }
+
+    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

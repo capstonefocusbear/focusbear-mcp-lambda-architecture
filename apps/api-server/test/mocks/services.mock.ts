@@ -193,6 +193,8 @@ export const OpenAIServiceMock = {
   streamChatReply: jest.fn(),
   checkIfUsernameIsValid: jest.fn(),
   convertBrainDumpToTasks: jest.fn(),
+  checkIfUrlIsSafeToUse: jest.fn(),
+  checkIfAppIsSafeToUse: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

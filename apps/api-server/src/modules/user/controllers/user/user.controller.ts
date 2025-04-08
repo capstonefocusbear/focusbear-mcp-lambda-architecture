@@ -30,6 +30,7 @@ import { UserDailyStatsService } from '../../services/user-daily-stats/user-dail
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
+import { IsAppSafeDto } from '../../dto/is-app-safe.dto';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
 import { UpdateLongTermGoalsDto } from '../../dto/update-long-term-goals.dto';
 import { UpdateUsernameDto } from '../../dto/update-username.dto';
@@ -203,6 +204,13 @@ export class UserController {
   @Post('/is-url-safe-to-use')
   async checkIfURLIsSafe(@Body() isUrlSafeDto: IsUrlSafeDto, @AuthContext() { user }: Passport) {
     return this.userService.checkIsUrlSafe(isUrlSafeDto, user.id);
+  }
+
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @Post('/is-app-safe-to-use')
+  async checkIfAppIsSafe(@Body() isAppSafeDto: IsAppSafeDto, @AuthContext() { user }: Passport) {
+    return this.userService.checkIsAppSafe(isAppSafeDto, user.id);
   }
 
   @Patch('/long-term-goals')

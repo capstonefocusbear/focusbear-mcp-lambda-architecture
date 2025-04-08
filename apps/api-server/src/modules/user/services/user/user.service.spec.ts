@@ -946,6 +946,50 @@ describe('UserService', () => {
     });
   });
 
+  describe('checkIsAppSafe', () => {
+    it('negative: should throw error if user is not found', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        language: 'English',
+      };
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.checkIsAppSafe(isAppSafeDto, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should call OpenAI service with correct parameters', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        justificationForThisSpecificApp: 'I need it for programming',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This app is related to your focus mode intention',
+      };
+      OpenAIServiceMock.checkIfAppIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      const result = await userService.checkIsAppSafe(isAppSafeDto, userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userDummy.language);
+      expect(result).toEqual(expectedResponse);
+    });
+  });
+
   describe('uninstallApplication', () => {
     it('positive: should send uninstall feedback and make the correct API calls', async () => {
       const stringifiedDummyUninstallApplicationQueryDtoWithMaskedEmail = JSON.stringify({

@@ -9,7 +9,11 @@ const { DateTime } = require('luxon');
 
 dotenv.config();
 
-const connectionString = process.env.RENDER_DB_CONNECTION_URI;
+const { POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USERNAME, POSTGRES_PASSWORD, POSTGRES_DB } = process.env;
+const db_uri = process.env.RENDER_DB_CONNECTION_URI;
+const connectionString = db_uri
+  ? db_uri
+  : `postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
 
 const fetchNotifications = async () => {
   const pool = new Pool({ connectionString });

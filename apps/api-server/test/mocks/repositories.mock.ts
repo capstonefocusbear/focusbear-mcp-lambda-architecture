@@ -94,6 +94,7 @@ export const CompletedActivitySequenceRepositoryMock = {
   getUncompletedSequenceLog: jest.fn(),
   getSequenceLogByDate: jest.fn(),
   getTodayCompletedSequences: jest.fn(),
+  getTodaySequences: jest.fn(),
 };
 
 export const AdminAccessRequestRepositoryMock = {

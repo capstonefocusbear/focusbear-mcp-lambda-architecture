@@ -777,4 +777,107 @@ describe('CompletedActivitySequenceService', () => {
       );
     });
   });
+
+  describe('getRoutinesProgress', () => {
+    it('should return correct routine progress for all statuses', async () => {
+      const userId = userDummy.id;
+      const morningSequence = {
+        ...ActivitySequenceDummy,
+        id: 'morning-seq-id',
+        type: ActivityType.morning,
+        activity_ids: ['a1', 'a2'],
+      };
+      const eveningSequence = {
+        ...ActivitySequenceDummy,
+        id: 'evening-seq-id',
+        type: ActivityType.evening,
+        activity_ids: ['e1'],
+      };
+      const customSequence = {
+        ...ActivitySequenceDummy,
+        id: 'custom-seq-id',
+        type: ActivityType.standalone,
+        activity_ids: ['c1', 'c2'],
+      };
+
+      const user = {
+        ...userDummy,
+        current_activity_sequence_id: 'custom-seq-id',
+      };
+
+      const completedMorning = {
+        activity_sequence_id: 'morning-seq-id',
+        is_completed: true,
+        completed_activity_logs: [],
+      };
+
+      const completedCustom = {
+        activity_sequence_id: 'custom-seq-id',
+        is_completed: false,
+        completed_activity_logs: [{ activity_id: 'c1' }],
+      };
+
+      const completedEvening = {
+        activity_sequence_id: 'evening-seq-id',
+        is_completed: false,
+        completed_activity_logs: [{ activity_id: 'e1' }],
+      };
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(user);
+      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([morningSequence, eveningSequence, customSequence]);
+      CompletedActivitySequenceRepositoryMock.getTodaySequences.mockResolvedValueOnce([
+        completedMorning,
+        completedCustom,
+        completedEvening,
+      ]);
+
+      const result = await completedActivitySequenceService.getRoutinesProgress(userId, 'UTC');
+
+      expect(result).toEqual({
+        morning_routine: {
+          sequence_id: 'morning-seq-id',
+          status: 'completed',
+        },
+        evening_routine: {
+          sequence_id: 'evening-seq-id',
+          status: 'postponed',
+          completed_habit_ids: ['e1'],
+        },
+        custom_routines: [
+          {
+            sequence_id: 'custom-seq-id',
+            status: 'in_progress',
+            completed_habit_ids: ['c1'],
+          },
+        ],
+      });
+    });
+
+    it('should exclude routines that have no progress and are not active', async () => {
+      const userId = userDummy.id;
+      const idleSequence = {
+        ...ActivitySequenceDummy,
+        id: 'idle-seq-id',
+        type: ActivityType.standalone,
+        activity_ids: ['x1'],
+      };
+
+      const user = {
+        ...userDummy,
+        current_activity_sequence_id: null,
+      };
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(user);
+      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([idleSequence]);
+      CompletedActivitySequenceRepositoryMock.getTodaySequences.mockResolvedValueOnce([]);
+
+      const result = await completedActivitySequenceService.getRoutinesProgress(userId, 'UTC');
+
+      expect(result).toEqual({
+        morning_routine: null,
+        evening_routine: null,
+        custom_routines: [],
+      });
+    });
+  });
 });

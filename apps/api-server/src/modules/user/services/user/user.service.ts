@@ -311,11 +311,16 @@ export class UserService {
       }
       const today_completed_activity_sequence_ids =
         await this.completedActivitySequenceService.getTodayCompletedSequenceIds(partialUser.id, partialUser.timezone);
+      const todayRoutineProgress = await this.completedActivitySequenceService.getRoutinesProgress(
+        partialUser.id,
+        partialUser.timezone,
+      );
 
       const currentActivityProps = new CurrentActivityProps({
         ...partialUser,
         current_sequence_completed_activities,
         today_completed_activity_sequence_ids,
+        today_routine_progress: todayRoutineProgress,
       });
       if (id === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console

@@ -13,6 +13,8 @@ import { GetCompletedActivityStatsQueryDto } from '../../dto/get-completed-activ
 import { CompletedActivitySequence } from '../../entities/completed-activity-sequence.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
+import { ActivitySequence } from '../../entities/activity-sequence.entity';
+import { SequenceStatus } from '../../domain/sequence-status.enum';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -447,5 +449,70 @@ export class CompletedActivitySequenceService {
       user_id,
     );
     return completedActivitySequences.map((sequence) => sequence.id);
+  }
+
+  async getRoutinesProgress(user_id: string, timezone = 'UTC') {
+    const user = await this.userRepository.orm.findOneBy({ id: user_id });
+    const userActivitySequences = await this.activitySequenceRepository.orm.find({ where: { user_id } });
+
+    const startOfDay = DateTime.now().setZone(timezone).startOf('day').toJSDate();
+    const endOfDay = DateTime.now().setZone(timezone).endOf('day').toJSDate();
+
+    const completedActivitySequences = await this.completedActivitySequenceRepository.getTodaySequences(
+      startOfDay,
+      endOfDay,
+      user_id,
+    );
+
+    const completedMap = new Map<string, CompletedActivitySequence>();
+    for (const completed of completedActivitySequences) {
+      if (completed.activity_sequence_id) {
+        completedMap.set(completed.activity_sequence_id, completed);
+      }
+    }
+
+    const morningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.morning);
+    const eveningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.evening);
+    const customRoutines = userActivitySequences.filter((seq) => seq.type === ActivityType.standalone);
+
+    const getRoutineProgress = (sequence: ActivitySequence | undefined) => {
+      if (!sequence) return null;
+
+      const completedSequence = completedMap.get(sequence.id);
+      const completedActivityLogs = completedSequence?.completed_activity_logs || [];
+      const completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
+
+      let status: SequenceStatus;
+
+      if (sequence.id === user.current_activity_sequence_id) {
+        status = SequenceStatus.IN_PROGRESS;
+      } else if (completedSequence?.is_completed) {
+        status = SequenceStatus.COMPLETED;
+      } else if (completedActivityLogs.length > 0) {
+        status = SequenceStatus.POSTPONED;
+      } else {
+        return null;
+      }
+
+      const baseData = {
+        sequence_id: sequence.id,
+        status,
+      };
+
+      return status === SequenceStatus.COMPLETED
+        ? baseData
+        : {
+            ...baseData,
+            completed_habit_ids: completedHabitIds,
+          };
+    };
+
+    const todayRoutineProgress = {
+      morning_routine: getRoutineProgress(morningRoutine),
+      evening_routine: getRoutineProgress(eveningRoutine),
+      custom_routines: customRoutines.map(getRoutineProgress).filter(Boolean),
+    };
+
+    return todayRoutineProgress;
   }
 }

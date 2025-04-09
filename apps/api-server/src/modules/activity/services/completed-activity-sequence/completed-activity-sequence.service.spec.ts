@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { DateTime, Settings } from 'luxon';
+import { Settings } from 'luxon';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   ActivitySequenceRepositoryMock,
@@ -744,40 +744,6 @@ describe('CompletedActivitySequenceService', () => {
     });
   });
 
-  describe('getTodayCompletedSequenceIds', () => {
-    const timezone = 'UTC';
-    const startOfDay = DateTime.now().setZone(timezone).startOf('day').toJSDate();
-    const endOfDay = DateTime.now().setZone(timezone).endOf('day').toJSDate();
-
-    it('positive: should return a list of completed sequence IDs for today', async () => {
-      const mockResults = [CompletedSequenceLogDummy, UncompletedSequenceLogDummy];
-      const mockIds = mockResults.filter((result) => result.is_completed).map((result) => result.id);
-      CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences.mockReturnValueOnce(mockResults);
-
-      const result = await completedActivitySequenceService.getTodayCompletedSequenceIds(userDummy.id, timezone);
-
-      expect(result).toEqual(mockIds);
-      expect(CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences).toHaveBeenCalledWith(
-        startOfDay,
-        endOfDay,
-        userDummy.id,
-      );
-    });
-
-    it('positive: should return an empty array if no completed sequences are found for today', async () => {
-      CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences.mockReturnValueOnce([]);
-
-      const result = await completedActivitySequenceService.getTodayCompletedSequenceIds(userDummy.id, timezone);
-
-      expect(result).toEqual([]);
-      expect(CompletedActivitySequenceRepositoryMock.getTodayCompletedSequences).toHaveBeenCalledWith(
-        startOfDay,
-        endOfDay,
-        userDummy.id,
-      );
-    });
-  });
-
   describe('getRoutinesProgress', () => {
     it('should return correct routine progress for all statuses', async () => {
       const userId = userDummy.id;
@@ -798,6 +764,15 @@ describe('CompletedActivitySequenceService', () => {
         id: 'custom-seq-id',
         type: ActivityType.standalone,
         activity_ids: ['c1', 'c2'],
+        custom_routine_id: 'some-custom-id', // <- important
+      };
+
+      const standaloneSequence = {
+        ...ActivitySequenceDummy,
+        id: 'standalone-seq-id',
+        type: ActivityType.standalone,
+        activity_ids: ['s1', 's2'],
+        custom_routine_id: null, // <- important
       };
 
       const user = {
@@ -823,12 +798,24 @@ describe('CompletedActivitySequenceService', () => {
         completed_activity_logs: [{ activity_id: 'e1' }],
       };
 
+      const completedStandalone = {
+        activity_sequence_id: 'standalone-seq-id',
+        is_completed: false,
+        completed_activity_logs: [{ activity_id: 's1' }],
+      };
+
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(user);
-      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([morningSequence, eveningSequence, customSequence]);
+      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([
+        morningSequence,
+        eveningSequence,
+        customSequence,
+        standaloneSequence,
+      ]);
       CompletedActivitySequenceRepositoryMock.getTodaySequences.mockResolvedValueOnce([
         completedMorning,
         completedCustom,
         completedEvening,
+        completedStandalone,
       ]);
 
       const result = await completedActivitySequenceService.getRoutinesProgress(userId, 'UTC');
@@ -850,6 +837,13 @@ describe('CompletedActivitySequenceService', () => {
             completed_habit_ids: ['c1'],
           },
         ],
+        standalone_routines: [
+          {
+            sequence_id: 'standalone-seq-id',
+            status: 'postponed',
+            completed_habit_ids: ['s1'],
+          },
+        ],
       });
     });
 
@@ -860,6 +854,7 @@ describe('CompletedActivitySequenceService', () => {
         id: 'idle-seq-id',
         type: ActivityType.standalone,
         activity_ids: ['x1'],
+        custom_routine_id: null,
       };
 
       const user = {
@@ -877,6 +872,7 @@ describe('CompletedActivitySequenceService', () => {
         morning_routine: null,
         evening_routine: null,
         custom_routines: [],
+        standalone_routines: [],
       });
     });
   });

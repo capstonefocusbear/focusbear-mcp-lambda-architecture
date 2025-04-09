@@ -76,7 +76,6 @@ export const CompletedActivitySequenceServiceMock = {
   completeActivitySequenceByDate: jest.fn(),
   getUserTimes: jest.fn(),
   nullifyUserCurrentActivityProps: jest.fn(),
-  getTodayCompletedSequenceIds: jest.fn(),
   getRoutinesProgress: jest.fn(),
 };
 

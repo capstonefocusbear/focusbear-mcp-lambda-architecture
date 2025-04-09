@@ -439,18 +439,6 @@ export class CompletedActivitySequenceService {
     await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
 
-  async getTodayCompletedSequenceIds(user_id: string, timezone = 'UTC'): Promise<string[]> {
-    const startOfDay = DateTime.now().setZone(timezone).startOf('day').toJSDate();
-    const endOfDay = DateTime.now().setZone(timezone).endOf('day').toJSDate();
-
-    const completedActivitySequences = await this.completedActivitySequenceRepository.getTodayCompletedSequences(
-      startOfDay,
-      endOfDay,
-      user_id,
-    );
-    return completedActivitySequences.map((sequence) => sequence.id);
-  }
-
   async getRoutinesProgress(user_id: string, timezone = 'UTC') {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     const userActivitySequences = await this.activitySequenceRepository.orm.find({ where: { user_id } });
@@ -473,7 +461,19 @@ export class CompletedActivitySequenceService {
 
     const morningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.morning);
     const eveningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.evening);
-    const customRoutines = userActivitySequences.filter((seq) => seq.type === ActivityType.standalone);
+    const { standaloneRoutines, customRoutines } = userActivitySequences
+      .filter((seq) => seq.type === ActivityType.standalone)
+      .reduce(
+        (acc, seq) => {
+          if (seq.custom_routine_id) {
+            acc.customRoutines.push(seq);
+          } else {
+            acc.standaloneRoutines.push(seq);
+          }
+          return acc;
+        },
+        { standaloneRoutines: [], customRoutines: [] },
+      );
 
     const getRoutineProgress = (sequence: ActivitySequence | undefined) => {
       if (!sequence) return null;
@@ -511,6 +511,7 @@ export class CompletedActivitySequenceService {
       morning_routine: getRoutineProgress(morningRoutine),
       evening_routine: getRoutineProgress(eveningRoutine),
       custom_routines: customRoutines.map(getRoutineProgress).filter(Boolean),
+      standalone_routines: standaloneRoutines.map(getRoutineProgress).filter(Boolean),
     };
 
     return todayRoutineProgress;

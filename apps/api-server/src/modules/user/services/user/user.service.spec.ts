@@ -41,6 +41,7 @@ import {
   DeviceServiceMock,
   DeviceRepositoryMock,
   SendGridServiceMock,
+  CompletedActivitySequenceServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -65,6 +66,7 @@ import { PlatformIntegrationsService } from '../../../platform-integrations/serv
 import { DeviceService } from '../../../device/services/device/device.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { maskEmail } from '../../../../shared/utils/helpers';
+import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -104,6 +106,7 @@ describe('UserService', () => {
           provide: getQueueToken(BullQueues.REVENUE_CAT_STATUS),
           useValue: QueueMock,
         },
+        CompletedActivitySequenceService,
       ],
     })
       .overrideProvider(UserRepository)
@@ -142,6 +145,8 @@ describe('UserService', () => {
       .useValue(DeviceRepositoryMock)
       .overrideProvider(SendGridService)
       .useValue(SendGridServiceMock)
+      .overrideProvider(CompletedActivitySequenceService)
+      .useValue(CompletedActivitySequenceServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });

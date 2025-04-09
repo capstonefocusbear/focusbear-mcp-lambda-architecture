@@ -46,6 +46,7 @@ export class CompletedActivitySequence extends BaseEntity {
   })
   plan_duration_minutes?: number;
 
+  @Index()
   @Column({
     type: 'boolean',
     nullable: false,

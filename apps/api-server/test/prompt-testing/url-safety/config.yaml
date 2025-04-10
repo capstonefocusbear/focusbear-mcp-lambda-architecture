@@ -1,5 +1,5 @@
 prompts:
-  - id: url-safety-check
+  - id: default
     raw: |
       Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.
 

@@ -15,8 +15,16 @@ const connectionString = db_uri
   ? db_uri
   : `postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
 
+const poolConfig = {
+  connectionString,
+  ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 10,
+};
+
 const fetchNotifications = async () => {
-  const pool = new Pool({ connectionString });
+  const pool = new Pool(poolConfig);
   await pool.connect();
   const currentTime = DateTime.now().toISO();
   const timeInFifteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();

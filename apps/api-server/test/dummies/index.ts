@@ -65,7 +65,7 @@ export const userDummy = new User(
     startup_time: '06:15',
     break_after_minutes: 15,
     shutdown_time: '20:30',
-    auth0_id: '123dfewvwbt4de3e',
+    auth0_id: '67ce51a745261c4f0a9c178d',
     user_type: UserTypes.STANDARD,
     timezone: 'UTC',
     username: 'someusername',

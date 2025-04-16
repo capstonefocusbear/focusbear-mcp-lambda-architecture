@@ -37,8 +37,15 @@ export class AppLogsController {
     return this.appLogsService.createUploadPresignedUrl(createUploadPresignedUrlQueryDto, user.id);
   }
 
+  // TODO: In the future, refactor the log upload flow so that clients generate and send the final filename themselves.
+  // when requesting the presigned URL (via createUploadPresignedUrl). This would allow the backend to avoid constructing
+  // the filename with `new Date().toISOString()` and instead simply store/use the provided filename directly.
+  // It will also make it easier to extract the filename later during notify-upload-success without relying on parsing the URL.
   @Post('notify-upload-success')
-  async notifyLogsUploadSuccess(@Body() notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto) {
-    return this.appLogsService.notifyLogsUploadSuccess(notifyLogsUploadSuccessDto);
+  async notifyLogsUploadSuccess(
+    @Body() notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.appLogsService.notifyLogsUploadSuccess(notifyLogsUploadSuccessDto, user.id);
   }
 }

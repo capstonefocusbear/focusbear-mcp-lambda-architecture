@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
+import { NotifyLogsUploadSuccessDto } from '../../modules/app-logs/dto/notify-logs-upload-success.dto';
 
 // eslint-disable-next-line
 const dotenv = require('dotenv');
@@ -186,4 +187,37 @@ export const callPromiseWithTimeout = async <T>(apiCall: Promise<T>, timeoutMs: 
     setTimeout(() => reject(new Error('Request timed out')), timeoutMs),
   );
   return Promise.race([apiCall, timeoutPromise]);
+};
+
+export const getR2FileNameFromUrl = (url: string): string => {
+  if (!url) return url;
+
+  try {
+    const decodedUrl = decodeURIComponent(url);
+    const { pathname } = new URL(decodedUrl);
+    return pathname.substring(pathname.lastIndexOf('/') + 1);
+  } catch (error) {
+    return url;
+  }
+};
+
+export const constructLogUploadEmailBody = (notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto): string => {
+  const { uploaded_file_url, feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+
+  return `
+    <p>Hi Focus Bear support team,</p>
+
+    <p>A user has submitted feedback along with app usage logs. Please review the details below:</p>
+
+    <p><strong>Feedback:</strong></p>
+    <blockquote>${feedback_message}</blockquote>
+
+    <p><strong>App platform:</strong> ${app_platform}</p>
+    <p><strong>App version:</strong> ${app_version}</p>
+
+    <p><strong>Logs download link:</strong><br/>
+    <a href="${uploaded_file_url}">View Uploaded Logs</a></p>
+
+    <p>— Automated Notification System</p>
+  `;
 };

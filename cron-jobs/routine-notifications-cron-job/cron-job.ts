@@ -5,7 +5,7 @@ import PushNotifications = require('@pusher/push-notifications-server');
 import OpenAI from 'openai';
 import { MoreThanOrEqual } from 'typeorm';
 // eslint-disable-next-line import/extensions
-import * as S3 from 'aws-sdk/clients/s3.js';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { GPT_4O } from '../../apps/api-server/src/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
@@ -33,13 +33,14 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
-const s3Client = new S3({
+const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT,
-  accessKeyId: process.env.R2_ACCESS_KEY_ID,
-  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  signatureVersion: process.env.R2_SIGNATURE_VERSION,
+  region: 'auto',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
 });
-
 interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
@@ -54,10 +55,25 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
 async function getMessageFromR2(fileName: string) {
   try {
-    const messageData = await s3Client.getObject({ Bucket: 'routine-notifications', Key: fileName }).promise();
-    const parsedMessage = JSON.parse(messageData.Body.toString());
+    const command = new GetObjectCommand({
+      Bucket: 'routine-notifications',
+      Key: fileName,
+    });
+
+    const response = await s3Client.send(command);
+    const bodyString = await streamToString(response.Body as NodeJS.ReadableStream);
+    const parsedMessage = JSON.parse(bodyString);
     return parsedMessage || null;
   } catch (error) {
     return null;
@@ -76,15 +92,17 @@ function removeQuotes(input: string): string {
 
 async function addMessageToR2(filename: string, messageData: { message: string; timestamp: string }) {
   const buf = Buffer.from(JSON.stringify(messageData));
-  const objectData = {
+
+  const command = new PutObjectCommand({
     Bucket: 'routine-notifications',
     Key: filename,
     Body: buf,
     ContentEncoding: 'base64',
     ContentType: 'application/json',
     ContentDisposition: 'attachment',
-  };
-  await s3Client.upload({ ...objectData }).promise();
+  });
+
+  await s3Client.send(command);
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {

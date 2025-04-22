@@ -730,6 +730,20 @@ describe('TeamManagementService', () => {
         members: [userDummy, TeamMemberDummy],
         admins: [userDummy],
       });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          member_id: userDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+        },
+        {
+          member_id: TeamMemberDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+          member_expiry_date: expiryDate,
+        },
+      ]);
       TeamToMemberRepositoryMock.orm.findOne
         .mockResolvedValueOnce({
           first_name: firstName,
@@ -741,16 +755,42 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
         });
+      TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          admin_id: userDummy.id,
+          first_name: firstName,
+          last_name: lastName,
+        },
+      ]);
       TeamToAdminRepositoryMock.orm.findOne.mockResolvedValueOnce({
         first_name: firstName,
         last_name: lastName,
       });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({ email: 'test@mail.com' });
-      UserRepositoryMock.orm.findOne.mockResolvedValue({
-        morning_routines_streak: userDummy.morning_routines_streak,
-        evening_routines_streak: userDummy.evening_routines_streak,
-        focus_modes_streak: userDummy.focus_modes_streak,
-      });
+      const userDetailsMock = [
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: userDummy.id,
+        },
+        {
+          morning_routines_streak: TeamMemberDummy.morning_routines_streak,
+          evening_routines_streak: TeamMemberDummy.evening_routines_streak,
+          focus_modes_streak: TeamMemberDummy.focus_modes_streak,
+          id: TeamMemberDummy.id,
+        },
+      ];
+      UserRepositoryMock.orm.find
+        .mockResolvedValueOnce(userDetailsMock) // for members
+        .mockResolvedValueOnce([
+          {
+            morning_routines_streak: userDummy.morning_routines_streak,
+            evening_routines_streak: userDummy.evening_routines_streak,
+            focus_modes_streak: userDummy.focus_modes_streak,
+            id: userDummy.id,
+          },
+        ]); // for admins
 
       UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(DailyStatsDummy);
 

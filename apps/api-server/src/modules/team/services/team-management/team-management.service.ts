@@ -458,84 +458,88 @@ export class TeamManagementService {
     const membersData = [];
     const adminData = [];
 
-    for await (const member of members) {
-      const [
-        { email },
-        { first_name, last_name, member_expiry_date, created_at },
-        {
-          morning_routines_streak,
-          evening_routines_streak,
-          focus_modes_streak,
-          morning_percent_number_day_of_stats_completed,
-          evening_percent_number_day_of_stats_completed,
-          micro_percent_number_day_of_stats_completed,
-        },
-        last90DaysDailyStats,
-      ] = await Promise.all([
-        this.auth0ManagementService.getAuth0User(member.auth0_id),
-        this.teamToMemberRepository.orm.findOne({
-          where: { team_id: teamId, member_id: member.id },
-        }),
-        this.userRepository.orm.findOne({
-          where: {
-            id: member.id,
-          },
-        }),
-        this.userDailyStatsService.getLastNDaysDailyStats(member.id, DAYS_IN_MONTH * 3),
-      ]);
+    // Get all member IDs
+    const memberIds = members.map((member) => member.id);
+    const memberAuth0Ids = members.map((member) => member.auth0_id);
+
+    // Batch queries for members
+    const [auth0Users, teamToMembers, userDetails, allMembersDailyStats] = await Promise.all([
+      Promise.all(memberAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
+      this.teamToMemberRepository.orm.find({
+        where: { team_id: teamId, member_id: In(memberIds) },
+      }),
+      this.userRepository.orm.find({
+        where: { id: In(memberIds) },
+      }),
+      Promise.all(memberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
+    ]);
+
+    // Process member data
+    members.forEach((member, index) => {
+      const auth0User = auth0Users[index];
+      const teamToMember = teamToMembers.find((tm) => tm.member_id === member.id);
+      const userDetail = userDetails.find((u) => u.id === member.id);
+      const last90DaysDailyStats = allMembersDailyStats[index];
+
       const totalFocusModes = last90DaysDailyStats.reduce((acc, curr) => acc + curr.focus_modes, 0);
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
+
       membersData.push({
         id: member.id,
-        email,
+        email: auth0User.email,
         last_active_date: member.updated_at,
-        first_name,
-        last_name,
-        member_expiry_date,
-        created_at,
-        morning_routines_streak,
-        evening_routines_streak,
-        focus_modes_streak,
-        morning_percent_number_day_of_stats_completed,
-        micro_percent_number_day_of_stats_completed,
-        evening_percent_number_day_of_stats_completed,
+        first_name: teamToMember?.first_name,
+        last_name: teamToMember?.last_name,
+        member_expiry_date: teamToMember?.member_expiry_date,
+        created_at: teamToMember?.created_at,
+        morning_routines_streak: userDetail?.morning_routines_streak,
+        evening_routines_streak: userDetail?.evening_routines_streak,
+        focus_modes_streak: userDetail?.focus_modes_streak,
+        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed,
+        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed,
+        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed,
         focus_modes_percent_number_day_of_stats_completed,
       });
-    }
+    });
 
-    for await (const adminMember of admins) {
-      const [
-        { email },
-        { first_name, last_name, created_at },
-        { morning_routines_streak, evening_routines_streak, focus_modes_streak },
-        last90DaysDailyStats,
-      ] = await Promise.all([
-        this.auth0ManagementService.getAuth0User(adminMember.auth0_id),
-        this.teamToAdminRepository.orm.findOne({
-          where: { team_id: teamId, admin_id: adminMember.id },
-        }),
-        this.userRepository.orm.findOne({
-          where: {
-            id: adminMember.id,
-          },
-        }),
-        this.userDailyStatsService.getLastNDaysDailyStats(adminMember.id, DAYS_IN_MONTH * 3),
-      ]);
+    // Get all admin IDs
+    const adminIds = admins.map((admin) => admin.id);
+    const adminAuth0Ids = admins.map((admin) => admin.auth0_id);
+
+    // Batch queries for admins
+    const [adminAuth0Users, teamToAdmins, adminUserDetails, allAdminsDailyStats] = await Promise.all([
+      Promise.all(adminAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
+      this.teamToAdminRepository.orm.find({
+        where: { team_id: teamId, admin_id: In(adminIds) },
+      }),
+      this.userRepository.orm.find({
+        where: { id: In(adminIds) },
+      }),
+      Promise.all(adminIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
+    ]);
+
+    // Process admin data
+    admins.forEach((adminMember, index) => {
+      const auth0User = adminAuth0Users[index];
+      const teamToAdmin = teamToAdmins.find((ta) => ta.admin_id === adminMember.id);
+      const userDetail = adminUserDetails.find((u) => u.id === adminMember.id);
+      const last90DaysDailyStats = allAdminsDailyStats[index];
+
       adminData.push({
         id: adminMember.id,
-        email,
+        email: auth0User.email,
         last_active_date: adminMember.updated_at,
-        first_name,
-        last_name,
-        created_at,
-        morning_routines_streak,
-        evening_routines_streak,
-        focus_modes_streak,
+        first_name: teamToAdmin?.first_name,
+        last_name: teamToAdmin?.last_name,
+        created_at: teamToAdmin?.created_at,
+        morning_routines_streak: userDetail?.morning_routines_streak,
+        evening_routines_streak: userDetail?.evening_routines_streak,
+        focus_modes_streak: userDetail?.focus_modes_streak,
         last90DaysDailyStats,
       });
-    }
+    });
 
     return { members: membersData, admin: adminData };
   }

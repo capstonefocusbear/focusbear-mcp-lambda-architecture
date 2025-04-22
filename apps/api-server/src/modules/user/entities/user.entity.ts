@@ -362,6 +362,13 @@ export class User extends BaseEntity {
   language?: string;
 
   @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'weekly',
+  })
+  email_frequency?: string;
+
+  @Column({
     type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('revenue_cat_data'),

@@ -18,8 +18,14 @@ i18next.init({
     en: {
       translation: {
         inactivity_warning_email_content:
-          "Hi there! We've noticed that you haven't used Focus Bear in a while. Please note that your profile will be deleted if use is not resumed within the next 30 days to ensure adherence to privacy laws and minimize the risk of personal data breaches.Log in and resume your healthy habits at https://dashboard.focusbear.io to retain your Focus Bear profile.",
+          "Hi there! We've noticed that you haven't used Focus Bear in a while. Please note that your profile will be deleted if use is not resumed within the next 30 days to ensure adherence to privacy laws and minimize the risk of personal data breaches. Log in and resume your healthy habits at https://dashboard.focusbear.io to retain your Focus Bear profile.",
         inactivity_email_subject: 'Inactive Account',
+        no_progress_email_subject: 'Need a little nudge?',
+        no_progress_email_content:
+          "You've signed up but haven't made any progress yet. We believe in you! Start building your streak today at https://dashboard.focusbear.io.",
+        progress_email_subject: 'Your Weekly Progress Report 🐻',
+        progress_email_content:
+          'Hey there! Here’s a quick look at how you’ve been doing this week. Keep up the great work! Want to change how often you get these emails? You can manage your preferences here: https://dashboard.focusbear.io/preferences',
       },
     },
     es: {
@@ -27,6 +33,12 @@ i18next.init({
         inactivity_warning_email_content:
           '¡Hola! Hemos notado que hace tiempo que no utilizas Focus Bear. Por favor, ten en cuenta que tu perfil será eliminado si no se reanuda su uso en los próximos 30 días para garantizar el cumplimiento de las leyes de privacidad y minimizar el riesgo de vulneración de datos personales. Inicia sesión y reanuda tus hábitos saludables en https://dashboard.focusbear.io para conservar tu perfil de Focus Bear.',
         inactivity_email_subject: 'Cuenta inactiva',
+        no_progress_email_subject: '¿Necesitas un pequeño empujón?',
+        no_progress_email_content:
+          'Te has registrado, pero aún no has comenzado. ¡Creemos en ti! Comienza hoy en https://dashboard.focusbear.io.',
+        progress_email_subject: 'Tu informe semanal de progreso 🐻',
+        progress_email_content:
+          '¡Hola! Aquí tienes un resumen de tu progreso esta semana. ¡Sigue así! ¿Quieres cambiar la frecuencia de estos correos? Gestiona tus preferencias aquí: https://dashboard.focusbear.io/preferences',
       },
     },
   },
@@ -42,6 +54,7 @@ const auth0 = new ManagementClient({
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION });
 
+// Get users who haven't updated for 5 months
 async function getInactiveUsers() {
   const currentDate = DateTime.now();
   const fiveMonthsAgo = currentDate.minus({ months: 5 });
@@ -61,6 +74,7 @@ async function getInactiveUsers() {
   return userInfo.filter((user) => user.email);
 }
 
+// Send emails to inactive users (after 5 months)
 async function sendInactivityWarningEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
     i18next.changeLanguage(user.user.language);
@@ -74,6 +88,37 @@ async function sendInactivityWarningEmails(users: { email: string; user: User }[
   }
 }
 
+// Send motivational email if no progress made
+async function sendNoProgressEmails(users: { email: string; user: User }[]) {
+  for await (const user of users) {
+    i18next.changeLanguage(user.user.language);
+    const message = {
+      to: user.email,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      subject: i18next.t('no_progress_email_subject'),
+      text: i18next.t('no_progress_email_content'),
+    };
+    await sendGrid.send(message);
+  }
+}
+
+// Send progress emails (based on user preference: daily or weekly)
+async function sendProgressEmails(users: { email: string; user: User }[]) {
+  for await (const user of users) {
+    if (user.user.email_frequency === 'weekly') {
+      i18next.changeLanguage(user.user.language);
+      const message = {
+        to: user.email,
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        subject: i18next.t('progress_email_subject'),
+        text: i18next.t('progress_email_content'),
+      };
+      await sendGrid.send(message);
+    }
+  }
+}
+
+// Update users after sending inactivity warning
 async function updateUsersInactivityWarningFields(users: { user: User }[]) {
   const updatedUsers = users.map((userData) => {
     const updatedUser = { ...userData.user };
@@ -83,6 +128,7 @@ async function updateUsersInactivityWarningFields(users: { user: User }[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
+// Log inactive users (for audit/debugging)
 function logInactiveUsers(users: { user: User }[]) {
   console.log('Users that have been inactive for 5 months or longer:');
   for (const user of users) {
@@ -90,6 +136,7 @@ function logInactiveUsers(users: { user: User }[]) {
   }
 }
 
+// Get users to delete (after 6 months of inactivity)
 async function getUsersToDelete() {
   const currentDate = DateTime.now();
   const sixMonthsAgo = currentDate.minus({ months: 6 });
@@ -98,6 +145,7 @@ async function getUsersToDelete() {
   });
 }
 
+// Delete user from RevenueCat
 async function deleteUserFromRevenueCat(user_id: string) {
   const callUrl = `https://api.revenuecat.com/v1/subscribers/${user_id}`;
   const Authorization = `Bearer ${process.env.REVENUE_CAT_SECRET_KEY}`;
@@ -105,9 +153,10 @@ async function deleteUserFromRevenueCat(user_id: string) {
   await axios.delete(callUrl, { headers });
 }
 
+// Delete user from all platforms
 async function deleteUsers(users: User[]) {
   for await (const user of users) {
-    const auth0Promise = auth0.deleteUser({ id: user.auth0_id });
+    const auth0Promise = auth0.users.delete({ id: user.auth0_id });
     const revenueCatPromise = deleteUserFromRevenueCat(user.id);
     const stripePromise = stripe.customers.del(user.stripe_customer_id);
     const userRepositoryPromise = CronJobDataSource.manager.delete(User, user.id);
@@ -118,15 +167,16 @@ async function deleteUsers(users: User[]) {
 (async () => {
   try {
     await CronJobDataSource.initialize();
-    // delete users who have been inactive for 6 months or longer and have been warned for inactivity
+    // Example use-case:
     // const usersToDelete = await getUsersToDelete();
     // await deleteUsers(usersToDelete);
-    // email a notification to users who have been inactive for 5 months warning them that their account will
-    // be deleted
+
     const inactiveUsers = await getInactiveUsers();
     // await sendInactivityWarningEmails(inactiveUsers);
-    // temporarily not emailing users or updating has_received_inactivity_warning field
     // await updateUsersInactivityWarningFields(inactiveUsers);
+    // await sendProgressEmails(inactiveUsers); // Based on preference
+    // await sendNoProgressEmails(inactiveUsers); // If no progress
+
     logInactiveUsers(inactiveUsers);
     process.exit();
   } catch (error) {

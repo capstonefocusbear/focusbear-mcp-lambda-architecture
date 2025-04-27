@@ -3,6 +3,7 @@ prompts:
     raw: |
       Evaluate whether the following website aligns with the user's Focus Mode and provide a JSON response.
 
+
       Website Data:
       URL: {{url}}
       Tab Title: {{tab_title}}
@@ -33,6 +34,30 @@ prompts:
       - Is it a collaboration/project management tool? (JIRA, Trello, Asana, etc.)
       - Is it a general utility site? (Randomizer, converter, calculator, temporary file sharing, etc.)
       - Is it unrelated to work/study? (Entertainment, social media, shopping)
+
+      ## STEP 2.5: Topic Relationship Evaluation (Internal Reasoning Step)
+      Before assigning any relevance score, you must assess the relational proximity between the user's current focus, task, or intention, and the evaluated website.
+
+      - Strong Relationship:
+          - If the website is essential, supportive, or typically associated with the task's domain, treat it as a strong match.
+          - Example: Kaggle dataset during a Machine Learning project.
+
+      - Moderate Relationship:
+          - If the website provides general-purpose support or secondary information related to the task's category, treat it as moderately related.
+          - Example: AWS login page during Cloud Computing assignment, Browsing a web page about a tech challenge while working on github.
+
+      - Weak Relationship:
+          - If the website is only distantly related or would only offer marginal support, treat it as weakly related.
+
+      - No Relationship:
+          - If there is no logical or practical connection, proceed with normal scoring without relational influence.
+
+      **Adjustment Rules:**
+      - If Strong Relationship: Boost score by 0.2
+      - If Moderate Relationship: Boost score by 0.1
+      - If Weak Relationship: No adjustment
+      - If No Relationship: No adjustment
+
 
       ## STEP 3: Apply category-specific baseline score
       Search engines: MINIMUM score 0.6-0.7 for any knowledge work
@@ -506,6 +531,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
+
   - description: "Utility Site (Wheel of Names) for Email Task/GitHub Popup"
     vars:
       url: "wheelofnames.com/"
@@ -522,8 +548,128 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
+  # Test cases to reproduce issue #1141 - Intern feedback
+
+  - description: "AWS Cloud training"
+    vars:
+      url: "store.training.tafensw.edu.au/product/introduction-to-cloud-computing/us-east-1.console.aws.amazon.com"
+      meta_description: ""
+      tab_title: "AWS"
+      focus_mode: "Focus Bear"
+      intention: "Working on Cloud Computing assignment"
+      justificationForThisUrl: "" 
+      lastFiveJustificationsInThisFocusSession: "[]"
+      currentTaskInToDoPlayer: "Work on Cloud Computing assignment"
+      min_probability: 0.8
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  
+  
+  - description: "ML Project on Kaggle"
+    vars:
+      url: "kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction/suggestions"
+      meta_description: ""
+      tab_title: "Airline Passenger Satisfaction"
+      focus_mode: "Software Development"
+      intention: "Working on Machine Learning (ML) Project using TensorFlow"
+      justificationForThisUrl: "Kaggle is a critical resource for datasets." 
+      lastFiveJustificationsInThisFocusSession: "[]"
+      currentTaskInToDoPlayer: ""
+      min_probability: 0.8
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  # Reproducing Jeremy's feedback on the issue #1141
+
+  - description: "Survey URL wrongly flagged as suspicious"
+    vars:
+      url: "autismsa.snapforms.com.au/form/neuro-inclusive-recruiting-co-design-survey-march-2025"
+      tab_title: "neuro-inclusive recruiting - co-design survey - march 2025"
+      meta_description: ""
+      #Edited the meta_description to provide more details and context to test whether it can be avoided being flagged as suspicious.
+      focus_mode: "Focus Bear"
+      currentTaskInToDoPlayer: "organise meetup"
+      intention: "Setup a survey for the neurodiverse community"
+      justificationForThisUrl: ""
+      lastFiveJustificationsInThisFocusSession: "[]"
+      language: "english"
+      #Added to Check the difference it makes when given the probability
+      min_probability: 0.6
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Meetup URL correctly allowed"
+    vars:
+      url: "meetup.com/neurospicy-in-bayside/events/306605011/"
+      tab_title: ""
+      meta_description: ""
+      focus_mode: "Focus Bear"
+      currentTaskInToDoPlayer: "organise meetup"
+      intention: ""
+      justificationForThisUrl: ""
+      lastFiveJustificationsInThisFocusSession: "[]"
+      language: "english"
+      min_probability: 0.6
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Innovation Challenge URL wrongly flagged as suspicious"
+    vars:
+      url: "qoi.qrdi.org.qa/en/challenges/mada-assistive-tech"
+      tab_title: "qatar open innovation - mada assistive tech innovation challenge"
+      meta_description: ""
+      focus_mode: ""
+      currentTaskInToDoPlayer: ""
+      intention: "check github PRs completed"
+      justificationForThisUrl: ""
+      lastFiveJustificationsInThisFocusSession: "[]"
+      language: "english"
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "FocusBear Support Ticket #4786 wrongly flagged as suspicious"
+    vars:
+      url: "support.focusbear.io/agent/focusbear/support/tickets/details/11149000004842736"
+      tab_title: "#4786 - focus bear"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      currentTaskInToDoPlayer: "fix payment issue for customer"
+      intention: "process emails"
+      justificationForThisUrl: ""
+      lastFiveJustificationsInThisFocusSession: "[]"
+      language: "english"
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "FocusBear Support Ticket #5997 wrongly flagged as suspicious"
+    vars:
+      url: "support.focusbear.io/agent/focusbear/support/tickets/details/11149000005407245"
+      tab_title: "#5997 - focus bear"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      currentTaskInToDoPlayer: "Report issues with AI engine in github"
+      intention: "process emails"
+      justificationForThisUrl: ""
+      lastFiveJustificationsInThisFocusSession: "[]"
+      language: "english"
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+
+
 providers:
-  - id: openai:gpt-4o-mini
+  - id: openai:gpt-4.1
     config:
       temperature: 0
       max_tokens: 1024

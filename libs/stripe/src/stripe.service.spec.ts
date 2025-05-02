@@ -169,10 +169,8 @@ describe('StripeService', () => {
     it('positive: should handle successful cancellation and save feedback', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      RevenueCatServiceMock.revokeUserEntitlementFromRevenueCat.mockResolvedValue({ status: 200, data: {} });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
 
-      service.subscriptions.list = jest.fn().mockResolvedValue({ data: [{ id: 'sub_123' }] });
       service.cancelSubscription = jest.fn().mockResolvedValue({ status: 'canceled' });
       service.ormFeedback.save = jest.fn().mockResolvedValue(new Feedback(cancelSubscriptionSessionDto));
 

@@ -77,12 +77,12 @@ async function getInactiveUsers() {
 // Send emails to inactive users (after 5 months)
 async function sendInactivityWarningEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
-    i18next.changeLanguage(user.user.language);
+    const t = i18next.getFixedT(user.user.language);
     const message = {
       to: user.email,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
-      subject: i18next.t('inactivity_email_subject'),
-      text: i18next.t('inactivity_warning_email_content'),
+      subject: t('inactivity_email_subject'),
+      text: t('inactivity_warning_email_content'),
     };
     await sendGrid.send(message);
   }
@@ -91,12 +91,12 @@ async function sendInactivityWarningEmails(users: { email: string; user: User }[
 // Send motivational email if no progress made
 async function sendNoProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
-    i18next.changeLanguage(user.user.language);
+    const t = i18next.getFixedT(user.user.language);
     const message = {
       to: user.email,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
-      subject: i18next.t('no_progress_email_subject'),
-      text: i18next.t('no_progress_email_content'),
+      subject: t('no_progress_email_subject'),
+      text: t('no_progress_email_content'),
     };
     await sendGrid.send(message);
   }
@@ -106,12 +106,12 @@ async function sendNoProgressEmails(users: { email: string; user: User }[]) {
 async function sendProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
     if (user.user.email_frequency === 'weekly') {
-      i18next.changeLanguage(user.user.language);
+      const t = i18next.getFixedT(user.user.language);
       const message = {
         to: user.email,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
-        subject: i18next.t('progress_email_subject'),
-        text: i18next.t('progress_email_content'),
+        subject: t('progress_email_subject'),
+        text: t('progress_email_content'),
       };
       await sendGrid.send(message);
     }
@@ -174,7 +174,7 @@ async function deleteUsers(users: User[]) {
     const inactiveUsers = await getInactiveUsers();
     // await sendInactivityWarningEmails(inactiveUsers);
     // await updateUsersInactivityWarningFields(inactiveUsers);
-    // await sendProgressEmails(inactiveUsers); // Based on preference
+    // await sendProgressEmails(inactiveUsers);
     // await sendNoProgressEmails(inactiveUsers); // If no progress
 
     logInactiveUsers(inactiveUsers);

@@ -171,6 +171,7 @@ describe('StripeService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
 
+      service.subscriptions.list = jest.fn().mockResolvedValue({ data: [{ id: 'sub_123' }] });
       service.cancelSubscription = jest.fn().mockResolvedValue({ status: 'canceled' });
       service.ormFeedback.save = jest.fn().mockResolvedValue(new Feedback(cancelSubscriptionSessionDto));
 

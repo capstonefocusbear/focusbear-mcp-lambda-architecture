@@ -1,7 +1,7 @@
-import { BadRequestException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
 import { InjectQueue } from '@nestjs/bull';
@@ -221,24 +221,10 @@ export class StripeService extends Stripe {
         throw new NotFoundException(`No active subscription found for user ID: ${user.id}`);
       }
 
-      const [stripePromiseResponse, revenueCatPromiseResponse] = await Promise.allSettled([
-        this.cancelSubscription(subscriptions.data[0].id),
-        await this.revenueCatService.revokeUserEntitlementFromRevenueCat(
-          user.id,
-          cancelSubscriptionSessionDto.entitlement_id,
-        ),
-      ]);
-
-      const stripeResponse = (stripePromiseResponse as PromiseFulfilledResult<Stripe.Response<Stripe.Subscription>>)
-        .value;
-      const revenueCatResponse = (revenueCatPromiseResponse as PromiseFulfilledResult<AxiosResponse>).value;
+      const stripeResponse = await this.cancelSubscription(subscriptions.data[0].id);
 
       if (stripeResponse.status !== 'canceled') {
         this.sentryService.instance().captureException(stripeResponse, { level: 'warning' });
-      }
-
-      if (revenueCatResponse.status !== HttpStatus.OK) {
-        this.sentryService.instance().captureException(revenueCatResponse, { level: 'warning' });
       }
 
       const feedback = new Feedback({

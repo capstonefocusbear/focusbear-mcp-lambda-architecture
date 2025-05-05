@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AiService } from './ai.service';
 import { UserSettingsService } from '../../user/services/user-settings/user-settings.service';
 import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
@@ -8,15 +9,21 @@ import { DaysOfWeek } from '../../activity/domain/days-of-week.enum';
 
 describe('AiService', () => {
   let service: AiService;
-
+  const mockConfigService = {
+    get: jest.fn().mockImplementation(() => {
+      return 'mockedkey';
+    }),
+  };
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [AiService, UserSettingsService, FocusModeService],
+      providers: [AiService, UserSettingsService, FocusModeService, ConfigService],
     })
       .overrideProvider(UserSettingsService)
       .useValue(UserSettingsServiceMock)
       .overrideProvider(FocusModeService)
       .useValue(FocusModeServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(mockConfigService)
       .compile();
 
     service = moduleRef.get<AiService>(AiService);

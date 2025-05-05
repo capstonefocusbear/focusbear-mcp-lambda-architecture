@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ChatCompletionChunk, ChatCompletionMessageParam } from 'openai/resources';
+import { ConfigService } from '@nestjs/config';
 import { GPT_4O, createActivityFunction, createFocusModeFunction } from '../../../shared/utils/constants';
 import { UserSettingsService } from '../../user/services/user-settings/user-settings.service';
 import { FocusModeService } from '../../focus-mode/services/focus-mode/focus-mode.service';
@@ -18,6 +19,7 @@ export class AiService {
   constructor(
     private readonly userSettingsService: UserSettingsService,
     private readonly focusModeService: FocusModeService,
+    protected readonly configService: ConfigService,
   ) {}
 
   async createActivity(userId: string, data: FunctionCallParametersDto) {
@@ -51,7 +53,8 @@ export class AiService {
     messages: ChatCompletionMessageParam[],
     language = 'English',
   ) {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: this.configService.get('openai.general.apiKey') });
+
     const chatHistory = this.getChatHistory(messages, language);
     let retryCount = 0;
 

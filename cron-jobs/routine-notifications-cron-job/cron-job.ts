@@ -11,8 +11,10 @@ import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
+import { openAiConfig } from '../../apps/api-server/src/config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
+const OPEN_AI_CONFIG = openAiConfig();
 
 const MORNING_ROUTINE_TITLES = {
   en: "It's time for your morning routine!",
@@ -45,7 +47,10 @@ interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
 
-const openAiAPI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+
+const openAiAPI = new OpenAI({ apiKey: OPEN_AI_CONFIG.pushNotification.apiKey });
+
 
 function getPrompt(routine: string, language: string) {
   return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;

@@ -64,8 +64,8 @@ async function getInactiveUsers() {
   console.log(inactiveUsers);
   const userInfoPromise = inactiveUsers.map(async (user) => {
     try {
-      const auth0User = await auth0.getUser({ id: user.auth0_id });
-      return { email: auth0User.email, user };
+      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
+      return { email: auth0User.email || null, user };
     } catch (error) {
       return null;
     }

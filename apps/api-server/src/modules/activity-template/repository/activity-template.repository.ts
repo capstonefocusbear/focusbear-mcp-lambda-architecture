@@ -76,7 +76,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
         allowed_routines,
         duration_seconds,
       })
-      .select('activity_templates');
+      .select(['activity_templates', 'template_tags']);
 
     if (routine) {
       query.andWhere('activity_templates.activity_type = :activity_type', { activity_type: routine });

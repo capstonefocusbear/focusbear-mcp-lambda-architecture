@@ -12,7 +12,6 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
-import { GetRoutineSuggestionsQueryParamDto } from '../dto/get-routine-suggestions-query-param.dto';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -90,11 +89,7 @@ export class ActivityLibraryService {
     return templateActivitiesOnly.filter(({ id }) => !activitiesNotBelongingToUser.includes(id));
   }
 
-  async getActivitiesRelatedToUserGoals(
-    { groupByGoals }: GetRoutineSuggestionsQueryParamDto,
-    getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
-    user_id: string,
-  ) {
+  async getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto: GetRoutineSuggestionsDto, user_id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -112,14 +107,16 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      const templates = this.userDesiredRoutineDurationSeconds(
+      const templates: ActivityTemplate[] = this.userDesiredRoutineDurationSeconds(
         updateActivityTemplates,
         getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
       );
 
-      if (groupByGoals) {
+      if (!templates.length) {
+        return [];
+      }
+      if (getRoutineSuggestionsDto.groupByGoals) {
         const groupedByGoal: Record<string, ActivityTemplate[]> = {};
-
         for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
           groupedByGoal[goal] = templates
             .filter((template: ActivityTemplate) => {

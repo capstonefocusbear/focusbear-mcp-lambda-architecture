@@ -37,6 +37,7 @@ describe('Auth0', () => {
   describe('Get accessToken with UserAuthMetadata', () => {
     it('positive: should return access token with user-auth-metadata inside', async () => {
       const tokenData = await auth0LoginUser(testUser.email, testUser.password);
+      // Log tokenData for debugging purposes (use a proper logger in production)
       const payload = jwt.decode(tokenData.access_token);
 
       expect(tokenData).toBeDefined();

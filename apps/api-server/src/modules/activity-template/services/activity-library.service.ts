@@ -107,10 +107,27 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      return this.userDesiredRoutineDurationSeconds(
+      const templates: ActivityTemplate[] = this.userDesiredRoutineDurationSeconds(
         updateActivityTemplates,
         getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
       );
+
+      if (!templates.length) {
+        return [];
+      }
+      if (getRoutineSuggestionsDto.groupByGoals) {
+        const groupedByGoal: Record<string, ActivityTemplate[]> = {};
+        for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
+          groupedByGoal[goal] = templates
+            .filter((template: ActivityTemplate) => {
+              return template.tags?.some((tag) => tag.tags.includes(goal));
+            })
+            .map(({ tags, ...rest }) => rest);
+        }
+
+        return groupedByGoal;
+      }
+      return templates.map(({ tags, ...rest }) => rest);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

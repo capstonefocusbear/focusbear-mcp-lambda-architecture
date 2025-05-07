@@ -30,8 +30,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, { rawBody: true });
 
   const configService: ConfigService = app.get(ConfigService);
-  const PORT = process.env.PORT || configService.get('server.port');
-  const HOST: string = configService.get('server.host') || '0.0.0.0';
+  const PORT = configService.get('server.port');
+  const HOST: string = configService.get('server.host');
   const HELMET: unknown = configService.get('helmet');
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 

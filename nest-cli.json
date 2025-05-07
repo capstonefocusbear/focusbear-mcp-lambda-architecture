@@ -16,9 +16,7 @@
         }
       }
     ],
-    "assets": [
-      { "include": "i18n/**/*", "watchAssets": true,"outDir": "dist/apps/api" }
-    ]
+    "assets": [{ "include": "shared/i18n/**/*", "watchAssets": true }]
   },
   "projects": {
     "api-server": {

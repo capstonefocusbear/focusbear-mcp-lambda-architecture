@@ -167,7 +167,6 @@ async function deleteUsers(users: User[]) {
 (async () => {
   try {
     await CronJobDataSource.initialize();
-    // Example use-case:
     // const usersToDelete = await getUsersToDelete();
     // await deleteUsers(usersToDelete);
 

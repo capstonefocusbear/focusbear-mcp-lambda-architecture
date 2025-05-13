@@ -6,7 +6,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, S3_BUCKET_APP_USAGE_LOGS } from '../../../shared/utils/constants';
-import { maskEmail } from '../../../shared/utils/helpers';
+import { constructLogUploadEmailBody, getR2FileNameFromUrl, maskEmail } from '../../../shared/utils/helpers';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UninstallFeedback } from '../../user/domain/uninstall-feedback.model';
@@ -47,6 +47,7 @@ export class AppLogsService {
 
       // TODO: Relocate this feature to a separate endpoint and ensure it is invoked exclusively when the app is uninstalled.
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+
       const uninstallFeedback = new UninstallFeedback({
         app_platform,
         app_version,
@@ -56,8 +57,7 @@ export class AppLogsService {
       });
 
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
-      // eslint-disable-next-line no-console
-      console.log('upload logs cliq posting to', cliqUrl);
+
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
         message: `*User feedback and app logs*\n\`\`\`${JSON.stringify(uninstallFeedback)}\`\`\``,
@@ -74,7 +74,7 @@ export class AppLogsService {
     }
   }
 
-  async emailFeedback(data: any, email: string) {
+  async emailFeedback(data: string, email: string) {
     if (email.includes('internaltest')) {
       return;
     }
@@ -82,7 +82,7 @@ export class AppLogsService {
       to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       replyTo: email,
-      text: JSON.stringify(data),
+      html: data,
       subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
     });
   }
@@ -97,15 +97,31 @@ export class AppLogsService {
     return uploadURL;
   }
 
-  async notifyLogsUploadSuccess(notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto) {
+  async notifyLogsUploadSuccess(notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto, user_id: string) {
     try {
+      const user = await this.userRepository.orm.findOne({ where: { id: user_id } });
+
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+
+      const downloadUrl = await this.r2Service.getPresignedUrl(
+        S3_BUCKET_APP_USAGE_LOGS,
+        getR2FileNameFromUrl(notifyLogsUploadSuccessDto.uploaded_file_url),
+      );
+
+      if (!downloadUrl) {
+        throw new BadRequestException('Failed to generate download URL for the uploaded logs');
+      }
+
       const body = {
         channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${notifyLogsUploadSuccessDto.app_platform} \n\nversion: ${notifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${notifyLogsUploadSuccessDto.feedback_message}  \n\nuploaded_file_url: ${notifyLogsUploadSuccessDto.uploaded_file_url}\`\`\``,
+        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${notifyLogsUploadSuccessDto.app_platform} \n\nversion: ${notifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${notifyLogsUploadSuccessDto.feedback_message}  \n\ndownload_url: ${downloadUrl}\n \`\`\``,
       };
 
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const response = await axios.post(cliqUrl, body);
+
+      await this.emailFeedback(constructLogUploadEmailBody(notifyLogsUploadSuccessDto), auth0User.email);
+
       return { statusCode: response.status, data: response.data };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

@@ -26,6 +26,7 @@ import { ActivityLibraryService } from './activity-library.service';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
+import { ActivityTemplate } from '../entity/activity-template.entity';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -162,17 +163,17 @@ describe('ActivityLibraryService', () => {
 
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
 
-      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         dummyGetRoutineSuggestionsDto,
         userDummy.id,
-      );
+      )) as ActivityTemplate[];
 
       const expectedWithoutIds = expectedActivityWithUserDuration20.map((activity) => {
-        const { id, ...rest } = activity;
+        const { id, tags, ...rest } = activity;
         return rest;
       });
       const responseWithoutIds = response.map((activity) => {
-        const { id, ...rest } = activity;
+        const { id, tags, ...rest } = activity;
         return rest;
       });
 
@@ -194,10 +195,10 @@ describe('ActivityLibraryService', () => {
         dummyActivityTemplatesForBuildHealthyHabits,
       );
 
-      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto },
         userDummy.id,
-      );
+      )) as ActivityTemplate[];
       const responseHabitsTotalDuration = response.reduce((total, activity) => {
         const result = total + activity.duration_seconds;
         return result;
@@ -219,12 +220,48 @@ describe('ActivityLibraryService', () => {
         dummyActivityTemplatesForBuildHealthyHabits,
       );
 
-      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
         userDummy.id,
-      );
+      )) as ActivityTemplate[];
 
       expect(response).toEqual([]);
+    });
+
+    it('positive: should return unique activity templates grouped by goals, matching user goals and within routine duration', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesForBuildHealthyHabits,
+      );
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
+        { ...dummyGetRoutineSuggestionsDto, groupByGoals: true },
+        userDummy.id,
+      )) as Record<string, ActivityTemplate[]>;
+
+      for (const [goal, templates] of Object.entries(response)) {
+        expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
+        expect(Array.isArray(templates)).toBe(true);
+      }
+    });
+
+    it('negative: should return an empty object when no activities match the routine duration and grouping is enabled', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesForBuildHealthyHabits,
+      );
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
+        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
+        userDummy.id,
+      )) as Record<string, ActivityTemplate[]>;
+
+      for (const [goal, templates] of Object.entries(response)) {
+        expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
+        expect(templates).toBe([]);
+      }
     });
   });
 });

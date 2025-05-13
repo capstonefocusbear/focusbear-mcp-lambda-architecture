@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class GetRoutineSuggestionsDto {
   @IsNotEmpty()
@@ -13,4 +13,8 @@ export class GetRoutineSuggestionsDto {
   @IsOptional()
   @IsString()
   routine?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  groupByGoals?: boolean;
 }

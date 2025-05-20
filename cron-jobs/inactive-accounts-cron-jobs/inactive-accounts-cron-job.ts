@@ -8,7 +8,7 @@ import axios from 'axios';
 import Stripe from 'stripe';
 import * as i18next from 'i18next';
 import { CronJobDataSource } from '../data-source';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
 
 i18next.init({
@@ -18,11 +18,12 @@ i18next.init({
     en: {
       translation: {
         inactivity_warning_email_content:
-          "Hi there! We've noticed that you haven't used Focus Bear in a while. Please note that your profile will be deleted if use is not resumed within the next 30 days to ensure adherence to privacy laws and minimize the risk of personal data breaches. Log in and resume your healthy habits at https://dashboard.focusbear.io to retain your Focus Bear profile.",
+          'We’ve missed you at Focus Bear! It looks like you haven’t logged in for a while. Just a heads-up to stay aligned with privacy laws and keep your data safe, we’ll need to delete inactive profiles after 30 days of no activity. We’d love to have you back, simply log in at https://dashboard.focusbear.io to keep your account active and pick up where you left off on your healthy habits!',
         inactivity_email_subject: 'Inactive Account',
-        no_progress_email_subject: 'Need a little nudge?',
-        no_progress_email_content:
-          "You've signed up but haven't made any progress yet. We believe in you! Start building your streak today at https://dashboard.focusbear.io.",
+        no_progress_email_subject: 'Focus Bear is raring to go! Just need you to do one thing',
+        no_progress_email_content: `If you’re feeling stuck, we’re here to help. Whether it’s setting up your first habit or figuring out how to block distractions, you’ve got this — and we’ve got your back.<br/><br/>
+  You can get the app from <a href="https://focusbear.io">focusbear.io</a>. If you need help, reply back to this email :)`,
+
         progress_email_subject: 'Your Weekly Progress Report 🐻',
         progress_email_content:
           'Hey there! Here’s a quick look at how you’ve been doing this week. Keep up the great work! Want to change how often you get these emails? You can manage your preferences here: https://dashboard.focusbear.io/preferences',
@@ -33,7 +34,7 @@ i18next.init({
         inactivity_warning_email_content:
           '¡Hola! Hemos notado que hace tiempo que no utilizas Focus Bear. Por favor, ten en cuenta que tu perfil será eliminado si no se reanuda su uso en los próximos 30 días para garantizar el cumplimiento de las leyes de privacidad y minimizar el riesgo de vulneración de datos personales. Inicia sesión y reanuda tus hábitos saludables en https://dashboard.focusbear.io para conservar tu perfil de Focus Bear.',
         inactivity_email_subject: 'Cuenta inactiva',
-        no_progress_email_subject: '¿Necesitas un pequeño empujón?',
+        no_progress_email_subject: "Feeling stuck? We're here to help!",
         no_progress_email_content:
           'Te has registrado, pero aún no has comenzado. ¡Creemos en ti! Comienza hoy en https://dashboard.focusbear.io.',
         progress_email_subject: 'Tu informe semanal de progreso 🐻',
@@ -102,17 +103,22 @@ async function sendNoProgressEmails(users: { email: string; user: User }[]) {
   }
 }
 
-// Send progress emails (based on user preference: daily or weekly)
+// Sends localized progress emails to users who haven't unsubscribed
 async function sendProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
-    if (user.user.email_frequency === 'weekly') {
+    // Skip users who have unsubscribed from progress emails
+    if (user.user.email_frequency === EmailFrequency.WEEKLY) {
+      // Translate email content based on user's preferred language
       const t = i18next.getFixedT(user.user.language);
+
       const message = {
         to: user.email,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         subject: t('progress_email_subject'),
         text: t('progress_email_content'),
       };
+
+      // Send the email via SendGrid
       await sendGrid.send(message);
     }
   }
@@ -167,6 +173,7 @@ async function deleteUsers(users: User[]) {
 (async () => {
   try {
     await CronJobDataSource.initialize();
+    // delete users who have been inactive for 6 months or longer and have been warned for inactivity
     // const usersToDelete = await getUsersToDelete();
     // await deleteUsers(usersToDelete);
 

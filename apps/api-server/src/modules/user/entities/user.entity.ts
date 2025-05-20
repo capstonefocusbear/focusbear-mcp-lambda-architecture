@@ -45,6 +45,7 @@ export enum EmailFrequency {
   DAILY = 'daily',
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
+  UNSUBSCRIBED = 'unsubscribed',
 }
 @Entity('users')
 export class User extends BaseEntity {

@@ -14,6 +14,7 @@ import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/
 import { openAiConfig } from '../../apps/api-server/src/config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
+
 const OPEN_AI_CONFIG = openAiConfig();
 
 const MORNING_ROUTINE_TITLES = {
@@ -46,10 +47,7 @@ interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
 
-
-
 const openAiAPI = new OpenAI({ apiKey: OPEN_AI_CONFIG.pushNotification.apiKey });
-
 
 function getPrompt(routine: string, language: string) {
   return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;

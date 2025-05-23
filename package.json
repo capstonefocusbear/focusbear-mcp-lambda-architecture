@@ -140,7 +140,7 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.1"
+    "undici": "6.21.3"
   },
   "resolutions": {
     "auth0": {
@@ -153,7 +153,7 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.1"
+    "undici": "6.21.3"
   },
   "husky": {
     "hooks": {

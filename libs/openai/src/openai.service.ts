@@ -573,7 +573,10 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.USERNAME_VALIDATION,
-      OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      {
+        ...(OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+        response_format: { type: 'json_object' },
+      },
     );
 
     const newMessage = completions.choices[0].message;

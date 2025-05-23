@@ -6,7 +6,7 @@ import OpenAI from 'openai';
 import { MoreThanOrEqual } from 'typeorm';
 // eslint-disable-next-line import/extensions
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { GPT_4_1_MINI } from 'apps/api-server/src/shared/utils/constants';
+import { GPT_4_1_MINI } from '@api-server/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
@@ -14,6 +14,7 @@ import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/
 import { openAiConfig } from '../../apps/api-server/src/config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
+
 const OPEN_AI_CONFIG = openAiConfig();
 
 const MORNING_ROUTINE_TITLES = {

@@ -201,22 +201,57 @@ export const getR2FileNameFromUrl = (url: string): string => {
   }
 };
 
-export const constructLogUploadEmailBody = (notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto): string => {
-  const { uploaded_file_url, feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+export const safeDecodeURIComponent = (str: string): string => {
+  if (!str) return str;
+
+  try {
+    return decodeURIComponent(str);
+  } catch (error) {
+    return str; // Return original string if decoding fails
+  }
+};
+
+export const escapeMarkdownForCliq = (text: string): string => {
+  if (!text) return text;
+
+  const decoded = safeDecodeURIComponent(text);
+
+  return decoded
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/`/g, '\\`') // Escape backticks
+    .replace(/\*/g, '\\*') // Escape asterisks
+    .replace(/_/g, '\\_'); // Escape underscores
+};
+
+export const constructLogUploadEmailBody = (
+  notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto,
+  downloadUrl: string,
+  userId: string,
+): string => {
+  const { feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+
+  const decodedFeedback = safeDecodeURIComponent(feedback_message || '');
+  const escapedFeedbackMessage = decodedFeedback
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
   return `
     <p>Hi Focus Bear support team,</p>
 
     <p>A user has submitted feedback along with app usage logs. Please review the details below:</p>
 
+    <p><strong>User ID:</strong> ${userId}</p>
     <p><strong>Feedback:</strong></p>
-    <blockquote>${feedback_message}</blockquote>
+    <blockquote>${escapedFeedbackMessage}</blockquote>
 
     <p><strong>App platform:</strong> ${app_platform}</p>
     <p><strong>App version:</strong> ${app_version}</p>
 
     <p><strong>Logs download link:</strong><br/>
-    <a href="${uploaded_file_url}">View Uploaded Logs</a></p>
+    <a href="${downloadUrl}">View Uploaded Logs</a></p>
 
     <p>— Automated Notification System</p>
   `;

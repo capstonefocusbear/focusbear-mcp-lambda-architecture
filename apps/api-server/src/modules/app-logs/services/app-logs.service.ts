@@ -6,7 +6,13 @@ import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, S3_BUCKET_APP_USAGE_LOGS } from '../../../shared/utils/constants';
-import { constructLogUploadEmailBody, getR2FileNameFromUrl, maskEmail } from '../../../shared/utils/helpers';
+import {
+  constructLogUploadEmailBody,
+  getR2FileNameFromUrl,
+  maskEmail,
+  escapeMarkdownForCliq,
+  safeDecodeURIComponent,
+} from '../../../shared/utils/helpers';
 import { FileUploadRequest } from '../domain/upload.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UninstallFeedback } from '../../user/domain/uninstall-feedback.model';
@@ -47,11 +53,11 @@ export class AppLogsService {
 
       // TODO: Relocate this feature to a separate endpoint and ensure it is invoked exclusively when the app is uninstalled.
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-
+      const decodedFeedback = safeDecodeURIComponent(feedback_message || '');
       const uninstallFeedback = new UninstallFeedback({
         app_platform,
         app_version,
-        feedback_message,
+        feedback_message: decodedFeedback,
         email: maskEmail(auth0User.email),
         log_url: presignedUrl,
       });
@@ -112,15 +118,20 @@ export class AppLogsService {
         throw new BadRequestException('Failed to generate download URL for the uploaded logs');
       }
 
+      const escapedFeedback = escapeMarkdownForCliq(notifyLogsUploadSuccessDto.feedback_message);
+
       const body = {
         channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${notifyLogsUploadSuccessDto.app_platform} \n\nversion: ${notifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${notifyLogsUploadSuccessDto.feedback_message}  \n\ndownload_url: ${downloadUrl}\n \`\`\``,
+        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${notifyLogsUploadSuccessDto.app_platform} \n\nversion: ${notifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${escapedFeedback}  \n\ndownload_url: ${downloadUrl}\n \`\`\``,
       };
 
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       const response = await axios.post(cliqUrl, body);
 
-      await this.emailFeedback(constructLogUploadEmailBody(notifyLogsUploadSuccessDto), auth0User.email);
+      await this.emailFeedback(
+        constructLogUploadEmailBody(notifyLogsUploadSuccessDto, downloadUrl, user_id),
+        auth0User.email,
+      );
 
       return { statusCode: response.status, data: response.data };
     } catch (error) {

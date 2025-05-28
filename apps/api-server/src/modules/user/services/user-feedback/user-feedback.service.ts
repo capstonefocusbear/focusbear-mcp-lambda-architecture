@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
-import { prettyJson, maskEmail } from '../../../../shared/utils/helpers';
+import { prettyJson, maskEmail, safeDecodeURIComponent, escapeMarkdownForCliq } from '../../../../shared/utils/helpers';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserFeedbackRepository } from '../../repositories/user-feedback.repository';
@@ -44,7 +44,13 @@ export class UserFeedbackService {
       user_id: userId,
       operating_system: device?.operating_system ?? requestHeaders.operating_system,
     };
-    const savedFeedback = new UserFeedback({ user_id: userId, rating, feedback, metadata: combinedMetadata });
+    const decodedFeedback = safeDecodeURIComponent(feedback || '');
+    const savedFeedback = new UserFeedback({
+      user_id: userId,
+      rating,
+      feedback: decodedFeedback,
+      metadata: combinedMetadata,
+    });
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
     const saveFeedbackPromise = this.userFeedbackRepository.orm.save(savedFeedback);
     const updateUserPromise = this.userRepository.update(userId, { last_date_gave_feedback: new Date() });
@@ -53,7 +59,7 @@ export class UserFeedbackService {
     // format the event names array to be numbered and a new line after each event name
     const eventNames = lastFifteenEvents.map((event, index) => `${index + 1}. ${event.event_type}`).join('\n');
     const operatingSystem = combinedMetadata.operating_system;
-    const emailBody = `User feedback: \n\n User ID: ${userId} \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n Metadata: ${prettyJson(
+    const emailBody = `User feedback: \n\n User ID: ${userId} \n\n Rating: ${rating} \n\n Message: ${decodedFeedback} \n\n Metadata: ${prettyJson(
       combinedMetadata,
       'pretty',
     )} \n\n Headers: ${prettyJson(requestHeaders, 'pretty')} \n\n Last 50 events:\n ${prettyJson(
@@ -63,11 +69,12 @@ export class UserFeedbackService {
     )}`;
 
     const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+    const escapedFeedbackForCliq = escapeMarkdownForCliq(feedback || '');
     const body = {
       channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
       message: `User feedback: \n\n Email: ${maskEmail(
         auth0User.email,
-      )} \n\n Rating: ${rating} \n\n Message: ${feedback} \n\n OS: ${operatingSystem} \n\n Event Names: \n\n ${eventNames}`,
+      )} \n\n Rating: ${rating} \n\n Message: ${escapedFeedbackForCliq} \n\n OS: ${operatingSystem} \n\n Event Names: \n\n ${eventNames}`,
     };
 
     const cliqLogPromise = axios.post(cliqUrl, body);

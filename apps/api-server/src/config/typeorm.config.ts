@@ -48,6 +48,7 @@ import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../modules/activity-template/entity/activity-template-tag.entity';
 import { CustomRoutine } from '../modules/user/entities/custom-routine';
+import { StudyParticipant } from '../modules/user/entities/study-participant.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -112,6 +113,7 @@ export const typeormConfig = registerAs(
       SurveyAnswerMetadata,
       ActivityTemplateTag,
       CustomRoutine,
+      StudyParticipant,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

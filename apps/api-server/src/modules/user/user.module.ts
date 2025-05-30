@@ -44,6 +44,9 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
 import { BullQueues } from '../../shared/utils/constants';
 import { EventsModule } from '../events/events.module';
 import { CustomRoutineRepository } from './repositories/custom-routine.repository';
+import { StudyParticipantService } from './services/study-participant/study-participant.service';
+import { StudyParticipant } from './entities/study-participant.entity';
+import { StudyParticipantController } from './controllers/study-participant.controller';
 
 @Module({
   providers: [
@@ -62,10 +65,11 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserFeedbackRepository,
     UserFeedbackService,
     CustomRoutineRepository,
+    StudyParticipantService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, StudyParticipant]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -142,6 +146,7 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserDataController,
     UserStatsController,
     UserFeedbackController,
+    StudyParticipantController,
   ],
 })
 export class UserModule {}

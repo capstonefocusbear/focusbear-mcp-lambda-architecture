@@ -1,5 +1,5 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
+import { ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
 import { Passport } from '@api-server/modules/auth/domain/passport.model';
 import { StudyParticipantService } from '../services/study-participant/study-participant.service';
@@ -7,9 +7,9 @@ import {
   AddParticipantDetailsDto,
   LinkUserToParticipantCodeDto,
   VerifyParticipantCodeInfoDto,
-  ParticipantInfoResponseDto,
 } from '../dto/study-participant';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { AppActivationStatus } from '../entities/study-participant.entity';
 
 @Controller('study-participants')
 @ApiTags('study-participants')
@@ -36,9 +36,14 @@ export class StudyParticipantController {
     return this.studyParticipantService.linkUserToParticipantCode(dto, user.id);
   }
 
-  @Get('get-unicas-participant-info')
-  @UseGuards(IsAuth)
-  async getParticipantInfo(@AuthContext() { user }: Passport): Promise<ParticipantInfoResponseDto> {
-    return this.studyParticipantService.getParticipantByUserId(user.id);
+  @Get('get-code-activation-status')
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the activation status of the participant code',
+    type: String,
+  })
+  async getCodeActivationStatus(@Query('participantCode') participantCode: string): Promise<AppActivationStatus> {
+    const status = await this.studyParticipantService.getCodeActivationStatus(participantCode);
+    return status;
   }
 }

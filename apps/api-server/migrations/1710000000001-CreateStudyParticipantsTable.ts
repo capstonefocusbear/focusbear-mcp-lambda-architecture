@@ -12,7 +12,7 @@ export class CreateStudyParticipantsTable1710000000001 implements MigrationInter
         name VARCHAR(255) NOT NULL,
         user_id UUID,
         metadata JSONB,
-        assigned_group VARCHAR(255) NOT NULL,
+        assigned_group VARCHAR(255),
         app_activation_status app_activation_status_enum NOT NULL DEFAULT 'data_collection_mode',
         usage_data_last_received DATE,
         health_data_last_received DATE,

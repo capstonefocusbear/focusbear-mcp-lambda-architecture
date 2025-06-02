@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SendGridService } from '@app/send-grid';
 import { FOCUS_BEAR_EMAILS } from '@api-server/shared/utils/constants';
 import { User } from '@api-server/modules/user/entities/user.entity';
 import { Auth0ManagementService } from '@app/auth0';
-import { StudyParticipant } from '../../entities/study-participant.entity';
+import { AppActivationStatus, StudyParticipant } from '../../entities/study-participant.entity';
 import {
   AddParticipantDetailsDto,
   LinkUserToParticipantCodeDto,
@@ -24,16 +24,11 @@ export class StudyParticipantService {
     private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
-  async getParticipantByCode(participantCode: string): Promise<StudyParticipant> {
-    return this.studyParticipantRepository.findOne({
-      where: { participantCode },
-    });
-  }
-
   async addParticipantDetails(dto: AddParticipantDetailsDto): Promise<void> {
-    if (!dto.email.endsWith('@catolica.edu.sv') && !dto.email.endsWith('@focusbear.io')) {
-      throw new BadRequestException('Email must be a valid Catolica email');
-    }
+    // TODO: Uncomment this when we officially launch the study (for testing purposes)
+    // if (!dto.email.endsWith('@catolica.edu.sv') && !dto.email.endsWith('@focusbear.io')) {
+    //   throw new BadRequestException('Email must be a valid Catolica email');
+    // }
 
     const existingParticipant = await this.studyParticipantRepository.findOne({
       where: { email: dto.email },
@@ -102,15 +97,15 @@ export class StudyParticipantService {
     };
   }
 
-  async getParticipantByUserId(userId: string): Promise<StudyParticipant> {
+  async getCodeActivationStatus(participantCode: string): Promise<AppActivationStatus> {
     const participant = await this.studyParticipantRepository.findOne({
-      where: { userId },
+      where: { participantCode },
     });
 
     if (!participant) {
-      throw new NotFoundException('Study participant not found for this user');
+      throw new NotFoundException('Participant code not found');
     }
 
-    return participant;
+    return participant.appActivationStatus;
   }
 }

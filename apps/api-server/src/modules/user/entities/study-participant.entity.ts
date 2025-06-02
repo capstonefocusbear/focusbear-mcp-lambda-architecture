@@ -25,7 +25,7 @@ export class StudyParticipant {
   @Column({ name: 'metadata', type: 'jsonb', nullable: true })
   metadata: Record<string, any>;
 
-  @Column({ name: 'assigned_group' })
+  @Column({ name: 'assigned_group', nullable: true })
   assignedGroup: string;
 
   @Column({

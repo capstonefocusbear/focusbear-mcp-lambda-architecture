@@ -9,10 +9,6 @@ export class AddParticipantDetailsDto {
   @IsNotEmpty()
   email: string;
 
-  @IsString()
-  @IsNotEmpty()
-  assignedGroup: string;
-
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;

@@ -81,6 +81,10 @@ export class StudyParticipantService {
       throw new NotFoundException('Participant code not found');
     }
 
+    if (participant.userId) {
+      throw new ConflictException('Participant code already linked to a user');
+    }
+
     const user = await this.userRepository.findOneBy({ id: userId });
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
 

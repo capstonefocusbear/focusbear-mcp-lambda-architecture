@@ -283,31 +283,13 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
   }
 
   private async disableForeignKeys(dataSource: DataSource): Promise<void> {
-    await dataSource.query(`
-            DO $$ 
-            DECLARE
-                r RECORD;
-            BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-                    EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) || ' DISABLE TRIGGER ALL';
-                END LOOP;
-            END $$;
-        `);
-    console.log('Foreign key constraints disabled');
+    await dataSource.query('SET session_replication_role = replica;');
+    console.log('Foreign key constraints disabled via session_replication_role');
   }
 
   private async enableForeignKeys(dataSource: DataSource): Promise<void> {
-    await dataSource.query(`
-            DO $$ 
-            DECLARE
-                r RECORD;
-            BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-                    EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) || ' ENABLE TRIGGER ALL';
-                END LOOP;
-            END $$;
-        `);
-    console.log('Foreign key constraints enabled');
+    await dataSource.query('SET session_replication_role = DEFAULT;');
+    console.log('Foreign key constraints enabled via session_replication_role');
   }
 
   public async up(queryRunner: QueryRunner): Promise<void> {

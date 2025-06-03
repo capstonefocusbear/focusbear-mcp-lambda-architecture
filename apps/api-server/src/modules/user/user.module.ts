@@ -46,7 +46,7 @@ import { EventsModule } from '../events/events.module';
 import { CustomRoutineRepository } from './repositories/custom-routine.repository';
 import { StudyParticipantService } from './services/study-participant/study-participant.service';
 import { StudyParticipant } from './entities/study-participant.entity';
-import { StudyParticipantController } from './controllers/study-participant.controller';
+import { StudyParticipantController } from './controllers/study-participant/study-participant.controller';
 
 @Module({
   providers: [

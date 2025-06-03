@@ -2,14 +2,14 @@ import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
 import { Passport } from '@api-server/modules/auth/domain/passport.model';
-import { StudyParticipantService } from '../services/study-participant/study-participant.service';
+import { StudyParticipantService } from '../../services/study-participant/study-participant.service';
 import {
   AddParticipantDetailsDto,
   LinkUserToParticipantCodeDto,
   VerifyParticipantCodeInfoDto,
-} from '../dto/study-participant';
-import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
-import { AppActivationStatus } from '../entities/study-participant.entity';
+} from '../../dto/study-participant';
+import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
+import { AppActivationStatus } from '../../entities/study-participant.entity';
 
 @Controller('study-participants')
 @ApiTags('study-participants')

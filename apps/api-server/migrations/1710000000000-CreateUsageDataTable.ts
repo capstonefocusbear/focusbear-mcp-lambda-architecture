@@ -22,6 +22,7 @@ export class CreateUsageDataTable1710000000000 implements MigrationInterface {
 
       CREATE INDEX idx_usage_data_user_id ON usage_data(user_id);
       CREATE INDEX idx_usage_data_date_range ON usage_data(usage_start_date, usage_end_date);
+      CREATE INDEX idx_usage_data_composite ON usage_data (user_id, source_name, usage_type, usage_start_date, usage_end_date);
     `);
   }
 

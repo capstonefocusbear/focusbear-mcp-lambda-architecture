@@ -82,7 +82,12 @@ export class StudyParticipantService {
     }
 
     if (participant.userId) {
-      throw new ConflictException('Participant code already linked to a user');
+      if (participant.userId === userId) {
+        return {
+          user_id: userId,
+        };
+      }
+      throw new ConflictException('Participant code already linked to a different user');
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
@@ -94,16 +99,16 @@ export class StudyParticipantService {
       );
     }
 
-    await this.studyParticipantRepository.update({ participantCode: dto.participantCode }, { userId });
+    await this.studyParticipantRepository.update({ participantCode: dto.participantCode }, { userId, email: null });
 
     return {
       user_id: userId,
     };
   }
 
-  async getCodeActivationStatus(participantCode: string): Promise<AppActivationStatus> {
+  async getCodeActivationStatus(userId: string): Promise<AppActivationStatus> {
     const participant = await this.studyParticipantRepository.findOne({
-      where: { participantCode },
+      where: { userId },
     });
 
     if (!participant) {

@@ -257,7 +257,7 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
       const batch = records.slice(i, i + batchSize);
 
       // Create a new array with only the necessary properties
-      const processedBatch = batch.map((record) => {
+      let processedBatch = batch.map((record) => {
         const processedRecord = {};
         Object.keys(record).forEach((key) => {
           if (record[key] !== undefined && record[key] !== null) {
@@ -267,9 +267,15 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
         return processedRecord;
       });
 
-      // Save batch to target database
+      // Save batch to target database with FK constraints disabled
       try {
-        await this.targetDataSource.getRepository(entity).save(processedBatch);
+        await this.targetDataSource.transaction(async (manager) => {
+          // Disable FK constraints for this transaction
+          await manager.query('SET session_replication_role = replica;');
+          await manager.getRepository(entity).save(processedBatch);
+          await manager.query('SET session_replication_role = DEFAULT;');
+        });
+
         console.log(
           `Processed batch ${i / batchSize + 1} of ${Math.ceil(records.length / batchSize)} for ${entity.name}`,
         );
@@ -278,6 +284,14 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
           `Error processing batch ${i / batchSize + 1} of ${Math.ceil(records.length / batchSize)} for ${entity.name}:`,
           error,
         );
+      }
+
+      // Explicitly clear the processed batch to free memory
+      processedBatch = null;
+
+      // Force garbage collection if available (optional)
+      if (global.gc) {
+        global.gc();
       }
     }
   }

@@ -50,6 +50,9 @@ import { StudyParticipantController } from './controllers/study-participant/stud
 import { UsageDataController } from './controllers/usage-data/usage-data.controller';
 import { UsageDataService } from './services/usage-data/usage-data.service';
 import { UsageData } from './entities/usage-data.entity';
+import { HealthMetricsController } from './controllers/health-metrics.controller';
+import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
+import { HealthMetrics } from './entities/health-metrics.entity';
 
 @Module({
   providers: [
@@ -70,10 +73,11 @@ import { UsageData } from './entities/usage-data.entity';
     CustomRoutineRepository,
     StudyParticipantService,
     UsageDataService,
+    HealthMetricsService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User, StudyParticipant, UsageData]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -152,6 +156,7 @@ import { UsageData } from './entities/usage-data.entity';
     UserFeedbackController,
     StudyParticipantController,
     UsageDataController,
+    HealthMetricsController,
   ],
 })
 export class UserModule {}

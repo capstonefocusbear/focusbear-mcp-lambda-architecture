@@ -26,6 +26,12 @@ export class UsageData {
   @Column({ name: 'usage_category' })
   usageCategory: string;
 
+  @Column({ name: 'platform' })
+  platform: string;
+
+  @Column({ name: 'device_id' })
+  deviceId: string;
+
   @Column({ name: 'usage_start_date', type: 'date' })
   usageStartDate: Date;
 

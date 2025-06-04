@@ -15,6 +15,14 @@ export class UsageDataDto {
   @IsNotEmpty()
   usageCategory: string;
 
+  @IsString()
+  @IsNotEmpty()
+  platform: string;
+
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+
   @IsDate()
   @Type(() => Date)
   usageStartDate: Date;

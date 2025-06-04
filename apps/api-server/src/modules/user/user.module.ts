@@ -47,7 +47,7 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
 import { StudyParticipantService } from './services/study-participant/study-participant.service';
 import { StudyParticipant } from './entities/study-participant.entity';
 import { StudyParticipantController } from './controllers/study-participant/study-participant.controller';
-import { UsageDataController } from './controllers/usage-data.controller';
+import { UsageDataController } from './controllers/usage-data/usage-data.controller';
 import { UsageDataService } from './services/usage-data/usage-data.service';
 import { UsageData } from './entities/usage-data.entity';
 

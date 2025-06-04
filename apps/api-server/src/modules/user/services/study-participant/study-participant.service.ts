@@ -107,9 +107,9 @@ export class StudyParticipantService {
     };
   }
 
-  async getCodeActivationStatus(userId: string): Promise<AppActivationStatus> {
+  async getCodeActivationStatus(participantCode: string): Promise<AppActivationStatus> {
     const participant = await this.studyParticipantRepository.findOne({
-      where: { userId },
+      where: { participantCode },
     });
 
     if (!participant) {

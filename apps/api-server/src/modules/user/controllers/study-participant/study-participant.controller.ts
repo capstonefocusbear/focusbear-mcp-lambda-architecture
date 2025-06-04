@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
 import { Passport } from '@api-server/modules/auth/domain/passport.model';
@@ -43,8 +43,8 @@ export class StudyParticipantController {
     type: String,
   })
   @UseGuards(IsAuth)
-  async getCodeActivationStatus(@AuthContext() { user }: Passport): Promise<AppActivationStatus> {
-    const status = await this.studyParticipantService.getCodeActivationStatus(user.id);
+  async getCodeActivationStatus(@Query('participantCode') participantCode: string): Promise<AppActivationStatus> {
+    const status = await this.studyParticipantService.getCodeActivationStatus(participantCode);
     return status;
   }
 }

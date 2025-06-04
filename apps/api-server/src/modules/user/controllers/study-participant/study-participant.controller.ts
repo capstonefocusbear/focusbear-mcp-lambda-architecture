@@ -39,7 +39,8 @@ export class StudyParticipantController {
   @Get('get-code-activation-status')
   @ApiResponse({
     status: 200,
-    description: 'Returns the activation status of the participant code',
+    description:
+      'Returns the activation status of the participant code, i.e. whether they are still in data collection mode or whether they should have access to the app',
     type: String,
   })
   @UseGuards(IsAuth)

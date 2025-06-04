@@ -69,6 +69,7 @@ export class StudyParticipantService {
 
     return {
       email: participant.email,
+      userId: participant.userId,
     };
   }
 

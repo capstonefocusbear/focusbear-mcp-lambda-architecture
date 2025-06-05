@@ -50,7 +50,7 @@ import { StudyParticipantController } from './controllers/study-participant/stud
 import { UsageDataController } from './controllers/usage-data/usage-data.controller';
 import { UsageDataService } from './services/usage-data/usage-data.service';
 import { UsageData } from './entities/usage-data.entity';
-import { HealthMetricsController } from './controllers/health-metrics.controller';
+import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
 import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
 import { HealthMetrics } from './entities/health-metrics.entity';
 

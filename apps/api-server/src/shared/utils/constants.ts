@@ -128,6 +128,7 @@ export enum BullQueues {
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
   SYNC_TASKS = 'sync-tasks',
+  USAGE_IMAGE = 'usage-image',
 }
 
 export enum BullWorkers {
@@ -141,6 +142,7 @@ export enum BullWorkers {
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+  PROCESS_USAGE_IMAGE = 'process-usage-image',
 }
 
 export const createActivityFunction = {
@@ -269,3 +271,4 @@ export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';
 export const ONE_WEEK_IN_SECONDS = 604800;
 export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
+export const S3_BUCKET_USAGE_IMAGES = 'activity-images';

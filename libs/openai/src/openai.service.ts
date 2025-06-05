@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -749,5 +751,88 @@ export class OpenAIService {
 
   private wrapUserInput(input: string): string {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
+  }
+
+  async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
+    try {
+      const openai = this.getOpenAIInstance(OpenAIKeyType.GENERAL);
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        max_tokens: 300,
+        response_format: {
+          type: 'json_object',
+        },
+      });
+      return response;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async processUsageImage(
+    imageBuffer: string,
+    metadata: { usageStartDate: Date; usageEndDate: Date },
+  ): Promise<
+    Record<
+      string,
+      [
+        {
+          sourceName: string;
+          minutesUsedTotal: number;
+        },
+      ]
+    >
+  > {
+    try {
+      const prompt = `
+        You are given a screenshot from an iPhone Screen Time summary. Please extract and return structured data in valid JSON format.
+
+        Requirements:
+        - Identify each app shown in the screenshot.
+        - For each app, extract:
+          - sourceName: the name of the app (e.g., “Messenger”)
+          - minutesUsedTotal: the total number of minutes used (e.g., 21)
+        - Only include apps that show a visible usage duration in minutes.
+        - The final result should be a JSON array of objects, like this:
+
+        Return format (always wrap it exactly like this):
+
+        {
+          "apps": [
+            { "sourceName": "AppName", "minutesUsedTotal": 10 },
+            ...
+          ]
+        }
+
+        Be precise with the values. Ignore apps without visible durations or non-app entries.
+      `.trim();
+
+      // Prepare messages for GPT-4 Vision
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+              },
+            },
+          ],
+        },
+      ];
+
+      // Call GPT-4 Vision API
+      const response = await this.analyzeImage(messages);
+
+      // Parse the response
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to process usage image');
+    }
   }
 }

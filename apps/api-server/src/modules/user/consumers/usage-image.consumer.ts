@@ -5,8 +5,12 @@ import { Job } from 'bull';
 import { OpenAIService } from '@app/openai';
 import { R2Service } from '@app/r2';
 import axios from 'axios';
+import { SendGridService } from '@app/send-grid';
+import { Auth0ManagementService } from '@app/auth0';
+import { Repository } from 'typeorm';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
-import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
+import { User } from '../entities/user.entity';
 
 @Processor(BullQueues.USAGE_IMAGE)
 export class UsageImageConsumer {
@@ -15,6 +19,9 @@ export class UsageImageConsumer {
     private readonly openAIService: OpenAIService,
     private readonly r2Service: R2Service,
     private readonly usageDataService: UsageDataService,
+    private readonly sendGridService: SendGridService,
+    private readonly userRepository: Repository<User>,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   @Process(BullWorkers.PROCESS_USAGE_IMAGE)
@@ -56,6 +63,15 @@ export class UsageImageConsumer {
         deviceId,
       });
     } catch (error) {
+      const user = await this.userRepository.findOneBy({ id: userId });
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+      await this.sendGridService.sendEmail({
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
+        to: auth0User.email,
+        replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
+        subject: 'We couldn’t process your Screen Time screenshot',
+        text: 'Hi there,\n\nUnfortunately, we ran into an issue while trying to process your Screen Time screenshot. Please try uploading it again. If the problem persists, feel free to contact our support team.\n\nThanks for your understanding!\n\n– The Focus Bear Team',
+      });
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }

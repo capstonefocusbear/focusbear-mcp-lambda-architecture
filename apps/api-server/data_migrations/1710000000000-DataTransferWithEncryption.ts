@@ -169,7 +169,7 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
     { entity: ImpactEvent, order: 24 },
     { entity: AdminAccessRequest, order: 25 },
     { entity: Calendar, order: 26 },
-    { entity: TrackEvent, order: 27 },
+    // { entity: TrackEvent, order: 27 },
     { entity: InstalledPack, order: 28 },
     { entity: InstalledFocusModeTemplate, order: 29 },
     { entity: ActivityTemplateTag, order: 30 },
@@ -272,7 +272,7 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
         await this.targetDataSource.transaction(async (manager) => {
           // Disable FK constraints for this transaction
           await manager.query('SET session_replication_role = replica;');
-          await manager.getRepository(entity).save(processedBatch);
+          await manager.getRepository(entity).save(processedBatch, { chunk: batchSize });
           await manager.query('SET session_replication_role = DEFAULT;');
         });
 
@@ -288,11 +288,6 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
 
       // Explicitly clear the processed batch to free memory
       processedBatch = null;
-
-      // Force garbage collection if available (optional)
-      if (global.gc) {
-        global.gc();
-      }
     }
   }
 

@@ -40,7 +40,7 @@ export class UsageDataService {
 
   async saveUsageData(
     userId: string,
-    usageData: Array<{ sourceName: string; minutesUsedTotal: number }>,
+    usageData: Array<{ sourceName: string; minutesUsedTotal: number; category: string }>,
     metadata: {
       startDate: Date;
       endDate: Date;
@@ -53,7 +53,7 @@ export class UsageDataService {
         userId,
         sourceName: data.sourceName,
         usageType: UsageType.APP, // Default to APP
-        usageCategory: 'general', // Default category
+        usageCategory: data.category,
         usageStartDate: metadata.startDate,
         usageEndDate: metadata.endDate,
         minutesUsedTotal: data.minutesUsedTotal,

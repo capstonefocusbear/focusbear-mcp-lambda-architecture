@@ -771,16 +771,14 @@ export class OpenAIService {
     }
   }
 
-  async processUsageImage(
-    imageBuffer: string,
-    metadata: { usageStartDate: Date; usageEndDate: Date },
-  ): Promise<
+  async processUsageImage(imageBuffer: string): Promise<
     Record<
       string,
       [
         {
           sourceName: string;
           minutesUsedTotal: number;
+          category: string;
         },
       ]
     >
@@ -794,22 +792,22 @@ export class OpenAIService {
         - For each app, extract:
           - sourceName: the name of the app (e.g., “Messenger”)
           - minutesUsedTotal: the total number of minutes used (e.g., 21)
+          - category: the category of the app, using one of the following values: MISC, GAME, AUDIO, VIDEO, IMAGE, SOCIAL, NEWS, MAPS, PRODUCTIVITY, ACCESSIBILITY
         - Only include apps that show a visible usage duration in minutes.
-        - The final result should be a JSON array of objects, like this:
+        - The final result must be a JSON object with this structure:
 
         Return format (always wrap it exactly like this):
 
         {
           "apps": [
-            { "sourceName": "AppName", "minutesUsedTotal": 10 },
+            { "sourceName": "AppName", "minutesUsedTotal": 10, "category": "CATEGORY" },
             ...
           ]
         }
 
-        Be precise with the values. Ignore apps without visible durations or non-app entries.
+        Be precise with the app names and usage durations. Ignore apps without visible durations or non-app entries.
       `.trim();
 
-      // Prepare messages for GPT-4 Vision
       const messages: ChatCompletionMessageParam[] = [
         {
           role: 'user',
@@ -825,10 +823,8 @@ export class OpenAIService {
         },
       ];
 
-      // Call GPT-4 Vision API
       const response = await this.analyzeImage(messages);
 
-      // Parse the response
       return JSON.parse(response.choices[0].message.content);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

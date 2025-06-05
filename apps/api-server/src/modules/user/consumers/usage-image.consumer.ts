@@ -41,21 +41,15 @@ export class UsageImageConsumer {
         },
       });
 
-      // Get the image from R2
       const imageUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_USAGE_IMAGES, imageKey);
 
       const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
       const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
       const imageBuffer = `data:image/png;base64,${base64}`;
 
-      // Process the image using OpenAI
-      const usageDatas = await this.openAIService.processUsageImage(imageBuffer, {
-        usageStartDate: startDate,
-        usageEndDate: endDate,
-      });
+      const usageData = await this.openAIService.processUsageImage(imageBuffer);
 
-      // Save the usage data
-      await this.usageDataService.saveUsageData(userId, usageDatas.apps, {
+      await this.usageDataService.saveUsageData(userId, usageData.apps, {
         startDate,
         endDate,
         platform,

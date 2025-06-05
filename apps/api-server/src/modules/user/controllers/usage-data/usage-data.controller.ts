@@ -33,7 +33,7 @@ export class UsageDataController {
     return { uploadUrl, imageKey };
   }
 
-  @Post('upload-usage-image')
+  @Post('usage-image-uploaded')
   async uploadUsageImage(
     @Body() uploadUsageImageDto: UploadUsageImageDto,
     @AuthContext() { user }: Passport,

@@ -27,9 +27,6 @@ export class HealthMetrics {
   @Column({ name: 'metric_value', type: 'float' })
   metricValue: number;
 
-  @Column({ name: 'source_name' })
-  sourceName: string;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

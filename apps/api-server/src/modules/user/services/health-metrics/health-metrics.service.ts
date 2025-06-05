@@ -21,7 +21,6 @@ export class HealthMetricsService {
             userId,
             metricType: item.metricType,
             dayOfTracking: item.dayOfTracking,
-            sourceName: item.sourceName,
           },
         });
 

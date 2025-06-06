@@ -1,0 +1,32 @@
+prompts:
+  - file://prompt.json
+
+providers:
+  - id: openai:gpt-4.1
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  - description: "iPhone Screen Time Summary Analysis"
+    vars:
+      url: https://i.ibb.co/zVxRsvZj/IMG-9140.png
+      image_description: iPhone Screen Time summary showing app usage statistics
+      image_type: screenshot
+    assert:
+      - type: javascript
+        value: file://validate-probability.js 
+
+  - description: "iPhone Screen Time Summary Analysis"
+    vars:
+      url: https://i.ibb.co/fV9cBySm/IMG-9141.png
+      image_description: iPhone Screen Time summary showing app usage statistics
+      image_type: screenshot  
+    assert:
+      - type: javascript
+        value: file://validate-probability.js 

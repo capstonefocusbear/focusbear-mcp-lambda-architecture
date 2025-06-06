@@ -10,17 +10,17 @@ prompts:
       }
 
       Application data:
-        App Name: {{appName}}
+        App Name: {{ appName }}
 
       Focus Mode data:
-        Focus Mode: {{focusMode}}
-        Intention (specific focus goal): {{intention}}
-      {{#currentTaskInToDoPlayer}}
-        Current Task in Todo Player: {{currentTaskInToDoPlayer}}
-      {{/currentTaskInToDoPlayer}}
-      {{#justificationForThisSpecificApp}}
-        The user gave this explanation for why they need to use this application: {{justificationForThisSpecificApp}}
-      {{/justificationForThisSpecificApp}}
+        Focus Mode: {{ focusMode }}
+        Intention (specific focus goal): {{ intention }}
+      {% if currentTaskInToDoPlayer %}
+        Current Task in Todo Player: {{ currentTaskInToDoPlayer }}
+      {% endif %}
+      {% if justificationForThisSpecificApp %}
+        The user gave this explanation for why they need to use this application: {{ justificationForThisSpecificApp }}
+      {% endif %}
 
       Assessment Criteria:
         Allow if the application name relates to the Focus Mode Intention or current task.

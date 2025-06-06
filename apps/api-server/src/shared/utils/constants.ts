@@ -119,6 +119,8 @@ export const MAX_RETRY = 2;
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 
+export const GPT_4_1 = 'gpt-4.1';
+
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
   REVENUE_CAT_STATUS = 'revenue-cat-status',

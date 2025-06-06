@@ -757,12 +757,8 @@ export class OpenAIService {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.GENERAL);
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        ...(OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
         messages,
-        max_tokens: 300,
-        response_format: {
-          type: 'json_object',
-        },
       });
       return response;
     } catch (error) {
@@ -800,7 +796,7 @@ export class OpenAIService {
 
         {
           "apps": [
-            { "sourceName": "AppName", "minutesUsedTotal": 10, "category": "CATEGORY" },
+            { "sourceName": "AppName", "minutesUsedTotal": 10, "category": "MISC" },
             ...
           ]
         }

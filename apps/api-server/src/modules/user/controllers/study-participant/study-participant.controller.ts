@@ -48,4 +48,13 @@ export class StudyParticipantController {
     const status = await this.studyParticipantService.getCodeActivationStatus(participantCode);
     return status;
   }
+
+  @Get('get-participant-last-received-data')
+  @UseGuards(IsAuth)
+  async getParticipantLastReceivedData(@AuthContext() { user }: Passport): Promise<{
+    healthDataLastReceived: Date;
+    usageDataLastReceived: Date;
+  }> {
+    return this.studyParticipantService.getParticipantLastReceivedData(user.id);
+  }
 }

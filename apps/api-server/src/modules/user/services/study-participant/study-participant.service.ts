@@ -118,4 +118,22 @@ export class StudyParticipantService {
 
     return participant.appActivationStatus;
   }
+
+  async getParticipantLastReceivedData(userId: string): Promise<{
+    healthDataLastReceived: Date;
+    usageDataLastReceived: Date;
+  }> {
+    const participant = await this.studyParticipantRepository.findOne({
+      where: { userId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    return {
+      healthDataLastReceived: participant?.healthDataLastReceived,
+      usageDataLastReceived: participant?.usageDataLastReceived,
+    };
+  }
 }

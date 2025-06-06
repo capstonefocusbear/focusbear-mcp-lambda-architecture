@@ -53,6 +53,7 @@ import { UsageData } from './entities/usage-data.entity';
 import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
 import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
 import { HealthMetrics } from './entities/health-metrics.entity';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 
 @Module({
   providers: [
@@ -74,6 +75,7 @@ import { HealthMetrics } from './entities/health-metrics.entity';
     StudyParticipantService,
     UsageDataService,
     HealthMetricsService,
+    SyncHealthMetricsConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
@@ -107,6 +109,9 @@ import { HealthMetrics } from './entities/health-metrics.entity';
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
       },
     ),
     R2Module.registerAsync({

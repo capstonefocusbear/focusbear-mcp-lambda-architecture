@@ -128,6 +128,7 @@ export enum BullQueues {
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
   SYNC_TASKS = 'sync-tasks',
+  USAGE_DATA = 'usage-data',
 }
 
 export enum BullWorkers {
@@ -141,6 +142,7 @@ export enum BullWorkers {
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+  SYNC_USAGE_DATA = 'sync-usage-data',
 }
 
 export const createActivityFunction = {

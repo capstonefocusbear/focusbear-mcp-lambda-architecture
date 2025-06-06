@@ -50,6 +50,7 @@ import { StudyParticipantController } from './controllers/study-participant/stud
 import { UsageDataController } from './controllers/usage-data/usage-data.controller';
 import { UsageDataService } from './services/usage-data/usage-data.service';
 import { UsageData } from './entities/usage-data.entity';
+import { UsageDataConsumer } from './consumers/usage-data.consumer';
 
 @Module({
   providers: [
@@ -70,6 +71,7 @@ import { UsageData } from './entities/usage-data.entity';
     CustomRoutineRepository,
     StudyParticipantService,
     UsageDataService,
+    UsageDataConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
@@ -103,6 +105,9 @@ import { UsageData } from './entities/usage-data.entity';
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.USAGE_DATA,
       },
     ),
     R2Module.registerAsync({

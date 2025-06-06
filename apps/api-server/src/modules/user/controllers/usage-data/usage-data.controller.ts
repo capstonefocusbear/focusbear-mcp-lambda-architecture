@@ -1,17 +1,25 @@
-import { Controller, Put, Body, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { IsAuth } from '@api-server/modules/auth/guards/is-auth/is-auth.guard';
 import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
 import { Passport } from '@api-server/modules/auth/domain/passport.model';
-import { UsageDataService } from '../../services/usage-data/usage-data.service';
 import { SyncUsageDataDto } from '../../dto/sync-usage-data.dto';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 @Controller('usage-data')
 @UseGuards(IsAuth)
 export class UsageDataController {
-  constructor(private readonly usageDataService: UsageDataService) {}
+  constructor(
+    @InjectQueue(BullQueues.USAGE_DATA)
+    private readonly usageDataQueue: Queue,
+  ) {}
 
-  @Put('sync')
+  @Post('sync')
   async syncUsageData(@Body() syncDto: SyncUsageDataDto, @AuthContext() { user }: Passport): Promise<void> {
-    await this.usageDataService.syncUsageData(user.id, syncDto);
+    await this.usageDataQueue.add(BullWorkers.SYNC_USAGE_DATA, {
+      userId: user.id,
+      syncDto,
+    });
   }
 }

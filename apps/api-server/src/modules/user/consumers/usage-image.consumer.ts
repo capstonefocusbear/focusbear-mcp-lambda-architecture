@@ -63,7 +63,13 @@ export class UsageImageConsumer {
       });
     } catch (error) {
       const user = await this.userRepository.orm.findOneBy({ id: userId });
-      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+
+      if (!user?.auth0_id) {
+        this.sentryService.instance().captureException(error, { level: 'error' });
+        throw error;
+      }
+
+      const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
       await this.sendGridService.sendEmail({
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         to: auth0User.email,

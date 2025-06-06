@@ -7,10 +7,9 @@ import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
-import { Repository } from 'typeorm';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
 import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
-import { User } from '../entities/user.entity';
+import { UserRepository } from '../repositories/user.repository';
 
 @Processor(BullQueues.USAGE_IMAGE)
 export class UsageImageConsumer {
@@ -20,7 +19,7 @@ export class UsageImageConsumer {
     private readonly r2Service: R2Service,
     private readonly usageDataService: UsageDataService,
     private readonly sendGridService: SendGridService,
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
@@ -63,7 +62,7 @@ export class UsageImageConsumer {
         deviceId,
       });
     } catch (error) {
-      const user = await this.userRepository.findOneBy({ id: userId });
+      const user = await this.userRepository.orm.findOneBy({ id: userId });
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       await this.sendGridService.sendEmail({
         from: FOCUS_BEAR_EMAILS.SUPPORT,

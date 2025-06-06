@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 
 export enum HealthMetricType {
   HOURS_OF_SLEEP = 'hours_of_sleep',
-  HOURS_OF_STANDING = 'hours_of_standing',
+  MINUTES_OF_MOVEMENT = 'minutes_of_movement',
   NUMBER_OF_STEPS_MOVED = 'number_of_steps_moved',
 }
 

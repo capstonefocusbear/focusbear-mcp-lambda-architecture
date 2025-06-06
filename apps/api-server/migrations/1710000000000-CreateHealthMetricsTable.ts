@@ -5,7 +5,7 @@ export class CreateHealthMetricsTable1710000000000 implements MigrationInterface
     await queryRunner.query(`
       CREATE TYPE metric_type_enum AS ENUM (
         'hours_of_sleep',
-        'hours_of_standing',
+        'minutes_of_movement',
         'number_of_steps_moved'
       );
 

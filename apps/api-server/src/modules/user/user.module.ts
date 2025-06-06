@@ -54,6 +54,7 @@ import { HealthMetricsController } from './controllers/health-metrics/health-met
 import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
 import { HealthMetrics } from './entities/health-metrics.entity';
 import { UsageImageConsumer } from './consumers/usage-image.consumer';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 
 @Module({
   providers: [
@@ -76,6 +77,7 @@ import { UsageImageConsumer } from './consumers/usage-image.consumer';
     UsageDataService,
     HealthMetricsService,
     UsageImageConsumer,
+    SyncHealthMetricsConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
@@ -112,6 +114,9 @@ import { UsageImageConsumer } from './consumers/usage-image.consumer';
       },
       {
         name: BullQueues.USAGE_IMAGE,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
       },
     ),
     R2Module.registerAsync({

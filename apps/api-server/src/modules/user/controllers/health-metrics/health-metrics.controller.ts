@@ -1,20 +1,26 @@
-import { Controller, Body, UseGuards, Put } from '@nestjs/common';
+/* eslint-disable no-console */
+import { Controller, Body, UseGuards, Post } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { HealthMetricsService } from '../../services/health-metrics/health-metrics.service';
-import { SyncHealthMetricsDto } from '../../dto/sync-health-metrics.dto';
-import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { BullQueues, BullWorkers } from '@api-server/shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
+import { SyncHealthMetricsDto } from '../../dto/sync-health-metrics.dto';
+import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 
 @Controller('health-metrics')
 @UseGuards(IsAuth)
 @ApiTags('health-metrics')
 @ApiSecurity('Auth0AccessToken')
 export class HealthMetricsController {
-  constructor(private readonly healthMetricsService: HealthMetricsService) {}
+  constructor(@InjectQueue(BullQueues.HEALTH_METRICS_SYNC) private healthMetricsQueue: Queue) {}
 
-  @Put('sync')
+  @Post('sync')
   async syncHealthMetrics(@Body() syncDto: SyncHealthMetricsDto, @AuthContext() { user }: Passport): Promise<void> {
-    await this.healthMetricsService.syncHealthMetrics(user.id, syncDto);
+    await this.healthMetricsQueue.add(BullWorkers.SYNC_HEALTH_METRICS, {
+      userId: user.id,
+      data: syncDto,
+    });
   }
 }

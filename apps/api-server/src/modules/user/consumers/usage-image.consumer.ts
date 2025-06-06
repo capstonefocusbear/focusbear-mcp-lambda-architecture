@@ -7,6 +7,7 @@ import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
+import { I18nService } from 'nestjs-i18n';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
 import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
 import { UserRepository } from '../repositories/user.repository';
@@ -21,6 +22,7 @@ export class UsageImageConsumer {
     private readonly sendGridService: SendGridService,
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly i18nService: I18nService,
   ) {}
 
   @Process(BullWorkers.PROCESS_USAGE_IMAGE)
@@ -70,12 +72,13 @@ export class UsageImageConsumer {
       }
 
       const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
+
       await this.sendGridService.sendEmail({
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         to: auth0User.email,
         replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
-        subject: 'We couldn’t process your Screen Time screenshot',
-        text: 'Hi there,\n\nUnfortunately, we ran into an issue while trying to process your Screen Time screenshot. Please try uploading it again. If the problem persists, feel free to contact our support team.\n\nThanks for your understanding!\n\n– The Focus Bear Team',
+        subject: this.i18nService.t('common.usage_image_processing_error_subject', { lang: user.language }),
+        text: this.i18nService.t('common.usage_image_processing_error_body', { lang: user.language }),
       });
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

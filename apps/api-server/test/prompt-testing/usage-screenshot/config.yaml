@@ -13,7 +13,7 @@ output:
   - json
 
 tests:
-  - description: "iPhone Screen Time Summary Analysis"
+  - description: "iPhone Screen Time Summary Analysis #1"
     vars:
       url: https://i.ibb.co/zVxRsvZj/IMG-9140.png
       image_description: iPhone Screen Time summary showing app usage statistics
@@ -22,11 +22,20 @@ tests:
       - type: javascript
         value: file://validate-probability.js 
 
-  - description: "iPhone Screen Time Summary Analysis"
+  - description: "iPhone Screen Time Summary Analysis #2"
     vars:
       url: https://i.ibb.co/fV9cBySm/IMG-9141.png
       image_description: iPhone Screen Time summary showing app usage statistics
       image_type: screenshot  
+    assert:
+      - type: javascript
+        value: file://validate-probability.js 
+
+  - description: "iPhone Screen Time Summary Analysis #3 (FAIL CASE)"
+    vars:
+      url: https://i.ibb.co/DP9XwWMC/IMG-9149.png
+      image_description: iPhone Screen Time summary showing app usage statistics
+      image_type: screenshot
     assert:
       - type: javascript
         value: file://validate-probability.js 

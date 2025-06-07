@@ -69,6 +69,7 @@ export class StudyParticipantService {
 
     return {
       email: participant.email,
+      userId: participant.userId,
     };
   }
 
@@ -82,7 +83,12 @@ export class StudyParticipantService {
     }
 
     if (participant.userId) {
-      throw new ConflictException('Participant code already linked to a user');
+      if (participant.userId === userId) {
+        return {
+          user_id: userId,
+        };
+      }
+      throw new ConflictException('Participant code already linked to a different user');
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
@@ -94,7 +100,7 @@ export class StudyParticipantService {
       );
     }
 
-    await this.studyParticipantRepository.update({ participantCode: dto.participantCode }, { userId });
+    await this.studyParticipantRepository.update({ participantCode: dto.participantCode }, { userId, email: null });
 
     return {
       user_id: userId,
@@ -111,5 +117,23 @@ export class StudyParticipantService {
     }
 
     return participant.appActivationStatus;
+  }
+
+  async getParticipantLastReceivedData(userId: string): Promise<{
+    healthDataLastReceived: Date;
+    usageDataLastReceived: Date;
+  }> {
+    const participant = await this.studyParticipantRepository.findOne({
+      where: { userId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    return {
+      healthDataLastReceived: participant?.healthDataLastReceived,
+      usageDataLastReceived: participant?.usageDataLastReceived,
+    };
   }
 }

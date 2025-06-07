@@ -132,6 +132,7 @@ export enum BullQueues {
   SYNC_TASKS = 'sync-tasks',
   USAGE_IMAGE = 'usage-image',
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
+  USAGE_DATA = 'usage-data',
 }
 
 export enum BullWorkers {
@@ -147,6 +148,7 @@ export enum BullWorkers {
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
   PROCESS_USAGE_IMAGE = 'process-usage-image',
   SYNC_HEALTH_METRICS = 'sync-health-metrics',
+  SYNC_USAGE_DATA = 'sync-usage-data',
 }
 
 export const createActivityFunction = {

@@ -4,12 +4,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsageData, UsageType } from '../../entities/usage-data.entity';
 import { SyncUsageDataDto } from '../../dto/sync-usage-data.dto';
+import { StudyParticipant } from '../../entities/study-participant.entity';
 
 @Injectable()
 export class UsageDataService {
   constructor(
     @InjectRepository(UsageData)
     private readonly usageDataRepository: Repository<UsageData>,
+
+    @InjectRepository(StudyParticipant)
+    private readonly studyParticipantRepository: Repository<StudyParticipant>,
   ) {}
 
   async syncUsageData(userId: string, syncDto: SyncUsageDataDto): Promise<void> {
@@ -36,6 +40,18 @@ export class UsageDataService {
         }
       }),
     );
+
+    const studyParticipant = await this.studyParticipantRepository.findOne({
+      where: {
+        userId,
+      },
+    });
+
+    if (studyParticipant) {
+      await this.studyParticipantRepository.update(studyParticipant.id, {
+        usageDataLastReceived: new Date(),
+      });
+    }
   }
 
   async saveUsageData(

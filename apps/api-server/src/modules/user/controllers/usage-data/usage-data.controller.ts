@@ -1,11 +1,10 @@
-import { Controller, Put, Body, UseGuards, Post } from '@nestjs/common';
+import { Controller, Body, UseGuards, Post } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { R2Service } from '@app/r2';
 import { IsAuth } from '@api-server/modules/auth/guards/is-auth/is-auth.guard';
 import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
 import { Passport } from '@api-server/modules/auth/domain/passport.model';
-import { UsageDataService } from '../../services/usage-data/usage-data.service';
 import { SyncUsageDataDto } from '../../dto/sync-usage-data.dto';
 import { UploadUsageImageDto } from '../../dto/upload-usage-image.dto';
 import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../../shared/utils/constants';
@@ -14,14 +13,18 @@ import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../../sha
 @UseGuards(IsAuth)
 export class UsageDataController {
   constructor(
-    private readonly usageDataService: UsageDataService,
     private readonly r2Service: R2Service,
     @InjectQueue(BullQueues.USAGE_IMAGE) private usageImageQueue: Queue,
+    @InjectQueue(BullQueues.USAGE_DATA)
+    private readonly usageDataQueue: Queue,
   ) {}
 
-  @Put('sync')
+  @Post('sync')
   async syncUsageData(@Body() syncDto: SyncUsageDataDto, @AuthContext() { user }: Passport): Promise<void> {
-    await this.usageDataService.syncUsageData(user.id, syncDto);
+    await this.usageDataQueue.add(BullWorkers.SYNC_USAGE_DATA, {
+      userId: user.id,
+      syncDto,
+    });
   }
 
   @Post('generate-upload-image-url')

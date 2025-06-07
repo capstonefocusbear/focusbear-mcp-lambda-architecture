@@ -8,7 +8,7 @@ export class CreateStudyParticipantsTable1710000000001 implements MigrationInter
       CREATE TABLE study_participants (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         participant_code VARCHAR(255) NOT NULL UNIQUE,
-        email VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255) UNIQUE,
         name VARCHAR(255) NOT NULL,
         user_id UUID,
         metadata JSONB,

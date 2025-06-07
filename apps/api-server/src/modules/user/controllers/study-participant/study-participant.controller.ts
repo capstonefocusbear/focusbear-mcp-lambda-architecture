@@ -39,11 +39,22 @@ export class StudyParticipantController {
   @Get('get-code-activation-status')
   @ApiResponse({
     status: 200,
-    description: 'Returns the activation status of the participant code',
+    description:
+      'Returns the activation status of the participant code, i.e. whether they are still in data collection mode or whether they should have access to the app',
     type: String,
   })
+  @UseGuards(IsAuth)
   async getCodeActivationStatus(@Query('participantCode') participantCode: string): Promise<AppActivationStatus> {
     const status = await this.studyParticipantService.getCodeActivationStatus(participantCode);
     return status;
+  }
+
+  @Get('get-participant-last-received-data')
+  @UseGuards(IsAuth)
+  async getParticipantLastReceivedData(@AuthContext() { user }: Passport): Promise<{
+    healthDataLastReceived: Date;
+    usageDataLastReceived: Date;
+  }> {
+    return this.studyParticipantService.getParticipantLastReceivedData(user.id);
   }
 }

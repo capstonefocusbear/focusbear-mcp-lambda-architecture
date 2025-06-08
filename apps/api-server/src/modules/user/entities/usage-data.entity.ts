@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 export enum UsageType {
   APP = 'app',
@@ -6,6 +6,9 @@ export enum UsageType {
 }
 
 @Entity('usage_data')
+@Index('idx_usage_data_unique', ['userId', 'sourceName', 'usageType', 'usageStartDate', 'usageEndDate'], {
+  unique: true,
+})
 export class UsageData {
   @PrimaryGeneratedColumn('uuid')
   id: string;

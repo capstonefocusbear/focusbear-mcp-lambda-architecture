@@ -19,8 +19,7 @@ export class CreateUsageDataTable1710000000000 implements MigrationInterface {
         device_id VARCHAR(255) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        CONSTRAINT unique_usage_data UNIQUE (user_id, source_name, usage_type, usage_start_date, usage_end_date)
+        CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX idx_usage_data_user_id ON usage_data(user_id);

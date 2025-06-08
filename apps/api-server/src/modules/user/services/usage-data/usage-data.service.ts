@@ -1,5 +1,4 @@
-/* eslint-disable no-console */
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsageData } from '../../entities/usage-data.entity';
@@ -18,6 +17,23 @@ export class UsageDataService {
 
   async syncUsageData(userId: string, syncDto: SyncUsageDataDto): Promise<void> {
     const { usageData } = syncDto;
+
+    const lastSync = await this.usageDataRepository.findOne({
+      where: { userId },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (lastSync?.updatedAt) {
+      const lastSyncTime = new Date(lastSync.updatedAt);
+      const now = new Date();
+      const minutesSinceLastSync = (now.getTime() - lastSyncTime.getTime()) / (1000 * 60);
+
+      if (minutesSinceLastSync < 10) {
+        throw new BadRequestException(
+          `Please wait ${Math.ceil(10 - minutesSinceLastSync)} minutes before syncing again.`,
+        );
+      }
+    }
 
     await Promise.all(
       usageData.map(async (item) => {

@@ -3,27 +3,48 @@
 import { DateTime } from 'luxon';
 import * as sendGrid from '@sendgrid/mail';
 import { LessThan } from 'typeorm';
+import { ManagementClient } from 'auth0';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
+import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const i18next = require('i18next');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fs = require('fs');
 
-const EMAIL_SUBJECTS = {
-  en: 'Usage Data Sync Reminder',
-  es: 'Recordatorio de sincronización de datos de uso',
-};
+// Initialize Auth0 Management Client
+const auth0 = new ManagementClient({
+  domain: process.env.AUTH0_DOMAIN,
+  clientId: process.env.AUTH0_MANAGEMENT_CLIENT_ID,
+  clientSecret: process.env.AUTH0_MANAGEMENT_CLIENT_SECRET,
+});
 
-const EMAIL_MESSAGES = {
-  en: {
-    usage:
-      "We noticed you haven't synced your usage data in the last 3 days. Please sync your data to continue participating in the study.",
+// Load translation files
+const enTranslations = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/en/common.json'), 'utf8'),
+);
+const esTranslations = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/es/common.json'), 'utf8'),
+);
+
+// Initialize i18next with translations
+i18next.init({
+  lng: 'en', // default language
+  fallbackLng: 'en',
+  resources: {
+    en: {
+      translation: enTranslations,
+    },
+    es: {
+      translation: esTranslations,
+    },
   },
-  es: {
-    usage:
-      'Hemos notado que no ha sincronizado sus datos de uso en los últimos 3 días. Por favor, sincronice sus datos para continuar participando en el estudio.',
-  },
-};
+});
 
 sendGrid.setApiKey(process.env.SENDGRID_KEY);
 
@@ -31,17 +52,34 @@ async function getUsersWithOutdatedData() {
   const threeDaysAgo = DateTime.now().minus({ days: 3 }).toJSDate();
   const participants = await CronJobDataSource.manager.find(StudyParticipant, {
     where: { usageDataLastReceived: LessThan(threeDaysAgo) },
-    relations: ['user'],
   });
   return participants.filter((participant) => participant.userId);
 }
 
-async function sendEmail(email: string, language: string, message: string) {
+async function getUserDetails(userId: string): Promise<{ email: string | null; language: string }> {
+  try {
+    const user = await CronJobDataSource.manager.findOne(User, {
+      where: { id: userId },
+    });
+    if (!user) return { email: null, language: 'en' };
+
+    const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
+    return {
+      email: auth0User.email,
+      language: user.language || 'en',
+    };
+  } catch (error) {
+    console.error(`Failed to get user details for user ${userId}:`, error);
+    return { email: null, language: 'en' };
+  }
+}
+
+async function sendEmail(email: string, language: string) {
   const msg = {
     to: email,
     from: FOCUS_BEAR_EMAILS.SUPPORT,
-    subject: EMAIL_SUBJECTS[language],
-    text: message,
+    subject: i18next.t('usage_data_sync_subject', { lng: language }),
+    text: i18next.t('usage_data_sync_message', { lng: language }),
   };
 
   try {
@@ -57,10 +95,9 @@ async function sendEmail(email: string, language: string, message: string) {
     const participants = await getUsersWithOutdatedData();
     console.log(`Found ${participants.length} participants with outdated usage data`);
     for (const participant of participants) {
-      const language = (participant as any).user?.language || 'en';
-      const email = (participant as any).user?.email;
+      const { email, language } = await getUserDetails(participant.userId);
       if (email) {
-        await sendEmail(email, language, EMAIL_MESSAGES[language].usage);
+        await sendEmail(email, language);
       }
     }
     console.log('Usage data sync notification cronjob completed successfully');

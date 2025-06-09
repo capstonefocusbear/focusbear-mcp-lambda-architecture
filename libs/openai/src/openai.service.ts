@@ -46,6 +46,7 @@ export class OpenAIService {
     [OpenAIKeyType.USERNAME_VALIDATION]?: OpenAI;
     [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
+    [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -755,7 +756,7 @@ export class OpenAIService {
 
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
-      const openai = this.getOpenAIInstance(OpenAIKeyType.GENERAL);
+      const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
       const response = await openai.chat.completions.create({
         ...(OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
         messages,

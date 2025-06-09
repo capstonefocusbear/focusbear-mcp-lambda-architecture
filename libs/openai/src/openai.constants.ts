@@ -26,6 +26,7 @@ export enum OpenAIKeyType {
   USERNAME_VALIDATION = 'usernameValidation',
   SUBTASKS_GENERATION = 'subtasksGeneration',
   BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
+  SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';

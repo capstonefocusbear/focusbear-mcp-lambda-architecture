@@ -100,6 +100,7 @@ async function sendNoProgressEmails(users: { email: string; user: User }[]) {
   }
 }
 
+// Sends localized progress emails to users who haven't unsubscribed
 async function sendProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
     if (user.user.email_frequency === EmailFrequency.WEEKLY) {

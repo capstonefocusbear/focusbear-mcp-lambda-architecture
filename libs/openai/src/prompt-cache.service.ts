@@ -1,14 +1,21 @@
+/* eslint-disable no-console */
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
-import { PROMPT_CONFIG_PATH, APP_SAFETY_PROMPT_CONFIG_PATH } from './openai.constants';
+import {
+  PROMPT_CONFIG_PATH,
+  APP_SAFETY_PROMPT_CONFIG_PATH,
+  USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+} from './openai.constants';
 
 @Injectable()
 export class PromptCacheService implements OnModuleInit {
   private readonly logger = new Logger(PromptCacheService.name);
 
-  private promptCache: { prompts: Array<{ id: string; raw: string }> } = { prompts: [] };
+  private promptCache: {
+    prompts: Array<{ id: string; raw: string }>;
+  } = { prompts: [] };
 
   constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
@@ -60,6 +67,23 @@ export class PromptCacheService implements OnModuleInit {
         this.logger.error(`Failed to load app safety prompts: ${error.message}`);
         this.sentryService.instance().captureException(error, {
           extra: { message: 'Failed to load app safety prompts', configPath: APP_SAFETY_PROMPT_CONFIG_PATH },
+        });
+      }
+
+      try {
+        const usageScreenshotContent = await fs.readFile(USAGE_SCREENSHOT_PROMPT_CONFIG_PATH, 'utf8');
+        const usageScreenshotPrompts = JSON.parse(usageScreenshotContent)[0];
+        allPrompts.push({
+          id: 'usage-screenshot-analysis',
+          raw: usageScreenshotPrompts.content[0].text,
+        });
+      } catch (error) {
+        this.logger.error(`Failed to load usage screenshot prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load usage screenshot prompts',
+            configPath: USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+          },
         });
       }
 

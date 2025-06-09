@@ -50,6 +50,11 @@ import { StudyParticipantController } from './controllers/study-participant/stud
 import { UsageDataController } from './controllers/usage-data/usage-data.controller';
 import { UsageDataService } from './services/usage-data/usage-data.service';
 import { UsageData } from './entities/usage-data.entity';
+import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
+import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
+import { HealthMetrics } from './entities/health-metrics.entity';
+import { UsageImageConsumer } from './consumers/usage-image.consumer';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 
 @Module({
@@ -71,11 +76,14 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
     CustomRoutineRepository,
     StudyParticipantService,
     UsageDataService,
+    HealthMetricsService,
+    UsageImageConsumer,
+    SyncHealthMetricsConsumer,
     UsageDataConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User, StudyParticipant, UsageData]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -105,6 +113,12 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.USAGE_IMAGE,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
       },
       {
         name: BullQueues.USAGE_DATA,
@@ -157,6 +171,7 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
     UserFeedbackController,
     StudyParticipantController,
     UsageDataController,
+    HealthMetricsController,
   ],
 })
 export class UserModule {}

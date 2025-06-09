@@ -34,7 +34,7 @@ i18next.init({
         inactivity_warning_email_content:
           '¡Hola! Hemos notado que hace tiempo que no utilizas Focus Bear. Por favor, ten en cuenta que tu perfil será eliminado si no se reanuda su uso en los próximos 30 días para garantizar el cumplimiento de las leyes de privacidad y minimizar el riesgo de vulneración de datos personales. Inicia sesión y reanuda tus hábitos saludables en https://dashboard.focusbear.io para conservar tu perfil de Focus Bear.',
         inactivity_email_subject: 'Cuenta inactiva',
-        no_progress_email_subject: "Feeling stuck? We're here to help!",
+        no_progress_email_subject: '¿Te sientes atascado? ¡Estamos aquí para ayudarte!',
         no_progress_email_content:
           'Te has registrado, pero aún no has comenzado. ¡Creemos en ti! Comienza hoy en https://dashboard.focusbear.io.',
         progress_email_subject: 'Tu informe semanal de progreso 🐻',

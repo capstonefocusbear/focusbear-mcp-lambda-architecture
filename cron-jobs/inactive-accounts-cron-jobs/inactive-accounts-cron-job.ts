@@ -160,6 +160,59 @@ async function deleteUsers(users: User[]) {
   }
 }
 
+async function getInternalTestUsers() {
+  const allUsers = await CronJobDataSource.manager.find(User);
+
+  // Map through users and check their Auth0 email
+  const userInfoPromise = allUsers.map(async (user) => {
+    try {
+      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
+      // Check if email matches the internal test pattern
+      if (auth0User.email && auth0User.email.match(/^internaltest\+.*@focusbear\.io$/)) {
+        return { email: auth0User.email, user };
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching Auth0 user for ${user.id}:`, error);
+      return null;
+    }
+  });
+
+  const userInfo = await Promise.all(userInfoPromise);
+  // Filter out null values
+  return userInfo.filter((user) => user !== null);
+}
+
+async function deleteInternalTestUsers() {
+  try {
+    console.log('Starting internal test user cleanup...');
+
+    const internalTestUsers = await getInternalTestUsers();
+
+    if (internalTestUsers.length === 0) {
+      console.log('No internal test users found.');
+      return;
+    }
+
+    // Log users that will be deleted for safety
+    console.log(`Found ${internalTestUsers.length} internal test users to delete:`);
+    for (const testUser of internalTestUsers) {
+      console.log(`- User ID: ${testUser.user.id}, Email: ${testUser.email}`);
+    }
+
+    // Extract just the User objects for deletion
+    const usersToDelete = internalTestUsers.map((userData) => userData.user);
+
+    console.log('Deleting internal test users...');
+    await deleteUsers(usersToDelete);
+
+    console.log('Internal test users deleted successfully.');
+  } catch (error) {
+    console.error('Error deleting internal test users:', error);
+    throw error;
+  }
+}
+
 (async () => {
   try {
     await CronJobDataSource.initialize();
@@ -174,6 +227,9 @@ async function deleteUsers(users: User[]) {
     // await sendNoProgressEmails(inactiveUsers); // If no progress
 
     logInactiveUsers(inactiveUsers);
+
+    // await deleteInternalTestUsers();
+
     process.exit();
   } catch (error) {
     console.error('Error in inactivity cron job:', error);

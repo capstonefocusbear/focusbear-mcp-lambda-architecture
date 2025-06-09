@@ -42,7 +42,8 @@ export class StudyParticipantService {
 
     // TODO: Remove this once we officially launch the study (this is for testing purposes)
     if (dto.email.endsWith('@focusbear.io')) {
-      const [, extractedCode] = dto.email.match(/internaltest\+unicaes([a-zA-Z0-9]{6})@focusbear\.io/) || [];
+      const [, extractedCode] = dto.email.match(/internaltest\+unicaes_([a-zA-Z0-9]{6})@focusbear\.io/) || [];
+
       if (extractedCode) {
         participantCode = extractedCode;
       }
@@ -75,8 +76,23 @@ export class StudyParticipantService {
       throw new NotFoundException('Participant code not found');
     }
 
+    let { email } = participant;
+
+    if (participant.userId && !email) {
+      const user = await this.userRepository.findOneBy({ id: participant.userId });
+      const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+
+      if (participant.email !== auth0User.email) {
+        throw new ConflictException(
+          "The participant code doesn't match your email address. Please contact support@focusbear.io",
+        );
+      }
+
+      email = auth0User.email;
+    }
+
     return {
-      email: participant.email,
+      email,
       userId: participant.userId,
     };
   }

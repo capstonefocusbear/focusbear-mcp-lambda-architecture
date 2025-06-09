@@ -55,7 +55,6 @@ const auth0 = new ManagementClient({
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION });
 
-// Get users who haven't updated for 5 months
 async function getInactiveUsers() {
   const currentDate = DateTime.now();
   const fiveMonthsAgo = currentDate.minus({ months: 5 });
@@ -75,7 +74,6 @@ async function getInactiveUsers() {
   return userInfo.filter((user) => user.email);
 }
 
-// Send emails to inactive users (after 5 months)
 async function sendInactivityWarningEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
     const t = i18next.getFixedT(user.user.language);
@@ -89,7 +87,6 @@ async function sendInactivityWarningEmails(users: { email: string; user: User }[
   }
 }
 
-// Send motivational email if no progress made
 async function sendNoProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
     const t = i18next.getFixedT(user.user.language);
@@ -103,10 +100,8 @@ async function sendNoProgressEmails(users: { email: string; user: User }[]) {
   }
 }
 
-// Sends localized progress emails to users who haven't unsubscribed
 async function sendProgressEmails(users: { email: string; user: User }[]) {
   for await (const user of users) {
-    // Skip users who have unsubscribed from progress emails
     if (user.user.email_frequency === EmailFrequency.WEEKLY) {
       // Translate email content based on user's preferred language
       const t = i18next.getFixedT(user.user.language);
@@ -118,13 +113,11 @@ async function sendProgressEmails(users: { email: string; user: User }[]) {
         text: t('progress_email_content'),
       };
 
-      // Send the email via SendGrid
       await sendGrid.send(message);
     }
   }
 }
 
-// Update users after sending inactivity warning
 async function updateUsersInactivityWarningFields(users: { user: User }[]) {
   const updatedUsers = users.map((userData) => {
     const updatedUser = { ...userData.user };
@@ -134,7 +127,6 @@ async function updateUsersInactivityWarningFields(users: { user: User }[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
-// Log inactive users (for audit/debugging)
 function logInactiveUsers(users: { user: User }[]) {
   console.log('Users that have been inactive for 5 months or longer:');
   for (const user of users) {
@@ -142,7 +134,6 @@ function logInactiveUsers(users: { user: User }[]) {
   }
 }
 
-// Get users to delete (after 6 months of inactivity)
 async function getUsersToDelete() {
   const currentDate = DateTime.now();
   const sixMonthsAgo = currentDate.minus({ months: 6 });
@@ -151,7 +142,6 @@ async function getUsersToDelete() {
   });
 }
 
-// Delete user from RevenueCat
 async function deleteUserFromRevenueCat(user_id: string) {
   const callUrl = `https://api.revenuecat.com/v1/subscribers/${user_id}`;
   const Authorization = `Bearer ${process.env.REVENUE_CAT_SECRET_KEY}`;
@@ -159,7 +149,6 @@ async function deleteUserFromRevenueCat(user_id: string) {
   await axios.delete(callUrl, { headers });
 }
 
-// Delete user from all platforms
 async function deleteUsers(users: User[]) {
   for await (const user of users) {
     const auth0Promise = auth0.users.delete({ id: user.auth0_id });

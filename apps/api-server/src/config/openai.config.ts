@@ -25,4 +25,7 @@ export const openAiConfig = registerAs('openai', () => ({
   brainDumpConversion: {
     apiKey: process.env.OPENAI_BRAIN_DUMP_CONVERSION_API_KEY || process.env.OPENAI_API_KEY,
   },
+  screenTimeImageOcr: {
+    apiKey: process.env.OPENAI_SCREEN_TIME_IMAGE_OCR_API_KEY || process.env.OPENAI_API_KEY,
+  },
 }));

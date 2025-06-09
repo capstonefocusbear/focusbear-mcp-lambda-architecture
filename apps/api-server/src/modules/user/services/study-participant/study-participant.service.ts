@@ -38,7 +38,15 @@ export class StudyParticipantService {
       throw new ConflictException('Email already exists registered for the study');
     }
 
-    const participantCode = Math.random().toString(36).substring(2, 8);
+    let participantCode = Math.random().toString(36).substring(2, 8);
+
+    // TODO: Remove this once we officially launch the study (this is for testing purposes)
+    if (dto.email.endsWith('@focusbear.io')) {
+      const [, extractedCode] = dto.email.match(/internaltest\+unicaes([a-zA-Z0-9]{6})@focusbear\.io/) || [];
+      if (extractedCode) {
+        participantCode = extractedCode;
+      }
+    }
 
     const participant = new StudyParticipant();
 

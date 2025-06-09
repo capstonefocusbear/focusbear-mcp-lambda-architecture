@@ -53,6 +53,7 @@ import { UsageData } from './entities/usage-data.entity';
 import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
 import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
 import { HealthMetrics } from './entities/health-metrics.entity';
+import { UsageImageConsumer } from './consumers/usage-image.consumer';
 import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 
@@ -76,6 +77,7 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
     StudyParticipantService,
     UsageDataService,
     HealthMetricsService,
+    UsageImageConsumer,
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
   ],
@@ -111,6 +113,9 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.USAGE_IMAGE,
       },
       {
         name: BullQueues.HEALTH_METRICS_SYNC,

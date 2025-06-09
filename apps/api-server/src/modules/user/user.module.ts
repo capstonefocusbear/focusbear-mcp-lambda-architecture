@@ -47,6 +47,15 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
 import { StudyParticipantService } from './services/study-participant/study-participant.service';
 import { StudyParticipant } from './entities/study-participant.entity';
 import { StudyParticipantController } from './controllers/study-participant/study-participant.controller';
+import { UsageDataController } from './controllers/usage-data/usage-data.controller';
+import { UsageDataService } from './services/usage-data/usage-data.service';
+import { UsageData } from './entities/usage-data.entity';
+import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
+import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
+import { HealthMetrics } from './entities/health-metrics.entity';
+import { UsageImageConsumer } from './consumers/usage-image.consumer';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
+import { UsageDataConsumer } from './consumers/usage-data.consumer';
 
 @Module({
   providers: [
@@ -66,10 +75,15 @@ import { StudyParticipantController } from './controllers/study-participant/stud
     UserFeedbackService,
     CustomRoutineRepository,
     StudyParticipantService,
+    UsageDataService,
+    HealthMetricsService,
+    UsageImageConsumer,
+    SyncHealthMetricsConsumer,
+    UsageDataConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User, StudyParticipant]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -99,6 +113,15 @@ import { StudyParticipantController } from './controllers/study-participant/stud
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.USAGE_IMAGE,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
+      },
+      {
+        name: BullQueues.USAGE_DATA,
       },
     ),
     R2Module.registerAsync({
@@ -147,6 +170,8 @@ import { StudyParticipantController } from './controllers/study-participant/stud
     UserStatsController,
     UserFeedbackController,
     StudyParticipantController,
+    UsageDataController,
+    HealthMetricsController,
   ],
 })
 export class UserModule {}

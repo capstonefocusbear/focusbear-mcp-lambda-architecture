@@ -781,29 +781,7 @@ export class OpenAIService {
     >
   > {
     try {
-      const prompt = `
-        You are given a screenshot from an iPhone Screen Time summary. Please extract and return structured data in valid JSON format.
-
-        Requirements:
-        - Identify each app shown in the screenshot.
-        - For each app, extract:
-          - sourceName: the name of the app (e.g., “Messenger”)
-          - minutesUsedTotal: the total number of minutes used (e.g., 21)
-          - category: the category of the app, using one of the following values: MISC, GAME, AUDIO, VIDEO, IMAGE, SOCIAL, NEWS, MAPS, PRODUCTIVITY, ACCESSIBILITY
-        - Only include apps that show a visible usage duration in minutes.
-        - The final result must be a JSON object with this structure:
-
-        Return format (always wrap it exactly like this):
-
-        {
-          "apps": [
-            { "sourceName": "AppName", "minutesUsedTotal": 10, "category": "MISC" },
-            ...
-          ]
-        }
-
-        Be precise with the app names and usage durations. Ignore apps without visible durations or non-app entries.
-      `.trim();
+      const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
 
       const messages: ChatCompletionMessageParam[] = [
         {

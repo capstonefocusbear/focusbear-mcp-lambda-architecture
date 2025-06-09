@@ -30,7 +30,9 @@ export enum OpenAIKeyType {
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
+export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
+
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
   CRITICAL: [

@@ -44,6 +44,18 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
 import { BullQueues } from '../../shared/utils/constants';
 import { EventsModule } from '../events/events.module';
 import { CustomRoutineRepository } from './repositories/custom-routine.repository';
+import { StudyParticipantService } from './services/study-participant/study-participant.service';
+import { StudyParticipant } from './entities/study-participant.entity';
+import { StudyParticipantController } from './controllers/study-participant/study-participant.controller';
+import { UsageDataController } from './controllers/usage-data/usage-data.controller';
+import { UsageDataService } from './services/usage-data/usage-data.service';
+import { UsageData } from './entities/usage-data.entity';
+import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
+import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
+import { HealthMetrics } from './entities/health-metrics.entity';
+import { UsageImageConsumer } from './consumers/usage-image.consumer';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
+import { UsageDataConsumer } from './consumers/usage-data.consumer';
 
 @Module({
   providers: [
@@ -62,10 +74,16 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserFeedbackRepository,
     UserFeedbackService,
     CustomRoutineRepository,
+    StudyParticipantService,
+    UsageDataService,
+    HealthMetricsService,
+    UsageImageConsumer,
+    SyncHealthMetricsConsumer,
+    UsageDataConsumer,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -95,6 +113,15 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.USAGE_IMAGE,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
+      },
+      {
+        name: BullQueues.USAGE_DATA,
       },
     ),
     R2Module.registerAsync({
@@ -142,6 +169,9 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserDataController,
     UserStatsController,
     UserFeedbackController,
+    StudyParticipantController,
+    UsageDataController,
+    HealthMetricsController,
   ],
 })
 export class UserModule {}

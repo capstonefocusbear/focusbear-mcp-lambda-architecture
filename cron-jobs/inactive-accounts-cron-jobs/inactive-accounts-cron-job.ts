@@ -161,10 +161,14 @@ async function deleteUsers(users: User[]) {
 }
 
 async function getInternalTestUsers() {
-  const allUsers = await CronJobDataSource.manager.find(User);
+  const currentDate = DateTime.now();
+  const sixMonthsAgo = currentDate.minus({ months: 6 });
+  const inactiveUsers = await CronJobDataSource.manager.find(User, {
+    where: { updated_at: LessThan(sixMonthsAgo.toString()) },
+  });
 
   // Map through users and check their Auth0 email
-  const userInfoPromise = allUsers.map(async (user) => {
+  const userInfoPromise = inactiveUsers.map(async (user) => {
     try {
       const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
       // Check if email matches the internal test pattern

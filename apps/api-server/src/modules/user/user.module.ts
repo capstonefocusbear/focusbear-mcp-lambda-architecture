@@ -56,6 +56,8 @@ import { HealthMetrics } from './entities/health-metrics.entity';
 import { UsageImageConsumer } from './consumers/usage-image.consumer';
 import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
+import { FlankerTestService } from './services/flanker-test/flanker-test.service';
+import { FlankerTest } from './entities/flanker-test.entity';
 
 @Module({
   providers: [
@@ -80,10 +82,11 @@ import { UsageDataConsumer } from './consumers/usage-data.consumer';
     UsageImageConsumer,
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
+    FlankerTestService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

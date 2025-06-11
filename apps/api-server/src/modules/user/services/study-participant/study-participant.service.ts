@@ -12,6 +12,8 @@ import {
   LinkUserToParticipantCodeDto,
   ParticipantCodeResponseDto,
 } from '../../dto/study-participant';
+import { FlankerTestService } from '../flanker-test/flanker-test.service';
+import { SaveFlankerTestResultDto } from '../../dto/study-participant/save-flanker-test-result.dto';
 
 @Injectable()
 export class StudyParticipantService {
@@ -22,6 +24,7 @@ export class StudyParticipantService {
     private readonly userRepository: Repository<User>,
     private readonly sendGridService: SendGridService,
     private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly flankerTestService: FlankerTestService,
   ) {}
 
   async addParticipantDetails(dto: AddParticipantDetailsDto): Promise<void> {
@@ -81,13 +84,6 @@ export class StudyParticipantService {
     if (participant.userId && !email) {
       const user = await this.userRepository.findOneBy({ id: participant.userId });
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-
-      if (participant.email !== auth0User.email) {
-        throw new ConflictException(
-          "The participant code doesn't match your email address. Please contact support@focusbear.io",
-        );
-      }
-
       email = auth0User.email;
     }
 
@@ -159,5 +155,13 @@ export class StudyParticipantService {
       healthDataLastReceived: participant?.healthDataLastReceived,
       usageDataLastReceived: participant?.usageDataLastReceived,
     };
+  }
+
+  async markCompleteQuestionnaire(userId: string): Promise<void> {
+    await this.studyParticipantRepository.update({ userId }, { isQuestionnaireCompleted: true });
+  }
+
+  async saveFlankerTestResult(userId: string, result: SaveFlankerTestResultDto): Promise<void> {
+    await this.flankerTestService.saveFlankerTestResult(userId, result);
   }
 }

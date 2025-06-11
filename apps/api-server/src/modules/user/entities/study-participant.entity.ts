@@ -42,6 +42,12 @@ export class StudyParticipant {
   @Column({ name: 'health_data_last_received', type: 'date', nullable: true })
   healthDataLastReceived: Date;
 
+  @Column({ name: 'is_questionnaire_completed', type: 'boolean', default: false })
+  isQuestionnaireCompleted: boolean;
+
+  @Column({ name: 'flanker_effect', type: 'float', nullable: true })
+  flankerEffect: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

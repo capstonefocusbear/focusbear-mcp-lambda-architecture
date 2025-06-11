@@ -10,6 +10,7 @@ import {
 } from '../../dto/study-participant';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { AppActivationStatus } from '../../entities/study-participant.entity';
+import { SaveFlankerTestResultDto } from '../../dto/study-participant/save-flanker-test-result.dto';
 
 @Controller('study-participants')
 @ApiTags('study-participants')
@@ -56,5 +57,17 @@ export class StudyParticipantController {
     usageDataLastReceived: Date;
   }> {
     return this.studyParticipantService.getParticipantLastReceivedData(user.id);
+  }
+
+  @Post('mark-complete-questionnaire')
+  @UseGuards(IsAuth)
+  async markCompleteQuestionnaire(@AuthContext() { user }: Passport): Promise<void> {
+    await this.studyParticipantService.markCompleteQuestionnaire(user.id);
+  }
+
+  @Post('save-flanker-test-result')
+  @UseGuards(IsAuth)
+  async saveFlankerTestResult(@AuthContext() { user }: Passport, @Body() dto: SaveFlankerTestResultDto): Promise<void> {
+    await this.studyParticipantService.saveFlankerTestResult(user.id, dto);
   }
 }

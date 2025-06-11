@@ -51,6 +51,7 @@ import { CustomRoutine } from '../modules/user/entities/custom-routine';
 import { StudyParticipant } from '../modules/user/entities/study-participant.entity';
 import { UsageData } from '../modules/user/entities/usage-data.entity';
 import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
+import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -118,6 +119,7 @@ export const typeormConfig = registerAs(
       StudyParticipant,
       UsageData,
       HealthMetrics,
+      FlankerTest,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

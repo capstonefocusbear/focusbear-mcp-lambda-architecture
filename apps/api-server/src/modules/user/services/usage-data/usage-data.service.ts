@@ -80,21 +80,39 @@ export class UsageDataService {
       deviceId?: string;
     },
   ): Promise<void> {
-    const entities = usageData.map((data) =>
-      this.usageDataRepository.create({
-        userId,
-        sourceName: data.sourceName,
-        usageType: UsageType.APP, // Default to APP
-        usageCategory: data.category,
-        usageStartDate: metadata.startDate,
-        usageEndDate: metadata.endDate,
-        minutesUsedTotal: data.minutesUsedTotal,
-        minutesUsedDuringSleepWindow: 0, // Default to 0
-        platform: metadata.platform,
-        deviceId: metadata.deviceId,
+    await Promise.all(
+      usageData.map(async (data) => {
+        const existingData = await this.usageDataRepository.findOne({
+          where: {
+            userId,
+            sourceName: data.sourceName,
+            usageType: UsageType.APP,
+            usageStartDate: metadata.startDate,
+            usageEndDate: metadata.endDate,
+          },
+        });
+
+        if (existingData) {
+          await this.usageDataRepository.update(existingData.id, {
+            minutesUsedTotal: data.minutesUsedTotal,
+            minutesUsedDuringSleepWindow: 0,
+          });
+        } else {
+          const entity = this.usageDataRepository.create({
+            userId,
+            sourceName: data.sourceName,
+            usageType: UsageType.APP,
+            usageCategory: data.category,
+            usageStartDate: metadata.startDate,
+            usageEndDate: metadata.endDate,
+            minutesUsedTotal: data.minutesUsedTotal,
+            minutesUsedDuringSleepWindow: 0,
+            platform: metadata.platform,
+            deviceId: metadata.deviceId,
+          });
+          await this.usageDataRepository.save(entity);
+        }
       }),
     );
-
-    await Promise.all(entities.map((entity) => this.usageDataRepository.save(entity)));
   }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
 import { DateTime } from 'luxon';
-import { LessThan } from 'typeorm';
+import { LessThan, MoreThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
 import * as sendGrid from '@sendgrid/mail';
 import axios from 'axios';
@@ -63,6 +63,25 @@ async function getInactiveUsers() {
   });
   console.log(inactiveUsers);
   const userInfoPromise = inactiveUsers.map(async (user) => {
+    try {
+      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
+      return { email: auth0User.email || null, user };
+    } catch (error) {
+      return null;
+    }
+  });
+  const userInfo = await Promise.all(userInfoPromise);
+  return userInfo.filter((user) => user.email);
+}
+
+async function getActiveUsers() {
+  const currentDate = DateTime.now();
+  const sevenDaysAgo = currentDate.minus({ days: 7 });
+  const activeUsers = await CronJobDataSource.manager.find(User, {
+    where: { updated_at: MoreThan(sevenDaysAgo.toString()) },
+  });
+  console.log(activeUsers);
+  const userInfoPromise = activeUsers.map(async (user) => {
     try {
       const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
       return { email: auth0User.email || null, user };
@@ -167,24 +186,33 @@ async function getInternalTestUsers() {
     where: { updated_at: LessThan(sixMonthsAgo.toString()) },
   });
 
-  // Map through users and check their Auth0 email
-  const userInfoPromise = inactiveUsers.map(async (user) => {
-    try {
-      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
-      // Check if email matches the internal test pattern
-      if (auth0User.email && auth0User.email.match(/^internaltest\+.*@focusbear\.io$/)) {
-        return { email: auth0User.email, user };
-      }
-      return null;
-    } catch (error) {
-      console.error(`Error fetching Auth0 user for ${user.id}:`, error);
-      return null;
-    }
-  });
+  if (inactiveUsers.length === 0) {
+    return [];
+  }
 
-  const userInfo = await Promise.all(userInfoPromise);
-  // Filter out null values
-  return userInfo.filter((user) => user !== null);
+  // Construct a query to fetch all users by their Auth0 IDs
+  const userIds = inactiveUsers.map((user) => user.auth0_id);
+  const query = `user_id:(${userIds.join(' OR ')})`;
+
+  try {
+    // Fetch all Auth0 users at once
+    const auth0Users = await auth0.users.getAll({ q: query, search_engine: 'v3' });
+
+    // Create a map for quick lookups
+    const auth0UsersMap = new Map(auth0Users.data.map((u) => [u.user_id, u]));
+
+    const internalTestUsers = [];
+    for (const user of inactiveUsers) {
+      const auth0User = auth0UsersMap.get(user.auth0_id);
+      if (auth0User?.email && auth0User.email.match(/^internaltest\+.*@focusbear\.io$/)) {
+        internalTestUsers.push({ email: auth0User.email, user });
+      }
+    }
+    return internalTestUsers;
+  } catch (error) {
+    console.error('Error fetching bulk Auth0 users:', error);
+    return [];
+  }
 }
 
 async function deleteInternalTestUsers() {
@@ -227,8 +255,9 @@ async function deleteInternalTestUsers() {
     const inactiveUsers = await getInactiveUsers();
     // await sendInactivityWarningEmails(inactiveUsers);
     // await updateUsersInactivityWarningFields(inactiveUsers);
-    // await sendProgressEmails(inactiveUsers);
-    // await sendNoProgressEmails(inactiveUsers); // If no progress
+    const activeUsers = await getActiveUsers();
+    await sendProgressEmails(activeUsers);
+    await sendNoProgressEmails(inactiveUsers); // If no progress
 
     logInactiveUsers(inactiveUsers);
 

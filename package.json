@@ -83,7 +83,7 @@
     "pino-http": "^8.2.0",
     "pusher": "^5.1.0-beta",
     "reflect-metadata": "^0.1.13",
-    "rimraf": "^3.0.2",
+    "rimraf": "^6.0.1",
     "rxjs": "^7.2.0",
     "stream": "^0.0.2",
     "stripe": "^10.2.0",
@@ -140,7 +140,8 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.3"
+    "undici": "6.21.3",
+    "brace-expansion": "^2.0.2"
   },
   "resolutions": {
     "auth0": {
@@ -153,7 +154,8 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.3"
+    "undici": "6.21.3",
+    "brace-expansion": "^2.0.2"
   },
   "husky": {
     "hooks": {

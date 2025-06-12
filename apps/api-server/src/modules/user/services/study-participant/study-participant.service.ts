@@ -81,13 +81,6 @@ export class StudyParticipantService {
     if (participant.userId && !email) {
       const user = await this.userRepository.findOneBy({ id: participant.userId });
       const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-
-      if (participant.email !== auth0User.email) {
-        throw new ConflictException(
-          "The participant code doesn't match your email address. Please contact support@focusbear.io",
-        );
-      }
-
       email = auth0User.email;
     }
 

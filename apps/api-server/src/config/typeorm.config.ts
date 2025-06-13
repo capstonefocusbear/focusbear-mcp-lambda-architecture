@@ -52,6 +52,7 @@ import { StudyParticipant } from '../modules/user/entities/study-participant.ent
 import { UsageData } from '../modules/user/entities/usage-data.entity';
 import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
 import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
+import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -120,7 +121,11 @@ export const typeormConfig = registerAs(
       UsageData,
       HealthMetrics,
       FlankerTest,
+      AsyncTask,
     ],
-    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
+    migrations: [
+      join(__dirname, '../../migrations/**/*.{ts,js}'),
+      join(__dirname, '../../seeds/**/*.{ts,js}'),
+    ],
   }),
 );

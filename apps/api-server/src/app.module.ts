@@ -1,7 +1,11 @@
 /* eslint-disable linebreak-style */
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import {
+  TypeOrmModule,
+  TypeOrmModuleAsyncOptions,
+  TypeOrmModuleOptions,
+} from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
@@ -37,6 +41,7 @@ import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
+import { AsyncTaskModule } from './modules/async-task/async-task.module';
 
 @Module({
   imports: [
@@ -63,10 +68,16 @@ import { EmailModule } from './modules/email/email.module';
         path: path.join(__dirname, '/shared/i18n'),
         watch: true,
       },
-      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
+      resolvers: [
+        { use: QueryResolver, options: ['lang'] },
+        AcceptLanguageResolver,
+      ],
     }),
     BullModule.forRoot({
-      connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
+      connection: {
+        host: process.env.REDIS_HOSTNAME,
+        port: Number(process.env.REDIS_PORT),
+      },
     }),
     AuthModule,
     HelperModule,
@@ -95,6 +106,7 @@ import { EmailModule } from './modules/email/email.module';
     CalendarModule,
     SurveyModule,
     EmailModule,
+    AsyncTaskModule,
   ],
   controllers: [AppController],
 })

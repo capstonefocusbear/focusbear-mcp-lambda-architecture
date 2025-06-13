@@ -20,4 +20,6 @@ export class MemberInvitationPayload {
   is_member: boolean;
 
   team_name: string;
+
+  needs_registration: boolean;
 }

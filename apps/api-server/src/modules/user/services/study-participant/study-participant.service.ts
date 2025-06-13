@@ -3,9 +3,9 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SendGridService } from '@app/send-grid';
-import { FOCUS_BEAR_EMAILS } from '@api-server/shared/utils/constants';
-import { User } from '@api-server/modules/user/entities/user.entity';
 import { Auth0ManagementService } from '@app/auth0';
+import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { User } from '../../entities/user.entity';
 import { AppActivationStatus, StudyParticipant } from '../../entities/study-participant.entity';
 import {
   AddParticipantDetailsDto,

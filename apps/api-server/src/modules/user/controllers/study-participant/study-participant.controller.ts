@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
-import { AuthContext } from '@api-server/shared/decorators/passport.decorator';
-import { Passport } from '@api-server/modules/auth/domain/passport.model';
+import { AuthContext } from '../../../../shared/decorators/passport.decorator';
+import { Passport } from '../../../auth/domain/passport.model';
 import { StudyParticipantService } from '../../services/study-participant/study-participant.service';
 import {
   AddParticipantDetailsDto,

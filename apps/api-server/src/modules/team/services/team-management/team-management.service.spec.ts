@@ -405,6 +405,7 @@ describe('TeamManagementService', () => {
           is_admin: false,
           is_member: true,
           team_name: TeamWithMembersDummy.name,
+          needs_registration: true,
         },
         'test-secret',
       );

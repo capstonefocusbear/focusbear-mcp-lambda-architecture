@@ -1,6 +1,6 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bullmq';
-import { BullWorkers } from '@api-server/shared/utils/constants';
+import { BullWorkers } from '../../../shared/utils/constants';
 import { SyncHealthMetricsDto } from '../dto/sync-health-metrics.dto';
 import { HealthMetricsService } from '../services/health-metrics/health-metrics.service';
 

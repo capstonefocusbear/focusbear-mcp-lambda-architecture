@@ -56,6 +56,18 @@ export class UsageDataService {
         }
       }),
     );
+
+    const studyParticipant = await this.studyParticipantRepository.findOne({
+      where: {
+        userId,
+      },
+    });
+
+    if (studyParticipant) {
+      await this.studyParticipantRepository.update(studyParticipant.id, {
+        usageDataLastReceived: new Date(),
+      });
+    }
   }
 
   async saveUsageData(

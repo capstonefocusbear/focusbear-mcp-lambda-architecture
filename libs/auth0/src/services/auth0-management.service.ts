@@ -31,7 +31,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
   }
 
   async initiatePasswordReset(email: string) {
-    const users = await this.getAuth0UserWithEmail(email);
+    const users = await this.getAuth0UsersWithEmail(email);
     if (users.length < 1) {
       throw new NotFoundException(`User with email: ${email} does not exist!`);
     }
@@ -69,7 +69,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     });
   }
 
-  async getAuth0UserWithEmail(email: string) {
+  async getAuth0UsersWithEmail(email: string) {
     const { data: usersMatchingEmail } = await this.users.getAll({ q: `email:"${email}"` });
     return usersMatchingEmail;
   }

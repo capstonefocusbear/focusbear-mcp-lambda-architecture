@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Team } from './team.entity';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
@@ -11,6 +11,7 @@ export class TeamToMember extends BaseEntity {
     Object.assign(this, { ...teamToMember });
   }
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: false,
@@ -18,6 +19,7 @@ export class TeamToMember extends BaseEntity {
   })
   team_id: string;
 
+  @Index()
   @Column({
     type: 'uuid',
     nullable: true,
@@ -51,7 +53,12 @@ export class TeamToMember extends BaseEntity {
   @Column({ type: 'int', nullable: false, default: 0 })
   invitation_send_count: number;
 
-  @ManyToOne(() => User, (member) => member.teamToMember, { onDelete: 'CASCADE' })
+  // Encrypt and store email to track unregistered users and prevent duplicate invitations
+  @Index()
+  @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('email') })
+  email?: string;
+
+  @ManyToOne(() => User, (member) => member.teamToMember, { onDelete: 'CASCADE' }) // @TODO eager:true
   @JoinColumn({ name: 'member_id' })
   member: User;
 

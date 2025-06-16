@@ -138,9 +138,10 @@ export class TeamManagementService {
   async revokeTeamMembersEntitlements(stripeSubId: string) {
     try {
       const team = await this.teamRepository.orm.findOne({
+        // @TODO eager:true
         where: { stripe_subscription_id: stripeSubId },
       });
-      const members = await this.teamRepository.getTeamMembers(team.id);
+      const members = await this.teamRepository.getTeamMembers(team.id); // @TODO eager:true
       const revokeEntitlementsPromises = [];
       for await (const member of members) {
         // check if user is part of more than one team
@@ -347,105 +348,55 @@ export class TeamManagementService {
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
-    const team = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+    const team = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
     const { members, admins } = team;
     const membersData = [];
-    const adminData = [];
 
-    // Get all member IDs
-    const memberIds = members.map((member) => member.id);
-    const memberAuth0Ids = members.map((member) => member.auth0_id);
+    // Get all registered member IDs
+    const memberIds = members.map((member) => member.member_id).filter(Boolean);
 
     // Batch queries for members
-    const [auth0Users, teamToMembers, userDetails, allMembersDailyStats] = await Promise.all([
-      Promise.all(memberAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
-      this.teamToMemberRepository.orm.find({
-        where: { team_id: teamId, member_id: In(memberIds) },
-      }),
+    const [userDetails, allMembersDailyStats] = await Promise.all([
       this.userRepository.orm.find({
         where: { id: In(memberIds) },
       }),
       Promise.all(memberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
     ]);
 
+    // @Description:  Admins are already members; skip processing
     // Process member data
     members.forEach((member, index) => {
-      const auth0User = auth0Users[index];
-      const teamToMember = teamToMembers.find((tm) => tm.member_id === member.id);
-      const userDetail = userDetails.find((u) => u.id === member.id);
-      const last90DaysDailyStats = allMembersDailyStats[index];
+      const userDetail = userDetails.find((u) => u.id === member.member_id);
+      const last90DaysDailyStats = allMembersDailyStats?.[index];
 
-      const totalFocusModes = last90DaysDailyStats.reduce((acc, curr) => acc + curr.focus_modes, 0);
+      const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
       membersData.push({
         id: member.id,
-        email: auth0User.email,
-        last_active_date: member.updated_at,
-        first_name: teamToMember?.first_name,
-        last_name: teamToMember?.last_name,
-        member_expiry_date: teamToMember?.member_expiry_date,
-        created_at: teamToMember?.created_at,
-        morning_routines_streak: userDetail?.morning_routines_streak,
-        evening_routines_streak: userDetail?.evening_routines_streak,
-        focus_modes_streak: userDetail?.focus_modes_streak,
-        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed,
-        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed,
-        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed,
+        email: member.email,
+        last_active_date: member?.updated_at,
+        first_name: member?.first_name,
+        last_name: member?.last_name,
+        member_expiry_date: member?.member_expiry_date,
+        created_at: member?.created_at,
+        morning_routines_streak: userDetail?.morning_routines_streak || 0,
+        evening_routines_streak: userDetail?.evening_routines_streak || 0,
+        focus_modes_streak: userDetail?.focus_modes_streak || 0,
+        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed || 0,
+        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
+        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
         focus_modes_percent_number_day_of_stats_completed,
-        invitation_status: teamToMember.invitation_status,
-        invitation_sent_at: teamToMember.invitation_sent_at,
-        invitation_send_count: teamToMember.invitation_send_count,
-        invitation_responded_at: teamToMember.invitation_responded_at,
+        invitation_status: member.invitation_status,
+        invitation_sent_at: member.invitation_sent_at,
+        invitation_send_count: member.invitation_send_count,
+        invitation_responded_at: member.invitation_responded_at,
       });
     });
 
-    // Get all admin IDs
-    const adminIds = admins.map((admin) => admin.id);
-    const adminAuth0Ids = admins.map((admin) => admin.auth0_id);
-
-    // Batch queries for admins
-    const [adminAuth0Users, teamToAdmins, adminUserDetails, allAdminsDailyStats] = await Promise.all([
-      Promise.all(adminAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
-      this.teamToAdminRepository.orm.find({
-        where: { team_id: teamId, admin_id: In(adminIds) },
-      }),
-      this.userRepository.orm.find({
-        where: { id: In(adminIds) },
-      }),
-      Promise.all(adminIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
-    ]);
-
-    // Process admin data
-    admins.forEach((adminMember, index) => {
-      const auth0User = adminAuth0Users[index];
-      const teamToAdmin = teamToAdmins.find((ta) => ta.admin_id === adminMember.id);
-      const userDetail = adminUserDetails.find((u) => u.id === adminMember.id);
-      const last90DaysDailyStats = allAdminsDailyStats[index];
-
-      const teamToMemberInfo = teamToMembers.find((member) => member.id === adminMember.id);
-
-      adminData.push({
-        id: adminMember.id,
-        email: auth0User.email,
-        last_active_date: adminMember.updated_at,
-        first_name: teamToAdmin?.first_name,
-        last_name: teamToAdmin?.last_name,
-        created_at: teamToAdmin?.created_at,
-        morning_routines_streak: userDetail?.morning_routines_streak,
-        evening_routines_streak: userDetail?.evening_routines_streak,
-        focus_modes_streak: userDetail?.focus_modes_streak,
-        last90DaysDailyStats,
-        invitation_status: teamToMemberInfo?.invitation_status ?? null,
-        invitation_sent_at: teamToMemberInfo?.invitation_sent_at ?? null,
-        invitation_send_count: teamToMemberInfo?.invitation_send_count ?? null,
-        invitation_responded_at: teamToMemberInfo?.invitation_responded_at ?? null,
-      });
-    });
-
-    return { members: membersData, admin: adminData };
+    return { members: membersData, admins: admins.map((admin) => admin.id) };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {
@@ -658,7 +609,7 @@ export class TeamManagementService {
       if (!auth0User.email) throw new BadRequestException(hasInvalidEmailMsg);
 
       const teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, member_id: user_id },
+        where: { team_id, member_id: user_id, email },
       });
       if (!teamToMember) {
         throw new NotFoundException('Invitation not found for this team and email.');
@@ -824,7 +775,7 @@ export class TeamManagementService {
       });
     } else if (email) {
       teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, first_name, last_name },
+        where: { team_id, email },
       });
     }
 
@@ -841,6 +792,7 @@ export class TeamManagementService {
         member_expiry_date,
         invitation_send_count: 1,
         invitation_status,
+        email,
       });
       await this.teamToMemberRepository.orm.save(teamToMember);
     }

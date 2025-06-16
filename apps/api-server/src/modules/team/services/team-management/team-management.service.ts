@@ -375,7 +375,7 @@ export class TeamManagementService {
         : 0;
 
       membersData.push({
-        id: member.id,
+        id: member.member_id,
         email: member.email,
         last_active_date: member?.updated_at,
         first_name: member?.first_name,
@@ -396,7 +396,7 @@ export class TeamManagementService {
       });
     });
 
-    return { members: membersData, admins: admins.map((admin) => admin.id) };
+    return { members: membersData, admins: admins.map((admin) => admin.admin_id) };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {

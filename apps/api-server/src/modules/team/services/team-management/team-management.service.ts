@@ -820,9 +820,10 @@ export class TeamManagementService {
         message: 'Granting team membership',
         data: { team, teamSize, memberId },
       });
-      await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
-
-      await this.syncTeamSizeWithSubscription(team, teamSize + 1);
+      await Promise.allSettled([
+        this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member),
+        this.syncTeamSizeWithSubscription(team, teamSize + 1),
+      ]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

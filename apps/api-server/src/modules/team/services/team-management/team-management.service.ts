@@ -725,21 +725,18 @@ export class TeamManagementService {
     last_name: string,
     member_expiry_date?: Date,
   ): Promise<TeamToMember> {
-    let teamToMember: TeamToMember | undefined;
+    let teamToMember: TeamToMember;
     if (member_id) {
       teamToMember = await this.teamToMemberRepository.orm.findOne({
         where: { team_id, member_id },
       });
     } else if (email) {
-      teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, email },
-      });
+      const members = await this.teamToMemberRepository.orm.find({ where: { team_id } });
+      teamToMember = members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
     }
-
     if (teamToMember) {
-      return;
+      return teamToMember;
     }
-
     teamToMember = this.teamToMemberRepository.orm.create({
       team_id,
       member_id: member_id || null,
@@ -749,6 +746,7 @@ export class TeamManagementService {
       email,
     });
     await this.teamToMemberRepository.orm.save(teamToMember);
+
     return teamToMember;
   }
 

@@ -62,7 +62,7 @@
     "@sentry/node": "^7.22.0",
     "@types/html-to-text": "^9.0.0",
     "api": "^6.1.2",
-    "auth0": "^4.2.0",
+    "auth0": "^4.25.0",
     "axios": "^1.7.5",
     "axios-retry": "^3.6.0",
     "bull": "^4.10.2",

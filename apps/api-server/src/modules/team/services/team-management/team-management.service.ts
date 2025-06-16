@@ -646,7 +646,7 @@ export class TeamManagementService {
 
       const team = await this.getTeamWithCheck(dto.team_id, adminId);
 
-      await this.ensureTeamMemberRecord(
+      const member = await this.ensureTeamMemberRecord(
         team.id,
         userId,
         memberEmail,
@@ -655,16 +655,7 @@ export class TeamManagementService {
         dto.member_expiry_date,
       );
 
-      const inviteUrl = await this.generateInviteUrl(
-        dto,
-        team,
-        memberEmail,
-        memberFirstName,
-        memberLastName,
-        adminId,
-        userId,
-        origin,
-      );
+      const inviteUrl = await this.generateInviteUrl(dto, team.name, member, adminId, origin);
 
       let invitationStatus = InvitationStatus.PENDING;
       try {
@@ -674,15 +665,7 @@ export class TeamManagementService {
         this.sentryService.instance().captureException(error, { level: 'error' });
       }
 
-      await this.updateInvitationTracking(
-        team.id,
-        userId,
-        memberEmail,
-        memberFirstName,
-        memberLastName,
-        invitationStatus,
-        dto.member_expiry_date,
-      );
+      await this.updateInvitationTracking(member, invitationStatus);
 
       return inviteUrl;
     } catch (error) {
@@ -715,7 +698,7 @@ export class TeamManagementService {
     return { memberEmail, memberFirstName, memberLastName, userId };
   }
 
-  private async getTeamWithCheck(team_id: string, adminId: string): Promise<any> {
+  private async getTeamWithCheck(team_id: string, adminId: string): Promise<Team> {
     const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
     const { team_size_limit, team_size, payment_type } = team;
     if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
@@ -733,7 +716,7 @@ export class TeamManagementService {
     first_name: string,
     last_name: string,
     member_expiry_date?: Date,
-  ): Promise<void> {
+  ): Promise<TeamToMember> {
     let teamToMember: TeamToMember | undefined;
     if (member_id) {
       teamToMember = await this.teamToMemberRepository.orm.findOne({
@@ -741,7 +724,7 @@ export class TeamManagementService {
       });
     } else if (email) {
       teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, first_name, last_name },
+        where: { team_id, email },
       });
     }
 
@@ -755,70 +738,40 @@ export class TeamManagementService {
       first_name,
       last_name,
       member_expiry_date,
+      email,
     });
     await this.teamToMemberRepository.orm.save(teamToMember);
+    return teamToMember;
   }
 
   private async updateInvitationTracking(
-    team_id: string,
-    member_id: string | undefined,
-    email: string,
-    first_name: string,
-    last_name: string,
-    invitation_status: InvitationStatus,
-    member_expiry_date?: Date,
+    teamToMember: TeamToMember,
+    invitationStatus: InvitationStatus,
   ): Promise<void> {
-    let teamToMember: TeamToMember | undefined;
-    if (member_id) {
-      teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, member_id },
-      });
-    } else if (email) {
-      teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, email },
-      });
-    }
-
-    if (teamToMember) {
-      teamToMember.invitation_send_count = (teamToMember.invitation_send_count || 0) + 1;
-      teamToMember.invitation_status = invitation_status;
-      await this.teamToMemberRepository.orm.save(teamToMember);
-    } else {
-      teamToMember = this.teamToMemberRepository.orm.create({
-        team_id,
-        member_id: member_id || null,
-        first_name,
-        last_name,
-        member_expiry_date,
-        invitation_send_count: 1,
-        invitation_status,
-        email,
-      });
-      await this.teamToMemberRepository.orm.save(teamToMember);
-    }
+    const member = teamToMember;
+    member.invitation_send_count = (teamToMember.invitation_send_count || 0) + 1;
+    member.invitation_status = invitationStatus;
+    await this.teamToMemberRepository.orm.save(member);
   }
 
   private async generateInviteUrl(
     dto: InviteTeamMemberDto,
-    team: any,
-    memberEmail: string,
-    memberFirstName: string,
-    memberLastName: string,
+    team_name: string,
+    member: TeamToMember,
     adminId: string,
-    userId: string,
     origin?: string,
   ): Promise<string> {
     const payload = new MemberInvitationPayload({
       admin_id: adminId,
-      email: memberEmail,
+      email: member.email,
       team_id: dto.team_id,
-      first_name: memberFirstName,
-      last_name: memberLastName,
+      first_name: member.first_name,
+      last_name: member.last_name,
       member_expiry_date: dto.member_expiry_date,
       is_admin: dto.is_admin,
       is_member: dto.is_member,
-      team_name: team?.name ?? TEAM_A,
-      needs_registration: !userId,
+      team_name: team_name ?? TEAM_A,
+      needs_registration: !member.member_id,
     });
     const secretKey = this.configService.get('tokens.secret');
     const token = await this.jwtService.asyncSign({ ...payload }, secretKey);

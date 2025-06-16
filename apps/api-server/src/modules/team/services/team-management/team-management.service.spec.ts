@@ -289,7 +289,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
         });
       } catch (error) {
         exception = error;
@@ -315,7 +314,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           user_id: userDummy.id,
         });
       } catch (error) {
@@ -343,7 +341,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           user_id: userDummy.id,
         });
       } catch (error) {
@@ -370,7 +367,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
         });
       } catch (error) {
         exception = error;
@@ -391,7 +387,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(JwtServiceMock.asyncSign).toBeCalledWith(
@@ -403,7 +398,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           team_name: TeamWithMembersDummy.name,
           needs_registration: true,
         },
@@ -425,7 +419,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
@@ -456,7 +449,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
@@ -797,7 +789,7 @@ describe('TeamManagementService', () => {
 
       const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
 
-      expect(response.admin).toHaveLength(1);
+      expect(response.admins).toHaveLength(1);
       expect(response.members).toHaveLength(2);
     });
   });

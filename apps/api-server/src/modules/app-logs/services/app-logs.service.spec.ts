@@ -13,7 +13,7 @@ import {
 } from '../../../../test/mocks/index';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AppLogsService } from './app-logs.service';
-import { dummyNotifyLogsUploadSuccessDto } from '../../../../test/dummies';
+import { auth0UserDummy, dummyNotifyLogsUploadSuccessDto, userDummy } from '../../../../test/dummies';
 
 jest.mock('axios');
 
@@ -56,12 +56,19 @@ describe('AppLogsService', () => {
       const expectedUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const expectedBody = {
         channel: process.env.ZOHO_CLIQ_CUSTOMER_FEEDBACK_CHANNEL,
-        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${dummyNotifyLogsUploadSuccessDto.app_platform} \n\nversion: ${dummyNotifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${dummyNotifyLogsUploadSuccessDto.feedback_message}  \n\nuploaded_file_url: ${dummyNotifyLogsUploadSuccessDto.uploaded_file_url}\`\`\``,
+        message: `*Logs uploaded successfully*\n\n\`\`\`platform: ${dummyNotifyLogsUploadSuccessDto.app_platform} \n\nversion: ${dummyNotifyLogsUploadSuccessDto.app_version} \n\nfeedback_message: ${dummyNotifyLogsUploadSuccessDto.feedback_message}  \n\ndownload_url: log.txt\n \`\`\``,
       };
 
       (axios.post as jest.Mock).mockResolvedValue({ status: 200 });
 
-      await appLogsService.notifyLogsUploadSuccess(dummyNotifyLogsUploadSuccessDto);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('log.txt');
+
+      await appLogsService.notifyLogsUploadSuccess(
+        dummyNotifyLogsUploadSuccessDto,
+        '3a4f0bb1-5313-49da-9ae6-cc28e864763f',
+      );
 
       expect(axios.post).toHaveBeenCalledWith(expect.stringContaining(expectedUrl), expectedBody);
     });
@@ -70,7 +77,10 @@ describe('AppLogsService', () => {
       let error;
       try {
         (axios.post as jest.Mock).mockRejectedValue('Server Error');
-        await appLogsService.notifyLogsUploadSuccess(dummyNotifyLogsUploadSuccessDto);
+        await appLogsService.notifyLogsUploadSuccess(
+          dummyNotifyLogsUploadSuccessDto,
+          '9884b0af-dc9f-4207-964e-e4db537a2234',
+        );
       } catch (err) {
         error = err;
       }

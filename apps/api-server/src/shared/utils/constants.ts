@@ -117,8 +117,9 @@ export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
-export const GPT_4O = 'gpt-4o';
-export const GPT_4O_MINI = 'gpt-4o-mini';
+export const GPT_4_1_MINI = 'gpt-4.1-mini';
+
+export const GPT_4_1 = 'gpt-4.1';
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
@@ -129,6 +130,9 @@ export enum BullQueues {
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
   SYNC_TASKS = 'sync-tasks',
+  USAGE_IMAGE = 'usage-image',
+  HEALTH_METRICS_SYNC = 'health-metrics-sync',
+  USAGE_DATA = 'usage-data',
 }
 
 export enum BullWorkers {
@@ -142,6 +146,9 @@ export enum BullWorkers {
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+  PROCESS_USAGE_IMAGE = 'process-usage-image',
+  SYNC_HEALTH_METRICS = 'sync-health-metrics',
+  SYNC_USAGE_DATA = 'sync-usage-data',
 }
 
 export const createActivityFunction = {
@@ -270,3 +277,4 @@ export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';
 export const ONE_WEEK_IN_SECONDS = 604800;
 export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
+export const S3_BUCKET_USAGE_IMAGES = 'activity-images';

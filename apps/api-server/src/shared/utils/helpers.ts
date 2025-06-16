@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
+import { NotifyLogsUploadSuccessDto } from '../../modules/app-logs/dto/notify-logs-upload-success.dto';
 
 // eslint-disable-next-line
 const dotenv = require('dotenv');
@@ -186,4 +187,72 @@ export const callPromiseWithTimeout = async <T>(apiCall: Promise<T>, timeoutMs: 
     setTimeout(() => reject(new Error('Request timed out')), timeoutMs),
   );
   return Promise.race([apiCall, timeoutPromise]);
+};
+
+export const getR2FileNameFromUrl = (url: string): string => {
+  if (!url) return url;
+
+  try {
+    const decodedUrl = decodeURIComponent(url);
+    const { pathname } = new URL(decodedUrl);
+    return pathname.substring(pathname.lastIndexOf('/') + 1);
+  } catch (error) {
+    return url;
+  }
+};
+
+export const safeDecodeURIComponent = (str: string): string => {
+  if (!str) return str;
+
+  try {
+    return decodeURIComponent(str);
+  } catch (error) {
+    return str; // Return original string if decoding fails
+  }
+};
+
+export const escapeMarkdownForCliq = (text: string): string => {
+  if (!text) return text;
+
+  const decoded = safeDecodeURIComponent(text);
+
+  return decoded
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/`/g, '\\`') // Escape backticks
+    .replace(/\*/g, '\\*') // Escape asterisks
+    .replace(/_/g, '\\_'); // Escape underscores
+};
+
+export const constructLogUploadEmailBody = (
+  notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto,
+  downloadUrl: string,
+  userId: string,
+): string => {
+  const { feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+
+  const decodedFeedback = safeDecodeURIComponent(feedback_message || '');
+  const escapedFeedbackMessage = decodedFeedback
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  return `
+    <p>Hi Focus Bear support team,</p>
+
+    <p>A user has submitted feedback along with app usage logs. Please review the details below:</p>
+
+    <p><strong>User ID:</strong> ${userId}</p>
+    <p><strong>Feedback:</strong></p>
+    <blockquote>${escapedFeedbackMessage}</blockquote>
+
+    <p><strong>App platform:</strong> ${app_platform}</p>
+    <p><strong>App version:</strong> ${app_version}</p>
+
+    <p><strong>Logs download link:</strong><br/>
+    <a href="${downloadUrl}">View Uploaded Logs</a></p>
+
+    <p>— Automated Notification System</p>
+  `;
 };

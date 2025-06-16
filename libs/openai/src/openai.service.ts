@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -44,6 +46,7 @@ export class OpenAIService {
     [OpenAIKeyType.USERNAME_VALIDATION]?: OpenAI;
     [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
+    [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -573,7 +576,10 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.USERNAME_VALIDATION,
-      OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      {
+        ...(OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+        response_format: { type: 'json_object' },
+      },
     );
 
     const newMessage = completions.choices[0].message;
@@ -746,5 +752,58 @@ export class OpenAIService {
 
   private wrapUserInput(input: string): string {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
+  }
+
+  async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
+    try {
+      const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
+      const response = await openai.chat.completions.create({
+        ...(OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+        messages,
+      });
+      return response;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async processUsageImage(imageBuffer: string): Promise<
+    Record<
+      string,
+      [
+        {
+          sourceName: string;
+          minutesUsedTotal: number;
+          category: string;
+        },
+      ]
+    >
+  > {
+    try {
+      const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+              },
+            },
+          ],
+        },
+      ];
+
+      const response = await this.analyzeImage(messages);
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to process usage image');
+    }
   }
 }

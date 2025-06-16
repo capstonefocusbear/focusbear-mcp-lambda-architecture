@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { GPT_4O, GPT_4O_MINI } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4_1, GPT_4_1_MINI } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
@@ -26,10 +26,13 @@ export enum OpenAIKeyType {
   USERNAME_VALIDATION = 'usernameValidation',
   SUBTASKS_GENERATION = 'subtasksGeneration',
   BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
+  SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
+export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
+
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
   CRITICAL: [
@@ -76,40 +79,40 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
   convertBrainDumpToTasks: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
 
   createSubtasks: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
 
   checkUserName: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
   checkURL: {
-    model: GPT_4O_MINI,
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
 
   chatReply: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0.7,
     n: 1,
     stream: true,
@@ -117,10 +120,18 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
 
   createMotivation: {
-    model: GPT_4O,
+    model: GPT_4_1_MINI,
     temperature: 0.7,
     n: 1,
     messages: null,
     stream: true,
+  },
+
+  analyzeImage: {
+    model: GPT_4_1,
+    messages: null,
+    response_format: {
+      type: 'json_object',
+    },
   },
 };

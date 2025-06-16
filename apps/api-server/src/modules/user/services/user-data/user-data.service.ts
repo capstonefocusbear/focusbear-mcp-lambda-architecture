@@ -78,11 +78,7 @@ export class UserDataService {
 
       const revenueCatUser = await this.revenueCatService.getSubscriberFromRevenueCat(user_id);
       if (revenueCatUser) {
-        const entitlements = Object.values(revenueCatUser.subscriber?.entitlements ?? []);
-        const entitlementPromises = entitlements.map((entitlement: { product_identifier: string }) => {
-          return this.revenueCatService.revokeUserEntitlementFromRevenueCat(user_id, entitlement.product_identifier);
-        });
-        promises.push([...entitlementPromises, this.revenueCatService.deleteUserFromRevenueCat(user_id)]);
+        promises.push(this.revenueCatService.deleteUserFromRevenueCat(user_id));
       }
 
       if (can_contact) {
@@ -113,12 +109,8 @@ export class UserDataService {
 
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {
-        const subscriptions = await this.stripeService.subscriptions.list({ customer: user.stripe_customer_id });
         const deleteStripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
-        const subscriptionPromises = (subscriptions?.data ?? [])?.map((subscription) => {
-          return this.stripeService.cancelSubscription(subscription.id);
-        });
-        promises.push([...subscriptionPromises, deleteStripePromise]);
+        promises.push(deleteStripePromise);
       }
 
       if (auth0user?.email) {

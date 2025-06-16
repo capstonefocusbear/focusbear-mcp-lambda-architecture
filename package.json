@@ -26,8 +26,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/api-server/test/jest-e2e.json",
-    "test:prompts": "promptfoo eval -c ./apps/api-server/test/prompt-testing/url-safety/config.yaml",
-    "test:prompts:watch": "promptfoo eval --watch ./apps/api-server/test/prompt-testing/url-safety/config.yaml",
+    "test:prompts": "promptfoo eval -c ./apps/api-server/test/prompt-testing/*/config.yaml",
+    "test:prompts:watch": "for f in ./apps/api-server/test/prompt-testing/*/config.yaml; do promptfoo eval --watch -c \"$f\"; done",
     "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js -d apps/api-server/ormconfig.ts",
     "migration:generate": "npm run typeorm migration:generate",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
@@ -47,7 +47,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@nestjs/bull": "^11.0.2",
     "@nestjs/bullmq": "^11.0.2",
-    "@nestjs/common": "^11.0.12",
+    "@nestjs/common": "^11.0.19",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.12",
     "@nestjs/jwt": "^11.0.0",
@@ -63,7 +63,6 @@
     "@types/html-to-text": "^9.0.0",
     "api": "^6.1.2",
     "auth0": "^4.2.0",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.5",
     "axios-retry": "^3.6.0",
     "bull": "^4.10.2",
@@ -86,7 +85,7 @@
     "luxon": "^3.1.0",
     "nestjs-i18n": "^10.5.1",
     "nestjs-pino": "^4.2.0",
-    "openai": "^4.51.0",
+    "openai": "^5.1.1",
     "pg": "^8.7.1",
     "pino-http": "^8.2.0",
     "pusher": "^5.1.0-beta",
@@ -148,7 +147,8 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.1"
+    "undici": "6.21.3",
+    "brace-expansion": "^2.0.2"
   },
   "resolutions": {
     "auth0": {
@@ -161,7 +161,8 @@
     "ws": "^8.17.1",
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
-    "undici": "6.21.1"
+    "undici": "6.21.3",
+    "brace-expansion": "^2.0.2"
   },
   "husky": {
     "hooks": {

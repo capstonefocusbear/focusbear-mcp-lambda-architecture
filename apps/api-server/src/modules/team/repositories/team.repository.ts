@@ -20,7 +20,7 @@ export class TeamRepository extends BaseRepository<Team> {
     super(connection, Team);
   }
 
-  async findTeamWithMembersIncludeUnregisteredMembers(
+  async getTeamIncludingUnregistered(
     teamId: string,
     adminId: string,
   ): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[] }> {

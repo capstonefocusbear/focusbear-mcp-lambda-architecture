@@ -348,7 +348,7 @@ export class TeamManagementService {
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
-    const team = await this.teamRepository.findTeamWithMembersIncludeUnregisteredMembers(teamId, adminId);
+    const team = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
     const { members, admins } = team;
     const membersData = [];
 

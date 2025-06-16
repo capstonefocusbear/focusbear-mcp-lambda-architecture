@@ -592,8 +592,8 @@ export class TeamManagementService {
 
   async acceptInvitation(token: string, user_id: string) {
     try {
-      const tokenPayload = await this.jwtService.asyncVerify(token);
-      const { admin_id, email, team_id, first_name, last_name, member_expiry_date, is_admin, is_member } = tokenPayload;
+      const tokenPayload: MemberInvitationPayload = await this.jwtService.asyncVerify(token);
+      const { admin_id, email, team_id, is_admin } = tokenPayload;
 
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`The User with id: ${user_id} does not exist!`);
@@ -608,8 +608,13 @@ export class TeamManagementService {
       const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${auth0User.email}.`;
       if (!auth0User.email) throw new BadRequestException(hasInvalidEmailMsg);
 
+      const isAdminAuthorizedUrl = await this.teamToAdminRepository.orm.find({ where: { team_id, admin_id } });
+      if (!isAdminAuthorizedUrl) {
+        throw new BadRequestException('The invitation URL is invalid or has been altered.');
+      }
+
       const teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, member_id: user_id, email },
+        where: { team_id, email },
       });
       if (!teamToMember) {
         throw new NotFoundException('Invitation not found for this team and email.');
@@ -621,18 +626,21 @@ export class TeamManagementService {
         throw new BadRequestException('This invitation is no longer valid.');
       }
 
-      await this.teamToMemberRepository.orm.save({
+      const { team, members } = await this.validateMembership(user_id, team_id, admin_id);
+
+      const member = await this.teamToMemberRepository.orm.save({
         ...teamToMember,
         invitation_status: InvitationStatus.ACCEPTED,
         invitation_responded_at: new Date(),
         member_id: user_id,
       });
 
-      if (is_member) {
-        await this.addTeamMember(user, admin_id, team_id, first_name, last_name, member_expiry_date);
-      }
-      if (is_admin) {
-        await this.assignNewMemberAsAdmin(user_id, team_id, first_name, last_name);
+      if (member.invitation_status === InvitationStatus.ACCEPTED) {
+        let promises = [this.grantMembershipAndUpdateTeam(team, members.length, user_id)];
+        if (is_admin) {
+          promises = [...promises, this.assignMemberAsAdmin(user_id, team_id)];
+        }
+        await Promise.allSettled(promises);
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -769,7 +777,6 @@ export class TeamManagementService {
       last_name: member.last_name,
       member_expiry_date: dto.member_expiry_date,
       is_admin: dto.is_admin,
-      is_member: dto.is_member,
       team_name: team_name ?? TEAM_A,
       needs_registration: !member.member_id,
     });
@@ -803,5 +810,70 @@ export class TeamManagementService {
       dynamicTemplateData: { invite_url: inviteUrl, team_name: teamName },
       bcc,
     });
+  }
+
+  private async grantMembershipAndUpdateTeam(team: Team, teamSize: number, memberId: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'service',
+        level: 'debug',
+        message: 'Granting team membership',
+        data: { team, teamSize, memberId },
+      });
+      await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
+
+      await this.syncTeamSizeWithSubscription(team, teamSize + 1);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  private async assignMemberAsAdmin(member_id: string, teamId: string) {
+    const teamAdmins = await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } });
+    const isAlreadyAdminOfTeam = teamAdmins.some((admin) => admin.admin_id === member_id);
+
+    if (isAlreadyAdminOfTeam) {
+      throw new BadRequestException(
+        `User with ID: ${member_id} is already an admin member of team with ID: ${teamId}!`,
+      );
+    }
+    const connectedAdminRecord = new TeamToAdmin({
+      team_id: teamId,
+      admin_id: member_id,
+    });
+    await this.teamToAdminRepository.orm.save(connectedAdminRecord);
+  }
+
+  private async validateMembership(member_id: string, teamId: string, adminId?: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating membership',
+      data: {
+        member_id,
+        teamId,
+        adminId,
+      },
+    });
+
+    const [team, members] = await Promise.all([
+      this.teamRepository.orm.findOne({ where: { id: teamId } }),
+      this.teamToMemberRepository.orm.find({ where: { team_id: teamId } }),
+    ]);
+
+    const { team_size, team_size_limit, payment_type } = team;
+    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+      throw new BadRequestException(
+        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
+      );
+    }
+
+    const foundMember = members.some((member) => member.member_id === member_id);
+    if (foundMember) {
+      throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
+    }
+
+    return { team, members };
   }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import { IsArray, IsNumber, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TrialResultDto } from './trial-result.dto';

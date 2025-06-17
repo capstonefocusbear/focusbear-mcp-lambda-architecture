@@ -612,10 +612,7 @@ export class TeamManagementService {
       if (!isAdminAuthorizedUrl) {
         throw new BadRequestException('The invitation URL is invalid or has been altered.');
       }
-
-      const teamToMember = await this.teamToMemberRepository.orm.findOne({
-        where: { team_id, email },
-      });
+      const teamToMember = await this.findMemberByEmail(team_id, email);
       if (!teamToMember) {
         throw new NotFoundException('Invitation not found for this team and email.');
       }
@@ -731,8 +728,7 @@ export class TeamManagementService {
         where: { team_id, member_id },
       });
     } else if (email) {
-      const members = await this.teamToMemberRepository.orm.find({ where: { team_id } });
-      teamToMember = members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
+      teamToMember = await this.findMemberByEmail(team_id, email);
     }
     if (teamToMember) {
       return teamToMember;
@@ -874,5 +870,10 @@ export class TeamManagementService {
     }
 
     return { team, members };
+  }
+
+  private async findMemberByEmail(team_id: string, email: string): Promise<TeamToMember | undefined> {
+    const members = await this.teamToMemberRepository.orm.find({ where: { team_id } });
+    return members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
   }
 }

@@ -1,5 +1,7 @@
+/* eslint-disable max-classes-per-file */
 import { IsArray, IsNumber, ValidateNested } from 'class-validator';
-import { TrialResult } from '../../entities/flanker-test.entity';
+import { Type } from 'class-transformer';
+import { TrialResultDto } from './trial-result.dto';
 
 export class SaveFlankerTestResultDto {
   @IsNumber()
@@ -25,5 +27,6 @@ export class SaveFlankerTestResultDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  trialResults: TrialResult[];
+  @Type(() => TrialResultDto)
+  trialResults: TrialResultDto[];
 }

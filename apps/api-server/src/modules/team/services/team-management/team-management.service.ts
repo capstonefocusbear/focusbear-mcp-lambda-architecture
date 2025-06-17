@@ -56,7 +56,7 @@ export class TeamManagementService {
     teamId: string,
     firstName: string,
     lastName: string,
-    expiryDate?: Date,
+    email: string,
   ): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -70,53 +70,19 @@ export class TeamManagementService {
       });
 
       const memberId = user.id;
-      const { members, team } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+      const { members, team } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
 
-      this.validateTeamMembership(members, {
-        member_id: memberId,
-        owner_id: adminId,
-        teamId,
-        team,
-      });
+      await this.validateMembership(memberId, teamId, team, adminId);
 
-      // Save user as part of team
-      const connectedMemberRecord = new TeamToMember({
-        member_id: memberId,
-        team_id: teamId,
-        first_name: firstName,
-        last_name: lastName,
-        member_expiry_date: expiryDate ?? (team.expires_date as Date),
-      });
-      await this.teamToMemberRepository.orm.save(connectedMemberRecord);
-      await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
-      await this.syncTeamSizeWithSubscription(team, ++members.length);
+      await Promise.allSettled([
+        this.ensureTeamMemberRecord(teamId, memberId, email, firstName, lastName, team.expires_date as Date, true),
+        this.grantMembershipAndUpdateTeam(team, members.length, memberId),
+      ]);
+
       return user;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
-    }
-  }
-
-  private validateTeamMembership(members: User[], { member_id, owner_id, teamId, team }): void | never {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Validating team membership',
-      data: {
-        member_id,
-        owner_id,
-      },
-    });
-    const teamMemberIds = members.map((member) => member.id);
-    const isUserAlreadyInTeam = teamMemberIds.includes(member_id);
-    if (isUserAlreadyInTeam) {
-      throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
-    }
-    const { team_size, team_size_limit, payment_type } = team;
-    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
-      throw new BadRequestException(
-        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
-      );
     }
   }
 
@@ -348,8 +314,7 @@ export class TeamManagementService {
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
-    const team = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
-    const { members, admins } = team;
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
     const membersData = [];
 
     // Get all registered member IDs
@@ -550,8 +515,13 @@ export class TeamManagementService {
     return { email, given_name, family_name };
   }
 
-  async addTeamMemberManually(adminId: string, { team_id, user_id, member_expiry_date }: AddTeamManuallyDto) {
+  async addTeamMemberManually(adminId: string, { team_id, user_id }: AddTeamManuallyDto) {
     try {
+      const team = await this.teamRepository.orm.findOneBy({ id: team_id });
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
+
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) {
         throw new NotFoundException(`The user with id: ${user_id} doesn't exists!`);
@@ -567,7 +537,7 @@ export class TeamManagementService {
       const first_name = auth0User.given_name;
       const last_name = auth0User.family_name;
 
-      return await this.addTeamMember(user, adminId, team_id, first_name, last_name, member_expiry_date);
+      return await this.addTeamMember(user, adminId, team_id, first_name, last_name, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -595,7 +565,13 @@ export class TeamManagementService {
       const tokenPayload: MemberInvitationPayload = await this.jwtService.asyncVerify(token);
       const { admin_id, email, team_id, is_admin } = tokenPayload;
 
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      const [team, user] = await Promise.all([
+        this.teamRepository.orm.findOneBy({ id: team_id }),
+        this.userRepository.orm.findOneBy({ id: user_id }),
+      ]);
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
       if (!user) throw new NotFoundException(`The User with id: ${user_id} does not exist!`);
 
       const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
@@ -623,7 +599,7 @@ export class TeamManagementService {
         throw new BadRequestException('This invitation is no longer valid.');
       }
 
-      const { team, members } = await this.validateMembership(user_id, team_id, admin_id);
+      const members = await this.validateMembership(user_id, team_id, team, admin_id);
 
       const member = await this.teamToMemberRepository.orm.save({
         ...teamToMember,
@@ -645,22 +621,27 @@ export class TeamManagementService {
     }
   }
 
-  async inviteTeamMember(adminId: string, dto: InviteTeamMemberDto, origin?: string): Promise<string> {
+  async inviteTeamMember(adminId: string, inviteTeamMemberDto: InviteTeamMemberDto, origin?: string): Promise<string> {
     try {
-      const { memberEmail, memberFirstName, memberLastName, userId } = await this.resolveMemberDetails(dto);
-
-      const team = await this.getTeamWithCheck(dto.team_id, adminId);
+      const { team_id, member_expiry_date } = inviteTeamMemberDto;
+      const team = await this.teamRepository.orm.findOneBy({ id: team_id });
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
+      const { memberEmail, memberFirstName, memberLastName, userId } = await this.resolveMemberDetails(
+        inviteTeamMemberDto,
+      );
 
       const member = await this.ensureTeamMemberRecord(
-        team.id,
+        team_id,
         userId,
         memberEmail,
         memberFirstName,
         memberLastName,
-        dto.member_expiry_date,
+        member_expiry_date,
       );
 
-      const inviteUrl = await this.generateInviteUrl(dto, team.name, member, adminId, origin);
+      const inviteUrl = await this.generateInviteUrl(inviteTeamMemberDto, team.name, member, adminId, origin);
 
       let invitationStatus = InvitationStatus.PENDING;
       try {
@@ -703,17 +684,6 @@ export class TeamManagementService {
     return { memberEmail, memberFirstName, memberLastName, userId };
   }
 
-  private async getTeamWithCheck(team_id: string, adminId: string): Promise<Team> {
-    const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
-    const { team_size_limit, team_size, payment_type } = team;
-    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
-      throw new BadRequestException(
-        `Unable to invite more members to team with ID: ${team.id}, maximum capacity reached!`,
-      );
-    }
-    return team;
-  }
-
   private async ensureTeamMemberRecord(
     team_id: string,
     member_id: string | undefined,
@@ -721,6 +691,7 @@ export class TeamManagementService {
     first_name: string,
     last_name: string,
     member_expiry_date?: Date,
+    isManuallyAdded?: boolean,
   ): Promise<TeamToMember> {
     let teamToMember: TeamToMember;
     if (member_id) {
@@ -733,14 +704,24 @@ export class TeamManagementService {
     if (teamToMember) {
       return teamToMember;
     }
-    teamToMember = this.teamToMemberRepository.orm.create({
+    const member = {
       team_id,
       member_id: member_id || null,
       first_name,
       last_name,
       member_expiry_date,
       email,
-    });
+    };
+    const memberInfo = isManuallyAdded
+      ? {
+          ...member,
+          invitation_status: InvitationStatus.ACCEPTED,
+          invitation_responded_at: new Date(),
+          invitation_sent_at: new Date(),
+          invitation_send_count: 1,
+        }
+      : member;
+    teamToMember = this.teamToMemberRepository.orm.create(memberInfo);
     await this.teamToMemberRepository.orm.save(teamToMember);
 
     return teamToMember;
@@ -840,7 +821,7 @@ export class TeamManagementService {
     await this.teamToAdminRepository.orm.save(connectedAdminRecord);
   }
 
-  private async validateMembership(member_id: string, teamId: string, adminId?: string) {
+  private async validateMembership(member_id: string, teamId: string, team: Team, adminId?: string) {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -852,10 +833,7 @@ export class TeamManagementService {
       },
     });
 
-    const [team, members] = await Promise.all([
-      this.teamRepository.orm.findOne({ where: { id: teamId } }),
-      this.teamToMemberRepository.orm.find({ where: { team_id: teamId } }),
-    ]);
+    const members = await this.teamToMemberRepository.orm.find({ where: { team_id: teamId } });
 
     const { team_size, team_size_limit, payment_type } = team;
     if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
@@ -869,7 +847,7 @@ export class TeamManagementService {
       throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
     }
 
-    return { team, members };
+    return members;
   }
 
   private async findMemberByEmail(team_id: string, email: string): Promise<TeamToMember | undefined> {

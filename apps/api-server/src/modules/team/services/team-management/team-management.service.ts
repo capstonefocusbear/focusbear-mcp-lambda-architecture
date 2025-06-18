@@ -200,26 +200,6 @@ export class TeamManagementService {
     }
   }
 
-  async assignNewMemberAsAdmin(memberId: string, teamId: string, firstName: string, lastName: string) {
-    // check if user is already admin of team
-    const teamAdmins = await this.teamRepository.getTeamAdmins(teamId);
-    const adminUsersIds = teamAdmins.map((admin) => admin.id);
-    const isAlreadyAdminOfTeam = adminUsersIds.includes(memberId);
-    if (isAlreadyAdminOfTeam) {
-      throw new BadRequestException(`User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`);
-    }
-    const connectedAdminRecord = new TeamToAdmin({
-      team_id: teamId,
-      admin_id: memberId,
-      first_name: firstName,
-      last_name: lastName,
-    });
-    await Promise.all([
-      this.teamToAdminRepository.orm.save(connectedAdminRecord),
-      this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_admin),
-    ]);
-  }
-
   async assignExistingMemberAsAdmin(adminId: string, memberId: string, teamId: string) {
     const { admins } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
     const user = await this.userRepository.orm.findOne({ where: { id: memberId } });
@@ -770,7 +750,7 @@ export class TeamManagementService {
     teamName: string,
     adminId: string,
   ): Promise<void> {
-    let bcc = FOCUS_BEAR_EMAILS.SUPPORT;
+    let bcc = FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT;
 
     const userTeamOwner = await this.userRepository.orm.findOneBy({ id: adminId });
     if (userTeamOwner) {
@@ -780,7 +760,7 @@ export class TeamManagementService {
 
     await this.emailService.sendEmail({
       to: memberEmail,
-      from: FOCUS_BEAR_EMAILS.MARKETING,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
       templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
       dynamicTemplateData: { invite_url: inviteUrl, team_name: teamName },
       bcc,
@@ -805,7 +785,7 @@ export class TeamManagementService {
     }
   }
 
-  private async assignMemberAsAdmin(member_id: string, teamId: string) {
+  async assignMemberAsAdmin(member_id: string, teamId: string) {
     const teamAdmins = await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } });
     const isAlreadyAdminOfTeam = teamAdmins.some((admin) => admin.admin_id === member_id);
 

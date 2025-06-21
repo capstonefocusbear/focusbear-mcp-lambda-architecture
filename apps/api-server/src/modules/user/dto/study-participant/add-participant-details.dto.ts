@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean } from 'class-validator';
 
 export class AddParticipantDetailsDto {
   @IsString()
@@ -8,6 +8,16 @@ export class AddParticipantDetailsDto {
   @IsString()
   @IsNotEmpty()
   email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  phoneNumber: string;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  @IsOptional()
+  whatsappConsent: boolean;
 
   @IsObject()
   @IsOptional()

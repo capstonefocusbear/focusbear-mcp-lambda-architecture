@@ -57,6 +57,8 @@ export class StudyParticipantService {
     Object.assign(participant, {
       ...dto,
       participantCode,
+      phoneNumber: dto?.phoneNumber || '',
+      optedOut: !dto.whatsappConsent,
     });
 
     await this.studyParticipantRepository.save(participant);
@@ -163,5 +165,9 @@ export class StudyParticipantService {
 
   async saveFlankerTestResult(userId: string, result: SaveFlankerTestResultDto): Promise<void> {
     await this.flankerTestService.saveFlankerTestResult(userId, result);
+  }
+
+  async markEndOfStudyQuestionnaireCompleted(userId: string): Promise<void> {
+    await this.studyParticipantRepository.update({ userId }, { isEndOfStudyQuestionnaireCompleted: true });
   }
 }

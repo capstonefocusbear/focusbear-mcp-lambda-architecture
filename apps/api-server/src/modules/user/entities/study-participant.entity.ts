@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 
 export enum AppActivationStatus {
@@ -64,10 +64,4 @@ export class StudyParticipant extends BaseEntity {
 
   @Column({ name: 'opted_out', type: 'boolean', default: false })
   optedOut: boolean;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

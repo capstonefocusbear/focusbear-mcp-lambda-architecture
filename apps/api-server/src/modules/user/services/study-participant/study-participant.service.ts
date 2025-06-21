@@ -51,7 +51,6 @@ export class StudyParticipantService {
         participantCode = extractedCode;
       }
     }
-
     const participant = new StudyParticipant();
 
     Object.assign(participant, {

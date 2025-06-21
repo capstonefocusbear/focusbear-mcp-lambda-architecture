@@ -19,6 +19,22 @@ export class UserRepository extends BaseRepository<User> {
     super(connection, User);
   }
 
+  /**
+   * @param user - the user setting
+   * @param activitiesData
+   * @param logQuantityQuestions
+   * @param tutorials
+   * @param customRoutines
+   *
+   * 1: Update Custom routines - delete old custom routines and upsert new ones
+   * 2: Update User - update the user settings
+   * 3: Update Activity Sequences - delete old activity sequences and upsert new ones
+   * 4: Update Activities - delete old activities and upsert new ones
+   * 5: Update Log Quantity Questions - delete old log quantity questions and upsert new ones
+   * 6: Update Tutorials - delete old tutorials and upsert new ones
+   * 7: Delete old log quantity questions that aren't in the update data
+   * 8: Delete old tutorials that aren't in the update data
+   */
   async consistentlyUpdateUserSettings(
     { id, ...updateData }: User,
     activitiesData: DeserializedActivity[],
@@ -38,17 +54,41 @@ export class UserRepository extends BaseRepository<User> {
       });
 
       await queryRunner.manager.update(User, { id }, { ...updateData });
+
+      // Batch upsert activity sequences and collect activities for deletion
+      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
+      const allActivitiesToKeep = new Set<string>();
+      const activitiesToDeleteByType = new Map<string, string[]>();
+
+      // Collect all activity IDs to keep and group by sequence type for deletion
+      activitiesData.forEach(({ sequence, activities }) => {
+        const activityIds = activities.map((activity) => activity.id);
+        activityIds.forEach((activityId) => allActivitiesToKeep.add(activityId));
+
+        // Group activities to delete by sequence type
+        if (!activitiesToDeleteByType.has(sequence.type)) {
+          activitiesToDeleteByType.set(sequence.type, []);
+        }
+        const existingIds = activitiesToDeleteByType.get(sequence.type);
+        if (existingIds) {
+          existingIds.push(...activityIds);
+        }
+      });
+
+      // Batch upsert all sequences
+      await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
+
+      // Batch delete activities by type - use Promise.all to avoid await in loop
       await Promise.all(
-        activitiesData.map(async ({ sequence, activities }) => {
-          await queryRunner.manager.upsert(ActivitySequence, sequence, ['id']);
-          const activityIdsToKeep = activities.map((activity) => activity.id);
-          await queryRunner.manager.delete(Activity, {
+        Array.from(activitiesToDeleteByType.entries()).map(([sequenceType, activityIdsToKeep]) =>
+          queryRunner.manager.delete(Activity, {
             user_id: id,
             id: Not(In(activityIdsToKeep)),
-            type: sequence.type,
-          });
-        }),
+            type: sequenceType,
+          }),
+        ),
       );
+
       const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
       const parentsWithoutLinks = activitiesArray.filter(
         ({ parent_id, linked_activity_id }) => !parent_id && !linked_activity_id,
@@ -62,10 +102,16 @@ export class UserRepository extends BaseRepository<User> {
       const choicesWithLinks = activitiesArray.filter(
         ({ parent_id, linked_activity_id }) => !!parent_id && !!linked_activity_id,
       );
-      await queryRunner.manager.upsert(Activity, parentsWithoutLinks, ['id']);
-      await queryRunner.manager.upsert(Activity, parentsWithLinks, ['id']);
-      await queryRunner.manager.upsert(Activity, choicesWithoutLinks, ['id']);
-      await queryRunner.manager.upsert(Activity, choicesWithLinks, ['id']);
+      // Need to insert parent activities first, then choices activities due to foreign key relationships
+
+      // Combine parent activities and child activities into two batch operations
+      const allParentActivities = [...parentsWithoutLinks, ...parentsWithLinks];
+      const allChildActivities = [...choicesWithoutLinks, ...choicesWithLinks];
+
+      // Insert in order: parents first, then choices (to maintain foreign key integrity)
+      await queryRunner.manager.upsert(Activity, allParentActivities, ['id']);
+      await queryRunner.manager.upsert(Activity, allChildActivities, ['id']);
+
       // delete existing log quantity questions that aren't in the update data
       // and are linked to normal activities not activity templates
       const incomingQuestionIds = logQuantityQuestions
@@ -78,23 +124,17 @@ export class UserRepository extends BaseRepository<User> {
       });
       const tutorialActivityIdsToKeep = tutorials.map((tutorial) => tutorial.activity_id);
 
-      await Promise.all(
-        activitiesArray.map(async () => {
-          await queryRunner.manager.update(
-            Tutorial,
-            {
-              user_id: id,
-              activity_id: Not(In(tutorialActivityIdsToKeep)),
-            },
-            { activity_id: null },
-          );
-        }),
+      await queryRunner.manager.update(
+        Tutorial,
+        {
+          user_id: id,
+          activity_id: Not(In(tutorialActivityIdsToKeep)),
+        },
+        { activity_id: null },
       );
 
-      const questionsWithoutLinks = logQuantityQuestions.filter(({ linked_question_id }) => !linked_question_id);
-      const questionsWithLinks = logQuantityQuestions.filter(({ linked_question_id }) => !!linked_question_id);
-      await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithoutLinks, ['id']);
-      await queryRunner.manager.upsert(LogQuantityQuestion, questionsWithLinks, ['id']);
+      // Batch upsert all log quantity questions in a single operation
+      await queryRunner.manager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
       await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
 
       await queryRunner.commitTransaction();

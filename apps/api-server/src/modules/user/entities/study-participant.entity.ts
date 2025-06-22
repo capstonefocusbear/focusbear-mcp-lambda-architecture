@@ -53,6 +53,9 @@ export class StudyParticipant extends BaseEntity {
   @Column({ name: 'flanker_effect', type: 'float', nullable: true })
   flankerEffect: number;
 
+  @Column({ name: 'after_study_flanker_effect', type: 'float', nullable: true })
+  afterStudyFlankerEffect: number;
+
   @Column({
     name: 'phone_number',
     type: 'varchar',

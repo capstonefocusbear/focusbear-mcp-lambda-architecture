@@ -9,12 +9,14 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
   constructor(private readonly connection: Connection) {
     super(connection, AsyncTask);
   }
+
   async findByStatus(status: AsyncTaskStatus): Promise<AsyncTask[]> {
     return this.orm
       .createQueryBuilder('async_task')
       .where('async_task.status = :status', { status })
       .getMany();
   }
+
   async updateStatus(id: string, status: AsyncTaskStatus): Promise<AsyncTask> {
     await this.orm
       .createQueryBuilder()
@@ -24,6 +26,9 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
       .execute();
     return this.orm.findOneBy({ id });
   }
+
+  s;
+
   async findById(id: string): Promise<AsyncTask> {
     return this.orm.findOneBy({ id });
   }

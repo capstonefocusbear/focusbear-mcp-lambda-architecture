@@ -1,11 +1,11 @@
-import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsEmail } from 'class-validator';
 
 export class AddParticipantDetailsDto {
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @IsString()
+  @IsEmail()
   @IsNotEmpty()
   email: string;
 

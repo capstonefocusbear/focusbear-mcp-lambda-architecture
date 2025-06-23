@@ -27,8 +27,6 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
     return this.orm.findOneBy({ id });
   }
 
-  s;
-
   async findById(id: string): Promise<AsyncTask> {
     return this.orm.findOneBy({ id });
   }

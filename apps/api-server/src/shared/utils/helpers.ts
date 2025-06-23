@@ -99,17 +99,38 @@ export const isUUID = (str: string) => {
 
 const ENCRYPTION_KEY = process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY;
 
+// Replicate OpenSSL's EVP_BytesToKey function exactly as used by createCipher
+function evpBytesToKey(password: string, salt: Buffer = Buffer.alloc(0), keyLen = 32): Buffer {
+  const data = Buffer.concat([Buffer.from(password, 'utf8'), salt]);
+  let key = Buffer.alloc(0);
+
+  while (key.length < keyLen) {
+    const hash = crypto.createHash('md5');
+    hash.update(key.length > 0 ? Buffer.concat([key, data]) : data);
+    const digest = hash.digest();
+    key = Buffer.concat([key, digest]);
+  }
+
+  return key.subarray(0, keyLen);
+}
+
 export const FieldTransformer = {
   to: (value: string) => {
     if (value === undefined || value === '') return '';
-    const cipher = crypto.createCipher('aes-256-ecb', ENCRYPTION_KEY);
+    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY is not set');
+    // Use the exact same key derivation as createCipher
+    const key = evpBytesToKey(ENCRYPTION_KEY);
+    const cipher = crypto.createCipheriv('aes-256-ecb', key, null);
     let encrypted = cipher.update(value, 'utf-8', 'hex');
     encrypted += cipher.final('hex');
     return encrypted;
   },
   from: (value: string) => {
     if (value === undefined || value === '') return '';
-    const decipher = crypto.createDecipher('aes-256-ecb', ENCRYPTION_KEY);
+    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY is not set');
+    // Use the exact same key derivation as createCipher
+    const key = evpBytesToKey(ENCRYPTION_KEY);
+    const decipher = crypto.createDecipheriv('aes-256-ecb', key, null);
     let decrypted = decipher.update(value, 'hex', 'utf-8');
     decrypted += decipher.final('utf-8');
     return decrypted;

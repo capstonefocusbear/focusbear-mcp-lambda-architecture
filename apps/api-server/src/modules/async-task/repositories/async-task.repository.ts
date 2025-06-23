@@ -24,7 +24,6 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
       .set({ status })
       .where('id = :id', { id })
       .execute();
-
     return this.orm.findOneBy({ id });
   }
 

@@ -31,6 +31,7 @@ import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.d
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { AddTeamManuallyDto } from '../../dto/add-team-member-manually.dto';
+import { InvitationStatus } from '../../domain/invitation-status.enum';
 
 @Injectable()
 export class TeamManagementService {
@@ -55,7 +56,7 @@ export class TeamManagementService {
     teamId: string,
     firstName: string,
     lastName: string,
-    expiryDate?: Date,
+    email: string,
   ): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -69,53 +70,19 @@ export class TeamManagementService {
       });
 
       const memberId = user.id;
-      const { members, team } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+      const { members, team } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
 
-      this.validateTeamMembership(members, {
-        member_id: memberId,
-        owner_id: adminId,
-        teamId,
-        team,
-      });
+      await this.validateMembership(memberId, teamId, team, adminId);
 
-      // Save user as part of team
-      const connectedMemberRecord = new TeamToMember({
-        member_id: memberId,
-        team_id: teamId,
-        first_name: firstName,
-        last_name: lastName,
-        member_expiry_date: expiryDate ?? (team.expires_date as Date),
-      });
-      await this.teamToMemberRepository.orm.save(connectedMemberRecord);
-      await this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member);
-      await this.syncTeamSizeWithSubscription(team, ++members.length);
+      await Promise.allSettled([
+        this.ensureTeamMemberRecord(teamId, memberId, email, firstName, lastName, team.expires_date as Date, true),
+        this.grantMembershipAndUpdateTeam(team, members.length, memberId),
+      ]);
+
       return user;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
-    }
-  }
-
-  private validateTeamMembership(members: User[], { member_id, owner_id, teamId, team }): void | never {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Service',
-      level: 'debug',
-      message: 'Validating team membership',
-      data: {
-        member_id,
-        owner_id,
-      },
-    });
-    const teamMemberIds = members.map((member) => member.id);
-    const isUserAlreadyInTeam = teamMemberIds.includes(member_id);
-    if (isUserAlreadyInTeam) {
-      throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
-    }
-    const { team_size, team_size_limit, payment_type } = team;
-    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
-      throw new BadRequestException(
-        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
-      );
     }
   }
 
@@ -137,9 +104,10 @@ export class TeamManagementService {
   async revokeTeamMembersEntitlements(stripeSubId: string) {
     try {
       const team = await this.teamRepository.orm.findOne({
+        // @TODO eager:true
         where: { stripe_subscription_id: stripeSubId },
       });
-      const members = await this.teamRepository.getTeamMembers(team.id);
+      const members = await this.teamRepository.getTeamMembers(team.id); // @TODO eager:true
       const revokeEntitlementsPromises = [];
       for await (const member of members) {
         // check if user is part of more than one team
@@ -230,133 +198,6 @@ export class TeamManagementService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
-  }
-
-  async inviteTeamMember(
-    adminId: string,
-    { team_id, email, first_name, last_name, member_expiry_date, is_admin, is_member, user_id }: InviteTeamMemberDto,
-    origin?: string,
-  ): Promise<any> {
-    try {
-      if (!email && !user_id) {
-        throw new BadRequestException(
-          'Both email and user_id cannot be empty. Please provide either an email or a user_id.',
-        );
-      }
-
-      let memberEmail = email;
-      let memberFirstName = first_name;
-      let memberLastName = last_name;
-
-      if (user_id) {
-        const { email: authOEmail, given_name, family_name } = await this.getUserDetailsFromAuth0(user_id);
-        memberFirstName = given_name;
-        memberLastName = family_name;
-        memberEmail = authOEmail;
-      }
-
-      const { team } = await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
-
-      const payload = new MemberInvitationPayload({
-        admin_id: adminId,
-        email: memberEmail,
-        team_id,
-        first_name: memberFirstName,
-        last_name: memberLastName,
-        member_expiry_date,
-        is_admin,
-        is_member,
-        team_name: team?.name ?? TEAM_A,
-      });
-
-      // check whether team has available space if offline payment type
-      const { team_size_limit, team_size, payment_type } = team;
-      if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
-        throw new BadRequestException(
-          `Unable to invite more members to team with ID: ${team.id}, maximum capacity reached!`,
-        );
-      }
-      const secretKey = this.configService.get('tokens.secret');
-      const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
-
-      const devFrontendUrl = this.configService.get('devFrontendUrl');
-      const inviteUrl = `${
-        devFrontendUrl === origin ? devFrontendUrl : this.configService.get('frontEndUrl')
-      }/accept-invite?token=${token}`;
-
-      let bcc = FOCUS_BEAR_EMAILS.SUPPORT;
-
-      const userTeamOwner = await this.userRepository.orm.findOneBy({ id: adminId });
-
-      if (userTeamOwner) {
-        const auth0TeamOwner = await this.auth0ManagementService.getAuth0User(userTeamOwner.auth0_id);
-        bcc = auth0TeamOwner?.email || FOCUS_BEAR_EMAILS.SUPPORT;
-      }
-
-      await this.emailService.sendEmail({
-        to: memberEmail,
-        from: FOCUS_BEAR_EMAILS.MARKETING,
-        templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
-        dynamicTemplateData: { invite_url: inviteUrl, team_name: team?.name ?? TEAM_A },
-        bcc,
-      });
-      return inviteUrl;
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
-    }
-  }
-
-  async acceptInvitation(token: string, user_id: string) {
-    try {
-      const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`The User with id: ${user_id} does not exist!`);
-
-      const tokenPayload = await this.jwtService.asyncVerify(token);
-
-      const { admin_id, email, team_id, first_name, last_name, member_expiry_date, is_admin, is_member } = tokenPayload;
-      const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
-
-      if (!auth0User) {
-        throw new NotFoundException(
-          `The User with id: ${user.id} and auth0_id: ${user.auth0_id} does not exists in auth0!`,
-        );
-      }
-
-      const hasInvitationEmail = !!auth0User.email;
-      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${auth0User.email}.`;
-      if (!hasInvitationEmail) throw new BadRequestException(hasInvalidEmailMsg);
-
-      if (is_member) {
-        await this.addTeamMember(user, admin_id, team_id, first_name, last_name, member_expiry_date);
-      }
-      if (is_admin) {
-        await this.assignNewMemberAsAdmin(user_id, team_id, first_name, last_name);
-      }
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
-    }
-  }
-
-  async assignNewMemberAsAdmin(memberId: string, teamId: string, firstName: string, lastName: string) {
-    // check if user is already admin of team
-    const teamAdmins = await this.teamRepository.getTeamAdmins(teamId);
-    const adminUsersIds = teamAdmins.map((admin) => admin.id);
-    const isAlreadyAdminOfTeam = adminUsersIds.includes(memberId);
-    if (isAlreadyAdminOfTeam) {
-      throw new BadRequestException(`User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`);
-    }
-    const connectedAdminRecord = new TeamToAdmin({
-      team_id: teamId,
-      admin_id: memberId,
-      first_name: firstName,
-      last_name: lastName,
-    });
-    await Promise.all([
-      this.teamToAdminRepository.orm.save(connectedAdminRecord),
-      this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_admin),
-    ]);
   }
 
   async assignExistingMemberAsAdmin(adminId: string, memberId: string, teamId: string) {
@@ -453,95 +294,54 @@ export class TeamManagementService {
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
-    const team = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
-    const { members, admins } = team;
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
     const membersData = [];
-    const adminData = [];
 
-    // Get all member IDs
-    const memberIds = members.map((member) => member.id);
-    const memberAuth0Ids = members.map((member) => member.auth0_id);
+    // Get all registered member IDs
+    const memberIds = members.map((member) => member.member_id).filter(Boolean);
 
     // Batch queries for members
-    const [auth0Users, teamToMembers, userDetails, allMembersDailyStats] = await Promise.all([
-      Promise.all(memberAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
-      this.teamToMemberRepository.orm.find({
-        where: { team_id: teamId, member_id: In(memberIds) },
-      }),
+    const [userDetails, allMembersDailyStats] = await Promise.all([
       this.userRepository.orm.find({
         where: { id: In(memberIds) },
       }),
       Promise.all(memberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
     ]);
 
+    // @Description:  Admins are already members; skip processing
     // Process member data
     members.forEach((member, index) => {
-      const auth0User = auth0Users[index];
-      const teamToMember = teamToMembers.find((tm) => tm.member_id === member.id);
-      const userDetail = userDetails.find((u) => u.id === member.id);
-      const last90DaysDailyStats = allMembersDailyStats[index];
+      const userDetail = userDetails.find((u) => u.id === member.member_id);
+      const last90DaysDailyStats = allMembersDailyStats?.[index];
 
-      const totalFocusModes = last90DaysDailyStats.reduce((acc, curr) => acc + curr.focus_modes, 0);
+      const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
       membersData.push({
-        id: member.id,
-        email: auth0User.email,
-        last_active_date: member.updated_at,
-        first_name: teamToMember?.first_name,
-        last_name: teamToMember?.last_name,
-        member_expiry_date: teamToMember?.member_expiry_date,
-        created_at: teamToMember?.created_at,
-        morning_routines_streak: userDetail?.morning_routines_streak,
-        evening_routines_streak: userDetail?.evening_routines_streak,
-        focus_modes_streak: userDetail?.focus_modes_streak,
-        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed,
-        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed,
-        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed,
+        id: member.member_id,
+        email: member.email,
+        last_active_date: member?.updated_at,
+        first_name: member?.first_name,
+        last_name: member?.last_name,
+        member_expiry_date: member?.member_expiry_date,
+        created_at: member?.created_at,
+        morning_routines_streak: userDetail?.morning_routines_streak || 0,
+        evening_routines_streak: userDetail?.evening_routines_streak || 0,
+        focus_modes_streak: userDetail?.focus_modes_streak || 0,
+        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed || 0,
+        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
+        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
         focus_modes_percent_number_day_of_stats_completed,
+        invitation_status: member.invitation_status,
+        invitation_sent_at: member.invitation_sent_at,
+        invitation_send_count: member.invitation_send_count,
+        invitation_responded_at: member.invitation_responded_at,
       });
     });
 
-    // Get all admin IDs
-    const adminIds = admins.map((admin) => admin.id);
-    const adminAuth0Ids = admins.map((admin) => admin.auth0_id);
-
-    // Batch queries for admins
-    const [adminAuth0Users, teamToAdmins, adminUserDetails, allAdminsDailyStats] = await Promise.all([
-      Promise.all(adminAuth0Ids.map((auth0Id) => this.auth0ManagementService.getAuth0User(auth0Id))),
-      this.teamToAdminRepository.orm.find({
-        where: { team_id: teamId, admin_id: In(adminIds) },
-      }),
-      this.userRepository.orm.find({
-        where: { id: In(adminIds) },
-      }),
-      Promise.all(adminIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
-    ]);
-
-    // Process admin data
-    admins.forEach((adminMember, index) => {
-      const auth0User = adminAuth0Users[index];
-      const teamToAdmin = teamToAdmins.find((ta) => ta.admin_id === adminMember.id);
-      const userDetail = adminUserDetails.find((u) => u.id === adminMember.id);
-      const last90DaysDailyStats = allAdminsDailyStats[index];
-
-      adminData.push({
-        id: adminMember.id,
-        email: auth0User.email,
-        last_active_date: adminMember.updated_at,
-        first_name: teamToAdmin?.first_name,
-        last_name: teamToAdmin?.last_name,
-        created_at: teamToAdmin?.created_at,
-        morning_routines_streak: userDetail?.morning_routines_streak,
-        evening_routines_streak: userDetail?.evening_routines_streak,
-        focus_modes_streak: userDetail?.focus_modes_streak,
-        last90DaysDailyStats,
-      });
-    });
-
-    return { members: membersData, admin: adminData };
+    return { members: membersData, admins: admins.map((admin) => admin.admin_id) };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {
@@ -695,8 +495,13 @@ export class TeamManagementService {
     return { email, given_name, family_name };
   }
 
-  async addTeamMemberManually(adminId: string, { team_id, user_id, member_expiry_date }: AddTeamManuallyDto) {
+  async addTeamMemberManually(adminId: string, { team_id, user_id }: AddTeamManuallyDto) {
     try {
+      const team = await this.teamRepository.orm.findOneBy({ id: team_id });
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
+
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) {
         throw new NotFoundException(`The user with id: ${user_id} doesn't exists!`);
@@ -712,7 +517,7 @@ export class TeamManagementService {
       const first_name = auth0User.given_name;
       const last_name = auth0User.family_name;
 
-      return await this.addTeamMember(user, adminId, team_id, first_name, last_name, member_expiry_date);
+      return await this.addTeamMember(user, adminId, team_id, first_name, last_name, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -733,5 +538,300 @@ export class TeamManagementService {
 
   async getTeamById(team_id: string) {
     return this.teamRepository.orm.findOne({ where: { id: team_id } });
+  }
+
+  async acceptInvitation(token: string, user_id: string) {
+    try {
+      const tokenPayload: MemberInvitationPayload = await this.jwtService.asyncVerify(token);
+      const { admin_id, email, team_id, is_admin } = tokenPayload;
+
+      const [team, user] = await Promise.all([
+        this.teamRepository.orm.findOneBy({ id: team_id }),
+        this.userRepository.orm.findOneBy({ id: user_id }),
+      ]);
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
+      if (!user) throw new NotFoundException(`The User with id: ${user_id} does not exist!`);
+
+      const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
+      if (!auth0User) {
+        throw new NotFoundException(
+          `The User with id: ${user.id} and auth0_id: ${user.auth0_id} does not exists in auth0!`,
+        );
+      }
+
+      const hasInvalidEmailMsg = `The invite can be accepted only by user with email: ${email}! Current account registered with ${auth0User.email}.`;
+      if (!auth0User.email) throw new BadRequestException(hasInvalidEmailMsg);
+
+      const isAdminAuthorizedUrl = await this.teamToAdminRepository.orm.find({ where: { team_id, admin_id } });
+      if (!isAdminAuthorizedUrl) {
+        throw new BadRequestException('The invitation URL is invalid or has been altered.');
+      }
+      const teamToMember = await this.findMemberByEmail(team_id, email);
+      if (!teamToMember) {
+        throw new NotFoundException('Invitation not found for this team and email.');
+      }
+
+      // @TODO Invitation expiry logic
+
+      if (InvitationStatus.PENDING !== teamToMember.invitation_status) {
+        throw new BadRequestException('This invitation is no longer valid.');
+      }
+
+      const members = await this.validateMembership(user_id, team_id, team, admin_id);
+
+      const member = await this.teamToMemberRepository.orm.save({
+        ...teamToMember,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_responded_at: new Date(),
+        member_id: user_id,
+      });
+
+      if (member.invitation_status === InvitationStatus.ACCEPTED) {
+        let promises = [this.grantMembershipAndUpdateTeam(team, members.length, user_id)];
+        if (is_admin) {
+          promises = [...promises, this.assignMemberAsAdmin(user_id, team_id)];
+        }
+        await Promise.allSettled(promises);
+      }
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async inviteTeamMember(adminId: string, inviteTeamMemberDto: InviteTeamMemberDto, origin?: string): Promise<string> {
+    try {
+      const { team_id, member_expiry_date } = inviteTeamMemberDto;
+      const team = await this.teamRepository.orm.findOneBy({ id: team_id });
+      if (!team) {
+        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
+      }
+      const { memberEmail, memberFirstName, memberLastName, userId } = await this.resolveMemberDetails(
+        inviteTeamMemberDto,
+      );
+
+      const member = await this.ensureTeamMemberRecord(
+        team_id,
+        userId,
+        memberEmail,
+        memberFirstName,
+        memberLastName,
+        member_expiry_date,
+      );
+
+      const inviteUrl = await this.generateInviteUrl(inviteTeamMemberDto, team.name, member, adminId, origin);
+
+      let invitationStatus = InvitationStatus.PENDING;
+      try {
+        await this.sendInvitationEmail(memberEmail, inviteUrl, team.name, adminId);
+      } catch (error) {
+        invitationStatus = InvitationStatus.FAILED;
+        this.sentryService.instance().captureException(error, { level: 'error' });
+      }
+
+      await this.updateInvitationTracking(member, invitationStatus);
+
+      return inviteUrl;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  private async resolveMemberDetails(
+    dto: InviteTeamMemberDto,
+  ): Promise<{ memberEmail: string; memberFirstName: string; memberLastName: string; userId: string | undefined }> {
+    let memberEmail = dto.email;
+    let memberFirstName = dto.first_name;
+    let memberLastName = dto.last_name;
+    const userId = dto.user_id;
+
+    if (!memberEmail && !userId) {
+      throw new BadRequestException(
+        'Both email and user_id cannot be empty. Please provide either an email or a user_id.',
+      );
+    }
+
+    if (userId) {
+      const { email: authOEmail, given_name, family_name } = await this.getUserDetailsFromAuth0(userId);
+      memberFirstName = given_name;
+      memberLastName = family_name;
+      memberEmail = authOEmail;
+    }
+
+    return { memberEmail, memberFirstName, memberLastName, userId };
+  }
+
+  private async ensureTeamMemberRecord(
+    team_id: string,
+    member_id: string | undefined,
+    email: string,
+    first_name: string,
+    last_name: string,
+    member_expiry_date?: Date,
+    isManuallyAdded?: boolean,
+  ): Promise<TeamToMember> {
+    let teamToMember: TeamToMember;
+    if (member_id) {
+      teamToMember = await this.teamToMemberRepository.orm.findOne({
+        where: { team_id, member_id },
+      });
+    } else if (email) {
+      teamToMember = await this.findMemberByEmail(team_id, email);
+    }
+    if (teamToMember) {
+      return teamToMember;
+    }
+    const member = {
+      team_id,
+      member_id: member_id || null,
+      first_name,
+      last_name,
+      member_expiry_date,
+      email,
+    };
+    const memberInfo = isManuallyAdded
+      ? {
+          ...member,
+          invitation_status: InvitationStatus.ACCEPTED,
+          invitation_responded_at: new Date(),
+          invitation_sent_at: new Date(),
+          invitation_send_count: 1,
+        }
+      : member;
+    teamToMember = this.teamToMemberRepository.orm.create(memberInfo);
+    await this.teamToMemberRepository.orm.save(teamToMember);
+
+    return teamToMember;
+  }
+
+  private async updateInvitationTracking(
+    teamToMember: TeamToMember,
+    invitationStatus: InvitationStatus,
+  ): Promise<void> {
+    const member = teamToMember;
+    member.invitation_send_count = (teamToMember.invitation_send_count || 0) + 1;
+    member.invitation_status = invitationStatus;
+    await this.teamToMemberRepository.orm.save(member);
+  }
+
+  private async generateInviteUrl(
+    dto: InviteTeamMemberDto,
+    team_name: string,
+    member: TeamToMember,
+    adminId: string,
+    origin?: string,
+  ): Promise<string> {
+    const payload = new MemberInvitationPayload({
+      admin_id: adminId,
+      email: member.email,
+      team_id: dto.team_id,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      member_expiry_date: dto.member_expiry_date,
+      is_admin: dto.is_admin,
+      team_name: team_name ?? TEAM_A,
+      needs_registration: !member.member_id,
+    });
+    const secretKey = this.configService.get('tokens.secret');
+    const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
+
+    const devFrontendUrl = this.configService.get('devFrontendUrl');
+    return `${
+      devFrontendUrl === origin ? devFrontendUrl : this.configService.get('frontEndUrl')
+    }/accept-invite?token=${token}`;
+  }
+
+  private async sendInvitationEmail(
+    memberEmail: string,
+    inviteUrl: string,
+    teamName: string,
+    adminId: string,
+  ): Promise<void> {
+    let bcc = FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT;
+
+    const userTeamOwner = await this.userRepository.orm.findOneBy({ id: adminId });
+    if (userTeamOwner) {
+      const auth0TeamOwner = await this.auth0ManagementService.getAuth0User(userTeamOwner.auth0_id);
+      bcc = auth0TeamOwner?.email || FOCUS_BEAR_EMAILS.SUPPORT;
+    }
+
+    await this.emailService.sendEmail({
+      to: memberEmail,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
+      dynamicTemplateData: { invite_url: inviteUrl, team_name: teamName },
+      bcc,
+    });
+  }
+
+  private async grantMembershipAndUpdateTeam(team: Team, teamSize: number, memberId: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'service',
+        level: 'debug',
+        message: 'Granting team membership',
+        data: { team, teamSize, memberId },
+      });
+      await Promise.allSettled([
+        this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member),
+        this.syncTeamSizeWithSubscription(team, teamSize + 1),
+      ]);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async assignMemberAsAdmin(member_id: string, teamId: string) {
+    const teamAdmins = await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } });
+    const isAlreadyAdminOfTeam = teamAdmins.some((admin) => admin.admin_id === member_id);
+
+    if (isAlreadyAdminOfTeam) {
+      throw new BadRequestException(
+        `User with ID: ${member_id} is already an admin member of team with ID: ${teamId}!`,
+      );
+    }
+    const connectedAdminRecord = new TeamToAdmin({
+      team_id: teamId,
+      admin_id: member_id,
+    });
+    await this.teamToAdminRepository.orm.save(connectedAdminRecord);
+  }
+
+  private async validateMembership(member_id: string, teamId: string, team: Team, adminId?: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Validating membership',
+      data: {
+        member_id,
+        teamId,
+        adminId,
+      },
+    });
+
+    const members = await this.teamToMemberRepository.orm.find({ where: { team_id: teamId } });
+
+    const { team_size, team_size_limit, payment_type } = team;
+    if (payment_type === PaymentType.OFFLINE && team_size >= team_size_limit) {
+      throw new BadRequestException(
+        `Unable to invite more members to team with ID: ${teamId}, maximum capacity reached!`,
+      );
+    }
+
+    const foundMember = members.some((member) => member.member_id === member_id);
+    if (foundMember) {
+      throw new BadRequestException(`User with ID ${member_id} is already in team with ID: ${teamId}`);
+    }
+
+    return members;
+  }
+
+  private async findMemberByEmail(team_id: string, email: string): Promise<TeamToMember | undefined> {
+    const members = await this.teamToMemberRepository.orm.find({ where: { team_id } });
+    return members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
   }
 }

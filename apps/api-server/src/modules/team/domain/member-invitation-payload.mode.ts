@@ -17,7 +17,7 @@ export class MemberInvitationPayload {
 
   is_admin: boolean;
 
-  is_member: boolean;
-
   team_name: string;
+
+  needs_registration: boolean;
 }

@@ -3,7 +3,7 @@ import { Controller, Body, UseGuards, Post } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { BullQueues, BullWorkers } from '@api-server/shared/utils/constants';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
 import { SyncHealthMetricsDto } from '../../dto/sync-health-metrics.dto';

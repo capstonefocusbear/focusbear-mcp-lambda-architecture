@@ -241,7 +241,7 @@ describe('UserService', () => {
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       // mock 2 users to exist in auth0 with same email
       const dummyAuth0Response = [auth0UserDummy, auth0UserDummy];
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValueOnce(dummyAuth0Response);
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValueOnce(dummyAuth0Response);
 
       await userService.syncUserAccount(syncAccountDto);
 

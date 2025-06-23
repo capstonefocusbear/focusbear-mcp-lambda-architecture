@@ -83,7 +83,7 @@ export class AuthService {
   }
 
   async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto) {
-    const [foundUser] = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+    const [foundUser] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
 
     if (!foundUser || foundUser.email !== email) {
       throw new NotFoundException(`User with email: ${email} does not exist!`);

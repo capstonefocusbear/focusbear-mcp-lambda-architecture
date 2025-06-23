@@ -13,7 +13,7 @@ export interface TrialResult {
   trialIndex: number;
   stimulusType: 'congruent' | 'incongruent';
   correctDirection: 'left' | 'right';
-  userResponse: 'left' | 'right';
+  userResponse: 'left' | 'right' | null;
   isCorrect: boolean;
   reactionTimeMs: number | null;
 }

@@ -121,7 +121,7 @@ describe('TeamManagementService', () => {
           TeamWithMembersDummy.id,
           firstName,
           lastName,
-          expiryDate,
+          auth0UserDummy.email,
         );
       } catch (error) {
         exception = error;
@@ -147,7 +147,7 @@ describe('TeamManagementService', () => {
           TeamWithMembersDummy.id,
           firstName,
           lastName,
-          expiryDate,
+          auth0UserDummy.email,
         );
       } catch (error) {
         exception = error;
@@ -160,7 +160,7 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      const newMember = { ...TeamMemberDummy, id: randomUUID(), email: auth0UserDummy.email };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
         team: TeamWithMembersDummy,
@@ -173,7 +173,7 @@ describe('TeamManagementService', () => {
         TeamWithMembersDummy.id,
         firstName,
         lastName,
-        expiryDate,
+        newMember.email,
       );
 
       expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith(
@@ -189,7 +189,7 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: Stripe subscription should be updated to increment team size', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      const newMember = { ...TeamMemberDummy, id: randomUUID(), email: auth0UserDummy.email };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(newMember);
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
         team: { ...TeamWithMembersDummy },
@@ -205,14 +205,14 @@ describe('TeamManagementService', () => {
         TeamWithMembersDummy.id,
         firstName,
         lastName,
-        expiryDate,
+        newMember.email,
       );
 
       expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 2);
     });
 
     it('positive: if team payment_type is OFFLINE and team has open spaces, team size should be updated in DB, but not in Stripe', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
+      const newMember = { ...TeamMemberDummy, id: randomUUID(), email: auth0UserDummy.email };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(newMember);
       TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
         team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 10 },
@@ -225,7 +225,7 @@ describe('TeamManagementService', () => {
         TeamWithMembersDummy.id,
         firstName,
         lastName,
-        expiryDate,
+        newMember.email,
       );
 
       expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
@@ -289,7 +289,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
         });
       } catch (error) {
         exception = error;
@@ -315,7 +314,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           user_id: userDummy.id,
         });
       } catch (error) {
@@ -343,7 +341,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           user_id: userDummy.id,
         });
       } catch (error) {
@@ -370,7 +367,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
         });
       } catch (error) {
         exception = error;
@@ -391,7 +387,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(JwtServiceMock.asyncSign).toBeCalledWith(
@@ -403,7 +398,6 @@ describe('TeamManagementService', () => {
           last_name: lastName,
           member_expiry_date: expiryDate,
           is_admin: false,
-          is_member: true,
           team_name: TeamWithMembersDummy.name,
           needs_registration: true,
         },
@@ -425,7 +419,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
@@ -456,7 +449,6 @@ describe('TeamManagementService', () => {
         last_name: lastName,
         member_expiry_date: expiryDate,
         is_admin: false,
-        is_member: true,
       });
 
       expect(SendGridServiceMock.sendEmail).toBeCalledWith({
@@ -797,7 +789,7 @@ describe('TeamManagementService', () => {
 
       const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
 
-      expect(response.admin).toHaveLength(1);
+      expect(response.admins).toHaveLength(1);
       expect(response.members).toHaveLength(2);
     });
   });
@@ -1014,7 +1006,7 @@ describe('TeamManagementService', () => {
     });
   });
 
-  describe('assignNewMemberAsAdmin', () => {
+  describe('assignMemberAsAdmin', () => {
     it('negative, should throw bad request exception if user is already admin member of team', async () => {
       const memberId = TeamMemberDummy.id;
       const teamId = TeamWithMembersDummy.id;
@@ -1024,7 +1016,7 @@ describe('TeamManagementService', () => {
       const errorMessage = `User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`;
 
       try {
-        await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
+        await teamManagementService.assignMemberAsAdmin(memberId, teamId);
       } catch (error) {
         exception = error;
       }
@@ -1038,14 +1030,12 @@ describe('TeamManagementService', () => {
       const teamId = TeamWithMembersDummy.id;
       TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: userDummy.id }]);
 
-      await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
+      await teamManagementService.assignMemberAsAdmin(memberId, teamId);
 
       expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
         new TeamToAdmin({
           team_id: teamId,
           admin_id: memberId,
-          first_name: firstName,
-          last_name: lastName,
         }),
       );
       expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberId, Entitlement.team_admin);

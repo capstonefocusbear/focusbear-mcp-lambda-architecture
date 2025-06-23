@@ -76,9 +76,9 @@ export class Team extends BaseEntity {
   @JoinColumn({ name: 'owner_id' })
   owner?: User;
 
-  @OneToMany(() => TeamToMember, (teamToMember) => teamToMember.team)
+  @OneToMany(() => TeamToMember, (teamToMember) => teamToMember.team) // @TODO eager:true
   teamToMember?: TeamToMember[];
 
-  @OneToMany(() => TeamToAdmin, (teamToAdmin) => teamToAdmin.team)
+  @OneToMany(() => TeamToAdmin, (teamToAdmin) => teamToAdmin.team) // @TODO eager:true
   teamToAdmin?: TeamToAdmin[];
 }

@@ -110,7 +110,7 @@ export class UserService {
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
-      const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+      const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       const { id, stripe_customer_id } = await this.updateOrCreateUser(
         { auth0_id, email, auth0_client },
         registeredUser,

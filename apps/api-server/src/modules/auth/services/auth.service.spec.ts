@@ -73,7 +73,7 @@ describe('AuthService', () => {
 
   describe('openEmailConfirmation', () => {
     it('positive: should send verification email if user is found and not verified', async () => {
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValue([
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
         { ...auth0UserDummy, email_verified: false },
       ]);
       Auth0ManagementServiceMock.resendEmailVerification.mockResolvedValue({
@@ -83,29 +83,31 @@ describe('AuthService', () => {
 
       const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email });
 
-      expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
       expect(response).toEqual({ data: 'Verification email sent.', status: 200 });
     });
 
     it('negative: should return already verified message if user email is already verified', async () => {
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValue([{ ...auth0UserDummy, email_verified: true }]);
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
+        { ...auth0UserDummy, email_verified: true },
+      ]);
       Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
       const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email });
 
-      expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
       expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
       expect(response).toEqual({ data: 'Email is already verified.', status: 200 });
     });
 
     it('negative: should throw NotFoundException if user is not found', async () => {
-      Auth0ManagementServiceMock.getAuth0UserWithEmail.mockResolvedValue([]);
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([]);
       Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
       await expect(authService.emailConfirmationForGuest({ email: auth0UserDummy.email })).rejects.toThrow(
         NotFoundException,
       );
-      expect(Auth0ManagementServiceMock.getAuth0UserWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
       expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
     });
   });

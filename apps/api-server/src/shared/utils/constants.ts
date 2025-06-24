@@ -133,6 +133,7 @@ export enum BullQueues {
   USAGE_IMAGE = 'usage-image',
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
   USAGE_DATA = 'usage-data',
+  ASYNC_TASK_EXPIRATION = 'async-task-expiration',
 }
 
 export enum BullWorkers {
@@ -149,6 +150,7 @@ export enum BullWorkers {
   PROCESS_USAGE_IMAGE = 'process-usage-image',
   SYNC_HEALTH_METRICS = 'sync-health-metrics',
   SYNC_USAGE_DATA = 'sync-usage-data',
+  CHECK_EXPIRED_TASKS = 'check-expired-tasks',
 }
 
 export const createActivityFunction = {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Connection } from 'typeorm';
+import { Connection, FindManyOptions } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { AsyncTask } from '../entities/async-task.entity';
 import { AsyncTaskStatus } from '../domain/async-task-status.enum';
@@ -29,5 +29,9 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
 
   async findById(id: string): Promise<AsyncTask> {
     return this.orm.findOneBy({ id });
+  }
+
+  async find(options: FindManyOptions<AsyncTask>): Promise<AsyncTask[]> {
+    return this.orm.find(options);
   }
 }

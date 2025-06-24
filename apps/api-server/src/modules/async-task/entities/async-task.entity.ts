@@ -22,4 +22,10 @@ export class AsyncTask extends BaseEntity {
     nullable: true,
   })
   metadata?: Record<string, any>;
+
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+  })
+  expires_at?: string;
 }

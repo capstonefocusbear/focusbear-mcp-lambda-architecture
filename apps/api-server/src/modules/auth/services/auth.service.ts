@@ -14,8 +14,8 @@ import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { SendGridService } from '@app/send-grid';
-import { FOCUS_BEAR_EMAILS } from '@api-server/shared/utils/constants';
 import { I18nService } from 'nestjs-i18n';
+import { EMAIL_SENDER_NAME, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -140,7 +140,10 @@ export class AuthService {
       // TODO: generate template EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET
       await this.emailService.sendEmail({
         to: email,
-        from: FOCUS_BEAR_EMAILS.NOREPLY,
+        from: {
+          name: EMAIL_SENDER_NAME,
+          email: FOCUS_BEAR_EMAILS.NOREPLY,
+        },
         subject: 'Reset your password',
         html: `
          <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
@@ -229,7 +232,10 @@ export class AuthService {
 
       await this.emailService.sendEmail({
         to: auth0User.email,
-        from: FOCUS_BEAR_EMAILS.NOREPLY,
+        from: {
+          name: EMAIL_SENDER_NAME,
+          email: FOCUS_BEAR_EMAILS.NOREPLY,
+        },
         subject: this.i18nService.t('common.verify_your_email_address', {
           lang,
         }),

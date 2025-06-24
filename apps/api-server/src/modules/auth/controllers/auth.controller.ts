@@ -12,6 +12,8 @@ import { IntegrationLoginQuery } from '../dto/integration-login-query.dto';
 import { ResetPasswordDto } from '../dto/password-reset.dto';
 import { AuthService } from '../services/auth.service';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
+import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -29,6 +31,15 @@ export class AuthController {
     return this.authService.requestPasswordReset(email);
   }
 
+  @Post('change-password')
+  async changePassword(@Body() changePasswordDto: ChangePasswordDto) {
+    return this.authService.changePassword(changePasswordDto);
+  }
+
+  /**
+   * @deprecated This endpoint is deprecated and will be removed in future versions.
+   * Please use `/send-email-verification` instead.
+   */
   @Post('/email-confirmation')
   @ApiSecurity('Auth0AccessToken')
   @UseGuards(IsAuth)
@@ -62,13 +73,22 @@ export class AuthController {
     }
   }
 
-  // TODO: Implement request-based throttling to prevent abuse of this endpoint.
-
-  /* This endpoint handles email confirmations for non-logged-in users.
-  It is triggered during the "forgot password" process when an account is found but the email is unverified.
-  The user must verify their email via this endpoint to proceed with resetting their password. */
+  /**
+   * @deprecated This endpoint is deprecated and will be removed in future versions.
+   * Please use `/send-email-verification` instead.
+   */
   @Post('email-confirmation-guest')
   async emailConfirmationForGuest(@Body() emailConfirmationForGuestDto: EmailConfirmationForGuestDto) {
     return this.authService.emailConfirmationForGuest(emailConfirmationForGuestDto);
+  }
+
+  @Post('send-email-verification')
+  async sendEmailVerification(@Body() sendEmailVerificationDto: SendEmailVerificationDto) {
+    return this.authService.sendEmailVerification(sendEmailVerificationDto);
+  }
+
+  @Get('verify-email')
+  async verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 }

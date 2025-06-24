@@ -1,9 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
-import { Passport } from '../domain/passport.model';
-import { UserRepository } from '../../user/repositories/user.repository';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { SendGridService } from '@app/send-grid';
+import { FOCUS_BEAR_EMAILS } from '@api-server/shared/utils/constants';
+import { I18nService } from 'nestjs-i18n';
+import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { Passport } from '../domain/passport.model';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +29,13 @@ export class AuthService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly userRepository: UserRepository,
+    private readonly configService: ConfigService,
+    private readonly emailService: SendGridService,
+    private readonly i18nService: I18nService,
+    @Inject('EmailVerificationJwtService')
+    private readonly emailJwtService: JwtService,
+    @Inject('ResetPasswordJwtService')
+    private readonly passwordResetJwtService: JwtService,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -69,7 +93,101 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string) {
-    return this.auth0ManagementService.initiatePasswordReset(email);
+    try {
+      const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+      if (!auth0User) {
+        throw new NotFoundException(`User with email: ${email} does not exist!`);
+      }
+
+      if (!auth0User.email_verified) {
+        throw new HttpException(
+          {
+            error: 'EMAIL_NOT_VERIFIED',
+            message: 'You need to verify your email before proceeding.',
+            statusCode: HttpStatus.FORBIDDEN,
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      const isThirdPartyUser = auth0User.identities.some((identity) => identity.isSocial);
+      if (isThirdPartyUser) {
+        throw new HttpException(
+          {
+            error: 'THIRD_PARTY_EMAIL',
+            message: 'Cannot reset password from a third-party email.',
+            statusCode: HttpStatus.BAD_REQUEST,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const secret = this.configService.get('tokens.password_reset.secret');
+      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '7 days';
+
+      const resetToken = await this.passwordResetJwtService.signAsync(
+        {
+          email,
+          auth0_id: auth0User.user_id,
+        },
+        {
+          secret,
+          expiresIn,
+        },
+      );
+
+      const resetLink = `https://dashboard.focusbear.io/reset-password?token=${resetToken}`;
+      // TODO: generate template EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET
+      await this.emailService.sendEmail({
+        to: email,
+        from: FOCUS_BEAR_EMAILS.NOREPLY,
+        subject: 'Reset your password',
+        html: `
+         <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+          <p>You have submitted a password change request.</p>
+          <p>If it was you, please confirm the password change by clicking the link below:</p>
+          <p>
+            <a href="${resetLink}" style="color: #1a73e8; text-decoration: none;">
+              Confirm Password Change
+            </a>
+          </p>
+          <p>If you didn't request this change, you can safely ignore this email.</p>
+        </div>
+        `,
+      });
+
+      return { data: 'Password reset link sent.', status: 201 };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async changePassword({ token, newPassword }: ChangePasswordDto) {
+    try {
+      const secret = this.configService.get('tokens.password_reset.secret');
+      const decoded = await this.passwordResetJwtService.verifyAsync(token, { secret });
+
+      const auth0Id = decoded.auth0_id;
+      if (!auth0Id) {
+        throw new BadRequestException('Invalid token payload');
+      }
+
+      await this.auth0ManagementService.updatePassword(auth0Id, newPassword);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Reset token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException('Invalid reset token');
+      } else {
+        throw new InternalServerErrorException('Failed to reset password');
+      }
+    }
   }
 
   async resendEmailVerification(userId: string) {
@@ -95,5 +213,85 @@ export class AuthService {
       response = { data: 'Verification email sent.', status: 200 };
     }
     return response;
+  }
+
+  async sendEmailVerification(sendEmailVerificationDto: SendEmailVerificationDto) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Send Email Verification',
+        data: { ...sendEmailVerificationDto },
+      });
+
+      const { html, lang } = sendEmailVerificationDto;
+      const auth0User = await this.validateUser(sendEmailVerificationDto.user_id, sendEmailVerificationDto.auth0_id);
+
+      await this.emailService.sendEmail({
+        to: auth0User.email,
+        from: FOCUS_BEAR_EMAILS.NOREPLY,
+        subject: this.i18nService.t('common.verify_your_email_address', {
+          lang,
+        }),
+        html, // TODO: generate template EMAIL_TEMPLATE_IDS.VERIFY_EMAIL
+      });
+      return { data: 'Verification email sent.', status: 200 };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async verifyEmail(token: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Verify Email',
+        data: { token },
+      });
+
+      const secretKey = this.configService.get('tokens.email_verification');
+      const decoded: { email: string; auth0_id: string } = await this.emailJwtService.verifyAsync(token, secretKey);
+
+      const auth0User = await this.validateUser(undefined, decoded.auth0_id);
+      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Verification link has expired.');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException(
+          error.name === 'JsonWebTokenError' ? 'Invalid verification token' : 'Failed to verify email token',
+        );
+      }
+    }
+  }
+
+  private async validateUser(user_id: string, authId: string) {
+    let auth0_id = authId;
+    if (!user_id && !auth0_id) {
+      throw new BadRequestException(
+        'Both auth0_id and user_id cannot be empty. Please provide either an email or a user_id.',
+      );
+    }
+
+    if (user_id && !auth0_id) {
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) {
+        throw new NotFoundException(`User with user_id ${user_id} couldn't be found`);
+      }
+      auth0_id = user.auth0_id;
+    }
+
+    const auth0User = await this.auth0ManagementService.getAuth0User(auth0_id);
+    if (!auth0User) {
+      throw new NotFoundException(`User with auth0_id ${auth0_id} couldn't be found`);
+    }
+
+    if (auth0User.email_verified) {
+      throw new ConflictException('Email is already verified');
+    }
+    return auth0User;
   }
 }

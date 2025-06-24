@@ -1,6 +1,5 @@
-import { Injectable, Inject, Logger, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { DeviceCredential, ManagementClient } from 'auth0';
-import axios from 'axios';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService } from '../interfaces';
 
@@ -30,45 +29,6 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     return this.jobs.verifyEmail({ user_id: auth0Id });
   }
 
-  async initiatePasswordReset(email: string) {
-    const users = await this.getAuth0UsersWithEmail(email);
-    if (users.length < 1) {
-      throw new NotFoundException(`User with email: ${email} does not exist!`);
-    }
-
-    const user = users[0];
-    if (!user.email_verified) {
-      throw new HttpException(
-        {
-          error: 'EMAIL_NOT_VERIFIED',
-          message: 'You need to verify your email before proceeding.',
-          statusCode: HttpStatus.FORBIDDEN,
-        },
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    // Check if the user is using a third-party provider
-    const isThirdPartyUser = user.identities.some((identity) => identity.isSocial);
-    if (isThirdPartyUser) {
-      throw new HttpException(
-        {
-          error: 'THIRD_PARTY_EMAIL',
-          message: 'Cannot reset password from a third-party email.',
-          statusCode: HttpStatus.BAD_REQUEST,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const PASSWORD_RESET_URL = `https://${this.options.domain}/dbconnections/change_password`;
-    await axios.post(PASSWORD_RESET_URL, {
-      client_id: this.options.clientId,
-      email,
-      connection: 'Username-Password-Authentication',
-    });
-  }
-
   async getAuth0UsersWithEmail(email: string) {
     const { data: usersMatchingEmail } = await this.users.getAll({ q: `email:"${email}"` });
     return usersMatchingEmail;
@@ -85,6 +45,28 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     } catch (error) {
       console.error('Failed to fetch device credentials: ', error);
       return [];
+    }
+  }
+
+  async markUserEmailAsVerified(auth0Id: string) {
+    try {
+      return await this.users.update({ id: auth0Id }, { email_verified: true });
+    } catch (error) {
+      throw new HttpException('Failed to verify email in Auth0', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updatePassword(auth0Id: string, newPassword: string) {
+    try {
+      return await this.users.update(
+        { id: auth0Id },
+        {
+          password: newPassword,
+          connection: 'Username-Password-Authentication',
+        },
+      );
+    } catch (error) {
+      throw new HttpException('Failed to update password in Auth0', HttpStatus.BAD_REQUEST);
     }
   }
 }

@@ -8,8 +8,6 @@ import { SaveFlankerTestResultDto } from '../../dto/study-participant/save-flank
 @Injectable()
 export class FlankerTestService {
   constructor(
-    @InjectRepository(FlankerTest)
-    private readonly flankerTestRepository: Repository<FlankerTest>,
     @InjectRepository(StudyParticipant)
     private readonly studyParticipantRepository: Repository<StudyParticipant>,
     private readonly dataSource: DataSource,
@@ -34,7 +32,15 @@ export class FlankerTestService {
 
     await this.dataSource.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.save(FlankerTest, flankerTest);
-      await transactionalEntityManager.update(StudyParticipant, { id: studyParticipant.id }, { flankerEffect });
+      if (result.isEndOfStudy) {
+        await transactionalEntityManager.update(
+          StudyParticipant,
+          { id: studyParticipant.id },
+          { afterStudyFlankerEffect: flankerEffect },
+        );
+      } else {
+        await transactionalEntityManager.update(StudyParticipant, { id: studyParticipant.id }, { flankerEffect });
+      }
     });
   }
 }

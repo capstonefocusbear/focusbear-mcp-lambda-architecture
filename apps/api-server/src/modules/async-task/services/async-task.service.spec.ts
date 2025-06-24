@@ -3,13 +3,13 @@ import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as dayjs from 'dayjs';
 import { AsyncTaskService } from './async-task.service';
 import { AsyncTaskRepository } from '../repositories/async-task.repository';
 import { CreateAsyncTaskDto } from '../dto/create-async-task.dto';
 import { UpdateAsyncTaskStatusDto } from '../dto/update-async-task-status.dto';
 import { AsyncTask } from '../entities/async-task.entity';
 import { AsyncTaskStatus } from '../domain/async-task-status.enum';
-import * as dayjs from 'dayjs';
 
 // Mock implementations
 const mockAddBreadcrumb = jest.fn();
@@ -327,7 +327,7 @@ describe('AsyncTaskService', () => {
       AsyncTaskRepositoryMock.findById.mockResolvedValue(existingTask);
       AsyncTaskRepositoryMock.update.mockResolvedValue(updatedTask);
 
-      const result = await asyncTaskService.updateTaskStatus(taskId, updateDto);
+      await asyncTaskService.updateTaskStatus(taskId, updateDto);
 
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,

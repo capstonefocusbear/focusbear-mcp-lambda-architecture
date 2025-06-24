@@ -1,14 +1,15 @@
+/* eslint-disable no-await-in-loop */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
+import { LessThan } from 'typeorm';
+import * as dayjs from 'dayjs';
 import { BaseCRUDService } from '../../../shared/services/base-crud.service';
 import { AsyncTask } from '../entities/async-task.entity';
 import { AsyncTaskRepository } from '../repositories/async-task.repository';
 import { CreateAsyncTaskDto } from '../dto/create-async-task.dto';
 import { UpdateAsyncTaskStatusDto } from '../dto/update-async-task-status.dto';
 import { AsyncTaskStatus } from '../domain/async-task-status.enum';
-import { LessThan } from 'typeorm';
-import * as dayjs from 'dayjs';
 
 @Injectable()
 export class AsyncTaskService extends BaseCRUDService<
@@ -191,7 +192,7 @@ export class AsyncTaskService extends BaseCRUDService<
     const asyncTaskConfig = this.configService.get('asyncTask');
     const defaultTimeout = asyncTaskConfig.defaultTimeoutSeconds;
     const maxTimeout = asyncTaskConfig.maxTimeoutSeconds;
-    const taskTypeTimeouts = asyncTaskConfig.taskTypeTimeouts;
+    const { taskTypeTimeouts } = asyncTaskConfig;
 
     // Use explicit timeout if provided
     if (explicitTimeout) {

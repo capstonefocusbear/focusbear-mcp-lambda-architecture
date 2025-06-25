@@ -207,29 +207,22 @@ export class AuthService {
     }
   }
 
-  async resendEmailVerification(userId: string) {
+  // Temporary: kept for backward compatibility with older app versions; to be removed in a future release
+  async resendEmailVerification(userId: string, origin: string) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) throw new NotFoundException(`User with id: ${userId} does not exist!`);
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-    if (auth0User.email_verified) {
-      return;
-    }
-    await this.auth0ManagementService.resendEmailVerification(user.auth0_id);
+    return this.sendEmailVerification({ email: auth0User.email }, origin);
   }
 
+  // Temporary: kept for backward compatibility with older app versions; to be removed in a future release
   async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto) {
-    const [foundUser] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+    const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
 
-    if (!foundUser || foundUser.email !== email) {
+    if (!auth0User) {
       throw new NotFoundException(`User with email: ${email} does not exist!`);
     }
-
-    let response = { data: 'Email is already verified.', status: 200 };
-    if (!foundUser.email_verified) {
-      await this.auth0ManagementService.resendEmailVerification(foundUser.user_id);
-      response = { data: 'Verification email sent.', status: 200 };
-    }
-    return response;
+    return this.sendEmailVerification({ email: auth0User.email }, origin);
   }
 
   async sendEmailVerification(sendEmailVerificationDto: SendEmailVerificationDto, origin: string) {
@@ -342,7 +335,7 @@ export class AuthService {
       );
     }
 
-    if (auth0User.email_verified) {
+    if (!auth0User.email_verified) {
       throw new ConflictException('Email is already verified');
     }
     return auth0User;

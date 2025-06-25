@@ -154,6 +154,7 @@ export class AuthService {
         <html>
           <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
             <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
+              <img src="https://dashboard.local.dev:3000/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
               <h1 style="margin-bottom: 10px;">Focus Bear</h1>
               <h2>Password Change Request</h2>
               <p>We received a request to change the password for your account.</p>
@@ -260,7 +261,7 @@ export class AuthService {
           name: EMAIL_SENDER_NAME,
           email: FOCUS_BEAR_EMAILS.NOREPLY,
         },
-        subject: this.i18nService.t('common.verify_your_email_address', {
+        subject: this.i18nService.t('common.verify_your_email', {
           lang,
         }),
         html: `
@@ -268,10 +269,9 @@ export class AuthService {
             <html>
               <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
                 <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
+                  <img src="https://dashboard.local.dev:3000/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
                   <h1 style="margin-bottom: 10px;">Focus Bear</h1>
                   <h2>Verify Your Account</h2>
-                  <p>Your account information</p>
-                  <p><strong>Account:</strong> ${email}</p>
                   <p><strong>Verify Link:</strong><br/>
                     <a href="${verificationLink}">${verificationLink}</a>
                   </p>
@@ -302,7 +302,7 @@ export class AuthService {
         data: { token },
       });
 
-      const secretKey = this.configService.get('tokens.email_verification');
+      const secretKey = this.configService.get('tokens.email_verification.secret');
       const decoded: { email: string; auth0_id: string } = await this.emailJwtService.verifyAsync(token, secretKey);
 
       const auth0User = await this.validateAuth0User(decoded.auth0_id);

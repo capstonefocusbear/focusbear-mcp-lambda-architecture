@@ -335,7 +335,7 @@ export class AuthService {
       );
     }
 
-    if (!auth0User.email_verified) {
+    if (auth0User.email_verified) {
       throw new ConflictException('Email is already verified');
     }
     return auth0User;

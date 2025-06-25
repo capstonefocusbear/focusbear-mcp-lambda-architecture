@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Query, Param, Post, Body } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query, Param, Post, Body, Req } from '@nestjs/common';
 import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { API_RESPONSE_EMAIL_NOT_VERIFIED, API_RESPONSE_THIRD_PARTY_EMAIL } from '../../../shared/utils/error-constants';
@@ -27,8 +27,9 @@ export class AuthController {
   @Post('/reset-password')
   @ApiResponse(API_RESPONSE_EMAIL_NOT_VERIFIED)
   @ApiResponse(API_RESPONSE_THIRD_PARTY_EMAIL)
-  async requestPasswordReset(@Body() { email }: ResetPasswordDto) {
-    return this.authService.requestPasswordReset(email);
+  async requestPasswordReset(@Body() resetPasswordDto: ResetPasswordDto, @Req() request: Request) {
+    const { origin } = request.headers as { origin?: string };
+    return this.authService.requestPasswordReset(resetPasswordDto, origin);
   }
 
   @Post('change-password')
@@ -83,8 +84,9 @@ export class AuthController {
   }
 
   @Post('send-email-verification')
-  async sendEmailVerification(@Body() sendEmailVerificationDto: SendEmailVerificationDto) {
-    return this.authService.sendEmailVerification(sendEmailVerificationDto);
+  async sendEmailVerification(@Body() sendEmailVerificationDto: SendEmailVerificationDto, @Req() request: Request) {
+    const { origin } = request.headers as { origin?: string };
+    return this.authService.sendEmailVerification(sendEmailVerificationDto, origin);
   }
 
   @Get('verify-email')

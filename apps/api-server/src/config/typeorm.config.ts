@@ -65,7 +65,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: true,
+    ssl: false,
     entities: [
       User,
       Activity,

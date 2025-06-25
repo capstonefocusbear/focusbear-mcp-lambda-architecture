@@ -7,6 +7,7 @@ import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -40,6 +41,14 @@ import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
+        },
+      ],
+    }),
     ConfigModule.forRoot({ load: configsArray }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

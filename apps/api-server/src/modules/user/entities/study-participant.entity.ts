@@ -1,12 +1,14 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 
 export enum AppActivationStatus {
   DATA_COLLECTION_MODE = 'data_collection_mode',
   ALL_INTERVENTIONS_ACTIVE = 'all_interventions_active',
+  END_OF_STUDY = 'end_of_study',
 }
 
 @Entity('study_participants')
-export class StudyParticipant {
+export class StudyParticipant extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -45,12 +47,24 @@ export class StudyParticipant {
   @Column({ name: 'is_questionnaire_completed', type: 'boolean', default: false })
   isQuestionnaireCompleted: boolean;
 
+  @Column({ name: 'is_eos_questionnaire_completed', type: 'boolean', default: false })
+  isEndOfStudyQuestionnaireCompleted: boolean;
+
   @Column({ name: 'flanker_effect', type: 'float', nullable: true })
   flankerEffect: number;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @Column({ name: 'after_study_flanker_effect', type: 'float', nullable: true })
+  afterStudyFlankerEffect: number;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @Column({
+    name: 'phone_number',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    transformer: BaseEntity.encryptField('phone_number'),
+  })
+  phoneNumber: string;
+
+  @Column({ name: 'opted_out', type: 'boolean', default: false })
+  optedOut: boolean;
 }

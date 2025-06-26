@@ -11,9 +11,12 @@ export const FOCUS_BEAR_EMAILS = {
   MARKETING: 'marketing@focusbear.io',
   SUPPORT: 'support@focusbear.io',
   ZOHO_DESK_SUPPORT: 'support@focusbear.zohodesk.com.au',
+  NOREPLY: 'noreply@focusbear.io',
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
+  VERIFY_EMAIL: '', // TODO: generate template
+  REQUEST_PASSWORD_RESET: '', // TODO: generate template
 };
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
@@ -25,6 +28,7 @@ export const EMAIL_SUBJECTS = {
   USER_ACCOUNT_DELETE: 'User deleted account but gave permission to contact RE feedback',
   DUPLICATE_EMAIL_SIGN_UP: 'Duplicate EMail Sign Up',
 };
+export const EMAIL_SENDER_NAME = 'Focus Bear';
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_HOUR_MILLISECONDS = 3600000;
 export const ONE_MINUTE = 60000;

@@ -1,9 +1,9 @@
 import { LanguageOptions } from '@api-server/modules/user/domain/language-options.enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 
-export class ResetPasswordDto {
-  @IsNotEmpty()
+export class SendEmailVerificationDto {
+  @IsString()
   @IsEmail()
   email: string;
 

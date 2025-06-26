@@ -1,4 +1,4 @@
-import { IsArray, IsNumber, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TrialResultDto } from './trial-result.dto';
 
@@ -28,4 +28,8 @@ export class SaveFlankerTestResultDto {
   @ValidateNested({ each: true })
   @Type(() => TrialResultDto)
   trialResults: TrialResultDto[];
+
+  @IsBoolean()
+  @IsOptional()
+  isEndOfStudy: boolean;
 }

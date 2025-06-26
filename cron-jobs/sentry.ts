@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node';
+require('dotenv').config();
 
 export function initializeSentry() {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 1.0,
-    environment: process.env.SENTRY_ENV || 'development',
+    environment: process.env.SENTRY_ENV || 'prod',
   });
 }
 

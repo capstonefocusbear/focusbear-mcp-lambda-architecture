@@ -14,7 +14,6 @@ export function initializeSentry() {
 // @returns Whatever your job returns
 // Example:
 // WithSentry(runMyCronJob);
-
 export async function withSentry<T>(job: () => Promise<T>): Promise<T> {
   initializeSentry();
   try {
@@ -27,6 +26,7 @@ export async function withSentry<T>(job: () => Promise<T>): Promise<T> {
     await Sentry.flush(2000);
   }
 }
+
 // Captures an error to Sentry with additional context while also logging it locally.
 // error - The error to capture
 // context - Additional context to attach to the error

@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -34,6 +40,7 @@ import { AddTeamManuallyDto } from '../../dto/add-team-member-manually.dto';
 import { InvitationStatus } from '../../domain/invitation-status.enum';
 import { RemoveTeamMemberDto } from '../../dto/remove-team-member.dto';
 import { BulkDeleteDto } from '../../dto/bulk-delete.dto';
+import { AddTeamMemberDto } from '../../dto/add-team-member.dto';
 
 @Injectable()
 export class TeamManagementService {
@@ -173,7 +180,9 @@ export class TeamManagementService {
     const members = await this.teamRepository.getTeamMembers(team.id);
     const reassignEntitlementsPromises = [];
     for (const member of members) {
-      reassignEntitlementsPromises.push(this.revenueCatService.grantTeamMembership(member.id, Entitlement.team_member));
+      reassignEntitlementsPromises.push(
+        this.revenueCatService.grantTeamMembership(member.id, Entitlement.team_member, team.expires_date),
+      );
     }
     await Promise.all([reassignEntitlementsPromises]);
   }
@@ -196,15 +205,11 @@ export class TeamManagementService {
 
   async removeMember(removeTeamMemberDto: RemoveTeamMemberDto, adminId: string) {
     try {
-      const { team_id, member_id, email } = removeTeamMemberDto;
+      const { team_id, ...rest } = removeTeamMemberDto;
       const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
 
-      const member = members.find((teamMember) => teamMember.member_id === member_id || teamMember.email === email);
+      const member = this.findTeamMember(members, rest, team_id);
 
-      if (!member) {
-        const identifier = member_id ? `ID: ${member_id}` : `email: ${email}`;
-        throw new BadRequestException(`User with ${identifier} does not exist in the team (team_id: ${team_id}).`);
-      }
       await this.disassociateMemberFromTheTeam(member, team.owner_id, team_id);
       const newTeamSize = members.length - 1;
       await this.updateTeamSize(adminId, team_id, newTeamSize);
@@ -214,39 +219,51 @@ export class TeamManagementService {
     }
   }
 
-  async assignExistingMemberAsAdmin(adminId: string, memberId: string, teamId: string) {
-    const { admins } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
-    const user = await this.userRepository.orm.findOne({ where: { id: memberId } });
-    if (!user) {
-      throw new BadRequestException(`User with ID: ${memberId} does not exist!`);
+  async assignExistingMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
+    const { team_id, ...rest } = addTeamMemberDto;
+    const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const member = this.findTeamMember(members, rest, team_id);
+
+    if (member.invitation_status !== InvitationStatus.ACCEPTED) {
+      throw new ForbiddenException(
+        `User with email ${rest.email} must accept the invitation before being assigned as admin.`,
+      );
     }
-    // check if user is already admin of team
-    const adminUserIds = admins.map((admin) => admin.id);
-    const isAlreadyAdminOfTeam = adminUserIds.includes(memberId);
+    const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === adminId);
+
     if (isAlreadyAdminOfTeam) {
-      throw new BadRequestException(`User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`);
+      throw new BadRequestException(
+        `User with ID: ${rest.member_id} is already an admin member of team with ID: ${team_id}!`,
+      );
     }
     const connectedAdminRecord = new TeamToAdmin({
-      team_id: teamId,
-      admin_id: memberId,
+      team_id,
+      admin_id: member.member_id,
     });
+
     await Promise.all([
       this.teamToAdminRepository.orm.save(connectedAdminRecord),
-      this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_admin),
+      this.revenueCatService.grantTeamMembership(member.member_id, Entitlement.team_admin, member.member_expiry_date),
     ]);
   }
 
-  async removeMemberAsAdmin(adminId: string, memberId: string, teamId: string) {
-    const { team } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
-    if (memberId === team.owner_id) {
-      throw new BadRequestException(`Can't remove owner from team with ID: ${teamId}. Owner ID: ${team.owner_id}`);
+  async removeMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
+    const { team_id, member_id, email } = addTeamMemberDto;
+    const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const member = this.findTeamMember(members, { member_id, email }, team_id);
+
+    if (member.invitation_status !== InvitationStatus.ACCEPTED) {
+      throw new ForbiddenException(
+        `User with email ${email} must accept the invitation before being removed as admin.`,
+      );
     }
-    const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: memberId } });
+    const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: member_id } });
+
     const isAdminOfMultipleTeams = teamsAdminOf.length > 1;
-    if (isAdminOfMultipleTeams) {
-      await this.revenueCatService.revokeTeamMembership(memberId, Entitlement.team_admin);
+    if (isAdminOfMultipleTeams && member_id) {
+      await this.revenueCatService.revokeTeamMembership(member_id, Entitlement.team_admin);
     }
-    await this.teamToAdminRepository.orm.delete({ team_id: teamId, admin_id: memberId });
+    await this.teamToAdminRepository.orm.delete({ team_id, admin_id: member_id });
   }
 
   async registerTeam(payload: any) {
@@ -275,8 +292,8 @@ export class TeamManagementService {
     });
     const [savedTeam] = await Promise.all([
       this.teamRepository.orm.save(team),
-      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_admin),
-      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_owner),
+      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_admin, expiresDate),
+      this.revenueCatService.grantTeamMembership(user.id, Entitlement.team_owner, expiresDate),
     ]);
     // Associate purchasing user to team as both member and admin
     const connectedMemberRecord = new TeamToMember({
@@ -484,16 +501,24 @@ export class TeamManagementService {
     }
   }
 
-  async updateMemberExpiryDate(adminId: string, { team_id, member_id, expiry_date }: UpdateMemberExpiryDateDto) {
-    await this.teamRepository.findActiveTeamWithMembers(team_id, adminId);
-    const linkedMemberRecord = await this.teamToMemberRepository.orm.findOne({
-      where: { team_id, member_id },
-    });
+  async updateMemberExpiryDate(adminId: string, updateMemberExpiryDateDto: UpdateMemberExpiryDateDto) {
+    const { team_id, email, member_id, expiry_date } = updateMemberExpiryDateDto;
+    const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const linkedMemberRecord = members.find((member) => member.member_id === member_id || member.email === email);
     if (!linkedMemberRecord) {
       throw new BadRequestException(`User with ID: ${member_id} is not a member of team with ID: ${team_id}!`);
     }
     linkedMemberRecord.member_expiry_date = expiry_date;
-    await this.teamToMemberRepository.orm.save(linkedMemberRecord);
+    let promises = [this.teamToMemberRepository.orm.save(linkedMemberRecord)];
+
+    // already registered user
+    if (member_id) {
+      promises = [
+        ...promises,
+        this.revenueCatService.updateEntitlementExpiry(member_id, Entitlement.team_member, expiry_date),
+      ];
+    }
+    await Promise.allSettled([promises]);
   }
 
   async getUserDetailsFromAuth0(user_id: string) {
@@ -790,7 +815,7 @@ export class TeamManagementService {
         data: { team, teamSize, memberId },
       });
       await Promise.allSettled([
-        this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member),
+        this.revenueCatService.grantTeamMembership(memberId, Entitlement.team_member, team.expires_date),
         this.syncTeamSizeWithSubscription(team, teamSize + 1),
       ]);
     } catch (error) {
@@ -847,5 +872,21 @@ export class TeamManagementService {
   private async findMemberByEmail(team_id: string, email: string): Promise<TeamToMember | undefined> {
     const members = await this.teamToMemberRepository.orm.find({ where: { team_id } });
     return members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
+  }
+
+  private findTeamMember(
+    members: TeamToMember[],
+    identifier: { member_id?: string; email?: string },
+    team_id: string,
+  ): TeamToMember {
+    const { member_id, email } = identifier;
+
+    const member = members.find((teamMember) => teamMember.member_id === member_id || teamMember.email === email);
+
+    if (!member) {
+      const display = member_id ? `ID: ${member_id}` : `email: ${email}`;
+      throw new BadRequestException(`User with ${display} does not exist in the team (team_id: ${team_id}).`);
+    }
+    return member;
   }
 }

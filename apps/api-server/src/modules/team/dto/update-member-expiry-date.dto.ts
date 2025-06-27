@@ -1,4 +1,4 @@
-import { IsDate, IsNotEmpty, IsUUID, ValidationOptions, registerDecorator } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsOptional, IsUUID, ValidationOptions, registerDecorator } from 'class-validator';
 
 export function IsTimestampGreaterThanNow(property: string, validationOptions?: ValidationOptions) {
   // eslint-disable-next-line func-names
@@ -19,16 +19,20 @@ export function IsTimestampGreaterThanNow(property: string, validationOptions?: 
 }
 
 export class UpdateMemberExpiryDateDto {
-  @IsUUID()
   @IsNotEmpty()
+  @IsUUID()
   team_id: string;
 
+  @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  member_id: string;
+  member_id?: string;
 
-  @IsDate()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
   @IsNotEmpty()
+  @IsDate()
   @IsTimestampGreaterThanNow(null, { message: 'expiry_date should be later than current time.' })
   expiry_date: Date;
 }

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -208,7 +202,7 @@ export class TeamManagementService {
       const { team_id, ...rest } = removeTeamMemberDto;
       const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
 
-      const member = this.findTeamMember(members, rest, team_id);
+      const member = this.validateTeamMember(members, rest, team_id);
 
       await this.disassociateMemberFromTheTeam(member, team.owner_id, team_id);
       const newTeamSize = members.length - 1;
@@ -222,13 +216,8 @@ export class TeamManagementService {
   async assignExistingMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, ...rest } = addTeamMemberDto;
     const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
-    const member = this.findTeamMember(members, rest, team_id);
+    const member = this.validateTeamMember(members, rest, team_id);
 
-    if (member.invitation_status !== InvitationStatus.ACCEPTED) {
-      throw new ForbiddenException(
-        `User with email ${rest.email} must accept the invitation before being assigned as admin.`,
-      );
-    }
     const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === adminId);
 
     if (isAlreadyAdminOfTeam) {
@@ -241,29 +230,29 @@ export class TeamManagementService {
       admin_id: member.member_id,
     });
 
-    await Promise.all([
-      this.teamToAdminRepository.orm.save(connectedAdminRecord),
-      this.revenueCatService.grantTeamMembership(member.member_id, Entitlement.team_admin, member.member_expiry_date),
-    ]);
+    await this.teamToAdminRepository.orm.save(connectedAdminRecord);
+    if (member.member_id) {
+      await this.revenueCatService.grantTeamMembership(
+        member.member_id,
+        Entitlement.team_admin,
+        member.member_expiry_date,
+      );
+    }
   }
 
   async removeMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, member_id, email } = addTeamMemberDto;
     const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
-    const member = this.findTeamMember(members, { member_id, email }, team_id);
-
-    if (member.invitation_status !== InvitationStatus.ACCEPTED) {
-      throw new ForbiddenException(
-        `User with email ${email} must accept the invitation before being removed as admin.`,
-      );
-    }
-    const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: member_id } });
-
-    const isAdminOfMultipleTeams = teamsAdminOf.length > 1;
-    if (isAdminOfMultipleTeams && member_id) {
-      await this.revenueCatService.revokeTeamMembership(member_id, Entitlement.team_admin);
-    }
+    this.validateTeamMember(members, { member_id, email }, team_id);
     await this.teamToAdminRepository.orm.delete({ team_id, admin_id: member_id });
+
+    if (member_id) {
+      const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: member_id } });
+      const isAdminOfMultipleTeams = teamsAdminOf.length > 1;
+      if (isAdminOfMultipleTeams) {
+        await this.revenueCatService.revokeTeamMembership(member_id, Entitlement.team_admin);
+      }
+    }
   }
 
   async registerTeam(payload: any) {
@@ -630,7 +619,7 @@ export class TeamManagementService {
       if (member.invitation_status === InvitationStatus.ACCEPTED) {
         let promises = [this.grantMembershipAndUpdateTeam(team, members.length, user_id)];
         if (is_admin) {
-          promises = [...promises, this.assignMemberAsAdmin(user_id, team_id)];
+          promises = [...promises, this.assignMemberAsAdmin(user_id, team_id, team.expires_date)];
         }
         await Promise.allSettled(promises);
       }
@@ -824,7 +813,7 @@ export class TeamManagementService {
     }
   }
 
-  async assignMemberAsAdmin(member_id: string, teamId: string) {
+  async assignMemberAsAdmin(member_id: string, teamId: string, team_expiry_date: string | Date) {
     const teamAdmins = await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } });
     const isAlreadyAdminOfTeam = teamAdmins.some((admin) => admin.admin_id === member_id);
 
@@ -837,7 +826,11 @@ export class TeamManagementService {
       team_id: teamId,
       admin_id: member_id,
     });
-    await this.teamToAdminRepository.orm.save(connectedAdminRecord);
+
+    await Promise.allSettled([
+      this.teamToAdminRepository.orm.save(connectedAdminRecord),
+      this.revenueCatService.grantTeamMembership(member_id, Entitlement.team_admin, team_expiry_date),
+    ]);
   }
 
   private async validateMembership(member_id: string, teamId: string, team: Team, adminId?: string) {
@@ -874,7 +867,7 @@ export class TeamManagementService {
     return members.find((member) => member.email === email); // @Description: Direct WHERE clause filtering doesn't work due to email encryption
   }
 
-  private findTeamMember(
+  private validateTeamMember(
     members: TeamToMember[],
     identifier: { member_id?: string; email?: string },
     team_id: string,

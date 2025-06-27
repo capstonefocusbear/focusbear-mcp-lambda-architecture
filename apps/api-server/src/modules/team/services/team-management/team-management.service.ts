@@ -32,6 +32,8 @@ import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
 import { AddTeamManuallyDto } from '../../dto/add-team-member-manually.dto';
 import { InvitationStatus } from '../../domain/invitation-status.enum';
+import { RemoveTeamMemberDto } from '../../dto/remove-team-member.dto';
+import { BulkDeleteDto } from '../../dto/bulk-delete.dto';
 
 @Injectable()
 export class TeamManagementService {
@@ -86,15 +88,20 @@ export class TeamManagementService {
     }
   }
 
-  async bulkDeleteTeamMembers(member_ids: string[], adminId: string, teamId: string): Promise<any> {
+  async bulkDeleteTeamMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
     try {
-      const { team, members } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
+      const { member_ids, emails, team_id } = bulkDeleteDto;
+      const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
       if (!team) throw new NotFoundException(`The Team with owner_id: ${adminId} does not exist or is inactive!`);
-      const checkTargetMember = ({ id }: User) => member_ids.includes(id) && id !== adminId;
-      const membersToDelete = members.filter(checkTargetMember);
-      await Promise.all(membersToDelete.map((e) => this.disassociateMemberFromTheTeam(e, team.owner_id, teamId)));
+
+      const membersToDelete = members.filter(
+        ({ member_id, email }) => (member_ids.includes(member_id) && member_id !== adminId) || emails.includes(email),
+      );
+      await Promise.all(
+        membersToDelete.map((member) => this.disassociateMemberFromTheTeam(member, team.owner_id, team_id)),
+      );
       const newTeamSize = team.team_size - member_ids.length;
-      await this.updateTeamSize(adminId, teamId, newTeamSize);
+      await this.updateTeamSize(adminId, team_id, newTeamSize);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -171,29 +178,36 @@ export class TeamManagementService {
     await Promise.all([reassignEntitlementsPromises]);
   }
 
-  private async disassociateMemberFromTheTeam(member: User, ownerId: string, teamId: string) {
-    if (member.id === ownerId) {
+  private async disassociateMemberFromTheTeam(member: TeamToMember, ownerId: string, teamId: string) {
+    if (member.member_id === ownerId) {
       throw new BadRequestException(`Cannot remove owner from team with ID ${teamId}!`);
     }
-    const memberOfTeams = await this.teamToMemberRepository.orm.find({ where: { member_id: member.id } });
+    const memberOfTeams = await this.teamToMemberRepository.orm.find({ where: { member_id: member.member_id } });
     const isPartOfMultipleTeams = memberOfTeams.length > 1;
-    await this.teamToMemberRepository.orm.delete({ team_id: teamId, member_id: member.id });
-    // If user is only part of a single team, revoke team_member entitlement
-    if (!isPartOfMultipleTeams) {
+
+    const memberIdentifier = member.member_id ? { member_id: member.member_id } : { id: member.id }; // member.id belongs to an unregistered user with encrypted email
+    await this.teamToMemberRepository.orm.delete({ team_id: teamId, ...memberIdentifier });
+
+    // If user is only part of a single team & registered/invite accepted, then revoke team_member entitlement
+    if (!isPartOfMultipleTeams && member.member_id && member.invitation_status === InvitationStatus.ACCEPTED) {
       await this.revenueCatService.revokeTeamMembership(member.id, Entitlement.team_member);
     }
   }
 
-  async removeMember(adminId: string, memberId: string, teamId: string) {
+  async removeMember(removeTeamMemberDto: RemoveTeamMemberDto, adminId: string) {
     try {
-      const { team, members } = await this.teamRepository.findActiveTeamWithMembers(teamId, adminId);
-      if (memberId === team.owner_id) {
-        throw new BadRequestException(`Can't remove owner from team with ID: ${teamId}. Owner ID: ${team.owner_id}`);
+      const { team_id, member_id, email } = removeTeamMemberDto;
+      const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+
+      const member = members.find((teamMember) => teamMember.member_id === member_id || teamMember.email === email);
+
+      if (!member) {
+        const identifier = member_id ? `ID: ${member_id}` : `email: ${email}`;
+        throw new BadRequestException(`User with ${identifier} does not exist in the team (team_id: ${team_id}).`);
       }
-      const member = await this.userRepository.orm.findOne({ where: { id: memberId } });
-      await this.disassociateMemberFromTheTeam(member, team.owner_id, teamId);
+      await this.disassociateMemberFromTheTeam(member, team.owner_id, team_id);
       const newTeamSize = members.length - 1;
-      await this.updateTeamSize(adminId, teamId, newTeamSize);
+      await this.updateTeamSize(adminId, team_id, newTeamSize);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

@@ -215,7 +215,7 @@ export class TeamManagementService {
     const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
     const member = this.validateTeamMember(members, rest, team_id);
 
-    const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === adminId);
+    const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === member.member_id);
 
     if (isAlreadyAdminOfTeam) {
       throw new BadRequestException(
@@ -244,7 +244,7 @@ export class TeamManagementService {
     await this.teamToAdminRepository.orm.delete({ team_id, admin_id: member_id });
 
     if (member_id) {
-      const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { admin_id: member_id } });
+      const teamsAdminOf = await this.teamToAdminRepository.orm.find({ where: { team_id, admin_id: member_id } });
       const isAdminOfMultipleTeams = teamsAdminOf.length > 1;
       if (isAdminOfMultipleTeams) {
         await this.revenueCatService.revokeTeamMembership(member_id, Entitlement.team_admin);
@@ -870,7 +870,7 @@ export class TeamManagementService {
     const member = members.find((teamMember) => teamMember.member_id === member_id || teamMember.email === email);
 
     if (!member) {
-      const display = member_id ? `ID: ${member_id}` : `email: ${email}`;
+      const display = member_id ? `member_id: ${member_id}` : `email: ${email}`;
       throw new BadRequestException(`User with ${display} does not exist in the team (team_id: ${team_id}).`);
     }
     return member;

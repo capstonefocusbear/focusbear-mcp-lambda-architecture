@@ -121,6 +121,7 @@ export const TeamRepositoryMock = {
   findActiveTeamWithMembers: jest.fn(),
   getTeamMembers: jest.fn(),
   getTeamAdmins: jest.fn(),
+  getTeamIncludingUnregistered: jest.fn(),
 };
 
 export const TeamToMemberRepositoryMock = {

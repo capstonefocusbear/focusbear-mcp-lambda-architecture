@@ -44,6 +44,8 @@ import {
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
+import { TeamToMember } from '../../src/modules/team/entities/team-to-member.entity';
+import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1237,11 +1239,35 @@ export const TeamWithMembersDummy = new Team({
   payment_type: PaymentType.STRIPE,
   stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
+  expires_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
 });
 
-export const TeamMemberDummy = new User({
-  ...userDummy,
+export const TeamMemberDummy = new TeamToMember({
   id: randomUUID(),
+  first_name: 'dummy first name',
+  last_name: 'dummy last name',
+  email: 'dummy@email.com',
+  team_id: TeamWithMembersDummy.id,
+  member_id: randomUUID(),
+  member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+  invitation_status: InvitationStatus.ACCEPTED,
+  invitation_sent_at: new Date(),
+  invitation_send_count: 1,
+  invitation_responded_at: new Date(),
+});
+
+export const TeamMemberFake = new TeamToMember({
+  id: randomUUID(),
+  first_name: 'fake first name',
+  last_name: 'fake last name',
+  email: 'fake@email.com',
+  team_id: TeamWithMembersDummy.id,
+  member_id: randomUUID(),
+  member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+  invitation_status: InvitationStatus.ACCEPTED,
+  invitation_sent_at: new Date(),
+  invitation_send_count: 1,
+  invitation_responded_at: new Date(),
 });
 
 export const pusherBeamsPublishRequestDummy = {

@@ -70,19 +70,19 @@ export class TeamManagementController {
   @Post('/assign-admin')
   @RequireEntitlements([Entitlement.team_owner])
   async assignAdmin(
-    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @Body() addTeamMemberDto: AddTeamMemberDto,
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
-    return this.teamManagementService.assignExistingMemberAsAdmin(user_id, member_id, team_id);
+    return this.teamManagementService.assignExistingMemberAsAdmin(addTeamMemberDto, user_id);
   }
 
   @Post('/remove-admin')
   @RequireEntitlements([Entitlement.team_owner])
   async removeAdmin(
-    @Body() { member_id, team_id }: AddTeamMemberDto,
+    @Body() addTeamMemberDto: AddTeamMemberDto,
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
-    return this.teamManagementService.removeMemberAsAdmin(user_id, member_id, team_id);
+    return this.teamManagementService.removeMemberAsAdmin(addTeamMemberDto, user_id);
   }
 
   @Post('/update-team-size')

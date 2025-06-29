@@ -92,6 +92,7 @@ export const RevenueCatServiceMock = {
   checkSubscriptionStatus: jest.fn(),
   deleteUserFromRevenueCat: jest.fn(),
   getSubscriberFromRevenueCat: jest.fn(),
+  updateEntitlementExpiry: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {

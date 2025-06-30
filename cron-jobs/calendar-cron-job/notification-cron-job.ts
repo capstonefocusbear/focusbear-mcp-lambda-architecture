@@ -7,6 +7,7 @@ import { Notification } from '../../apps/api-server/src/modules/notification/ent
 import { CronJobDataSource } from '../data-source';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
+import { withSentry, captureErrorWithContext } from '../sentry';
 /* eslint-disable @typescript-eslint/no-var-requires */
 const dotenv = require('dotenv');
 
@@ -23,7 +24,7 @@ async function fetchEvents() {
   });
 
   console.log('eventsFromFetchEvents', JSON.stringify(events));
-  
+
   const allExcludedKeywords = await CronJobDataSource.manager.find(CalendarExcludedKeyword, {
     where: {},
   });
@@ -91,7 +92,7 @@ const sendBeamsPushNotification = async (userId: string, language: string, notif
   if (userId === JEREMY_USER_ID) {
     console.log('Sending Notification to User, ', userId, JSON.stringify(notificationData));
   }
-  
+
   try {
     const publishRequest: BeamsPublishRequest = {
       apns: {
@@ -111,7 +112,16 @@ const sendBeamsPushNotification = async (userId: string, language: string, notif
     };
     await beamsClient.publishToUsers([userId], publishRequest);
   } catch (error) {
-    console.error(error);
+    captureErrorWithContext(error, {
+      operation: 'sendBeamsPushNotification',
+      cronJob: 'calendar-notification',
+      userId,
+      extra: {
+        language,
+        notificationId: notificationData.id,
+        summary: notificationData.summary,
+      }
+    });
   }
 };
 
@@ -119,34 +129,32 @@ const updateNotificationStatus = async (id: string) => {
   await CronJobDataSource.manager.update(Notification, id, { received: true });
 };
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    const calendarEventsToSend = await fetchEvents();
-    // eslint-disable-next-line no-console
-    console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
-    if (calendarEventsToSend.length === 0) process.exit();
-    const sendNotificationsPromises = calendarEventsToSend.map(async (calendarEvent) => {
-      const { id, summary, description, event_begins, event_ends } = calendarEvent;
-      await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
-        id,
-        summary,
-        description,
-        event_begins,
-        event_ends,
-      });
-      await updateNotificationStatus(id);
+async function runNotificationCronJob() {
+  await CronJobDataSource.initialize();
+  const calendarEventsToSend = await fetchEvents();
+  // eslint-disable-next-line no-console
+  console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
+  if (calendarEventsToSend.length === 0) process.exit();
+  const sendNotificationsPromises = calendarEventsToSend.map(async (calendarEvent) => {
+    const { id, summary, description, event_begins, event_ends } = calendarEvent;
+    await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
+      id,
+      summary,
+      description,
+      event_begins,
+      event_ends,
     });
-    const updateNotificationStatusPromises = calendarEventsToSend.map(async (calendarEvent) => {
-      const { id } = calendarEvent;
-      await updateNotificationStatus(id);
-    });
-    await Promise.all(sendNotificationsPromises);
-    await Promise.all(updateNotificationStatusPromises);
-    // give me code to change the code above to send all the push notifications simultaneously
+    await updateNotificationStatus(id);
+  });
+  const updateNotificationStatusPromises = calendarEventsToSend.map(async (calendarEvent) => {
+    const { id } = calendarEvent;
+    await updateNotificationStatus(id);
+  });
+  await Promise.all(sendNotificationsPromises);
+  await Promise.all(updateNotificationStatusPromises);
+  // give me code to change the code above to send all the push notifications simultaneously
 
-    process.exit();
-  } catch (error) {
-    console.error(error);
-  }
-})();
+  process.exit();
+}
+
+withSentry(runNotificationCronJob);

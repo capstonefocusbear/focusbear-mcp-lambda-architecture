@@ -8,6 +8,7 @@ import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
+import { withSentry, captureErrorWithContext } from '../sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -69,7 +70,11 @@ async function getUserDetails(userId: string): Promise<{ email: string | null; l
       language: user.language || 'en',
     };
   } catch (error) {
-    console.error(`Failed to get user details for user ${userId}:`, error);
+    captureErrorWithContext(error, {
+      operation: 'getUserDetails',
+      cronJob: 'data-sync-notification',
+      userId,
+    });
     return { email: null, language: 'en' };
   }
 }
@@ -85,25 +90,29 @@ async function sendEmail(email: string, language: string) {
   try {
     await sendGrid.send(msg);
   } catch (error) {
-    console.error(`Failed to send email to ${email}:`, error);
+    captureErrorWithContext(error, {
+      operation: 'sendEmail',
+      cronJob: 'data-sync-notification',
+      extra: {
+        email,
+        language,
+      }
+    });
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    const participants = await getUsersWithOutdatedData();
-    console.log(`Found ${participants.length} participants with outdated usage data`);
-    for (const participant of participants) {
-      const { email, language } = await getUserDetails(participant.userId);
-      if (email) {
-        await sendEmail(email, language);
-      }
+async function runDataSyncCronJob() {
+  await CronJobDataSource.initialize();
+  const participants = await getUsersWithOutdatedData();
+  console.log(`Found ${participants.length} participants with outdated usage data`);
+  for (const participant of participants) {
+    const { email, language } = await getUserDetails(participant.userId);
+    if (email) {
+      await sendEmail(email, language);
     }
-    console.log('Usage data sync notification cronjob completed successfully');
-    process.exit();
-  } catch (error) {
-    console.error('Error in usage data sync notification cronjob:', error);
-    process.exit(1);
   }
-})();
+  console.log('Usage data sync notification cronjob completed successfully');
+  process.exit();
+}
+
+withSentry(runDataSyncCronJob);

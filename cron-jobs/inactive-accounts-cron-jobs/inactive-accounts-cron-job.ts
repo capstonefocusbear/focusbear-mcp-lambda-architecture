@@ -10,6 +10,7 @@ import * as i18next from 'i18next';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
+import { withSentry, captureErrorWithContext } from '../sentry';
 
 i18next.init({
   lng: 'en',
@@ -51,9 +52,17 @@ async function getInactiveUsers() {
   console.log(inactiveUsers);
   const userInfoPromise = inactiveUsers.map(async (user) => {
     try {
-      const auth0User = await auth0.getUser({ id: user.auth0_id });
+      const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
       return { email: auth0User.email, user };
     } catch (error) {
+      captureErrorWithContext(error, {
+        operation: 'getInactiveUsers.getUserEmail',
+        cronJob: 'inactive-accounts',
+        userId: user.id,
+        extra: {
+          auth0Id: user.auth0_id,
+        }
+      });
       return null;
     }
   });
@@ -107,7 +116,7 @@ async function deleteUserFromRevenueCat(user_id: string) {
 
 async function deleteUsers(users: User[]) {
   for await (const user of users) {
-    const auth0Promise = auth0.deleteUser({ id: user.auth0_id });
+    const auth0Promise = auth0.users.delete({ id: user.auth0_id });
     const revenueCatPromise = deleteUserFromRevenueCat(user.id);
     const stripePromise = stripe.customers.del(user.stripe_customer_id);
     const userRepositoryPromise = CronJobDataSource.manager.delete(User, user.id);
@@ -115,21 +124,19 @@ async function deleteUsers(users: User[]) {
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    // delete users who have been inactive for 6 months or longer and have been warned for inactivity
-    // const usersToDelete = await getUsersToDelete();
-    // await deleteUsers(usersToDelete);
-    // email a notification to users who have been inactive for 5 months warning them that their account will
-    // be deleted
-    const inactiveUsers = await getInactiveUsers();
-    // await sendInactivityWarningEmails(inactiveUsers);
-    // temporarily not emailing users or updating has_received_inactivity_warning field
-    // await updateUsersInactivityWarningFields(inactiveUsers);
-    logInactiveUsers(inactiveUsers);
-    process.exit();
-  } catch (error) {
-    console.error('Error in inactivity cron job:', error);
-  }
-})();
+async function runInactiveAccountsCronJob() {
+  await CronJobDataSource.initialize();
+  // delete users who have been inactive for 6 months or longer and have been warned for inactivity
+  // const usersToDelete = await getUsersToDelete();
+  // await deleteUsers(usersToDelete);
+  // email a notification to users who have been inactive for 5 months warning them that their account will
+  // be deleted
+  const inactiveUsers = await getInactiveUsers();
+  // await sendInactivityWarningEmails(inactiveUsers);
+  // temporarily not emailing users or updating has_received_inactivity_warning field
+  // await updateUsersInactivityWarningFields(inactiveUsers);
+  logInactiveUsers(inactiveUsers);
+  process.exit();
+}
+
+withSentry(runInactiveAccountsCronJob);

@@ -118,7 +118,7 @@ async function addMessageToR2(filename: string, messageData: { message: string; 
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
-  const maxRetries = 3;
+  const maxRetries = 1; //reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
   const TEN_SECONDS = 10000;
   for (let i = 0; i <= maxRetries; i++) {
     try {

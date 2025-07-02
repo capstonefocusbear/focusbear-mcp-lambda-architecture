@@ -32,7 +32,7 @@ export class FocusMode extends BaseEntity {
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 512,
     nullable: false,
     transformer: BaseEntity.encryptField('name'),
   })

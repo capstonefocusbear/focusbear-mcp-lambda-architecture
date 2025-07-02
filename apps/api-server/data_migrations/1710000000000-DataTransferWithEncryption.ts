@@ -47,6 +47,10 @@ import { SurveyAnswer } from '../src/modules/survey/entities/survey-answer.entit
 import { SurveyAnswerMetadata } from '../src/modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../src/modules/activity-template/entity/activity-template-tag.entity';
 import { CustomRoutine } from '../src/modules/user/entities/custom-routine';
+import { StudyParticipant } from '@api-server/modules/user/entities/study-participant.entity';
+import { FlankerTest } from '@api-server/modules/user/entities/flanker-test.entity';
+import { HealthMetrics } from '@api-server/modules/user/entities/health-metrics.entity';
+import { UsageData } from '@api-server/modules/user/entities/usage-data.entity';
 
 interface EntityConfig {
   entity: any;
@@ -237,6 +241,14 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
     { entity: LogQuantityAnswer, order: 45 },
     { entity: CompletedActivitySequence, order: 46 },
     { entity: DailyStats, order: 47 },
+    {
+      entity: StudyParticipant,
+      order: 48,
+      encryptedFields: [{ field: 'phone_number', salt: 'phone_number', type: 'string' }],
+    },
+    { entity: FlankerTest, order: 49 },
+    { entity: HealthMetrics, order: 50 },
+    { entity: UsageData, order: 51 },
   ];
 
   private async processEntity(config: EntityConfig): Promise<void> {

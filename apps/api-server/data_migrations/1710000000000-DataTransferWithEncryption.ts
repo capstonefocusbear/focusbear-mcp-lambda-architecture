@@ -47,10 +47,10 @@ import { SurveyAnswer } from '../src/modules/survey/entities/survey-answer.entit
 import { SurveyAnswerMetadata } from '../src/modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../src/modules/activity-template/entity/activity-template-tag.entity';
 import { CustomRoutine } from '../src/modules/user/entities/custom-routine';
-import { StudyParticipant } from '@api-server/modules/user/entities/study-participant.entity';
-import { FlankerTest } from '@api-server/modules/user/entities/flanker-test.entity';
-import { HealthMetrics } from '@api-server/modules/user/entities/health-metrics.entity';
-import { UsageData } from '@api-server/modules/user/entities/usage-data.entity';
+import { StudyParticipant } from '../src/modules/user/entities/study-participant.entity';
+import { FlankerTest } from '../src/modules/user/entities/flanker-test.entity';
+import { HealthMetrics } from '../src/modules/user/entities/health-metrics.entity';
+import { UsageData } from '../src/modules/user/entities/usage-data.entity';
 
 interface EntityConfig {
   entity: any;

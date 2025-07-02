@@ -196,9 +196,9 @@ export class TeamManagementService {
   async removeMember(removeTeamMemberDto: RemoveTeamMemberDto, adminId: string) {
     try {
       const { team_id, ...rest } = removeTeamMemberDto;
-      const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+      const { team, members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
 
-      const member = this.validateTeamMember(members, rest, team_id);
+      const member = this.validateTeamMember(members, admins, rest, team_id, adminId);
 
       await Promise.allSettled([
         this.disassociateMemberFromTheTeam(member, team.owner_id, team_id),
@@ -213,7 +213,7 @@ export class TeamManagementService {
   async assignExistingMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, ...rest } = addTeamMemberDto;
     const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
-    const member = this.validateTeamMember(members, rest, team_id);
+    const member = this.validateTeamMember(members, admins, rest, team_id, adminId);
 
     const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === member.member_id);
 
@@ -239,8 +239,8 @@ export class TeamManagementService {
 
   async removeMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, member_id, email } = addTeamMemberDto;
-    const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
-    this.validateTeamMember(members, { member_id, email }, team_id);
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    this.validateTeamMember(members, admins, { member_id, email }, team_id, adminId);
     await this.teamToAdminRepository.orm.delete({ team_id, admin_id: member_id });
 
     if (member_id) {
@@ -862,8 +862,10 @@ export class TeamManagementService {
 
   private validateTeamMember(
     members: TeamToMember[],
+    admins: TeamToAdmin[],
     identifier: { member_id?: string; email?: string },
     team_id: string,
+    adminId: string,
   ): TeamToMember {
     const { member_id, email } = identifier;
 
@@ -873,6 +875,12 @@ export class TeamManagementService {
       const display = member_id ? `member_id: ${member_id}` : `email: ${email}`;
       throw new BadRequestException(`User with ${display} does not exist in the team (team_id: ${team_id}).`);
     }
+
+    const isUserAdmin = admins.some((admin) => admin.admin_id === adminId);
+    if (!isUserAdmin) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not an admin member of this team!`);
+    }
+
     return member;
   }
 }

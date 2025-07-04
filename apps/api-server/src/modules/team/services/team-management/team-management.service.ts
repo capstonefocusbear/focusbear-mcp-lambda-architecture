@@ -73,8 +73,9 @@ export class TeamManagementService {
       });
 
       const memberId = user.id;
-      const { members, team } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
+      const { members, admins, team } = await this.teamRepository.getTeamIncludingUnregistered(teamId);
 
+      this.validateTeamMember(members, admins, { member_id: user.id }, team.id, adminId);
       await this.validateMembership(memberId, teamId, team, members);
 
       await Promise.allSettled([
@@ -91,7 +92,7 @@ export class TeamManagementService {
   async bulkDeleteTeamMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
     try {
       const { member_ids, emails, team_id } = bulkDeleteDto;
-      const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+      const { team, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id);
       if (!team) throw new NotFoundException(`The Team with owner_id: ${adminId} does not exist or is inactive!`);
 
       const membersToDelete = members.filter(
@@ -196,7 +197,7 @@ export class TeamManagementService {
   async removeMember(removeTeamMemberDto: RemoveTeamMemberDto, adminId: string) {
     try {
       const { team_id, ...rest } = removeTeamMemberDto;
-      const { team, members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+      const { team, members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id);
 
       const member = this.validateTeamMember(members, admins, rest, team_id, adminId);
 
@@ -212,7 +213,7 @@ export class TeamManagementService {
 
   async assignExistingMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, ...rest } = addTeamMemberDto;
-    const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const { admins, members } = await this.teamRepository.getTeamIncludingUnregistered(team_id);
     const member = this.validateTeamMember(members, admins, rest, team_id, adminId);
 
     const isAlreadyAdminOfTeam = admins.some((admin) => admin.admin_id === member.member_id);
@@ -239,7 +240,7 @@ export class TeamManagementService {
 
   async removeMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, member_id, email } = addTeamMemberDto;
-    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team_id);
     this.validateTeamMember(members, admins, { member_id, email }, team_id, adminId);
     await this.teamToAdminRepository.orm.delete({ team_id, admin_id: member_id });
 
@@ -311,7 +312,7 @@ export class TeamManagementService {
   }
 
   async getAllTeamMembers(adminId: string, teamId: string) {
-    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(teamId, adminId);
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(teamId);
     const membersData = [];
 
     // Get all registered member IDs
@@ -489,7 +490,7 @@ export class TeamManagementService {
 
   async updateMemberExpiryDate(adminId: string, updateMemberExpiryDateDto: UpdateMemberExpiryDateDto) {
     const { team_id, email, member_id, expiry_date } = updateMemberExpiryDateDto;
-    const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id, adminId);
+    const { members } = await this.teamRepository.getTeamIncludingUnregistered(team_id);
     const linkedMemberRecord = members.find((member) => member.member_id === member_id || member.email === email);
     if (!linkedMemberRecord) {
       throw new BadRequestException(`User with ID: ${member_id} is not a member of team with ID: ${team_id}!`);
@@ -522,11 +523,6 @@ export class TeamManagementService {
 
   async addTeamMemberManually(adminId: string, { team_id, user_id }: AddTeamManuallyDto) {
     try {
-      const team = await this.teamRepository.orm.findOneBy({ id: team_id });
-      if (!team) {
-        throw new NotFoundException(`The team with id: ${team_id} doesn't exists!`);
-      }
-
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) {
         throw new NotFoundException(`The user with id: ${user_id} doesn't exists!`);

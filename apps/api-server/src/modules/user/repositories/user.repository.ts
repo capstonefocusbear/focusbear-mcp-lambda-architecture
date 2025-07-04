@@ -199,6 +199,10 @@ export class UserRepository extends BaseRepository<User> {
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .leftJoinAndSelect('focus_modes.tags', 'tags')
+      .leftJoin('users.teamToAdmin', 'teamToAdmin')
+      .addSelect(['teamToAdmin.id'])
+      .leftJoin('teamToAdmin.team', 'team')
+      .addSelect(['team.id', 'team.name'])
       .where('users.id = :id', { id })
       .getOne();
   }

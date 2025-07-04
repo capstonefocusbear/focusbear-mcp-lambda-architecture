@@ -154,7 +154,7 @@ export class AuthService {
         <html>
           <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
             <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
-              <img src="https://dashboard.local.dev:3000/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
+              <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
               <h1 style="margin-bottom: 10px;">Focus Bear</h1>
               <h2>Password Change Request</h2>
               <p>We received a request to change the password for your account.</p>
@@ -269,7 +269,7 @@ export class AuthService {
             <html>
               <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
                 <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
-                  <img src="https://dashboard.local.dev:3000/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
+                  <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
                   <h1 style="margin-bottom: 10px;">Focus Bear</h1>
                   <h2>Verify Your Account</h2>
                   <p><strong>Verify Link:</strong><br/>

@@ -273,14 +273,14 @@ export class UserService {
         return focusMode;
       });
 
-      const teams = teamToAdmin.map(({ team }) => team);
+      const adminForTeams = teamToAdmin.map(({ team }) => team);
 
       return {
         ...rest,
         email,
         focus_modes: formattedFocusModes,
         email_verified: auth0User.email_verified,
-        teams,
+        adminForTeams,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

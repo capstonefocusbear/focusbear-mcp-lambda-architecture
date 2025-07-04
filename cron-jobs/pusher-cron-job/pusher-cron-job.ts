@@ -1,5 +1,6 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
+import { withSentry } from '../sentry';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Pool } = require('pg');
@@ -15,8 +16,16 @@ const connectionString = db_uri
   ? db_uri
   : `postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
 
+const poolConfig = {
+  connectionString,
+  ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 10,
+};
+
 const fetchNotifications = async () => {
-  const pool = new Pool({ connectionString });
+  const pool = new Pool(poolConfig);
   await pool.connect();
   const currentTime = DateTime.now().toISO();
   const timeInFifteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
@@ -49,24 +58,22 @@ const sendBeamsPushNotification = async (userId: string, notificationData: Notif
   await beamsClient.publishToUsers([userId], publishRequest);
 };
 
-(async () => {
-  try {
-    const notificationsToSend = await fetchNotifications();
-    // eslint-disable-next-line no-console
-    console.log(`Ran for ${notificationsToSend.length} notification(s).`);
-    if (notificationsToSend.length === 0) process.exit();
-    notificationsToSend.forEach(async (notification) => {
-      const { id, summary, description, event_begins, event_ends } = notification;
-      await sendBeamsPushNotification(notification.user_id, {
-        id,
-        summary,
-        description,
-        event_begins,
-        event_ends,
-      });
+async function runPusherCronJob() {
+  const notificationsToSend = await fetchNotifications();
+  // eslint-disable-next-line no-console
+  console.log(`Ran for ${notificationsToSend.length} notification(s).`);
+  if (notificationsToSend.length === 0) process.exit();
+  notificationsToSend.forEach(async (notification) => {
+    const { id, summary, description, event_begins, event_ends } = notification;
+    await sendBeamsPushNotification(notification.user_id, {
+      id,
+      summary,
+      description,
+      event_begins,
+      event_ends,
     });
-    process.exit();
-  } catch (error) {
-    console.error(error);
-  }
-})();
+  });
+  process.exit();
+}
+
+withSentry(runPusherCronJob);

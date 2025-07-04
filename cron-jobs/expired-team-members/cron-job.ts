@@ -6,6 +6,7 @@ import { Entitlement } from '../../apps/api-server/src/modules/subscription/doma
 import { TeamToMember } from '../../apps/api-server/src/modules/team/entities/team-to-member.entity';
 import { Team } from '../../apps/api-server/src/modules/team/entities/team.entity';
 import { PaymentType } from '../../apps/api-server/src/modules/team/domain/payment-type.enum';
+import { withSentry, captureErrorWithContext } from '../sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -20,8 +21,8 @@ async function getMembersWhoseTrialExpired() {
 }
 
 async function updateTeamSubscriptionQuantity(team: Team, linkedMemberRecords: TeamToMember[]) {
+  const newTeamMemberCount = linkedMemberRecords.length - 1;
   try {
-    const newTeamMemberCount = linkedMemberRecords.length - 1;
     const subId = team?.stripe_data?.subscriptionId;
     const subItemId = team?.stripe_data?.subscriptionItemId;
     const stripeCallUrl = `https://api.stripe.com/v1/subscriptions/${subId}`;
@@ -40,18 +41,33 @@ async function updateTeamSubscriptionQuantity(team: Team, linkedMemberRecords: T
       { headers },
     );
   } catch (error) {
-    console.error('Error updating subscription quantity fro expired-team-member cron-job: ', error?.response);
+    captureErrorWithContext(error, {
+      operation: 'updateTeamSubscriptionQuantity',
+      cronJob: 'expired-team-members',
+      teamId: team.id,
+      extra: {
+        subscriptionId: team?.stripe_data?.subscriptionId,
+        newTeamMemberCount,
+      }
+    });
   }
 }
 
-async function revokeMemberTeamEntitlement(memberId) {
+async function revokeMemberTeamEntitlement(memberId: string) {
   try {
     const callUrl = `https://api.revenuecat.com/v1/subscribers/${memberId}/entitlements/${Entitlement.team_member}/revoke_promotionals`;
     const Authorization = `Bearer ${process.env.REVENUE_CAT_SECRET_KEY}`;
     const headers = { Authorization };
     await axios.post(callUrl, {}, { headers });
   } catch (error) {
-    console.error('Error revoking team_member entitlement for expired team member: ', error?.response);
+    captureErrorWithContext(error, {
+      operation: 'revokeMemberTeamEntitlement',
+      cronJob: 'expired-team-members',
+      userId: memberId,
+      extra: {
+        entitlement: Entitlement.team_member,
+      }
+    });
   }
 }
 
@@ -79,19 +95,27 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
     // delete record linking member to team
     await CronJobDataSource.manager.delete(TeamToMember, { member_id, team_id });
   } catch (error) {
-    console.error('Error removing member from team in cron job: ', error);
+    captureErrorWithContext(error, {
+      operation: 'disassociateMemberFromTeam',
+      cronJob: 'expired-team-members',
+      userId: member_id,
+      teamId: team_id,
+      extra: {
+        memberIsTeamOwner: false,
+      }
+    }, {
+      shouldThrow: true // Re-throw to prevent further processing
+    });
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    const expiringMembers = await getMembersWhoseTrialExpired();
-    for await (const member of expiringMembers) {
-      await disassociateMemberFromTeam(member);
-    }
-    process.exit();
-  } catch (error) {
-    console.error('Error in expired-team-member cron job: ', error);
+async function runExpiredTeamMembersCronJob() {
+  await CronJobDataSource.initialize();
+  const expiringMembers = await getMembersWhoseTrialExpired();
+  for await (const member of expiringMembers) {
+    await disassociateMemberFromTeam(member);
   }
-})();
+  process.exit();
+}
+
+withSentry(runExpiredTeamMembersCronJob);

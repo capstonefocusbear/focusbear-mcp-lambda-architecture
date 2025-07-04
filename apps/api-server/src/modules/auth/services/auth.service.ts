@@ -342,8 +342,8 @@ export class AuthService {
   }
 
   private getFrontendBaseUrl(origin: string) {
-    const devFrontendUrl = this.configService.get('devFrontendUrl');
+    const devFrontendUrl = this.configService.get('server.devFrontendUrl');
 
-    return origin === devFrontendUrl ? devFrontendUrl : this.configService.get('frontEndUrl');
+    return origin === devFrontendUrl ? devFrontendUrl : this.configService.get('server.frontEndUrl');
   }
 }

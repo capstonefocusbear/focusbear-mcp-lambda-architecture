@@ -65,7 +65,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: false,
+    ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
     entities: [
       User,
       Activity,

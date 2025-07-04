@@ -4,6 +4,7 @@ import { BullQueues, BullWorkers } from '../../apps/api-server/src/shared/utils/
 import { CronJobDataSource } from '../data-source';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
+import { withSentry } from '../sentry';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
@@ -25,41 +26,39 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
   return idsOfUsersToSync;
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    // Initialize the BullMQ queue
-    const syncQueue = new Queue(BullQueues.SYNC_EVENTS, {
-      connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
-    });
+async function runEventCronJob() {
+  await CronJobDataSource.initialize();
+  // Initialize the BullMQ queue
+  const syncQueue = new Queue(BullQueues.SYNC_EVENTS, {
+    connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
+  });
 
-    // Function to enqueue jobs
-    const enqueueSyncJobs = async (
-      platform: CalendarPlatforms,
-      users: {
-        id: string;
-        account: string;
-      }[],
-    ) => {
-      for await (const user of users) {
-        await syncQueue.add(BullWorkers.SYNC_EVENTS_FOR_PLATFORM, {
-          platform,
-          userId: user.id,
-          account: user.account,
-        });
-      }
-    };
+  // Function to enqueue jobs
+  const enqueueSyncJobs = async (
+    platform: CalendarPlatforms,
+    users: {
+      id: string;
+      account: string;
+    }[],
+  ) => {
+    for await (const user of users) {
+      await syncQueue.add(BullWorkers.SYNC_EVENTS_FOR_PLATFORM, {
+        platform,
+        userId: user.id,
+        account: user.account,
+      });
+    }
+  };
 
-    // Enqueue jobs for Google Calendar
-    const usersToSyncGoogle = await getUsersToSyncWithPlatform(CalendarPlatforms.GOOGLE);
-    await enqueueSyncJobs(CalendarPlatforms.GOOGLE, usersToSyncGoogle);
+  // Enqueue jobs for Google Calendar
+  const usersToSyncGoogle = await getUsersToSyncWithPlatform(CalendarPlatforms.GOOGLE);
+  await enqueueSyncJobs(CalendarPlatforms.GOOGLE, usersToSyncGoogle);
 
-    // Enqueue jobs for Microsoft Calendar
-    const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
-    await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
+  // Enqueue jobs for Microsoft Calendar
+  const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
+  await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
 
-    process.exit();
-  } catch (error) {
-    console.error(error);
-  }
-})();
+  process.exit();
+}
+
+withSentry(runEventCronJob);

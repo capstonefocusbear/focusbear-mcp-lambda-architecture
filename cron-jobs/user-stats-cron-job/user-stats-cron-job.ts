@@ -11,6 +11,7 @@ import { DailySequenceDurations } from '../../apps/api-server/src/modules/activi
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { Activity } from '../../apps/api-server/src/modules/activity/entities/activity.entity';
 import { DAYS_OF_WEEK } from './constants';
+import { withSentry, captureErrorWithContext } from '../sentry';
 
 function filterActivitiesForCurrentDay(currentDay: DaysOfWeek, activities: Activity[]) {
   const activitiesForCurrentDay = activities.filter(
@@ -163,57 +164,55 @@ async function calculateOfflineActivitiesCompletionPercentage() {
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    await calculateOfflineActivitiesCompletionPercentage();
-    const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
-    const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
-      where: { last_time_stats_updated: LessThan(time24HoursAgo) },
-      take: 50,
+async function runUserStatsCronJob() {
+  await CronJobDataSource.initialize();
+  await calculateOfflineActivitiesCompletionPercentage();
+  const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
+  const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
+    where: { last_time_stats_updated: LessThan(time24HoursAgo) },
+    take: 50,
+  });
+  for await (const user of usersWhoseStatsAreOutOfDate) {
+    const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
+      where: {
+        user_id: user.id,
+      },
+      order: { date_completed: 'DESC' },
     });
-    for await (const user of usersWhoseStatsAreOutOfDate) {
-      const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
-        where: {
-          user_id: user.id,
-        },
-        order: { date_completed: 'DESC' },
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
+      await getUserRoutineDailyDurations(user.id);
+    const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
+      calculateStreaks(userDailyStats, user.timezone, {
+        morningRoutineDailyDurations,
+        eveningRoutineDailyDurations,
+        microBreaksDailyDurations,
       });
-      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
-        await getUserRoutineDailyDurations(user.id);
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
-        calculateStreaks(userDailyStats, user.timezone, {
-          morningRoutineDailyDurations,
-          eveningRoutineDailyDurations,
-          microBreaksDailyDurations,
-        });
-      const userLevel = determineUserLevel(user.onboarding_progress, {
-        focus_modes_streak,
+    const userLevel = determineUserLevel(user.onboarding_progress, {
+      focus_modes_streak,
+      morning_routines_streak,
+      evening_routines_streak,
+      micro_breaks_streak,
+    });
+    const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
+    await CronJobDataSource.manager.update(
+      User,
+      { id: user.id },
+      {
+        onboarding_progress: {
+          ...user.onboarding_progress,
+          level: userLevel,
+        },
+        last_time_stats_updated: currentTime,
         morning_routines_streak,
         evening_routines_streak,
+        focus_modes_streak,
         micro_breaks_streak,
-      });
-      const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
-      await CronJobDataSource.manager.update(
-        User,
-        { id: user.id },
-        {
-          onboarding_progress: {
-            ...user.onboarding_progress,
-            level: userLevel,
-          },
-          last_time_stats_updated: currentTime,
-          morning_routines_streak,
-          evening_routines_streak,
-          focus_modes_streak,
-          micro_breaks_streak,
-        },
-      );
-    }
-    // eslint-disable-next-line no-console
-    console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
-    process.exit();
-  } catch (error) {
-    console.error('Error in user daily stats cron job:', error);
+      },
+    );
   }
-})();
+  // eslint-disable-next-line no-console
+  console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
+  process.exit();
+}
+
+withSentry(runUserStatsCronJob);

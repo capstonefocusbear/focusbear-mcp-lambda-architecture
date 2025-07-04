@@ -57,37 +57,18 @@ export class UserRepository extends BaseRepository<User> {
 
       // Batch upsert activity sequences and collect activities for deletion
       const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
-      const allActivitiesToKeep = new Set<string>();
-      const activitiesToDeleteByType = new Map<string, string[]>();
-
-      // Collect all activity IDs to keep and group by sequence type for deletion
-      activitiesData.forEach(({ sequence, activities }) => {
-        const activityIds = activities.map((activity) => activity.id);
-        activityIds.forEach((activityId) => allActivitiesToKeep.add(activityId));
-
-        // Group activities to delete by sequence type
-        if (!activitiesToDeleteByType.has(sequence.type)) {
-          activitiesToDeleteByType.set(sequence.type, []);
-        }
-        const existingIds = activitiesToDeleteByType.get(sequence.type);
-        if (existingIds) {
-          existingIds.push(...activityIds);
-        }
-      });
+      // Collect all activity IDs to keep
+      const allActivityIds = activitiesData.flatMap(({ activities }) => activities.map((activity) => activity.id));
+      const allActivityIdsToKeep = new Set<string>(allActivityIds);
 
       // Batch upsert all sequences
       await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
 
-      // Batch delete activities by type - use Promise.all to avoid await in loop
-      await Promise.all(
-        Array.from(activitiesToDeleteByType.entries()).map(([sequenceType, activityIdsToKeep]) =>
-          queryRunner.manager.delete(Activity, {
-            user_id: id,
-            id: Not(In(activityIdsToKeep)),
-            type: sequenceType,
-          }),
-        ),
-      );
+      // Batch delete activities
+      await queryRunner.manager.delete(Activity, {
+        user_id: id,
+        id: Not(In(Array.from(allActivityIdsToKeep))),
+      });
 
       const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
       const parentsWithoutLinks = activitiesArray.filter(
@@ -218,6 +199,10 @@ export class UserRepository extends BaseRepository<User> {
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
       .leftJoinAndSelect('focus_modes.tags', 'tags')
+      .leftJoin('users.teamToAdmin', 'teamToAdmin')
+      .addSelect(['teamToAdmin.id'])
+      .leftJoin('teamToAdmin.team', 'team')
+      .addSelect(['team.id', 'team.name'])
       .where('users.id = :id', { id })
       .getOne();
   }

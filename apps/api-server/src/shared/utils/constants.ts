@@ -93,7 +93,12 @@ export const IDS_TO_LOG_FOR = [JEREMYS_USER_ID, DEON_USER_ID];
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK, EventTypes.UNINSTALL];
+export const EVENT_TYPES_TO_ALERT_IN_SLACK = [
+  EventTypes.APP_QUIT,
+  EventTypes.GIVE_ME_4HR_BREAK,
+  EventTypes.UNINSTALL,
+  EventTypes.BAD_AI_BLOCKING_DECISION,
+];
 
 export const IMPACT_MEASUREMENT_EVENT_TYPES = [
   EventTypes.UNLOCK_SUPER_DISTRACTING_WEBSITE,

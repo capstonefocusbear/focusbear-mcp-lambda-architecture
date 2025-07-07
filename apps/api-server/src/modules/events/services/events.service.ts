@@ -84,7 +84,7 @@ export class EventsService {
 
   shouldEventBeLogged(reason: string, event_type: string) {
     const shouldLogEventType = EVENT_TYPES_TO_ALERT_IN_CLIQ.includes(event_type as EventTypes);
-    if (!shouldLogEventType) return false;
+    if (!shouldLogEventType || !reason) return false;
     const sentenceWords = reason.toLowerCase().split(/\s+/);
     for (const word of WORDS_TO_LOG_FOR) {
       if (sentenceWords.includes(word.toLowerCase())) {
@@ -127,6 +127,37 @@ export class EventsService {
     });
   }
 
+  async emailBadAIDecision(event: TrackEventDto, email: string, userId?: string) {
+    const eventData = event.event_data as any;
+    const userProperties = event.user_properties as any;
+
+    const detailedReport = `
+      Bad AI Blocking Decision Report
+
+      User Information:
+      - User ID: ${userProperties?.id || userId || 'N/A'}
+      - Uses Mac App: ${userProperties?.USES_MAC_APP || false}
+      - App Version: ${userProperties?.appVersion || 'N/A'}
+      - Day of Usage: ${userProperties?.day_of_usage || 0}
+      - macOS Version: ${userProperties?.macOSVersion || 'N/A'}
+
+      AI Decision Details:
+      - User Feedback: ${eventData?.data?.userFeedbackOnDecision || 'N/A'}
+      - AI Payload: ${eventData?.data?.payloadSentToAIEndpoint || 'N/A'}
+
+      Full Event Data:
+      ${prettyJson(event, 'pretty')}
+      `;
+
+    await this.emailService.sendEmail({
+      to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      replyTo: email,
+      text: detailedReport,
+      subject: 'Bad AI Blocking Decision - Focus Bear',
+    });
+  }
+
   async handleMobilePostpone(userId: string, eventType: EventTypes, durationMinutes: number, language: string) {
     const isPostponeEvent =
       eventType === EventTypes.POSTPONE_HABITS_FROM_MOBILE || eventType === EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE;
@@ -157,6 +188,8 @@ export class EventsService {
       });
 
       let messagePrefix = '*User ';
+      let formattedMessage = '';
+
       switch (event.event_type) {
         case EventTypes.GIVE_ME_4HR_BREAK:
           messagePrefix += 'disabled app for 4 hours';
@@ -164,6 +197,19 @@ export class EventsService {
         case EventTypes.UNINSTALL:
           messagePrefix += 'uninstalled';
           break;
+        case EventTypes.BAD_AI_BLOCKING_DECISION: {
+          messagePrefix = 'Bad AI Blocking Decision';
+          const eventData = event.event_data as any;
+          const userProperties = event.user_properties as any;
+          formattedMessage = `\n*User ID:* ${user_id}\n*User Feedback:* ${
+            eventData?.data?.userFeedbackOnDecision || 'N/A'
+          }\n*Uses Mac App:* ${userProperties?.USES_MAC_APP || false}\n*App Version:* ${
+            userProperties?.appVersion || eventData?.appVersion || 'N/A'
+          }\n*Day of Usage:* ${userProperties?.day_of_usage || eventData?.day_of_usage || 0}\n*macOS Version:* ${
+            userProperties?.macOSVersion || eventData?.macOSVersion || 'N/A'
+          }\n*AI Payload:* \`\`\`${eventData?.data?.payloadSentToAIEndpoint || 'N/A'}\`\`\``;
+          break;
+        }
         default:
           messagePrefix += 'quit app';
       }
@@ -171,7 +217,8 @@ export class EventsService {
       const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
       const body = {
         channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
-        message: `${messagePrefix}:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``,
+        message:
+          formattedMessage || `${messagePrefix}:*\n*User ID:* ${user_id}\n*Event:*\`\`\`${JSON.stringify(event)}\`\`\``,
       };
 
       await axios.post(cliqUrl, body);
@@ -187,10 +234,19 @@ export class EventsService {
     const shouldLogEvent = this.shouldEventBeLogged(reason, event_type);
     const shouldLogNewUserEvent = await this.shouldNewUserEventBeLogged(event_type, userId);
     const hasFeedback = !!event_data?.data?.feedback;
+    const isBadAIDecision = event_type === EventTypes.BAD_AI_BLOCKING_DECISION;
+
     // log all quit events in cliq if user is new. If user is not new, log only if the event is quit event and reason contains any of the words in WORDS_TO_LOG_FOR
     if (shouldLogNewUserEvent || shouldLogEvent) {
       await this.logEventInCliq(userId, trackEventDto);
     }
+
+    // Handle bad AI decision events separately
+    if (isBadAIDecision) {
+      await this.emailBadAIDecision(trackEventDto, email, userId);
+      return;
+    }
+
     // log all quit events in email if user is new. If user is not new, log only if the event is uninstall or contains feedback
     if (shouldLogNewUserEvent || (shouldLogEvent && (event_type === EventTypes.UNINSTALL || hasFeedback))) {
       await this.emailQuitFeedback(trackEventDto, email, reason, userId);

@@ -8,4 +8,5 @@ export enum EventTypes {
   BLOCK_DISTRACTING_APP = 'block-distracting-app',
   BLOCK_DISTRACTING_URL = 'block-distracting-url',
   BLOCK_DISTRACTION = 'block-distraction',
+  BAD_AI_BLOCKING_DECISION = 'bad-ai-blocking-decision',
 }

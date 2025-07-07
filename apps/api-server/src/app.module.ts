@@ -76,6 +76,10 @@ import { EmailModule } from './modules/email/email.module';
     }),
     BullModule.forRoot({
       connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
+      defaultJobOptions: {
+        removeOnComplete: 1000,
+        removeOnFail: 1000,
+      },
     }),
     AuthModule,
     HelperModule,

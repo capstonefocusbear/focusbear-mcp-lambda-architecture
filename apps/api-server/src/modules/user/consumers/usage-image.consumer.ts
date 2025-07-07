@@ -7,6 +7,7 @@ import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
+import { GeminiService } from '@app/gemini';
 import { I18nService } from 'nestjs-i18n';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
 import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
@@ -23,6 +24,7 @@ export class UsageImageConsumer {
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly i18nService: I18nService,
+    private readonly geminiService: GeminiService,
   ) {}
 
   @Process(BullWorkers.PROCESS_USAGE_IMAGE)
@@ -55,9 +57,27 @@ export class UsageImageConsumer {
       const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
       const imageBuffer = `data:image/png;base64,${base64}`;
 
+      // Remove data URL prefix for Gemini (only base64 data)
+      const base64Data = base64;
+
       const usageData = await this.openAIService.processUsageImage(imageBuffer);
 
-      await this.usageDataService.saveUsageData(userId, usageData.apps, {
+      if (!usageData || Object.keys(usageData).length === 0) {
+        throw new Error('No usage data detected in image');
+      }
+
+      // Cross-check with Gemini
+      try {
+        const crossCheckResult = await this.geminiService.crossCheckWithGPT(base64Data, usageData);
+        if (!crossCheckResult.modelsAgree) {
+          throw new Error('Disagreement between OpenAI and Gemini usage image analysis');
+        }
+      } catch (crossCheckError) {
+        this.sentryService.instance().captureException(crossCheckError, { level: 'error' });
+        throw crossCheckError;
+      }
+
+      await this.usageDataService.saveUsageData(userId, Object.values(usageData).flat(), {
         startDate,
         endDate,
         platform,

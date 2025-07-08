@@ -85,38 +85,23 @@ import { FlankerTest } from './entities/flanker-test.entity';
     UsageDataConsumer,
     FlankerTestService,
   ],
-  exports: [
-    UserRepository,
-    UserService,
-    UserSettingsService,
-    UserDailyStatsService,
-    CustomRoutineRepository,
-  ],
+  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      StudyParticipant,
-      UsageData,
-      HealthMetrics,
-      FlankerTest,
-    ]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): any =>
-        configService.get('auth0'),
+      useFactory: (configService: ConfigService): any => configService.get('auth0'),
     }),
     RevenueCatModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): IRevenueCatOptions =>
-        configService.get('revenueCat'),
+      useFactory: (configService: ConfigService): IRevenueCatOptions => configService.get('revenueCat'),
     }),
     StripeModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): IStripeOptions =>
-        configService.get('stripeConfig'),
+      useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -146,32 +131,27 @@ import { FlankerTest } from './entities/flanker-test.entity';
     R2Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): any =>
-        configService.get('r2'),
+      useFactory: (configService: ConfigService): any => configService.get('r2'),
     }),
     OpenAIModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): any =>
-        configService.get('openai'),
+      useFactory: (configService: ConfigService): any => configService.get('openai'),
     }),
     SendGridModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): ISendGridOptions =>
-        configService.get('sendGrid'),
+      useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     PusherModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): IPusherOptions =>
-        configService.get('pusher'),
+      useFactory: (configService: ConfigService): IPusherOptions => configService.get('pusher'),
     }),
     PusherBeamsModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): IPusherBeamsOptions =>
-        configService.get('pusher-beams'),
+      useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
     ActivityModule,
     forwardRef(() => AuthModule),

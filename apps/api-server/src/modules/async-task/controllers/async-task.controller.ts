@@ -1,17 +1,5 @@
-import {
-  Controller,
-  Get,
-  Param,
-  UseGuards,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  ApiSecurity,
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { Controller, Get, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import { ApiSecurity, ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { AsyncTaskService } from '../services/async-task.service';
 import { AsyncTaskResponseDto } from '../dto/async-task-response.dto';
@@ -26,8 +14,7 @@ export class AsyncTaskController {
   @Get(':id')
   @ApiOperation({
     summary: 'Get async task status',
-    description:
-      'Retrieve the current status and details of an async task by ID',
+    description: 'Retrieve the current status and details of an async task by ID',
   })
   @ApiParam({
     name: 'id',

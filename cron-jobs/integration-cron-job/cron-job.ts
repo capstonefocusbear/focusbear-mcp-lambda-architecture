@@ -79,7 +79,7 @@ async function handleUnauthorizedError(userId: string, retryCount: number): Prom
     userId,
     extra: {
       retryCount,
-    }
+    },
   });
   throw error;
 }

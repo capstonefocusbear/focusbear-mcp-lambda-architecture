@@ -265,6 +265,7 @@ For any events that trigger the webhook, the local POST `/subscription/webhooks/
 ## Managing Secrets and Environment Variables for Backend Services on Production build
 
 ### How to Add a Secret for Backend Services
+
 To securely add a new secret for backend services, follow these steps:
 
 1. **Open AWS Secrets Manager**
@@ -282,10 +283,12 @@ To securely add a new secret for backend services, follow these steps:
    - Create a Pull Request (PR) for review.
 
 > **Note:**
+>
 > - Ensure your secret key name matches exactly in both AWS Secrets Manager and the codebase.
 > - Never commit actual secret values to the repository.
 
 ### How to Add a Non-Secret Environment Variable for Backend Services
+
 To add a new non-secret environment variable for backend services, follow these steps:
 
 1. **Open AWS Systems Manager (SSM) Parameter Store**
@@ -305,6 +308,7 @@ To add a new non-secret environment variable for backend services, follow these 
    - Create a Pull Request (PR) for review.
 
 > **Note:**
+>
 > - Ensure your parameter path matches exactly in both AWS SSM Parameter Store and the codebase.
 > - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
 > - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).

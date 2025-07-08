@@ -48,7 +48,7 @@ async function updateTeamSubscriptionQuantity(team: Team, linkedMemberRecords: T
       extra: {
         subscriptionId: team?.stripe_data?.subscriptionId,
         newTeamMemberCount,
-      }
+      },
     });
   }
 }
@@ -66,7 +66,7 @@ async function revokeMemberTeamEntitlement(memberId: string) {
       userId: memberId,
       extra: {
         entitlement: Entitlement.team_member,
-      }
+      },
     });
   }
 }
@@ -95,17 +95,21 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
     // delete record linking member to team
     await CronJobDataSource.manager.delete(TeamToMember, { member_id, team_id });
   } catch (error) {
-    captureErrorWithContext(error, {
-      operation: 'disassociateMemberFromTeam',
-      cronJob: 'expired-team-members',
-      userId: member_id,
-      teamId: team_id,
-      extra: {
-        memberIsTeamOwner: false,
-      }
-    }, {
-      shouldThrow: true // Re-throw to prevent further processing
-    });
+    captureErrorWithContext(
+      error,
+      {
+        operation: 'disassociateMemberFromTeam',
+        cronJob: 'expired-team-members',
+        userId: member_id,
+        teamId: team_id,
+        extra: {
+          memberIsTeamOwner: false,
+        },
+      },
+      {
+        shouldThrow: true, // Re-throw to prevent further processing
+      },
+    );
   }
 }
 

@@ -8,11 +8,7 @@ import { Passport } from '../../../auth/domain/passport.model';
 import { SyncUsageDataDto } from '../../dto/sync-usage-data.dto';
 import { UploadUsageImageDto } from '../../dto/upload-usage-image.dto';
 import { UploadUsageImageResponseDto } from '../../dto/upload-usage-image-response.dto';
-import {
-  BullQueues,
-  BullWorkers,
-  S3_BUCKET_USAGE_IMAGES,
-} from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../../shared/utils/constants';
 import { AsyncTaskService } from '../../../async-task/services/async-task.service';
 
 @Controller('usage-data')
@@ -27,10 +23,7 @@ export class UsageDataController {
   ) {}
 
   @Post('sync')
-  async syncUsageData(
-    @Body() syncDto: SyncUsageDataDto,
-    @AuthContext() { user }: Passport,
-  ): Promise<void> {
+  async syncUsageData(@Body() syncDto: SyncUsageDataDto, @AuthContext() { user }: Passport): Promise<void> {
     await this.usageDataQueue.add(BullWorkers.SYNC_USAGE_DATA, {
       userId: user.id,
       syncDto,
@@ -38,16 +31,10 @@ export class UsageDataController {
   }
 
   @Post('generate-upload-image-url')
-  async generateUploadImageUrl(
-    @AuthContext() { user }: Passport,
-  ): Promise<{ uploadUrl: string; imageKey: string }> {
+  async generateUploadImageUrl(@AuthContext() { user }: Passport): Promise<{ uploadUrl: string; imageKey: string }> {
     const imageKey = `${user.id}-${Date.now()}-usage-image.png`;
 
-    const uploadUrl = await this.r2Service.getPresignedUploadUrl(
-      S3_BUCKET_USAGE_IMAGES,
-      imageKey,
-      'image/png',
-    );
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_USAGE_IMAGES, imageKey, 'image/png');
 
     return { uploadUrl, imageKey };
   }

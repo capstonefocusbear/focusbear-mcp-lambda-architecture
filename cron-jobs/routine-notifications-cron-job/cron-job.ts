@@ -12,6 +12,7 @@ import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { openAiConfig } from '../../apps/api-server/src/config';
+import { withSentry, captureErrorWithContext } from '../sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -79,6 +80,14 @@ async function getMessageFromR2(fileName: string) {
     const parsedMessage = JSON.parse(bodyString);
     return parsedMessage || null;
   } catch (error) {
+    captureErrorWithContext(error, {
+      operation: 'getMessageFromR2',
+      cronJob: 'routine-notifications',
+      extra: {
+        fileName,
+        bucket: 'routine-notifications',
+      }
+    });
     return null;
   }
 }
@@ -109,7 +118,7 @@ async function addMessageToR2(filename: string, messageData: { message: string; 
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
-  const maxRetries = 3;
+  const maxRetries = 1; //reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
   const TEN_SECONDS = 10000;
   for (let i = 0; i <= maxRetries; i++) {
     try {
@@ -130,15 +139,24 @@ async function generateRoutineNotification(routine: string, fileName: string, la
       // Exit the loop if request is successful
       return messageWithoutQuotes;
     } catch (error) {
-      console.error(
-        `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
-        error,
-      );
       // If we have not reached max retries, wait for ten seconds and retry.
       if (i < maxRetries) {
+        console.error(
+          `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
+          error,
+        );
         await sleep(TEN_SECONDS);
       } else {
-        console.error(`Failed to generate message in notification after ${maxRetries + 1} attempts.`);
+        captureErrorWithContext(error, {
+          operation: 'generateRoutineNotification',
+          cronJob: 'routine-notifications',
+          extra: {
+            routine,
+            fileName,
+            language,
+            attempts: maxRetries + 1,
+          }
+        });
       }
     }
   }
@@ -267,7 +285,7 @@ function createFileName(routine: string, language: string) {
   return `${routine}-message-${language}.json`;
 }
 
-(async () => {
+async function runRoutineNotificationsCronJob() {
   await CronJobDataSource.initialize();
   const translationData: TranslationDataType = {};
 
@@ -298,4 +316,6 @@ function createFileName(routine: string, language: string) {
     ]);
   }
   process.exit();
-})();
+}
+
+withSentry(runRoutineNotificationsCronJob);

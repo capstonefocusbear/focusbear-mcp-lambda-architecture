@@ -1,16 +1,13 @@
 /* eslint-disable linebreak-style */
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import {
-  TypeOrmModule,
-  TypeOrmModuleAsyncOptions,
-  TypeOrmModuleOptions,
-} from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -45,6 +42,14 @@ import { AsyncTaskModule } from './modules/async-task/async-task.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
+        },
+      ],
+    }),
     ConfigModule.forRoot({ load: configsArray }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -68,15 +73,13 @@ import { AsyncTaskModule } from './modules/async-task/async-task.module';
         path: path.join(__dirname, '/shared/i18n'),
         watch: true,
       },
-      resolvers: [
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-      ],
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
     }),
     BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOSTNAME,
-        port: Number(process.env.REDIS_PORT),
+      connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
+      defaultJobOptions: {
+        removeOnComplete: 1000,
+        removeOnFail: 1000,
       },
     }),
     AuthModule,

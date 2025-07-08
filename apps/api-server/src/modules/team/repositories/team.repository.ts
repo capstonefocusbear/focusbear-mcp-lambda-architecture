@@ -22,7 +22,6 @@ export class TeamRepository extends BaseRepository<Team> {
 
   async getTeamIncludingUnregistered(
     teamId: string,
-    adminId: string,
   ): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[]; team: Team }> {
     const team = await this.orm.findOne({ where: { id: teamId } }); // @TODO eager:true
     if (!team) {
@@ -33,11 +32,6 @@ export class TeamRepository extends BaseRepository<Team> {
       await this.teamToMemberRepository.orm.find({ where: { team_id: teamId } }),
       await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } }),
     ]);
-
-    const isUserAdmin = admins.some((admin) => admin.admin_id === adminId);
-    if (!isUserAdmin) {
-      throw new UnauthorizedException(`User with ID: ${adminId} is not an admin member of this team!`);
-    }
     return { members, admins, team };
   }
 

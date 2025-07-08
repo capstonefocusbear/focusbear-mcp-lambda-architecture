@@ -9,6 +9,7 @@ import { createNewToDos, getTasksToDelete } from './helpers';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/synced-project.entity';
+import { withSentry, captureErrorWithContext } from '../sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -71,7 +72,16 @@ async function handleUnauthorizedError(userId: string, retryCount: number): Prom
     await refreshToken(userId);
     return 1;
   }
-  throw new Error('Unauthorized after retry');
+  const error = new Error('Unauthorized after retry');
+  captureErrorWithContext(error, {
+    operation: 'handleUnauthorizedError',
+    cronJob: 'integration',
+    userId,
+    extra: {
+      retryCount,
+    }
+  });
+  throw error;
 }
 
 async function getPortals(userId: string) {
@@ -230,14 +240,12 @@ async function getUsersToSyncWithZoho() {
   return idsOfUsersToSync;
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    const usersToSync = await getUsersToSyncWithZoho();
-    const syncUserPromises = usersToSync.map((userId) => syncUserTasks(userId));
-    await Promise.all(syncUserPromises);
-    process.exit();
-  } catch (error) {
-    console.error('Error in integration cron-job: ', error, error?.response);
-  }
-})();
+async function runIntegrationCronJob() {
+  await CronJobDataSource.initialize();
+  const usersToSync = await getUsersToSyncWithZoho();
+  const syncUserPromises = usersToSync.map((userId) => syncUserTasks(userId));
+  await Promise.all(syncUserPromises);
+  process.exit();
+}
+
+withSentry(runIntegrationCronJob);

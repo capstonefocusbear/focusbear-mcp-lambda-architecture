@@ -66,7 +66,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: false,
+    ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
     entities: [
       User,
       Activity,
@@ -123,9 +123,6 @@ export const typeormConfig = registerAs(
       FlankerTest,
       AsyncTask,
     ],
-    migrations: [
-      join(__dirname, '../../migrations/**/*.{ts,js}'),
-      join(__dirname, '../../seeds/**/*.{ts,js}'),
-    ],
+    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),
 );

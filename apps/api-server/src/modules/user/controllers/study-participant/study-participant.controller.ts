@@ -65,9 +65,24 @@ export class StudyParticipantController {
     await this.studyParticipantService.markCompleteQuestionnaire(user.id);
   }
 
+  @Post('mark-eos-questionnaire-completed')
+  @UseGuards(IsAuth)
+  async markEndOfStudyQuestionnaireCompleted(@AuthContext() { user }: Passport): Promise<void> {
+    await this.studyParticipantService.markEndOfStudyQuestionnaireCompleted(user.id);
+  }
+
   @Post('save-flanker-test-result')
   @UseGuards(IsAuth)
   async saveFlankerTestResult(@AuthContext() { user }: Passport, @Body() dto: SaveFlankerTestResultDto): Promise<void> {
     await this.studyParticipantService.saveFlankerTestResult(user.id, dto);
+  }
+
+  @Get('group-statistics')
+  @ApiResponse({
+    status: 200,
+    description: 'Returns statistics about participant distribution across groups and characteristics',
+  })
+  async getGroupStatistics() {
+    return this.studyParticipantService.getGroupStatistics();
   }
 }

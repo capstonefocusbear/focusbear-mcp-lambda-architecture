@@ -1,13 +1,13 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
-export class AddTeamMemberDto {
-  @IsOptional()
-  @IsUUID()
-  member_id?: string;
-
+export class RemoveTeamMemberDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsUUID()
+  member_id?: string;
 
   @IsNotEmpty()
   @IsUUID()

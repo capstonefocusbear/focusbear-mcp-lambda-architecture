@@ -18,5 +18,7 @@
   "usage_image_processing_error_subject": "No pudimos procesar tu captura de pantalla de Screen Time",
   "usage_image_processing_error_body": "Hola,\n\nDesafortunadamente, nos encontramos con un problema al intentar procesar tu captura de pantalla de Screen Time. Por favor, intenta subirla de nuevo. Si el problema persiste, no dudes en contactar a nuestro equipo de soporte.\n\nGracias por tu comprensión!\n\n– El equipo de Focus Bear",
   "usage_data_sync_subject": "Recordatorio de sincronización de datos de uso",
-  "usage_data_sync_message": "Hemos notado que no ha sincronizado sus datos de uso en los últimos 3 días. Por favor, sincronice sus datos para continuar participando en el estudio."
+  "usage_data_sync_message": "Hemos notado que no ha sincronizado sus datos de uso en los últimos 3 días. Por favor, sincronice sus datos para continuar participando en el estudio.",
+  "verify_your_email": "Verifica tu correo",
+  "reset_your_password": "Restablece tu contraseña"
 }

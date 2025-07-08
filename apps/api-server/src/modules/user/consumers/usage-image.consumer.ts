@@ -91,11 +91,18 @@ export class UsageImageConsumer {
       try {
         const crossCheckResult = await this.geminiService.crossCheckWithGPT(base64Data, usageData);
         if (!crossCheckResult.modelsAgree) {
-          throw new Error('Disagreement between OpenAI and Gemini usage image analysis');
+          await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
+            processingFailed: new Date(),
+            openAiResponse: usageData,
+            imageKey,
+          });
         }
       } catch (crossCheckError) {
-        this.sentryService.instance().captureException(crossCheckError, { level: 'error' });
-        throw crossCheckError;
+        await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
+          processingFailed: new Date(),
+          openAiResponse: usageData,
+          imageKey,
+        });
       }
 
       await this.usageDataService.saveUsageData(userId, Object.values(usageData).flat(), {
@@ -114,6 +121,7 @@ export class UsageImageConsumer {
       // Update task status to failed
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
         processingFailed: new Date(),
+        imageKey,
       });
 
       const user = await this.userRepository.orm.findOneBy({ id: userId });

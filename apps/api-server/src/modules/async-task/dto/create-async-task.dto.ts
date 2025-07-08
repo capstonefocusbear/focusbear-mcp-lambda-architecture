@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, Min } from 'class-validator';
+import { IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAsyncTaskDto {
@@ -8,14 +8,4 @@ export class CreateAsyncTaskDto {
   })
   @IsOptional()
   metadata?: Record<string, any>;
-
-  @ApiPropertyOptional({
-    description: 'Timeout duration in seconds. If not provided, uses default timeout.',
-    example: 300,
-    minimum: 1,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  timeoutSeconds?: number;
 }

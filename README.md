@@ -240,26 +240,6 @@ This will output the coverage of each file and which lines aren't covered by exi
 
 When creating test files for services within the NestJS project scope, create the test file in the same folder as the service folder and append the file name with `.spec.ts`
 
-### Render.com Hosting Provider
-
-#### Adding env variables
-
-1. From the dashboard, navigate to 'Env Groups' in the navigation bar
-2. Open desired env group
-3. Edit or add new variables
-
-#### Linking an Env Group to a service
-
-1. Navigate to the service's 'Environment' settings
-2. Scroll down to 'Linked Env Groups'
-3. Select and link the desired Env Group
-
-#### Preview Environments
-
-To test backend changes, a preview server can be set up that will be connected with a preview DB and Redis instance. To set up a preview environment, commit your changes to a feature branch and open a pull request to the main branch. To skip setting up preview environments for a PR, include '[skip preview]' in the title of the PR. To access preview environments, navigate to Render.com > Blueprints > backend-api [PR #number of pull request in GitHub]. From here you can get the staging server URI and database and Redis instance configuration.
-
-The preview DB will be seeded with a test user and some additional records linked to them that can be used for testing. Seed scripts are located at `./apps/api-server/seeds`. For convenience, it's recommended to use the seed user's account registered in Focus Bear when getting an access token locally. (Ask for login credentials)
-
 ### Admin users
 
 To set a user as admin, an admin role should be assigned to them from the Auth0 dashboard and their `user_type` field should be set to `ADMIN` in the users table in the DB.
@@ -281,3 +261,54 @@ For any events that trigger the webhook, the local POST `/subscription/webhooks/
 ### Example Video of Making Change
 
 [Google Doc containing video links](https://docs.google.com/document/d/1ZiiIcFibBE3fQXuY18tFXiIoSFqq1mfYo6CQkzpZgEk/edit?usp=sharing)
+
+## Managing Secrets and Environment Variables for Backend Services on Production build
+
+### How to Add a Secret for Backend Services
+
+To securely add a new secret for backend services, follow these steps:
+
+1. **Open AWS Secrets Manager**
+   - Log in to the AWS Management Console.
+   - Navigate to Secrets Manager.
+2. **Add or Update the Secret through AWS Console or CLI**
+   - Locate the secret named `/prod/backend`.
+   - Add a new key-value pair for your secret, or update an existing one as needed.
+3. **Register the Secret Key in the Infra Codebase**
+   - Go to the [aws-infra repository](https://github.com/Focus-Bear/aws-infra).
+   - Open the file: [`const/secret-config/backend-secrets-config.ts`](https://github.com/Focus-Bear/aws-infra/blob/main/const/secret-config/backend-secrets-config.ts).
+   - Add your new key to the `BACKEND_SECRET_ENV_KEYS` enum, as appropriate.
+4. **Submit Your Changes**
+   - Commit your code changes.
+   - Create a Pull Request (PR) for review.
+
+> **Note:**
+>
+> - Ensure your secret key name matches exactly in both AWS Secrets Manager and the codebase.
+> - Never commit actual secret values to the repository.
+
+### How to Add a Non-Secret Environment Variable for Backend Services
+
+To add a new non-secret environment variable for backend services, follow these steps:
+
+1. **Open AWS Systems Manager (SSM) Parameter Store**
+   - Log in to the AWS Management Console.
+   - Navigate to Systems Manager → Parameter Store.
+2. **Add or Update the Parameter through AWS Console or CLI**
+   - Create a new parameter or update an existing one.
+   - Use the path format: `/prod/backend/<your_variable_name>`
+   - Set the appropriate value for your environment variable.
+3. **Register the Environment Variable in the Codebase**
+   - Go to the [aws-infra repository](https://github.com/Focus-Bear/aws-infra).
+   - Open the file: [const/env-config/backend-env-variable.ts](https://github.com/Focus-Bear/aws-infra/blob/main/const/env-config/backend-env-variable.ts).
+   - Add your new key to the `BACKEND_CONFIG_ENV_KEYS` enum.
+   - Add the corresponding entry to the `BACKEND_ENV_PATHS` object with the SSM path and provided status.
+4. **Submit Your Changes**
+   - Commit your code changes.
+   - Create a Pull Request (PR) for review.
+
+> **Note:**
+>
+> - Ensure your parameter path matches exactly in both AWS SSM Parameter Store and the codebase.
+> - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
+> - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).

@@ -11,10 +11,7 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
   }
 
   async findByStatus(status: AsyncTaskStatus): Promise<AsyncTask[]> {
-    return this.orm
-      .createQueryBuilder('async_task')
-      .where('async_task.status = :status', { status })
-      .getMany();
+    return this.orm.createQueryBuilder('async_task').where('async_task.status = :status', { status }).getMany();
   }
 
   async updateStatus(id: string, status: AsyncTaskStatus): Promise<AsyncTask> {
@@ -23,6 +20,7 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
       .update(AsyncTask)
       .set({ status })
       .where('id = :id', { id })
+      .andWhere('status != :status', { status: AsyncTaskStatus.COMPLETED })
       .execute();
     return this.orm.findOneBy({ id });
   }

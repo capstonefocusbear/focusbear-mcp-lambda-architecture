@@ -9,12 +9,7 @@ import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
 import { I18nService } from 'nestjs-i18n';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
-import {
-  BullQueues,
-  BullWorkers,
-  FOCUS_BEAR_EMAILS,
-  S3_BUCKET_USAGE_IMAGES,
-} from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
 import { UserRepository } from '../repositories/user.repository';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
@@ -69,15 +64,7 @@ export class UsageImageConsumer {
       asyncTaskId?: string;
     }>,
   ) {
-    const {
-      userId,
-      imageKey,
-      startDate,
-      endDate,
-      platform,
-      deviceId,
-      asyncTaskId,
-    } = job.data;
+    const { userId, imageKey, startDate, endDate, platform, deviceId, asyncTaskId } = job.data;
 
     const baseMetadata = {
       taskType: 'usage-image-processing',
@@ -90,14 +77,9 @@ export class UsageImageConsumer {
     };
 
     // Update task status to processing
-    await this.updateAsyncTaskStatus(
-      asyncTaskId,
-      AsyncTaskStatus.PROCESSING,
-      baseMetadata,
-      {
-        processingStarted: new Date(),
-      },
-    );
+    await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.PROCESSING, baseMetadata, {
+      processingStarted: new Date(),
+    });
 
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -110,17 +92,12 @@ export class UsageImageConsumer {
         },
       });
 
-      const imageUrl = await this.r2Service.getPresignedUrl(
-        S3_BUCKET_USAGE_IMAGES,
-        imageKey,
-      );
+      const imageUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_USAGE_IMAGES, imageKey);
 
       const imageResponse = await axios.get(imageUrl, {
         responseType: 'arraybuffer',
       });
-      const base64 = Buffer.from(imageResponse.data, 'binary').toString(
-        'base64',
-      );
+      const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
       const imageBuffer = `data:image/png;base64,${base64}`;
 
       const usageData = await this.openAIService.processUsageImage(imageBuffer);
@@ -133,49 +110,32 @@ export class UsageImageConsumer {
       });
 
       // Update task status to completed
-      await this.updateAsyncTaskStatus(
-        asyncTaskId,
-        AsyncTaskStatus.COMPLETED,
-        baseMetadata,
-        {
-          processingCompleted: new Date(),
-          appsProcessed: usageData.apps?.length || 0,
-        },
-      );
+      await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
+        processingCompleted: new Date(),
+        appsProcessed: usageData.apps?.length || 0,
+      });
     } catch (error) {
       // Update task status to failed
-      await this.updateAsyncTaskStatus(
-        asyncTaskId,
-        AsyncTaskStatus.FAILED,
-        baseMetadata,
-        {
-          processingFailed: new Date(),
-          errorMessage: error.message,
-          errorStack: error.stack,
-        },
-      );
+      await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
+        processingFailed: new Date(),
+        errorMessage: error.message,
+        errorStack: error.stack,
+      });
 
       const user = await this.userRepository.orm.findOneBy({ id: userId });
 
       if (!user?.auth0_id) {
-        this.sentryService
-          .instance()
-          .captureException(error, { level: 'error' });
+        this.sentryService.instance().captureException(error, { level: 'error' });
         throw error;
       }
 
-      const auth0User = await this.auth0ManagementService.getAuth0User(
-        user?.auth0_id,
-      );
+      const auth0User = await this.auth0ManagementService.getAuth0User(user?.auth0_id);
 
       await this.sendGridService.sendEmail({
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         to: auth0User.email,
         replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
-        subject: this.i18nService.t(
-          'common.usage_image_processing_error_subject',
-          { lang: user.language },
-        ),
+        subject: this.i18nService.t('common.usage_image_processing_error_subject', { lang: user.language }),
         text: this.i18nService.t('common.usage_image_processing_error_body', {
           lang: user.language,
         }),

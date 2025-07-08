@@ -7,7 +7,9 @@ import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
 import { SyncUsageDataDto } from '../../dto/sync-usage-data.dto';
 import { UploadUsageImageDto } from '../../dto/upload-usage-image.dto';
+import { UploadUsageImageResponseDto } from '../../dto/upload-usage-image-response.dto';
 import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../../shared/utils/constants';
+import { AsyncTaskService } from '../../../async-task/services/async-task.service';
 
 @Controller('usage-data')
 @UseGuards(IsAuth)
@@ -17,6 +19,7 @@ export class UsageDataController {
     @InjectQueue(BullQueues.USAGE_IMAGE) private usageImageQueue: Queue,
     @InjectQueue(BullQueues.USAGE_DATA)
     private readonly usageDataQueue: Queue,
+    private readonly asyncTaskService: AsyncTaskService,
   ) {}
 
   @Post('sync')
@@ -40,7 +43,21 @@ export class UsageDataController {
   async uploadUsageImage(
     @Body() uploadUsageImageDto: UploadUsageImageDto,
     @AuthContext() { user }: Passport,
-  ): Promise<void> {
+  ): Promise<UploadUsageImageResponseDto> {
+    // Create AsyncTask record
+    const asyncTask = await this.asyncTaskService.createAsyncTask({
+      metadata: {
+        taskType: 'usage-image-processing',
+        userId: user.id,
+        imageKey: uploadUsageImageDto.imageKey,
+        startDate: uploadUsageImageDto.usageStartDate,
+        endDate: uploadUsageImageDto.usageEndDate,
+        platform: uploadUsageImageDto.platform,
+        deviceId: uploadUsageImageDto.deviceId,
+      },
+    });
+
+    // Queue the job with asyncTaskId
     await this.usageImageQueue.add(
       BullWorkers.PROCESS_USAGE_IMAGE,
       {
@@ -50,6 +67,7 @@ export class UsageDataController {
         endDate: uploadUsageImageDto.usageEndDate,
         platform: uploadUsageImageDto.platform,
         deviceId: uploadUsageImageDto.deviceId,
+        asyncTaskId: asyncTask.id,
       },
       {
         attempts: 3,
@@ -59,5 +77,7 @@ export class UsageDataController {
         },
       },
     );
+
+    return { asyncTaskId: asyncTask.id };
   }
 }

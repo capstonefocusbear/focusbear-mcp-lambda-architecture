@@ -120,7 +120,7 @@ const sendBeamsPushNotification = async (userId: string, language: string, notif
         language,
         notificationId: notificationData.id,
         summary: notificationData.summary,
-      }
+      },
     });
   }
 };

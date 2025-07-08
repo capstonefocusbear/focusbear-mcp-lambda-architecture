@@ -86,7 +86,7 @@ async function getMessageFromR2(fileName: string) {
       extra: {
         fileName,
         bucket: 'routine-notifications',
-      }
+      },
     });
     return null;
   }
@@ -155,7 +155,7 @@ async function generateRoutineNotification(routine: string, fileName: string, la
             fileName,
             language,
             attempts: maxRetries + 1,
-          }
+          },
         });
       }
     }

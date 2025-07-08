@@ -38,6 +38,7 @@ import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
+import { AsyncTaskModule } from './modules/async-task/async-task.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { EmailModule } from './modules/email/email.module';
     CalendarModule,
     SurveyModule,
     EmailModule,
+    AsyncTaskModule,
   ],
   controllers: [AppController],
 })

@@ -13,6 +13,7 @@ import { IPusherOptions, PusherModule } from '@app/pusher';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
+import { AsyncTaskModule } from '../async-task/async-task.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
 import { UserController } from './controllers/user/user.controller';
 import { User } from './entities/user.entity';
@@ -164,6 +165,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     ToDoModule,
     PlatformIntegrationsModule,
     EventsModule,
+    AsyncTaskModule,
   ],
   controllers: [
     UserSettingsController,

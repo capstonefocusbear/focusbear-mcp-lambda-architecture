@@ -61,7 +61,7 @@ async function getInactiveUsers() {
         userId: user.id,
         extra: {
           auth0Id: user.auth0_id,
-        }
+        },
       });
       return null;
     }

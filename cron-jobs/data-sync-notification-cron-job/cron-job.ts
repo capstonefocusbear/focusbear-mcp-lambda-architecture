@@ -96,7 +96,7 @@ async function sendEmail(email: string, language: string) {
       extra: {
         email,
         language,
-      }
+      },
     });
   }
 }

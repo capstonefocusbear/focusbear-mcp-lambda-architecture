@@ -36,6 +36,6 @@ module.exports = {
     'max-len': [0, 120, 2, { ignoreUrls: true }],
     'arrow-body-style': 'off',
     'operator-linebreak': 'off',
-    'function-paren-newline':'off', 
+    'function-paren-newline': 'off',
   },
 };

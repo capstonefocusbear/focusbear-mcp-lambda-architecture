@@ -11,6 +11,8 @@ import { I18nService } from 'nestjs-i18n';
 import { UsageDataService } from '../services/usage-data/usage-data.service';
 import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
 import { UserRepository } from '../repositories/user.repository';
+import { AsyncTaskService } from '../../async-task/services/async-task.service';
+import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 
 @Processor(BullQueues.USAGE_IMAGE)
 export class UsageImageConsumer {
@@ -23,6 +25,7 @@ export class UsageImageConsumer {
     private readonly userRepository: UserRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly i18nService: I18nService,
+    private readonly asyncTaskService: AsyncTaskService,
   ) {}
 
   @Process(BullWorkers.PROCESS_USAGE_IMAGE)
@@ -34,9 +37,25 @@ export class UsageImageConsumer {
       endDate: Date;
       platform?: string;
       deviceId?: string;
+      asyncTaskId?: string;
     }>,
   ) {
-    const { userId, imageKey, startDate, endDate, platform, deviceId } = job.data;
+    const { userId, imageKey, startDate, endDate, platform, deviceId, asyncTaskId } = job.data;
+
+    const baseMetadata = {
+      taskType: 'usage-image-processing',
+      userId,
+      imageKey,
+      startDate,
+      endDate,
+      platform,
+      deviceId,
+    };
+
+    // Update task status to processing
+    await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.PROCESSING, baseMetadata, {
+      processingStarted: new Date(),
+    });
 
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -51,7 +70,9 @@ export class UsageImageConsumer {
 
       const imageUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_USAGE_IMAGES, imageKey);
 
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const imageResponse = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+      });
       const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
       const imageBuffer = `data:image/png;base64,${base64}`;
 
@@ -63,7 +84,18 @@ export class UsageImageConsumer {
         platform,
         deviceId,
       });
+
+      // Update task status to completed
+      await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
+        processingCompleted: new Date(),
+        appsProcessed: usageData.apps?.length || 0,
+      });
     } catch (error) {
+      // Update task status to failed
+      await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
+        processingFailed: new Date(),
+      });
+
       const user = await this.userRepository.orm.findOneBy({ id: userId });
 
       if (!user?.auth0_id) {
@@ -78,7 +110,9 @@ export class UsageImageConsumer {
         to: auth0User.email,
         replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
         subject: this.i18nService.t('common.usage_image_processing_error_subject', { lang: user.language }),
-        text: this.i18nService.t('common.usage_image_processing_error_body', { lang: user.language }),
+        text: this.i18nService.t('common.usage_image_processing_error_body', {
+          lang: user.language,
+        }),
       });
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

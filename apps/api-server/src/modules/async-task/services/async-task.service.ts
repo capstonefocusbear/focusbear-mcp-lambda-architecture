@@ -79,6 +79,30 @@ export class AsyncTaskService extends BaseCRUDService<AsyncTaskRepository, Async
     }
   }
 
+  async updateStatusWithMetadata(
+    asyncTaskId: string | undefined,
+    status: AsyncTaskStatus,
+    baseMetadata: Record<string, any>,
+    additionalMetadata: Record<string, any> = {},
+  ): Promise<void> {
+    if (!asyncTaskId) return;
+
+    try {
+      await this.updateTaskStatus(asyncTaskId, {
+        status,
+        metadata: {
+          ...baseMetadata,
+          ...additionalMetadata,
+        },
+      });
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { context: `async-task-${status.toLowerCase()}-update` },
+      });
+    }
+  }
+
   async findTasksByStatus(status: AsyncTaskStatus): Promise<AsyncTask[]> {
     try {
       return await this.asyncTaskRepository.findByStatus(status);

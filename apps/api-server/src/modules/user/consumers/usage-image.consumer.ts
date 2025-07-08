@@ -28,30 +28,6 @@ export class UsageImageConsumer {
     private readonly asyncTaskService: AsyncTaskService,
   ) {}
 
-  private async updateAsyncTaskStatus(
-    asyncTaskId: string | undefined,
-    status: AsyncTaskStatus,
-    baseMetadata: Record<string, any>,
-    additionalMetadata: Record<string, any> = {},
-  ): Promise<void> {
-    if (!asyncTaskId) return;
-
-    try {
-      await this.asyncTaskService.updateTaskStatus(asyncTaskId, {
-        status,
-        metadata: {
-          ...baseMetadata,
-          ...additionalMetadata,
-        },
-      });
-    } catch (error) {
-      this.sentryService.instance().captureException(error, {
-        level: 'warning',
-        tags: { context: `async-task-${status.toLowerCase()}-update` },
-      });
-    }
-  }
-
   @Process(BullWorkers.PROCESS_USAGE_IMAGE)
   async processUsageImage(
     job: Job<{
@@ -77,7 +53,7 @@ export class UsageImageConsumer {
     };
 
     // Update task status to processing
-    await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.PROCESSING, baseMetadata, {
+    await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.PROCESSING, baseMetadata, {
       processingStarted: new Date(),
     });
 
@@ -110,16 +86,14 @@ export class UsageImageConsumer {
       });
 
       // Update task status to completed
-      await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
+      await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
         processingCompleted: new Date(),
         appsProcessed: usageData.apps?.length || 0,
       });
     } catch (error) {
       // Update task status to failed
-      await this.updateAsyncTaskStatus(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
+      await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
         processingFailed: new Date(),
-        errorMessage: error.message,
-        errorStack: error.stack,
       });
 
       const user = await this.userRepository.orm.findOneBy({ id: userId });

@@ -118,7 +118,6 @@ export const CompletedFocusBlockRepositoryMock = {
 
 export const TeamRepositoryMock = {
   ...BaseRepositoryMock,
-  findActiveTeamWithMembers: jest.fn(),
   getTeamMembers: jest.fn(),
   getTeamAdmins: jest.fn(),
   getTeamIncludingUnregistered: jest.fn(),

@@ -20,5 +20,7 @@
   "usage_data_sync_subject": "Recordatorio de sincronización de datos de uso",
   "usage_data_sync_message": "Hemos notado que no ha sincronizado sus datos de uso en los últimos 3 días. Por favor, sincronice sus datos para continuar participando en el estudio.",
   "verify_your_email": "Verifica tu correo",
-  "reset_your_password": "Restablece tu contraseña"
+  "reset_your_password": "Restablece tu contraseña",
+  "study_participant_email_subject": "Código de participante para el estudio Focus Bear",
+  "study_participant_email_body": "Su código de participante para el estudio Focus Bear es <b>{code}</b>. Por favor, use este código para participar en el estudio."
 }

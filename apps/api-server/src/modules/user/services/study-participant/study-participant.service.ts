@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
+import { I18nService } from 'nestjs-i18n';
 import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { User } from '../../entities/user.entity';
 import { AppActivationStatus, StudyParticipant } from '../../entities/study-participant.entity';
@@ -26,6 +27,7 @@ export class StudyParticipantService {
     private readonly sendGridService: SendGridService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly flankerTestService: FlankerTestService,
+    private readonly i18nService: I18nService,
   ) {}
 
   private async assignParticipantToGroup(dto: AddParticipantDetailsDto): Promise<StudyGroup> {
@@ -116,12 +118,20 @@ export class StudyParticipantService {
 
     await this.studyParticipantRepository.save(participant);
 
+    // Determine language for email
+    const lang = dto.lang === 'en' ? 'en' : 'es';
+    const subject = await this.i18nService.translate('common.study_participant_email_subject', { lang });
+    const text = await this.i18nService.translate('common.study_participant_email_body', {
+      lang,
+      args: { code: participantCode },
+    });
+
     await this.sendGridService.sendEmail({
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       to: dto.email,
       replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
-      subject: 'Participant Code for the Focus Bear Study',
-      text: `Your participant code for the Focus Bear Study is ${participantCode}. Please use this code to participate in the study.`,
+      subject,
+      html: text,
     });
   }
 

@@ -19,6 +19,11 @@ export class AddParticipantDetailsDto {
   @IsOptional()
   whatsappConsent: boolean;
 
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  lang?: 'en' | 'es';
+
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;

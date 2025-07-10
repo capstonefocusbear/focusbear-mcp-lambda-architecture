@@ -19,11 +19,14 @@ export class TeamRepository extends BaseRepository<Team> {
     super(connection, Team);
   }
 
-  async getTeamIncludingUnregistered(teamId: string): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[] }> {
+  async getTeamIncludingUnregistered(team: Team): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[] }> {
     const [members, admins] = await Promise.all([
-      await this.teamToMemberRepository.orm.find({ where: { team_id: teamId } }),
-      await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } }),
+      await this.teamToMemberRepository.orm.find({ where: { team_id: team.id } }),
+      await this.teamToAdminRepository.orm.find({ where: { team_id: team.id } }),
     ]);
+
+    admins.push(new TeamToAdmin({ admin_id: team.owner_id, team_id: team.id }));
+
     return { members, admins };
   }
 

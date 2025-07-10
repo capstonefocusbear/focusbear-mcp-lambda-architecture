@@ -217,7 +217,7 @@ export class AuthService {
   }
 
   // Temporary: kept for backward compatibility with older app versions; to be removed in a future release
-  async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto) {
+  async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto, origin: string) {
     const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
 
     if (!auth0User) {

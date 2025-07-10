@@ -83,8 +83,12 @@ export class AuthController {
    * Please use `/send-email-verification` instead.
    */
   @Post('email-confirmation-guest')
-  async emailConfirmationForGuest(@Body() emailConfirmationForGuestDto: EmailConfirmationForGuestDto) {
-    return this.authService.emailConfirmationForGuest(emailConfirmationForGuestDto);
+  async emailConfirmationForGuest(
+    @Body() emailConfirmationForGuestDto: EmailConfirmationForGuestDto,
+    @Req() request: Request,
+  ) {
+    const { origin } = request.headers as { origin?: string };
+    return this.authService.emailConfirmationForGuest(emailConfirmationForGuestDto, origin);
   }
 
   @Throttle({ default: { ttl: 60, limit: 1 } })

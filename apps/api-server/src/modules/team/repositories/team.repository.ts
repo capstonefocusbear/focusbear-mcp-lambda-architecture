@@ -1,11 +1,10 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Connection, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Team } from '../entities/team.entity';
 import { TeamToMemberRepository } from './team-to-member.repository';
 import { TeamToAdminRepository } from './team-to-admin.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { User } from '../../user/entities/user.entity';
 import { TeamToMember } from '../entities/team-to-member.entity';
 import { TeamToAdmin } from '../entities/team-to-admin.entity';
 
@@ -20,37 +19,19 @@ export class TeamRepository extends BaseRepository<Team> {
     super(connection, Team);
   }
 
-  async getTeamIncludingUnregistered(
-    teamId: string,
-  ): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[]; team: Team }> {
-    const team = await this.orm.findOne({ where: { id: teamId } }); // @TODO eager:true
-    if (!team) {
-      throw new NotFoundException(`Team with ID: ${teamId} doesn't exists!`);
-    }
-
+  async getTeamIncludingUnregistered(team: Team): Promise<{ members: TeamToMember[]; admins: TeamToAdmin[] }> {
     const [members, admins] = await Promise.all([
-      await this.teamToMemberRepository.orm.find({ where: { team_id: teamId } }),
-      await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } }),
+      await this.teamToMemberRepository.orm.find({ where: { team_id: team.id } }),
+      await this.teamToAdminRepository.orm.find({ where: { team_id: team.id } }),
     ]);
-    return { members, admins, team };
+
+    admins.push(new TeamToAdmin({ admin_id: team.owner_id, team_id: team.id }));
+
+    return { members, admins };
   }
 
-  async findActiveTeamWithMembers(
-    teamId: string,
-    adminId: string,
-  ): Promise<{ team: Team; members: User[]; admins: User[] }> {
-    const team = await this.orm.findOne({ where: { id: teamId } }); // @TODO eager:true
-    if (!team) {
-      throw new NotFoundException(`Team with ID: ${teamId} doesn't exists!`);
-    }
-
-    const [members, admins] = await Promise.all([this.getTeamMembers(teamId), this.getTeamAdmins(teamId)]);
-
-    const isUserAdmin = admins.some((admin) => admin.id === adminId);
-    if (!isUserAdmin) {
-      throw new UnauthorizedException(`User with ID: ${adminId} is not an admin member of this team!`);
-    }
-    return { team, members, admins };
+  async getTeamMembersIncludingUnregistered(teamId: string): Promise<TeamToMember[]> {
+    return this.teamToMemberRepository.orm.find({ where: { team_id: teamId } });
   }
 
   async getTeamMembers(teamId: string) {
@@ -58,12 +39,5 @@ export class TeamRepository extends BaseRepository<Team> {
     const linkedMemberIds = linkedMemberRecords.map((record) => record.member_id);
     const members = await this.userRepository.orm.find({ where: { id: In(linkedMemberIds) } });
     return members;
-  }
-
-  async getTeamAdmins(teamId: string) {
-    const linkedAdminRecords = await this.teamToAdminRepository.orm.find({ where: { team_id: teamId } });
-    const linkedAdminIds = linkedAdminRecords.map((record) => record.admin_id);
-    const admins = await this.userRepository.orm.find({ where: { id: In(linkedAdminIds) } });
-    return admins;
   }
 }

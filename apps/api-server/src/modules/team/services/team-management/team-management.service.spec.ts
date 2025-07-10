@@ -331,7 +331,7 @@ describe('TeamManagementService', () => {
       await teamManagementService.inviteTeamMember(adminId, inviteTeamMemberDtoDummy);
 
       const { user_id, ...rest } = inviteTeamMemberDtoDummy;
-      expect(JwtServiceMock.asyncSign).toBeCalledWith(
+      expect(JwtServiceMock.asyncSign).toHaveBeenCalledWith(
         {
           ...rest,
           admin_id: adminId,

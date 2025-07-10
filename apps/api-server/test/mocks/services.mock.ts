@@ -104,6 +104,8 @@ export const UserSettingsServiceMock = {
 };
 
 export const JwtServiceMock = {
+  asyncSign: jest.fn(),
+  asyncVerify: jest.fn(),
   sign: jest.fn(),
   signAsync: jest.fn(),
   verify: jest.fn(),

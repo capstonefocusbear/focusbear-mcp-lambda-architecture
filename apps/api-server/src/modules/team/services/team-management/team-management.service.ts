@@ -758,8 +758,8 @@ export class TeamManagementService {
       is_admin: dto.is_admin,
       team_name: team_name ?? TEAM_A,
     });
-    const secretKey = this.configService.get('tokens.secret');
-    const token = await this.jwtService.asyncSign({ ...payload }, secretKey);
+    const secret = this.configService.get('tokens.invitation.secret');
+    const token = await this.jwtService.asyncSign({ ...payload }, secret);
 
     const devFrontendUrl = this.configService.get('server.devFrontendUrl');
     return `${

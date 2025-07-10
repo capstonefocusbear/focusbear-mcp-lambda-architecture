@@ -273,7 +273,7 @@ export class UserService {
         return focusMode;
       });
 
-      const adminForTeams = teamToAdmin.map(({ team }) => team);
+      const adminForTeams = teamToAdmin?.map(({ team }) => team);
 
       return {
         ...rest,

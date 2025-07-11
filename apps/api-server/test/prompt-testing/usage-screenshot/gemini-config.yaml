@@ -35,7 +35,7 @@ tests:
   - description: "iPhone Screen Time Summary Analysis #3 (FAIL CASE)"
     vars:
       url: https://i.ibb.co/DP9XwWMC/IMG-9149.png
-      image_description: iPhone Screen Time summary showing app usage statistics
+      image_description: wrong screen Screen Time summary showing app usage statistics
       image_type: screenshot
     assert:
       - type: javascript

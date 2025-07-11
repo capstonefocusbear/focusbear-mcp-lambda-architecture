@@ -11,6 +11,7 @@ import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { BrevoModule } from '@app/brevo/brevo.module';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
+import { GeminiModule } from '@app/gemini';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { AsyncTaskModule } from '../async-task/async-task.module';
@@ -153,6 +154,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
+    GeminiModule,
     ActivityModule,
     forwardRef(() => AuthModule),
     ConfigModule,

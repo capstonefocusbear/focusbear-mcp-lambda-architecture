@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
+import { I18nService } from 'nestjs-i18n';
 import { StudyParticipantService } from './study-participant.service';
 import { StudyParticipant, AppActivationStatus } from '../../entities/study-participant.entity';
 import { User } from '../../entities/user.entity';
@@ -37,6 +38,10 @@ describe('StudyParticipantService', () => {
     saveFlankerTestResult: jest.fn(),
   };
 
+  const mockI18nService = {
+    t: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,6 +65,10 @@ describe('StudyParticipantService', () => {
         {
           provide: FlankerTestService,
           useValue: mockFlankerTestService,
+        },
+        {
+          provide: I18nService,
+          useValue: mockI18nService,
         },
       ],
     }).compile();

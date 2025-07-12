@@ -113,7 +113,7 @@ export class StudyParticipantService {
       participantCode,
       assignedGroup,
       phoneNumber: dto?.phoneNumber || '',
-      optedOut: !dto?.whatsappConsent,
+      optedOut: dto?.whatsappConsent,
     });
 
     await this.studyParticipantRepository.save(participant);

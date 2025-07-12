@@ -243,7 +243,7 @@ describe('AsyncTaskService', () => {
       AsyncTaskRepositoryMock.findById.mockResolvedValue(existingTask);
       AsyncTaskRepositoryMock.update.mockResolvedValue(updatedTask);
 
-      await asyncTaskService.updateTaskStatus(taskId, updateDto);
+      const result = await asyncTaskService.updateTaskStatus(taskId, updateDto);
 
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,

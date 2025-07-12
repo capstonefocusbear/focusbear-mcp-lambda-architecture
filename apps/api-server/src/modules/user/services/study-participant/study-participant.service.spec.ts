@@ -39,7 +39,7 @@ describe('StudyParticipantService', () => {
   };
 
   const mockI18nService = {
-    t: jest.fn(),
+    translate: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -202,6 +202,8 @@ describe('StudyParticipantService', () => {
       mockStudyParticipantRepository.findOne.mockResolvedValue(null);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockI18nService.translate.mockResolvedValue('Test subject');
+      mockI18nService.translate.mockResolvedValue('Test body');
 
       await service.addParticipantDetails(validDto);
 
@@ -229,6 +231,8 @@ describe('StudyParticipantService', () => {
       mockStudyParticipantRepository.findOne.mockResolvedValue(null);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockI18nService.translate.mockResolvedValue('Test subject');
+      mockI18nService.translate.mockResolvedValue('Test body');
 
       await service.addParticipantDetails(focusbearDto);
 
@@ -240,6 +244,8 @@ describe('StudyParticipantService', () => {
       mockStudyParticipantRepository.findOne.mockResolvedValue(null);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockI18nService.translate.mockResolvedValue('Test subject');
+      mockI18nService.translate.mockResolvedValue('Test body');
 
       await service.addParticipantDetails(focusbearDto);
 

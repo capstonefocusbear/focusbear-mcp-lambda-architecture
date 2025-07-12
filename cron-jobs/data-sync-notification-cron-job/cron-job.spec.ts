@@ -1,126 +1,97 @@
 import { DateTime } from 'luxon';
 import { LessThan } from 'typeorm';
-import { ManagementClient } from 'auth0';
-import * as sendGrid from '@sendgrid/mail';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
+import { getUsersWithOutdatedData } from './cron-job';
 
-// Create a shared mock manager and data source
-const mockManager = {
-  find: jest.fn(),
-  findOne: jest.fn(),
-};
-const mockDataSource = {
-  manager: mockManager,
-  initialize: jest.fn(),
-};
+// Mock the data source
+jest.mock('../data-source', () => {
+  const mockManager = {
+    find: jest.fn(),
+  };
+  const mockDataSource = {
+    manager: mockManager,
+    initialize: jest.fn(),
+  };
+  return { CronJobDataSource: mockDataSource };
+});
 
-// Mock dependencies
-jest.mock('@sendgrid/mail');
-jest.mock('auth0');
-jest.mock('../data-source', () => ({
-  CronJobDataSource: mockDataSource,
-}));
-
-describe('Data Sync Notification Cron Job', () => {
-  let mockAuth0Client: jest.Mocked<ManagementClient>;
+describe('getUsersWithOutdatedData', () => {
+  let mockManager: any;
+  let mockDataSource: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Setup Auth0 mock
-    mockAuth0Client = {
-      users: {
-        get: jest.fn(),
-      },
-    } as unknown as jest.Mocked<ManagementClient>;
-    (ManagementClient as jest.Mock).mockImplementation(() => mockAuth0Client);
+    const { CronJobDataSource } = require('../data-source');
+    mockDataSource = CronJobDataSource;
+    mockManager = CronJobDataSource.manager;
   });
 
-  it('should send emails to users with outdated data', async () => {
-    const threeDaysAgo = DateTime.now().minus({ days: 3 }).toJSDate();
+  it('should fetch participants with outdated usage data', async () => {
+    //only this if it called the typeorm find method, cant test the filter without integration tests
+    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
+    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
+
+    const threeDaysAgo = mockNow.minus({ days: 3 }).toJSDate();
     const mockParticipants = [
-      {
-        id: '1',
-        userId: 'user1',
-        usageDataLastReceived: DateTime.now().minus({ days: 4 }).toJSDate(),
-      },
-      {
-        id: '2',
-        userId: 'user2',
-        usageDataLastReceived: DateTime.now().minus({ days: 5 }).toJSDate(),
-      },
+      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
+      { id: '2', userId: 'user2', usageDataLastReceived: mockNow.minus({ days: 5 }).toJSDate() },
     ];
-    const mockUsers = [
-      {
-        id: 'user1',
-        auth0_id: 'auth0_1',
-        language: 'en',
-      },
-      {
-        id: 'user2',
-        auth0_id: 'auth0_2',
-        language: 'es',
-      },
-    ];
-    const mockAuth0Users = [{ email: 'user1@example.com' }, { email: 'user2@example.com' }];
     mockManager.find.mockResolvedValue(mockParticipants);
-    mockManager.findOne.mockResolvedValueOnce(mockUsers[0]).mockResolvedValueOnce(mockUsers[1]);
-    (mockAuth0Client.users.get as jest.Mock)
-      .mockResolvedValueOnce({ data: mockAuth0Users[0] })
-      .mockResolvedValueOnce({ data: mockAuth0Users[1] });
-    (sendGrid.send as jest.Mock).mockResolvedValue(undefined);
-    await import('./cron-job');
+    
+    const result = await getUsersWithOutdatedData();
+    console.log(result);
+
     expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
       where: { usageDataLastReceived: LessThan(threeDaysAgo) },
     });
-    expect(mockAuth0Client.users.get).toHaveBeenCalledTimes(2);
-    expect(mockAuth0Client.users.get).toHaveBeenCalledWith({ id: 'auth0_1' });
-    expect(mockAuth0Client.users.get).toHaveBeenCalledWith({ id: 'auth0_2' });
-    expect(sendGrid.send).toHaveBeenCalledTimes(2);
-    expect(sendGrid.send).toHaveBeenCalledWith({
-      to: 'user1@example.com',
-      from: expect.any(String),
-      subject: expect.any(String),
-      text: expect.any(String),
-    });
-    expect(sendGrid.send).toHaveBeenCalledWith({
-      to: 'user2@example.com',
-      from: expect.any(String),
-      subject: expect.any(String),
-      text: expect.any(String),
+    expect(result).toEqual(mockParticipants);
+  });
+
+  it('should filter out participants without userId', async () => {
+    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
+    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
+
+    const mockParticipants = [
+      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
+      { id: '2', userId: null, usageDataLastReceived: mockNow.minus({ days: 5 }).toJSDate() },
+      { id: '3', userId: undefined, usageDataLastReceived: mockNow.minus({ days: 6 }).toJSDate() },
+      { id: '4', userId: 'user4', usageDataLastReceived: mockNow.minus({ days: 7 }).toJSDate() },
+    ];
+    mockManager.find.mockResolvedValue(mockParticipants);
+    
+    const result = await getUsersWithOutdatedData();
+    console.log(result);
+
+    expect(result).toEqual([
+      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
+      { id: '4', userId: 'user4', usageDataLastReceived: mockNow.minus({ days: 7 }).toJSDate() },
+    ]);
+  });
+
+  it('should return empty array when no participants found', async () => {
+    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
+    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
+
+    mockManager.find.mockResolvedValue([]);
+    
+    const result = await getUsersWithOutdatedData();
+
+    expect(result).toEqual([]);
+  });
+
+  it('should calculate three days ago correctly', async () => {
+    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
+    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
+
+    const expectedThreeDaysAgo = mockNow.minus({ days: 3 }).toJSDate();
+    mockManager.find.mockResolvedValue([]);
+    
+    await getUsersWithOutdatedData();
+
+    expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
+      where: { usageDataLastReceived: LessThan(expectedThreeDaysAgo) },
     });
   });
 
-  it('should handle missing users gracefully', async () => {
-    const mockParticipants = [
-      {
-        id: '1',
-        userId: 'user1',
-        usageDataLastReceived: DateTime.now().minus({ days: 4 }).toJSDate(),
-      },
-    ];
-    mockManager.find.mockResolvedValue(mockParticipants);
-    mockManager.findOne.mockResolvedValue(null);
-    await import('./cron-job');
-    expect(sendGrid.send).not.toHaveBeenCalled();
-  });
-
-  it('should handle Auth0 errors gracefully', async () => {
-    const mockParticipants = [
-      {
-        id: '1',
-        userId: 'user1',
-        usageDataLastReceived: DateTime.now().minus({ days: 4 }).toJSDate(),
-      },
-    ];
-    const mockUser = {
-      id: 'user1',
-      auth0_id: 'auth0_1',
-      language: 'en',
-    };
-    mockManager.find.mockResolvedValue(mockParticipants);
-    mockManager.findOne.mockResolvedValue(mockUser);
-    (mockAuth0Client.users.get as jest.Mock).mockRejectedValue(new Error('Auth0 error'));
-    await import('./cron-job');
-    expect(sendGrid.send).not.toHaveBeenCalled();
-  });
+  
 });

@@ -215,4 +215,6 @@ async function runUserStatsCronJob() {
   process.exit();
 }
 
-withSentry(runUserStatsCronJob);
+if (require.main === module) {
+  withSentry(runUserStatsCronJob);
+}

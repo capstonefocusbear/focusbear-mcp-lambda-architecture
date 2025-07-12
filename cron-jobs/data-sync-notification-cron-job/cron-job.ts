@@ -115,4 +115,6 @@ async function runDataSyncCronJob() {
   process.exit();
 }
 
-withSentry(runDataSyncCronJob);
+if (require.main === module) {
+  withSentry(runDataSyncCronJob);
+}

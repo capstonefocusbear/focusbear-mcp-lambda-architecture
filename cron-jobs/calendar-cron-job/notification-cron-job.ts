@@ -157,4 +157,6 @@ async function runNotificationCronJob() {
   process.exit();
 }
 
-withSentry(runNotificationCronJob);
+if (require.main === module) {
+  withSentry(runNotificationCronJob);
+}

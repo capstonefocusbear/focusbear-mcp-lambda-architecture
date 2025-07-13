@@ -76,4 +76,6 @@ async function runPusherCronJob() {
   process.exit();
 }
 
-withSentry(runPusherCronJob);
+if (require.main === module) {
+  withSentry(runPusherCronJob);
+}

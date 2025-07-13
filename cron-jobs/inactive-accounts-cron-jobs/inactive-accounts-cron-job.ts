@@ -139,4 +139,6 @@ async function runInactiveAccountsCronJob() {
   process.exit();
 }
 
-withSentry(runInactiveAccountsCronJob);
+if (require.main === module) {
+  withSentry(runInactiveAccountsCronJob);
+}

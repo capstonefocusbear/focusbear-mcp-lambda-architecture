@@ -1,13 +1,15 @@
 import { validate } from 'class-validator';
 import { UpdateUserSettingsDto } from '../../modules/user/dto/update-user-settings.dto';
-import { userSettingsDummy } from '../../../test/dummies';
 
 function createTestInstance(overrides: Partial<UpdateUserSettingsDto> = {}): UpdateUserSettingsDto {
   const defaultInstance = new UpdateUserSettingsDto();
   Object.assign(defaultInstance, {
-    ...userSettingsDummy,
     startup_time: '06:00',
     shutdown_time: '18:00',
+    break_after_minutes: 15,
+    morning_activities: [],
+    evening_activities: [],
+    break_activities: [],
     ...overrides,
   });
   return defaultInstance;

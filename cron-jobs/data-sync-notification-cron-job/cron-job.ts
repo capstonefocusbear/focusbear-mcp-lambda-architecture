@@ -49,7 +49,7 @@ i18next.init({
 
 sendGrid.setApiKey(process.env.SENDGRID_KEY);
 
-async function getUsersWithOutdatedData() {
+export async function getUsersWithOutdatedData() {
   const threeDaysAgo = DateTime.now().minus({ days: 3 }).toJSDate();
   const participants = await CronJobDataSource.manager.find(StudyParticipant, {
     where: { usageDataLastReceived: LessThan(threeDaysAgo) },
@@ -101,7 +101,7 @@ async function sendEmail(email: string, language: string) {
   }
 }
 
-async function runDataSyncCronJob() {
+export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
@@ -115,4 +115,6 @@ async function runDataSyncCronJob() {
   process.exit();
 }
 
-withSentry(runDataSyncCronJob);
+if (require.main === module) {
+  withSentry(runDataSyncCronJob);
+}

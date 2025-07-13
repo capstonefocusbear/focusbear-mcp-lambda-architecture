@@ -248,4 +248,6 @@ async function runIntegrationCronJob() {
   process.exit();
 }
 
-withSentry(runIntegrationCronJob);
+if (require.main === module) {
+  withSentry(runIntegrationCronJob);
+}

@@ -122,4 +122,6 @@ async function runExpiredTeamMembersCronJob() {
   process.exit();
 }
 
-withSentry(runExpiredTeamMembersCronJob);
+if (require.main === module) {
+  withSentry(runExpiredTeamMembersCronJob);
+}

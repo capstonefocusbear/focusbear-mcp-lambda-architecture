@@ -61,4 +61,6 @@ async function runEventCronJob() {
   process.exit();
 }
 
-withSentry(runEventCronJob);
+if (require.main === module) {
+  withSentry(runEventCronJob);
+}

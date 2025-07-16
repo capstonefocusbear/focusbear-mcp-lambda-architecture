@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { ACITIVITY_EMOJI_MAP, BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 import { ActivityChoiceData } from '../../domain/activity-choice-data.model';
 import { ActivityData } from '../../domain/activity-data.model';
 import { ActivityType } from '../../domain/activity-type.enum';
@@ -30,6 +33,7 @@ export class ActivityParserService {
   constructor(
     private readonly activitySequenceRepository: ActivitySequenceRepository,
     @InjectSentry() private readonly sentryService: SentryService,
+    @InjectQueue(BullQueues.EMOJI_GENERATION) private readonly emojiGenerationQueue: Queue,
   ) {}
 
   serialize(activity_sequences: Partial<ActivitySequence>[], userCustomRoutines?: CustomRoutine[]): SerializedActivity {
@@ -62,28 +66,36 @@ export class ActivityParserService {
         created_at,
         tutorial,
         cutoff_time_for_doing_activity,
-      }: Activity) => ({
-        id,
-        choices: choices?.map(mapActivity),
-        duration_seconds: Number(duration_seconds),
-        activity_sequence_id,
-        activity_template_id,
-        log_quantity,
-        log_summary_type,
-        is_default,
-        run_micro_breaks,
-        days_of_week,
-        completion_requirements: completion_requirements ?? undefined,
-        log_quantity_questions,
-        linked_activity_id,
-        check_list,
-        impact_category,
-        created_at,
-        ...activity_data,
-        tutorial: transformTutorial(tutorial),
-        cutoff_time_for_doing_activity,
-        activity_type: type,
-      });
+      }: Activity) => {
+        const currentEmoji = activity_data?.habit_icon;
+        const needsEmojiGeneration = !currentEmoji || currentEmoji === '';
+        if (needsEmojiGeneration) {
+          this.addEmojiGenerationJob(activity_data?.name, id);
+        }
+
+        return {
+          id,
+          choices: choices?.map(mapActivity),
+          duration_seconds: Number(duration_seconds),
+          activity_sequence_id,
+          activity_template_id,
+          log_quantity,
+          log_summary_type,
+          is_default,
+          run_micro_breaks,
+          days_of_week,
+          completion_requirements: completion_requirements ?? undefined,
+          log_quantity_questions,
+          linked_activity_id,
+          check_list,
+          impact_category,
+          created_at,
+          ...activity_data,
+          tutorial: transformTutorial(tutorial),
+          cutoff_time_for_doing_activity,
+          activity_type: type,
+        };
+      };
 
       const orderedActivities = Array.from(new Set(activity_ids))
         .map((id) => activities.find((e) => e.id === id))
@@ -146,8 +158,11 @@ export class ActivityParserService {
         });
         const activity_sequence_id = sequence.id;
         const context = { type, user_id, activity_sequence_id };
-        const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
-        const activities = serializedActivities.flatMap(createActivity(context));
+        const activities = (
+          await Promise.all(
+            (serializedActivities as UpdateActivityDto[]).map((activity) => this.createActivity(activity, context)),
+          )
+        ).flat();
         return { sequence, activities };
       }),
     );
@@ -201,7 +216,38 @@ export class ActivityParserService {
     return questionsForActivity?.length > 0 ? questionsForActivity : [];
   }
 
-  private createActivity(
+  private addEmojiGenerationJob(activityName: string, activityId: string) {
+    const normalizedName = this.normalizeActivityName(activityName);
+    this.emojiGenerationQueue.add(BullWorkers.GENERATE_ACTIVITY_EMOJI, {
+      activity_id: activityId,
+      activity_name: normalizedName,
+    });
+  }
+
+  private getLocalEmojiForActivity(activityName: string, activityId: string) {
+    const normalizedName = this.normalizeActivityName(activityName);
+    const predefinedEmoji = ACITIVITY_EMOJI_MAP[normalizedName];
+    if (predefinedEmoji) return predefinedEmoji;
+    // if no predefined emoji, add job to generate emoji
+    this.emojiGenerationQueue.add(BullWorkers.GENERATE_ACTIVITY_EMOJI, {
+      activity_id: activityId,
+      activity_name: normalizedName,
+    });
+    return '';
+  }
+
+  private normalizeActivityName(activityName: string): string {
+    // Create a consistent key for caching by normalizing the activity name
+    return activityName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  }
+
+  private async createActivity(
     {
       id,
       duration_seconds,
@@ -223,7 +269,7 @@ export class ActivityParserService {
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
-  ): Activity[] {
+  ): Promise<Activity[]> {
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -232,8 +278,9 @@ export class ActivityParserService {
         activity_id: id,
       },
     });
+
     const has_choices = choices?.length > 0;
-    const activity_data = new ActivityData(rest);
+    const activity_data = this.createActivityData({ ...rest, id });
     const activity = new Activity({
       id,
       activity_data,
@@ -257,6 +304,15 @@ export class ActivityParserService {
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
     return result;
+  }
+
+  private createActivityData(activity: UpdateActivityDto | ActivityChoiceData): ActivityData {
+    const activityData = new ActivityData(activity);
+    activityData.habit_icon =
+      activity.habit_icon && activity.habit_icon !== ''
+        ? activity.habit_icon
+        : this.getLocalEmojiForActivity(activity.name, activity.id);
+    return activityData;
   }
 
   private deserializeChoices(choices: ActivityChoiceData[], parent: Activity): Activity[] {
@@ -283,7 +339,7 @@ export class ActivityParserService {
       }) =>
         new Activity({
           id,
-          activity_data: new ActivityData(rest),
+          activity_data: this.createActivityData({ ...rest, id }),
           parent_id: parent.id,
           type: parent.type,
           user_id: parent.user_id,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Connection } from 'typeorm';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ToDo } from '../entities/to-do.entity';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
@@ -8,11 +9,35 @@ import { RecentToDoDto } from '../dto/recent-to-do.dto';
 
 @Injectable()
 export class ToDoRepository extends BaseRepository<ToDo> {
+  public static readonly TOP_SCORE_SQL = `
+    (
+      CASE 
+        WHEN to_do.due_date IS NULL THEN 5.0
+        WHEN to_do.due_date < CURRENT_DATE THEN 10.0
+        WHEN to_do.due_date = CURRENT_DATE THEN 9.9
+        ELSE GREATEST(0.1, 9.9 - (EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE)) * 9.8 / 365.0))
+      END
+    ) * (to_do.outcome::float / NULLIF(to_do.perspiration_level, 0))
+  `;
+
   constructor(private readonly connection: Connection) {
     super(connection, ToDo);
   }
 
-  async getUserToDos(userId: string, { take, skip, status, eisenhower_quadrant }: GetToDosQueryDto) {
+  async getUserToDos(
+    userId: string,
+    {
+      order,
+      take,
+      skip,
+      status,
+      eisenhower_quadrant,
+      tag_id,
+      perspiration_gte,
+      perspiration_lte,
+      synced_project_id,
+    }: GetToDosQueryDto,
+  ): Promise<[ToDo[], number]> {
     const query = this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
@@ -33,10 +58,16 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'tags.text',
         'to_do.duration',
         'to_do.icon',
+        'to_do.perspiration_level',
+        'to_do.outcome',
       ])
       .take(take)
       .skip(skip)
       .where('to_do.user_id = :user_id', { user_id: userId });
+
+    // order by the score (normalized to scale of 10: overdue=10, due today=9.9, due in morethan 1 year=0.1, no due date=5)
+    query.addSelect(ToDoRepository.TOP_SCORE_SQL, 'top_score');
+    query.orderBy('top_score', order === PageOrder.ASC ? 'ASC' : 'DESC');
     if (status) {
       query.andWhere('to_do.status = :status', { status });
     } else {
@@ -45,7 +76,21 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     if (eisenhower_quadrant) {
       query.andWhere('to_do.eisenhower_quadrant = :eisenhower_quadrant', { eisenhower_quadrant });
     }
-    return query.getManyAndCount();
+    if (tag_id) {
+      query.andWhere('tags.id = :tag_id', { tag_id });
+    }
+    if (perspiration_gte) {
+      query.andWhere('to_do.perspiration_level >= :perspiration_gte', { perspiration_gte });
+    }
+    if (perspiration_lte) {
+      query.andWhere('to_do.perspiration_level <= :perspiration_lte', { perspiration_lte });
+    }
+    if (synced_project_id) {
+      query.andWhere('to_do.synced_project_id = :synced_project_id', { synced_project_id });
+    }
+
+    const result = await query.getMany();
+    return [result, result.length];
   }
 
   async searchUserToDos({ title, take }: SearchToDosDto, userId: string) {

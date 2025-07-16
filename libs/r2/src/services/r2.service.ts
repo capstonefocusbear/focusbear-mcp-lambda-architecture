@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'stream';
 import { R2_MODULE_OPTIONS } from '../r2.constants';
 import { IR2Options } from '../interfaces';
 import { ONE_WEEK_IN_SECONDS } from '../../../../apps/api-server/src/shared/utils/constants';
@@ -70,5 +71,22 @@ export class R2Service {
     } catch (error) {
       throw new Error(`Could not get presigned URL: ${error.message}`);
     }
+  }
+
+  async getJsonFromBucket(bucket: string, key: string): Promise<any> {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: `${key}.json`,
+    });
+    const response = await this.s3Client.send(command);
+
+    // S3 returns a stream, so we need to read it fully
+    const stream = response.Body as Readable;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer);
+    }
+    const data = Buffer.concat(chunks).toString('utf-8');
+    return JSON.parse(data);
   }
 }

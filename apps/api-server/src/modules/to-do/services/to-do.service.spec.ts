@@ -42,6 +42,7 @@ import { PlatformIntegrationRepository } from '../../platform-integrations/repos
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -140,6 +141,85 @@ describe('toDoService', () => {
           new PaginationMetaDto({ paginationOptionsDto: { page: 1, skip: 0, take: 50 }, itemCount: 0 }),
         ),
       );
+    });
+
+    it('positive: should filter by perspiration_gte and perspiration_lte', async () => {
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[], 0]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce([]);
+
+      await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        perspiration_gte: 3,
+        perspiration_lte: 7,
+        should_use_cache: true,
+      });
+
+      expect(ToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({ perspiration_gte: 3, perspiration_lte: 7 }),
+      );
+    });
+
+    it('positive: should order by ASC', async () => {
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[], 0]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce([]);
+
+      await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        order: PageOrder.ASC,
+        should_use_cache: true,
+      });
+
+      expect(ToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({ order: 'ASC' }),
+      );
+    });
+
+    it('positive: should order by DESC', async () => {
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[], 0]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce([]);
+
+      await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        order: PageOrder.DESC,
+        should_use_cache: true,
+      });
+
+      expect(ToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({ order: 'DESC' }),
+      );
+    });
+
+    it('positive: should map top_score from repo result to PaginationDto', async () => {
+      const mockToDos = [
+        {
+          id: 'todo-1',
+          title: 'Test ToDo',
+          user_id: userDummy.id,
+        },
+      ];
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockToDos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as ToDo[];
+      expect(data[0].id).toBe('todo-1');
+      expect(data[0].title).toBe('Test ToDo');
+      expect(response.meta.itemCount).toBe(1);
     });
 
     it('positive: if to do is linked to an external project, its available statuses should be added to response', async () => {

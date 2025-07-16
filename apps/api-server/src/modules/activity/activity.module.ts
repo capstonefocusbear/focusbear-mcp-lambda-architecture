@@ -4,6 +4,8 @@ import { BullModule } from '@nestjs/bull';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { IStripeOptions, StripeModule } from '@app/stripe';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
+import { OpenAIModule } from '@app/openai';
+import { R2Module } from '@app/r2';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
@@ -26,6 +28,7 @@ import { LogQuantityAnswersRepository } from './repositories/log-quantity-answer
 import { LogQuantityQuestionsRepository } from './repositories/log-quantity-questions.repository';
 import { BullQueues } from '../../shared/utils/constants';
 import { TutorialsRepository } from './repositories/tutorial.repository';
+import { EmojiGenerationConsumer } from './consumers/emoji-generation.consumer';
 
 @Module({
   providers: [
@@ -43,6 +46,7 @@ import { TutorialsRepository } from './repositories/tutorial.repository';
     LogQuantityAnswersRepository,
     LogQuantityQuestionsRepository,
     TutorialsRepository,
+    EmojiGenerationConsumer,
   ],
   exports: [
     ActivityParserService,
@@ -78,12 +82,25 @@ import { TutorialsRepository } from './repositories/tutorial.repository';
     BullModule.registerQueue({
       name: BullQueues.ACTIVITY_IMAGE,
     }),
+    BullModule.registerQueue({
+      name: BullQueues.EMOJI_GENERATION,
+    }),
     StripeModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IStripeOptions => configService.get('stripeConfig'),
     }),
     HelperModule,
+    R2Module.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('r2'),
+    }),
+    OpenAIModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('openai'),
+    }),
   ],
 })
 export class ActivityModule {}

@@ -27,7 +27,7 @@ export class UserSettingsController {
   updateSettings(
     @AuthContext() { user }: Passport,
     @Query() { is_onboarding, device_id }: UpdateSettingsQueryDto,
-    @Body() updateSettingsData: any,
+    @Body() updateSettingsData: UpdateUserSettingsDto,
   ) {
     return this.userSettingsService.updateSettings({ user_id: user.id }, updateSettingsData, true, {
       is_onboarding,

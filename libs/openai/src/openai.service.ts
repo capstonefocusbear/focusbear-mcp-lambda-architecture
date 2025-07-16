@@ -47,6 +47,7 @@ export class OpenAIService {
     [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
     [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
+    [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -805,5 +806,23 @@ export class OpenAIService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw new Error('Failed to process usage image');
     }
+  }
+
+  async generateEmojiForActivity(activityName: string): Promise<string> {
+    const defaultChat: ChatCompletionMessageParam = {
+      role: 'system',
+      content: `Given the following activity name that is part of the user's routine, generate a single emoji that best describe the activity.
+      Activity name: ${this.wrapUserInput(activityName)}
+      `,
+    };
+
+    const completions = await this.getOpenAIChatCompletionsNonStreaming(
+      [defaultChat],
+      OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
+    );
+
+    const newMessage = completions.choices[0].message;
+    const { content } = newMessage;
+    return content;
   }
 }

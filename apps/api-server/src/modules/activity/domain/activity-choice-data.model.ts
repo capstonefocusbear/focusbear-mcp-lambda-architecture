@@ -87,4 +87,8 @@ export class ActivityChoiceData {
   @IsOptional()
   @IsUUID('4')
   linked_activity_template_id?: string;
+
+  @IsOptional()
+  @IsString()
+  habit_icon?: string;
 }

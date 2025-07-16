@@ -139,6 +139,7 @@ export enum BullQueues {
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
   SYNC_TASKS = 'sync-tasks',
+  EMOJI_GENERATION = 'emoji-generation',
   USAGE_IMAGE = 'usage-image',
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
   USAGE_DATA = 'usage-data',
@@ -158,6 +159,7 @@ export enum BullWorkers {
   PROCESS_USAGE_IMAGE = 'process-usage-image',
   SYNC_HEALTH_METRICS = 'sync-health-metrics',
   SYNC_USAGE_DATA = 'sync-usage-data',
+  GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
 }
 
 export const createActivityFunction = {
@@ -285,5 +287,49 @@ export const DECIMAL_PRECISION = 1;
 export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';
 export const ONE_WEEK_IN_SECONDS = 604800;
 export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
+export const S3_BUCKET_EMOJIS = 'emojis';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
 export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
+
+export const ACITIVITY_EMOJI_MAP = {
+  yoga: '🧘',
+  meditation: '🧘',
+  journaling: '📝',
+  'deep-breathing': '',
+  'drink-a-glass-of-water': '🥛',
+  'work-environment-setup': '💻',
+  'journal-about-day': '📝',
+  exercise: '🏃',
+  cooking: '🍳',
+  cleaning: '🧹',
+  organize: '📝',
+  read: '📖',
+  write: '📝',
+  code: '💻',
+  'evening-brain-dump': '🧠',
+  'morning-walk': '🚶‍♂️',
+  'workday-visualization': '📊',
+  'productivity-playlist-setup': '🎵',
+  'calendar-review': '📅',
+  'priority-email-scan': '📧',
+  'daily-work-intention': '✍️',
+  'healthy-snack-planning': '🥗',
+  'email-closure-routine': '📬',
+  'goals-review-alignment': '🎯',
+  'prepare-for-tomorrow': '🌅',
+  'plan-to-do-list-and-schedule-for-tomorrow': '📅',
+  abs: '💪',
+  shower: '🚿',
+  'get-ready-for-bed': '🛏️',
+  stretch: '🤸‍♂️',
+  meditate: '🧘',
+  dips: '🤸‍♂️',
+  plank: '🤸‍♂️',
+  'push-ups': '🤸‍♂️',
+  'pull-ups': '🤸‍♂️',
+  'sit-ups': '🤸‍♂️',
+  squats: '🤸‍♂️',
+  lunges: '🤸‍♂️',
+  'upper-body-twist': '🤸‍♂️',
+  'office-exercises': '🤸‍♂️',
+};

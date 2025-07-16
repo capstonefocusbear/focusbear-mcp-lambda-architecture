@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, Min, Max, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { ToDoStatus } from '../domain/to-do-status.enum';
@@ -26,4 +26,24 @@ export class GetToDosQueryDto extends PaginationOptionsDto {
     return value;
   })
   should_use_cache? = true;
+
+  @IsOptional()
+  @IsUUID()
+  tag_id?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  perspiration_gte?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  perspiration_lte?: number;
+
+  @IsOptional()
+  @IsUUID()
+  synced_project_id?: string;
 }

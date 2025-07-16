@@ -181,6 +181,8 @@ export const FocusModeServiceMock = {
 
 export const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
+  getJsonFromBucket: jest.fn(),
+  addObjectToBucket: jest.fn(),
 };
 
 export const UserDailyStatsServiceMock = {
@@ -200,6 +202,7 @@ export const OpenAIServiceMock = {
   convertBrainDumpToTasks: jest.fn(),
   checkIfUrlIsSafeToUse: jest.fn(),
   checkIfAppIsSafeToUse: jest.fn(),
+  generateEmojiForActivity: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

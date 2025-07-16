@@ -79,6 +79,14 @@ export class ToDo extends BaseEntity {
   @Column({ type: 'smallint', default: 1, nullable: true })
   eisenhower_quadrant: number;
 
+  // outcome = "Who cares" (value = 1), "Kinda important" (value = 3), "Big deal" (value = 5), "Huge!" (value = 7), "🤯 Mind blowing" (value = 9)
+  @Column({ type: 'smallint', default: 1, nullable: true })
+  outcome: number;
+
+  //  "5 minute job" (1), "15 minutes work" (2), "Half an hour" (3), "An hour" (4), "Half a day" (6), "A day" (8), "A week" (10)
+  @Column({ type: 'smallint', default: 1, nullable: true })
+  perspiration_level: number;
+
   @Column({ type: 'varchar', default: ToDoStatus.NOT_STARTED })
   status: string;
 

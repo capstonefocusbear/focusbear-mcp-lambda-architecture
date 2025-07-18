@@ -171,6 +171,7 @@ export class CompletedActivityService {
         user.language,
       );
       this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
+
       return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
     } catch (error) {
       this.handleError(error);
@@ -606,6 +607,7 @@ export class CompletedActivityService {
         user_id,
       },
     });
+
     await this.validateCompletingActivity(user, sequence, activity, choice);
     const updatedUser = await this.userRepository.orm.findOne({
       where: { id: user_id },
@@ -711,7 +713,7 @@ export class CompletedActivityService {
     ).day;
     const userTimes = this.getUserTimesFromPartialUser(user);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
       if (IDS_TO_LOG_FOR.includes(id)) {
         console.log('Completing user routine from validateCompletingActivity function - shouldCompleteRoutine: TRUE');
       }
@@ -758,12 +760,14 @@ export class CompletedActivityService {
         completed_activity_id: completedActivity?.activity_id,
       },
     });
+
     const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(completingSequenceLogId);
     // add current completed activity ID to completed activity IDs array
     completedActivitiesIds.push(activity_id);
+
     const currentDay = this.helperCommonService.getDayOfWeek(user.timezone);
     const { sequenceActivityIds, id, activities, activity_ids } = sequence;
-    const { timezone, cutoff_time_for_non_high_priority_activities: cutOffTime } = user;
+    const { timezone, cutoff_time_for_non_high_priority_activities: cutOffTime, startup_time } = user;
     // check if activity exists in entire sequence
     this.activitySequenceService.checkIfActivityExistsInSequence(sequenceActivityIds, activity_id, id);
     const activitiesForToday = this.activitySequenceService.filterActivitiesForCurrentDay(currentDay, activities);
@@ -777,16 +781,23 @@ export class CompletedActivityService {
     const completedActivityIndexInCurrentDaySequence = sortedIdsForCurrentDayActivities.findIndex(
       (e) => e === activity_id,
     );
-    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    const hasCutoffTimeBeenReached = this.hasCutoffTimeBeenReached(cutOffTime, timezone, startup_time);
+
     let nextActivityId;
     if (hasCutoffTimeBeenReached) {
       const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, activity_ids);
+
       const highPriorityActivities = activitiesSortedInSequence.filter(
-        (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+        (activity) => activity.activity_data?.priority === ActivityPriority.HIGH,
       );
-      const nextHighPriorityActivity = highPriorityActivities.find(
+
+      // Find remaining (not completed) high priority activities
+      const remainingHighPriorityActivities = highPriorityActivities.filter(
         (activity) => !completedActivitiesIds.includes(activity.id),
       );
+
+      const nextHighPriorityActivity = remainingHighPriorityActivities[0] || null;
+
       nextActivityId = nextHighPriorityActivity ? nextHighPriorityActivity.id : null;
     } else {
       nextActivityId = this.findNextActivity(completedActivitiesIds, sortedIdsForCurrentDayActivities);
@@ -826,12 +837,14 @@ export class CompletedActivityService {
     const userTimeZone = timezone ?? 'UTC';
     const [startupHours, startupMins] = startUp.split(':');
     const [shutdownHours, shutdownMins] = shutDown.split(':');
-    const userCurrentTime = DateTime.local({ zone: userTimeZone });
-    const userStartupTime = DateTime.local({ zone: userTimeZone }).set({
+
+    const baseTime = DateTime.local({ zone: userTimeZone });
+    const userCurrentTime = baseTime;
+    const userStartupTime = baseTime.set({
       hour: Number(startupHours),
       minute: Number(startupMins),
     });
-    let userShutdownTime = DateTime.local({ zone: userTimeZone }).set({
+    let userShutdownTime = baseTime.set({
       hour: Number(shutdownHours),
       minute: Number(shutdownMins),
     });
@@ -840,6 +853,39 @@ export class CompletedActivityService {
       userShutdownTime = userShutdownTime.plus({ days: 1 });
     }
     return { userTimeZone, userCurrentTime, userStartupTime, userShutdownTime };
+  }
+
+  // Determines if the current time is still within the user's day (from startup to shutdown)
+  // even if the calendar date has changed. This handles cases where shutdown time is after midnight.
+  private isWithinUserDay(
+    activityAssignedDate: number,
+    currentDate: number,
+    currentTime: DateTime,
+    startupTime: DateTime,
+    shutdownTime: DateTime,
+  ): boolean {
+    // Check if shutdown time is after midnight (next day)
+    const shutdownIsNextDay = shutdownTime.day > startupTime.day;
+
+    if (!shutdownIsNextDay) {
+      // Normal case: shutdown is same day as startup
+      return currentDate === activityAssignedDate;
+    }
+
+    // Shutdown is after midnight case
+    if (currentDate === activityAssignedDate) {
+      // Still on the same calendar day as when activity was assigned
+      return true;
+    }
+
+    if (currentDate === activityAssignedDate + 1) {
+      // We're on the next calendar day
+      // Check if we're before the shutdown time
+      return currentTime < shutdownTime;
+    }
+
+    // We're beyond the user's day
+    return false;
   }
 
   async recalculateCurrentActivity(partialUser: Partial<User>) {
@@ -852,12 +898,12 @@ export class CompletedActivityService {
     } = partialUser;
 
     const sequence = await this.fetchActivitySequence(current_activity_sequence_id);
-    const currentActivityAssignedDate = DateTime.fromJSDate(new Date(current_activity_assigned_at)).setZone(
-      partialUser.timezone,
-    ).day;
+    const currentActivityAssignedDate = current_activity_assigned_at
+      ? DateTime.fromJSDate(current_activity_assigned_at).setZone(partialUser.timezone).day
+      : undefined;
     const userTimes = this.getUserTimesFromPartialUser(partialUser);
 
-    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate, id)) {
+    if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
       if (IDS_TO_LOG_FOR.includes(id)) {
         console.log('Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE');
         console.log({ current_activity_assigned_at });
@@ -896,30 +942,66 @@ export class CompletedActivityService {
   shouldCompleteRoutine(
     sequence: ActivitySequence,
     { userCurrentTime, userShutdownTime, userStartupTime }: UserTimesResponse,
-    currentActivityAssignedDate: number,
-    userId: string,
+    currentActivityAssignedDate: number | undefined,
   ): boolean {
     const userCurrentDate = userCurrentTime.day;
-    const hasRoutineBeenStartedToday = userCurrentDate === currentActivityAssignedDate;
-    if (IDS_TO_LOG_FOR.includes(userId)) {
-      console.log('Log data - shouldCompleteRoutine function:');
-      console.log({
-        hasRoutineBeenStartedToday,
-        sequenceType: sequence.type,
-        currentActivityAssignedDate,
-        userCurrentDate,
-        userCurrentTime: userCurrentTime.toISO(),
-        userStartupTime: userStartupTime.toISO(),
-        userShutdownTime: userShutdownTime.toISO(),
-      });
+
+    // If no assigned date, we can't determine if routine should be completed
+    if (currentActivityAssignedDate === undefined) {
+      return false;
     }
-    return (
-      !hasRoutineBeenStartedToday ||
-      (sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime) ||
-      (sequence.type === ActivityType.evening &&
-        userCurrentTime >= userStartupTime &&
-        userCurrentTime < userShutdownTime)
+
+    // For users with shutdown time after midnight, we need to check if we're still within
+    // the same "user day" (from startup to shutdown) even if calendar date has changed
+    const isWithinUserDay = this.isWithinUserDay(
+      currentActivityAssignedDate,
+      userCurrentDate,
+      userCurrentTime,
+      userStartupTime,
+      userShutdownTime,
     );
+
+    // Check if we need to switch routine types (morning to evening or vice versa)
+    if (isWithinUserDay) {
+      // If it's a morning routine and we're past shutdown time (evening), complete it
+      if (sequence.type === ActivityType.morning && userCurrentTime >= userShutdownTime) {
+        return true;
+      }
+      // If it's an evening routine and we're before shutdown time but in morning period, complete it
+      if (
+        sequence.type === ActivityType.evening &&
+        userCurrentTime < userShutdownTime &&
+        userCurrentTime >= userStartupTime
+      ) {
+        return true;
+      }
+      return false;
+    }
+
+    // If the routine is more than 1 day old, always force complete it
+    const daysDifference = userCurrentDate - currentActivityAssignedDate;
+    if (Math.abs(daysDifference) > 1) {
+      return true;
+    }
+
+    // Morning routine completion conditions
+    const isMorningRoutine = sequence.type === ActivityType.morning;
+    const isRoutineFromYesterday = daysDifference === 1;
+    const hasNewDayBegunForMorningRoutine = isMorningRoutine && isRoutineFromYesterday;
+
+    const isCurrentDayMorningRoutine = isMorningRoutine && daysDifference === 0;
+    const isPastShutdownTime = userCurrentTime >= userShutdownTime;
+    const shouldCompleteTodaysMorningRoutine = isCurrentDayMorningRoutine && isPastShutdownTime;
+
+    // Evening routine completion conditions
+    const isEveningRoutine = sequence.type === ActivityType.evening;
+    const isWithinMorningHours = userCurrentTime >= userStartupTime && userCurrentTime < userShutdownTime;
+    const shouldCompleteEveningRoutine = isEveningRoutine && isWithinMorningHours;
+
+    const shouldComplete =
+      hasNewDayBegunForMorningRoutine || shouldCompleteTodaysMorningRoutine || shouldCompleteEveningRoutine;
+
+    return shouldComplete;
   }
 
   async completeRoutineAndNullifyProps(
@@ -936,12 +1018,13 @@ export class CompletedActivityService {
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {
-    const { cutoff_time_for_non_high_priority_activities: cutOffTime, timezone } = partialUser;
-    return this.hasCutoffTimeBeenReached(cutOffTime, timezone);
+    const { cutoff_time_for_non_high_priority_activities: cutOffTime, timezone, startup_time } = partialUser;
+    return this.hasCutoffTimeBeenReached(cutOffTime, timezone, startup_time);
   }
 
   async handleActivitiesAfterCutoffTime(partialUser: Partial<User>, sequence: ActivitySequence) {
     const { id, current_activity, current_completing_sequence_log_id } = partialUser;
+
     const completedActivitiesIds = await this.getCurrentSequenceCompletedActivityIds(
       current_completing_sequence_log_id,
     );
@@ -953,11 +1036,12 @@ export class CompletedActivityService {
     );
     const activitiesSortedInSequence = this.sortActivitiesInSequence(activitiesForToday, sequence.activity_ids);
     const highPriorityActivities = activitiesSortedInSequence.filter(
-      (activity) => activity.activity_data.priority === ActivityPriority.HIGH,
+      (activity) => activity.activity_data?.priority === ActivityPriority.HIGH,
     );
-    const nextHighPriorityActivity = highPriorityActivities.find(
+    const remainingHighPriorityActivities = highPriorityActivities.filter(
       (activity) => !completedActivitiesIds.includes(activity.id),
     );
+    const nextHighPriorityActivity = remainingHighPriorityActivities[0] || null;
 
     if (!nextHighPriorityActivity) {
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
@@ -990,15 +1074,22 @@ export class CompletedActivityService {
     return remainingActivities.find((activity) => activity.activity_data.priority === ActivityPriority.HIGH);
   }
 
-  private hasCutoffTimeBeenReached(cutoffTime: string, timezone: string) {
-    const hasUserGotCutOffTime = Boolean(cutoffTime);
-    const userCurrentTime = DateTime.local({ zone: timezone });
-    const userCutOffTime =
-      hasUserGotCutOffTime &&
-      DateTime.fromFormat(cutoffTime, 'hh:mm', {
-        zone: timezone,
-      });
-    return userCutOffTime && userCurrentTime >= userCutOffTime;
+  private hasCutoffTimeBeenReached(cutoffTime: string, timezone: string, startupTime: string): boolean {
+    if (!cutoffTime) return false;
+
+    const [cutoffHour, cutoffMinute] = cutoffTime.split(':').map(Number);
+    const [startupHour] = startupTime.split(':').map(Number);
+
+    // Get current time in the user's zone
+    const now = DateTime.local({ zone: timezone });
+    let cutOff = now.set({ hour: cutoffHour, minute: cutoffMinute, second: 0 });
+
+    // If cut-off is before day-start and we are past startup, treat it as tomorrow's cut-off
+    if (cutoffHour < startupHour && now.hour >= startupHour) {
+      cutOff = cutOff.plus({ days: 1 });
+    }
+
+    return now >= cutOff;
   }
 
   private sortActivitiesInSequence(activities: Activity[], orderedIds: string[]) {
@@ -1253,14 +1344,17 @@ export class CompletedActivityService {
       level: 'debug',
       message: 'Revising log quantity question answers',
     });
-    const updatedLogs = logQuantityAnswers?.map(async ({ logged_value, question_id }) => {
-      const log = await this.logQuantityAnswerRepository.orm.findOneBy({
-        question_id,
-        completed_activity_log_id,
-      });
-      log.logged_value = logged_value;
-      return this.logQuantityAnswerRepository.orm.save(log);
-    });
+    const updatedLogs = logQuantityAnswers
+      ?.map(async ({ logged_value, question_id }) => {
+        const log = await this.logQuantityAnswerRepository.orm.findOneBy({
+          question_id,
+          completed_activity_log_id,
+        });
+        if (!log) return;
+        log.logged_value = logged_value;
+        return this.logQuantityAnswerRepository.orm.save(log);
+      })
+      .filter(Boolean);
     return Promise.all(updatedLogs);
   }
 
@@ -1556,6 +1650,9 @@ export class CompletedActivityService {
       });
       for await (const id of completed_activity_ids) {
         const completedActivityToUpdate = await this.completedActivityRepository.orm.findOneBy({ id });
+        if (!completedActivityToUpdate) {
+          throw new NotFoundException(`Completed activity with ID: ${id} not found`);
+        }
         if (completedActivityToUpdate.user_id !== user_id) {
           throw new UnauthorizedException(
             `User with ID: ${user_id} is not authorized to delete note belonging to completed activity with ID: ${id}`,
@@ -1647,7 +1744,7 @@ export class CompletedActivityService {
     const completedActivities = await this.completedActivityRepository.orm.find({
       where: { completed_sequence_id: currentCompletingSequenceLogId },
     });
-    return completedActivities.map((completedActivity) => completedActivity.activity_id);
+    return completedActivities?.map((completedActivity) => completedActivity.activity_id) || [];
   }
 
   findActivitySequenceId(activityId: string, activities: Activity[]) {

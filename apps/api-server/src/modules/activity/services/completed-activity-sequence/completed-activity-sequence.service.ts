@@ -112,9 +112,12 @@ export class CompletedActivitySequenceService {
         });
         return;
       }
+
       uncompletedSequenceLog.finalizeUncompletedLog();
       await this.nullifyCurrentSequenceSkippedActivities(user_id);
-      return await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+      const result = await this.completedActivitySequenceRepository.orm.save(uncompletedSequenceLog);
+
+      return result;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -399,6 +402,7 @@ export class CompletedActivitySequenceService {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     };
+
     return this.userRepository.update(user_id, nullifiedCurrentSequence);
   }
 
@@ -475,12 +479,49 @@ export class CompletedActivitySequenceService {
         { standaloneRoutines: [], customRoutines: [] },
       );
 
-    const getRoutineProgress = (sequence: ActivitySequence | undefined) => {
+    const getRoutineProgress = async (sequence: ActivitySequence | undefined) => {
       if (!sequence) return null;
 
       const completedSequence = completedMap.get(sequence.id);
-      const completedActivityLogs = completedSequence?.completed_activity_logs || [];
-      const completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
+      let completedHabitIds = [];
+
+      // If this is the current in-progress sequence, get completed activities from the current log
+      if (sequence.id === user.current_activity_sequence_id && user.current_completing_sequence_log_id) {
+        // Fetch the in-progress sequence with all its completed activities
+        const inProgressSequence = await this.completedActivitySequenceRepository.orm.findOne({
+          where: {
+            id: user.current_completing_sequence_log_id,
+          },
+          relations: ['completed_activity_logs', 'completed_activity_logs.activity'],
+        });
+
+        if (inProgressSequence?.completed_activity_logs) {
+          completedHabitIds = inProgressSequence.completed_activity_logs
+            .filter((log) => !log.metadata?.is_skipped)
+            .map((log) => log.activity_id)
+            .filter(Boolean);
+        } else {
+          // Fallback: directly query completed activities if relation is not loaded
+
+          // Use TypeORM's query builder to fetch completed activities
+          const completedActivities = await this.completedActivitySequenceRepository.orm
+            .createQueryBuilder('seq')
+            .leftJoinAndSelect('seq.completed_activity_logs', 'logs')
+            .where('seq.id = :seqId', { seqId: user.current_completing_sequence_log_id })
+            .getOne();
+
+          const activities = completedActivities?.completed_activity_logs || [];
+
+          completedHabitIds = activities
+            .filter((log) => !log.metadata?.is_skipped)
+            .map((log) => log.activity_id)
+            .filter(Boolean);
+        }
+      } else {
+        // For other sequences, get from completed sequence logs
+        const completedActivityLogs = completedSequence?.completed_activity_logs || [];
+        completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
+      }
 
       let status: SequenceStatus;
 
@@ -488,7 +529,7 @@ export class CompletedActivitySequenceService {
         status = SequenceStatus.IN_PROGRESS;
       } else if (completedSequence?.is_completed) {
         status = SequenceStatus.COMPLETED;
-      } else if (completedActivityLogs.length > 0) {
+      } else if (completedHabitIds.length > 0) {
         status = SequenceStatus.POSTPONED;
       } else {
         return null;
@@ -499,19 +540,35 @@ export class CompletedActivitySequenceService {
         status,
       };
 
-      return status === SequenceStatus.COMPLETED
-        ? baseData
-        : {
-            ...baseData,
-            completed_habit_ids: completedHabitIds,
-          };
+      // Only include completed_habit_ids for non-completed routines
+      if (status !== SequenceStatus.COMPLETED) {
+        return {
+          ...baseData,
+          completed_habit_ids: completedHabitIds,
+        };
+      }
+
+      return baseData;
     };
 
+    const [morningProgress, eveningProgress] = await Promise.all([
+      getRoutineProgress(morningRoutine),
+      getRoutineProgress(eveningRoutine),
+    ]);
+
+    const customProgressPromises = customRoutines.map(getRoutineProgress);
+    const standaloneProgressPromises = standaloneRoutines.map(getRoutineProgress);
+
+    const [customProgresses, standaloneProgresses] = await Promise.all([
+      Promise.all(customProgressPromises),
+      Promise.all(standaloneProgressPromises),
+    ]);
+
     const todayRoutineProgress = {
-      morning_routine: getRoutineProgress(morningRoutine),
-      evening_routine: getRoutineProgress(eveningRoutine),
-      custom_routines: customRoutines.map(getRoutineProgress).filter(Boolean),
-      standalone_routines: standaloneRoutines.map(getRoutineProgress).filter(Boolean),
+      morning_routine: morningProgress,
+      evening_routine: eveningProgress,
+      custom_routines: customProgresses.filter(Boolean),
+      standalone_routines: standaloneProgresses.filter(Boolean),
     };
 
     return todayRoutineProgress;

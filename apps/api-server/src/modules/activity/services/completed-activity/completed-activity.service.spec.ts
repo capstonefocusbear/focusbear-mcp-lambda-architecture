@@ -2,7 +2,6 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { Test } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { Settings } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
@@ -79,7 +78,8 @@ import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 import { UserService } from '../../../user/services/user/user.service';
-import { UTC_TO_IANA_MAP } from '../../../../shared/utils/constants';
+import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
+import { ActivityPriority } from '../../domain/activity-priority.enum';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -151,6 +151,7 @@ describe('CompletedActivityService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
+    jest.useRealTimers();
   });
 
   it('should be defined', () => {
@@ -519,7 +520,9 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: if user cut off time has been reached, set the next activity to be the next high priority activity in sequence when marking activity as completed', async () => {
-      Settings.now = () => 1665081000000;
+      // Mock time to 6:30 PM UTC (after 6 PM cutoff)
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T18:30:00.000Z'));
       const activity: CreateCompletedActivityDto = {
         activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[0].id,
         quantity_logged: randomQuantity,
@@ -531,7 +534,10 @@ describe('CompletedActivityService', () => {
         finish_time: new Date(Date.now() - 1),
         metadata: { is_skipped: false },
       };
-      const dbActivityDummy = { ...activity, activity_data: { name: 'Running' } };
+      const dbActivityDummy = {
+        ...ActivitySequenceWithHighPriorityActivitiesDummy.activities[0],
+        activity_data: { name: 'Running', priority: ActivityPriority.STANDARD },
+      };
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceWithHighPriorityActivitiesDummy);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(dbActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValue({
@@ -561,11 +567,13 @@ describe('CompletedActivityService', () => {
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: if user cutoff time has been reached and no high priorities remain, sequence should be completed', async () => {
-      Settings.now = () => 1665081000000;
+      // Mock time to 6:30 PM UTC (after 6 PM cutoff)
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T18:30:00.000Z'));
       const activity: CreateCompletedActivityDto = {
         activity_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0].id,
         quantity_logged: randomQuantity,
@@ -605,20 +613,21 @@ describe('CompletedActivityService', () => {
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
         last_completed_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
-        last_completed_sequence_at: expect.toBeValidDate(),
+        last_completed_sequence_at: new Date('2022-10-06T18:30:00.000Z'),
         last_completed_sequence_started_at: '2023-02-07T05:42:39.221Z',
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
         current_sequence_skipped_activities: null,
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2022-10-06T18:30:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: if next activity in sequence is not for current day it should be skipped and following activity should be set as current', async () => {
       // mock date to be a Monday because dummy sequence has activities that should only be done on Mondays
-      Settings.now = () => 1676874600000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1676874600000));
       const activity: CreateCompletedActivityDto = {
         activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
         quantity_logged: randomQuantity,
@@ -656,27 +665,30 @@ describe('CompletedActivityService', () => {
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it("positive: if user's current sequence is from previous day, sequence should be force completed", async () => {
       // mock date to be next day according to current activity props
-      Settings.now = () => 1670569200000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-09T08:00:00.000Z'));
+      const sequenceId = sequenceWhenThereIsNextActivity.id;
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
-      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
-      const sequenceId = randomUUID();
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivityDummy,
+        activity_sequence_id: sequenceId,
+      });
       const completedSequenceLogId = randomUUID();
+      const userWithCurrentActivity = new User({
+        ...userDummy,
+        current_activity_assigned_at: new Date('2022-12-08T13:30:00+0000'),
+        current_activity_sequence_id: sequenceId,
+        current_completing_sequence_log_id: completedSequenceLogId,
+        current_sequence_started_at: new Date('2022-12-08T13:30:00+0000'),
+      });
       UserRepositoryMock.orm.findOne
-        .mockResolvedValueOnce(
-          new User({
-            ...userDummy,
-            current_activity_assigned_at: new Date('2022-12-08T13:30:00+0000'),
-            current_activity_sequence_id: sequenceId,
-            current_completing_sequence_log_id: completedSequenceLogId,
-            current_sequence_started_at: new Date('2022-12-08T13:30:00+0000'),
-          }),
-        )
-        .mockResolvedValueOnce(userDummy);
+        .mockResolvedValueOnce(userWithCurrentActivity)
+        .mockResolvedValueOnce(userWithCurrentActivity);
       DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
       CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
       const completedActivityId = randomUUID();
@@ -686,7 +698,13 @@ describe('CompletedActivityService', () => {
         UncompletedSequenceLogDummy,
       );
 
-      await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
+      const activityToComplete: CreateCompletedActivityDto = {
+        ...completedActivity,
+        activity_id: sequenceWhenThereIsNextActivity.activities[0].id,
+        activity_sequence_id: sequenceId,
+      };
+
+      await completedActivityService.completeActivity(activityToComplete, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
         completedSequenceLogId,
@@ -695,15 +713,16 @@ describe('CompletedActivityService', () => {
       expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
         userDummy.id,
         sequenceId,
-        expect.toBeDate(),
+        new Date('2022-12-08T13:30:00.000Z'),
       );
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it("positive: if user's current sequence is from current day, sequence should NOT be force completed", async () => {
       jest.clearAllMocks();
       jest.clearAllTimers();
-      Settings.now = () => 1670477400000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1670477400000));
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       const sequenceId = randomUUID();
@@ -729,7 +748,7 @@ describe('CompletedActivityService', () => {
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
       expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toBeCalled();
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: if target activity is break type the daily stat time spent in breaks should be updated', async () => {
@@ -773,7 +792,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if last remaining activity in sequence for current day is completed, user current activity should be set to null', async () => {
       // mock date to be a Tuesday, dummy sequence only has one activity for Tuesday so routine should be completed after
-      Settings.now = () => 1676961000000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1676961000000));
       const activity: CreateCompletedActivityDto = {
         activity_id: sequenceWithActivitiesForDifferentDays.activities[1].id,
         quantity_logged: randomQuantity,
@@ -807,13 +827,13 @@ describe('CompletedActivityService', () => {
         current_completing_sequence_log_id: null,
         current_sequence_skipped_activities: null,
         current_sequence_started_at: null,
-        last_completed_sequence_at: expect.toBeDate(),
+        last_completed_sequence_at: new Date('2023-02-21T06:30:00.000Z'),
         last_completed_sequence_id: sequenceWithActivitiesForDifferentDays.id,
-        last_completed_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_started_at: new Date('2023-02-21T06:30:00.000Z'),
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2023-02-21T06:30:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: activity current_competency_level should be incremented if log quantity answers average is 9 or higher', async () => {
@@ -899,9 +919,134 @@ describe('CompletedActivityService', () => {
       });
     });
 
+    it('positive: activity current_competency_level should not be incremented if it is already at max level', async () => {
+      const maxCompetencyLevel = 5;
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: {
+          ...ActivityDummyWithCompetencyChoices.activity_data,
+          current_competency_level: maxCompetencyLevel,
+        },
+      });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(
+        Array(maxCompetencyLevel).fill(ActivityDummyWithCompetencyChoices.choices[0]),
+      );
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+      const completedActivityWithLogQAnswers: CreateCompletedActivityDto = {
+        activity_id: ActivityDummy.id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        note_logged: 'some text',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivityDummy.activity_sequence_id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+        metadata: { is_skipped: false },
+        log_quantity_answers: [
+          { question_id: ActivityDummyWithCompetencyChoices.choices[0].id, logged_value: 9 },
+          { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 10 },
+        ],
+      };
+
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+    });
+
+    it('positive: activity current_competency_level should not be decremented if it is already at min level', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 1 },
+      });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+      const completedActivityWithLogQAnswers: CreateCompletedActivityDto = {
+        activity_id: ActivityDummy.id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        note_logged: 'some text',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivityDummy.activity_sequence_id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+        metadata: { is_skipped: false },
+        log_quantity_answers: [
+          { question_id: ActivityDummyWithCompetencyChoices.choices[0].id, logged_value: 2 },
+          { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 3 },
+        ],
+      };
+
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+    });
+    it('positive: should not update competency level if activity does not track it', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivityDummyWithCompetencyChoices,
+        activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, track_competency: false },
+      });
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce(ActivityDummyWithCompetencyChoices.choices);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      LogQuantityAnswersRepositoryMock.orm.create.mockReturnValueOnce(createdLogQuantityAnswerDummies);
+      LogQuantityAnswersRepositoryMock.orm.insert.mockResolvedValueOnce({
+        identifiers: [{ id: createdLogQuantityAnswerDummies[0].id }, { id: createdLogQuantityAnswerDummies[1].id }],
+      });
+      const completedActivityWithLogQAnswers: CreateCompletedActivityDto = {
+        activity_id: ActivityDummy.id,
+        quantity_logged: randomQuantity,
+        duration_logged: 600,
+        note_logged: 'some text',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivityDummy.activity_sequence_id,
+        start_time: new Date(Date.now() - 60),
+        finish_time: new Date(Date.now() - 1),
+        metadata: { is_skipped: false },
+        log_quantity_answers: [
+          { question_id: ActivityDummyWithCompetencyChoices.choices[0].id, logged_value: 9 },
+          { question_id: ActivityDummyWithCompetencyChoices.choices[1].id, logged_value: 10 },
+        ],
+      };
+
+      await completedActivityService.completeActivity(completedActivityWithLogQAnswers, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+    });
     it('positive: next activity should be set to first activity that has not been completed yet rather than next activity in sequence', async () => {
       // mock date to be a Monday because dummy sequence has activities that should only be done on Mondays
-      Settings.now = () => 1676874600000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1676874600000));
       const activity: CreateCompletedActivityDto = {
         activity_id: sequenceWithActivitiesForDifferentDays.activities[2].id,
         quantity_logged: randomQuantity,
@@ -931,14 +1076,14 @@ describe('CompletedActivityService', () => {
       expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
         current_activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
         current_activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
-        current_activity_assigned_at: expect.toBeDateString(),
+        current_activity_assigned_at: new Date('2023-02-20T06:30:00.000Z'),
         current_completing_sequence_log_id: completingSequenceLogId,
         current_sequence_skipped_activities: null,
-        current_sequence_started_at: expect.toBeDate(),
+        current_sequence_started_at: new Date('2023-02-20T06:29:59.940Z'),
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2023-02-20T06:30:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
   });
 
@@ -1216,6 +1361,28 @@ describe('CompletedActivityService', () => {
       expect(result.log_quantity_answers_stats.length).toBe(1);
       expect(result.log_quantity_answers_stats[0]).toBeInstanceOf(LogQuantityAnswersStats);
     });
+    it('positive: should include linked_activity_id in query if it exists', async () => {
+      const linkedActivityId = randomUUID();
+      const activityWithLinkedId: Activity = {
+        ...ActivityDummy,
+        log_quantity: true,
+        linked_activity_id: linkedActivityId,
+      };
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithLinkedId);
+      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      LogQuantityQuestionsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      await completedActivityService.getStatsByActivityPerDay(params, query);
+
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+        [params.activity_id, linkedActivityId],
+        {
+          ...query,
+          log_summary_type: activityWithLinkedId.log_summary_type,
+          stat_type: ActivityStatType.quantity,
+        },
+      );
+    });
   });
 
   describe('getCompletedLogsByActivityInTimeRange', () => {
@@ -1276,6 +1443,17 @@ describe('CompletedActivityService', () => {
         question_id: logQuantityAnswersDtoDummy[0].question_id,
         logged_value: logQuantityAnswersDtoDummy[0].logged_value,
       });
+    });
+
+    it('positive: should not update log quantity answer if it is not found', async () => {
+      CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValue(CompletedActivityDummy);
+      LogQuantityAnswersRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+
+      await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, {
+        log_quantity_answers: [logQuantityAnswersDtoDummy[0]],
+      });
+
+      expect(LogQuantityAnswersRepositoryMock.orm.save).not.toBeCalled();
     });
   });
 
@@ -1370,7 +1548,8 @@ describe('CompletedActivityService', () => {
     });
 
     it('positive: should return DaySummary with current time between 24:00 and 01:00 (test previous error)', async () => {
-      Settings.now = () => 1665448200000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1665448200000));
       const timerange = { from_time: '2022-10-11T06:15:00.000Z', to_time: '2022-10-11T00:30:00.000Z' };
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
@@ -1383,11 +1562,12 @@ describe('CompletedActivityService', () => {
 
       expect(result).toBeInstanceOf(DaySummary);
       expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: should return DaySummary with timezone unsupported by .toISOString (test previous error)', async () => {
-      Settings.now = () => 1667248935000;
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(1667248935000));
       const timerange = { from_time: '2022-10-31T09:15:00.000Z', to_time: '2022-10-31T20:42:15.000Z' };
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
       CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange.mockResolvedValue([CompletedFocusBlockDummy]);
@@ -1399,7 +1579,7 @@ describe('CompletedActivityService', () => {
 
       expect(result).toBeInstanceOf(DaySummary);
       expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
   });
 
@@ -1440,6 +1620,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: '1b9fa7be-0cef-4554-bac3-1190705ea08b' })
         .mockResolvedValueOnce({ id: '1d39fa59-3ca2-4252-ab9a-affa41634634' });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
         {
           id: completedActivitiesArrayDummy[0].activity_id,
@@ -1516,6 +1697,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: randomUUID() })
         .mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.completeMultipleActivities(
         [completedActivitiesArrayDummy[0], completedActivitiesArrayDummy[1], completedActivitiesArrayDummy[2]],
@@ -1536,7 +1718,7 @@ describe('CompletedActivityService', () => {
 
     it('Positive: should fetch activities for each sequence activities belong to', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivitySequenceRepositoryMock.orm.findOneBy
+      ActivitySequenceRepositoryMock.orm.findOne
         .mockResolvedValueOnce(MorningActivitySequenceDummy)
         .mockResolvedValueOnce(EveningActivitySequenceDummy);
       ActivityRepositoryMock.orm.find.mockResolvedValueOnce([
@@ -1563,6 +1745,7 @@ describe('CompletedActivityService', () => {
       CompletedActivityRepositoryMock.upsert
         .mockResolvedValueOnce({ id: randomUUID() })
         .mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.completeMultipleActivities(
         [completedActivitiesArrayDummy[0], completedActivitiesArrayDummy[1], completedActivitiesArrayDummy[2]],
@@ -1609,6 +1792,7 @@ describe('CompletedActivityService', () => {
         .mockResolvedValueOnce({ id: randomUUID() })
         .mockResolvedValueOnce({ id: randomUUID() })
         .mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       await completedActivityService.completeMultipleActivities(
         [completedActivitiesArrayDummy[0], completedActivitiesArrayDummy[1], completedActivitiesArrayDummy[2]],
@@ -1807,12 +1991,28 @@ describe('CompletedActivityService', () => {
         activity_note: null,
       });
     });
+    it('negative: should throw not found exception if completed activity note is not found', async () => {
+      const note_id = randomUUID();
+      CompletedActivityRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+      let exception: any;
+      const errorMessage = `Completed activity with ID: ${note_id} not found`;
+
+      try {
+        await completedActivityService.deleteCompletedActivityNotes(userDummy.id, [note_id]);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
   });
 
   describe('recalculateCurrentActivity', () => {
     it('positive: if user cut off time has been reached and current activity is standard priority, current activity should be updated to next high priority activity', async () => {
       // mock current time to be later than user cut off time
-      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T20:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[0],
@@ -1833,7 +2033,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if user cut off time has not been reached yet, current activity should remain the same', async () => {
       // mock current time to be earlier than user cut off time
-      Settings.now = () => new Date('2022-12-10T18:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T18:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[0],
@@ -1855,7 +2056,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if user cut off time has been reached and current activity is high priority activity, current activity should not change', async () => {
       // mock current time to be later than user cut off time
-      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T20:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: eveningActivitiesDBResponseDummy[1],
@@ -1877,7 +2079,8 @@ describe('CompletedActivityService', () => {
 
     it("positive: if user cut off time has been reached but the user doesn't have any remaining high priority activities, current activity should be null and current sequence should be marked as completed", async () => {
       // mock current time to be later than user cut off time
-      Settings.now = () => new Date('2022-12-10T20:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T20:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0],
@@ -1891,6 +2094,7 @@ describe('CompletedActivityService', () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
         ActivitySequenceWithoutHighPriorityActivitiesDummy,
       );
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
@@ -1903,11 +2107,13 @@ describe('CompletedActivityService', () => {
 
     it("positive: if user current routine is evening routine, but it's time for morning routine, evening routine should be marked as completed and user current activity props should be cleared", async () => {
       // mock current time to be after user morning routine should start
-      Settings.now = () => new Date('2022-12-10T05:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T05:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: ActivityDummy,
-        current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_activity_assigned_at: new Date('2022-12-09T20:00:00+0000'), // Evening routine started at 8 PM previous day
         current_completing_sequence_log_id: randomUUID(),
         current_sequence_started_at: new Date(),
         timezone: 'UTC',
@@ -1919,6 +2125,7 @@ describe('CompletedActivityService', () => {
         ...ActivitySequenceDummy,
         type: ActivityType.evening,
       });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
@@ -1936,11 +2143,13 @@ describe('CompletedActivityService', () => {
 
     it("positive: if user current routine is morning routine, but it's time for evening routine, morning routine should be marked as completed and user current activity props should be cleared", async () => {
       // mock current time to be after user evening routine should start
-      Settings.now = () => new Date('2022-12-10T19:00:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T19:00:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: ActivityDummy,
-        current_activity_sequence_id: ActivitySequenceDummy.activity_ids[0],
+        current_activity_sequence_id: ActivitySequenceDummy.id,
+        current_activity_assigned_at: new Date('2022-12-10T06:00:00+0000'), // Morning routine started at 6 AM
         current_completing_sequence_log_id: randomUUID(),
         current_sequence_started_at: new Date(),
         timezone: 'UTC',
@@ -1952,6 +2161,7 @@ describe('CompletedActivityService', () => {
         ...ActivitySequenceDummy,
         type: ActivityType.morning,
       });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
 
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
@@ -1969,7 +2179,8 @@ describe('CompletedActivityService', () => {
 
     it("positive: if user current routine is from previous day, but it's time for evening routine, current activity props should be cleared", async () => {
       // mock current time to be after user morning routine should start
-      Settings.now = () => new Date('2022-12-10T05:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T05:30:00.000Z'));
       const partialUserDummy = new User({
         id: randomUUID(),
         current_activity: ActivityDummy,
@@ -2051,6 +2262,34 @@ describe('CompletedActivityService', () => {
 
       expect(res).toEqual(UTC_TO_IANA_MAP['+07:00']);
     });
+
+    it('positive: should return original timezone if no match is found in map', () => {
+      const timeZone = '-99:00';
+      const iana = completedActivityService.convertUtcToIana(timeZone);
+
+      expect(iana).toEqual(DEFAULT_IANA_TIMEZONE);
+    });
+
+    it('positive: should return original timezone if it is already in IANA format', () => {
+      const timeZone = 'America/New_York';
+      const res = completedActivityService.convertUtcToIana(timeZone);
+
+      expect(res).toEqual(timeZone);
+    });
+
+    it('negative: should throw an error if timezone has invalid format', () => {
+      const timeZone = 'invalid-timezone';
+      let exception: any;
+
+      try {
+        completedActivityService.convertUtcToIana(timeZone);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(Error);
+      expect(exception.message).toEqual('Invalid timezone format');
+    });
   });
 
   describe('updateActivityPropsForOfflineSync', () => {
@@ -2061,7 +2300,8 @@ describe('CompletedActivityService', () => {
 
     it("positive: if synced activity is morning activity from current day and it's currently time for user's morning routine, activity props should be updated", async () => {
       // mock current time to be after user morning routine should start
-      Settings.now = () => new Date('2022-12-10T07:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T07:30:00+0000'));
       const completedActivityDummy = {
         ...completedActivitiesArrayDummy[0],
         start_time: new Date('2022-12-10T07:30:00+0000'),
@@ -2082,15 +2322,16 @@ describe('CompletedActivityService', () => {
       expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
         current_activity_id: MorningActivitySequenceDummy.activity_ids[1],
         current_activity_sequence_id: MorningActivitySequenceDummy.id,
-        current_activity_assigned_at: expect.toBeDate(),
-        current_sequence_started_at: expect.toBeDate(),
+        current_activity_assigned_at: new Date('2022-12-10T07:30:00.000Z'),
+        current_sequence_started_at: new Date('2022-12-10T07:30:00.000Z'),
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       });
     });
 
     it("positive: if synced activity is evening activity from current day and it's currently time for user's evening routine, activity props should be updated", async () => {
       // mock current time to be after user evening routine should start
-      Settings.now = () => new Date('2022-12-10T21:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T21:30:00+0000'));
       const completedActivityDummy = {
         ...completedActivitiesArrayDummy[0],
         activity_sequence_id: EveningActivitySequenceDummy.id,
@@ -2113,15 +2354,16 @@ describe('CompletedActivityService', () => {
       expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
         current_activity_id: EveningActivitySequenceDummy.activity_ids[1],
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
-        current_activity_assigned_at: expect.toBeDate(),
-        current_sequence_started_at: expect.toBeDate(),
+        current_activity_assigned_at: new Date('2022-12-10T21:30:00.000Z'),
+        current_sequence_started_at: new Date('2022-12-10T21:30:00.000Z'),
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       });
     });
 
     it("positive: if synced activity is morning activity from current day and it's currently time for user's evening routine, activity props should NOT be updated", async () => {
       // mock current time to be after user evening routine should start
-      Settings.now = () => new Date('2022-12-10T21:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T21:30:00+0000'));
       const completedActivityDummy = {
         ...completedActivitiesArrayDummy[0],
         start_time: new Date('2022-12-10T07:30:00+0000'),
@@ -2144,7 +2386,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if synced activity is break activity, activity props should NOT be updated', async () => {
       // mock current time to be between user morning and evening routine
-      Settings.now = () => new Date('2022-12-10T13:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T13:30:00+0000'));
       const completedActivityDummy = {
         ...completedActivitiesArrayDummy[0],
         start_time: new Date('2022-12-10T13:30:00+0000'),
@@ -2168,7 +2411,8 @@ describe('CompletedActivityService', () => {
 
     it('positive: if synced activity is from a different day, activity props should NOT be updated', async () => {
       // mock current time to be after user evening routine should start
-      Settings.now = () => new Date('2022-12-10T21:30:00+0000').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-12-10T21:30:00+0000'));
       const completedActivityDummy = {
         ...completedActivitiesArrayDummy[0],
         start_time: new Date('2022-12-08T13:30:00+0000'),
@@ -2188,6 +2432,455 @@ describe('CompletedActivityService', () => {
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
       expect(UserRepositoryMock.orm.update).not.toBeCalled();
+    });
+
+    describe('hasCutoffTimeBeenReached (private method)', () => {
+      const today = '2025-07-15';
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      // Note: Testing a private method directly is generally discouraged.
+      // However, for complex logic like this, it's pragmatic to have isolated tests.
+      // We use bracket notation to access the private method without changing its visibility.
+
+      describe('Standard Day Schedule (7 AM - 11 PM)', () => {
+        const startupTime = '07:00';
+        const shutdownTime = '23:00';
+
+        it('should handle cutoff at 2 PM correctly', () => {
+          // Before cutoff
+          jest.setSystemTime(new Date(`${today}T13:30:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('14:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // At cutoff
+          jest.setSystemTime(new Date(`${today}T14:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('14:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+
+          // After cutoff
+          jest.setSystemTime(new Date(`${today}T15:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('14:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle early morning cutoff (5 AM) correctly', () => {
+          // During active day (3 PM) - cutoff is tomorrow morning
+          jest.setSystemTime(new Date(`${today}T15:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('05:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // Early morning before cutoff (4 AM)
+          jest.setSystemTime(new Date(`${today}T04:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('05:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // Early morning after cutoff (5:30 AM)
+          jest.setSystemTime(new Date(`${today}T05:30:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('05:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle late night cutoff (1 AM) correctly', () => {
+          // During active day (8 PM) - cutoff is tonight
+          jest.setSystemTime(new Date(`${today}T20:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('01:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // After shutdown but before cutoff (midnight)
+          const nextDay = '2025-07-16';
+          jest.setSystemTime(new Date(`${nextDay}T00:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('01:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // After cutoff (2 AM)
+          jest.setSystemTime(new Date(`${nextDay}T02:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('01:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+      });
+
+      describe('Night Shift Schedule (10 PM - 6 AM)', () => {
+        const startupTime = '22:00';
+        const shutdownTime = '06:00';
+
+        it('should handle cutoff at 2 AM correctly', () => {
+          // Before cutoff (11 PM)
+          jest.setSystemTime(new Date(`${today}T23:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('02:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // At cutoff (2 AM)
+          const nextDay = '2025-07-16';
+          jest.setSystemTime(new Date(`${nextDay}T02:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('02:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+
+          // After cutoff (3 AM)
+          jest.setSystemTime(new Date(`${nextDay}T03:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('02:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle early evening cutoff (8 PM) correctly', () => {
+          // During active hours (11 PM) - cutoff was earlier, already passed
+          jest.setSystemTime(new Date(`${today}T23:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('20:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // Before startup (8 PM) - cutoff time
+          jest.setSystemTime(new Date(`${today}T20:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('20:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle morning cutoff (7 AM) correctly', () => {
+          // During active hours (2 AM) - cutoff is later today
+          const nextDay = '2025-07-16';
+          jest.setSystemTime(new Date(`${nextDay}T02:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('07:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // After shutdown, after cutoff (8 AM)
+          jest.setSystemTime(new Date(`${nextDay}T08:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('07:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+      });
+
+      describe('Edge Cases', () => {
+        it('should return false when no cutoff time is set', () => {
+          jest.setSystemTime(new Date(`${today}T14:00:00.000Z`));
+          expect((completedActivityService as any).hasCutoffTimeBeenReached('', 'UTC', '07:00', '23:00')).toBe(false);
+          expect((completedActivityService as any).hasCutoffTimeBeenReached(null, 'UTC', '07:00', '23:00')).toBe(false);
+          expect((completedActivityService as any).hasCutoffTimeBeenReached(undefined, 'UTC', '07:00', '23:00')).toBe(
+            false,
+          );
+        });
+
+        it('should handle cutoff at midnight (00:00)', () => {
+          const startupTime = '07:00';
+          const shutdownTime = '23:00';
+
+          // Before midnight (11:59 PM)
+          jest.setSystemTime(new Date(`${today}T23:59:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('00:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(false);
+
+          // At midnight
+          const nextDay = '2025-07-16';
+          jest.setSystemTime(new Date(`${nextDay}T00:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('00:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle cutoff exactly at startup time', () => {
+          const startupTime = '07:00';
+          const shutdownTime = '23:00';
+
+          // During active day
+          jest.setSystemTime(new Date(`${today}T15:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('07:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+
+        it('should handle cutoff exactly at shutdown time', () => {
+          const startupTime = '07:00';
+          const shutdownTime = '23:00';
+
+          // At shutdown time
+          jest.setSystemTime(new Date(`${today}T23:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached('23:00', 'UTC', startupTime, shutdownTime),
+          ).toBe(true);
+        });
+      });
+
+      describe('Different Timezones', () => {
+        it('should work correctly with America/New_York timezone', () => {
+          const startupTime = '07:00';
+          const shutdownTime = '23:00';
+
+          // Set time to 3 PM EDT (which is 7 PM UTC)
+          jest.setSystemTime(new Date(`${today}T19:00:00.000Z`));
+
+          // At 3 PM in New York, a 2 PM cutoff should have been reached
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached(
+              '14:00',
+              'America/New_York',
+              startupTime,
+              shutdownTime,
+            ),
+          ).toBe(true);
+
+          // Before 2 PM in New York (1 PM EDT = 5 PM UTC)
+          jest.setSystemTime(new Date(`${today}T17:00:00.000Z`));
+          expect(
+            (completedActivityService as any).hasCutoffTimeBeenReached(
+              '14:00',
+              'America/New_York',
+              startupTime,
+              shutdownTime,
+            ),
+          ).toBe(false);
+        });
+      });
+    });
+
+    describe('completeActivity - Integration with midnight cutoff', () => {
+      const today = '2025-07-15';
+      const createUserWithMidnightCutoff = (cutoffTime: string) => ({
+        ...userDummy,
+        cutoff_time_for_non_high_priority_activities: cutoffTime,
+        timezone: 'UTC',
+        startup_time: '07:00',
+        shutdown_time: '23:00',
+      });
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should NOT complete routine when completing a standard habit and midnight cutoff has not been reached', async () => {
+        // Set current time to 01:00 AM, cutoff at 02:00 AM (not reached)
+        jest.setSystemTime(new Date(`${today}T01:00:00.000Z`));
+
+        const userWithMidnightCutoff = createUserWithMidnightCutoff('02:00');
+        const activityPayload: CreateCompletedActivityDto = {
+          activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[0].id,
+          quantity_logged: 10,
+          duration_logged: 600,
+          note_logged: 'test note',
+          device_id: DeviceDummy.id,
+          activity_sequence_id: ActivitySequenceWithHighPriorityActivitiesDummy.id,
+          start_time: new Date(`${today}T01:00:00.000Z`),
+          finish_time: new Date(`${today}T01:10:00.000Z`),
+          metadata: { is_skipped: false },
+        };
+
+        ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
+          ActivitySequenceWithHighPriorityActivitiesDummy,
+        );
+        ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+          ...ActivitySequenceWithHighPriorityActivitiesDummy.activities[0],
+          activity_data: { name: 'Standard Priority Activity', priority: ActivityPriority.STANDARD },
+        });
+        UserRepositoryMock.orm.findOne.mockResolvedValue(userWithMidnightCutoff);
+        CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+        CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+        CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+          UncompletedSequenceLogDummy,
+        );
+
+        await completedActivityService.completeActivity(activityPayload, fastifyRequestDummy.headers, {
+          user_id: userDummy.id,
+        });
+
+        // It should proceed to the next activity in the sequence because cutoff time has not been reached
+        expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+          userDummy.id,
+          expect.objectContaining({
+            current_activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[1].id,
+          }),
+        );
+        expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toHaveBeenCalled();
+      });
+
+      it('should complete routine when completing a standard habit, cutoff is reached, and no HIGH priority activities remain', async () => {
+        // Set current time to 03:00 AM, cutoff at 02:00 AM (reached)
+        jest.setSystemTime(new Date(`${today}T03:00:00.000Z`));
+
+        const userWithMidnightCutoff = {
+          ...createUserWithMidnightCutoff('02:00'),
+          current_sequence_started_at: new Date(`${today}T01:00:00.000Z`),
+        };
+        const activityPayload: CreateCompletedActivityDto = {
+          activity_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0].id,
+          quantity_logged: 10,
+          duration_logged: 600,
+          note_logged: 'test note',
+          device_id: DeviceDummy.id,
+          activity_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
+          start_time: new Date(`${today}T03:00:00.000Z`),
+          finish_time: new Date(`${today}T03:10:00.000Z`),
+          metadata: { is_skipped: false },
+        };
+
+        ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
+          ActivitySequenceWithoutHighPriorityActivitiesDummy,
+        );
+        ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+          ...ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0],
+          activity_data: { name: 'Standard Priority Activity', priority: ActivityPriority.STANDARD },
+        });
+        UserRepositoryMock.orm.findOne.mockResolvedValue(userWithMidnightCutoff);
+        CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+        CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+        CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+          UncompletedSequenceLogDummy,
+        );
+
+        await completedActivityService.completeActivity(activityPayload, fastifyRequestDummy.headers, {
+          user_id: userDummy.id,
+        });
+
+        // Should complete the routine (next activity is null) because cutoff time is reached and no high priority habits are left
+        expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+          userDummy.id,
+          expect.objectContaining({
+            current_activity_id: null,
+            last_completed_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
+          }),
+        );
+        expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
+          UncompletedSequenceLogDummy.id,
+          userDummy.id,
+        );
+      });
+    });
+  });
+  describe('Integration with Activity Completion', () => {
+    const createUserWithMidnightCutoff = (cutoffTime: string) => ({
+      ...userDummy,
+      cutoff_time_for_non_high_priority_activities: cutoffTime,
+      timezone: 'UTC',
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should NOT complete routine when completing habit with midnight cutoff not reached', async () => {
+      // Set current time to 01:00 AM, cutoff at 02:00 AM (not reached)
+      jest.setSystemTime(new Date('2025-07-14T01:00:00.000Z'));
+
+      const userWithMidnightCutoff = createUserWithMidnightCutoff('02:00');
+      const activity: CreateCompletedActivityDto = {
+        activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[0].id,
+        quantity_logged: 10,
+        duration_logged: 600,
+        note_logged: 'test note',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivitySequenceWithHighPriorityActivitiesDummy.id,
+        start_time: new Date('2025-07-14T01:00:00.000Z'),
+        finish_time: new Date('2025-07-14T01:10:00.000Z'),
+        metadata: { is_skipped: false },
+      };
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(ActivitySequenceWithHighPriorityActivitiesDummy);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivitySequenceWithHighPriorityActivitiesDummy.activities[0],
+        activity_data: { name: 'Standard Priority Activity', priority: ActivityPriority.STANDARD },
+      });
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithMidnightCutoff);
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, {
+        user_id: userDummy.id,
+      });
+
+      // Should set next activity in sequence (not complete routine)
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+        current_activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[1].id,
+        current_activity_sequence_id: ActivitySequenceWithHighPriorityActivitiesDummy.id,
+        current_activity_assigned_at: expect.toBeDateString(),
+        current_sequence_started_at: expect.toBeDateString(),
+        current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
+        current_sequence_skipped_activities: null,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+
+    it('should complete routine when completing habit with midnight cutoff reached and no HIGH priority activities remain', async () => {
+      // Set current time to 03:00 AM, cutoff at 02:00 AM (reached)
+      jest.setSystemTime(new Date('2025-07-14T03:00:00.000Z'));
+
+      const userWithMidnightCutoff = createUserWithMidnightCutoff('02:00');
+      const activity: CreateCompletedActivityDto = {
+        activity_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0].id,
+        quantity_logged: 10,
+        duration_logged: 600,
+        note_logged: 'test note',
+        device_id: DeviceDummy.id,
+        activity_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
+        start_time: new Date('2025-07-14T03:00:00.000Z'),
+        finish_time: new Date('2025-07-14T03:10:00.000Z'),
+        metadata: { is_skipped: false },
+      };
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        ActivitySequenceWithoutHighPriorityActivitiesDummy,
+      );
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...ActivitySequenceWithoutHighPriorityActivitiesDummy.activities[0],
+        activity_data: { name: 'Standard Priority Activity', priority: ActivityPriority.STANDARD },
+      });
+      // The user object needs to have `current_sequence_started_at` to correctly calculate the `last_completed_sequence_started_at`
+      UserRepositoryMock.orm.findOne.mockResolvedValue({
+        ...userWithMidnightCutoff,
+        current_sequence_started_at: new Date('2025-07-14T01:00:00.000Z'),
+      });
+      CompletedActivityRepositoryMock.upsert.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, {
+        user_id: userDummy.id,
+      });
+
+      // Should complete routine (set current activity to null)
+      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          current_activity_id: null,
+          current_activity_sequence_id: null,
+          last_completed_sequence_id: ActivitySequenceWithoutHighPriorityActivitiesDummy.id,
+          last_completed_sequence_at: new Date('2025-07-14T03:00:00.000Z'),
+          current_sequence_started_at: null,
+          last_completed_sequence_started_at: new Date('2025-07-14T01:00:00.000Z'),
+        }),
+      );
     });
   });
 });

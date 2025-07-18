@@ -7,6 +7,8 @@ import { TeamToMember } from '../../apps/api-server/src/modules/team/entities/te
 import { Team } from '../../apps/api-server/src/modules/team/entities/team.entity';
 import { PaymentType } from '../../apps/api-server/src/modules/team/domain/payment-type.enum';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -123,5 +125,5 @@ async function runExpiredTeamMembersCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runExpiredTeamMembersCronJob);
+  withSentry(() => withTimeout(runExpiredTeamMembersCronJob(), CRON_JOB_TIMEOUT_MS));
 }

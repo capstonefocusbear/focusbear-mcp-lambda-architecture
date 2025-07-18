@@ -22,9 +22,11 @@ export async function withSentry<T>(job: () => Promise<T>): Promise<T> {
     return result;
   } catch (error) {
     Sentry.captureException(error);
+    console.error(error);
     throw error;
   } finally {
     await Sentry.flush(2000);
+    process.exit(1);
   }
 }
 

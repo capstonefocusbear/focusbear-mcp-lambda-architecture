@@ -10,6 +10,8 @@ import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/synced-project.entity';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -249,5 +251,5 @@ async function runIntegrationCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runIntegrationCronJob);
+  withSentry(() => withTimeout(runIntegrationCronJob(), CRON_JOB_TIMEOUT_MS));
 }

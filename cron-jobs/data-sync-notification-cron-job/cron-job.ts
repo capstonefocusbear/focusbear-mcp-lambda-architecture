@@ -9,6 +9,8 @@ import { StudyParticipant } from '../../apps/api-server/src/modules/user/entitie
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -116,5 +118,5 @@ export async function runDataSyncCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runDataSyncCronJob);
+  withSentry(() => withTimeout(runDataSyncCronJob(), CRON_JOB_TIMEOUT_MS));
 }

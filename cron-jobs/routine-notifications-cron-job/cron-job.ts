@@ -13,6 +13,8 @@ import { User } from '../../apps/api-server/src/modules/user/entities/user.entit
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { openAiConfig } from '../../apps/api-server/src/config';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -319,5 +321,5 @@ async function runRoutineNotificationsCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runRoutineNotificationsCronJob);
+  withSentry(() => withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

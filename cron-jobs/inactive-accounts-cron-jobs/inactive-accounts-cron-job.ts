@@ -11,6 +11,8 @@ import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
 i18next.init({
   lng: 'en',
@@ -140,5 +142,5 @@ async function runInactiveAccountsCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runInactiveAccountsCronJob);
+  withSentry(() => withTimeout(runInactiveAccountsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

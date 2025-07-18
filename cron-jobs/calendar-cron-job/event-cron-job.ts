@@ -1,10 +1,11 @@
 /* eslint-disable linebreak-style */
 import { Queue } from 'bullmq';
-import { BullQueues, BullWorkers } from '../../apps/api-server/src/shared/utils/constants';
+import { BullQueues, BullWorkers, CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
 import { withSentry } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
@@ -62,5 +63,5 @@ async function runEventCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runEventCronJob);
+  withSentry(() => withTimeout(runEventCronJob(), CRON_JOB_TIMEOUT_MS))
 }

@@ -1,6 +1,8 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { withSentry } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Pool } = require('pg');
@@ -77,5 +79,5 @@ async function runPusherCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runPusherCronJob);
+  withSentry(() => withTimeout(runPusherCronJob(), CRON_JOB_TIMEOUT_MS));
 }

@@ -50,6 +50,7 @@ export const USD = 'USD';
 export const TRIALING = 'trialing';
 export const ACTIVE = 'active';
 export const TRIAL = 'trial';
+export const CRON_JOB_TIMEOUT_MS = 10 * ONE_MINUTE;
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',
   '+01:00': 'Europe/London',

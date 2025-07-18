@@ -8,6 +8,8 @@ import { CronJobDataSource } from '../data-source';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
 import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 /* eslint-disable @typescript-eslint/no-var-requires */
 const dotenv = require('dotenv');
 
@@ -158,5 +160,5 @@ async function runNotificationCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runNotificationCronJob);
+  withSentry(() => withTimeout(runNotificationCronJob(), CRON_JOB_TIMEOUT_MS))
 }

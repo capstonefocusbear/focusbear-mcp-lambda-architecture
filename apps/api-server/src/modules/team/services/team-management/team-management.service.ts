@@ -578,20 +578,20 @@ export class TeamManagementService {
 
       await this.validateMembership(user_id, team_id, team, members);
 
-      const member = await this.teamToMemberRepository.orm.save({
-        ...teamToMember,
-        invitation_status: InvitationStatus.ACCEPTED,
-        invitation_responded_at: new Date(),
-        member_id: user_id,
-      });
+      let promises = [
+        this.teamToMemberRepository.orm.save({
+          ...teamToMember,
+          invitation_status: InvitationStatus.ACCEPTED,
+          invitation_responded_at: new Date(),
+          member_id: user_id,
+        }),
+        this.revenueCatService.grantTeamMembership(teamToMember.id, Entitlement.team_member, team.expires_date),
+      ];
 
-      if (member.invitation_status === InvitationStatus.ACCEPTED) {
-        let promises = [this.grantMembershipAndUpdateTeam(team, members.length, user_id)];
-        if (is_admin) {
-          promises = [...promises, this.assignMemberAsAdmin(user_id, team_id, team.expires_date)];
-        }
-        await Promise.allSettled(promises);
+      if (is_admin) {
+        promises = [...promises, this.assignMemberAsAdmin(user_id, team_id, team.expires_date)];
       }
+      await Promise.allSettled(promises);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -633,8 +633,10 @@ export class TeamManagementService {
         this.sentryService.instance().captureException(error, { level: 'error' });
       }
 
-      await this.updateInvitationTracking(member, invitationStatus);
-
+      await Promise.allSettled([
+        this.updateInvitationTracking(member, invitationStatus),
+        this.teamRepository.update(team.id, { team_size: members.length + 1 }),
+      ]);
       return inviteUrl;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

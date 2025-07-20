@@ -25,6 +25,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       getMany: jest.fn(),
+      getManyAndCount: jest.fn(),
     } as unknown as jest.Mocked<QueryBuilder<ToDo>>;
 
     // Create mock repository
@@ -70,7 +71,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
         },
       ];
 
-      mockQueryBuilder.getMany.mockResolvedValue(mockResults);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockResults, 1]);
 
       await toDoRepository.getUserToDos(userId, baseQueryDto);
 
@@ -114,7 +115,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
     it('should add status filter when provided', async () => {
       const queryDto = { ...baseQueryDto, status: ToDoStatus.IN_PROGRESS, skip: 0 };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 
@@ -124,7 +125,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
     });
 
     it('should exclude completed todos when no status filter', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, baseQueryDto);
 
@@ -133,7 +134,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
     it('should add eisenhower quadrant filter when provided', async () => {
       const queryDto = { ...baseQueryDto, eisenhower_quadrant: 2, skip: 0 };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 
@@ -144,7 +145,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
     it('should add tag filter when provided', async () => {
       const queryDto = { ...baseQueryDto, tag_id: 'tag-123', skip: 0 };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 
@@ -158,7 +159,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
         perspiration_lte: 7,
         skip: 0,
       };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 
@@ -172,7 +173,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
     it('should add synced project filter when provided', async () => {
       const queryDto = { ...baseQueryDto, synced_project_id: 'project-123', skip: 0 };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 
@@ -183,7 +184,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
     it('should order by ASC when specified', async () => {
       const queryDto = { ...baseQueryDto, order: PageOrder.ASC, skip: 0 };
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await toDoRepository.getUserToDos(userId, queryDto);
 

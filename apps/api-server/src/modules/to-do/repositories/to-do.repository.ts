@@ -89,8 +89,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       query.andWhere('to_do.synced_project_id = :synced_project_id', { synced_project_id });
     }
 
-    const result = await query.getMany();
-    return [result, result.length];
+    return query.getManyAndCount();
   }
 
   async searchUserToDos({ title, take }: SearchToDosDto, userId: string) {

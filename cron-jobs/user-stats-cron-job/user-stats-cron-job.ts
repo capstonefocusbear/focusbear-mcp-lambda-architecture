@@ -175,12 +175,22 @@ async function runUserStatsCronJob() {
     take: 50,
   });
   for await (const user of usersWhoseStatsAreOutOfDate) {
+    
     const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
       where: {
         user_id: user.id,
       },
       order: { date_completed: 'DESC' },
     });
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user.id);
+      // Add a breadcrumb for debugging purposes
+    this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating user settings',
+        ...(isVerboseLoggingAllowed && { data: { user } }),
+      });
+
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);
     const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
@@ -194,7 +204,24 @@ async function runUserStatsCronJob() {
       morning_routines_streak,
       evening_routines_streak,
       micro_breaks_streak,
-    });
+    }); 
+    // Verbose Logging for debugging purposes
+    if (isVerboseLoggingAllowed) {
+       // Add console logs for testing
+        /* eslint-disable no-console */
+        console.log('[VERBOSE-LEVEL-UPDATE] === CRON JOB - USER LEVEL UPDATE ===');
+        console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
+        console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
+        console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', userLevel);
+        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', {
+          focus_modes_streak,
+          morning_routines_streak,
+          evening_routines_streak,
+          micro_breaks_streak,
+        });
+        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', user.onboarding_progress);
+        /* eslint-enable no-console */
+    }
     const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
     await CronJobDataSource.manager.update(
       User,

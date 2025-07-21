@@ -11,6 +11,7 @@ import { UserDailyStatsService } from '../services/user-daily-stats/user-daily-s
 import { UserRepository } from '../repositories/user.repository';
 import { ActivitySequenceService } from '../../activity/services/activity-sequence/activity-sequence.service';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { UserService } from '../services/user/user.service';
 
 @Processor(BullQueues.STATS)
 export class DailyStatsConsumer {
@@ -20,6 +21,7 @@ export class DailyStatsConsumer {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userRepository: UserRepository,
     private readonly activitySequenceService: ActivitySequenceService,
+    private readonly userService: UserService,
   ) {}
 
   @Process(BullWorkers.DAILY_STATS_ACTIVITY_COMPLETED)
@@ -153,12 +155,56 @@ export class DailyStatsConsumer {
         eveningRoutineDailyDurations,
         microBreaksDailyDurations,
       });
+
+      const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
+      // Add a breadcrumb for debugging purposes
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating user settings',
+        ...(isVerboseLoggingAllowed && { data: { user } }),
+      });
+
       const updatedLevel = determineUserLevel(user.onboarding_progress, {
         focus_modes_streak,
         morning_routines_streak,
         evening_routines_streak,
         micro_breaks_streak,
       });
+
+      // Log the user level update if verbose logging is enabled
+      if (isVerboseLoggingAllowed) {
+        // Add console logs for testing
+        /* eslint-disable no-console */
+        console.log('[VERBOSE-LEVEL-UPDATE] === DAILY STATS CONSUMER - USER LEVEL UPDATE ===');
+        console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
+        console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
+        console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', updatedLevel);
+        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', {
+          focus_modes_streak,
+          morning_routines_streak,
+          evening_routines_streak,
+          micro_breaks_streak,
+        });
+        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', user.onboarding_progress);
+        /* eslint-enable no-console */
+      }
+
+      // Also improve the Sentry breadcrumb message
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'User level updated in daily stats consumer', // ← Better message
+        ...(isVerboseLoggingAllowed && {
+          data: {
+            user_id: user.id,
+            previousLevel: user.onboarding_progress?.level,
+            calculatedLevel: updatedLevel,
+            activityType,
+          },
+        }),
+      });
+
       await this.userRepository.update(user.id, {
         onboarding_progress: { ...user.onboarding_progress, level: updatedLevel },
         morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,

@@ -114,7 +114,7 @@ async function sendEmail(email: string, language: string) {
 
 // Move the UNICAES-specific logic to a new function
 async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 'en' | 'es' = 'es') {
-  const imageUrl = 'https://i.ibb.co/S4jnpt3m/unicaes-email-header.jpg'; // Use your real public URL
+  const imageUrl = 'https://i.ibb.co/S4jnpt3m/unicaes-email-header.jpg';
 
   const content = {
     es: {
@@ -132,15 +132,6 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
           —Equipo de Investigación Focus Bear + UNICAES</p>
         </div>
       `,
-      text: `${name ? `Hola ${name},` : 'Hola,'}
-
-¡Tu progreso importa! 🌟
-Recuerda subir captura de pantalla de tu Screen Time de esta semana a Focus Bear como parte de tu participación en el curso.
-👉 Haz clic aquí para subirla fácilmente: settings > UNICAES study
-📷 ¿Necesitás ayuda? Mira este breve tutorial: https://www.youtube.com/shorts/qLH5htwin8o?feature=share
-Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠
-Gracias por seguir dando lo mejor de ti.
-—Equipo de Investigación Focus Bear + UNICAES`,
     },
     en: {
       subject: "Don't forget to sync your data this week! 🐻⏳",
@@ -157,16 +148,6 @@ Gracias por seguir dando lo mejor de ti.
           —Focus Bear + UNICAES Research Team</p>
         </div>
       `,
-      text: `${name ? `Hi ${name},` : 'Hi,'}
-
-Your progress matters! 🌟
-Remember to upload a screenshot of your Screen Time for this week to Focus Bear as part of your course participation.
-👉 Click here to upload it easily: settings > UNICAES study
-📷 Need help? Watch this short tutorial: https://www.youtube.com/shorts/qLH5htwin8o?feature=share
-Syncing your data each week helps us better understand your progress, adapt the course, and most importantly, celebrate your commitment to a more focused and balanced life! 🎯🧠
-Thank you for continuing to give your best.
-—Focus Bear + UNICAES Research Team`,
-    },
   };
 
   const langContent = content[language] || content.es;

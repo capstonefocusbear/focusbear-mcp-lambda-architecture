@@ -37,5 +37,9 @@ module.exports = {
     'arrow-body-style': 'off',
     'operator-linebreak': 'off',
     'function-paren-newline': 'off',
+    // Enforce final newlines - this will catch missing trailing newlines
+    'eol-last': ['error', 'always'],
+    // No trailing whitespace
+    'no-trailing-spaces': 'error',
   },
 };

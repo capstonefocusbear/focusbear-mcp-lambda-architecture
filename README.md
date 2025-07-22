@@ -135,7 +135,7 @@ Use API collection, make sure to update collection environment with the appropri
 
 #### 4. Code Spell Checker - streetsidesoftware.code-spell-checker
 
-#### 5. Insert final new line
+#### 5. Insert Final New Line
 
 1. Open Visual Studio Code and go to File (Code if using a Mac) -> Preferences -> Settings; you should now be viewing a settings page
 2. Enter 'insert final newline' in to the search bar
@@ -312,3 +312,104 @@ To add a new non-secret environment variable for backend services, follow these 
 > - Ensure your parameter path matches exactly in both AWS SSM Parameter Store and the codebase.
 > - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
 > - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).
+
+
+## Guide for New Developers
+
+Welcome to the FocusBear backend repository! This guide will help you get started with development and make your first contribution.
+
+### Getting Started
+#### Prerequisites: 
+Make sure you follow the [Project local setup](#project-local-setup) instructions to set up your local environment.
+
+### Troubleshooting Common Issues
+#### Database Connection Issues
+
+**Problem**: "Connection refused" or "Database does not exist"
+```bash
+# Solution: Restart Docker containers (use "-d" to run in detached mode)
+docker-compose down
+docker-compose up -d
+
+# Check if containers are running
+docker-compose ps
+```
+
+#### Package Lock Conflicts
+
+**Problem**: Merge conflicts in `package-lock.json`
+```bash
+# Delete the conflicted file and regenerate
+rm package-lock.json
+npm install
+git add package-lock.json
+git commit -m "Resolve package-lock.json conflict"
+```
+> you might need to run `git add -f package-lock.json` if the file is ignored by .gitignore
+
+### Debugging Tips
+
+1. **Database Issues**: Use Adminer (http://localhost:8080) to inspect your local database (check `docker-compose.yml` or your `.env` file for credentials)
+2. **API Testing**: Use Bruno or Postman with the provided API collections (check the description above for details)
+3. **Logs**: Check console output and add strategic `console.log` statements
+4. **Error Handling**: Ensure proper error handling in your code to catch and log exceptions, and check:
+   - Is the database connection established?
+   - Is the docker container running? (for Docker users)
+   - Are the environment variables (the `.env` file) set correctly?
+   - Are the migrations up to date? (check migration section above)
+
+### Project Structure Overview
+
+Here is a high-level overview of the project structure to help you navigate:
+```
+backend/
+├── apps/api-server/          # Main NestJS application
+│   ├── src/
+│   │   ├── modules/         # Feature modules (users, activities, etc.)
+│   │   ├── config/          # Configuration files
+│   │   └── shared/          # Shared utilities and entities
+│   ├── migrations/          # Database migrations
+│   └── test/               # E2E tests
+├── cron-jobs/              # Scheduled background jobs
+├── libs/                   # Shared libraries (auth, crypto, etc.)
+├── api-requests-collections/ # Bruno/Postman API collections
+└── docs/                   # Documentation
+```
+
+### Contributing Your First PR
+1. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make Your Changes** following Focus Bear's coding standards and naming conventions.
+
+   Also, make sure your end of file has a trailing newline. To make sure you don't forget this, configure your VS Code settings:
+
+   **Enable "Insert Final Newline"**:
+   - Open VS Code Settings (File → Preferences → Settings)
+   - Search for "insert final newline"
+   - Check the box under "Files: Insert Final Newline"
+   - This ensures all files end with a newline character (required by our linting rules)
+
+3. **Test Everything**:
+   ```bash
+   npm run test
+   npm run lint
+   ```
+   - Ensure all tests pass and linting issues are resolved.
+   - You can run individual files by checking the `package.json` scripts for invoking specific commands.
+
+4. **Create Migration** (if you changed entities)
+5. **Commit with Descriptive Messages**:
+   ```bash
+   git add .
+   git commit -m "feat: add user profile validation"
+   ```
+   - Use conventional commit messages (e.g., `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `style`, `test`, `hotfix`, `revert`, `chore`, `security`) for types.
+6. **Push and Create PR**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+7. **Fill Out PR Template Completely (On GitHub)** - don't skip any checklist items!

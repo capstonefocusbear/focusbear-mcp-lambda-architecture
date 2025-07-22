@@ -7,10 +7,10 @@ import { ManagementClient } from 'auth0';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
-import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
+import { FOCUS_BEAR_EMAILS, CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
-import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -59,17 +59,24 @@ export async function getUsersWithOutdatedData() {
   return participants.filter((participant) => participant.userId);
 }
 
-async function getUserDetails(userId: string): Promise<{ email: string | null; language: string }> {
+async function getUserDetails(userId: string): Promise<{ email: string | null; language: string; name?: string }> {
   try {
+    // Find the StudyParticipant by userId to get the name
+    const participant = await CronJobDataSource.manager.findOne(StudyParticipant, {
+      where: { userId },
+    });
+    const name = participant?.name;
+
     const user = await CronJobDataSource.manager.findOne(User, {
       where: { id: userId },
     });
-    if (!user) return { email: null, language: 'en' };
+    if (!user) return { email: null, language: 'en', name };
 
     const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
     return {
       email: auth0User.email,
       language: user.language || 'en',
+      name,
     };
   } catch (error) {
     captureErrorWithContext(error, {
@@ -81,6 +88,8 @@ async function getUserDetails(userId: string): Promise<{ email: string | null; l
   }
 }
 
+// The following function is intentionally unused in this file but kept for reference and potential future use.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function sendEmail(email: string, language: string) {
   const msg = {
     to: email,
@@ -103,14 +112,64 @@ async function sendEmail(email: string, language: string) {
   }
 }
 
+// Move the UNICAES-specific logic to a new function
+async function sendUnicaesDataSyncEmail(email: string, name?: string) {
+  const subject = '¡No olvides sincronizar tus datos esta semana! 🐻⏳';
+  const imageUrl = 'https://i.ibb.co/S4jnpt3m/unicaes-email-header.jpg'; // Use your real public URL
+  const greeting = name ? `Hola <b>${name}</b>,` : 'Hola,';
+  const htmlBody = `
+    <div>
+      <img src="${imageUrl}" alt="Header" style="width:100%;max-width:600px;margin-bottom:24px;" />
+      <p>${greeting}</p>
+      <p>¡Tu progreso importa! 🌟<br>
+      Recuerda subir <b>captura de pantalla de tu Screen Time de esta semana</b> a Focus Bear como parte de tu participación en el curso.</p>
+      <p>👉 <b>Haz clic aquí para subirla fácilmente: settings &gt; UNICAES study</b></p>
+      <p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://www.youtube.com/shorts/qLH5htwin8o?feature=share">Clic aquí</a></p>
+      <p>Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠</p>
+      <p>Gracias por seguir dando lo mejor de ti.<br>
+      —Equipo de Investigación Focus Bear + UNICAES</p>
+    </div>
+  `;
+  const plainTextBody = `${name ? `Hola ${name},` : 'Hola,'}
+
+¡Tu progreso importa! 🌟
+Recuerda subir captura de pantalla de tu Screen Time de esta semana a Focus Bear como parte de tu participación en el curso.
+👉 Haz clic aquí para subirla fácilmente: settings > UNICAES study
+📷 ¿Necesitás ayuda? Mira este breve tutorial: https://www.youtube.com/shorts/qLH5htwin8o?feature=share
+Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠
+Gracias por seguir dando lo mejor de ti.
+—Equipo de Investigación Focus Bear + UNICAES`;
+
+  const msg = {
+    to: email,
+    from: FOCUS_BEAR_EMAILS.SUPPORT,
+    subject,
+    html: htmlBody,
+    text: plainTextBody,
+  };
+
+  try {
+    await sendGrid.send(msg);
+  } catch (error) {
+    captureErrorWithContext(error, {
+      operation: 'sendUnicaesDataSyncEmail',
+      cronJob: 'data-sync-notification',
+      extra: {
+        email,
+        name,
+      },
+    });
+  }
+}
+
 export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
   for (const participant of participants) {
-    const { email, language } = await getUserDetails(participant.userId);
+    const { email, name } = await getUserDetails(participant.userId);
     if (email) {
-      await sendEmail(email, language);
+      await sendUnicaesDataSyncEmail(email, name);
     }
   }
   console.log('Usage data sync notification cronjob completed successfully');

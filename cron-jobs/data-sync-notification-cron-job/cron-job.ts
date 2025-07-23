@@ -148,6 +148,7 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
           —Focus Bear + UNICAES Research Team</p>
         </div>
       `,
+    },
   };
 
   const langContent = content[language] || content.es;
@@ -157,7 +158,6 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
     from: FOCUS_BEAR_EMAILS.SUPPORT,
     subject: langContent.subject,
     html: langContent.html,
-    text: langContent.text,
   };
 
   try {

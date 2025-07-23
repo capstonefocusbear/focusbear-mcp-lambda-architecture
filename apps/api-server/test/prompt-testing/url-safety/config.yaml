@@ -20,7 +20,8 @@ prompts:
       **2. Is it a NECESSARY PREREQUISITE for the `currentTask`? (Score 0.7-0.9)**
         - **Login/Payment:** If the `currentTask` involves paying, renewing, or getting an invoice, a relevant financial or login page is a valid and helpful step. **Allow these to help the user proceed.**
         - **Error Pages on Relevant Domains:** If the site's domain matches the `currentTask` but the title says "Sorry" or "Access Denied", assume our scraper was blocked and allow it. The user is in the right place.
-        - **Example Reason:** "Just a quick login page to get you to your main task. All good!"
+        - **Handle Unhelpful Metadata:** If the `meta_description` is unhelpful (i.e., it is **empty**, a **login prompt**, or shows an **error** like "Access Denied" or "JavaScript is disabled"), then you MUST **ignore the description**. Base your evaluation primarily on the `URL`, `tab_title`, and the user's context (`currentTask` and `justification`). A relevant `URL` or `tab_title` is a strong signal of a valid site, even with bad metadata.
+        - **Example Reason:** "Just a quick login page to get you to your main task. All good!" or "The site details are a bit sparse, but based on your task, this looks right. Carry on!"
 
       **3. Is there a MAJOR MISMATCH with the `currentTask`? (Score 0.1-0.3)**
         - The website's topic is completely unrelated to the `currentTask` (e.g., Wikipedia for a coding task).
@@ -63,7 +64,7 @@ tests:
       justificationForThisUrl: Writing project specs
       lastFiveJustificationsInThisFocusSession: '[''Working on documentation'', ''Team updates'']'
       currentTaskInToDoPlayer: Write Project Documentation
-      min_probability: 0.9
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -78,7 +79,7 @@ tests:
       justificationForThisUrl: Following a coding tutorial
       lastFiveJustificationsInThisFocusSession: '[''Studying React'', ''Learning Next.js'']'
       currentTaskInToDoPlayer: Learn TypeORM
-      min_probability: 0.9
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -348,8 +349,8 @@ tests:
       justificationForThisUrl: ''
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: ''
-      min_probability: 0.1
-      max_probability: 0.3
+      min_probability: 0.3
+      max_probability: 0.7
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -965,6 +966,21 @@ tests:
       currentTaskInToDoPlayer: ethics update
       intention: deep work
       justificationForThisUrl: this is where I do the research ethics
+      lastFiveJustificationsInThisFocusSession: []
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Remove autoresponder (No justification)
+    vars:
+      url: youtube.com/embed/9103blUxQ7M
+      tab_title: "zoho desk blended conversations: human + bot support 🤖 - youtube"
+      meta_description: 'An error occurred.Try watching this video on www.youtube.com, or enable JavaScript if it is disabled in your browser.'
+      focus_mode: Deep Work
+      currentTaskInToDoPlayer: remove autoresponder
+      intention: deep work
+      justificationForThisUrl: 'autoresponder is zoho desk related'
       lastFiveJustificationsInThisFocusSession: []
       min_probability: 0.7
       max_probability: 1

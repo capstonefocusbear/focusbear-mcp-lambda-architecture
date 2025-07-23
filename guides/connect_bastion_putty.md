@@ -31,7 +31,7 @@ This guide helps **Windows users securely SSH into an AWS Bastion Host using PuT
 
 1. Open **PuTTYgen**.
 2. Click **Load**.
-   - Set file type to **All Files (*****.*****)**.
+   - Set file type to **All Files (\*\*\***.**\***)\*\*.
    - Select your `bastion-key.pem`.
 3. Click **Save private key**.
    - Ignore passphrase prompt if not needed.
@@ -147,12 +147,3 @@ In **pgAdmin 4**:
 ✅ Rotate your keys periodically.
 
 ---
-
-## ✅ Summary
-
-Using this document, you can:
-
-✔ SSH into your **AWS Bastion Host from Windows using PuTTY**.\
-✔ Set up **SSH tunnels to access private resources securely**.\
-✔ Keep your AWS infrastructure **secure while working efficiently**.
-

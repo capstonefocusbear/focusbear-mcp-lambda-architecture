@@ -193,12 +193,25 @@ async function runUserStatsCronJob() {
 
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);
-    const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
-      calculateStreaks(userDailyStats, user.timezone, {
-        morningRoutineDailyDurations,
-        eveningRoutineDailyDurations,
-        microBreaksDailyDurations,
-      });
+    const {
+      focus_modes_streak,
+      morning_routines_streak,
+      evening_routines_streak,
+      micro_breaks_streak,
+      percent_morning_routines_streak_complete_in_90days,
+      percent_evening_routines_streak_complete_in_90days,
+      percent_micro_breaks_streak_complete_in_90days,
+      num_days_of_stats,
+      number_days_completed,
+      morning_number_days_completed,
+      morning_num_days_of_stats,
+      evening_number_days_completed,
+      evening_num_days_of_stats,
+    } = calculateStreaks(userDailyStats, user.timezone, {
+      morningRoutineDailyDurations,
+      eveningRoutineDailyDurations,
+      microBreaksDailyDurations,
+    });
     const userLevel = determineUserLevel(user.onboarding_progress, {
       focus_modes_streak,
       morning_routines_streak,
@@ -236,6 +249,15 @@ async function runUserStatsCronJob() {
         evening_routines_streak,
         focus_modes_streak,
         micro_breaks_streak,
+        morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,
+        evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
+        micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
+        num_days_of_stats,
+        number_days_completed,
+        morning_number_days_completed,
+        morning_num_days_of_stats,
+        evening_number_days_completed,
+        evening_num_days_of_stats,
       },
     );
   }

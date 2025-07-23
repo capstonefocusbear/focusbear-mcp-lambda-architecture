@@ -5,6 +5,7 @@ import { UserOnboardingProgress } from '../../apps/api-server/src/modules/user/d
 import { LEVEL_THRESHOLDS } from './constants';
 import { calculateStreaks, determineUserLevel } from './helpers';
 import { DailySequenceDurations } from '../../apps/api-server/src/modules/activity/domain/daily-sequence-durations.model';
+import { ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD } from '../../apps/api-server/src/shared/utils/constants';
 
 describe('helpers', () => {
   const morningRoutineDailyDurations = new DailySequenceDurations();
@@ -134,6 +135,10 @@ describe('helpers', () => {
         updated_at: new Date(stat.date).toISOString(),
       }));
 
+      // Calculate morning and evening specific counts
+      const morningCompleted = stats.filter(stat => stat.morning >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+      const eveningCompleted = stats.filter(stat => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+
       const expected = {
         focus_modes_streak: 0,
         morning_routines_streak: 0,
@@ -144,6 +149,10 @@ describe('helpers', () => {
         percent_micro_breaks_streak_complete_in_90days: percentMicro,
         num_days_of_stats: numDays,
         number_days_completed: numDaysComplete,
+        morning_number_days_completed: morningCompleted,
+        morning_num_days_of_stats: numDays,
+        evening_number_days_completed: eveningCompleted,
+        evening_num_days_of_stats: numDays,
       };
 
       return { userDailyStats, expected };

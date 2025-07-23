@@ -137,6 +137,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
+    morning_number_days_completed: daysWhereMorningRoutinesWereCompletedIn90Days.length,
+    morning_num_days_of_stats: num_days_of_stats,
+    evening_number_days_completed: daysWhereEveningRoutinesWereCompletedIn90Days.length,
+    evening_num_days_of_stats: num_days_of_stats,
   };
 }
 
@@ -270,6 +274,10 @@ export function calculateStreaks(
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
+    morning_number_days_completed,
+    morning_num_days_of_stats,
+    evening_number_days_completed,
+    evening_num_days_of_stats,
   } = calculateRoutineStatsIn90Days(userDailyStats);
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
@@ -309,6 +317,10 @@ export function calculateStreaks(
         : 0,
     num_days_of_stats,
     number_days_completed,
+    morning_number_days_completed,
+    morning_num_days_of_stats,
+    evening_number_days_completed,
+    evening_num_days_of_stats,
   };
 }
 

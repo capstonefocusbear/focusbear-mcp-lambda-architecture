@@ -138,6 +138,8 @@ describe('helpers', () => {
       // Calculate morning and evening specific counts
       const morningCompleted = stats.filter(stat => stat.morning >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
       const eveningCompleted = stats.filter(stat => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+      const microBreaksCompleted = stats.filter(stat => stat.microBreaks >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+      const focusModesCompleted = stats.filter(stat => stat.focusModes > 0).length;
 
       const expected = {
         focus_modes_streak: 0,
@@ -153,6 +155,10 @@ describe('helpers', () => {
         morning_num_days_of_stats: numDays,
         evening_number_days_completed: eveningCompleted,
         evening_num_days_of_stats: numDays,
+        micro_breaks_number_days_completed: microBreaksCompleted,
+        micro_breaks_num_days_of_stats: numDays,
+        focus_modes_number_days_completed: focusModesCompleted,
+        focus_modes_num_days_of_stats: numDays,
       };
 
       return { userDailyStats, expected };

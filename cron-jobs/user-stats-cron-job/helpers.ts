@@ -120,6 +120,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
 
+  const daysWhereFocusModesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
+    (dailyStat) => dailyStat.focus_modes_completed > 0, // At least one focus mode completed in the day
+  );
+
   const num_days_of_stats = userDailyStatsFromLast90Days.length;
 
   const number_days_completed = userDailyStatsFromLast90Days.filter(
@@ -134,6 +138,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     daysWhereMorningRoutinesWereCompletedIn90Days,
     daysWhereEveningRoutinesWereCompletedIn90Days,
     daysWhereMicroBreaksWereCompletedIn90Days,
+    daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
@@ -141,6 +146,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     morning_num_days_of_stats: num_days_of_stats,
     evening_number_days_completed: daysWhereEveningRoutinesWereCompletedIn90Days.length,
     evening_num_days_of_stats: num_days_of_stats,
+    micro_breaks_number_days_completed: daysWhereMicroBreaksWereCompletedIn90Days.length,
+    micro_breaks_num_days_of_stats: num_days_of_stats,
+    focus_modes_number_days_completed: daysWhereFocusModesWereCompletedIn90Days.length,
+    focus_modes_num_days_of_stats: num_days_of_stats,
   };
 }
 
@@ -271,6 +280,7 @@ export function calculateStreaks(
     daysWhereEveningRoutinesWereCompletedIn90Days,
     daysWhereMicroBreaksWereCompletedIn90Days,
     daysWhereMorningRoutinesWereCompletedIn90Days,
+    daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
@@ -278,6 +288,10 @@ export function calculateStreaks(
     morning_num_days_of_stats,
     evening_number_days_completed,
     evening_num_days_of_stats,
+    micro_breaks_number_days_completed,
+    micro_breaks_num_days_of_stats,
+    focus_modes_number_days_completed,
+    focus_modes_num_days_of_stats,
   } = calculateRoutineStatsIn90Days(userDailyStats);
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
@@ -321,6 +335,10 @@ export function calculateStreaks(
     morning_num_days_of_stats,
     evening_number_days_completed,
     evening_num_days_of_stats,
+    micro_breaks_number_days_completed,
+    micro_breaks_num_days_of_stats,
+    focus_modes_number_days_completed,
+    focus_modes_num_days_of_stats,
   };
 }
 

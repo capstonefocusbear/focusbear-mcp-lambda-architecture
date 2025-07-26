@@ -125,7 +125,7 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
           <p>¡Tu progreso importa! 🌟<br>
           Recuerda subir <b>captura de pantalla de tu Screen Time de esta semana</b> a Focus Bear como parte de tu participación en el curso.</p>
           <p>👉 <b>Haz clic aquí para subirla fácilmente: settings &gt; UNICAES study</b></p>
-          <p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://www.youtube.com/shorts/qLH5htwin8o?feature=share">Clic aquí</a></p>
+          <p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://youtube.com/shorts/mcKNmPJYC1s?si=tREtRWhEA7SsPPDl">Clic aquí</a></p>
           <p>Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠</p>
           <p>Gracias por seguir dando lo mejor de ti.<br>
           —Equipo de Investigación Focus Bear + UNICAES</p>

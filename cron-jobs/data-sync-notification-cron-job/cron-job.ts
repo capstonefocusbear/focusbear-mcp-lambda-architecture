@@ -113,7 +113,7 @@ async function sendEmail(email: string, language: string) {
 
 // Move the UNICAES-specific logic to a new function
 async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 'en' | 'es' = 'es') {
-  const imageUrl = 'https://i.ibb.co/S4jnpt3m/unicaes-email-header.jpg';
+  const imageUrl = 'https://images.focusbear.io/unicaes-email-header.png';
 
   const content = {
     es: {

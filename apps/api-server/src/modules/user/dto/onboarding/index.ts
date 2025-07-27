@@ -1,6 +1,6 @@
 import { IsBoolean, IsEnum, IsArray, IsObject, IsString, ValidateNested, IsNumber, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
+import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 import { OnboardFlowStep } from '../../domain/onboarding/onboarding-flow-step.enum';
 import { OnboardFlowFeature } from '../../domain/onboarding/onboarding-flow-feature.enum';
 import { RoutineType } from '../../domain/routine-type.enum';

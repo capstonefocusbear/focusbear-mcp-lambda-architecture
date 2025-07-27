@@ -1,6 +1,6 @@
-import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
 import { Type } from 'class-transformer';
 import { IsArray, ValidateNested } from 'class-validator';
+import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 
 export class ActivitiesDto {
   @IsArray()

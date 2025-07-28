@@ -181,7 +181,7 @@ export async function runDataSyncCronJob() {
   for (const participant of participants) {
     const { email, name, language } = await getUserDetails(participant.userId);
     if (email) {
-      await sendUnicaesDataSyncEmail(email, name, language as 'en' | 'es');
+      await sendUnicaesDataSyncEmail(email, name, 'es');
     }
   }
   console.log('Usage data sync notification cronjob completed successfully');

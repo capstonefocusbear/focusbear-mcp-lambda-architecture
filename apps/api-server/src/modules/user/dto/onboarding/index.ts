@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsArray, IsObject, IsString, ValidateNested, IsNumber, Min, Max } from 'class-validator';
+import { IsEnum, IsArray, IsObject, IsString, ValidateNested, IsNumber, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
 import { OnboardFlowStep } from '../../domain/onboarding/onboarding-flow-step.enum';
@@ -51,10 +51,4 @@ export class OnboardingDto {
   @Min(0)
   @Max(999)
   break_after_minutes: number;
-
-  @IsBoolean()
-  showSkipOnboardingModal: boolean;
-
-  @IsBoolean()
-  isSyncingUserSelection: boolean;
 }

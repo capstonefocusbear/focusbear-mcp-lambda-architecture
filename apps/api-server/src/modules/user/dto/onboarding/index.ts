@@ -21,7 +21,6 @@ export class OnboardingDto {
   @IsEnum(RoutineType, { each: true })
   routines: RoutineType[];
 
-  @IsObject()
   @ValidateNested()
   @Type(() => BearsonaProfileDto)
   profile: {
@@ -29,7 +28,6 @@ export class OnboardingDto {
     useProfileLang: boolean;
   };
 
-  @IsObject()
   @ValidateNested()
   @Type(() => ActivitiesDto)
   activities: {

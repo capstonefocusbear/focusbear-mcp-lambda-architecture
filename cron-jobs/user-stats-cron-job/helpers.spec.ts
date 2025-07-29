@@ -36,7 +36,7 @@ describe('helpers', () => {
       expect(level).toBe(2); // Expect the level to be 2 as it meets the second threshold
     });
 
-    it('should assign level 1 with minimum streaks and complete setup', () => {
+    it('should assign level 1 with minimum streaks and complete setup (no micro breaks required)', () => {
       const onboardingProgress = new UserOnboardingProgress();
       // Complete setup
       onboardingProgress.has_edited_focus_mode = true;
@@ -47,6 +47,24 @@ describe('helpers', () => {
 
       const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
       expect(level).toBe(1);
+    });
+
+    it('should reach level 2 without micro breaks requirement', () => {
+      const onboardingProgress = new UserOnboardingProgress();
+      onboardingProgress.has_edited_focus_mode = true;
+      onboardingProgress.has_edited_settings = true;
+      onboardingProgress.has_edited_always_blocked_urls = true;
+      onboardingProgress.has_installed_desktop_app = true;
+      // Level 2 requirements: routines >= 2, focus_modes >= 2, micro breaks not required
+      const tasksStreaksResponse = new TasksStreaksResponse({
+        focus_modes_streak: 2,
+        morning_routines_streak: 2,
+        evening_routines_streak: 2,
+        micro_breaks_streak: 0, // Should not be required for level 2
+      });
+
+      const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
+      expect(level).toBe(2);
     });
 
     it('should not level up if streaks are just below the threshold for the next level', () => {
@@ -95,6 +113,41 @@ describe('helpers', () => {
 
       const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
       expect(level).toBe(7);
+    });
+
+    it('should require micro breaks for level 3 and above', () => {
+      const onboardingProgress = new UserOnboardingProgress();
+      onboardingProgress.has_edited_focus_mode = true;
+      onboardingProgress.has_edited_settings = true;
+      onboardingProgress.has_edited_always_blocked_urls = true;
+      onboardingProgress.has_installed_desktop_app = true;
+      // Level 3 requirements: routines >= 5, focus_modes >= 5, micro breaks >= 5
+      const tasksStreaksResponse = new TasksStreaksResponse({
+        focus_modes_streak: 5,
+        morning_routines_streak: 5,
+        evening_routines_streak: 5,
+        micro_breaks_streak: 4, // Just below level 3 requirement
+      });
+
+      const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
+      expect(level).toBe(2); // Should stay at level 2 due to insufficient micro breaks
+    });
+
+    it('should reach level 3 when micro breaks requirement is met', () => {
+      const onboardingProgress = new UserOnboardingProgress();
+      onboardingProgress.has_edited_focus_mode = true;
+      onboardingProgress.has_edited_settings = true;
+      onboardingProgress.has_edited_always_blocked_urls = true;
+      onboardingProgress.has_installed_desktop_app = true;
+      const tasksStreaksResponse = new TasksStreaksResponse({
+        focus_modes_streak: 5,
+        morning_routines_streak: 5,
+        evening_routines_streak: 5,
+        micro_breaks_streak: 5, // Meets level 3 requirement
+      });
+
+      const level = determineUserLevel(onboardingProgress, tasksStreaksResponse);
+      expect(level).toBe(3);
     });
   });
 

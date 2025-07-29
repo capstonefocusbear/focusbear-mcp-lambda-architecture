@@ -49,4 +49,8 @@ export class OnboardingDto {
   @Min(0)
   @Max(999)
   break_after_minutes: number;
+
+  @IsArray()
+  @IsEnum(OnboardFlowStep, { each: true })
+  skippedSteps: OnboardFlowStep[];
 }

@@ -49,11 +49,18 @@ export function determineUserLevel(
     const areEnoughEveningRoutinesCompleted = evening_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughFocusModesCompleted = focus_modes_streak >= currentLevelBeingChecked.focus_modes;
     const areEnoughMicroBreakRoutinesCompleted = micro_breaks_streak >= currentLevelBeingChecked.routines;
+    
+    // Adding the condition for micro breaks streak progression
+    // Level 1 and Level 2 users can bypass the micro breaks requirement
+    // Micro breaks only required from Level 3 and above
+    const isMicroBreaksBypassLevel = currentLevelBeingChecked.level === 1 || currentLevelBeingChecked.level === 2;
+    const microBreaksRequirementMet = isMicroBreaksBypassLevel || areEnoughMicroBreakRoutinesCompleted;
+    
     if (
       areEnoughMorningRoutinesCompleted &&
       areEnoughEveningRoutinesCompleted &&
       areEnoughFocusModesCompleted &&
-      areEnoughMicroBreakRoutinesCompleted
+      microBreaksRequirementMet
     ) {
       level = currentLevelBeingChecked.level;
       currentLevelIndex += 1;

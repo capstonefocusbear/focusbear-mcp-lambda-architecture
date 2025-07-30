@@ -2076,17 +2076,18 @@ export const DummyTasksStreaksResponse = {
     micro_breaks_streak: 2,
   },
   LEVEL_ONE: {
-    // Set streaks to minimum for level 1
+    // Set streaks to minimum for level 1 (micro breaks not required)
     focus_modes_streak: 1,
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Changed: micro breaks not required for level 1
   },
   LEVEL_TWO: {
-    focus_modes_streak: 1, // Just below the threshold for level 2
+    // Just below the threshold for level 2 (should stay at level 1)
+    focus_modes_streak: 1, // Below level 2 requirement (2)
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Not required for levels 1-2 anyway
   },
   LEVEL_MAX: {
     focus_modes_streak: 100, // High streaks

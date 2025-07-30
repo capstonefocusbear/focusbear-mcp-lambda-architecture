@@ -230,13 +230,13 @@ async function runUserStatsCronJob() {
         console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
         console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
         console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', userLevel);
-        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', {
+        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', JSON.stringify({
           focus_modes_streak,
           morning_routines_streak,
           evening_routines_streak,
           micro_breaks_streak,
-        });
-        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', user.onboarding_progress);
+        }));
+        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', JSON.stringify(user.onboarding_progress));
         /* eslint-enable no-console */
     }
     const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();

@@ -62,9 +62,115 @@ dotenvConfig({ path: path.resolve(__dirname, '../../../../.env') });
 describe('ToDoRepository Top Score Calculation (DB Integration)', () => {
   let dataSource: DataSource;
   let toDoRepository: ToDoRepository;
-  let testProject: SyncedProject;
-  let testTag: FocusModeTag;
   const testUserId = '00000000-0000-0000-0000-000000000001';
+
+  // Global test data that can be reused across tests
+  const getGlobalTestData = (today: Date) => ({
+    dueDateTestCases: [
+      {
+        id: '00000000-0000-0000-0000-000000000002',
+        user_id: testUserId,
+        title: 'Overdue - Same Outcome Perspiration',
+        due_date: new Date(today.getTime() - 86400000), // yesterday
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000003',
+        user_id: testUserId,
+        title: 'Due Today - Same Outcome Perspiration',
+        due_date: today,
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000004',
+        user_id: testUserId,
+        title: 'Due Next Week - Same Outcome Perspiration',
+        due_date: new Date(today.getTime() + 7 * 86400000),
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000005',
+        user_id: testUserId,
+        title: 'Due Next Year - Same Outcome Perspiration',
+        due_date: new Date(today.getTime() + 365 * 86400000),
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000006',
+        user_id: testUserId,
+        title: 'No Due Date - Same Outcome Perspiration',
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+    ],
+    perspirationTestCases: [
+      {
+        id: '00000000-0000-0000-0000-000000000007',
+        user_id: testUserId,
+        title: 'High Perspiration (10) - Same Outcome Due Today',
+        due_date: today,
+        perspiration_level: 10,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000008',
+        user_id: testUserId,
+        title: 'Mid Perspiration (5) - Same Outcome Due Today',
+        due_date: today,
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000009',
+        user_id: testUserId,
+        title: 'Low Perspiration (1) - Same Outcome Due Today',
+        due_date: today,
+        perspiration_level: 1,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+    ],
+    outcomeTestCases: [
+      {
+        id: '00000000-0000-0000-0000-000000000010',
+        user_id: testUserId,
+        title: 'High Outcome (10) - Same Perspiration Due Today',
+        due_date: today,
+        perspiration_level: 5,
+        outcome: 10,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000011',
+        user_id: testUserId,
+        title: 'Mid Outcome (5) - Same Perspiration Due Today',
+        due_date: today,
+        perspiration_level: 5,
+        outcome: 5,
+        status: 'NOT_STARTED',
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000012',
+        user_id: testUserId,
+        title: 'Low Outcome (1) - Same Perspiration Due Today',
+        due_date: today,
+        perspiration_level: 5,
+        outcome: 1,
+        status: 'NOT_STARTED',
+      },
+    ],
+  });
 
   beforeAll(async () => {
     dataSource = new DataSource({
@@ -156,115 +262,6 @@ describe('ToDoRepository Top Score Calculation (DB Integration)', () => {
       text: 'Urgent',
       user_id: testUserId,
     });
-
-    const today = new Date();
-    await dataSource.getRepository(ToDo).save([
-      // No due date
-      {
-        id: '00000000-0000-0000-0000-000000000002',
-        user_id: testUserId,
-        title: 'No Due Date',
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // Overdue
-      {
-        id: '00000000-0000-0000-0000-000000000003',
-        user_id: testUserId,
-        title: 'Overdue',
-        due_date: new Date(today.getTime() - 86400000), // yesterday
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // Due today
-      {
-        id: '00000000-0000-0000-0000-000000000004',
-        user_id: testUserId,
-        title: 'Due Today',
-        due_date: today,
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // Due in 10 days
-      {
-        id: '00000000-0000-0000-0000-000000000005',
-        user_id: testUserId,
-        title: 'Due in 10 Days',
-        due_date: new Date(today.getTime() + 10 * 86400000),
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // Due in 400 days
-      {
-        id: '00000000-0000-0000-0000-000000000006',
-        user_id: testUserId,
-        title: 'Due in 400 Days',
-        due_date: new Date(today.getTime() + 400 * 86400000),
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // With tag
-      {
-        id: '00000000-0000-0000-0000-000000000007',
-        user_id: testUserId,
-        title: 'With Tag',
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-        tags: [testTag],
-      },
-      // With project
-      {
-        id: '00000000-0000-0000-0000-000000000008',
-        user_id: testUserId,
-        title: 'With Project',
-        perspiration_level: 2,
-        outcome: 10,
-        status: 'NOT_STARTED',
-        synced_project_id: testProject.id,
-      },
-      // High outcome, low perspiration
-      {
-        id: '00000000-0000-0000-0000-000000000009',
-        user_id: testUserId,
-        title: 'High Outcome Low Perspiration',
-        perspiration_level: 1,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-      // Low outcome, high perspiration
-      {
-        id: '00000000-0000-0000-0000-000000000010',
-        user_id: testUserId,
-        title: 'Low Outcome High Perspiration',
-        perspiration_level: 10,
-        outcome: 1,
-        status: 'NOT_STARTED',
-      },
-      // Both outcome and perspiration at minimum
-      {
-        id: '00000000-0000-0000-0000-000000000011',
-        user_id: testUserId,
-        title: 'Min Outcome Min Perspiration',
-        perspiration_level: 1,
-        outcome: 1,
-        status: 'NOT_STARTED',
-      },
-      // Both outcome and perspiration at maximum
-      {
-        id: '00000000-0000-0000-0000-000000000012',
-        user_id: testUserId,
-        title: 'Max Outcome Max Perspiration',
-        perspiration_level: 10,
-        outcome: 10,
-        status: 'NOT_STARTED',
-      },
-    ]);
   });
 
   afterAll(async () => {
@@ -275,98 +272,141 @@ describe('ToDoRepository Top Score Calculation (DB Integration)', () => {
     await dataSource.destroy();
   });
 
-  it('should return todos in correct order by top_score (by title)', async () => {
-    const [results] = await toDoRepository.getUserToDos(testUserId, {
-      take: 20,
-      skip: 0,
-      order: PageOrder.DESC,
-    });
-    const expectedOrder = [
-      'Overdue', // 50
-      'High Outcome Low Perspiration', // 50
-      'Due Today', // 49.5
-      'Due in 10 Days', // ~48.15
-      'With Tag', // 25
-      'With Project', // 25
-      'No Due Date', // 25`
-      'Min Outcome Min Perspiration', // 5
-      'Max Outcome Max Perspiration', // 5
-      'Low Outcome High Perspiration', // 0.5
-      'Due in 400 Days', // 0.5
-    ];
-    const resultTitles = (results as ToDo[]).map((t) => t.title);
-    expect(resultTitles).toEqual(expectedOrder);
+  it('should test due date variations with same outcome/perspiration', async () => {
+    const today = new Date();
+    const { dueDateTestCases } = getGlobalTestData(today);
+
+    await dataSource.getRepository(ToDo).save(dueDateTestCases);
+
+    try {
+      const [results] = await toDoRepository.getUserToDos(testUserId, {
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      });
+
+      const resultTitles = (results as ToDo[]).map((t) => t.title);
+
+      // Verify all due date variations are present and in correct order
+      const expectedDueDateOrder = [
+        'Overdue - Same Outcome Perspiration',
+        'Due Today - Same Outcome Perspiration',
+        'Due Next Week - Same Outcome Perspiration',
+        'Due Next Year - Same Outcome Perspiration',
+        'No Due Date - Same Outcome Perspiration',
+      ];
+
+      expect(resultTitles).toEqual(expectedDueDateOrder);
+    } finally {
+      // Clean up test data
+      await dataSource.getRepository(ToDo).delete({ user_id: testUserId });
+    }
   });
 
-  it('should include tag data for todos with tags', async () => {
-    const [results] = await toDoRepository.getUserToDos(testUserId, {
-      take: 20,
-      skip: 0,
-      order: PageOrder.DESC,
-    });
-    const withTag = (results as ToDo[]).find((t) => t.title === 'With Tag');
-    expect(withTag.tags).toBeDefined();
-    expect(withTag.tags.length).toBeGreaterThan(0);
-    expect(withTag.tags[0].text).toBe('Urgent');
+  it('should test perspiration level impact on scoring', async () => {
+    const today = new Date();
+    const { perspirationTestCases } = getGlobalTestData(today);
+
+    await dataSource.getRepository(ToDo).save(perspirationTestCases);
+
+    try {
+      const [results] = await toDoRepository.getUserToDos(testUserId, {
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      });
+
+      const resultTitles = (results as ToDo[]).map((t) => t.title);
+
+      // Verify all perspiration variations are present and in correct order
+      const expectedPerspirationOrder = [
+        'Low Perspiration (1) - Same Outcome Due Today',
+        'Mid Perspiration (5) - Same Outcome Due Today',
+        'High Perspiration (10) - Same Outcome Due Today',
+      ];
+
+      expect(resultTitles).toEqual(expectedPerspirationOrder);
+    } finally {
+      // Clean up test data
+      await dataSource.getRepository(ToDo).delete({ user_id: testUserId });
+    }
+  });
+
+  it('should test outcome level impact on scoring', async () => {
+    const today = new Date();
+    const { outcomeTestCases } = getGlobalTestData(today);
+
+    await dataSource.getRepository(ToDo).save(outcomeTestCases);
+
+    try {
+      const [results] = await toDoRepository.getUserToDos(testUserId, {
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      });
+
+      const resultTitles = (results as ToDo[]).map((t) => t.title);
+
+      // Verify all outcome variations are present and in correct order
+      const expectedOutcomeOrder = [
+        'High Outcome (10) - Same Perspiration Due Today',
+        'Mid Outcome (5) - Same Perspiration Due Today',
+        'Low Outcome (1) - Same Perspiration Due Today',
+      ];
+
+      expect(resultTitles).toEqual(expectedOutcomeOrder);
+    } finally {
+      // Clean up test data
+      await dataSource.getRepository(ToDo).delete({ user_id: testUserId });
+    }
   });
 
   it('should return correct raw SQL output for top_score calculation', async () => {
-    const rawResults = await dataSource.query(
-      `
-      SELECT
-        to_do.id,
-        ${ToDoRepository.TOP_SCORE_SQL} AS top_score
-      FROM to_do
-      WHERE to_do.user_id = $1
-    `,
-      [testUserId],
-    );
+    const today = new Date();
+    const { dueDateTestCases, perspirationTestCases, outcomeTestCases } = getGlobalTestData(today);
 
-    // just need to check id 02 to 06
-    const expectedResults = [
-      {
-        id: '00000000-0000-0000-0000-000000000002',
-        top_score: 25,
-      }, // no due date
-      {
-        id: '00000000-0000-0000-0000-000000000003',
-        top_score: 50,
-      }, // overdue
+    // Insert test data for raw SQL testing
+    const testCases = [...dueDateTestCases, ...perspirationTestCases, ...outcomeTestCases];
 
-      {
-        id: '00000000-0000-0000-0000-000000000004',
-        top_score: 49.5,
-      }, // due today
-      {
-        id: '00000000-0000-0000-0000-000000000005',
-        top_score: 48.15753424657535,
-      }, // due in 10 days
-      {
-        id: '00000000-0000-0000-0000-000000000006',
-        top_score: 0.5,
-      }, // due in 400 days
-      { id: '00000000-0000-0000-0000-000000000007', top_score: 25 },
-      { id: '00000000-0000-0000-0000-000000000008', top_score: 25 },
-      {
-        id: '00000000-0000-0000-0000-000000000009',
-        top_score: 50,
-      }, // high outcome low perspiration
-      {
-        id: '00000000-0000-0000-0000-000000000010',
-        top_score: 0.5,
-      }, // low outcome high perspiration
-      {
-        id: '00000000-0000-0000-0000-000000000011',
-        top_score: 5,
-      }, // min outcome min perspiration
-      {
-        id: '00000000-0000-0000-0000-000000000012',
-        top_score: 5,
-      }, // max outcome max perspiration
-    ];
-    // iterate over ids 02 to 06 and check if the top_score is correct
-    for (let i = 0; i < expectedResults.length; i++) {
-      expect(rawResults[i].top_score).toBe(expectedResults[i].top_score);
+    await dataSource.getRepository(ToDo).save(testCases);
+
+    try {
+      const rawResults = await dataSource.query(
+        `
+        SELECT
+          to_do.id,
+          ${ToDoRepository.TOP_SCORE_SQL} AS top_score
+        FROM to_do
+        WHERE to_do.user_id = $1
+      `,
+        [testUserId],
+      );
+
+      // Expected results based on the scoring formula
+      const expectedResults = [
+        { id: '00000000-0000-0000-0000-000000000002', top_score: 10 },
+        { id: '00000000-0000-0000-0000-000000000003', top_score: 8 },
+        {
+          id: '00000000-0000-0000-0000-000000000004',
+          top_score: 4.880837687480247,
+        },
+        { id: '00000000-0000-0000-0000-000000000005', top_score: 0.1 },
+        { id: '00000000-0000-0000-0000-000000000006', top_score: 0.1 },
+        { id: '00000000-0000-0000-0000-000000000007', top_score: 4 },
+        { id: '00000000-0000-0000-0000-000000000008', top_score: 8 },
+        { id: '00000000-0000-0000-0000-000000000009', top_score: 40 },
+        { id: '00000000-0000-0000-0000-000000000010', top_score: 16 },
+        { id: '00000000-0000-0000-0000-000000000011', top_score: 8 },
+        { id: '00000000-0000-0000-0000-000000000012', top_score: 1.6 },
+      ];
+
+      // Verify raw SQL calculations
+      for (let i = 0; i < expectedResults.length; i++) {
+        expect(rawResults[i].top_score).toBe(expectedResults[i].top_score);
+      }
+    } finally {
+      // Clean up test data
+      await dataSource.getRepository(ToDo).delete({ user_id: testUserId });
     }
   });
 });

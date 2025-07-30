@@ -12,10 +12,10 @@ export class ToDoRepository extends BaseRepository<ToDo> {
   public static readonly TOP_SCORE_SQL = `
     (
       CASE 
-        WHEN to_do.due_date IS NULL THEN 5.0
+        WHEN to_do.due_date IS NULL THEN 0.1
         WHEN to_do.due_date < CURRENT_DATE THEN 10.0
-        WHEN to_do.due_date = CURRENT_DATE THEN 9.9
-        ELSE GREATEST(0.1, 9.9 - (EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE)) * 9.8 / 365.0))
+        WHEN to_do.due_date = CURRENT_DATE THEN 9
+        ELSE GREATEST(0.1, 8.0 - (LN(EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE)) + 1) * 1.5))
       END
     ) * (to_do.outcome::float / NULLIF(to_do.perspiration_level, 0))
   `;

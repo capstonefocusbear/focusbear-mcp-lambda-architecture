@@ -4,11 +4,14 @@ import { DateTime } from 'luxon';
 import * as sendGrid from '@sendgrid/mail';
 import { LessThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
+import { NestFactory } from '@nestjs/core';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { captureErrorWithContext, withSentry } from '../sentry';
+import { AppModule } from '../../apps/api-server/src/app.module';
+import { ZohoService } from '../../apps/api-server/src/modules/zoho/services/zoho.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
@@ -58,24 +61,28 @@ export async function getUsersWithOutdatedData() {
   return participants.filter((participant) => participant.userId);
 }
 
-async function getUserDetails(userId: string): Promise<{ email: string | null; language: string; name?: string }> {
+export async function getUserDetails(
+  userId: string,
+): Promise<{ email: string | null; language: string; name?: string; phoneNumber?: string }> {
   try {
-    // Find the StudyParticipant by userId to get the name
+    // Find the StudyParticipant by userId to get the name, phone_number, and whatsapp_opt_in
     const participant = await CronJobDataSource.manager.findOne(StudyParticipant, {
       where: { userId },
     });
     const name = participant?.name;
+    const phoneNumber = participant?.phoneNumber;
 
     const user = await CronJobDataSource.manager.findOne(User, {
       where: { id: userId },
     });
-    if (!user) return { email: null, language: 'en', name };
+    if (!user) return { email: null, language: 'en', name, phoneNumber };
 
     const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
     return {
       email: auth0User.email,
       language: user.language || 'en',
       name,
+      phoneNumber,
     };
   } catch (error) {
     captureErrorWithContext(error, {
@@ -174,16 +181,73 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
   }
 }
 
+async function sendUnicaesDataSyncWhatsapp(
+  zohoService: ZohoService,
+  phoneNumber: string,
+  name: string,
+  language: 'en' | 'es',
+  participantCode: string,
+) {
+  try {
+    const whatsappMessage =
+      language === 'es'
+        ? `Hola ${
+            name || 'participante'
+          }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. 📱✨`
+        : `Hi ${name || 'participant'}, remember to sync your Screen Time data this week in Focus Bear. 📱✨`;
+
+    const cannedMessageIdEn = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_EN, 10);
+    const cannedMessageIdEs = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_ES, 10);
+
+    const cannedMessageId = language === 'es' ? cannedMessageIdEs : cannedMessageIdEn;
+
+    await zohoService.initiateWhatsAppSession(phoneNumber, language, cannedMessageId, whatsappMessage);
+
+    console.log(`WhatsApp notification sent to participant ${participantCode}`);
+  } catch (error) {
+    // Log error but don't prevent email from being sent
+    console.error(`Failed to send WhatsApp notification to participant ${participantCode}:`, error);
+    captureErrorWithContext(error, {
+      operation: 'sendWhatsAppNotification',
+      cronJob: 'data-sync-notification',
+      extra: {
+        participantCode,
+      },
+    });
+  }
+}
+
 export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
+
+  // Bootstrap NestJS application context to access ZohoService
+  const app = await NestFactory.createApplicationContext(AppModule);
+  const zohoService = app.get(ZohoService);
+
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
+
   for (const participant of participants) {
-    const { email, name, language } = await getUserDetails(participant.userId);
+    const { email, name, language, phoneNumber } = await getUserDetails(participant.userId);
+
+    if (phoneNumber) {
+      await sendUnicaesDataSyncWhatsapp(
+        zohoService,
+        phoneNumber,
+        name,
+        language as 'en' | 'es',
+        participant.participantCode,
+      );
+    }
+
     if (email) {
       await sendUnicaesDataSyncEmail(email, name, language as 'en' | 'es');
     }
   }
+
+  // Close the NestJS application context
+  await app.close();
+
   console.log('Usage data sync notification cronjob completed successfully');
   process.exit();
 }

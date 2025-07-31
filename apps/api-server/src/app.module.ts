@@ -39,7 +39,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
-import { ZohoDeskModule } from './modules/zoho/zoho-desk.module';
+import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 
 @Module({
   imports: [

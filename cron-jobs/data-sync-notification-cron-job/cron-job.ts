@@ -11,7 +11,7 @@ import { User } from '../../apps/api-server/src/modules/user/entities/user.entit
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { captureErrorWithContext, withSentry } from '../sentry';
 import { AppModule } from '../../apps/api-server/src/app.module';
-import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho/services/zoho-desk.service';
+import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho-desk/services/zoho-desk.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();

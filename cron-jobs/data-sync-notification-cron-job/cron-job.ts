@@ -11,7 +11,7 @@ import { User } from '../../apps/api-server/src/modules/user/entities/user.entit
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { captureErrorWithContext, withSentry } from '../sentry';
 import { AppModule } from '../../apps/api-server/src/app.module';
-import { ZohoService } from '../../apps/api-server/src/modules/zoho/services/zoho.service';
+import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho/services/zoho-desk.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
@@ -182,7 +182,7 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
 }
 
 async function sendUnicaesDataSyncWhatsapp(
-  zohoService: ZohoService,
+  zohoService: ZohoDeskService,
   phoneNumber: string,
   name: string,
   language: 'en' | 'es',
@@ -222,7 +222,7 @@ export async function runDataSyncCronJob() {
 
   // Bootstrap NestJS application context to access ZohoService
   const app = await NestFactory.createApplicationContext(AppModule);
-  const zohoService = app.get(ZohoService);
+  const zohoService = app.get(ZohoDeskService);
 
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);

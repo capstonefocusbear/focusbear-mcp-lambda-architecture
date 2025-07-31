@@ -2,13 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import axios from 'axios';
-import { ZohoService } from './zoho.service';
+import { ZohoDeskService } from './zoho-desk.service';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ZohoService', () => {
-  let service: ZohoService;
+describe('ZohoDeskService', () => {
+  let service: ZohoDeskService;
 
   const mockConfigValues = {
     'zoho.ZOHO_CLIENT_ID': 'test-client-id',
@@ -26,7 +26,7 @@ describe('ZohoService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ZohoService,
+        ZohoDeskService,
         {
           provide: ConfigService,
           useValue: {
@@ -36,7 +36,7 @@ describe('ZohoService', () => {
       ],
     }).compile();
 
-    service = module.get<ZohoService>(ZohoService);
+    service = module.get<ZohoDeskService>(ZohoDeskService);
 
     jest.clearAllMocks();
   });
@@ -55,7 +55,7 @@ describe('ZohoService', () => {
 
       await Test.createTestingModule({
         providers: [
-          ZohoService,
+          ZohoDeskService,
           {
             provide: ConfigService,
             useValue: {
@@ -78,7 +78,7 @@ describe('ZohoService', () => {
 
       await Test.createTestingModule({
         providers: [
-          ZohoService,
+          ZohoDeskService,
           {
             provide: ConfigService,
             useValue: {

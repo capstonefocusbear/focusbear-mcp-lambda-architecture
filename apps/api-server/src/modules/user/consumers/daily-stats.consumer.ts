@@ -154,11 +154,16 @@ export class DailyStatsConsumer {
         morning_num_days_of_stats,
         evening_number_days_completed,
         evening_num_days_of_stats,
-      } = calculateStreaks(userDailyStats, user.timezone, {
-        morningRoutineDailyDurations,
-        eveningRoutineDailyDurations,
-        microBreaksDailyDurations,
-      });
+      } = calculateStreaks(
+        userDailyStats,
+        user.timezone,
+        {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        },
+        new Date(user.created_at),
+      );
 
       const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
       // Add a breadcrumb for debugging purposes

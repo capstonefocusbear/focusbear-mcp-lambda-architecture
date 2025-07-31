@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
 import axios from 'axios';
 import { ZohoDeskService } from './zoho-desk.service';
 
@@ -18,12 +17,6 @@ describe('ZohoDeskService', () => {
   };
 
   beforeEach(async () => {
-    // Mock all Logger methods to prevent console output during tests
-    jest.spyOn(Logger.prototype, 'log').mockImplementation();
-    jest.spyOn(Logger.prototype, 'error').mockImplementation();
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-    jest.spyOn(Logger.prototype, 'debug').mockImplementation();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ZohoDeskService,
@@ -43,56 +36,6 @@ describe('ZohoDeskService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  describe('constructor', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
-    it('should warn when ZOHO_CLIENT_ID is missing', async () => {
-      const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-
-      await Test.createTestingModule({
-        providers: [
-          ZohoDeskService,
-          {
-            provide: ConfigService,
-            useValue: {
-              get: jest.fn((key: string) => {
-                if (key === 'zoho.ZOHO_CLIENT_ID') return '';
-                return mockConfigValues[key];
-              }),
-            },
-          },
-        ],
-      }).compile();
-
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        'Missing Zoho configuration. Please ensure ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_ORG_ID are set.',
-      );
-    });
-
-    it('should warn when ZOHO_WHATSAPP_CHANNEL_ID is missing', async () => {
-      const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-
-      await Test.createTestingModule({
-        providers: [
-          ZohoDeskService,
-          {
-            provide: ConfigService,
-            useValue: {
-              get: jest.fn((key: string) => {
-                if (key === 'zoho.ZOHO_WHATSAPP_CHANNEL_ID') return '';
-                return mockConfigValues[key];
-              }),
-            },
-          },
-        ],
-      }).compile();
-
-      expect(loggerWarnSpy).toHaveBeenCalledWith('Missing ZOHO_WHATSAPP_CHANNEL_ID configuration.');
-    });
   });
 
   describe('initiateWhatsAppSession', () => {

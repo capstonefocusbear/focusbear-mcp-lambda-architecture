@@ -63,7 +63,7 @@ export async function getUsersWithOutdatedData() {
 
 export async function getUserDetails(
   userId: string,
-): Promise<{ email: string | null; language: string; name?: string; phoneNumber?: string }> {
+): Promise<{ email: string | null; os: 'ios' | 'android'; language: string; name?: string; phoneNumber?: string }> {
   try {
     // Find the StudyParticipant by userId to get the name, phone_number, and whatsapp_opt_in
     const participant = await CronJobDataSource.manager.findOne(StudyParticipant, {
@@ -71,16 +71,18 @@ export async function getUserDetails(
     });
     const name = participant?.name;
     const phoneNumber = participant?.phoneNumber;
+    const os = (participant.metadata?.mobileOS as 'ios' | 'android') || 'ios';
 
     const user = await CronJobDataSource.manager.findOne(User, {
       where: { id: userId },
     });
-    if (!user) return { email: null, language: 'en', name, phoneNumber };
+    if (!user) return { email: null, os, language: 'en', name, phoneNumber };
 
     const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
     return {
       email: auth0User.email,
       language: user.language || 'en',
+      os,
       name,
       phoneNumber,
     };
@@ -90,7 +92,7 @@ export async function getUserDetails(
       cronJob: 'data-sync-notification',
       userId,
     });
-    return { email: null, language: 'en' };
+    return { email: null, os: 'ios', language: 'en' };
   }
 }
 
@@ -173,23 +175,20 @@ async function sendUnicaesDataSyncWhatsapp(
   zohoService: ZohoDeskService,
   phoneNumber: string,
   name: string,
-  language: 'en' | 'es',
+  os: 'ios' | 'android',
   participantCode: string,
 ) {
   try {
-    const whatsappMessage =
-      language === 'es'
-        ? `Hola ${
-            name || 'participante'
-          }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. 📱✨`
-        : `Hi ${name || 'participant'}, remember to sync your Screen Time data this week in Focus Bear. 📱✨`;
+    const whatsappMessage = `Hola ${
+      name || 'participante'
+    }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. 📱✨`;
 
-    const cannedMessageIdEn = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_EN, 10);
-    const cannedMessageIdEs = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_ES, 10);
+    const cannedMessageIdIos = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_IOS, 10);
+    const cannedMessageIdAndroid = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID, 10);
 
-    const cannedMessageId = language === 'es' ? cannedMessageIdEs : cannedMessageIdEn;
+    const cannedMessageId = os === 'ios' ? cannedMessageIdIos : cannedMessageIdAndroid;
 
-    await zohoService.initiateWhatsAppSession(phoneNumber, language, cannedMessageId, whatsappMessage);
+    await zohoService.initiateWhatsAppSession(phoneNumber, os, cannedMessageId, whatsappMessage);
 
     console.log(`WhatsApp notification sent to participant ${participantCode}`);
   } catch (error) {
@@ -216,22 +215,14 @@ export async function runDataSyncCronJob() {
   console.log(`Found ${participants.length} participants with outdated usage data`);
 
   for (const participant of participants) {
-    const { email, name, language, phoneNumber } = await getUserDetails(participant.userId);
+    const { email, name, os, phoneNumber } = await getUserDetails(participant.userId);
 
     if (phoneNumber) {
-      await sendUnicaesDataSyncWhatsapp(
-        zohoService,
-        phoneNumber,
-        name,
-        language as 'en' | 'es',
-        participant.participantCode,
-      );
+      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode);
     }
 
-    const mobileOS = participant.metadata?.mobileOS as 'ios' | 'android' | undefined;
-
     if (email) {
-      await sendUnicaesDataSyncEmail(email, name, mobileOS);
+      await sendUnicaesDataSyncEmail(email, name, os);
     }
   }
 

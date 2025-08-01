@@ -112,7 +112,7 @@ async function sendEmail(email: string, language: string) {
 }
 
 // Move the UNICAES-specific logic to a new function
-async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 'en' | 'es' = 'es') {
+async function sendUnicaesDataSyncEmail(email: string, name?: string, os: 'ios' | 'android' = 'ios') {
   const imageUrl = 'https://images.focusbear.io/unicaes-email-header.png';
 
   const content = {
@@ -125,32 +125,20 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
           <p>¡Tu progreso importa! 🌟<br>
           Recuerda subir <b>captura de pantalla de tu Screen Time de esta semana</b> a Focus Bear como parte de tu participación en el curso.</p>
           <p>👉 <b>Haz clic aquí para subirla fácilmente: settings &gt; UNICAES study</b></p>
-          <p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://youtube.com/shorts/mcKNmPJYC1s?si=tREtRWhEA7SsPPDl">Clic aquí</a></p>
+          ${
+            os === 'ios'
+              ? '<p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://youtube.com/shorts/mcKNmPJYC1s?si=tREtRWhEA7SsPPDl">Clic aquí</a></p>'
+              : ''
+          }
           <p>Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠</p>
           <p>Gracias por seguir dando lo mejor de ti.<br>
           —Equipo de Investigación Focus Bear + UNICAES</p>
         </div>
       `,
     },
-    en: {
-      subject: "Don't forget to sync your data this week! 🐻⏳",
-      html: `
-        <div>
-          <img src="${imageUrl}" alt="Header" style="width:100%;max-width:600px;margin-bottom:24px;" />
-          <p>${name ? `Hi <b>${name}</b>,` : 'Hi,'}</p>
-          <p>Your progress matters! 🌟<br>
-          Remember to upload a <b>screenshot of your Screen Time for this week</b> to Focus Bear as part of your course participation.</p>
-          <p>👉 <b>Click here to upload it easily: settings &gt; UNICAES study</b></p>
-          <p>📷 Need help? Watch this short tutorial: <a href="https://www.youtube.com/shorts/qLH5htwin8o?feature=share">Click here</a></p>
-          <p>Syncing your data each week helps us better understand your progress, adapt the course, and most importantly, celebrate your commitment to a more focused and balanced life! 🎯🧠</p>
-          <p>Thank you for continuing to give your best.<br>
-          —Focus Bear + UNICAES Research Team</p>
-        </div>
-      `,
-    },
   };
 
-  const langContent = content[language] || content.es;
+  const langContent = content.es;
 
   const msg = {
     to: email,
@@ -168,7 +156,7 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
       extra: {
         email,
         name,
-        language,
+        os,
       },
     });
   }
@@ -179,9 +167,12 @@ export async function runDataSyncCronJob() {
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
   for (const participant of participants) {
-    const { email, name, language } = await getUserDetails(participant.userId);
+    const { email, name } = await getUserDetails(participant.userId);
+
+    const mobileOS = participant.metadata?.mobileOS as 'ios' | 'android' | undefined;
+
     if (email) {
-      await sendUnicaesDataSyncEmail(email, name, language as 'en' | 'es');
+      await sendUnicaesDataSyncEmail(email, name, mobileOS);
     }
   }
   console.log('Usage data sync notification cronjob completed successfully');

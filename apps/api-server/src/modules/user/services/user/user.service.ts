@@ -28,6 +28,7 @@ import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
+import { UserOnboardingService } from '../user-onboarding/user-onboarding.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -96,6 +97,8 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
+    @Inject(forwardRef(() => UserOnboardingService))
+    private readonly userOnboardingService?: UserOnboardingService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -115,7 +118,7 @@ export class UserService {
         { auth0_id, email, auth0_client },
         registeredUser,
       );
-      if (!registeredUser) await this.handleInitialRegistration(id);
+      if (!registeredUser) await this.handleInitialRegistration(id, auth0_id);
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
@@ -228,7 +231,7 @@ export class UserService {
     }
   }
 
-  private async handleInitialRegistration(id: string): Promise<void> {
+  private async handleInitialRegistration(id: string, auth0_id?: string): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -236,14 +239,23 @@ export class UserService {
         message: 'Handling initial registration',
         data: {
           user_id: id,
+          auth0_id,
         },
       });
       const settingsConfig = this.config.get('constants.userSettings');
       const defaultSettings = settingsConfig.generateDefault();
-      await Promise.all([
+
+      const registrationTasks = [
         this.revenueCatService.grantTrialAccess(id),
         this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }),
-      ]);
+      ];
+
+      const onboardingCreateTask =
+        auth0_id && this.userOnboardingService
+          ? this.userOnboardingService.createOnboardingData(id, auth0_id)
+          : Promise.resolve(false);
+
+      await Promise.all([...registrationTasks, onboardingCreateTask]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

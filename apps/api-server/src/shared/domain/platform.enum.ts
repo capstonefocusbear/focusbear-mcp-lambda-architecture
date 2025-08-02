@@ -1,4 +1,4 @@
-export enum CoursePlatform {
+export enum Platform {
   WEB = 'web',
   MAC = 'mac',
   WIN = 'win',

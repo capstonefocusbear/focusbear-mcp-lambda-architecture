@@ -63,6 +63,7 @@ import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consu
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
+import { UserOnboardingRepository } from './repositories/user-onboarding.repository';
 
 @Module({
   providers: [
@@ -89,6 +90,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     UsageDataConsumer,
     FlankerTestService,
     UserOnboardingService,
+    UserOnboardingRepository,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [

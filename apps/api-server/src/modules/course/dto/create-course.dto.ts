@@ -1,5 +1,5 @@
-import { Platform } from '@api-server/shared/domain/platform.enum';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Platform } from '../../../shared/domain/platform.enum';
 
 export class CreateCourseDto {
   @IsNotEmpty()

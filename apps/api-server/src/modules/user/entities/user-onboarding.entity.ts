@@ -1,6 +1,7 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { OnboardingDto } from '../dto/onboarding';
+import { User } from './user.entity';
 
 @Entity('user_onboarding')
 export class UserOnboarding extends BaseEntity {
@@ -11,11 +12,11 @@ export class UserOnboarding extends BaseEntity {
 
   @Index()
   @Column({
-    type: 'varchar',
+    type: 'uuid',
     nullable: false,
     unique: true,
   })
-  auth0_id: string;
+  user_id: string;
 
   @Column({
     type: 'jsonb',
@@ -23,4 +24,8 @@ export class UserOnboarding extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('onboarding'),
   })
   onboarding?: OnboardingDto;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
 }

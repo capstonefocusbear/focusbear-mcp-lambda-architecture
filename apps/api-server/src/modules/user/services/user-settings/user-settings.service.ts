@@ -32,7 +32,7 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
-import { LanguageOptions } from '../../domain/language-options.enum';
+import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { ActivitySequence } from '../../../activity/entities/activity-sequence.entity';
 import { FunctionCallParametersDto } from '../../../ai/dto/function-call-parameters.dto';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';

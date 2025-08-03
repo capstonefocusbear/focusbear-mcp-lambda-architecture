@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { BearsonaProfile } from '../../domain/onboarding/bearsona-profile.enum';
 import { OnboardFlowFeature } from '../../domain/onboarding/onboarding-flow-feature.enum';
@@ -9,12 +9,14 @@ import { OnboardingDto } from '../../dto/onboarding';
 import { UpdateOnboardingProgressDto } from '../../dto/onboarding/update-onboarding-progress.dto';
 import { UserOnboarding } from '../../entities/user-onboarding.entity';
 import { UserOnboardingRepository } from '../../repositories/user-onboarding.repository';
+import { UserRepository } from '../../repositories/user.repository';
 
 @Injectable()
 export class UserOnboardingService {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userOnboardingRepository: UserOnboardingRepository,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async updateOnboardingProgress(dto: UpdateOnboardingProgressDto): Promise<{ success: boolean; message: string }> {
@@ -22,21 +24,30 @@ export class UserOnboardingService {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Saving temporary onboarding data',
+        message: 'Updating onboarding data',
         data: {
           ...dto,
         },
       });
 
+      const userExists = await this.userRepository.orm.findOne({
+        where: { id: dto.user_id },
+        select: ['id'],
+      });
+
+      if (!userExists) {
+        throw new NotFoundException(`User with id ${dto.user_id} does not exist.`);
+      }
+
       const userOnboarding = new UserOnboarding(
         {
-          auth0_id: dto.auth0_id,
+          user_id: dto.user_id,
           onboarding: dto.onboarding,
         },
         { generateId: true },
       );
 
-      await this.userOnboardingRepository.upsert(userOnboarding, ['auth0_id']);
+      await this.userOnboardingRepository.upsert(userOnboarding, ['user_id']);
 
       return {
         success: true,
@@ -48,19 +59,19 @@ export class UserOnboardingService {
     }
   }
 
-  async getOnboardingProgress(auth0Id: string): Promise<OnboardingDto | null> {
+  async getOnboardingProgress(userId: string): Promise<OnboardingDto | null> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Retrieving temporary onboarding data',
-        data: { auth0_id: auth0Id },
+        data: { user_id: userId },
       });
 
-      const userData = await this.userOnboardingRepository.findByAuth0Id(auth0Id);
+      const userData = await this.userOnboardingRepository.findByUserId(userId);
 
       if (!userData) {
-        return null;
+        throw new NotFoundException(`No onboarding data found for user ID ${userId}.`);
       }
 
       return userData.onboarding;
@@ -70,18 +81,18 @@ export class UserOnboardingService {
     }
   }
 
-  async createOnboardingData(userId: string, auth0Id: string): Promise<UserOnboarding | null> {
+  async createOnboardingData(userId: string): Promise<UserOnboarding | null> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Creating default onboarding data for user',
-        data: { user_id: userId, auth0_id: auth0Id },
+        data: { user_id: userId },
       });
 
       const userOnboarding = new UserOnboarding(
         {
-          auth0_id: auth0Id,
+          user_id: userId,
           onboarding: {
             currentStep: OnboardFlowStep.DATA_PRIVACY,
             features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS],
@@ -103,7 +114,7 @@ export class UserOnboardingService {
         { generateId: true },
       );
 
-      await this.userOnboardingRepository.upsert(userOnboarding, ['auth0_id']);
+      await this.userOnboardingRepository.upsert(userOnboarding, ['user_id']);
 
       return userOnboarding;
     } catch (error) {

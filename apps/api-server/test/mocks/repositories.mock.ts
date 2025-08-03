@@ -276,3 +276,8 @@ export const CustomRoutineRepositoryMock = {
   getUserCustomRoutines: jest.fn(),
   getCustomRoutine: jest.fn(),
 };
+
+export const UserOnboardingRepositoryMock = {
+  ...BaseRepositoryMock,
+  findByUserId: jest.fn(),
+};

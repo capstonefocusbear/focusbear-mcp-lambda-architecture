@@ -9,7 +9,7 @@ export class UserOnboardingRepository extends BaseRepository<UserOnboarding> {
     super(connection, UserOnboarding);
   }
 
-  async findByAuth0Id(auth0Id: string): Promise<UserOnboarding | null> {
-    return this.orm.findOne({ where: { auth0_id: auth0Id } });
+  async findByUserId(userId: string): Promise<UserOnboarding | null> {
+    return this.orm.findOne({ where: { user_id: userId } });
   }
 }

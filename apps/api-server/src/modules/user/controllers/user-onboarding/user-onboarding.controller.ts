@@ -12,7 +12,7 @@ export class UserOnboardingController {
   @Post('save-progress')
   @ApiOperation({
     summary: 'Save onboarding progress for new users (public endpoint)',
-    description: 'Stores onboarding data using auth0_id before user gets access token',
+    description: 'Stores onboarding data using user_id before user gets access token',
   })
   @Throttle({ default: { ttl: 60, limit: 10 } })
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -20,13 +20,13 @@ export class UserOnboardingController {
     return this.userOnboardingService.updateOnboardingProgress(dto);
   }
 
-  @Get('restore-progress/:auth0Id')
+  @Get('restore-progress/:userId')
   @ApiOperation({
     summary: 'Restore onboarding progress for new users (public endpoint)',
-    description: 'Retrieves stored onboarding data using auth0_id',
+    description: 'Retrieves stored onboarding data using user_id',
   })
   @Throttle({ default: { ttl: 60, limit: 20 } })
-  async restoreOnboardingProgress(@Param('auth0Id') auth0Id: string) {
-    return this.userOnboardingService.getOnboardingProgress(auth0Id);
+  async restoreOnboardingProgress(@Param('userId') userId: string) {
+    return this.userOnboardingService.getOnboardingProgress(userId);
   }
 }

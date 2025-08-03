@@ -1,6 +1,6 @@
-import { LanguageOptions } from '@api-server/modules/user/domain/language-options.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 
 export class ResetPasswordDto {
   @IsNotEmpty()

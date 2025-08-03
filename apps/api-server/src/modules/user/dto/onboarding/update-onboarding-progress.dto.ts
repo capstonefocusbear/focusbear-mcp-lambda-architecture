@@ -1,14 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsUUID, ValidateNested } from 'class-validator';
 import { OnboardingDto } from '.';
 
 export class UpdateOnboardingProgressDto {
   @IsNotEmpty()
-  @IsString()
-  auth0_id: string;
+  @IsUUID()
+  user_id: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @ValidateNested()
   @Type(() => OnboardingDto)
-  onboarding?: OnboardingDto;
+  onboarding: OnboardingDto;
 }

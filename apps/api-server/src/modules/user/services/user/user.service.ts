@@ -252,7 +252,7 @@ export class UserService {
 
       const onboardingCreateTask =
         auth0_id && this.userOnboardingService
-          ? this.userOnboardingService.createOnboardingData(id, auth0_id)
+          ? this.userOnboardingService.createOnboardingData(id)
           : Promise.resolve(false);
 
       await Promise.all([...registrationTasks, onboardingCreateTask]);

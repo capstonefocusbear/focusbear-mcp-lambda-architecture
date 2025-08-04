@@ -27,10 +27,6 @@ export class InviteTeamMemberDto {
   @IsBoolean()
   is_admin: boolean;
 
-  @IsNotEmpty()
-  @IsBoolean()
-  is_member: boolean;
-
   @IsOptional()
   @IsUUID('4')
   user_id?: string;

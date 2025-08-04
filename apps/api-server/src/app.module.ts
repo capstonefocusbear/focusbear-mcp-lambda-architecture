@@ -7,6 +7,7 @@ import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -37,9 +38,19 @@ import { IntegrationModule } from './modules/integration/integration.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
+import { AsyncTaskModule } from './modules/async-task/async-task.module';
+import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
+        },
+      ],
+    }),
     ConfigModule.forRoot({ load: configsArray }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -67,6 +78,10 @@ import { EmailModule } from './modules/email/email.module';
     }),
     BullModule.forRoot({
       connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
+      defaultJobOptions: {
+        removeOnComplete: 1000,
+        removeOnFail: 1000,
+      },
     }),
     AuthModule,
     HelperModule,
@@ -95,6 +110,8 @@ import { EmailModule } from './modules/email/email.module';
     CalendarModule,
     SurveyModule,
     EmailModule,
+    AsyncTaskModule,
+    ZohoDeskModule,
   ],
   controllers: [AppController],
 })

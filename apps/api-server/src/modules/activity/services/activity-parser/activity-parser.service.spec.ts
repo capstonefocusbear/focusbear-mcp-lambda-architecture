@@ -1,15 +1,23 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { randomUUID } from 'crypto';
+import { getQueueToken } from '@nestjs/bull';
 import { ActivitySequenceRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivitySequenceRepository } from '../../repositories/activity-sequence.repository';
 import { ActivityParserService } from './activity-parser.service';
-import { serializedActivityDummy, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
+import {
+  serializedActivityDummy,
+  userDummy,
+  userSettingsDBResponseDummy,
+  QueueMock,
+} from '../../../../../test/dummies';
 import { standaloneHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { LogQuantityQuestion } from '../../entities/log-quantity-questions';
 import { LogSummaryType } from '../../domain/log-summary-type.enum';
+import { ActivityType } from '../../domain/activity-type.enum';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 describe('ActivityParserService', () => {
   let activityParserService: ActivityParserService;
@@ -22,6 +30,10 @@ describe('ActivityParserService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken(BullQueues.EMOJI_GENERATION),
+          useValue: QueueMock,
         },
       ],
     })
@@ -37,6 +49,10 @@ describe('ActivityParserService', () => {
   });
 
   describe('serialize', () => {
+    beforeEach(() => {
+      QueueMock.add.mockClear();
+    });
+
     it('positive: should return a serialized activities', async () => {
       const { activity_sequences } = userSettingsDBResponseDummy;
 
@@ -46,6 +62,66 @@ describe('ActivityParserService', () => {
       expect(result.break_activities).toBeArray();
       expect(result.evening_activities).toBeArray();
       expect(result.morning_activities).toBeArray();
+    });
+
+    it('positive: should add emoji generation job for activities without habit icons', async () => {
+      // Create activity sequences with activities that have no habit icons
+      const activitySequencesWithNoIcons = [
+        {
+          type: ActivityType.morning,
+          activities: [
+            {
+              id: 'test-activity-1',
+              name: 'Test Activity 1',
+              activity_data: {
+                name: 'Test Activity 1',
+                habit_icon: '', // Empty habit icon
+              },
+            },
+            {
+              id: 'test-activity-2',
+              name: 'Test Activity 2',
+              activity_data: {
+                name: 'Test Activity 2',
+                habit_icon: null, // Null habit icon
+              },
+            },
+            {
+              id: 'test-activity-3',
+              name: 'Test Activity 3',
+              activity_data: {
+                name: 'Test Activity 3',
+                habit_icon: '🏃‍♂️', // Has habit icon
+              },
+            },
+          ],
+          activity_ids: ['test-activity-1', 'test-activity-2', 'test-activity-3'],
+        },
+      ];
+
+      const result = activityParserService.serialize(activitySequencesWithNoIcons);
+
+      // Verify that emoji generation jobs were added for activities without icons
+      expect(QueueMock.add).toHaveBeenCalledTimes(2);
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.GENERATE_ACTIVITY_EMOJI, {
+        activity_id: 'test-activity-1',
+        activity_name: 'test-activity-1',
+      });
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.GENERATE_ACTIVITY_EMOJI, {
+        activity_id: 'test-activity-2',
+        activity_name: 'test-activity-2',
+      });
+
+      // Verify that no job was added for activity with existing icon
+      expect(QueueMock.add).not.toHaveBeenCalledWith(BullWorkers.GENERATE_ACTIVITY_EMOJI, {
+        activity_id: 'test-activity-3',
+        activity_name: 'test-activity-3',
+      });
+
+      // Verify the result structure
+      expect(result).toBeDefined();
+      expect(result.morning_activities).toBeArray();
+      expect(result.morning_activities).toHaveLength(3);
     });
 
     it('positive: should return a deserialized activities', async () => {

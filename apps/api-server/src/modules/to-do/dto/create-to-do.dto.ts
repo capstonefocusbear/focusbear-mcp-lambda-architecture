@@ -46,4 +46,16 @@ export class CreateToDoDto {
 
   @IsOptional()
   icon?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  perspiration_level?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  outcome?: number;
 }

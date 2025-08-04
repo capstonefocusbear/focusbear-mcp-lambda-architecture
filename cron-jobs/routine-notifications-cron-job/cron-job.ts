@@ -5,13 +5,16 @@ import PushNotifications = require('@pusher/push-notifications-server');
 import OpenAI from 'openai';
 import { MoreThanOrEqual } from 'typeorm';
 // eslint-disable-next-line import/extensions
-import * as S3 from 'aws-sdk/clients/s3.js';
-import { GPT_4_1_MINI } from 'apps/api-server/src/shared/utils/constants';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GPT_4_1_MINI } from '../../apps/api-server/src/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { openAiConfig } from '../../apps/api-server/src/config';
+import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -36,13 +39,14 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
-const s3Client = new S3({
+const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT,
-  accessKeyId: process.env.R2_ACCESS_KEY_ID,
-  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  signatureVersion: process.env.R2_SIGNATURE_VERSION,
+  region: 'auto',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
 });
-
 interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
@@ -57,12 +61,35 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
 async function getMessageFromR2(fileName: string) {
   try {
-    const messageData = await s3Client.getObject({ Bucket: 'routine-notifications', Key: fileName }).promise();
-    const parsedMessage = JSON.parse(messageData.Body.toString());
+    const command = new GetObjectCommand({
+      Bucket: 'routine-notifications',
+      Key: fileName,
+    });
+
+    const response = await s3Client.send(command);
+    const bodyString = await streamToString(response.Body as NodeJS.ReadableStream);
+    const parsedMessage = JSON.parse(bodyString);
     return parsedMessage || null;
   } catch (error) {
+    captureErrorWithContext(error, {
+      operation: 'getMessageFromR2',
+      cronJob: 'routine-notifications',
+      extra: {
+        fileName,
+        bucket: 'routine-notifications',
+      },
+    });
     return null;
   }
 }
@@ -79,19 +106,21 @@ function removeQuotes(input: string): string {
 
 async function addMessageToR2(filename: string, messageData: { message: string; timestamp: string }) {
   const buf = Buffer.from(JSON.stringify(messageData));
-  const objectData = {
+
+  const command = new PutObjectCommand({
     Bucket: 'routine-notifications',
     Key: filename,
     Body: buf,
     ContentEncoding: 'base64',
     ContentType: 'application/json',
     ContentDisposition: 'attachment',
-  };
-  await s3Client.upload({ ...objectData }).promise();
+  });
+
+  await s3Client.send(command);
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
-  const maxRetries = 3;
+  const maxRetries = 1; //reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
   const TEN_SECONDS = 10000;
   for (let i = 0; i <= maxRetries; i++) {
     try {
@@ -112,15 +141,24 @@ async function generateRoutineNotification(routine: string, fileName: string, la
       // Exit the loop if request is successful
       return messageWithoutQuotes;
     } catch (error) {
-      console.error(
-        `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
-        error,
-      );
       // If we have not reached max retries, wait for ten seconds and retry.
       if (i < maxRetries) {
+        console.error(
+          `Attempt ${i + 1} of ${maxRetries + 1} failed. Error generating message in notification cron job: `,
+          error,
+        );
         await sleep(TEN_SECONDS);
       } else {
-        console.error(`Failed to generate message in notification after ${maxRetries + 1} attempts.`);
+        captureErrorWithContext(error, {
+          operation: 'generateRoutineNotification',
+          cronJob: 'routine-notifications',
+          extra: {
+            routine,
+            fileName,
+            language,
+            attempts: maxRetries + 1,
+          },
+        });
       }
     }
   }
@@ -249,7 +287,7 @@ function createFileName(routine: string, language: string) {
   return `${routine}-message-${language}.json`;
 }
 
-(async () => {
+async function runRoutineNotificationsCronJob() {
   await CronJobDataSource.initialize();
   const translationData: TranslationDataType = {};
 
@@ -280,4 +318,8 @@ function createFileName(routine: string, language: string) {
     ]);
   }
   process.exit();
-})();
+}
+
+if (require.main === module) {
+  withSentry(() => withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS));
+}

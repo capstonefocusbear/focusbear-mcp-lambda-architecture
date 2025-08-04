@@ -1,9 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
-import { Passport } from '../domain/passport.model';
-import { UserRepository } from '../../user/repositories/user.repository';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { SendGridService } from '@app/send-grid';
+import { I18nService } from 'nestjs-i18n';
+import { EMAIL_SENDER_NAME, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { Passport } from '../domain/passport.model';
+import { ChangePasswordDto } from '../dto/change-password.dto';
+import { ResetPasswordDto } from '../dto/password-reset.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +30,13 @@ export class AuthService {
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly userRepository: UserRepository,
+    private readonly configService: ConfigService,
+    private readonly emailService: SendGridService,
+    private readonly i18nService: I18nService,
+    @Inject('EmailVerificationJwtService')
+    private readonly emailJwtService: JwtService,
+    @Inject('ResetPasswordJwtService')
+    private readonly passwordResetJwtService: JwtService,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -68,32 +93,257 @@ export class AuthService {
     return parsedCustomClaims;
   }
 
-  async requestPasswordReset(email: string) {
-    return this.auth0ManagementService.initiatePasswordReset(email);
+  async requestPasswordReset({ email, lang }: ResetPasswordDto, origin: string) {
+    try {
+      const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+      if (!auth0User) {
+        throw new NotFoundException(`User with email: ${email} does not exist!`);
+      }
+
+      if (!auth0User.email_verified) {
+        throw new HttpException(
+          {
+            error: 'EMAIL_NOT_VERIFIED',
+            message: 'You need to verify your email before proceeding.',
+            statusCode: HttpStatus.FORBIDDEN,
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      const isThirdPartyUser = auth0User.identities.some((identity) => identity.isSocial);
+      if (isThirdPartyUser) {
+        throw new HttpException(
+          {
+            error: 'THIRD_PARTY_EMAIL',
+            message: 'Cannot reset password from a third-party email.',
+            statusCode: HttpStatus.BAD_REQUEST,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const secret = this.configService.get('tokens.password_reset.secret');
+      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '7 days';
+
+      const resetToken = await this.passwordResetJwtService.signAsync(
+        {
+          email,
+          auth0_id: auth0User.user_id,
+        },
+        {
+          secret,
+          expiresIn,
+        },
+      );
+
+      const baseUrl = this.getFrontendBaseUrl(origin);
+      const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+
+      await this.emailService.sendEmail({
+        to: email,
+        from: {
+          name: EMAIL_SENDER_NAME,
+          email: FOCUS_BEAR_EMAILS.NOREPLY,
+        },
+        subject: this.i18nService.t('common.reset_your_password', {
+          lang,
+        }),
+        html: `
+        <!DOCTYPE html>
+        <html>
+          <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
+              <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
+              <h1 style="margin-bottom: 10px;">Focus Bear</h1>
+              <h2>Password Change Request</h2>
+              <p>We received a request to change the password for your account.</p>
+              <p><strong>Confirmation Link:</strong><br/>
+                <a href="${resetLink}">${resetLink}</a>
+              </p>
+              <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-top: 20px;">
+                Confirm Password Change
+              </a>
+              <p style="margin-top: 20px;">If you didn’t request this change, you can safely ignore this email.</p>
+              <p style="margin-top: 30px; font-size: 12px; color: #777;">
+                If you’re having any issues with your account, feel free to reply to this email for assistance.<br>Thanks!
+              </p>
+            </div>
+          </body>
+        </html>
+        `, // TODO: generate template EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET
+      });
+
+      return { data: 'Password reset link sent.', status: 201 };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 
-  async resendEmailVerification(userId: string) {
+  async changePassword({ token, newPassword }: ChangePasswordDto) {
+    try {
+      const secret = this.configService.get('tokens.password_reset.secret');
+      const decoded = await this.passwordResetJwtService.verifyAsync(token, { secret });
+
+      const auth0Id = decoded.auth0_id;
+      if (!auth0Id) {
+        throw new BadRequestException('Invalid token payload');
+      }
+
+      await this.auth0ManagementService.updatePassword(auth0Id, newPassword);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Reset token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException('Invalid reset token');
+      } else {
+        throw new InternalServerErrorException('Failed to reset password');
+      }
+    }
+  }
+
+  // Temporary: kept for backward compatibility with older app versions; to be removed in a future release
+  async resendEmailVerification(userId: string, origin: string) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) throw new NotFoundException(`User with id: ${userId} does not exist!`);
     const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-    if (auth0User.email_verified) {
-      return;
-    }
-    await this.auth0ManagementService.resendEmailVerification(user.auth0_id);
+    return this.sendEmailVerification({ email: auth0User.email }, origin);
   }
 
-  async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto) {
-    const [foundUser] = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+  // Temporary: kept for backward compatibility with older app versions; to be removed in a future release
+  async emailConfirmationForGuest({ email }: EmailConfirmationForGuestDto, origin: string) {
+    const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
 
-    if (!foundUser || foundUser.email !== email) {
+    if (!auth0User) {
       throw new NotFoundException(`User with email: ${email} does not exist!`);
     }
+    return this.sendEmailVerification({ email: auth0User.email }, origin);
+  }
 
-    let response = { data: 'Email is already verified.', status: 200 };
-    if (!foundUser.email_verified) {
-      await this.auth0ManagementService.resendEmailVerification(foundUser.user_id);
-      response = { data: 'Verification email sent.', status: 200 };
+  async sendEmailVerification(sendEmailVerificationDto: SendEmailVerificationDto, origin: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Send Email Verification',
+        data: { ...sendEmailVerificationDto, origin },
+      });
+
+      const { email, lang } = sendEmailVerificationDto;
+      const auth0User = await this.validateAuth0User(undefined, email);
+
+      const secret = this.configService.get('tokens.email_verification.secret');
+      const expiresIn = this.configService.get('tokens.email_verification.signOptions.expiresIn') || '7 days';
+
+      const token = await this.passwordResetJwtService.signAsync(
+        {
+          email,
+          auth0_id: auth0User.user_id,
+        },
+        {
+          secret,
+          expiresIn,
+        },
+      );
+
+      const baseUrl = this.getFrontendBaseUrl(origin);
+      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+
+      await this.emailService.sendEmail({
+        to: auth0User.email,
+        from: {
+          name: EMAIL_SENDER_NAME,
+          email: FOCUS_BEAR_EMAILS.NOREPLY,
+        },
+        subject: this.i18nService.t('common.verify_your_email', {
+          lang,
+        }),
+        html: `
+         <!DOCTYPE html>
+            <html>
+              <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
+                <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
+                  <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
+                  <h1 style="margin-bottom: 10px;">Focus Bear</h1>
+                  <h2>Verify Your Account</h2>
+                  <p><strong>Verify Link:</strong><br/>
+                    <a href="${verificationLink}">${verificationLink}</a>
+                  </p>
+                  <a href="${verificationLink}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-top: 20px;">
+                    Verify Your Account
+                  </a>
+                  <p style="margin-top: 30px; font-size: 12px; color: #777;">
+                    If you are having any issues with your account, please don't hesitate to contact us by replying to this mail.<br>Thanks!
+                  </p>
+                </div>
+              </body>
+            </html>
+            `, // TODO: generate template EMAIL_TEMPLATE_IDS.VERIFY_EMAIL
+      });
+      return { data: 'Verification email sent.', status: 200 };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
-    return response;
+  }
+
+  async verifyEmail(token: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Verify Email',
+        data: { token },
+      });
+
+      const secretKey = this.configService.get('tokens.email_verification.secret');
+      const decoded: { email: string; auth0_id: string } = await this.emailJwtService.verifyAsync(token, secretKey);
+
+      const auth0User = await this.validateAuth0User(decoded.auth0_id);
+      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Verification link has expired.');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException(
+          error.name === 'JsonWebTokenError' ? 'Invalid verification token' : 'Failed to verify email token',
+        );
+      }
+    }
+  }
+
+  private async validateAuth0User(auth0_id?: string, email?: string) {
+    let auth0User = null;
+
+    if (auth0_id) {
+      auth0User = await this.auth0ManagementService.getAuth0User(auth0_id);
+    } else {
+      const [user] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+      auth0User = user;
+    }
+
+    if (!auth0User) {
+      throw new NotFoundException(
+        auth0_id ? `User with auth0_id ${auth0_id} couldn't be found` : `User with email ${email} couldn't be found`,
+      );
+    }
+
+    if (auth0User.email_verified) {
+      throw new ConflictException('Email is already verified');
+    }
+    return auth0User;
+  }
+
+  private getFrontendBaseUrl(origin: string) {
+    const devFrontendUrl = this.configService.get('server.devFrontendUrl');
+
+    return origin === devFrontendUrl ? devFrontendUrl : this.configService.get('server.frontEndUrl');
   }
 }

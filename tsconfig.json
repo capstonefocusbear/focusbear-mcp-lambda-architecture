@@ -39,7 +39,11 @@
       "@app/jwt": ["libs/jwt/src"],
       "@app/jwt/*": ["libs/jwt/src/*"],
       "@app/brevo": ["libs/brevo/src"],
-      "@app/brevo/*": ["libs/brevo/src/*"]
+      "@app/brevo/*": ["libs/brevo/src/*"],
+      "@api-server/*": ["apps/api-server/src/*"],
+      "@api-server": ["apps/api-server/src"],
+      "@app/gemini": ["libs/gemini/src"],
+      "@app/gemini/*": ["libs/gemini/src/*"]
     }
   }
 }

@@ -14,5 +14,13 @@
   "settings_updated": "Settings updated!",
   "settings_updated_message": "Your settings have been saved.",
   "free_time_no_distraction_blocking": "Free Time - no distraction blocking",
-  "ai_decision_fail": "Unable to get a decision from AI. Trusting you to decide whether the site is relevant 😅"
+  "ai_decision_fail": "Unable to get a decision from AI. Trusting you to decide whether the site is relevant 😅",
+  "usage_image_processing_error_subject": "We couldn't process your Screen Time screenshot",
+  "usage_image_processing_error_body": "Hi there,\n\nUnfortunately, we ran into an issue while trying to process your Screen Time screenshot. Please try uploading it again. If the problem persists, feel free to contact our support team.\n\nThanks for your understanding!\n\n– The Focus Bear Team",
+  "usage_data_sync_subject": "Usage Data Sync Reminder",
+  "usage_data_sync_message": "We noticed you haven't synced your usage data in the last 3 days. Please sync your data to continue participating in the study.",
+  "verify_your_email": "Verify your email",
+  "reset_your_password": "Reset your password",
+  "study_participant_email_subject": "Participant Code for the Focus Bear Study",
+  "study_participant_email_body": "Your participant code for the Focus Bear Study is <b>{code}</b>. Please use this code to participate in the study."
 }

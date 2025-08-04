@@ -45,11 +45,11 @@ export class RevenueCatService {
     return revenueCatCustomer;
   }
 
-  async grantTeamMembership(app_user_id: string, entitlement: Entitlement) {
+  async grantTeamMembership(app_user_id: string, entitlement: Entitlement, expiresAt) {
     await this.getOrCreateSubscriber(app_user_id);
-    const duration = 'lifetime';
+    const end_time_ms = expiresAt.getTime();
     const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement}/promotional`;
-    return this.httpService.post(callUrl, { duration }).then(({ data }: AxiosResponse<unknown, any>): any => data);
+    return this.httpService.post(callUrl, { end_time_ms }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 
   checkSubscriptionStatus({ entitlements }): SubscriptionStatus {
@@ -116,9 +116,16 @@ export class RevenueCatService {
     await this.httpService.delete(callUrl);
   }
 
-  // using a secret API key to fetch the customer's attributes.
   async getSubscriberFromRevenueCat(app_user_id: string): Promise<any> {
     const callUrl = `subscribers/${app_user_id}`;
     return this.httpService.get(callUrl).then(({ data }: AxiosResponse<unknown, any>): any => data);
+  }
+
+  async updateEntitlementExpiry(app_user_id: string, entitlement: Entitlement, expiresAt: Date) {
+    await this.getOrCreateSubscriber(app_user_id);
+    const callUrl = `subscribers/${app_user_id}/entitlements/${entitlement}/promotional`;
+    const end_time_ms = expiresAt.getTime();
+
+    return this.httpService.post(callUrl, { end_time_ms }).then(({ data }: AxiosResponse<unknown, any>): any => data);
   }
 }

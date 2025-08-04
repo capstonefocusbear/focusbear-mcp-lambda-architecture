@@ -81,7 +81,12 @@ export class UserDataService {
         promises.push(this.revenueCatService.deleteUserFromRevenueCat(user_id));
       }
 
-      if (can_contact) {
+      // Check if this is an internal test account
+      const email = auth0user?.email || '';
+      const isInternalTestAccount = email.startsWith('internaltest') && email.endsWith('@focusbear.io');
+      const shouldSendNotification = isInternalTestAccount ? message?.toLowerCase().startsWith('dolog') : true;
+
+      if (can_contact && shouldSendNotification) {
         // email payload for notification
         const emailPayload = {
           to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
@@ -96,16 +101,18 @@ export class UserDataService {
       }
 
       // Cliq message included user's plaform
-      const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
-      const body = {
-        channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
-        message: `Account deleted for user with email: ${maskEmail(
-          auth0user?.email,
-        )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${
-          can_contact ?? false
-        } \n\n Platform: ${appPlatform}`,
-      };
-      promises.push(axios.post(cliqUrl, body));
+      if (shouldSendNotification) {
+        const cliqUrl = `${process.env.ZOHO_CLIQ_BACKEND_BOT_WEBHOOK}?zapikey=${process.env.ZOHO_CLIQ_API_KEY}`;
+        const body = {
+          channel: process.env.ZOHO_CLIQ_QUIT_UNINSTALL_CHANNEL,
+          message: `Account deleted for user with email: ${maskEmail(
+            auth0user?.email,
+          )} and ID: ${user_id} \n\n Message: ${message ?? ''} \n\n Can contact: ${
+            can_contact ?? false
+          } \n\n Platform: ${appPlatform}`,
+        };
+        promises.push(axios.post(cliqUrl, body));
+      }
 
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {

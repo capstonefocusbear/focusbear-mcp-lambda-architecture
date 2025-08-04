@@ -11,9 +11,12 @@ export const FOCUS_BEAR_EMAILS = {
   MARKETING: 'marketing@focusbear.io',
   SUPPORT: 'support@focusbear.io',
   ZOHO_DESK_SUPPORT: 'support@focusbear.zohodesk.com.au',
+  NOREPLY: 'noreply@focusbear.io',
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
+  VERIFY_EMAIL: '', // TODO: generate template
+  REQUEST_PASSWORD_RESET: '', // TODO: generate template
 };
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
@@ -25,6 +28,7 @@ export const EMAIL_SUBJECTS = {
   USER_ACCOUNT_DELETE: 'User deleted account but gave permission to contact RE feedback',
   DUPLICATE_EMAIL_SIGN_UP: 'Duplicate EMail Sign Up',
 };
+export const EMAIL_SENDER_NAME = 'Focus Bear';
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_HOUR_MILLISECONDS = 3600000;
 export const ONE_MINUTE = 60000;
@@ -46,6 +50,7 @@ export const USD = 'USD';
 export const TRIALING = 'trialing';
 export const ACTIVE = 'active';
 export const TRIAL = 'trial';
+export const CRON_JOB_TIMEOUT_MS = 10 * ONE_MINUTE;
 export const UTC_TO_IANA_MAP = {
   '+00:00': 'Etc/UTC',
   '+01:00': 'Europe/London',
@@ -89,7 +94,12 @@ export const IDS_TO_LOG_FOR = [JEREMYS_USER_ID, DEON_USER_ID];
 
 export const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-export const EVENT_TYPES_TO_ALERT_IN_SLACK = [EventTypes.APP_QUIT, EventTypes.GIVE_ME_4HR_BREAK, EventTypes.UNINSTALL];
+export const EVENT_TYPES_TO_ALERT_IN_SLACK = [
+  EventTypes.APP_QUIT,
+  EventTypes.GIVE_ME_4HR_BREAK,
+  EventTypes.UNINSTALL,
+  EventTypes.BAD_AI_BLOCKING_DECISION,
+];
 
 export const IMPACT_MEASUREMENT_EVENT_TYPES = [
   EventTypes.UNLOCK_SUPER_DISTRACTING_WEBSITE,
@@ -119,6 +129,8 @@ export const MAX_RETRY = 2;
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 
+export const GPT_4_1 = 'gpt-4.1';
+
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
   REVENUE_CAT_STATUS = 'revenue-cat-status',
@@ -128,6 +140,10 @@ export enum BullQueues {
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
   SYNC_TASKS = 'sync-tasks',
+  EMOJI_GENERATION = 'emoji-generation',
+  USAGE_IMAGE = 'usage-image',
+  HEALTH_METRICS_SYNC = 'health-metrics-sync',
+  USAGE_DATA = 'usage-data',
 }
 
 export enum BullWorkers {
@@ -141,6 +157,10 @@ export enum BullWorkers {
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
+  PROCESS_USAGE_IMAGE = 'process-usage-image',
+  SYNC_HEALTH_METRICS = 'sync-health-metrics',
+  SYNC_USAGE_DATA = 'sync-usage-data',
+  GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
 }
 
 export const createActivityFunction = {
@@ -268,4 +288,49 @@ export const DECIMAL_PRECISION = 1;
 export const FOCUS_ONLY_HABIT_PACK_ID = '4a5872f5-a8e5-48c2-a2e3-83c3830fce58';
 export const ONE_WEEK_IN_SECONDS = 604800;
 export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
+export const S3_BUCKET_EMOJIS = 'emojis';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
+export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
+
+export const ACITIVITY_EMOJI_MAP = {
+  yoga: '🧘',
+  meditation: '🧘',
+  journaling: '📝',
+  'deep-breathing': '',
+  'drink-a-glass-of-water': '🥛',
+  'work-environment-setup': '💻',
+  'journal-about-day': '📝',
+  exercise: '🏃',
+  cooking: '🍳',
+  cleaning: '🧹',
+  organize: '📝',
+  read: '📖',
+  write: '📝',
+  code: '💻',
+  'evening-brain-dump': '🧠',
+  'morning-walk': '🚶‍♂️',
+  'workday-visualization': '📊',
+  'productivity-playlist-setup': '🎵',
+  'calendar-review': '📅',
+  'priority-email-scan': '📧',
+  'daily-work-intention': '✍️',
+  'healthy-snack-planning': '🥗',
+  'email-closure-routine': '📬',
+  'goals-review-alignment': '🎯',
+  'prepare-for-tomorrow': '🌅',
+  'plan-to-do-list-and-schedule-for-tomorrow': '📅',
+  abs: '💪',
+  shower: '🚿',
+  'get-ready-for-bed': '🛏️',
+  stretch: '🤸‍♂️',
+  meditate: '🧘',
+  dips: '🤸‍♂️',
+  plank: '🤸‍♂️',
+  'push-ups': '🤸‍♂️',
+  'pull-ups': '🤸‍♂️',
+  'sit-ups': '🤸‍♂️',
+  squats: '🤸‍♂️',
+  lunges: '🤸‍♂️',
+  'upper-body-twist': '🤸‍♂️',
+  'office-exercises': '🤸‍♂️',
+};

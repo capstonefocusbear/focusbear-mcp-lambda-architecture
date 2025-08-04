@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { Settings } from 'luxon';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import {
   ActivitySequenceRepositoryMock,
@@ -62,6 +61,7 @@ describe('CompletedActivitySequenceService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
   it('should be defined', () => {
@@ -338,7 +338,8 @@ describe('CompletedActivitySequenceService', () => {
     });
 
     it('negative: should throw error if cancel_habits_for_today is false and the current sequence started on current date', async () => {
-      Settings.now = () => new Date('2022-10-06T12:00:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T12:00:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         current_sequence_started_at: new Date('2022-10-06T12:00:00.000Z'),
@@ -363,11 +364,12 @@ describe('CompletedActivitySequenceService', () => {
 
       expect(exception).toBeInstanceOf(NotAcceptableException);
       expect(exception.message).toMatch(responseMessage);
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it("negative: should throw error if cancel_habits_for_today is false, current sequence started on current date, and it's not time for next sequence yet", async () => {
-      Settings.now = () => new Date('2022-10-06T12:00:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T12:00:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         startup_time: '08:00',
@@ -393,7 +395,7 @@ describe('CompletedActivitySequenceService', () => {
 
       expect(exception).toBeInstanceOf(NotAcceptableException);
       expect(exception.message).toMatch(responseMessage);
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('negative: should not allow force completion if cancel_habits_for_today is false, user has no current_sequence_started_at or current_activity_assigned_at values, current sequence and incoming sequence are of the same type', async () => {
@@ -557,7 +559,8 @@ describe('CompletedActivitySequenceService', () => {
     });
 
     it('positive: should nullify current sequence for user if existing sequence is morning and evening sequence has started with "cancel_habits_for_today" as false', async () => {
-      Settings.now = () => new Date('2022-10-06T18:05:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T18:05:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         startup_time: '08:00',
@@ -580,18 +583,19 @@ describe('CompletedActivitySequenceService', () => {
         current_activity_id: null,
         current_activity_assigned_at: null,
         last_completed_sequence_id: testUser.current_activity_sequence_id,
-        last_completed_sequence_at: expect.toBeDate(),
-        last_completed_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_at: new Date('2022-10-06T18:05:00.000Z'),
+        last_completed_sequence_started_at: new Date('2022-10-06T08:30:00.000Z'),
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2022-10-06T18:05:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: should nullify current sequence for user if existing sequence is evening and morning sequence has started with "cancel_habits_for_today" as false(evening sequence is after 12PM)', async () => {
-      Settings.now = () => new Date('2022-10-06T08:05:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T08:05:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         startup_time: '08:00',
@@ -618,18 +622,19 @@ describe('CompletedActivitySequenceService', () => {
         current_activity_id: null,
         current_activity_assigned_at: null,
         last_completed_sequence_id: testUser.current_activity_sequence_id,
-        last_completed_sequence_at: expect.toBeDate(),
-        last_completed_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_at: new Date('2022-10-06T08:05:00.000Z'),
+        last_completed_sequence_started_at: new Date('2022-10-06T02:05:00.000Z'),
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2022-10-06T08:05:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: should nullify current sequence for user if existing sequence is morning and evening sequence has started with "cancel_habits_for_today" as false (timezone: America/New_York || UTC-05:00)', async () => {
-      Settings.now = () => new Date('2022-10-06T23:05:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T23:05:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         timezone: 'UTC-05:00',
@@ -654,18 +659,19 @@ describe('CompletedActivitySequenceService', () => {
         current_activity_id: null,
         current_activity_assigned_at: null,
         last_completed_sequence_id: testUser.current_activity_sequence_id,
-        last_completed_sequence_at: expect.toBeDate(),
-        last_completed_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_at: new Date('2022-10-06T23:05:00.000Z'),
+        last_completed_sequence_started_at: new Date('2022-10-06T23:01:00.000Z'),
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2022-10-06T23:05:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: should nullify current sequence for user if existing sequence is morning and evening sequence has started with "cancel_habits_for_today" as false (timezone: Australia/Melbourne || UTC+11:00)', async () => {
-      Settings.now = () => new Date('2022-10-06T07:05:00.000Z').valueOf();
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2022-10-06T07:05:00.000Z'));
       UserRepositoryMock.orm.findOne.mockResolvedValue({
         ...testUser,
         timezone: 'UTC+11:00',
@@ -690,14 +696,14 @@ describe('CompletedActivitySequenceService', () => {
         current_activity_id: null,
         current_activity_assigned_at: null,
         last_completed_sequence_id: testUser.current_activity_sequence_id,
-        last_completed_sequence_at: expect.toBeDate(),
-        last_completed_sequence_started_at: expect.toBeDate(),
+        last_completed_sequence_at: new Date('2022-10-06T07:05:00.000Z'),
+        last_completed_sequence_started_at: new Date('2022-10-06T08:30:00.000Z'),
         current_sequence_started_at: null,
         current_completing_sequence_log_id: null,
         has_received_inactivity_warning: false,
-        updated_at: expect.toBeDateString(),
+        updated_at: '2022-10-06T07:05:00.000Z',
       });
-      Settings.now = () => new Date().valueOf();
+      jest.useRealTimers();
     });
 
     it('positive: if user does not have current sequence and cancel_habits_for_today is true, completed record should be created for skipped routine', async () => {

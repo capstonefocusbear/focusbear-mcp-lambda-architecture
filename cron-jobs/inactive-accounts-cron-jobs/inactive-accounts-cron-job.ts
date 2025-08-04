@@ -10,6 +10,9 @@ import * as i18next from 'i18next';
 import { CronJobDataSource } from '../data-source';
 import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
+import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
 i18next.init({
   lng: 'en',
@@ -86,6 +89,14 @@ async function getActiveUsers() {
       const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
       return { email: auth0User.email || null, user };
     } catch (error) {
+      captureErrorWithContext(error, {
+        operation: 'getInactiveUsers.getUserEmail',
+        cronJob: 'inactive-accounts',
+        userId: user.id,
+        extra: {
+          auth0Id: user.auth0_id,
+        },
+      });
       return null;
     }
   });
@@ -245,26 +256,21 @@ async function deleteInternalTestUsers() {
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    // delete users who have been inactive for 6 months or longer and have been warned for inactivity
-    // const usersToDelete = await getUsersToDelete();
-    // await deleteUsers(usersToDelete);
+async function runInactiveAccountsCronJob() {
+  await CronJobDataSource.initialize();
+  // delete users who have been inactive for 6 months or longer and have been warned for inactivity
+  // const usersToDelete = await getUsersToDelete();
+  // await deleteUsers(usersToDelete);
+  // email a notification to users who have been inactive for 5 months warning them that their account will
+  // be deleted
+  const inactiveUsers = await getInactiveUsers();
+  // await sendInactivityWarningEmails(inactiveUsers);
+  // temporarily not emailing users or updating has_received_inactivity_warning field
+  // await updateUsersInactivityWarningFields(inactiveUsers);
+  logInactiveUsers(inactiveUsers);
+  process.exit();
+}
 
-    const inactiveUsers = await getInactiveUsers();
-    // await sendInactivityWarningEmails(inactiveUsers);
-    // await updateUsersInactivityWarningFields(inactiveUsers);
-    const activeUsers = await getActiveUsers();
-    await sendProgressEmails(activeUsers);
-    await sendNoProgressEmails(inactiveUsers); // If no progress
-
-    logInactiveUsers(inactiveUsers);
-
-    // await deleteInternalTestUsers();
-
-    process.exit();
-  } catch (error) {
-    console.error('Error in inactivity cron job:', error);
-  }
-})();
+if (require.main === module) {
+  withSentry(() => withTimeout(runInactiveAccountsCronJob(), CRON_JOB_TIMEOUT_MS));
+}

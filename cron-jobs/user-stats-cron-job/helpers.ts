@@ -49,11 +49,18 @@ export function determineUserLevel(
     const areEnoughEveningRoutinesCompleted = evening_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughFocusModesCompleted = focus_modes_streak >= currentLevelBeingChecked.focus_modes;
     const areEnoughMicroBreakRoutinesCompleted = micro_breaks_streak >= currentLevelBeingChecked.routines;
+    
+    // Adding the condition for micro breaks streak progression
+    // Level 1 and Level 2 users can bypass the micro breaks requirement
+    // Micro breaks only required from Level 3 and above
+    const isMicroBreaksBypassLevel = currentLevelBeingChecked.level === 1 || currentLevelBeingChecked.level === 2;
+    const microBreaksRequirementMet = isMicroBreaksBypassLevel || areEnoughMicroBreakRoutinesCompleted;
+    
     if (
       areEnoughMorningRoutinesCompleted &&
       areEnoughEveningRoutinesCompleted &&
       areEnoughFocusModesCompleted &&
-      areEnoughMicroBreakRoutinesCompleted
+      microBreaksRequirementMet
     ) {
       level = currentLevelBeingChecked.level;
       currentLevelIndex += 1;
@@ -64,9 +71,17 @@ export function determineUserLevel(
   return level;
 }
 
-export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
+export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date) {
   const currentDate = new Date();
   currentDate.setDate(currentDate.getDate() - 90);
+  
+  // Calculate days since user signup (for users < 90 days old)
+  const userSignupDate = new Date(userCreatedAt);
+  const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Determine the proper time window for this user
+  const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
+  const totalPossibleDays = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
 
   const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
     const createdAtDate = new Date(current.created_at).toISOString().split('T')[0];
@@ -106,7 +121,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
 
   const distinctUserDailyStats = Object.values(distinctUserDailyStatObject);
 
-  const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= currentDate);
+  const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= timeWindowStart);
 
   const daysWhereMorningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
@@ -120,7 +135,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
 
-  const num_days_of_stats = userDailyStatsFromLast90Days.length;
+  const num_days_of_stats = totalPossibleDays; // Use total possible days instead of actual activity days
 
   const number_days_completed = userDailyStatsFromLast90Days.filter(
     (f) =>
@@ -137,6 +152,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
+    morning_number_days_completed: daysWhereMorningRoutinesWereCompletedIn90Days.length,
+    morning_num_days_of_stats: num_days_of_stats,
+    evening_number_days_completed: daysWhereEveningRoutinesWereCompletedIn90Days.length,
+    evening_num_days_of_stats: num_days_of_stats,
   };
 }
 
@@ -250,6 +269,7 @@ export function calculateStreaks(
     eveningRoutineDailyDurations: DailySequenceDurations;
     microBreaksDailyDurations: DailySequenceDurations;
   },
+  userCreatedAt: Date,
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
@@ -270,7 +290,11 @@ export function calculateStreaks(
     num_days_of_stats,
     number_days_completed,
     userDailyStatsFromLast90Days,
-  } = calculateRoutineStatsIn90Days(userDailyStats);
+    morning_number_days_completed,
+    morning_num_days_of_stats,
+    evening_number_days_completed,
+    evening_num_days_of_stats,
+  } = calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt);
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
   const morning_routines_streak = calculateStreakForRoutine(
@@ -296,19 +320,23 @@ export function calculateStreaks(
     evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
     micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
     percent_morning_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_evening_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_micro_breaks_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     num_days_of_stats,
     number_days_completed,
+    morning_number_days_completed,
+    morning_num_days_of_stats,
+    evening_number_days_completed,
+    evening_num_days_of_stats,
   };
 }
 
@@ -353,3 +381,4 @@ export function isValidUUID(value: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
 }
+

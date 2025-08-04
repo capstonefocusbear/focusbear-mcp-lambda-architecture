@@ -38,6 +38,7 @@ export class ActivityData {
     this.competency_level = data?.competency_level;
     this.break_type = data?.break_type;
     this.show_saved_distracting_websites = data?.show_saved_distracting_websites;
+    this.habit_icon = data?.habit_icon;
   }
 
   @IsNotEmpty()
@@ -77,6 +78,12 @@ export class ActivityData {
   @IsOptional()
   @ApiProperty()
   include_in_every_break?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty()
+  // This will be an emoji or icon key for the habit
+  habit_icon?: string;
 
   @IsString()
   @IsOptional()

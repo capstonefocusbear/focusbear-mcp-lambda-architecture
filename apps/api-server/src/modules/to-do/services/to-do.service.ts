@@ -89,9 +89,29 @@ export class ToDoService {
 
   async getToDos(
     user_id: string,
-    { page, order, skip, take, status, eisenhower_quadrant, should_use_cache }: GetToDosQueryDto,
+    {
+      page,
+      order,
+      skip,
+      take,
+      status,
+      eisenhower_quadrant,
+      should_use_cache,
+      perspiration_gte,
+      perspiration_lte,
+      synced_project_id,
+    }: GetToDosQueryDto,
   ) {
-    const [toDos, total] = await this.toDoRepository.getUserToDos(user_id, { take, skip, status, eisenhower_quadrant });
+    const [toDos, total] = await this.toDoRepository.getUserToDos(user_id, {
+      take,
+      skip,
+      status,
+      order,
+      eisenhower_quadrant,
+      perspiration_gte,
+      perspiration_lte,
+      synced_project_id,
+    });
     let updateToDos: ToDoResponse[];
     if (should_use_cache) {
       updateToDos = await this.addCachedStatusesToToDos(toDos, user_id);

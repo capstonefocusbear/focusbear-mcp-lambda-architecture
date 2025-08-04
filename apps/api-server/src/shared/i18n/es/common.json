@@ -14,5 +14,13 @@
   "settings_updated": "¡Configuración actualizada!",
   "settings_updated_message": "Tu configuración se ha guardado.",
   "free_time_no_distraction_blocking": "Tiempo libre - no bloquees nada",
-  "ai_decision_fail": "No es posible obtener una decisión de la IA. Confío en que tú decidas si el sitio es relevante 😅"
+  "ai_decision_fail": "No es posible obtener una decisión de la IA. Confío en que tú decidas si el sitio es relevante 😅",
+  "usage_image_processing_error_subject": "No pudimos procesar tu captura de pantalla de Screen Time",
+  "usage_image_processing_error_body": "Hola,\n\nDesafortunadamente, nos encontramos con un problema al intentar procesar tu captura de pantalla de Screen Time. Por favor, intenta subirla de nuevo. Si el problema persiste, no dudes en contactar a nuestro equipo de soporte.\n\nGracias por tu comprensión!\n\n– El equipo de Focus Bear",
+  "usage_data_sync_subject": "Recordatorio de sincronización de datos de uso",
+  "usage_data_sync_message": "Hemos notado que no ha sincronizado sus datos de uso en los últimos 3 días. Por favor, sincronice sus datos para continuar participando en el estudio.",
+  "verify_your_email": "Verifica tu correo",
+  "reset_your_password": "Restablece tu contraseña",
+  "study_participant_email_subject": "Código de participante para el estudio Focus Bear",
+  "study_participant_email_body": "Su código de participante para el estudio Focus Bear es <b>{code}</b>. Por favor, use este código para participar en el estudio."
 }

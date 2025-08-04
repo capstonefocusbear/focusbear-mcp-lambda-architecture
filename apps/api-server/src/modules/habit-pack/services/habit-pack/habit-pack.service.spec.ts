@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { getQueueToken } from '@nestjs/bull';
 import {
   standaloneHabitPackDBResponseDummy,
   standaloneHabitPackDummy,
@@ -14,7 +15,7 @@ import {
   serializedRoutineActivityDummy,
   breaksOnlyDeserializedRoutineActivitiesDummy,
 } from '../../../../../test/dummies/habit-packs.dummies';
-import { adminUserDummy, userDummy } from '../../../../../test/dummies';
+import { adminUserDummy, userDummy, QueueMock } from '../../../../../test/dummies';
 import { HabitPackService } from './habit-pack.service';
 import { HabitPackRepository } from '../../repositories/habit-pack.repository';
 import {
@@ -34,6 +35,7 @@ import { ActivityTemplateRepository } from '../../../activity-template/repositor
 import { HabitPack } from '../../entity/habit-pack.entity';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { ActivitySequenceRepository } from '../../../activity/repositories/activity-sequence.repository';
+import { BullQueues } from '../../../../shared/utils/constants';
 
 describe('HabitPackService', () => {
   let habitPackService: HabitPackService;
@@ -51,6 +53,10 @@ describe('HabitPackService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken(BullQueues.EMOJI_GENERATION),
+          useValue: QueueMock,
         },
       ],
     })

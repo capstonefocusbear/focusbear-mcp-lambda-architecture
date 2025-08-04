@@ -1,5 +1,5 @@
 import { RevenueCatService } from '@app/revenue-cat';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import {
   auth0UserDummy,
   DailyStatsDummy,
   TeamMemberDummy,
+  TeamMemberFake,
   TeamWithMembersDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -38,16 +39,29 @@ import { Team } from '../../entities/team.entity';
 import { TeamToMemberRepository } from '../../repositories/team-to-member.repository';
 import { TeamToAdminRepository } from '../../repositories/team-to-admin.repository';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
-import { TeamToMember } from '../../entities/team-to-member.entity';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { InvitationStatus } from '../../domain/invitation-status.enum';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
   process.env = { JWT_INVITATION_SECRET: 'test-secret' };
-  const firstName = 'first';
-  const lastName = 'last';
-  const expiryDate = new Date('2023-11-16');
+  const adminId = randomUUID();
+  const newUser = { ...userDummy, id: randomUUID() };
+  const auth0NewUserEmail = 'authNewUserEmail@email.com';
+  const origin = 'https://dashboard.local.dev:3000';
+
+  const teamToAdminDummy = new TeamToAdmin({
+    id: randomUUID(),
+    admin_id: adminId,
+    team_id: TeamWithMembersDummy.id,
+  });
+
+  const teamToAdminTeamMemberDummy = new TeamToAdmin({
+    id: randomUUID(),
+    admin_id: TeamMemberDummy.member_id,
+    team_id: TeamWithMembersDummy.id,
+  });
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -106,190 +120,92 @@ describe('TeamManagementService', () => {
     expect(teamManagementService).toBeDefined();
   });
 
-  describe('addTeamMember', () => {
-    it('negative: if user already participates that team, throw the BadRequestException', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: TeamWithMembersDummy,
-        members: [userDummy, TeamMemberDummy],
-      });
-      let exception: any;
-
-      try {
-        await teamManagementService.addTeamMember(
-          TeamMemberDummy,
-          TeamWithMembersDummy.owner_id,
-          TeamWithMembersDummy.id,
-          firstName,
-          lastName,
-          expiryDate,
-        );
-      } catch (error) {
-        exception = error;
-      }
-
-      const errorMessage = `User with ID ${TeamMemberDummy.id} is already in team with ID: ${TeamWithMembersDummy.id}`;
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('negative: if team payment type is OFFLINE and maximum capacity has been reached, error should be thrown to avoid user from being added to team', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 2, team_size_limit: 2 },
-        members: [userDummy],
-      });
-      let exception: any;
-
-      try {
-        await teamManagementService.addTeamMember(
-          TeamMemberDummy,
-          TeamWithMembersDummy.owner_id,
-          TeamWithMembersDummy.id,
-          firstName,
-          lastName,
-          expiryDate,
-        );
-      } catch (error) {
-        exception = error;
-      }
-
-      const errorMessage = `Unable to invite more members to team with ID: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: TeamWithMembersDummy,
-        members: [userDummy],
-      });
-
-      await teamManagementService.addTeamMember(
-        newMember,
-        TeamWithMembersDummy.owner_id,
-        TeamWithMembersDummy.id,
-        firstName,
-        lastName,
-        expiryDate,
-      );
-
-      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith(
-        new TeamToMember({
-          member_id: newMember.id,
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-        }),
-      );
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(newMember.id, Entitlement.team_member);
-    });
-
-    it('positive: Stripe subscription should be updated to increment team size', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(newMember);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy },
-        members: [userDummy],
-      });
-      const {
-        stripe_data: { subscriptionId, subscriptionItemId },
-      } = TeamWithMembersDummy;
-
-      await teamManagementService.addTeamMember(
-        newMember,
-        TeamWithMembersDummy.owner_id,
-        TeamWithMembersDummy.id,
-        firstName,
-        lastName,
-        expiryDate,
-      );
-
-      expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 2);
-    });
-
-    it('positive: if team payment_type is OFFLINE and team has open spaces, team size should be updated in DB, but not in Stripe', async () => {
-      const newMember = { ...TeamMemberDummy, id: randomUUID() };
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(newMember);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 10 },
-        members: [userDummy],
-      });
-
-      await teamManagementService.addTeamMember(
-        newMember,
-        TeamWithMembersDummy.owner_id,
-        TeamWithMembersDummy.id,
-        firstName,
-        lastName,
-        expiryDate,
-      );
-
-      expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
-      expect(StripeServiceMock.updateSubscription).not.toBeCalled();
-    });
-  });
-
   describe('bulkDeleteTeamMembers', () => {
+    const teamId = TeamWithMembersDummy.id;
     it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
       const owner_id = randomUUID();
       const member_ids = [randomUUID()];
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: null });
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
       let exception: any;
 
       try {
-        await teamManagementService.bulkDeleteTeamMembers(member_ids, owner_id, TeamWithMembersDummy.id);
+        await teamManagementService.bulkDeleteTeamMembers({ member_ids, team_id: teamId }, owner_id);
       } catch (error) {
         exception = error;
       }
 
-      const errorMessage = `The Team with owner_id: ${owner_id} does not exist or is inactive!`;
+      const errorMessage = `Team with id: ${teamId} doesn't exist!`;
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
     });
 
     it('positive: user should be disassociated from the team in the DB and the membership entitlement needs to be revoked via RevenueCat', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: TeamWithMembersDummy,
-        members: [userDummy, TeamMemberDummy],
+      const memberToDelete = TeamMemberDummy;
+      const dummyTeam = {
+        ...TeamWithMembersDummy,
+        team_size: 2,
+        team_size_limit: 10,
+        payment_type: PaymentType.STRIPE,
+      };
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(dummyTeam);
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([memberToDelete]);
+
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValue({
+        team: dummyTeam,
+        members: [memberToDelete, TeamMemberFake],
       });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy]);
 
       await teamManagementService.bulkDeleteTeamMembers(
-        [TeamMemberDummy.id],
-        TeamWithMembersDummy.owner_id,
-        TeamWithMembersDummy.id,
+        { member_ids: [memberToDelete.member_id], team_id: teamId },
+        dummyTeam.owner_id,
       );
 
       expect(TeamToMemberRepositoryMock.orm.delete).toBeCalledWith({
-        team_id: TeamWithMembersDummy.id,
-        member_id: TeamMemberDummy.id,
+        team_id: teamId,
+        member_id: memberToDelete.member_id,
       });
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(TeamMemberDummy.id, Entitlement.team_member);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberToDelete.id, Entitlement.team_member);
+      expect(StripeServiceMock.updateSubscription).toBeCalledWith(
+        TeamWithMembersDummy.stripe_data.subscriptionId,
+        TeamWithMembersDummy.stripe_data.subscriptionItemId,
+        1,
+      );
+      expect(TeamRepositoryMock.update).toBeCalledWith(teamId, { team_size: 1 });
     });
   });
 
   describe('inviteTeamMember', () => {
-    const email = 'test@gamil.com';
+    const unregisteredNewMember = {
+      team_id: TeamWithMembersDummy.id,
+      member_id: null,
+      first_name: auth0UserDummy.given_name,
+      last_name: auth0UserDummy.family_name,
+      member_expiry_date: TeamWithMembersDummy.expires_date,
+      email: auth0NewUserEmail,
+    };
 
-    it('negative: if either email or user not provided, error should be thrown', async () => {
+    const inviteTeamMemberDtoDummy = {
+      email: auth0NewUserEmail,
+      team_id: TeamWithMembersDummy.id,
+      first_name: auth0UserDummy.given_name,
+      last_name: auth0UserDummy.family_name,
+      member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+      is_admin: false,
+      user_id: newUser.id,
+    };
+
+    it('negative: if either email or user not provided, throw the BadRequestException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
       let exception;
       const errorMessage = 'Both email and user_id cannot be empty. Please provide either an email or a user_id.';
 
       try {
-        await teamManagementService.inviteTeamMember(userDummy.id, {
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-          is_admin: false,
-          is_member: true,
+        await teamManagementService.inviteTeamMember(adminId, {
+          ...inviteTeamMemberDtoDummy,
+          email: undefined,
+          user_id: undefined,
         });
       } catch (error) {
         exception = error;
@@ -299,79 +215,68 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: if user not found, error should be thrown', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
-      });
-      UserRepositoryMock.orm.findOne.mockResolvedValue(null);
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
 
-      let exception;
-      const errorMessage = `User with id: ${userDummy.id} does not exist!`;
+      try {
+        await teamManagementService.inviteTeamMember(adminId, inviteTeamMemberDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Team with id: ${inviteTeamMemberDtoDummy.team_id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminTeamMemberDummy, teamToAdminDummy],
+      });
+      let exception: any;
 
       try {
         await teamManagementService.inviteTeamMember(userDummy.id, {
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-          is_admin: false,
-          is_member: true,
-          user_id: userDummy.id,
+          ...inviteTeamMemberDtoDummy,
+          user_id: TeamMemberDummy.member_id,
         });
       } catch (error) {
         exception = error;
       }
 
-      expect(exception).toBeInstanceOf(NotFoundException);
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: if user registration not found in auth0, error should be thrown', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
+    it('negative: if team payment_type is OFFLINE and capacity is full, throw the BadRequestException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.OFFLINE,
+        team_size: 2,
+        team_size_limit: 2,
       });
-      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(null);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
 
       let exception;
-      const errorMessage = `User with id: ${userDummy.id} and auth0_id: ${userDummy.auth0_id} does not exists in auth0!`;
+      const errorMessage = `Unable to invite more members to team with id: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
 
       try {
-        await teamManagementService.inviteTeamMember(userDummy.id, {
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-          is_admin: false,
-          is_member: true,
-          user_id: userDummy.id,
-        });
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('negative: if team payment_type is OFFLINE and capacity is full, error should be thrown', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 1 },
-      });
-      ConfigServiceMock.get.mockReturnValueOnce('test-secret');
-      let exception;
-      const errorMessage = `Unable to invite more members to team with ID: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
-
-      try {
-        await teamManagementService.inviteTeamMember(userDummy.id, {
-          email,
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-          is_admin: false,
-          is_member: true,
-        });
+        await teamManagementService.inviteTeamMember(adminId, inviteTeamMemberDtoDummy);
       } catch (error) {
         exception = error;
       }
@@ -380,30 +285,56 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: jwt should be created with email and owner_id in payload', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
+    it('negative: if the user is already a member of the team, throw the BadRequestException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminTeamMemberDummy, teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.inviteTeamMember(adminId, {
+          ...inviteTeamMemberDtoDummy,
+          user_id: TeamMemberDummy.member_id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id ${TeamMemberDummy.member_id} is already in team with id: ${inviteTeamMemberDtoDummy.team_id}`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: jwt should be created with email and admin_id in payload', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.OFFLINE,
+        team_size: 2,
+        team_size_limit: 5,
+      });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamMemberDummy, TeamMemberFake]);
+      TeamToMemberRepositoryMock.orm.create.mockResolvedValueOnce(unregisteredNewMember);
+      TeamToMemberRepositoryMock.orm.save.mockResolvedValueOnce((args) => args);
       ConfigServiceMock.get.mockReturnValueOnce('test-secret');
 
-      await teamManagementService.inviteTeamMember(userDummy.id, {
-        email,
-        team_id: TeamWithMembersDummy.id,
-        first_name: firstName,
-        last_name: lastName,
-        member_expiry_date: expiryDate,
-        is_admin: false,
-        is_member: true,
-      });
+      await teamManagementService.inviteTeamMember(adminId, inviteTeamMemberDtoDummy);
 
-      expect(JwtServiceMock.asyncSign).toBeCalledWith(
+      const { user_id, ...rest } = inviteTeamMemberDtoDummy;
+      expect(JwtServiceMock.asyncSign).toHaveBeenCalledWith(
         {
-          email,
-          admin_id: userDummy.id,
-          team_id: TeamWithMembersDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-          is_admin: false,
-          is_member: true,
+          ...rest,
+          admin_id: adminId,
           team_name: TeamWithMembersDummy.name,
         },
         'test-secret',
@@ -411,84 +342,96 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: email should be sent with invitation link inside', async () => {
-      const singedJwt = 'some.test.jwt.string';
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({ team: TeamWithMembersDummy });
-      JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
-
-      await teamManagementService.inviteTeamMember(userDummy.id, {
-        email,
-        team_id: TeamWithMembersDummy.id,
-        first_name: firstName,
-        last_name: lastName,
-        member_expiry_date: expiryDate,
-        is_admin: false,
-        is_member: true,
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.OFFLINE,
+        team_size: 2,
+        team_size_limit: 5,
       });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamMemberDummy, TeamMemberFake]);
+      TeamToMemberRepositoryMock.orm.create.mockResolvedValueOnce(unregisteredNewMember);
+      TeamToMemberRepositoryMock.orm.save.mockResolvedValueOnce((args) => args);
+      ConfigServiceMock.get.mockReturnValueOnce('test-secret').mockReturnValueOnce('https://dashboard.local.dev:3000');
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('nekot');
 
-      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: email,
-        from: FOCUS_BEAR_EMAILS.MARKETING,
+      await teamManagementService.inviteTeamMember(adminId, inviteTeamMemberDtoDummy, origin);
+
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({
+        to: unregisteredNewMember.email,
+        from: FOCUS_BEAR_EMAILS.SUPPORT,
         templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
         dynamicTemplateData: {
-          invite_url: expect.toInclude(`?token=${singedJwt}`),
+          invite_url: expect.toInclude('https://dashboard.local.dev:3000/accept-invite?token=nekot'),
           team_name: TeamWithMembersDummy.name,
         },
-        bcc: auth0UserDummy.email,
-      });
-    });
-
-    it('positive: member invitation should be sent if team payment_type if OFFLINE and team has available capacity', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE, team_size: 1, team_size_limit: 2 },
-      });
-      const singedJwt = 'some.test.jwt.string';
-      JwtServiceMock.asyncSign.mockResolvedValue(singedJwt);
-      UserRepositoryMock.orm.findOneBy.mockResolvedValue(userDummy);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
-
-      await teamManagementService.inviteTeamMember(userDummy.id, {
-        email,
-        team_id: TeamWithMembersDummy.id,
-        first_name: firstName,
-        last_name: lastName,
-        member_expiry_date: expiryDate,
-        is_admin: false,
-        is_member: true,
-      });
-
-      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
-        to: email,
-        from: FOCUS_BEAR_EMAILS.MARKETING,
-        templateId: EMAIL_TEMPLATE_IDS.TEAM_INVITE,
-        dynamicTemplateData: {
-          invite_url: expect.toInclude(`?token=${singedJwt}`),
-          team_name: TeamWithMembersDummy.name,
-        },
-        bcc: auth0UserDummy.email,
+        bcc: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
       });
     });
   });
 
   // TODO: Implement unit tests for acceptInvitation function
 
-  describe('assignMemberAsAdmin', () => {
-    it('negative: if user is already admin member of team, error should be thrown', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: TeamWithMembersDummy,
-        admins: [userDummy, TeamMemberDummy],
-      });
-      let exception;
-      const errorMessage = `User with ID: ${TeamMemberDummy.id} is already an admin member of team with ID: ${TeamWithMembersDummy.id}!`;
+  describe('assignExistingMemberAsAdmin', () => {
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
 
       try {
         await teamManagementService.assignExistingMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
           userDummy.id,
-          TeamMemberDummy.id,
-          TeamWithMembersDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.assignExistingMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+          userDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is already admin member of team, error should be thrown', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy, teamToAdminTeamMemberDummy],
+      });
+      let exception;
+      const errorMessage = `User with id: ${TeamMemberDummy.member_id} is already an admin member of team with id: ${TeamWithMembersDummy.id}!`;
+
+      try {
+        await teamManagementService.assignExistingMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+          adminId,
         );
       } catch (error) {
         exception = error;
@@ -499,35 +442,81 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: member should be saved as admin and granted admin entitlement in RC', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: TeamWithMembersDummy,
-        admins: [userDummy],
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
 
       await teamManagementService.assignExistingMemberAsAdmin(
-        userDummy.id,
-        TeamMemberDummy.id,
-        TeamWithMembersDummy.id,
+        { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+        adminId,
       );
 
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(TeamMemberDummy.id, Entitlement.team_admin);
       expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
-        new TeamToAdmin({ team_id: TeamWithMembersDummy.id, admin_id: TeamMemberDummy.id }),
+        new TeamToAdmin({ team_id: TeamWithMembersDummy.id, admin_id: TeamMemberDummy.member_id }),
+      );
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+        TeamMemberDummy.member_id,
+        Entitlement.team_admin,
+        TeamMemberDummy.member_expiry_date,
       );
     });
   });
 
   describe('removeMember', () => {
-    it('negative: throw bad request error if trying to remove owner from the team', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+      try {
+        await teamManagementService.removeMember(
+          { member_id: newUser.id, team_id: TeamWithMembersDummy.id },
+          userDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
 
-      const errorMessage = `Can't remove owner from team with ID: ${TeamWithMembersDummy.id}. Owner ID: ${userDummy.id}`;
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
       let exception: any;
 
       try {
-        await teamManagementService.removeMember(userDummy.id, userDummy.id, TeamWithMembersDummy.id);
+        await teamManagementService.removeMember(
+          { member_id: newUser.id, team_id: TeamWithMembersDummy.id },
+          userDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not found in the team, throw BadRequestException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      const errorMessage = `User with member_id: ${newUser.id} does not exist in the team (team_id: ${TeamWithMembersDummy.id}).`;
+      let exception: any;
+
+      try {
+        await teamManagementService.removeMember({ member_id: newUser.id, team_id: TeamWithMembersDummy.id }, adminId);
       } catch (error) {
         exception = error;
       }
@@ -537,81 +526,164 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should remove member from the team', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...TeamMemberDummy,
-        member_of_teams: [TeamWithMembersDummy],
-      });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: TeamWithMembersDummy,
-        members: [userDummy, TeamMemberDummy],
+    it('positive: should remove member from the team and decrease team size', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
       TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy]);
 
-      await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
-
-      expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+      await teamManagementService.removeMember(
+        { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+      expect(TeamRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.member_id,
+      });
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
     });
 
-    it('positive: stripe subscription should be updated to decrease team size', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...TeamMemberDummy,
-      });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: TeamWithMembersDummy,
-        members: [userDummy, TeamMemberDummy],
+    it('positive: stripe subscription should be updated', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
       TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy]);
+
       const {
         stripe_data: { subscriptionId, subscriptionItemId },
       } = TeamWithMembersDummy;
 
-      await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+      await teamManagementService.removeMember(
+        { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
 
-      expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 1);
+      expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(subscriptionId, subscriptionItemId, 1);
     });
 
     it('positive: if team payment_type if OFFLINE, team size should be updated in DB, but not in Stripe', async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...TeamMemberDummy,
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({
+        ...TeamWithMembersDummy,
+        team_size: 2,
+        team_size_limit: 5,
+        payment_type: PaymentType.OFFLINE,
       });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
-        team: { ...TeamWithMembersDummy, payment_type: PaymentType.OFFLINE },
-        members: [userDummy, TeamMemberDummy],
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
       TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy]);
 
-      await teamManagementService.removeMember(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
+      await teamManagementService.removeMember(
+        { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
 
-      expect(TeamRepositoryMock.update).toBeCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
-      expect(StripeServiceMock.updateSubscription).not.toBeCalled();
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+      expect(StripeServiceMock.updateSubscription).not.toHaveBeenCalled();
     });
   });
 
   describe('removeMemberAsAdmin', () => {
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+      try {
+        await teamManagementService.removeMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+          userDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.removeMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+          userDummy.id,
+        );
+      } catch (error) {
+        exception = error;
+      }
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not found in the team, throw BadRequestException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+
+      const errorMessage = `User with member_id: ${TeamMemberDummy.member_id} does not exist in the team (team_id: ${TeamWithMembersDummy.id}).`;
+      let exception: any;
+      try {
+        await teamManagementService.removeMemberAsAdmin(
+          { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+          adminId,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: member should be removed as admin and admin entitlement should be revoked in RC', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...TeamMemberDummy,
-        admin_of_teams: [TeamWithMembersDummy],
-      });
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: {
-          ...TeamWithMembersDummy,
-        },
-      });
-      TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([TeamWithMembersDummy, TeamWithMembersDummy]);
-
-      await teamManagementService.removeMemberAsAdmin(userDummy.id, TeamMemberDummy.id, TeamWithMembersDummy.id);
-
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(TeamMemberDummy.id, Entitlement.team_admin);
-      expect(TeamToAdminRepositoryMock.orm.delete).toBeCalledWith({
+      const teamToAdminMemberDummy = new TeamToAdmin({
+        id: randomUUID(),
+        admin_id: TeamMemberDummy.member_id,
         team_id: TeamWithMembersDummy.id,
-        admin_id: TeamMemberDummy.id,
       });
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        team: TeamWithMembersDummy,
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy, teamToAdminMemberDummy],
+      });
+      TeamToAdminRepositoryMock.orm.find.mockResolvedValue([
+        teamToAdminMemberDummy,
+        { ...teamToAdminMemberDummy, team_id: randomUUID(), id: randomUUID() },
+      ]);
+
+      await teamManagementService.removeMemberAsAdmin(
+        { member_id: TeamMemberDummy.member_id, team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      expect(TeamToAdminRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        admin_id: TeamMemberDummy.member_id,
+      });
+
+      expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(
+        TeamMemberDummy.member_id,
+        Entitlement.team_admin,
+      );
     });
   });
 
@@ -674,11 +746,27 @@ describe('TeamManagementService', () => {
   });
 
   describe('updateTeamSize', () => {
-    it('negative: should throw not found exception if user is not found in DB', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+      try {
+        await teamManagementService.updateTeamSize(adminId, TeamWithMembersDummy.id, 3);
+      } catch (error) {
+        exception = error;
+      }
 
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
       let exception: any;
 
       try {
@@ -686,117 +774,96 @@ describe('TeamManagementService', () => {
       } catch (error) {
         exception = error;
       }
-
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
       expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception).toBeInstanceOf(UnauthorizedException);
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('negative: should throw not found exception if team is not found in DB', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: null });
-
-      const errorMessage = `Team with ID: ${TeamWithMembersDummy.id} does not exist!`;
-      let exception: any;
-
-      try {
-        await teamManagementService.updateTeamSize(userDummy.id, TeamWithMembersDummy.id, 3);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: should update team size in stripe', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+    it('positive: updates team size if payment_type is STRIPE', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.STRIPE,
+        team_size: 2,
+        team_size_limit: 10,
+      });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
       const {
         stripe_data: { subscriptionId, subscriptionItemId },
       } = TeamWithMembersDummy;
 
-      await teamManagementService.updateTeamSize(userDummy.id, TeamWithMembersDummy.id, 3);
+      await teamManagementService.updateTeamSize(adminId, TeamWithMembersDummy.id, 3);
 
       expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 3);
     });
   });
 
   describe('getAllTeamMembers', () => {
-    it('positive: should get members and admin of team, get their emails from auth0 and return the users', async () => {
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({
-        team: TeamWithMembersDummy,
-        members: [userDummy, TeamMemberDummy],
-        admins: [userDummy],
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+      try {
+        await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
-      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([
-        {
-          member_id: userDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-        },
-        {
-          member_id: TeamMemberDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-        },
-      ]);
-      TeamToMemberRepositoryMock.orm.findOne
-        .mockResolvedValueOnce({
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-        })
-        .mockResolvedValueOnce({
-          first_name: firstName,
-          last_name: lastName,
-          member_expiry_date: expiryDate,
-        });
-      TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([
-        {
-          admin_id: userDummy.id,
-          first_name: firstName,
-          last_name: lastName,
-        },
-      ]);
-      TeamToAdminRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        first_name: firstName,
-        last_name: lastName,
+      let exception: any;
+
+      try {
+        await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should get members, admins of team with last 90 days DailyStats', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
       });
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({ email: 'test@mail.com' });
-      const userDetailsMock = [
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
         {
           morning_routines_streak: userDummy.morning_routines_streak,
           evening_routines_streak: userDummy.evening_routines_streak,
           focus_modes_streak: userDummy.focus_modes_streak,
-          id: userDummy.id,
+          id: TeamMemberFake.member_id,
         },
         {
-          morning_routines_streak: TeamMemberDummy.morning_routines_streak,
-          evening_routines_streak: TeamMemberDummy.evening_routines_streak,
-          focus_modes_streak: TeamMemberDummy.focus_modes_streak,
-          id: TeamMemberDummy.id,
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
         },
-      ];
-      UserRepositoryMock.orm.find
-        .mockResolvedValueOnce(userDetailsMock) // for members
-        .mockResolvedValueOnce([
-          {
-            morning_routines_streak: userDummy.morning_routines_streak,
-            evening_routines_streak: userDummy.evening_routines_streak,
-            focus_modes_streak: userDummy.focus_modes_streak,
-            id: userDummy.id,
-          },
-        ]); // for admins
+      ]);
 
       UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(DailyStatsDummy);
 
-      const response = await teamManagementService.getAllTeamMembers(userDummy.id, TeamWithMembersDummy.id);
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
-      expect(response.admin).toHaveLength(1);
+      expect(response.admins).toHaveLength(1);
       expect(response.members).toHaveLength(2);
     });
   });
@@ -820,18 +887,31 @@ describe('TeamManagementService', () => {
 
   describe('revokeAdminMembersEntitlements', () => {
     it('positive: should revoke members team_admin entitlements in revenue cat if member is part of only one team', async () => {
-      const memberOneId = randomUUID();
-      const memberTwoId = randomUUID();
-      const teamOneId = randomUUID();
-      const teamTwoId = randomUUID();
       TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
-      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: memberOneId }, { id: memberTwoId }]);
-      TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }, { id: teamTwoId }]);
-      TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }]);
+      TeamToAdminRepositoryMock.getTeamAdmins.mockResolvedValue([teamToAdminDummy, teamToAdminTeamMemberDummy]);
+      TeamToAdminRepositoryMock.orm.find
+        .mockResolvedValueOnce([
+          {
+            id: randomUUID(),
+            admin_id: teamToAdminDummy.admin_id,
+            team_id: TeamWithMembersDummy.id,
+          },
+          { id: randomUUID(), admin_id: teamToAdminDummy.admin_id, team_id: randomUUID() },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: randomUUID(),
+            admin_id: TeamMemberDummy.member_id,
+            team_id: TeamWithMembersDummy.id,
+          },
+        ]);
 
       await teamManagementService.revokeAdminMembersEntitlements('sub_1234');
 
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_admin);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(
+        TeamMemberDummy.member_id,
+        Entitlement.team_admin,
+      );
     });
   });
 
@@ -864,20 +944,21 @@ describe('TeamManagementService', () => {
 
   describe('reassignTeamMembersEntitlements', () => {
     it('positive: should assign team member entitlements for team members in revenue cat', async () => {
-      const memberOneId = randomUUID();
-      const memberTwoId = randomUUID();
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        members: [{ id: memberOneId }, { id: memberTwoId }],
-      });
-      TeamRepositoryMock.getTeamMembers.mockResolvedValueOnce([
-        { ...TeamMemberDummy, id: memberOneId },
-        { ...TeamMemberDummy, id: memberTwoId },
-      ]);
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamMembers.mockResolvedValueOnce([TeamMemberDummy, TeamMemberFake]);
 
       await teamManagementService.reassignTeamMembersEntitlements('sub_1234');
 
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberOneId, Entitlement.team_member);
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_member);
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+        TeamMemberDummy.id,
+        Entitlement.team_member,
+        TeamWithMembersDummy.expires_date,
+      );
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+        TeamMemberFake.id,
+        Entitlement.team_member,
+        TeamWithMembersDummy.expires_date,
+      );
     });
   });
 
@@ -937,7 +1018,7 @@ describe('TeamManagementService', () => {
     });
   });
 
-  // TODO: Implement unit tests for getAdminUserTeams function
+  // // TODO: Implement unit tests for getAdminUserTeams function
 
   describe('deleteTeam', () => {
     it('positive: owner and members entitlements should be revoked and team should be deleted', async () => {
@@ -949,11 +1030,11 @@ describe('TeamManagementService', () => {
       TeamRepositoryMock.orm.findOne
         .mockResolvedValueOnce(TeamWithMembersDummy)
         .mockResolvedValueOnce(TeamWithMembersDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({ team: TeamWithMembersDummy });
       TeamRepositoryMock.getTeamMembers.mockResolvedValueOnce([{ id: memberOneId }, { id: memberTwoId }]);
       TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }, { id: teamTwoId }]);
       TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }]);
-      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: memberOneId }, { id: memberTwoId }]);
+      TeamToAdminRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: memberOneId }, { id: memberTwoId }]);
       TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }, { id: teamTwoId }]);
       TeamToAdminRepositoryMock.orm.find.mockResolvedValueOnce([{ id: teamOneId }]);
       TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
@@ -968,101 +1049,108 @@ describe('TeamManagementService', () => {
   });
 
   describe('updateMemberExpiryDate', () => {
-    it('negative: should throw bad request exception if member is not linked to team', async () => {
-      const newExpiryDate = new Date('2023-11-18');
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
-      // mock no linked member record to be found
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      let exception;
-      const errorMessage = `User with ID: ${TeamMemberDummy.id} is not a member of team with ID: ${TeamWithMembersDummy.id}!`;
+    const updateMemberExpiryDateDtoDummy = {
+      team_id: TeamWithMembersDummy.id,
+      member_id: TeamMemberDummy.member_id,
+      expiry_date: new Date('2023-11-18'),
+    };
 
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
       try {
-        await teamManagementService.updateMemberExpiryDate(userDummy.id, {
-          team_id: TeamWithMembersDummy.id,
-          member_id: TeamMemberDummy.id,
-          expiry_date: newExpiryDate,
-        });
+        await teamManagementService.updateMemberExpiryDate(userDummy.id, updateMemberExpiryDateDtoDummy);
       } catch (error) {
         exception = error;
       }
 
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.updateMemberExpiryDate(userDummy.id, updateMemberExpiryDateDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+      const errorMessage = `User with id: ${userDummy.id} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not found in the team, throw BadRequestException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+
+      const errorMessage = `User with member_id: ${TeamMemberDummy.member_id} does not exist in the team (team_id: ${TeamWithMembersDummy.id}).`;
+      let exception: any;
+
+      try {
+        await teamManagementService.updateMemberExpiryDate(adminId, updateMemberExpiryDateDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual(errorMessage);
     });
 
     it('positive: should save linked member record with new expiry date', async () => {
-      const newExpiryDate = new Date('2023-11-18');
-      const linkedMemberRecordDummy = new TeamToMember({
-        team_id: TeamWithMembersDummy.id,
-        member_id: TeamMemberDummy.id,
-        member_expiry_date: new Date('2023-11-15'),
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [{ ...TeamMemberDummy }],
+        admins: [teamToAdminDummy],
       });
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValueOnce({ team: TeamWithMembersDummy });
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(linkedMemberRecordDummy);
+      RevenueCatServiceMock.updateEntitlementExpiry.mockResolvedValueOnce((arg) => arg);
 
-      await teamManagementService.updateMemberExpiryDate(userDummy.id, {
-        team_id: TeamWithMembersDummy.id,
-        member_id: TeamMemberDummy.id,
-        expiry_date: newExpiryDate,
+      await teamManagementService.updateMemberExpiryDate(adminId, updateMemberExpiryDateDtoDummy);
+
+      expect(TeamToMemberRepositoryMock.orm.save).toHaveBeenCalledWith({
+        ...TeamMemberDummy,
+        member_expiry_date: updateMemberExpiryDateDtoDummy.expiry_date,
       });
-
-      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith({
-        ...linkedMemberRecordDummy,
-        member_expiry_date: newExpiryDate,
-      });
-    });
-  });
-
-  describe('assignNewMemberAsAdmin', () => {
-    it('negative, should throw bad request exception if user is already admin member of team', async () => {
-      const memberId = TeamMemberDummy.id;
-      const teamId = TeamWithMembersDummy.id;
-      // mock new member to already be an admin of this team
-      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: userDummy.id }, { id: memberId }]);
-      let exception;
-      const errorMessage = `User with ID: ${memberId} is already an admin member of team with ID: ${teamId}!`;
-
-      try {
-        await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: should create TeamToAdmin record indicating user is connected to team as admin', async () => {
-      const memberId = TeamMemberDummy.id;
-      const teamId = TeamWithMembersDummy.id;
-      TeamRepositoryMock.getTeamAdmins.mockResolvedValueOnce([{ id: userDummy.id }]);
-
-      await teamManagementService.assignNewMemberAsAdmin(memberId, teamId, firstName, lastName);
-
-      expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
-        new TeamToAdmin({
-          team_id: teamId,
-          admin_id: memberId,
-          first_name: firstName,
-          last_name: lastName,
-        }),
-      );
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(memberId, Entitlement.team_admin);
     });
   });
 
   describe('addTeamMemberManually', () => {
-    it('negative: if user not found, throw the NotFoundException', async () => {
+    const addTeamManuallyDtoDummy = {
+      team_id: TeamWithMembersDummy.id,
+      user_id: userDummy.id,
+    };
+    const fixedDate = new Date('2025-06-29T14:01:58.000Z');
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(fixedDate);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers(); // clean up after each test
+    });
+
+    it('negative: if user registration not found in DB, throw the NotFoundException', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
 
       let exception;
-      const errorMessage = `The user with id: ${userDummy.id} doesn't exists!`;
+      const errorMessage = `User with id: ${userDummy.id} doesn't exist!`;
 
       try {
-        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
-          team_id: TeamWithMembersDummy.id,
-          user_id: userDummy.id,
-        });
+        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, addTeamManuallyDtoDummy);
       } catch (error) {
         exception = error;
       }
@@ -1076,13 +1164,10 @@ describe('TeamManagementService', () => {
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(null);
 
       let exception;
-      const errorMessage = `The user with id: ${userDummy.id} and auth0_id: ${userDummy.auth0_id} does not exists in auth0!`;
+      const errorMessage = `User with id: ${userDummy.id} and auth0_id: ${userDummy.auth0_id} doesn't exist in auth0!`;
 
       try {
-        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
-          team_id: TeamWithMembersDummy.id,
-          user_id: userDummy.id,
-        });
+        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, addTeamManuallyDtoDummy);
       } catch (error) {
         exception = error;
       }
@@ -1091,29 +1176,142 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: if team not found, throw the NotFoundException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, email: auth0NewUserEmail });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      let exception;
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+
+      try {
+        await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, addTeamManuallyDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      const userNonAdminDummy = randomUUID();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.addTeamMemberManually(userNonAdminDummy, addTeamManuallyDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${userNonAdminDummy} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if team payment_type is OFFLINE and capacity is full, throw the BadRequestException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.OFFLINE,
+        team_size: 2,
+        team_size_limit: 2,
+      });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+      const errorMessage = `Unable to invite more members to team with id: ${TeamWithMembersDummy.id}, maximum capacity reached!`;
+      try {
+        await teamManagementService.addTeamMemberManually(adminId, addTeamManuallyDtoDummy);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if the user is already a member of the team, throw the BadRequestException', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, id: TeamMemberDummy.member_id });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        payment_type: PaymentType.OFFLINE,
+        team_size: 2,
+        team_size_limit: 10,
+      });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.addTeamMemberManually(adminId, {
+          ...addTeamManuallyDtoDummy,
+          user_id: TeamMemberDummy.member_id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id ${TeamMemberDummy.member_id} is already in team with id: ${addTeamManuallyDtoDummy.team_id}`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: user with team association should be saved in the DB and the membership entitlement need to be granted via RevenueCat', async () => {
       const newMember = { ...TeamMemberDummy, id: randomUUID() };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(newMember);
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
-      TeamRepositoryMock.findActiveTeamWithMembers.mockResolvedValue({
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ ...auth0UserDummy, user_id: newMember.id });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...TeamWithMembersDummy,
+        team_size: 1,
+        team_size_limit: 10,
+      });
+
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValue(null);
+      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValue({
         team: TeamWithMembersDummy,
-        members: [userDummy],
+        members: [TeamMemberDummy],
       });
 
-      await teamManagementService.addTeamMemberManually(TeamWithMembersDummy.owner_id, {
+      await teamManagementService.addTeamMemberManually(adminId, addTeamManuallyDtoDummy);
+
+      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith({
+        member_id: newMember.id,
         team_id: TeamWithMembersDummy.id,
-        user_id: newMember.id,
+        first_name: auth0UserDummy.given_name,
+        last_name: auth0UserDummy.family_name,
+        email: auth0UserDummy.email,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_responded_at: fixedDate,
+        invitation_sent_at: fixedDate,
+        invitation_send_count: 1,
+        member_expiry_date: TeamWithMembersDummy.expires_date as Date,
       });
-
-      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith(
-        new TeamToMember({
-          member_id: newMember.id,
-          team_id: TeamWithMembersDummy.id,
-          first_name: auth0UserDummy.given_name,
-          last_name: auth0UserDummy.family_name,
-        }),
+      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+        newMember.id,
+        Entitlement.team_member,
+        TeamWithMembersDummy.expires_date,
       );
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(newMember.id, Entitlement.team_member);
     });
   });
 });

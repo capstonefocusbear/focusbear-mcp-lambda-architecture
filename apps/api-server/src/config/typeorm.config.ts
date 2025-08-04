@@ -48,6 +48,11 @@ import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../modules/activity-template/entity/activity-template-tag.entity';
 import { CustomRoutine } from '../modules/user/entities/custom-routine';
+import { StudyParticipant } from '../modules/user/entities/study-participant.entity';
+import { UsageData } from '../modules/user/entities/usage-data.entity';
+import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
+import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
+import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -61,7 +66,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: false,
     maxQueryExecutionTime: 200,
-    ssl: false,
+    ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
     entities: [
       User,
       Activity,
@@ -112,6 +117,11 @@ export const typeormConfig = registerAs(
       SurveyAnswerMetadata,
       ActivityTemplateTag,
       CustomRoutine,
+      StudyParticipant,
+      UsageData,
+      HealthMetrics,
+      FlankerTest,
+      AsyncTask,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

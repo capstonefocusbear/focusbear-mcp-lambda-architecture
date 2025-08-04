@@ -11,6 +11,9 @@ import { DailySequenceDurations } from '../../apps/api-server/src/modules/activi
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { Activity } from '../../apps/api-server/src/modules/activity/entities/activity.entity';
 import { DAYS_OF_WEEK } from './constants';
+import { withSentry, captureErrorWithContext } from '../sentry';
+import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
+import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
 function filterActivitiesForCurrentDay(currentDay: DaysOfWeek, activities: Activity[]) {
   const activitiesForCurrentDay = activities.filter(
@@ -163,57 +166,106 @@ async function calculateOfflineActivitiesCompletionPercentage() {
   }
 }
 
-(async () => {
-  try {
-    await CronJobDataSource.initialize();
-    await calculateOfflineActivitiesCompletionPercentage();
-    const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
-    const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
-      where: { last_time_stats_updated: LessThan(time24HoursAgo) },
-      take: 50,
+async function runUserStatsCronJob() {
+  await CronJobDataSource.initialize();
+  await calculateOfflineActivitiesCompletionPercentage();
+  const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
+  const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
+    where: { last_time_stats_updated: LessThan(time24HoursAgo) },
+    take: 50,
+  });
+  for await (const user of usersWhoseStatsAreOutOfDate) {
+    
+    const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
+      where: {
+        user_id: user.id,
+      },
+      order: { date_completed: 'DESC' },
     });
-    for await (const user of usersWhoseStatsAreOutOfDate) {
-      const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
-        where: {
-          user_id: user.id,
-        },
-        order: { date_completed: 'DESC' },
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user.id);
+      // Add a breadcrumb for debugging purposes
+    this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating user settings',
+        ...(isVerboseLoggingAllowed && { data: { user } }),
       });
-      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
-        await getUserRoutineDailyDurations(user.id);
-      const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
-        calculateStreaks(userDailyStats, user.timezone, {
-          morningRoutineDailyDurations,
-          eveningRoutineDailyDurations,
-          microBreaksDailyDurations,
-        });
-      const userLevel = determineUserLevel(user.onboarding_progress, {
-        focus_modes_streak,
-        morning_routines_streak,
-        evening_routines_streak,
-        micro_breaks_streak,
-      });
-      const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
-      await CronJobDataSource.manager.update(
-        User,
-        { id: user.id },
-        {
-          onboarding_progress: {
-            ...user.onboarding_progress,
-            level: userLevel,
-          },
-          last_time_stats_updated: currentTime,
+
+    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
+      await getUserRoutineDailyDurations(user.id);
+    const {
+      focus_modes_streak,
+      morning_routines_streak,
+      evening_routines_streak,
+      micro_breaks_streak,
+      percent_morning_routines_streak_complete_in_90days,
+      percent_evening_routines_streak_complete_in_90days,
+      percent_micro_breaks_streak_complete_in_90days,
+      num_days_of_stats,
+      number_days_completed,
+      morning_number_days_completed,
+      morning_num_days_of_stats,
+      evening_number_days_completed,
+      evening_num_days_of_stats,
+    } = calculateStreaks(userDailyStats, user.timezone, {
+      morningRoutineDailyDurations,
+      eveningRoutineDailyDurations,
+      microBreaksDailyDurations,
+    }, new Date(user.created_at));
+    const userLevel = determineUserLevel(user.onboarding_progress, {
+      focus_modes_streak,
+      morning_routines_streak,
+      evening_routines_streak,
+      micro_breaks_streak,
+    }); 
+    // Verbose Logging for debugging purposes
+    if (isVerboseLoggingAllowed) {
+       // Add console logs for testing
+        /* eslint-disable no-console */
+        console.log('[VERBOSE-LEVEL-UPDATE] === CRON JOB - USER LEVEL UPDATE ===');
+        console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
+        console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
+        console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', userLevel);
+        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', JSON.stringify({
+          focus_modes_streak,
           morning_routines_streak,
           evening_routines_streak,
-          focus_modes_streak,
           micro_breaks_streak,
-        },
-      );
+        }));
+        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', JSON.stringify(user.onboarding_progress));
+        /* eslint-enable no-console */
     }
-    // eslint-disable-next-line no-console
-    console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
-    process.exit();
-  } catch (error) {
-    console.error('Error in user daily stats cron job:', error);
+    const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
+    await CronJobDataSource.manager.update(
+      User,
+      { id: user.id },
+      {
+        onboarding_progress: {
+          ...user.onboarding_progress,
+          level: userLevel,
+        },
+        last_time_stats_updated: currentTime,
+        morning_routines_streak,
+        evening_routines_streak,
+        focus_modes_streak,
+        micro_breaks_streak,
+        morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,
+        evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
+        micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
+        num_days_of_stats,
+        number_days_completed,
+        morning_number_days_completed,
+        morning_num_days_of_stats,
+        evening_number_days_completed,
+        evening_num_days_of_stats,
+      },
+    );
   }
-})();
+  // eslint-disable-next-line no-console
+  console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
+  process.exit();
+}
+
+if (require.main === module) {
+  withSentry(() => withTimeout(runUserStatsCronJob(), CRON_JOB_TIMEOUT_MS));
+}

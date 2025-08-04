@@ -99,17 +99,38 @@ export const isUUID = (str: string) => {
 
 const ENCRYPTION_KEY = process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY;
 
+// Replicate OpenSSL's EVP_BytesToKey function exactly as used by createCipher
+function evpBytesToKey(password: string, salt: Buffer = Buffer.alloc(0), keyLen = 32): Buffer {
+  const data = Buffer.concat([Buffer.from(password, 'utf8'), salt]);
+  let key = Buffer.alloc(0);
+
+  while (key.length < keyLen) {
+    const hash = crypto.createHash('md5');
+    hash.update(key.length > 0 ? Buffer.concat([key, data]) : data);
+    const digest = hash.digest();
+    key = Buffer.concat([key, digest]);
+  }
+
+  return key.subarray(0, keyLen);
+}
+
 export const FieldTransformer = {
   to: (value: string) => {
     if (value === undefined || value === '') return '';
-    const cipher = crypto.createCipher('aes-256-ecb', ENCRYPTION_KEY);
+    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY is not set');
+    // Use the exact same key derivation as createCipher
+    const key = evpBytesToKey(ENCRYPTION_KEY);
+    const cipher = crypto.createCipheriv('aes-256-ecb', key, null);
     let encrypted = cipher.update(value, 'utf-8', 'hex');
     encrypted += cipher.final('hex');
     return encrypted;
   },
   from: (value: string) => {
     if (value === undefined || value === '') return '';
-    const decipher = crypto.createDecipher('aes-256-ecb', ENCRYPTION_KEY);
+    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY is not set');
+    // Use the exact same key derivation as createCipher
+    const key = evpBytesToKey(ENCRYPTION_KEY);
+    const decipher = crypto.createDecipheriv('aes-256-ecb', key, null);
     let decrypted = decipher.update(value, 'hex', 'utf-8');
     decrypted += decipher.final('utf-8');
     return decrypted;
@@ -201,23 +222,65 @@ export const getR2FileNameFromUrl = (url: string): string => {
   }
 };
 
-export const constructLogUploadEmailBody = (notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto): string => {
-  const { uploaded_file_url, feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+export const safeDecodeURIComponent = (str: string): string => {
+  if (!str) return str;
+
+  try {
+    return decodeURIComponent(str);
+  } catch (error) {
+    return str; // Return original string if decoding fails
+  }
+};
+
+export const escapeMarkdownForCliq = (text: string): string => {
+  if (!text) return text;
+
+  const decoded = safeDecodeURIComponent(text);
+
+  return decoded
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/`/g, '\\`') // Escape backticks
+    .replace(/\*/g, '\\*') // Escape asterisks
+    .replace(/_/g, '\\_'); // Escape underscores
+};
+
+export const constructLogUploadEmailBody = (
+  notifyLogsUploadSuccessDto: NotifyLogsUploadSuccessDto,
+  downloadUrl: string,
+  userId: string,
+): string => {
+  const { feedback_message, app_platform, app_version } = notifyLogsUploadSuccessDto;
+
+  const decodedFeedback = safeDecodeURIComponent(feedback_message || '');
+  const escapedFeedbackMessage = decodedFeedback
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
   return `
     <p>Hi Focus Bear support team,</p>
 
     <p>A user has submitted feedback along with app usage logs. Please review the details below:</p>
 
+    <p><strong>User ID:</strong> ${userId}</p>
     <p><strong>Feedback:</strong></p>
-    <blockquote>${feedback_message}</blockquote>
+    <blockquote>${escapedFeedbackMessage}</blockquote>
 
     <p><strong>App platform:</strong> ${app_platform}</p>
     <p><strong>App version:</strong> ${app_version}</p>
 
     <p><strong>Logs download link:</strong><br/>
-    <a href="${uploaded_file_url}">View Uploaded Logs</a></p>
+    <a href="${downloadUrl}">View Uploaded Logs</a></p>
 
     <p>— Automated Notification System</p>
   `;
 };
+
+export function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage = 'Operation timed out'): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(timeoutMessage)), ms)),
+  ]);
+}

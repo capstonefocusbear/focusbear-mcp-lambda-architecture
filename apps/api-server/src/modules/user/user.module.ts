@@ -11,8 +11,10 @@ import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { BrevoModule } from '@app/brevo/brevo.module';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
+import { GeminiModule } from '@app/gemini';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
+import { AsyncTaskModule } from '../async-task/async-task.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
 import { UserController } from './controllers/user/user.controller';
 import { User } from './entities/user.entity';
@@ -44,6 +46,20 @@ import { PlatformIntegrationsModule } from '../platform-integrations/platform-in
 import { BullQueues } from '../../shared/utils/constants';
 import { EventsModule } from '../events/events.module';
 import { CustomRoutineRepository } from './repositories/custom-routine.repository';
+import { StudyParticipantService } from './services/study-participant/study-participant.service';
+import { StudyParticipant } from './entities/study-participant.entity';
+import { StudyParticipantController } from './controllers/study-participant/study-participant.controller';
+import { UsageDataController } from './controllers/usage-data/usage-data.controller';
+import { UsageDataService } from './services/usage-data/usage-data.service';
+import { UsageData } from './entities/usage-data.entity';
+import { HealthMetricsController } from './controllers/health-metrics/health-metrics.controller';
+import { HealthMetricsService } from './services/health-metrics/health-metrics.service';
+import { HealthMetrics } from './entities/health-metrics.entity';
+import { UsageImageConsumer } from './consumers/usage-image.consumer';
+import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
+import { UsageDataConsumer } from './consumers/usage-data.consumer';
+import { FlankerTestService } from './services/flanker-test/flanker-test.service';
+import { FlankerTest } from './entities/flanker-test.entity';
 
 @Module({
   providers: [
@@ -62,10 +78,17 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserFeedbackRepository,
     UserFeedbackService,
     CustomRoutineRepository,
+    StudyParticipantService,
+    UsageDataService,
+    HealthMetricsService,
+    UsageImageConsumer,
+    SyncHealthMetricsConsumer,
+    UsageDataConsumer,
+    FlankerTestService,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -96,6 +119,15 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
       {
         name: BullQueues.REVENUE_CAT_STATUS,
       },
+      {
+        name: BullQueues.USAGE_IMAGE,
+      },
+      {
+        name: BullQueues.HEALTH_METRICS_SYNC,
+      },
+      {
+        name: BullQueues.USAGE_DATA,
+      },
     ),
     R2Module.registerAsync({
       imports: [ConfigModule],
@@ -122,6 +154,7 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
       inject: [ConfigService],
       useFactory: (configService: ConfigService): IPusherBeamsOptions => configService.get('pusher-beams'),
     }),
+    GeminiModule,
     ActivityModule,
     forwardRef(() => AuthModule),
     ConfigModule,
@@ -134,6 +167,7 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     ToDoModule,
     PlatformIntegrationsModule,
     EventsModule,
+    AsyncTaskModule,
   ],
   controllers: [
     UserSettingsController,
@@ -142,6 +176,9 @@ import { CustomRoutineRepository } from './repositories/custom-routine.repositor
     UserDataController,
     UserStatsController,
     UserFeedbackController,
+    StudyParticipantController,
+    UsageDataController,
+    HealthMetricsController,
   ],
 })
 export class UserModule {}

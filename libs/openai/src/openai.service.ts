@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -44,6 +46,8 @@ export class OpenAIService {
     [OpenAIKeyType.USERNAME_VALIDATION]?: OpenAI;
     [OpenAIKeyType.SUBTASKS_GENERATION]?: OpenAI;
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
+    [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
+    [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -273,31 +277,47 @@ export class OpenAIService {
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
-    const metaData = meta_description
-      ? { title: tab_title, description: meta_description }
-      : await this.getMetadata(sanitizedUrl);
+
+    // 1. Always fetch metadata from the server to detect redirects and auth errors.
+    const fetchedMetadata = await this.getMetadata(sanitizedUrl);
+
+    // 2. Establish a priority-based fallback for the title and description.
+    let finalTitle = fetchedMetadata.title || tab_title || '';
+    let finalDescription = fetchedMetadata.description || meta_description || '';
+
+    // 3. Specifically handle the "Login Required" signal from our smart scraper.
+    if (fetchedMetadata.title === 'Login Required') {
+      finalTitle = tab_title || 'Sign in to your account';
+      finalDescription = 'This page requires you to sign in to view its content.';
+    }
+    // This regex looks for common JS patterns and function calls globally.
+    const junkJsPattern = /(\(function\s?\(\)\s?\{.*\})|({.*})|(\w+\s?\(\)\s?;)/g;
+    if (finalDescription && junkJsPattern.test(finalDescription)) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        message: 'Junk JS pattern detected in final description, replacing matches.',
+        data: { url, originalDescription: finalDescription },
+      });
+      // Instead of clearing, we now replace only the bad parts.
+      finalDescription = finalDescription.replace(junkJsPattern, ' [filtered script content] ').trim();
+    }
+    console.log(`FINAL FINAL Description after Junk filter: ${finalDescription}`);
 
     try {
-      // Get the default prompt from the cache service
+      // The rest of the function proceeds as before, but now with much cleaner data.
       const promptContent = this.promptCacheService.getPrompt('default');
 
       if (!promptContent) {
-        this.sentryService.instance().captureMessage('Default prompt not found in cache', {
-          level: 'error',
-          extra: { isUrlSafeDto },
-        });
-        // Return a safe default response instead of throwing
         return {
           allowed_probability: 0,
           reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
         };
       }
 
-      // Fill in the prompt template with actual values
       const filledPromptContent = promptContent
         .replace('{{url}}', sanitizedUrl)
-        .replace('{{tab_title}}', metaData.title || tab_title || '')
-        .replace('{{meta_description}}', metaData.description || meta_description || '')
+        .replace('{{tab_title}}', finalTitle)
+        .replace('{{meta_description}}', finalDescription)
         .replace('{{focus_mode}}', focus_mode || '')
         .replace('{{intention}}', intention || '')
         .replace('{{justificationForThisUrl}}', justificationForThisUrl || '')
@@ -317,7 +337,7 @@ export class OpenAIService {
         try {
           const completions = await this.getOpenAIChatCompletionsNonStreaming(
             [basePrompt],
-            OpenAIKeyType.URL_SAFETY, // Using dedicated API key,
+            OpenAIKeyType.URL_SAFETY,
             OPENAI_PARAMS.checkURL as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
           );
 
@@ -340,7 +360,6 @@ export class OpenAIService {
         extra: { isUrlSafeDto },
       });
 
-      // Return a safe default response
       return {
         allowed_probability: 0,
         reason: this.i18nService.t('common.ai_decision_fail', { lang: prefLanguage }),
@@ -438,9 +457,9 @@ export class OpenAIService {
   }
 
   /**
-   *
-   * @param url
-   * @returns {title: (size max 200), description: (size max 500)}
+   * Fetches metadata for a URL, correctly handling redirects, auth errors, and JS-based redirect pages.
+   * @param url The original URL requested by the user.
+   * @returns {title: string | null; description: string | null}
    */
   async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
     try {
@@ -450,45 +469,91 @@ export class OpenAIService {
         return JSON.parse(cachedMetadata);
       } catch (err) {
         if (err.code !== 'ENOENT') {
-          throw err;
+          this.sentryService.instance().captureException(err);
         }
       }
-      const urlWithProtocol = this.addHttpsProtocol(url);
-      const urlWithProtocolAndSubdomain = this.addHttpsProtocolAndWWW(url);
+
       let response;
       try {
-        response = await axios.get(urlWithProtocol);
-        // If the content is restricted or behind a login wall, return sensible metadata
-        if (response.status === 401 || response.status === 403) {
-          return { title: 'Restricted Content', description: 'This content is behind a login wall.' };
-        }
+        const headers = {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        };
+
+        response = await axios.get(this.addHttpsProtocol(url), {
+          headers,
+          timeout: 5000,
+          validateStatus: () => true,
+        });
       } catch (error) {
-        try {
-          response = await axios.get(urlWithProtocolAndSubdomain);
-          // If the content is restricted or behind a login wall, return sensible metadata
-          if (response.status === 401 || response.status === 403) {
-            return { title: 'Restricted Content', description: 'This content is behind a login wall.' };
-          }
-        } catch (nestedError) {
-          return { title: '', description: '' };
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          message: `Metadata network fetch failed for ${url}`,
+          data: { error: error.message },
+        });
+        return { title: null, description: null };
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        this.sentryService
+          .instance()
+          .addBreadcrumb({ category: 'Service', message: `Auth error ${response.status} detected for ${url}` });
+        return { title: 'Login Required', description: null };
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        this.sentryService
+          .instance()
+          .addBreadcrumb({ category: 'Service', message: `Non-success status ${response.status} for ${url}` });
+        return { title: null, description: null };
+      }
+
+      const $ = load(response.data);
+      const scrapedTitle = $('head title').text().trim();
+
+      // We now check for generic login titles OR the word "Redirecting".
+      const isLoginOrRedirectTitle = /sign in|log in|login|authentication|loading|redirecting/i.test(scrapedTitle);
+
+      if (isLoginOrRedirectTitle) {
+        const finalUrl = response.request.res.responseUrl || url;
+        const originalHostname = new URL(this.addHttpsProtocol(url)).hostname;
+        const finalHostname = new URL(finalUrl).hostname;
+
+        // Trigger if it's an explicit redirect page OR if the hostname changed to a login page.
+        if (scrapedTitle.toLowerCase() === 'redirecting' || originalHostname !== finalHostname) {
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Service',
+            message: `Login or Redirect page detected for ${url}`,
+            data: { originalUrl: url, finalUrl, scrapedTitle },
+          });
+          return { title: 'Login Required', description: null };
         }
       }
-      const html = response.data;
-      const $ = load(html);
 
-      const title = $('head title').text().trim() || null;
+      const title = scrapedTitle || null;
+      let description: string | null =
+        $('meta[name="description"]').attr('content') || $('meta[property="og:description"]').attr('content') || null;
 
-      // Add null check before calling replace
-      const metaDescriptionContent = $('meta[name="description"]').attr('content');
-      const metadataDescription = metaDescriptionContent ? metaDescriptionContent.replace(/\s+/g, ' ') : null;
+      if (!description) {
+        // 1. Explicitly remove all script and style tags from the body.
+        $('body script, body style').remove();
 
-      const selectedDescription = metadataDescription
-        ? metadataDescription.trim()
-        : $('body').text().replace(/\s+/g, ' ').trim(); // if no meta description, use body text
+        // 2. NOW get the text from the cleaned body.
+        const bodyText = $('body').text();
+        description = bodyText;
+      }
 
-      const truncatedDescription = selectedDescription ? selectedDescription.slice(0, MAX_WORD_LENGTH.metadata) : null;
+      // This function will strip any remaining HTML tags from a string.
+      const stripHtml = (htmlString: string | null): string | null => {
+        if (!htmlString) return null;
+        // Use Cheerio to parse the string and get its clean text content.
+        return load(htmlString).text();
+      };
 
-      // Sanitize both metadata and description
+      const cleanDescription = stripHtml(description)?.replace(/\s+/g, ' ').trim() || null;
+      const truncatedDescription = cleanDescription ? cleanDescription.slice(0, MAX_WORD_LENGTH.metadata) : null;
+
       const sanitizedTitle = this.sanitizeMetadata(title);
       const sanitizedDescription = this.sanitizeMetadata(truncatedDescription);
 
@@ -501,6 +566,7 @@ export class OpenAIService {
 
       return metadata;
     } catch (error) {
+      this.sentryService.instance().captureException(error, { extra: { url } });
       return { title: null, description: null };
     }
   }
@@ -573,7 +639,10 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.USERNAME_VALIDATION,
-      OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      {
+        ...(OPENAI_PARAMS.checkUserName as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+        response_format: { type: 'json_object' },
+      },
     );
 
     const newMessage = completions.choices[0].message;
@@ -746,5 +815,76 @@ export class OpenAIService {
 
   private wrapUserInput(input: string): string {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
+  }
+
+  async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
+    try {
+      const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
+      const response = await openai.chat.completions.create({
+        ...(OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+        messages,
+      });
+      return response;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async processUsageImage(imageBuffer: string): Promise<
+    Record<
+      string,
+      [
+        {
+          sourceName: string;
+          minutesUsedTotal: number;
+          category: string;
+        },
+      ]
+    >
+  > {
+    try {
+      const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+              },
+            },
+          ],
+        },
+      ];
+
+      const response = await this.analyzeImage(messages);
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to process usage image');
+    }
+  }
+
+  async generateEmojiForActivity(activityName: string): Promise<string> {
+    const defaultChat: ChatCompletionMessageParam = {
+      role: 'system',
+      content: `Given the following activity name that is part of the user's routine, generate a single emoji that best describe the activity.
+      Activity name: ${this.wrapUserInput(activityName)}
+      `,
+    };
+
+    const completions = await this.getOpenAIChatCompletionsNonStreaming(
+      [defaultChat],
+      OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
+    );
+
+    const newMessage = completions.choices[0].message;
+    const { content } = newMessage;
+    return content;
   }
 }

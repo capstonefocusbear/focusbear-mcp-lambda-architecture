@@ -110,7 +110,7 @@ export class UserService {
       });
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
-      const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UserWithEmail(email);
+      const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       const { id, stripe_customer_id } = await this.updateOrCreateUser(
         { auth0_id, email, auth0_client },
         registeredUser,
@@ -264,7 +264,7 @@ export class UserService {
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const email = auth0User?.email || '';
-      const { focus_modes } = userDetails;
+      const { focus_modes, teamToAdmin, ...rest } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
         if (focusMode.focus_mode_template_id === null) {
@@ -273,11 +273,14 @@ export class UserService {
         return focusMode;
       });
 
+      const adminForTeams = teamToAdmin?.map(({ team }) => team);
+
       return {
-        ...userDetails,
+        ...rest,
         email,
         focus_modes: formattedFocusModes,
         email_verified: auth0User.email_verified,
+        adminForTeams,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

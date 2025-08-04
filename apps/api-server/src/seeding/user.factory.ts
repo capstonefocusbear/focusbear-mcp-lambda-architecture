@@ -40,6 +40,10 @@ export const UserFactory = setSeederFactory(User, (faker: Faker) => {
   user.evening_percent_number_day_of_stats_completed = faker.number.int({ min: 1, max: 100 });
   user.morning_routines_streak = faker.number.int({ min: 0, max: 50 });
   user.evening_routines_streak = faker.number.int({ min: 0, max: 50 });
+  user.morning_number_days_completed = faker.number.int({ min: 0, max: user.morning_num_days_of_stats });
+  user.morning_num_days_of_stats = faker.number.int({ min: 10, max: 90 });
+  user.evening_number_days_completed = faker.number.int({ min: 0, max: user.evening_num_days_of_stats });
+  user.evening_num_days_of_stats = faker.number.int({ min: 10, max: 90 });
 
   return user;
 });

@@ -135,7 +135,7 @@ Use API collection, make sure to update collection environment with the appropri
 
 #### 4. Code Spell Checker - streetsidesoftware.code-spell-checker
 
-#### 5. Insert final new line
+#### 5. Insert Final New Line
 
 1. Open Visual Studio Code and go to File (Code if using a Mac) -> Preferences -> Settings; you should now be viewing a settings page
 2. Enter 'insert final newline' in to the search bar
@@ -240,26 +240,6 @@ This will output the coverage of each file and which lines aren't covered by exi
 
 When creating test files for services within the NestJS project scope, create the test file in the same folder as the service folder and append the file name with `.spec.ts`
 
-### Render.com Hosting Provider
-
-#### Adding env variables
-
-1. From the dashboard, navigate to 'Env Groups' in the navigation bar
-2. Open desired env group
-3. Edit or add new variables
-
-#### Linking an Env Group to a service
-
-1. Navigate to the service's 'Environment' settings
-2. Scroll down to 'Linked Env Groups'
-3. Select and link the desired Env Group
-
-#### Preview Environments
-
-To test backend changes, a preview server can be set up that will be connected with a preview DB and Redis instance. To set up a preview environment, commit your changes to a feature branch and open a pull request to the main branch. To skip setting up preview environments for a PR, include '[skip preview]' in the title of the PR. To access preview environments, navigate to Render.com > Blueprints > backend-api [PR #number of pull request in GitHub]. From here you can get the staging server URI and database and Redis instance configuration.
-
-The preview DB will be seeded with a test user and some additional records linked to them that can be used for testing. Seed scripts are located at `./apps/api-server/seeds`. For convenience, it's recommended to use the seed user's account registered in Focus Bear when getting an access token locally. (Ask for login credentials)
-
 ### Admin users
 
 To set a user as admin, an admin role should be assigned to them from the Auth0 dashboard and their `user_type` field should be set to `ADMIN` in the users table in the DB.
@@ -281,3 +261,155 @@ For any events that trigger the webhook, the local POST `/subscription/webhooks/
 ### Example Video of Making Change
 
 [Google Doc containing video links](https://docs.google.com/document/d/1ZiiIcFibBE3fQXuY18tFXiIoSFqq1mfYo6CQkzpZgEk/edit?usp=sharing)
+
+## Managing Secrets and Environment Variables for Backend Services on Production build
+
+### How to Add a Secret for Backend Services
+
+To securely add a new secret for backend services, follow these steps:
+
+1. **Open AWS Secrets Manager**
+   - Log in to the AWS Management Console.
+   - Navigate to Secrets Manager.
+2. **Add or Update the Secret through AWS Console or CLI**
+   - Locate the secret named `/prod/backend`.
+   - Add a new key-value pair for your secret, or update an existing one as needed.
+3. **Register the Secret Key in the Infra Codebase**
+   - Go to the [aws-infra repository](https://github.com/Focus-Bear/aws-infra).
+   - Open the file: [`const/secret-config/backend-secrets-config.ts`](https://github.com/Focus-Bear/aws-infra/blob/main/const/secret-config/backend-secrets-config.ts).
+   - Add your new key to the `BACKEND_SECRET_ENV_KEYS` enum, as appropriate.
+4. **Submit Your Changes**
+   - Commit your code changes.
+   - Create a Pull Request (PR) for review.
+
+> **Note:**
+>
+> - Ensure your secret key name matches exactly in both AWS Secrets Manager and the codebase.
+> - Never commit actual secret values to the repository.
+
+### How to Add a Non-Secret Environment Variable for Backend Services
+
+To add a new non-secret environment variable for backend services, follow these steps:
+
+1. **Open AWS Systems Manager (SSM) Parameter Store**
+   - Log in to the AWS Management Console.
+   - Navigate to Systems Manager → Parameter Store.
+2. **Add or Update the Parameter through AWS Console or CLI**
+   - Create a new parameter or update an existing one.
+   - Use the path format: `/prod/backend/<your_variable_name>`
+   - Set the appropriate value for your environment variable.
+3. **Register the Environment Variable in the Codebase**
+   - Go to the [aws-infra repository](https://github.com/Focus-Bear/aws-infra).
+   - Open the file: [const/env-config/backend-env-variable.ts](https://github.com/Focus-Bear/aws-infra/blob/main/const/env-config/backend-env-variable.ts).
+   - Add your new key to the `BACKEND_CONFIG_ENV_KEYS` enum.
+   - Add the corresponding entry to the `BACKEND_ENV_PATHS` object with the SSM path and provided status.
+4. **Submit Your Changes**
+   - Commit your code changes.
+   - Create a Pull Request (PR) for review.
+
+> **Note:**
+>
+> - Ensure your parameter path matches exactly in both AWS SSM Parameter Store and the codebase.
+> - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
+> - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).
+
+
+## Guide for New Developers
+
+Welcome to the FocusBear backend repository! This guide will help you get started with development and make your first contribution.
+
+### Getting Started
+#### Prerequisites: 
+Make sure you follow the [Project local setup](#project-local-setup) instructions to set up your local environment.
+
+### Troubleshooting Common Issues
+#### Database Connection Issues
+
+**Problem**: "Connection refused" or "Database does not exist"
+```bash
+# Solution: Restart Docker containers (use "-d" to run in detached mode)
+docker-compose down
+docker-compose up -d
+
+# Check if containers are running
+docker-compose ps
+```
+
+#### Package Lock Conflicts
+
+**Problem**: Merge conflicts in `package-lock.json`
+```bash
+# Delete the conflicted file and regenerate
+rm package-lock.json
+npm install
+git add package-lock.json
+git commit -m "Resolve package-lock.json conflict"
+```
+> you might need to run `git add -f package-lock.json` if the file is ignored by .gitignore
+
+### Debugging Tips
+
+1. **Database Issues**: Use Adminer (http://localhost:8080) to inspect your local database (check `docker-compose.yml` or your `.env` file for credentials)
+2. **API Testing**: Use Bruno or Postman with the provided API collections (check the description above for details)
+3. **Logs**: Check console output and add strategic `console.log` statements
+4. **Error Handling**: Ensure proper error handling in your code to catch and log exceptions, and check:
+   - Is the database connection established?
+   - Is the docker container running? (for Docker users)
+   - Are the environment variables (the `.env` file) set correctly?
+   - Are the migrations up to date? (check migration section above)
+
+### Project Structure Overview
+
+Here is a high-level overview of the project structure to help you navigate:
+```
+backend/
+├── apps/api-server/          # Main NestJS application
+│   ├── src/
+│   │   ├── modules/         # Feature modules (users, activities, etc.)
+│   │   ├── config/          # Configuration files
+│   │   └── shared/          # Shared utilities and entities
+│   ├── migrations/          # Database migrations
+│   └── test/               # E2E tests
+├── cron-jobs/              # Scheduled background jobs
+├── libs/                   # Shared libraries (auth, crypto, etc.)
+├── api-requests-collections/ # Bruno/Postman API collections
+└── docs/                   # Documentation
+```
+
+### Contributing Your First PR
+1. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make Your Changes** following Focus Bear's coding standards and naming conventions.
+
+   Also, make sure your end of file has a trailing newline. To make sure you don't forget this, configure your VS Code settings:
+
+   **Enable "Insert Final Newline"**:
+   - Open VS Code Settings (File → Preferences → Settings)
+   - Search for "insert final newline"
+   - Check the box under "Files: Insert Final Newline"
+   - This ensures all files end with a newline character (required by our linting rules)
+
+3. **Test Everything**:
+   ```bash
+   npm run test
+   npm run lint
+   ```
+   - Ensure all tests pass and linting issues are resolved.
+   - You can run individual files by checking the `package.json` scripts for invoking specific commands.
+
+4. **Create Migration** (if you changed entities)
+5. **Commit with Descriptive Messages**:
+   ```bash
+   git add .
+   git commit -m "feat: add user profile validation"
+   ```
+   - Use conventional commit messages (e.g., `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `style`, `test`, `hotfix`, `revert`, `chore`, `security`) for types.
+6. **Push and Create PR**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+7. **Fill Out PR Template Completely (On GitHub)** - don't skip any checklist items!

@@ -350,131 +350,128 @@ describe('OpenAIService', () => {
   });
 
   describe('getMetadata', () => {
+    // Use let to allow re-assignment in beforeEach
+    let mockAxiosGet: jest.SpyInstance;
+    let mockReadFile: jest.SpyInstance;
+    let mockWriteFile: jest.SpyInstance;
+    let mockSanitizeMetadata: jest.SpyInstance;
+
     beforeEach(() => {
-      jest.spyOn(service as any, 'sanitizeMetadata').mockImplementation((text: string | null) => {
-        if (!text) return null;
-        return text.replace(/dangerous/gi, '[filtered]');
-      });
+      // Mock all external dependencies used by getMetadata
+      mockAxiosGet = jest.spyOn(axios, 'get');
+      mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' }); // Default to cache miss
+      mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
+      // Keep your sanitize mock as it isolates the test to getMetadata's logic
+      mockSanitizeMetadata = jest
+        .spyOn(service as any, 'sanitizeMetadata')
+        .mockImplementation((text: string | null) => text);
+    });
+
+    afterEach(() => {
+      // Restore all mocks after each test to ensure test isolation
+      jest.restoreAllMocks();
+    });
+
+    it('should return cached metadata if available', async () => {
+      const cachedData = { title: 'Cached Title', description: 'Cached Description' };
+      mockReadFile.mockResolvedValue(JSON.stringify(cachedData)); // Override default mock for this test
+
+      const result = await service.getMetadata('https://example.com');
+
+      expect(result).toEqual(cachedData);
+      expect(mockReadFile).toHaveBeenCalled();
+      expect(mockAxiosGet).not.toHaveBeenCalled(); // Should not fetch if cache is hit
     });
 
     it('should apply sanitizeMetadata to fetched title and description', async () => {
-      const sanitizeMetadataSpy = jest.spyOn(service as any, 'sanitizeMetadata');
-
-      const mockAxiosGet = jest.spyOn(axios, 'get').mockResolvedValueOnce({
-        status: 200,
-        data: `
-        <html>
-          <head>
-            <title>Test Title with dangerous content</title>
-            <meta name="description" content="Test Description with dangerous words">
-          </head>
-          <body>Body content</body>
-        </html>
-      `,
+      mockSanitizeMetadata.mockImplementation((text: string | null) => {
+        if (!text) return null;
+        return text.replace(/dangerous/gi, '[filtered]');
       });
 
-      const mockMkdir = jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-      const mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-      const mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' });
+      const mockHtml = `
+      <html>
+        <head>
+          <title>Test Title with dangerous content</title>
+          <meta name="description" content="Test Description with dangerous words">
+        </head>
+      </html>`;
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: 'https://example.com' } },
+      });
 
       const result = await service.getMetadata('https://example.com');
 
       expect(result.title).toContain('[filtered]');
       expect(result.description).toContain('[filtered]');
-      expect(sanitizeMetadataSpy).toHaveBeenCalledTimes(2);
-      expect(mockMkdir).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalled();
-
-      mockAxiosGet.mockRestore();
-      mockMkdir.mockRestore();
-      mockWriteFile.mockRestore();
-      mockReadFile.mockRestore();
-      sanitizeMetadataSpy.mockRestore();
+      expect(mockSanitizeMetadata).toHaveBeenCalledTimes(2);
+      expect(mockWriteFile).toHaveBeenCalled(); // Should cache the sanitized result
     });
 
-    it('should return cached metadata if available', async () => {
-      const sanitizeMetadataSpy = jest.spyOn(service as any, 'sanitizeMetadata');
-
-      const cachedData = { title: 'Cached Title', description: 'Cached Description' };
-      const mockReadFile = jest.spyOn(fs, 'readFile').mockResolvedValue(JSON.stringify(cachedData));
+    it('should handle network errors by returning nulls', async () => {
+      // Simulate a complete network failure
+      mockAxiosGet.mockRejectedValue(new Error('Network error'));
 
       const result = await service.getMetadata('https://example.com');
 
-      expect(result).toEqual(cachedData);
-      expect(sanitizeMetadataSpy).not.toHaveBeenCalled(); // Shouldn't sanitize cached data
-      expect(mockReadFile).toHaveBeenCalled();
-
-      mockReadFile.mockRestore();
-      sanitizeMetadataSpy.mockRestore();
+      // The new, correct behavior is to return nulls for both fields
+      expect(result).toEqual({ title: null, description: null });
     });
 
-    it('should handle network errors when fetching URL', async () => {
-      const mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' });
-      const mockAxiosGet = jest
-        .spyOn(axios, 'get')
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockRejectedValueOnce(new Error('Network error with www')); // Also reject the www version
-
-      const result = await service.getMetadata('https://example.com');
-
-      expect(result).toEqual({ title: '', description: '' }); // Match the actual implementation's empty string return
-      expect(mockReadFile).toHaveBeenCalled();
-      expect(mockAxiosGet).toHaveBeenCalled();
-
-      mockReadFile.mockRestore();
-      mockAxiosGet.mockRestore();
-    });
-
-    it('should handle restricted content responses', async () => {
-      const mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' });
-      const mockAxiosGet = jest.spyOn(axios, 'get').mockResolvedValue({
+    it('should handle restricted content (401/403) by returning the Login Required signal', async () => {
+      // Simulate a 401 Unauthorized response
+      mockAxiosGet.mockResolvedValue({
         status: 401,
         data: 'Unauthorized',
+        request: { res: { responseUrl: 'https://example.com/login' } },
       });
 
       const result = await service.getMetadata('https://example.com');
 
+      // The new, correct behavior is to return our standardized signal
       expect(result).toEqual({
-        title: 'Restricted Content',
-        description: 'This content is behind a login wall.',
+        title: 'Login Required',
+        description: null,
       });
-
-      mockReadFile.mockRestore();
-      mockAxiosGet.mockRestore();
     });
 
-    it('should try the URL with www prefix if regular URL fails', async () => {
-      const mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' });
+    it('should handle JS-based redirects by returning the Login Required signal', async () => {
+      const mockHtml = '<html><head><title>Redirecting</title></head></html>';
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: 'https://example.com' } },
+      });
 
-      const mockAxiosGet = jest
-        .spyOn(axios, 'get')
-        .mockRejectedValueOnce(new Error('Failed without www'))
-        .mockResolvedValueOnce({
-          status: 200,
-          data: `
-          <html>
-            <head>
-              <title>Test Title</title>
-              <meta name="description" content="Test Description">
-            </head>
-          </html>
-        `,
-        });
+      const result = await service.getMetadata('https://example.com');
 
-      const mockMkdir = jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-      const mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
+      expect(result).toEqual({ title: 'Login Required', description: null });
+    });
 
-      const result = await service.getMetadata('example.com');
+    it('should clean junk scripts from the body when no meta description is present', async () => {
+      const mockHtml = `
+      <html>
+        <head><title>Test Title</title></head>
+        <body>
+          <style>.a{color:red}</style>
+          <p>Some real content.</p>
+          <script>alert('junk');</script>
+        </body>
+      </html>`;
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: 'https://example.com' } },
+      });
+
+      const result = await service.getMetadata('https://example.com');
 
       expect(result.title).toBe('Test Title');
-      expect(result.description).toBe('Test Description');
-      expect(mockAxiosGet).toHaveBeenCalledTimes(2);
-      expect(mockAxiosGet).toHaveBeenNthCalledWith(1, 'https://example.com');
-      expect(mockAxiosGet).toHaveBeenNthCalledWith(2, 'https://www.example.com');
-
-      mockReadFile.mockRestore();
-      mockMkdir.mockRestore();
-      mockWriteFile.mockRestore();
+      expect(result.description).toBe('Some real content.'); // The junk should be gone
+      expect(result.description).not.toContain('color:red');
+      expect(result.description).not.toContain("alert('junk')");
     });
   });
 

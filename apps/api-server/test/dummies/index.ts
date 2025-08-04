@@ -44,6 +44,8 @@ import {
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
+import { TeamToMember } from '../../src/modules/team/entities/team-to-member.entity';
+import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1237,11 +1239,35 @@ export const TeamWithMembersDummy = new Team({
   payment_type: PaymentType.STRIPE,
   stripe_subscription_id: 'sub_123',
   stripe_data: { subscriptionId: 'sub_123', customerId: userDummy.stripe_customer_id, subscriptionItemId: 'si_123' },
+  expires_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
 });
 
-export const TeamMemberDummy = new User({
-  ...userDummy,
+export const TeamMemberDummy = new TeamToMember({
   id: randomUUID(),
+  first_name: 'dummy first name',
+  last_name: 'dummy last name',
+  email: 'dummy@email.com',
+  team_id: TeamWithMembersDummy.id,
+  member_id: randomUUID(),
+  member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+  invitation_status: InvitationStatus.ACCEPTED,
+  invitation_sent_at: new Date(),
+  invitation_send_count: 1,
+  invitation_responded_at: new Date(),
+});
+
+export const TeamMemberFake = new TeamToMember({
+  id: randomUUID(),
+  first_name: 'fake first name',
+  last_name: 'fake last name',
+  email: 'fake@email.com',
+  team_id: TeamWithMembersDummy.id,
+  member_id: randomUUID(),
+  member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+  invitation_status: InvitationStatus.ACCEPTED,
+  invitation_sent_at: new Date(),
+  invitation_send_count: 1,
+  invitation_responded_at: new Date(),
 });
 
 export const pusherBeamsPublishRequestDummy = {
@@ -2050,17 +2076,18 @@ export const DummyTasksStreaksResponse = {
     micro_breaks_streak: 2,
   },
   LEVEL_ONE: {
-    // Set streaks to minimum for level 1
+    // Set streaks to minimum for level 1 (micro breaks not required)
     focus_modes_streak: 1,
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Changed: micro breaks not required for level 1
   },
   LEVEL_TWO: {
-    focus_modes_streak: 1, // Just below the threshold for level 2
+    // Just below the threshold for level 2 (should stay at level 1)
+    focus_modes_streak: 1, // Below level 2 requirement (2)
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Not required for levels 1-2 anyway
   },
   LEVEL_MAX: {
     focus_modes_streak: 100, // High streaks

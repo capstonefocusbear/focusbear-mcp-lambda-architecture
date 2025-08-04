@@ -3,8 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Auth0Module } from '@app/auth0';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { IPusherOptions, PusherModule } from '@app/pusher';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bull';
+import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { AuthService } from './services/auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
 import { HelperModule } from '../helper/helper.module';
@@ -45,6 +46,16 @@ import { UserModule } from '../user/user.module';
     GoogleAuthService,
     MicrosoftAuthService,
     AuthServiceFactory,
+    {
+      provide: 'EmailVerificationJwtService',
+      useFactory: (config: ConfigService) => new JwtService(config.get('tokens.email_verification')),
+      inject: [ConfigService],
+    },
+    {
+      provide: 'ResetPasswordJwtService',
+      useFactory: (config: ConfigService) => new JwtService(config.get('tokens.password_reset')),
+      inject: [ConfigService],
+    },
   ],
   exports: [
     IsAuth,
@@ -80,6 +91,11 @@ import { UserModule } from '../user/user.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => configService.get('tokens.invitation'),
+    }),
+    SendGridModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ISendGridOptions => configService.get('sendGrid'),
     }),
     HelperModule,
     ConfigModule,

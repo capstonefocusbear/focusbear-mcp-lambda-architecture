@@ -38,7 +38,7 @@ export const ConfigServiceMock = {
 export const Auth0ManagementServiceMock = {
   getUser: jest.fn(),
   getAuth0User: jest.fn(),
-  getAuth0UserWithEmail: jest.fn(),
+  getAuth0UsersWithEmail: jest.fn(),
   deleteAuth0User: jest.fn(),
   getDeviceCredentials: jest.fn(),
   resendEmailVerification: jest.fn(),
@@ -92,6 +92,7 @@ export const RevenueCatServiceMock = {
   checkSubscriptionStatus: jest.fn(),
   deleteUserFromRevenueCat: jest.fn(),
   getSubscriberFromRevenueCat: jest.fn(),
+  updateEntitlementExpiry: jest.fn(),
 };
 
 export const UserSettingsServiceMock = {
@@ -105,6 +106,10 @@ export const UserSettingsServiceMock = {
 export const JwtServiceMock = {
   asyncSign: jest.fn(),
   asyncVerify: jest.fn(),
+  sign: jest.fn(),
+  signAsync: jest.fn(),
+  verify: jest.fn(),
+  verifyAsync: jest.fn(),
 };
 
 export const SendGridServiceMock = {
@@ -176,6 +181,8 @@ export const FocusModeServiceMock = {
 
 export const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
+  getJsonFromBucket: jest.fn(),
+  addObjectToBucket: jest.fn(),
 };
 
 export const UserDailyStatsServiceMock = {
@@ -195,6 +202,7 @@ export const OpenAIServiceMock = {
   convertBrainDumpToTasks: jest.fn(),
   checkIfUrlIsSafeToUse: jest.fn(),
   checkIfAppIsSafeToUse: jest.fn(),
+  generateEmojiForActivity: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

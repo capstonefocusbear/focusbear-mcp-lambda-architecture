@@ -104,6 +104,13 @@ async function calculateRoutineCompletionPercentage(
     (activity) =>
       !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete && activity.duration_logged > 0,
   );
+
+  // If this is a micro break routine, count as 100% if any activity was completed, else 0%
+  if (existingRoutineLog.activity_sequence?.type === ActivityType.break) {
+    return activitiesThatWereCompleted.length > 0 ? 100 : 0;
+  }
+
+  // For other routines, keep the old logic
   const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
     (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),
     0,

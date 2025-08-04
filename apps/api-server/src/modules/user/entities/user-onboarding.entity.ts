@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { OnboardingDto } from '../dto/onboarding';
 import { User } from './user.entity';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 @Entity('user_onboarding')
 export class UserOnboarding extends BaseEntity {
@@ -23,7 +24,15 @@ export class UserOnboarding extends BaseEntity {
     nullable: true,
     transformer: BaseEntity.encryptJSONField('onboarding'),
   })
-  onboarding?: OnboardingDto;
+  onboarding: OnboardingDto;
+
+  @Column({
+    type: 'enum',
+    nullable: false,
+    enum: OperatingSystem,
+    default: OperatingSystem.Unknown,
+  })
+  platform: OperatingSystem;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

@@ -279,5 +279,5 @@ export const CustomRoutineRepositoryMock = {
 
 export const UserOnboardingRepositoryMock = {
   ...BaseRepositoryMock,
-  findByUserId: jest.fn(),
+  findByUserIdAndOs: jest.fn(),
 };

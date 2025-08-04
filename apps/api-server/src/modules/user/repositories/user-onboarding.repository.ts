@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Connection } from 'typeorm';
+import { OperatingSystem } from '@api-server/shared/domain/operating-system.enum';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { UserOnboarding } from '../entities/user-onboarding.entity';
 
@@ -9,7 +10,13 @@ export class UserOnboardingRepository extends BaseRepository<UserOnboarding> {
     super(connection, UserOnboarding);
   }
 
-  async findByUserId(userId: string): Promise<UserOnboarding | null> {
-    return this.orm.findOne({ where: { user_id: userId } });
+  async findByUserIdAndOs(userId: string, os?: OperatingSystem): Promise<UserOnboarding | null> {
+    const query = this.orm.createQueryBuilder('user_onboarding').where('user_onboarding.user_id = :userId', { userId });
+
+    if (os !== undefined) {
+      query.andWhere('user_onboarding.os = :os', { os });
+    }
+
+    return query.getOne();
   }
 }

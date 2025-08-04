@@ -1,15 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { BearsonaProfile } from '../../domain/onboarding/bearsona-profile.enum';
-import { OnboardFlowFeature } from '../../domain/onboarding/onboarding-flow-feature.enum';
-import { OnboardFlowStep } from '../../domain/onboarding/onboarding-flow-step.enum';
-import { OnboardFlowTimeUI } from '../../domain/onboarding/onboarding-flow-time-ui.enum';
-import { RoutineType } from '../../domain/routine-type.enum';
+import { OperatingSystem } from '@api-server/shared/domain/operating-system.enum';
 import { OnboardingDto } from '../../dto/onboarding';
 import { UpdateOnboardingProgressDto } from '../../dto/onboarding/update-onboarding-progress.dto';
 import { UserOnboarding } from '../../entities/user-onboarding.entity';
 import { UserOnboardingRepository } from '../../repositories/user-onboarding.repository';
 import { UserRepository } from '../../repositories/user.repository';
+import { DEFAULT_ONBOARDING_DATA } from '../../../../shared/utils/constants';
+import { GetUserOnboardingQueryDto } from '../../dto/onboarding/get-user-onboarding-query.dto';
 
 @Injectable()
 export class UserOnboardingService {
@@ -30,14 +28,7 @@ export class UserOnboardingService {
         },
       });
 
-      const userExists = await this.userRepository.orm.findOne({
-        where: { id: dto.user_id },
-        select: ['id'],
-      });
-
-      if (!userExists) {
-        throw new NotFoundException(`User with id ${dto.user_id} does not exist.`);
-      }
+      await this.checkIfUserExists(dto.user_id);
 
       const userOnboarding = new UserOnboarding(
         {
@@ -59,19 +50,23 @@ export class UserOnboardingService {
     }
   }
 
-  async getOnboardingProgress(userId: string): Promise<OnboardingDto | null> {
+  async getOnboardingProgress(query: GetUserOnboardingQueryDto): Promise<OnboardingDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Retrieving temporary onboarding data',
-        data: { user_id: userId },
+        message: 'Getting onboarding data',
+        data: { ...query },
       });
 
-      const userData = await this.userOnboardingRepository.findByUserId(userId);
+      await this.checkIfUserExists(query.user_id);
+
+      const userData = await this.userOnboardingRepository.findByUserIdAndOs(query.user_id, query.os);
 
       if (!userData) {
-        throw new NotFoundException(`No onboarding data found for user ID ${userId}.`);
+        throw new NotFoundException(
+          `No onboarding data found for user ID${query.user_id} ${query.os ? ` and OS ${query.os}.` : '.'}`,
+        );
       }
 
       return userData.onboarding;
@@ -81,35 +76,20 @@ export class UserOnboardingService {
     }
   }
 
-  async createOnboardingData(userId: string): Promise<UserOnboarding | null> {
+  async createOnboardingData(userId: string, os: OperatingSystem): Promise<UserOnboarding> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Creating default onboarding data for user',
-        data: { user_id: userId },
+        data: { user_id: userId, os },
       });
 
       const userOnboarding = new UserOnboarding(
         {
           user_id: userId,
-          onboarding: {
-            currentStep: OnboardFlowStep.DATA_PRIVACY,
-            features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS],
-            routines: [RoutineType.MORNING_ROUTINE, RoutineType.EVENING_ROUTINE],
-            profile: { name: BearsonaProfile.OG, useProfileLang: true },
-            activities: { morning_activities: [], evening_activities: [] },
-            selectedGoals: [],
-            times: {
-              [OnboardFlowTimeUI.WAKE_UP]: '06:00',
-              [OnboardFlowTimeUI.START_STUDY]: '08:00',
-              [OnboardFlowTimeUI.FINISH_STUDY]: '17:30',
-              [OnboardFlowTimeUI.GO_TO_SLEEP]: '21:00',
-            },
-            currentTimeUI: OnboardFlowTimeUI.WAKE_UP,
-            break_after_minutes: 20,
-            skippedSteps: [],
-          },
+          onboarding: DEFAULT_ONBOARDING_DATA,
+          platform: os,
         },
         { generateId: true },
       );
@@ -120,6 +100,17 @@ export class UserOnboardingService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
+    }
+  }
+
+  private async checkIfUserExists(userId: string): Promise<void> {
+    const userExists = await this.userRepository.orm.findOne({
+      where: { id: userId },
+      select: ['id'],
+    });
+
+    if (!userExists) {
+      throw new NotFoundException(`User with id ${userId} does not exist.`);
     }
   }
 }

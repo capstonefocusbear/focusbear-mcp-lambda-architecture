@@ -374,7 +374,6 @@ describe('helpers', () => {
           focus_modes_completed: 1,
           morning_routine_completion_percentage: 100,
           evening_routine_completion_percentage: 100,
-          micro_breaks_routine_completion_percentage: 100,
           seconds_spent_doing_breaks: 9,
           created_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
           updated_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
@@ -384,7 +383,6 @@ describe('helpers', () => {
           focus_modes_completed: 1,
           morning_routine_completion_percentage: 100,
           evening_routine_completion_percentage: 100,
-          micro_breaks_routine_completion_percentage: 100,
           seconds_spent_doing_breaks: 9,
           created_at: new Date(DateTime.local().minus({ days: 95 }).toISODate()),
           updated_at: new Date(DateTime.local().minus({ days: 95 }).toISODate()),
@@ -455,17 +453,18 @@ describe('helpers', () => {
       const newerUserSignupDaysAgo = 15;
       const { userDailyStats: newerUserStats, expected: newerExpected } = setupTest(
         [
+          { date: DateTime.local().minus({ days: 1 }).toISODate(), focusModes: 1, morning: 0, evening: 9, secondsSpentDoingBreaks: 0   },
           { date: DateTime.local().minus({ days: 2 }).toISODate(), focusModes: 2, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 3 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 9   },
+          { date: DateTime.local().minus({ days: 3 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 9   },
           { date: DateTime.local().minus({ days: 4 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 9   },
           { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 100 },
           { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 0 },
         ],
         newerUserSignupDaysAgo,
-        5,   // 5 days with activity
-        33, // 5/15 = 33.33% ≈ 33% (5 completed days out of 15 possible)
-        20,
-        27, // 4/15 = 26.67% ≈ 27% (4 completed micro breaks out of 15 possible days)
+        6,   // 6 days with activity
+        33, // 5/15 = 33.33% ≈ 33% (Morning: 5 completed days out of 15 possible)
+        13, // 2/15 = 13.33% ≈ 13% (Evening: 2 completed evening routines out of 15 possible days)
+        27, // 4/15 = 26.67% ≈ 27% (Micro Breaks: 4 completed micro breaks out of 15 possible days)
       );
 
       // Adjust expected streaks based on current day of the week
@@ -474,9 +473,9 @@ describe('helpers', () => {
       const isMonday = today.weekday === 1; // 1 = Monday in Luxon
       
       if (isMonday) {
-        // If today is Monday, the streaks should be higher (count the last week's 4 weekdays)
         newerExpected.focus_modes_streak = 4;
         newerExpected.micro_breaks_streak = 4;
+        newerExpected.evening_routines_streak = 0; // morning and evening routines do not get affected by weekday logic
       } else {
         newerExpected.focus_modes_streak = 0;
         newerExpected.micro_breaks_streak = 0;
@@ -496,7 +495,6 @@ describe('helpers', () => {
           focus_modes_completed: 1,
           morning_routine_completion_percentage: 100,
           evening_routine_completion_percentage: 100,
-          micro_breaks_routine_completion_percentage: 100,
           seconds_spent_doing_breaks: 9,
           created_at: new Date(exactlyNinetyDaysAgo),
           updated_at: new Date(exactlyNinetyDaysAgo),
@@ -506,7 +504,6 @@ describe('helpers', () => {
           focus_modes_completed: 1,
           morning_routine_completion_percentage: 100,
           evening_routine_completion_percentage: 100,
-          micro_breaks_routine_completion_percentage: 100,
           seconds_spent_doing_breaks: 9,
           created_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
           updated_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),

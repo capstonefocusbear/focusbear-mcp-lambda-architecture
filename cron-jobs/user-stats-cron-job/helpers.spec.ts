@@ -453,6 +453,9 @@ describe('helpers', () => {
         13, // 2/15 = 13.33% ≈ 13% (2 completed micro breaks out of 15 possible days)
       );
 
+      // Fix the expected focus_modes_streak since most recent day (2 days ago) has 1 focus mode
+      newerExpected.focus_modes_streak = 1;
+
       runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
     });
 

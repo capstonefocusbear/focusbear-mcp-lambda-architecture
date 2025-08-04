@@ -49,13 +49,13 @@ export function determineUserLevel(
     const areEnoughEveningRoutinesCompleted = evening_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughFocusModesCompleted = focus_modes_streak >= currentLevelBeingChecked.focus_modes;
     const areEnoughMicroBreakRoutinesCompleted = micro_breaks_streak >= currentLevelBeingChecked.routines;
-    
+
     // Adding the condition for micro breaks streak progression
     // Level 1 and Level 2 users can bypass the micro breaks requirement
     // Micro breaks only required from Level 3 and above
     const isMicroBreaksBypassLevel = currentLevelBeingChecked.level === 1 || currentLevelBeingChecked.level === 2;
     const microBreaksRequirementMet = isMicroBreaksBypassLevel || areEnoughMicroBreakRoutinesCompleted;
-    
+
     if (
       areEnoughMorningRoutinesCompleted &&
       areEnoughEveningRoutinesCompleted &&
@@ -124,7 +124,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
   );
 
   const daysWhereMicroBreaksWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
-    (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
+    (dailyStat) => dailyStat.seconds_spent_doing_breaks > 0,
   );
 
   const daysWhereFocusModesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
@@ -219,7 +219,7 @@ const getStartOfPrevWeekDay = (startOfPrevDay: Date) => {
   return dayToCheck.startOf('day').toJSDate();
 };
 
-export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZone: string) {
+export function calculateStreakForWeekdaysOnly(userDailyStats: DailyStats[], timeZone: string) {
   if (userDailyStats.length === 0) {
     return 0;
   }
@@ -258,13 +258,22 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   return isValidStreak(streak) ? streak : 0;
 }
 
+export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZone: string) {
+  return calculateStreakForWeekdaysOnly(userDailyStats, timeZone);
+}
+
+export function calculateStreakForMicroBreaks(userDailyStats: DailyStats[], timeZone: string) {
+  return calculateStreakForWeekdaysOnly(userDailyStats, timeZone);
+}
+
 export function calculateStreaks(
   userDailyStats: DailyStats[],
   timeZone: string,
   {
     morningRoutineDailyDurations,
     eveningRoutineDailyDurations,
-    microBreaksDailyDurations,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    microBreaksDailyDurations, // Not used in simplified micro break logic
   }: {
     morningRoutineDailyDurations: DailySequenceDurations;
     eveningRoutineDailyDurations: DailySequenceDurations;
@@ -278,8 +287,9 @@ export function calculateStreaks(
   const daysWhereEveningRoutinesWereCompleted = userDailyStats.filter(
     (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
+  // Simplified micro break completion logic: if any time was spent doing breaks that day, count it as completed
   const daysWhereMicroBreaksWereCompleted = userDailyStats.filter(
-    (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
+    (dailyStat) => dailyStat.seconds_spent_doing_breaks > 0,
   );
 
   // calculate the tasks complete in 90 days (percent)
@@ -313,11 +323,7 @@ export function calculateStreaks(
     eveningRoutineDailyDurations,
   );
 
-  const micro_breaks_streak = calculateStreakForRoutine(
-    daysWhereMicroBreaksWereCompleted,
-    timeZone,
-    microBreaksDailyDurations,
-  );
+  const micro_breaks_streak = calculateStreakForMicroBreaks(daysWhereMicroBreaksWereCompleted, timeZone);
 
   return {
     focus_modes_streak: isValidStreak(focus_modes_streak) ? focus_modes_streak : 0,

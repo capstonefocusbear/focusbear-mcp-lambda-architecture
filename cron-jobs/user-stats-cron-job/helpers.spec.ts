@@ -184,15 +184,16 @@ describe('helpers', () => {
         morning_routine_completion_percentage: stat.morning,
         evening_routine_completion_percentage: stat.evening,
         micro_breaks_routine_completion_percentage: stat.microBreaks,
+        seconds_spent_doing_breaks: stat.microBreaks, // Map microBreaks to seconds_spent_doing_breaks for the new logic
         created_at: new Date(stat.date).toISOString(),
         updated_at: new Date(stat.date).toISOString(),
       }));
 
       // Calculate morning and evening specific counts
-      const morningCompleted = stats.filter(stat => stat.morning >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
-      const eveningCompleted = stats.filter(stat => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
-      const microBreaksCompleted = stats.filter(stat => stat.microBreaks >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
-      const focusModesCompleted = stats.filter(stat => stat.focusModes > 0).length;
+      const morningCompleted = stats.filter((stat) => stat.morning >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+      const eveningCompleted = stats.filter((stat) => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
+      const microBreaksCompleted = stats.filter((stat) => stat.microBreaks > 0).length; // Uses > 0 for new logic: any seconds spent = completed
+      const focusModesCompleted = stats.filter((stat) => stat.focusModes > 0).length;
 
       const expected = {
         focus_modes_streak: 0,

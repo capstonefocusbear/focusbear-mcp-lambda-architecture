@@ -1,7 +1,18 @@
 import { DateTime } from 'luxon';
 import { LessThan } from 'typeorm';
+import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { getUsersWithOutdatedData } from './cron-job';
+
+jest.mock('@google/genai', () => ({
+  GoogleGenAI: jest.fn().mockImplementation(() => ({
+    models: {
+      generateContent: jest.fn().mockResolvedValue({
+        text: '{"mock": "response"}',
+      }),
+    },
+  })),
+}));
 
 // Mock the data source
 jest.mock('../data-source', () => {
@@ -17,17 +28,14 @@ jest.mock('../data-source', () => {
 
 describe('getUsersWithOutdatedData', () => {
   let mockManager: any;
-  let mockDataSource: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    const { CronJobDataSource } = require('../data-source');
-    mockDataSource = CronJobDataSource;
     mockManager = CronJobDataSource.manager;
   });
 
   it('should fetch participants with outdated usage data', async () => {
-    //only this if it called the typeorm find method, cant test the filter without integration tests
+    // only this if it called the typeorm find method, cant test the filter without integration tests
     const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
     jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
 
@@ -37,9 +45,8 @@ describe('getUsersWithOutdatedData', () => {
       { id: '2', userId: 'user2', usageDataLastReceived: mockNow.minus({ days: 5 }).toJSDate() },
     ];
     mockManager.find.mockResolvedValue(mockParticipants);
-    
+
     const result = await getUsersWithOutdatedData();
-    console.log(result);
 
     expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
       where: { usageDataLastReceived: LessThan(threeDaysAgo) },
@@ -58,9 +65,8 @@ describe('getUsersWithOutdatedData', () => {
       { id: '4', userId: 'user4', usageDataLastReceived: mockNow.minus({ days: 7 }).toJSDate() },
     ];
     mockManager.find.mockResolvedValue(mockParticipants);
-    
+
     const result = await getUsersWithOutdatedData();
-    console.log(result);
 
     expect(result).toEqual([
       { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
@@ -73,7 +79,7 @@ describe('getUsersWithOutdatedData', () => {
     jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
 
     mockManager.find.mockResolvedValue([]);
-    
+
     const result = await getUsersWithOutdatedData();
 
     expect(result).toEqual([]);
@@ -85,13 +91,11 @@ describe('getUsersWithOutdatedData', () => {
 
     const expectedThreeDaysAgo = mockNow.minus({ days: 3 }).toJSDate();
     mockManager.find.mockResolvedValue([]);
-    
+
     await getUsersWithOutdatedData();
 
     expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
       where: { usageDataLastReceived: LessThan(expectedThreeDaysAgo) },
     });
   });
-
-  
 });

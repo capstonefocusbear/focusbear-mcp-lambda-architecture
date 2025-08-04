@@ -212,6 +212,7 @@ export class UserDailyStatsService {
       userDailyStats,
       user.timezone,
       routineDurations,
+      new Date(user.created_at),
     );
     return { focus_modes_streak, morning_routines_streak, evening_routines_streak };
   }
@@ -231,11 +232,16 @@ export class UserDailyStatsService {
       const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
         await this.activitySequenceService.getUserRoutineDailyDurations(user_id);
       const { focus_modes_streak, morning_routines_streak, evening_routines_streak, micro_breaks_streak } =
-        calculateStreaks(userDailyStats, user.timezone, {
-          morningRoutineDailyDurations,
-          eveningRoutineDailyDurations,
-          microBreaksDailyDurations,
-        });
+        calculateStreaks(
+          userDailyStats,
+          user.timezone,
+          {
+            morningRoutineDailyDurations,
+            eveningRoutineDailyDurations,
+            microBreaksDailyDurations,
+          },
+          new Date(user.created_at),
+        );
       const { morningRoutineAverage, eveningRoutineAverage, focusModesAverage, breakRoutineAverage } =
         getRoutinesAndFocusModesAverages(userDailyStats);
       const { hasInstalledDesktopApp, hasInstalledMobileApp } = await this.deviceService.getUserInstalledDevices(

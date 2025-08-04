@@ -172,7 +172,7 @@ describe('helpers', () => {
         evening: number;
         microBreaks: number;
       }[],
-      numDays: number,
+      userSignupDaysAgo: number,
       numDaysComplete: number,
       percentMorning: number,
       percentEvening: number,
@@ -189,11 +189,13 @@ describe('helpers', () => {
         updated_at: new Date(stat.date).toISOString(),
       }));
 
-      // Calculate morning and evening specific counts
+      // Calculate morning, evening, and microBreaks specific counts using the threshold
       const morningCompleted = stats.filter((stat) => stat.morning >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
       const eveningCompleted = stats.filter((stat) => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
       const microBreaksCompleted = stats.filter((stat) => stat.microBreaks > 0).length; // Uses > 0 for new logic: any seconds spent = completed
       const focusModesCompleted = stats.filter((stat) => stat.focusModes > 0).length;
+      // Calculate num_days_of_stats based on user signup date
+      const numDays = userSignupDaysAgo >= 90 ? 90 : userSignupDaysAgo;
 
       const expected = {
         focus_modes_streak: 0,
@@ -218,16 +220,18 @@ describe('helpers', () => {
       return { userDailyStats, expected };
     };
 
-    const runTest = (dailyStats, expected) => {
+    const runTest = (dailyStats, expected, userSignupDaysAgo: number) => {
+      const userCreatedAt = DateTime.local().minus({ days: userSignupDaysAgo }).toJSDate();
       const result = calculateStreaks(dailyStats, timeZone, {
         morningRoutineDailyDurations,
         eveningRoutineDailyDurations,
         microBreaksDailyDurations,
-      });
+      }, userCreatedAt);
       expect(result).toEqual(expected);
     };
 
     it('should calculate streaks correctly for given daily stats', () => {
+      const userSignupDaysAgo = 100; // User signed up more than 90 days ago
       const { userDailyStats, expected } = setupTest(
         [
           { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
@@ -239,83 +243,288 @@ describe('helpers', () => {
             microBreaks: 100,
           },
         ],
+        userSignupDaysAgo,
+        2,
+        2, // 2/90 = 2.22% ≈ 2% (2 completed out of 90 possible days)
         2,
         2,
-        100,
-        100,
-        100,
       );
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
     it('should return zero streaks for empty daily stats', () => {
-      const { userDailyStats, expected } = setupTest([], 0, 0, 0, 0, 0);
+      const userSignupDaysAgo = 100;
+      const { userDailyStats, expected } = setupTest([], userSignupDaysAgo, 0, 0, 0, 0);
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
     it('should return zero streaks when no routines are completed', () => {
+      const userSignupDaysAgo = 100;
       const { userDailyStats, expected } = setupTest(
         [{ date: lastWeekMonday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 }],
-        1,
+        userSignupDaysAgo,
         0,
         0,
         0,
         0,
       );
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
     it('should calculate streaks correctly with partial completions', () => {
+      const userSignupDaysAgo = 100;
       const { userDailyStats, expected } = setupTest(
         [
           { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 50, microBreaks: 100 },
           { date: lastWeekTuesday, focusModes: 1, morning: 0, evening: 100, microBreaks: 100 },
         ],
+        userSignupDaysAgo,
         2,
-        2,
-        50,
-        100,
-        100,
+        1, // 1/90 = 1.11% ≈ 1% (1 completed morning out of 90 possible days)
+        2, // 2/90 = 2.22% ≈ 2% (2 completed evening out of 90 possible days)
+        2, // 2/90 = 2.22% ≈ 2% (2 completed micro breaks out of 90 possible days)
       );
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
     it('should handle cases with less than 90 days of stats', () => {
+      const userSignupDaysAgo = 100;
       const { userDailyStats, expected } = setupTest(
         [
           { date: lastWeekTuesday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
           { date: lastWeekWednesday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
           { date: beforeNinetyOneDays, focusModes: 1, morning: 50, evening: 50, microBreaks: 10 },
         ],
+        userSignupDaysAgo,
+        3,
+        3, // 3/90 = 3.33% ≈ 3% (3 completed days out of 90 possible)
         3,
         3,
-        100,
-        100,
-        100,
       );
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
     it('should calculate number_days_completed correctly', () => {
+      const userSignupDaysAgo = 100;
       const { userDailyStats, expected } = setupTest(
         [
           { date: lastWeekMonday, focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
           { date: lastWeekTuesday, focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
           { date: lastWeekWednesday, focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
         ],
-        3,
+        userSignupDaysAgo,
         2,
-        67,
-        33,
-        67,
+        2, // 2/90 = 2.22% ≈ 2% (2 completed morning out of 90 possible days)
+        1, // 1/90 = 1.11% ≈ 1% (1 completed evening out of 90 possible days)
+        2, // 2/90 = 2.22% ≈ 2% (2 completed micro breaks out of 90 possible days)
       );
 
-      runTest(userDailyStats, expected);
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    it('should calculate stats correctly for users who signed up less than 90 days ago', () => {
+      const userSignupDaysAgo = 30; // User signed up 30 days ago
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 0, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 0, morning: 0, evening: 100, microBreaks: 0 },
+        ],
+        userSignupDaysAgo, // 30 days
+        3, // 3 days with any activity
+        7, // 2/30 = 6.67% ≈ 7% (2 completed morning routines out of 30 possible days)
+        7, // 2/30 = 6.67% ≈ 7% (2 completed evening routines out of 30 possible days)
+        7, // 2/30 = 6.67% ≈ 7% (2 completed micro breaks out of 30 possible days)
+      );
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    // Additional tests for 90-day leaderboard logic
+    it('should handle user signed up exactly 90 days ago', () => {
+      const userSignupDaysAgo = 90; // Boundary case
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 50 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+        ],
+        userSignupDaysAgo,
+        2,
+        2, // 2/90 = 2.22% ≈ 2% (2 completed days out of 90 possible)
+        2,
+        2,
+      );
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    it('should properly filter data outside 90-day window for leaderboard calculation', () => {
+      const userSignupDaysAgo = 120; // User signed up > 90 days ago
+      
+      // Custom setup for this test since we need to account for filtering
+      const userDailyStats = [
+        {
+          date_completed: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+          focus_modes_completed: 1,
+          morning_routine_completion_percentage: 100,
+          evening_routine_completion_percentage: 100,
+          micro_breaks_routine_completion_percentage: 100,
+          created_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+          updated_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+        },
+        {
+          date_completed: new Date(DateTime.local().minus({ days: 95 }).toISODate()),
+          focus_modes_completed: 1,
+          morning_routine_completion_percentage: 100,
+          evening_routine_completion_percentage: 100,
+          micro_breaks_routine_completion_percentage: 100,
+          created_at: new Date(DateTime.local().minus({ days: 95 }).toISODate()),
+          updated_at: new Date(DateTime.local().minus({ days: 95 }).toISODate()),
+        },
+      ];
+
+      const expected = {
+        focus_modes_streak: 0,
+        morning_routines_streak: 0,
+        evening_routines_streak: 0,
+        micro_breaks_streak: 0,
+        percent_morning_routines_streak_complete_in_90days: 1, // 1/90 = 1.11% ≈ 1%
+        percent_evening_routines_streak_complete_in_90days: 1,
+        percent_micro_breaks_streak_complete_in_90days: 1,
+        num_days_of_stats: 90,
+        number_days_completed: 1, // Only 1 day within 90-day window
+        morning_number_days_completed: 1, // Only 1 day within window
+        morning_num_days_of_stats: 90,
+        evening_number_days_completed: 1, // Only 1 day within window
+        evening_num_days_of_stats: 90,
+      };
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    it('should calculate low percentage correctly for leaderboard (few active days)', () => {
+      const userSignupDaysAgo = 100; // User signed up > 90 days ago
+      const { userDailyStats, expected } = setupTest(
+        [
+          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+        ],
+        userSignupDaysAgo,
+        1,   // Only 1 day with activity
+        1, // 1/90 = 1.11% ≈ 1% (1 completed day out of 90 possible)
+        1,
+        1,
+      );
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    it('should handle leaderboard comparison scenario between old and new users', () => {
+      // Older user: 5 active days out of 90 possible = lower activity rate
+      const olderUserSignupDaysAgo = 100;
+      const { userDailyStats: olderUserStats, expected: olderExpected } = setupTest(
+        [
+          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 30 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 40 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 50 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+        ],
+        olderUserSignupDaysAgo,
+        5,   // 5 days with activity
+        6, // 5/90 = 5.56% ≈ 6% (5 completed days out of 90 possible)
+        6,
+        6,
+      );
+
+      runTest(olderUserStats, olderExpected, olderUserSignupDaysAgo);
+
+      // Newer user: 3 active days out of 15 possible = higher activity rate  
+      const newerUserSignupDaysAgo = 15;
+      const { userDailyStats: newerUserStats, expected: newerExpected } = setupTest(
+        [
+          { date: DateTime.local().minus({ days: 2 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 9 },
+        ],
+        newerUserSignupDaysAgo,
+        3,   // 3 days with activity  
+        20, // 3/15 = 20% (3 completed days out of 15 possible)
+        20,
+        13, // 2/15 = 13.33% ≈ 13% (2 completed micro breaks out of 15 possible days)
+      );
+
+      runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
+    });
+
+    it('should handle edge case where user has stats exactly at 90-day boundary', () => {
+      const userSignupDaysAgo = 100;
+      const exactlyNinetyDaysAgo = DateTime.local().minus({ days: 90 }).toISODate();
+      
+      // Custom setup since one day is exactly at the 90-day boundary
+      const userDailyStats = [
+        {
+          date_completed: new Date(exactlyNinetyDaysAgo),
+          focus_modes_completed: 1,
+          morning_routine_completion_percentage: 100,
+          evening_routine_completion_percentage: 100,
+          micro_breaks_routine_completion_percentage: 100,
+          created_at: new Date(exactlyNinetyDaysAgo),
+          updated_at: new Date(exactlyNinetyDaysAgo),
+        },
+        {
+          date_completed: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+          focus_modes_completed: 1,
+          morning_routine_completion_percentage: 100,
+          evening_routine_completion_percentage: 100,
+          micro_breaks_routine_completion_percentage: 100,
+          created_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+          updated_at: new Date(DateTime.local().minus({ days: 10 }).toISODate()),
+        },
+      ];
+
+      const expected = {
+        focus_modes_streak: 0,
+        morning_routines_streak: 0,
+        evening_routines_streak: 0,
+        micro_breaks_streak: 0,
+        percent_morning_routines_streak_complete_in_90days: 1, // 1/90 = 1.11% ≈ 1% (only the 10-day-ago entry is within window)
+        percent_evening_routines_streak_complete_in_90days: 1,
+        percent_micro_breaks_streak_complete_in_90days: 1,
+        num_days_of_stats: 90,
+        number_days_completed: 1, // Only 1 day within the 90-day window
+        morning_number_days_completed: 1, // Only 1 day within window
+        morning_num_days_of_stats: 90,
+        evening_number_days_completed: 1, // Only 1 day within window
+        evening_num_days_of_stats: 90,
+      };
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
+    });
+
+    it('should calculate correct percentages for leaderboard with mixed completion rates', () => {
+      const userSignupDaysAgo = 100;
+      const { userDailyStats, expected } = setupTest(
+        [
+          // Day 1: Full completion
+          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, microBreaks: 100 },
+          // Day 2: Partial completion (morning above threshold)
+          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 1, morning: 40, evening: 100, microBreaks: 100 },
+          // Day 3: No completion
+          { date: DateTime.local().minus({ days: 30 }).toISODate(), focusModes: 0, morning: 0, evening: 0, microBreaks: 0 },
+        ],
+        userSignupDaysAgo,
+        2, // Only 2 days had any meaningful activity
+        2, // 2/90 = 2.22% ≈ 2% (2 completed morning routines out of 90 possible days)
+        2, // 2/90 = 2.22% ≈ 2% (2 completed evening routines out of 90 possible days)  
+        2, // 2/90 = 2.22% ≈ 2% (2 completed micro breaks out of 90 possible days)
+      );
+
+      runTest(userDailyStats, expected, userSignupDaysAgo);
     });
   });
 });

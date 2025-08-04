@@ -71,9 +71,17 @@ export function determineUserLevel(
   return level;
 }
 
-export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
+export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date) {
   const currentDate = new Date();
   currentDate.setDate(currentDate.getDate() - 90);
+  
+  // Calculate days since user signup (for users < 90 days old)
+  const userSignupDate = new Date(userCreatedAt);
+  const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Determine the proper time window for this user
+  const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
+  const totalPossibleDays = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
 
   const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
     const createdAtDate = new Date(current.created_at).toISOString().split('T')[0];
@@ -113,7 +121,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
 
   const distinctUserDailyStats = Object.values(distinctUserDailyStatObject);
 
-  const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= currentDate);
+  const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= timeWindowStart);
 
   const daysWhereMorningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
@@ -131,7 +139,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     (dailyStat) => dailyStat.focus_modes_completed > 0, // At least one focus mode completed in the day
   );
 
-  const num_days_of_stats = userDailyStatsFromLast90Days.length;
+  const num_days_of_stats = totalPossibleDays; // Use total possible days instead of actual activity days
 
   const number_days_completed = userDailyStatsFromLast90Days.filter(
     (f) =>
@@ -279,6 +287,7 @@ export function calculateStreaks(
     eveningRoutineDailyDurations: DailySequenceDurations;
     microBreaksDailyDurations: DailySequenceDurations;
   },
+  userCreatedAt: Date,
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
@@ -309,7 +318,7 @@ export function calculateStreaks(
     micro_breaks_num_days_of_stats,
     focus_modes_number_days_completed,
     focus_modes_num_days_of_stats,
-  } = calculateRoutineStatsIn90Days(userDailyStats);
+  } = calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt);
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
   const morning_routines_streak = calculateStreakForRoutine(
@@ -331,16 +340,16 @@ export function calculateStreaks(
     evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
     micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
     percent_morning_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_evening_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_micro_breaks_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     num_days_of_stats,
     number_days_completed,

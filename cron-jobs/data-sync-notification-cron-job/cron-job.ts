@@ -4,11 +4,14 @@ import { DateTime } from 'luxon';
 import * as sendGrid from '@sendgrid/mail';
 import { LessThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
+import { NestFactory } from '@nestjs/core';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { captureErrorWithContext, withSentry } from '../sentry';
+import { AppModule } from '../../apps/api-server/src/app.module';
+import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho-desk/services/zoho-desk.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
@@ -58,24 +61,30 @@ export async function getUsersWithOutdatedData() {
   return participants.filter((participant) => participant.userId);
 }
 
-async function getUserDetails(userId: string): Promise<{ email: string | null; language: string; name?: string }> {
+export async function getUserDetails(
+  userId: string,
+): Promise<{ email: string | null; os: 'ios' | 'android'; language: string; name?: string; phoneNumber?: string }> {
   try {
-    // Find the StudyParticipant by userId to get the name
+    // Find the StudyParticipant by userId to get the name, phone_number, and whatsapp_opt_in
     const participant = await CronJobDataSource.manager.findOne(StudyParticipant, {
       where: { userId },
     });
     const name = participant?.name;
+    const phoneNumber = participant?.phoneNumber;
+    const os = (participant.metadata?.mobileOS as 'ios' | 'android') || 'ios';
 
     const user = await CronJobDataSource.manager.findOne(User, {
       where: { id: userId },
     });
-    if (!user) return { email: null, language: 'en', name };
+    if (!user) return { email: null, os, language: 'en', name, phoneNumber };
 
     const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
     return {
       email: auth0User.email,
       language: user.language || 'en',
+      os,
       name,
+      phoneNumber,
     };
   } catch (error) {
     captureErrorWithContext(error, {
@@ -83,7 +92,7 @@ async function getUserDetails(userId: string): Promise<{ email: string | null; l
       cronJob: 'data-sync-notification',
       userId,
     });
-    return { email: null, language: 'en' };
+    return { email: null, os: 'ios', language: 'en' };
   }
 }
 
@@ -112,7 +121,7 @@ async function sendEmail(email: string, language: string) {
 }
 
 // Move the UNICAES-specific logic to a new function
-async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 'en' | 'es' = 'es') {
+async function sendUnicaesDataSyncEmail(email: string, name?: string, os: 'ios' | 'android' = 'ios') {
   const imageUrl = 'https://images.focusbear.io/unicaes-email-header.png';
 
   const content = {
@@ -125,32 +134,20 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
           <p>¡Tu progreso importa! 🌟<br>
           Recuerda subir <b>captura de pantalla de tu Screen Time de esta semana</b> a Focus Bear como parte de tu participación en el curso.</p>
           <p>👉 <b>Haz clic aquí para subirla fácilmente: settings &gt; UNICAES study</b></p>
-          <p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://youtube.com/shorts/mcKNmPJYC1s?si=tREtRWhEA7SsPPDl">Clic aquí</a></p>
+          ${
+            os === 'ios'
+              ? '<p>📷 ¿Necesitás ayuda? Mira este breve tutorial: <a href="https://youtube.com/shorts/mcKNmPJYC1s?si=tREtRWhEA7SsPPDl">Clic aquí</a></p>'
+              : ''
+          }
           <p>Sincronizar tus datos cada semana nos ayuda a entender mejor tus avances, adaptar el curso y, lo más importante, ¡celebrar tu compromiso con una vida más enfocada y equilibrada! 🎯🧠</p>
           <p>Gracias por seguir dando lo mejor de ti.<br>
           —Equipo de Investigación Focus Bear + UNICAES</p>
         </div>
       `,
     },
-    en: {
-      subject: "Don't forget to sync your data this week! 🐻⏳",
-      html: `
-        <div>
-          <img src="${imageUrl}" alt="Header" style="width:100%;max-width:600px;margin-bottom:24px;" />
-          <p>${name ? `Hi <b>${name}</b>,` : 'Hi,'}</p>
-          <p>Your progress matters! 🌟<br>
-          Remember to upload a <b>screenshot of your Screen Time for this week</b> to Focus Bear as part of your course participation.</p>
-          <p>👉 <b>Click here to upload it easily: settings &gt; UNICAES study</b></p>
-          <p>📷 Need help? Watch this short tutorial: <a href="https://www.youtube.com/shorts/qLH5htwin8o?feature=share">Click here</a></p>
-          <p>Syncing your data each week helps us better understand your progress, adapt the course, and most importantly, celebrate your commitment to a more focused and balanced life! 🎯🧠</p>
-          <p>Thank you for continuing to give your best.<br>
-          —Focus Bear + UNICAES Research Team</p>
-        </div>
-      `,
-    },
   };
 
-  const langContent = content[language] || content.es;
+  const langContent = content.es;
 
   const msg = {
     to: email,
@@ -168,7 +165,40 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
       extra: {
         email,
         name,
-        language,
+        os,
+      },
+    });
+  }
+}
+
+async function sendUnicaesDataSyncWhatsapp(
+  zohoService: ZohoDeskService,
+  phoneNumber: string,
+  name: string,
+  os: 'ios' | 'android',
+  participantCode: string,
+) {
+  try {
+    const whatsappMessage = `Hola ${
+      name || 'participante'
+    }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. 📱✨`;
+
+    const cannedMessageIdIos = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_IOS, 10);
+    const cannedMessageIdAndroid = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID, 10);
+
+    const cannedMessageId = os === 'ios' ? cannedMessageIdIos : cannedMessageIdAndroid;
+
+    await zohoService.initiateWhatsAppSession(phoneNumber, os, cannedMessageId, whatsappMessage);
+
+    console.log(`WhatsApp notification sent to participant ${participantCode}`);
+  } catch (error) {
+    // Log error but don't prevent email from being sent
+    console.error(`Failed to send WhatsApp notification to participant ${participantCode}:`, error);
+    captureErrorWithContext(error, {
+      operation: 'sendWhatsAppNotification',
+      cronJob: 'data-sync-notification',
+      extra: {
+        participantCode,
       },
     });
   }
@@ -176,14 +206,29 @@ async function sendUnicaesDataSyncEmail(email: string, name?: string, language: 
 
 export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
+
+  // Bootstrap NestJS application context to access ZohoService
+  const app = await NestFactory.createApplicationContext(AppModule);
+  const zohoService = app.get(ZohoDeskService);
+
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
+
   for (const participant of participants) {
-    const { email, name, language } = await getUserDetails(participant.userId);
+    const { email, name, os, phoneNumber } = await getUserDetails(participant.userId);
+
+    if (phoneNumber) {
+      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode);
+    }
+
     if (email) {
-      await sendUnicaesDataSyncEmail(email, name, language as 'en' | 'es');
+      await sendUnicaesDataSyncEmail(email, name, os);
     }
   }
+
+  // Close the NestJS application context
+  await app.close();
+
   console.log('Usage data sync notification cronjob completed successfully');
   process.exit();
 }

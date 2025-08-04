@@ -19,7 +19,7 @@ import {
   DummyUpdateCourseEnrolmentDto,
 } from '../../../../test/dummies/online-courses.dummies';
 import { UserTypes } from '../../user/domain/user-types.enum';
-import { CoursePlatform } from '../domain/course-platform.enum';
+import { Platform } from '../../../shared/domain/platform.enum';
 
 describe('CoursesService', () => {
   let coursesService: CoursesService;
@@ -102,7 +102,7 @@ describe('CoursesService', () => {
     it('positive: should return course content', async () => {
       CoursesRepositoryMock.getCourseDetails.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.getCourseDetails(DummyCourseTwo.id, userDummy.id);
-      expect(CoursesRepositoryMock.getCourseDetails).toBeCalledWith(DummyCourseTwo.id);
+      expect(CoursesRepositoryMock.getCourseDetails).toHaveBeenCalledWith(DummyCourseTwo.id);
     });
   });
 
@@ -136,13 +136,13 @@ describe('CoursesService', () => {
     it('positive: should update course content if the user is the author of the course', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.updateCourse(DummyUpdateCourseDto, DummyCourseOne.id, userDummy.id, [UserTypes.STANDARD]);
-      expect(CoursesRepositoryMock.updateCourseContent).toBeCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
+      expect(CoursesRepositoryMock.updateCourseContent).toHaveBeenCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
     });
 
     it('positive: should update course content if the user is has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.updateCourse(DummyUpdateCourseDto, DummyCourseOne.id, adminUserDummy.id, [UserTypes.ADMIN]);
-      expect(CoursesRepositoryMock.updateCourseContent).toBeCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
+      expect(CoursesRepositoryMock.updateCourseContent).toHaveBeenCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
     });
   });
 
@@ -176,7 +176,7 @@ describe('CoursesService', () => {
     it('positive: should delete the course, if the user role has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.deleteCourse(DummyCourseTwo.id, { deleted: true }, [UserTypes.ADMIN]);
-      expect(CoursesRepositoryMock.updateCourseDeleted).toBeCalledWith(DummyCourseTwo.id, true);
+      expect(CoursesRepositoryMock.updateCourseDeleted).toHaveBeenCalledWith(DummyCourseTwo.id, true);
     });
   });
 
@@ -210,7 +210,7 @@ describe('CoursesService', () => {
     it('positive: should hide the course, if the user has an admin role', async () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.hideCourse(DummyCourseOne.id, { should_hide: true }, [UserTypes.ADMIN]);
-      expect(CoursesRepositoryMock.updateCourseHidden).toBeCalledWith(DummyCourseOne.id, true);
+      expect(CoursesRepositoryMock.updateCourseHidden).toHaveBeenCalledWith(DummyCourseOne.id, true);
     });
   });
 
@@ -220,7 +220,7 @@ describe('CoursesService', () => {
         DummyCourseRatings.filter((rating) => rating.course_id === DummyCourseOne.id),
       );
       const result = await coursesService.getCourseRatings(DummyCourseOne.id);
-      expect(CoursesRepositoryMock.getRatings).toBeCalledWith(DummyCourseOne.id);
+      expect(CoursesRepositoryMock.getRatings).toHaveBeenCalledWith(DummyCourseOne.id);
       expect(result).toEqual(DummyCourseRatings.filter((rating) => rating.course_id === DummyCourseOne.id));
     });
   });
@@ -242,7 +242,7 @@ describe('CoursesService', () => {
     it('positive: should create a course rating', async () => {
       CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
       await coursesService.createCourseRating(DummyCreateCourseRatingDto, userDummy.id);
-      expect(CoursesRepositoryMock.createRatingContent).toBeCalledWith(DummyCreateCourseRatingDto, userDummy.id);
+      expect(CoursesRepositoryMock.createRatingContent).toHaveBeenCalledWith(DummyCreateCourseRatingDto, userDummy.id);
     });
   });
 
@@ -278,7 +278,7 @@ describe('CoursesService', () => {
       CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.createCourseEnrolment(DummyCreateCourseEnrolmentDto, userDummy.id);
-      expect(CoursesRepositoryMock.createEnrolmentContent).toBeCalledWith(
+      expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenCalledWith(
         DummyCreateCourseEnrolmentDto.course_id,
         userDummy.id,
       );
@@ -334,7 +334,7 @@ describe('CoursesService', () => {
       CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
       CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
       await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
-      expect(CoursesRepositoryMock.updateEnrolmentStatus).toBeCalledWith(DummyUpdateCourseEnrolmentDto);
+      expect(CoursesRepositoryMock.updateEnrolmentStatus).toHaveBeenCalledWith(DummyUpdateCourseEnrolmentDto);
     });
   });
 
@@ -357,9 +357,9 @@ describe('CoursesService', () => {
   describe('syncPlatformCourses', () => {
     it('positive: should sync platform courses', async () => {
       CoursesRepositoryMock.getPlatformCourses.mockResolvedValueOnce([DummyCourseTwo, DummyCourseThree]);
-      await coursesService.syncPlatformCourses({ platform: CoursePlatform.MAC }, userDummy.id);
-      expect(CoursesRepositoryMock.getPlatformCourses).toBeCalledWith(CoursePlatform.MAC);
-      expect(CoursesRepositoryMock.createEnrolmentContent).toBeCalledTimes(2);
+      await coursesService.syncPlatformCourses({ platform: Platform.MAC }, userDummy.id);
+      expect(CoursesRepositoryMock.getPlatformCourses).toHaveBeenCalledWith(Platform.MAC);
+      expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenCalledTimes(2);
       expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenNthCalledWith(1, DummyCourseTwo.id, userDummy.id);
       expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenNthCalledWith(
         2,

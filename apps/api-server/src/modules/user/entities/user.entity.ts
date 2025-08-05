@@ -335,6 +335,34 @@ export class User extends BaseEntity {
     default: 0,
     transformer: new ColumnNumericTransformer(),
   })
+  micro_breaks_number_days_completed?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  micro_breaks_num_days_of_stats?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  focus_modes_number_days_completed?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  focus_modes_num_days_of_stats?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
   num_days_of_stats?: number;
 
   @Column({

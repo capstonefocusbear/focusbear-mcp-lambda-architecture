@@ -33,6 +33,14 @@ export class TasksStreaksResponse {
 
   evening_num_days_of_stats?: number;
 
+  micro_breaks_number_days_completed?: number;
+
+  micro_breaks_num_days_of_stats?: number;
+
+  focus_modes_number_days_completed?: number;
+
+  focus_modes_num_days_of_stats?: number;
+
   num_days_of_stats?: number;
 
   number_days_completed?: number;

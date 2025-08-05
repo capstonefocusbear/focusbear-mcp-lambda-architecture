@@ -14,6 +14,35 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
     super(connection, CompletedActivity);
   }
 
+  async upsertActivity(activity: CompletedActivity): Promise<CompletedActivity> {
+    try {
+      const result = await this.orm
+        .createQueryBuilder()
+        .insert()
+        .into(CompletedActivity)
+        .values(activity)
+        .onConflict(
+          `("activity_id", "completed_sequence_id")
+           DO UPDATE SET
+             "finish_time" = EXCLUDED."finish_time",
+             "duration_logged" = EXCLUDED."duration_logged",
+             "quantity_logged" = EXCLUDED."quantity_logged",
+             "metadata" = COALESCE(completed_activities.metadata, '{}'::jsonb) || COALESCE(EXCLUDED.metadata, '{}'::jsonb),
+             "updated_at" = NOW(),
+             "activity_note" = COALESCE(EXCLUDED.activity_note, completed_activities.activity_note)`,
+        )
+        .returning('*')
+        .execute();
+
+      // The result from .execute() is a raw packet, so we extract the first record.
+      return result.raw[0];
+    } catch (error) {
+      // Log the error for monitoring and then re-throw it to be handled by the service layer.
+      console.error('Error upserting completed activity:', error);
+      throw error;
+    }
+  }
+
   async getAggregatedQuantityLogsPerDay(
     activityIds: string[],
     { log_summary_type = 'SUM', days_number = 30, stat_type, timezone = 'UTC' }: any,

@@ -154,6 +154,10 @@ export class DailyStatsConsumer {
         morning_num_days_of_stats,
         evening_number_days_completed,
         evening_num_days_of_stats,
+        micro_breaks_number_days_completed,
+        micro_breaks_num_days_of_stats,
+        focus_modes_number_days_completed,
+        focus_modes_num_days_of_stats,
       } = calculateStreaks(
         userDailyStats,
         user.timezone,
@@ -231,6 +235,10 @@ export class DailyStatsConsumer {
         morning_num_days_of_stats,
         evening_number_days_completed,
         evening_num_days_of_stats,
+        micro_breaks_number_days_completed,
+        micro_breaks_num_days_of_stats,
+        focus_modes_number_days_completed,
+        focus_modes_num_days_of_stats,
       });
     } catch (error) {
       // eslint-disable-next-line no-console

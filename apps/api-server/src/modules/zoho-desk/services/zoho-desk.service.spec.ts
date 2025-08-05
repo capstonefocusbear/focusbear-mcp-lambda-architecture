@@ -10,8 +10,8 @@ describe('ZohoDeskService', () => {
   let service: ZohoDeskService;
 
   const mockConfigValues = {
-    'zoho.ZOHO_CLIENT_ID': 'test-client-id',
-    'zoho.ZOHO_CLIENT_SECRET': 'test-client-secret',
+    'zoho.ZOHO_DESK_CLIENT_ID': 'test-client-id',
+    'zoho.ZOHO_DESK_CLIENT_SECRET': 'test-client-secret',
     'zoho.ZOHO_ORG_ID': 'test-org-id',
     'zoho.ZOHO_WHATSAPP_CHANNEL_ID': 'test-channel-id',
   };

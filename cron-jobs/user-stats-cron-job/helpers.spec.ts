@@ -467,19 +467,12 @@ describe('helpers', () => {
         27, // 4/15 = 26.67% ≈ 27% (Micro Breaks: 4 completed micro breaks out of 15 possible days)
       );
 
-      // Adjust expected streaks based on current day of the week
-      // Streaks only count weekdays (Mon-Fri), so results vary depending on when test runs
-      const today = DateTime.local();
-      const isMonday = today.weekday === 1; // 1 = Monday in Luxon
-      
-      if (isMonday) {
-        newerExpected.focus_modes_streak = 4;
-        newerExpected.micro_breaks_streak = 4;
-        newerExpected.evening_routines_streak = 0; // morning and evening routines do not get affected by weekday logic
-      } else {
-        newerExpected.focus_modes_streak = 0;
-        newerExpected.micro_breaks_streak = 0;
-      }
+      // Set expected streaks based on the consecutive days with activity
+      // Focus modes: days 1, 2, 3 all have focusModes > 0, so streak = 3
+      newerExpected.focus_modes_streak = 3;
+      // Micro breaks: day 1 has 0 seconds, which breaks the streak
+      newerExpected.micro_breaks_streak = 0;
+      newerExpected.evening_routines_streak = 0;
 
       runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
     });

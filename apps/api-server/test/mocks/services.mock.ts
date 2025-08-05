@@ -171,6 +171,7 @@ export const SentryServiceMock = {
   captureException: jest.fn(),
   addBreadcrumb: jest.fn(),
   instance: () => SentryServiceMock,
+  captureEvent: jest.fn(),
 };
 
 export const FocusModeServiceMock = {
@@ -349,4 +350,8 @@ export const CalendarServiceMock = {
 
 export const GoogleAuthServiceMock = {
   refreshToken: jest.fn(),
+};
+
+export const UserOnboardingServiceMock = {
+  createOnboardingData: jest.fn(),
 };

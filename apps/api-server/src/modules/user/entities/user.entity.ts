@@ -24,7 +24,7 @@ import { LogQuantityAnswer } from '../../activity/entities/log-quantity-answers'
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { SavedWebsite } from '../../saved-website/entities/saved-website.entity';
 import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 import { ToDo } from '../../to-do/entities/to-do.entity';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
 import { ImpactEvent } from '../../events/entities/impact-event.entity';

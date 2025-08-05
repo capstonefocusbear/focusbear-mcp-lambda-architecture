@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { DeviceMetadata } from '../domain/device-metadata.model';
-import { OperatingSystem } from '../domain/operating-system.enum';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 @Entity('devices')
 export class Device extends BaseEntity {

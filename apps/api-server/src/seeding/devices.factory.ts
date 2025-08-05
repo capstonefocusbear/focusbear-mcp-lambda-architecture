@@ -1,6 +1,6 @@
 import { setSeederFactory } from 'typeorm-extension';
 import { Device } from '../modules/device/entities/device.entity';
-import { OperatingSystem } from '../modules/device/domain/operating-system.enum';
+import { OperatingSystem } from '../shared/domain/operating-system.enum';
 
 export const DeviceFactory = setSeederFactory(Device, () => {
   const operatingSystems = Object.values(OperatingSystem);

@@ -122,7 +122,7 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
 
   createMotivation: {
     model: GPT_4_1_MINI,
-    temperature: 0.7,
+    temperature: 0.9,
     n: 1,
     messages: null,
     stream: true,

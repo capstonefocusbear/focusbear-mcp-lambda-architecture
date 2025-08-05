@@ -65,7 +65,7 @@ export class UserOnboardingService {
 
       if (!userData) {
         throw new NotFoundException(
-          `No onboarding data found for user ID ${query.user_id} ${query.os ? ` and OS ${query.os}.` : '.'}`,
+          `No onboarding data found for user ID ${query.user_id}${query.os ? ` and OS ${query.os}.` : '.'}`,
         );
       }
 

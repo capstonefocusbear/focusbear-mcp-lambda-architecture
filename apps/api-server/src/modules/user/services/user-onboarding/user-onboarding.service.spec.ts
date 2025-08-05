@@ -115,7 +115,7 @@ describe('UserOnboardingService', () => {
       UserOnboardingRepositoryMock.findByUserIdAndOs.mockResolvedValue(null);
 
       await expect(service.getOnboardingProgress({ user_id: userDummy.id })).rejects.toThrow(
-        new NotFoundException(`No onboarding data found for user ID${userDummy.id} .`),
+        new NotFoundException(`No onboarding data found for user ID ${userDummy.id}.`),
       );
       expect(UserOnboardingRepositoryMock.findByUserIdAndOs).toHaveBeenCalledWith(userDummy.id, undefined);
     });

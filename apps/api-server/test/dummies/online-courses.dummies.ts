@@ -4,7 +4,7 @@ import { Course } from '../../src/modules/course/entities/course.entity';
 import { CourseEnrolment } from '../../src/modules/course/entities/course-enrolment.entity';
 import { LessonCompletion } from '../../src/modules/lesson/entities/lesson-completion.entity';
 import { CourseRating } from '../../src/modules/course/entities/course-rating.entity';
-import { CoursePlatform } from '../../src/modules/course/domain/course-platform.enum';
+import { Platform } from '../../src/shared/domain/platform.enum';
 
 export const DummyCourseOneLessons = [
   new Lesson({
@@ -97,7 +97,7 @@ export const DummyCourseTwo = new Course({
   deleted: false,
   lessons: DummyCourseTwoLessons,
   author_id: adminUserDummy.id,
-  platform: CoursePlatform.MAC,
+  platform: Platform.MAC,
 });
 
 export const DummyCourseThree = new Course({
@@ -110,7 +110,7 @@ export const DummyCourseThree = new Course({
   author: userDummy,
   lessons: DummyCourseThreeLessons,
   author_id: userDummy.id,
-  platform: CoursePlatform.MAC,
+  platform: Platform.MAC,
 });
 
 export const DummyCourseEnrolments = [

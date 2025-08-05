@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 import { IsValidCutoffTime } from '../../../shared/decorators/is-valid-cutoff-time.decorator';
 

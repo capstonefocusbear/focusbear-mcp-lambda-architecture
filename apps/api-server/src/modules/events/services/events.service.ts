@@ -26,7 +26,7 @@ import {
 } from '../../../shared/utils/constants';
 import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 import { TrackEventRepository } from '../repositories/track-event.repository';
-import { OperatingSystem } from '../../device/domain/operating-system.enum';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 import { TrackEvent } from '../entities/track-event.entity';
 
 @Injectable()

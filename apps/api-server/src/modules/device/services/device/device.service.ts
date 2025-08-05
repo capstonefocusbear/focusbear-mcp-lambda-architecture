@@ -13,7 +13,7 @@ import {
   UNKNOWN_OPERATING_SYSTEM,
 } from '@app/auth0/auth0.constants';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
-import { OperatingSystem } from '../../domain/operating-system.enum';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
@@ -123,12 +123,12 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
 
   parseDeviceFromAuth0Client = (auth0ClientDto: Auth0ClientDto | null | undefined) => {
     if (!auth0ClientDto?.client_id) {
-      return '';
+      return OperatingSystem.Unknown;
     }
 
     const { client_id, name } = auth0ClientDto;
 
-    if (!client_id) return '';
+    if (!client_id) return OperatingSystem.Unknown;
 
     switch (client_id) {
       case MAC_CLIENT_ID:

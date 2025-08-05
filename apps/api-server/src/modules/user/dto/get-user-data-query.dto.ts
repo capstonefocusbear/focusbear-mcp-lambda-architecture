@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 
 export class GetUserDataQuery {
   @IsNotEmpty()

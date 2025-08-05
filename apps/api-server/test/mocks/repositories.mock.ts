@@ -65,6 +65,7 @@ export const CompletedActivityRepositoryMock = {
   getDaySummaryDuration: jest.fn(),
   getWeekSummary: jest.fn(),
   getNotes: jest.fn(),
+  upsertActivity: jest.fn(),
 };
 
 export const DeviceRepositoryMock = {
@@ -275,4 +276,9 @@ export const CustomRoutineRepositoryMock = {
   ...BaseRepositoryMock,
   getUserCustomRoutines: jest.fn(),
   getCustomRoutine: jest.fn(),
+};
+
+export const UserOnboardingRepositoryMock = {
+  ...BaseRepositoryMock,
+  findByUserIdAndOs: jest.fn(),
 };

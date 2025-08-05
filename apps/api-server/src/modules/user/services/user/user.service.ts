@@ -22,12 +22,15 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
+import { AiToneOptions } from '@app/openai/domain/ai-tones.enum';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
+import { UserOnboardingService } from '../user-onboarding/user-onboarding.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -67,6 +70,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { OnboardingDto } from '../../dto/onboarding';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -96,6 +100,8 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
+    @Inject(forwardRef(() => UserOnboardingService))
+    private readonly userOnboardingService?: UserOnboardingService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -111,18 +117,15 @@ export class UserService {
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
-      const { id, stripe_customer_id } = await this.updateOrCreateUser(
-        { auth0_id, email, auth0_client },
-        registeredUser,
-      );
-      if (!registeredUser) await this.handleInitialRegistration(id);
+      const { user, os } = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
+      if (!registeredUser) await this.handleInitialRegistration(user.id, os, auth0_id);
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
       }
-      const subscriptionStatus = await this.getSubscription(id);
+      const subscriptionStatus = await this.getSubscription(user.id);
 
-      return { id, subscriptionStatus, stripeCustomerId: stripe_customer_id };
+      return { id: user.id, subscriptionStatus, stripeCustomerId: user.stripe_customer_id };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -147,7 +150,7 @@ export class UserService {
   async updateOrCreateUser(
     { auth0_id, email, auth0_client }: SyncUserAccountDto,
     registeredUser?: User,
-  ): Promise<User> {
+  ): Promise<{ user: User; os: OperatingSystem }> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -157,53 +160,9 @@ export class UserService {
           auth0_id,
         },
       });
+      let os = OperatingSystem.Unknown;
       let stripeId = await this.stripeService.getStripeCustomerId(email);
 
-      if (!stripeId) {
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Service',
-          level: 'debug',
-          message: 'Registering new user in Stripe',
-        });
-
-        const devicesFromDb = registeredUser
-          ? await this.deviceRepository.orm.find({
-              where: { user_id: registeredUser.id },
-              order: { created_at: 'ASC' },
-            })
-          : [];
-
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Service',
-          level: 'debug',
-          message: 'Getting user OS',
-          data: {
-            devicesFromDb,
-            auth0_client,
-          },
-        });
-
-        const os =
-          devicesFromDb.length > 0
-            ? devicesFromDb[0]?.operating_system
-            : await this.deviceService.parseDeviceFromAuth0Client(auth0_client);
-
-        if (!os) {
-          const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-          this.sentryService.instance().captureEvent({
-            message: 'OS not found',
-            level: 'error',
-            extra: {
-              auth0_id,
-              email,
-              clientId,
-            },
-          });
-        }
-
-        const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
-        stripeId = stripeCustomer.id;
-      }
       if (!stripeId) {
         this.sentryService.instance().captureEvent({
           message: 'Stripe ID not found',
@@ -213,22 +172,106 @@ export class UserService {
             email,
           },
         });
+
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Registering new user in Stripe',
+        });
+
+        if (auth0_id) {
+          const devicesFromDb = registeredUser
+            ? await this.deviceRepository.orm.find({
+                where: { user_id: registeredUser.id },
+                order: { created_at: 'ASC' },
+              })
+            : [];
+
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Service',
+            level: 'debug',
+            message: 'Getting user OS',
+            data: {
+              devicesFromDb,
+              auth0_client,
+            },
+          });
+
+          os =
+            devicesFromDb.length > 0
+              ? devicesFromDb[0]?.operating_system
+              : (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
+
+          if (os === OperatingSystem.Unknown) {
+            const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
+            this.sentryService.instance().captureEvent({
+              message: 'OS not found',
+              level: 'error',
+              extra: {
+                auth0_id,
+                email,
+                clientId,
+              },
+            });
+          }
+        } else {
+          os = OperatingSystem.Web;
+        }
+        const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
+        stripeId = stripeCustomer.id;
       }
 
       const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
       if (registeredUser) {
-        return await this.userRepository.update(registeredUser.id, userProperties);
+        const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
+        return { user: updatedUser, os: registeredUser.devices[0]?.operating_system || OperatingSystem.Unknown };
       }
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
-      return newlySavedUser;
+      return { user: newlySavedUser, os };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  private async handleInitialRegistration(id: string): Promise<void> {
+  async createUserWithOnboarding(dto: SyncUserAccountDto): Promise<{ user_id: string; onboarding: OnboardingDto }> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Creating user with onboarding data for web platform',
+        data: { email: dto.email },
+      });
+
+      const { user } = await this.updateOrCreateUser(dto);
+
+      let onboardingData: OnboardingDto;
+      try {
+        onboardingData = await this.userOnboardingService.getOnboardingProgress({
+          user_id: user.id,
+          os: OperatingSystem.Web,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          onboardingData = (await this.userOnboardingService.createOnboardingData(user.id, OperatingSystem.Web))
+            .onboarding;
+        } else {
+          throw error;
+        }
+      }
+
+      return {
+        user_id: user.id,
+        onboarding: onboardingData,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  private async handleInitialRegistration(id: string, os: OperatingSystem, auth0_id?: string): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -236,14 +279,20 @@ export class UserService {
         message: 'Handling initial registration',
         data: {
           user_id: id,
+          auth0_id,
+          os,
         },
       });
       const settingsConfig = this.config.get('constants.userSettings');
       const defaultSettings = settingsConfig.generateDefault();
-      await Promise.all([
+
+      const registrationTasks = [
         this.revenueCatService.grantTrialAccess(id),
-        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }),
-      ]);
+        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }), // deprecated and will be removed in the future
+        this.userOnboardingService.createOnboardingData(id, os),
+      ];
+
+      await Promise.all([...registrationTasks]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -680,10 +729,16 @@ export class UserService {
 
       const streakData = this.constructStreaksArray(streaks, routine);
 
+      // Pick a random one from AiToneOptions if tone has not been provided
+      let finalTone = tone;
+      if (!finalTone) {
+        const toneValues = Object.values(AiToneOptions);
+        finalTone = toneValues[Math.floor(Math.random() * toneValues.length)] as AiToneOptions;
+      }
       const response = await callPromiseWithTimeout(
         this.openAIService.createMotivationalSummary(fastifyReply, streakData, longTermGoals, {
           language,
-          tone,
+          tone: finalTone,
           device_type,
         }),
         DEFAULT_AI_RESPONSE_TIMEOUT_MS,

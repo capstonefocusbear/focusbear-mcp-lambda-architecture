@@ -4,4 +4,5 @@ export enum OperatingSystem {
   Android = 'Android',
   iOS = 'iOS',
   Web = 'Web',
+  Unknown = 'Unknown',
 }

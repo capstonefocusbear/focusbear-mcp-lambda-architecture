@@ -17,7 +17,7 @@ import { Passport } from '../../src/modules/auth/domain/passport.model';
 import { User } from '../../src/modules/user/entities/user.entity';
 import { ActivityType } from '../../src/modules/activity/domain/activity-type.enum';
 import { Device } from '../../src/modules/device/entities/device.entity';
-import { OperatingSystem } from '../../src/modules/device/domain/operating-system.enum';
+import { OperatingSystem } from '../../src/shared/domain/operating-system.enum';
 import { ActivitySequence } from '../../src/modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { LogSummaryType } from '../../src/modules/activity/domain/log-summary-type.enum';
@@ -46,6 +46,11 @@ import {
 } from '../../../../libs/auth0/src/auth0.constants';
 import { TeamToMember } from '../../src/modules/team/entities/team-to-member.entity';
 import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
+import { OnboardFlowStep } from '../../src/modules/user/domain/onboarding/onboarding-flow-step.enum';
+import { OnboardFlowFeature } from '../../src/modules/user/domain/onboarding/onboarding-flow-feature.enum';
+import { RoutineType } from '../../src/modules/user/domain/routine-type.enum';
+import { BearsonaProfile } from '../../src/modules/user/domain/onboarding/bearsona-profile.enum';
+import { OnboardFlowTimeUI } from '../../src/modules/user/domain/onboarding/onboarding-flow-time-ui.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -2491,4 +2496,28 @@ export const dummyNotifyLogsUploadSuccessDto = {
   app_version: '1.0.1',
   feedback_message: 'dummy feedback',
   uploaded_file_url: 'https://dummylogs.com/log.txt',
+};
+
+export const mockDefaultOnboardingData = {
+  currentStep: OnboardFlowStep.DATA_PRIVACY,
+  features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS],
+  routines: [RoutineType.MORNING_ROUTINE, RoutineType.EVENING_ROUTINE],
+  profile: { name: BearsonaProfile.OG, useProfileLang: true },
+  activities: { morning_activities: [], evening_activities: [] },
+  selectedGoals: [],
+  times: {
+    [OnboardFlowTimeUI.WAKE_UP]: '06:00',
+    [OnboardFlowTimeUI.START_STUDY]: '08:00',
+    [OnboardFlowTimeUI.FINISH_STUDY]: '17:30',
+    [OnboardFlowTimeUI.GO_TO_SLEEP]: '21:00',
+  },
+  currentTimeUI: OnboardFlowTimeUI.WAKE_UP,
+  break_after_minutes: 20,
+  skippedSteps: [],
+};
+
+export const mockUpdateOnboardingProgressDto = {
+  ...mockDefaultOnboardingData,
+  currentStep: OnboardFlowStep.HABIT_DESIGN_SESSION,
+  features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS, OnboardFlowFeature.STAY_FOCUSED_AT_WORK],
 };

@@ -51,7 +51,7 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { UserService } from '../user/user.service';
-import { LanguageOptions } from '../../domain/language-options.enum';
+import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
 import { ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';

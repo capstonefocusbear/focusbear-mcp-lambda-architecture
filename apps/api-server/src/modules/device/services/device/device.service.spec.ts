@@ -21,7 +21,7 @@ import {
   UserRepositoryMock,
   UserServiceMock,
 } from '../../../../../test/mocks';
-import { OperatingSystem } from '../../domain/operating-system.enum';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { Device } from '../../entities/device.entity';
 import { DeviceRepository } from '../../repositories/device.repository';
@@ -133,7 +133,7 @@ describe('DeviceService', () => {
 
       await deviceService.markAsLeader(id, user_id);
 
-      expect(DeviceRepositoryMock.orm.update).toBeCalledWith({ user_id }, { is_leader: false });
+      expect(DeviceRepositoryMock.orm.update).toHaveBeenCalledWith({ user_id }, { is_leader: false });
     });
 
     it('positive: should save the target Device with is_leader: true', async () => {
@@ -142,7 +142,7 @@ describe('DeviceService', () => {
 
       await deviceService.markAsLeader(id, user_id);
 
-      expect(DeviceRepositoryMock.orm.save).toBeCalledWith({ ...DeviceDummy, is_leader: true });
+      expect(DeviceRepositoryMock.orm.save).toHaveBeenCalledWith({ ...DeviceDummy, is_leader: true });
     });
   });
 
@@ -244,8 +244,8 @@ describe('DeviceService', () => {
     });
 
     it('if auth0 client is null, it should correctly identify the string empty', async () => {
-      const response = await deviceService.parseDeviceFromAuth0Client(null);
-      expect(response).toEqual('');
+      const response = deviceService.parseDeviceFromAuth0Client(null);
+      expect(response).toEqual(OperatingSystem.Unknown);
     });
   });
 

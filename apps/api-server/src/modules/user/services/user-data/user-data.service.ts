@@ -9,7 +9,7 @@ import { StripeService } from '@app/stripe';
 import { BrevoService } from '@app/brevo/brevo.service';
 import { SendGridService } from '@app/send-grid';
 import { UserRepository } from '../../repositories/user.repository';
-import { LanguageOptions } from '../../domain/language-options.enum';
+import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 import { maskEmail } from '../../../../shared/utils/helpers';
 import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';

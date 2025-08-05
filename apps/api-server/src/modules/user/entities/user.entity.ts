@@ -24,7 +24,7 @@ import { LogQuantityAnswer } from '../../activity/entities/log-quantity-answers'
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { SavedWebsite } from '../../saved-website/entities/saved-website.entity';
 import { RoutineNotificationTimes } from '../domain/routine-notification-times.model';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 import { ToDo } from '../../to-do/entities/to-do.entity';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
 import { ImpactEvent } from '../../events/entities/impact-event.entity';
@@ -336,6 +336,34 @@ export class User extends BaseEntity {
     transformer: new ColumnNumericTransformer(),
   })
   evening_num_days_of_stats?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  micro_breaks_number_days_completed?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  micro_breaks_num_days_of_stats?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  focus_modes_number_days_completed?: number;
+
+  @Column({
+    type: 'numeric',
+    default: 0,
+    transformer: new ColumnNumericTransformer(),
+  })
+  focus_modes_num_days_of_stats?: number;
 
   @Column({
     type: 'numeric',

@@ -20,6 +20,7 @@ import {
   dummyUninstallApplicationQueryDto,
   focusModeTemplateDBResponseDummy,
   userDummy,
+  mockDefaultOnboardingData,
 } from '../../../../../test/dummies';
 import {
   Auth0ManagementServiceMock,
@@ -69,6 +70,7 @@ import { DeviceRepository } from '../../../device/repositories/device.repository
 import { maskEmail } from '../../../../shared/utils/helpers';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
 import { UserOnboardingService } from '../user-onboarding/user-onboarding.service';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -1040,6 +1042,56 @@ describe('UserService', () => {
       await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
 
       expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createUserWithOnboarding', () => {
+    const syncUserAccountDto: SyncUserAccountDto = {
+      email: 'test@example.com',
+    };
+
+    it('positive: should return onboarding data if user and onboarding exist', async () => {
+      jest.spyOn(userService, 'updateOrCreateUser').mockResolvedValueOnce({ user: userDummy, os: OperatingSystem.Web });
+      UserOnboardingServiceMock.getOnboardingProgress.mockResolvedValueOnce(mockDefaultOnboardingData);
+
+      const result = await userService.createUserWithOnboarding(syncUserAccountDto);
+      expect(userService.updateOrCreateUser).toHaveBeenCalledWith(syncUserAccountDto);
+      expect(UserOnboardingServiceMock.getOnboardingProgress).toHaveBeenCalledWith({
+        user_id: userDummy.id,
+        os: OperatingSystem.Web,
+      });
+      expect(result).toEqual({ user_id: userDummy.id, onboarding: mockDefaultOnboardingData });
+    });
+
+    it('positive: should create onboarding data if not found and return it', async () => {
+      jest.spyOn(userService, 'updateOrCreateUser').mockResolvedValueOnce({ user: userDummy, os: OperatingSystem.Web });
+      UserOnboardingServiceMock.getOnboardingProgress.mockRejectedValueOnce(
+        new NotFoundException(`No onboarding data found for user ID ${userDummy.id} and OS Web.`),
+      );
+      UserOnboardingServiceMock.createOnboardingData.mockResolvedValueOnce({ onboarding: mockDefaultOnboardingData });
+
+      const result = await userService.createUserWithOnboarding(syncUserAccountDto);
+      expect(userService.updateOrCreateUser).toHaveBeenCalledWith(syncUserAccountDto);
+      expect(UserOnboardingServiceMock.getOnboardingProgress).toHaveBeenCalledWith({
+        user_id: userDummy.id,
+        os: OperatingSystem.Web,
+      });
+      expect(UserOnboardingServiceMock.createOnboardingData).toHaveBeenCalledWith(userDummy.id, 'Web');
+      expect(result).toEqual({ user_id: userDummy.id, onboarding: mockDefaultOnboardingData });
+    });
+
+    it('negative: should throw if updateOrCreateUser throws', async () => {
+      const error = new Error('updateOrCreateUser failed');
+      jest.spyOn(userService, 'updateOrCreateUser').mockRejectedValueOnce(error);
+      await expect(userService.createUserWithOnboarding(syncUserAccountDto)).rejects.toThrow(
+        'updateOrCreateUser failed',
+      );
+    });
+
+    it('negative: should throw if getOnboardingProgress throws unexpected error', async () => {
+      jest.spyOn(userService, 'updateOrCreateUser').mockResolvedValueOnce({ user: userDummy, os: OperatingSystem.Web });
+      UserOnboardingServiceMock.getOnboardingProgress.mockRejectedValueOnce(new Error('unexpected'));
+      await expect(userService.createUserWithOnboarding(syncUserAccountDto)).rejects.toThrow('unexpected');
     });
   });
 });

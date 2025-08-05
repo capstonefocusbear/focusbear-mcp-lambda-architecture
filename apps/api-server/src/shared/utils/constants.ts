@@ -357,3 +357,8 @@ export const DEFAULT_ONBOARDING_DATA = {
   break_after_minutes: 20,
   skippedSteps: [],
 };
+
+export const DEFAULT_THROTTLE_OPTIONS = {
+  ttl: 60,
+  limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
+};

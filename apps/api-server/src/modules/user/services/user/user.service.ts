@@ -681,7 +681,7 @@ export class UserService {
 
       const streakData = this.constructStreaksArray(streaks, routine);
 
-      // If tone is not provided, pick a random one from AiToneOptions
+      // Pick a random one from AiToneOptions if tone has not been provided
       let finalTone = tone;
       if (!finalTone) {
         const toneValues = Object.values(AiToneOptions);

@@ -1151,10 +1151,8 @@ export class CompletedActivityService {
       // upsert completed activity records if activity is part morning or evening routine
       // in case activity gets done for second time one same date
       [completed_activity_log, completed_choice_log] = await Promise.all([
-        this.completedActivityRepository.upsert(completedItem, ['activity_id', 'completed_sequence_id']),
-        has_choices
-          ? this.completedActivityRepository.upsert(completedChoice, ['activity_id', 'completed_sequence_id'])
-          : null,
+        this.completedActivityRepository.upsertActivity(completedItem),
+        has_choices ? this.completedActivityRepository.upsertActivity(completedChoice) : null,
       ]);
     }
     return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });

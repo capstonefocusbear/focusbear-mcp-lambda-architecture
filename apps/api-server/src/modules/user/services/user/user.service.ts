@@ -22,6 +22,7 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
+import { AiToneOptions } from '@app/openai/domain/ai-tones.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
@@ -680,10 +681,16 @@ export class UserService {
 
       const streakData = this.constructStreaksArray(streaks, routine);
 
+      // Pick a random one from AiToneOptions if tone has not been provided
+      let finalTone = tone;
+      if (!finalTone) {
+        const toneValues = Object.values(AiToneOptions);
+        finalTone = toneValues[Math.floor(Math.random() * toneValues.length)] as AiToneOptions;
+      }
       const response = await callPromiseWithTimeout(
         this.openAIService.createMotivationalSummary(fastifyReply, streakData, longTermGoals, {
           language,
-          tone,
+          tone: finalTone,
           device_type,
         }),
         DEFAULT_AI_RESPONSE_TIMEOUT_MS,

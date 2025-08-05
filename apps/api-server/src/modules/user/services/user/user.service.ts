@@ -70,6 +70,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { OnboardingDto } from '../../dto/onboarding';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -178,41 +179,44 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
 
-        const devicesFromDb = registeredUser
-          ? await this.deviceRepository.orm.find({
-              where: { user_id: registeredUser.id },
-              order: { created_at: 'ASC' },
-            })
-          : [];
+        if (auth0_id) {
+          const devicesFromDb = registeredUser
+            ? await this.deviceRepository.orm.find({
+                where: { user_id: registeredUser.id },
+                order: { created_at: 'ASC' },
+              })
+            : [];
 
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Service',
-          level: 'debug',
-          message: 'Getting user OS',
-          data: {
-            devicesFromDb,
-            auth0_client,
-          },
-        });
-
-        os =
-          devicesFromDb.length > 0
-            ? devicesFromDb[0]?.operating_system
-            : (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
-
-        if (os === OperatingSystem.Unknown) {
-          const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-          this.sentryService.instance().captureEvent({
-            message: 'OS not found',
-            level: 'error',
-            extra: {
-              auth0_id,
-              email,
-              clientId,
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Service',
+            level: 'debug',
+            message: 'Getting user OS',
+            data: {
+              devicesFromDb,
+              auth0_client,
             },
           });
-        }
 
+          os =
+            devicesFromDb.length > 0
+              ? devicesFromDb[0]?.operating_system
+              : (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
+
+          if (os === OperatingSystem.Unknown) {
+            const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
+            this.sentryService.instance().captureEvent({
+              message: 'OS not found',
+              level: 'error',
+              extra: {
+                auth0_id,
+                email,
+                clientId,
+              },
+            });
+          }
+        } else {
+          os = OperatingSystem.Web;
+        }
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
       }
@@ -225,6 +229,42 @@ export class UserService {
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
       return { user: newlySavedUser, os };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async createUserWithOnboarding(dto: SyncUserAccountDto): Promise<{ user_id: string; onboarding: OnboardingDto }> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Creating user with onboarding data for web platform',
+        data: { email: dto.email },
+      });
+
+      const { user } = await this.updateOrCreateUser(dto);
+
+      let onboardingData: OnboardingDto;
+      try {
+        onboardingData = await this.userOnboardingService.getOnboardingProgress({
+          user_id: user.id,
+          os: OperatingSystem.Web,
+        });
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          onboardingData = (await this.userOnboardingService.createOnboardingData(user.id, OperatingSystem.Web))
+            .onboarding;
+        } else {
+          throw error;
+        }
+      }
+
+      return {
+        user_id: user.id,
+        onboarding: onboardingData,
+      };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

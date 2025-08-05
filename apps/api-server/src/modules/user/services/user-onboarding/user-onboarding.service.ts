@@ -65,7 +65,7 @@ export class UserOnboardingService {
 
       if (!userData) {
         throw new NotFoundException(
-          `No onboarding data found for user ID${query.user_id} ${query.os ? ` and OS ${query.os}.` : '.'}`,
+          `No onboarding data found for user ID ${query.user_id}${query.os ? ` and OS ${query.os}.` : '.'}`,
         );
       }
 
@@ -103,7 +103,7 @@ export class UserOnboardingService {
     }
   }
 
-  private async checkIfUserExists(userId: string): Promise<void> {
+  async checkIfUserExists(userId: string): Promise<void> {
     const userExists = await this.userRepository.orm.findOne({
       where: { id: userId },
       select: ['id'],

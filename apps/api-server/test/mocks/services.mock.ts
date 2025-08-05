@@ -354,4 +354,5 @@ export const GoogleAuthServiceMock = {
 
 export const UserOnboardingServiceMock = {
   createOnboardingData: jest.fn(),
+  getOnboardingProgress: jest.fn(),
 };

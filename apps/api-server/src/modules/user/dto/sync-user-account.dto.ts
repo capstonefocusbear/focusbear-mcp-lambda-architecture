@@ -1,10 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Auth0ClientDto } from './auth0-client.dto';
 
 export class SyncUserAccountDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  auth0_id: string;
+  auth0_id?: string;
 
   @IsNotEmpty()
   @IsString()

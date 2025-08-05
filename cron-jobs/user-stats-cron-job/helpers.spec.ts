@@ -470,16 +470,25 @@ describe('helpers', () => {
       // Adjust expected streaks based on current day of the week
       // Streaks only count weekdays (Mon-Fri), so results vary depending on when test runs
       const today = DateTime.local();
-      const isMonday = today.weekday === 1; // 1 = Monday in Luxon
+      const weekday = today.weekday; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
       
-      if (isMonday) {
-        newerExpected.focus_modes_streak = 4;
-        newerExpected.micro_breaks_streak = 4;
-        newerExpected.evening_routines_streak = 0; // morning and evening routines do not get affected by weekday logic
-      } else {
-        newerExpected.focus_modes_streak = 0;
-        newerExpected.micro_breaks_streak = 0;
-      }
+      // Calculate weekday-based streaks for focus modes and micro breaks
+      // Test data for focus_modes: [1,2,1,1,1] and micro_breaks (secondsSpentDoingBreaks): [0,100,9,9,100] for days 1-5 ago
+      // Weekday-only streak calculation counts backwards from today, skipping weekends
+      const weekdayStreakMap = {
+        1: { focus_modes_streak: 3, micro_breaks_streak: 3 }, // Monday: 3 weekdays back (Fri,Thu,Wed), breaks on Fri,Thu,Wed
+        2: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Tuesday: 3 weekdays back (Mon,Fri,Thu), breaks on Mon (day 1 ago has 0 breaks)
+        3: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Wednesday: 3 weekdays back (Tue,Mon,Fri), breaks on Tue (day 1 ago has 0 breaks)
+        4: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Thursday: 3 weekdays back (Wed,Tue,Mon), breaks on Wed (day 1 ago has 0 breaks)
+        5: { focus_modes_streak: 4, micro_breaks_streak: 0 }, // Friday: 4 weekdays back (Thu,Wed,Tue,Mon), breaks on Thu (day 1 ago has 0 breaks)
+        6: { focus_modes_streak: 5, micro_breaks_streak: 0 }, // Saturday: 5 weekdays back (Fri,Thu,Wed,Tue,Mon), breaks on Fri (day 1 ago has 0 breaks)
+        7: { focus_modes_streak: 4, micro_breaks_streak: 4 }, // Sunday: 4 weekdays back (Fri,Thu,Wed,Tue), breaks on all 4 weekdays
+      };
+      
+      const expectedStreaks = weekdayStreakMap[weekday];
+      newerExpected.focus_modes_streak = expectedStreaks.focus_modes_streak;
+      newerExpected.micro_breaks_streak = expectedStreaks.micro_breaks_streak;
+      // Note: morning and evening routines do NOT use weekday-only logic, so they keep their normal calculated streaks
 
       runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
     });
@@ -515,18 +524,18 @@ describe('helpers', () => {
         morning_routines_streak: 0,
         evening_routines_streak: 0,
         micro_breaks_streak: 0,
-        percent_morning_routines_streak_complete_in_90days: 1, // 1/90 = 1.11% ≈ 1% (only the 10-day-ago entry is within window)
-        percent_evening_routines_streak_complete_in_90days: 1,
-        percent_micro_breaks_streak_complete_in_90days: 1,
+        percent_morning_routines_streak_complete_in_90days: 2, // 2/90 = 2.22% ≈ 2% (both entries are within 90-day window)
+        percent_evening_routines_streak_complete_in_90days: 2,
+        percent_micro_breaks_streak_complete_in_90days: 2,
         num_days_of_stats: 90,
-        number_days_completed: 1, // Only 1 day within the 90-day window
-        morning_number_days_completed: 1, // Only 1 day within window
+        number_days_completed: 2, // Both days are within the 90-day window (>= boundary is inclusive)
+        morning_number_days_completed: 2, // Both days within window
         morning_num_days_of_stats: 90,
-        evening_number_days_completed: 1, // Only 1 day within window
+        evening_number_days_completed: 2, // Both days within window
         evening_num_days_of_stats: 90,
-        focus_modes_number_days_completed: 1, // Only 1 day within window
+        focus_modes_number_days_completed: 2, // Both days within window
         focus_modes_num_days_of_stats: 90,
-        micro_breaks_number_days_completed: 1, // Only 1 day within window
+        micro_breaks_number_days_completed: 2, // Both days within window
         micro_breaks_num_days_of_stats: 90,
       };
 

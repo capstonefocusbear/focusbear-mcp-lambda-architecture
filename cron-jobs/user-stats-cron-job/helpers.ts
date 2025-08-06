@@ -74,6 +74,8 @@ export function determineUserLevel(
 export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date) {
   const currentDate = new Date();
   currentDate.setDate(currentDate.getDate() - 90);
+  // Normalise midnight to avoid updating stats for the current day
+  currentDate.setHours(0, 0, 0, 0);
   
   // Calculate days since user signup (for users < 90 days old)
   const userSignupDate = new Date(userCreatedAt);

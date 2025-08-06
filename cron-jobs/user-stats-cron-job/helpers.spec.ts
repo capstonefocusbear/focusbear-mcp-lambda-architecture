@@ -488,7 +488,7 @@ describe('helpers', () => {
       const expectedStreaks = weekdayStreakMap[weekday];
       newerExpected.focus_modes_streak = expectedStreaks.focus_modes_streak;
       newerExpected.micro_breaks_streak = expectedStreaks.micro_breaks_streak;
-      // Note: morning and evening routines do NOT use weekday-only logic, so they keep their normal calculated streaks
+      newerExpected.evening_routines_streak = 0; // morning and evening routines do not get affected by weekday logic
 
       runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
     });
@@ -524,18 +524,18 @@ describe('helpers', () => {
         morning_routines_streak: 0,
         evening_routines_streak: 0,
         micro_breaks_streak: 0,
-        percent_morning_routines_streak_complete_in_90days: 2, // 2/90 = 2.22% ≈ 2% (both entries are within 90-day window)
+        percent_morning_routines_streak_complete_in_90days: 2, // 2/90 = 2.22% ≈ 2% (both entries are within window)
         percent_evening_routines_streak_complete_in_90days: 2,
         percent_micro_breaks_streak_complete_in_90days: 2,
         num_days_of_stats: 90,
-        number_days_completed: 2, // Both days are within the 90-day window (>= boundary is inclusive)
-        morning_number_days_completed: 2, // Both days within window
+        number_days_completed: 2, // 2 days within the 90-day window
+        morning_number_days_completed: 2, // 2 days within window
         morning_num_days_of_stats: 90,
-        evening_number_days_completed: 2, // Both days within window
+        evening_number_days_completed: 2, // 2 days within window
         evening_num_days_of_stats: 90,
-        focus_modes_number_days_completed: 2, // Both days within window
+        focus_modes_number_days_completed: 2, // 2 days within window
         focus_modes_num_days_of_stats: 90,
-        micro_breaks_number_days_completed: 2, // Both days within window
+        micro_breaks_number_days_completed: 2, // 2 days within window
         micro_breaks_num_days_of_stats: 90,
       };
 

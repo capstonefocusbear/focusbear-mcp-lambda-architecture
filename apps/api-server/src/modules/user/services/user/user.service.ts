@@ -182,9 +182,9 @@ export class UserService {
         if (auth0_id) {
           const devicesFromDb = registeredUser
             ? await this.deviceRepository.orm.find({
-                where: { user_id: registeredUser.id },
-                order: { created_at: 'ASC' },
-              })
+              where: { user_id: registeredUser.id },
+              order: { created_at: 'ASC' },
+            })
             : [];
 
           this.sentryService.instance().addBreadcrumb({
@@ -224,7 +224,10 @@ export class UserService {
       const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
       if (registeredUser) {
         const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
-        return { user: updatedUser, os: registeredUser.devices[0]?.operating_system || OperatingSystem.Unknown };
+        return {
+          user: updatedUser,
+          os: registeredUser.devices?.[0]?.operating_system || OperatingSystem.Unknown
+        };
       }
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);

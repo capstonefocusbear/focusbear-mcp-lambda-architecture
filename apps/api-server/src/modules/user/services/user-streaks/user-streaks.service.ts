@@ -9,8 +9,6 @@ import {
 
 @Injectable()
 export class UserStreaksService {
-  constructor() {}
-
   public calculateStreaksForUser(
     userDailyStats: DailyStats[],
     timeZone: string,

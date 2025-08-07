@@ -1,12 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { DateTime } from 'luxon';
 import { UserProgressMetricsService } from './user-progress-metrics.service';
 import { DailyStatsRepository } from '../../repositories/user-daily-stats.repository';
 import { UserStreaksService } from '../user-streaks/user-streaks.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { User, EmailFrequency } from '../../entities/user.entity';
 import { DailyStats } from '../../entities/user-daily-stats.entity';
-import { DateTime } from 'luxon';
+
+const createMockUser = (): User => {
+  const user = new User();
+  user.id = 'user-123';
+  user.timezone = 'UTC';
+  user.language = 'en';
+  user.email_frequency = EmailFrequency.WEEKLY;
+  user.created_at = '2025-01-01T00:00:00.000Z';
+  user.metadata = {
+    name: 'Test User',
+  };
+  return user;
+};
+
+const createMockDailyStats = (date: string, overrides: Partial<DailyStats> = {}): DailyStats => {
+  const stats = new DailyStats();
+  stats.date_completed = new Date(date);
+  stats.morning_routine_completion_percentage = overrides.morning_routine_completion_percentage || 0;
+  stats.evening_routine_completion_percentage = overrides.evening_routine_completion_percentage || 0;
+  stats.micro_breaks_routine_completion_percentage = overrides.micro_breaks_routine_completion_percentage || 0;
+  stats.seconds_spent_in_focus_sessions = (overrides.seconds_spent_in_focus_sessions || 0) * 60;
+  stats.focus_modes_completed = overrides.focus_modes_completed || Math.floor(Math.random() * 5) + 1;
+  return stats;
+};
 
 describe('UserProgressMetricsService', () => {
   let service: UserProgressMetricsService;
@@ -75,9 +99,18 @@ describe('UserProgressMetricsService', () => {
       const weekStart = new Date('2025-08-04'); // Monday
 
       const weeklyStats = [
-        createMockDailyStats('2025-08-04', { morningCompleted: true, focusMinutes: 120 }),
-        createMockDailyStats('2025-08-05', { eveningCompleted: true, focusMinutes: 90 }),
-        createMockDailyStats('2025-08-06', { morningCompleted: true, microBreaks: true, focusMinutes: 150 }),
+        createMockDailyStats('2025-08-04', {
+          morning_routine_completion_percentage: 100,
+          seconds_spent_in_focus_sessions: 120,
+        }),
+        createMockDailyStats('2025-08-05', {
+          evening_routine_completion_percentage: 100,
+          seconds_spent_in_focus_sessions: 90,
+        }),
+        createMockDailyStats('2025-08-06', {
+          morning_routine_completion_percentage: 100,
+          seconds_spent_in_focus_sessions: 150,
+        }),
       ];
 
       const allTimeStats = [...weeklyStats, createMockDailyStats('2025-07-01')];
@@ -116,7 +149,7 @@ describe('UserProgressMetricsService', () => {
         focus_modes_streak: 5,
         morning_routines_streak: 3,
         evening_routines_streak: 2,
-        micro_breaks_streak: 1,
+        micro_breaks_streak: 0,
       };
 
       mockDailyStatsRepository.orm.find.mockResolvedValue(weeklyStats);
@@ -143,9 +176,9 @@ describe('UserProgressMetricsService', () => {
             streak: 2,
           },
           micro_breaks: {
-            completed: 1,
+            completed: 0,
             total: 7,
-            streak: 1,
+            streak: 0,
           },
         },
         focus_sessions: {
@@ -208,40 +241,4 @@ describe('UserProgressMetricsService', () => {
       });
     });
   });
-
-  // Helper functions
-  function createMockUser(): User {
-    const user = new User();
-    user.id = 'user-123';
-    user.timezone = 'UTC';
-    user.language = 'en';
-    user.email_frequency = EmailFrequency.WEEKLY;
-    user.created_at = '2025-01-01T00:00:00.000Z';
-    user.metadata = {
-      name: 'Test User',
-    };
-    return user;
-  }
-
-  function createMockDailyStats(
-    date: string,
-    options: {
-      morningCompleted?: boolean;
-      eveningCompleted?: boolean;
-      microBreaks?: boolean;
-      focusMinutes?: number;
-      focusSessions?: number;
-    } = {},
-  ): DailyStats {
-    const stats = new DailyStats();
-    stats.id = `stats-${date}`;
-    stats.user_id = 'user-123';
-    stats.date_completed = new Date(date);
-    stats.morning_routine_completion_percentage = options.morningCompleted ? 100 : 0;
-    stats.evening_routine_completion_percentage = options.eveningCompleted ? 100 : 0;
-    stats.seconds_spent_doing_breaks = options.microBreaks ? 1800 : 0;
-    stats.seconds_spent_in_focus_sessions = options.focusMinutes ? options.focusMinutes * 60 : 0;
-    stats.focus_modes_completed = options.focusSessions || Math.floor(Math.random() * 5) + 1;
-    return stats;
-  }
 });

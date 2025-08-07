@@ -7,6 +7,30 @@ import * as helpers from '../../../../../../../cron-jobs/user-stats-cron-job/hel
 // Mock the helpers import
 jest.mock('../../../../../../../cron-jobs/user-stats-cron-job/helpers');
 
+const createMockDailyStats = (date: string): DailyStats => {
+  const dailyStats = new DailyStats();
+  dailyStats.id = '123e4567-e89b-12d3-a456-426614174000';
+  dailyStats.user_id = 'user-123';
+  dailyStats.date_completed = new Date(date);
+  dailyStats.morning_routine_completion_percentage = 80;
+  dailyStats.evening_routine_completion_percentage = 75;
+  dailyStats.micro_breaks_routine_completion_percentage = 90;
+  dailyStats.focus_modes_completed = 3;
+  dailyStats.seconds_spent_doing_breaks = 1800; // 30 minutes
+  dailyStats.seconds_spent_in_focus_sessions = 7200; // 2 hours
+  return dailyStats;
+};
+
+const createMockDailySequenceDurations = (): DailySequenceDurations => ({
+  MON: 1800, // 30 minutes
+  TUE: 1800,
+  WED: 1800,
+  THU: 1800,
+  FRI: 1800,
+  SAT: 1800,
+  SUN: 1800,
+});
+
 describe('UserStreaksService', () => {
   let service: UserStreaksService;
   const mockCalculateStreaks = jest.mocked(helpers.calculateStreaks);
@@ -46,7 +70,7 @@ describe('UserStreaksService', () => {
         mockUserDailyStats,
         mockTimeZone,
         mockDailySequenceDurations,
-        mockUserCreatedAt
+        mockUserCreatedAt,
       );
 
       // Assert
@@ -54,7 +78,7 @@ describe('UserStreaksService', () => {
         mockUserDailyStats,
         mockTimeZone,
         mockDailySequenceDurations,
-        mockUserCreatedAt
+        mockUserCreatedAt,
       );
       expect(result).toBe(mockResult);
     });
@@ -80,38 +104,8 @@ describe('UserStreaksService', () => {
       const result = service.get90DayStats(mockUserDailyStats, mockUserCreatedAt);
 
       // Assert
-      expect(mockCalculateRoutineStatsIn90Days).toHaveBeenCalledWith(
-        mockUserDailyStats,
-        mockUserCreatedAt
-      );
+      expect(mockCalculateRoutineStatsIn90Days).toHaveBeenCalledWith(mockUserDailyStats, mockUserCreatedAt);
       expect(result).toBe(mockResult);
     });
   });
-
-  // Helper functions
-  function createMockDailyStats(date: string): DailyStats {
-    const dailyStats = new DailyStats();
-    dailyStats.id = '123e4567-e89b-12d3-a456-426614174000';
-    dailyStats.user_id = 'user-123';
-    dailyStats.date_completed = new Date(date);
-    dailyStats.morning_routine_completion_percentage = 80;
-    dailyStats.evening_routine_completion_percentage = 75;
-    dailyStats.micro_breaks_routine_completion_percentage = 90;
-    dailyStats.focus_modes_completed = 3;
-    dailyStats.seconds_spent_doing_breaks = 1800; // 30 minutes
-    dailyStats.seconds_spent_in_focus_sessions = 7200; // 2 hours
-    return dailyStats;
-  }
-
-  function createMockDailySequenceDurations(): DailySequenceDurations {
-    return {
-      MON: 1800,    // 30 minutes
-      TUE: 1800,
-      WED: 1800,
-      THU: 1800,
-      FRI: 1800,
-      SAT: 1800,
-      SUN: 1800,
-    };
-  }
 });

@@ -33,10 +33,13 @@ export class EmailProcessor {
   async handleProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
-      
+
       // Generate email content
-      const emailContent = await this.progressEmailTemplateService
-        .generateWeeklyProgressEmail(user, metrics, unsubscribe_token);
+      const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
+        user,
+        metrics,
+        unsubscribe_token,
+      );
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
@@ -58,10 +61,10 @@ export class EmailProcessor {
     } catch (error) {
       // Log to Sentry
       this.sentryService.instance().captureException(error, {
-        extra: { 
-          jobId: job.id, 
+        extra: {
+          jobId: job.id,
           userId: job.data.user?.id,
-          operation: 'handleProgressEmail' 
+          operation: 'handleProgressEmail',
         },
       });
 
@@ -73,10 +76,9 @@ export class EmailProcessor {
   async handleNoProgressEmail(job: Job) {
     try {
       const { user } = job.data;
-      
+
       // Generate email content
-      const emailContent = await this.progressEmailTemplateService
-        .generateNoProgressEmail(user);
+      const emailContent = await this.progressEmailTemplateService.generateNoProgressEmail(user);
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
@@ -94,10 +96,10 @@ export class EmailProcessor {
     } catch (error) {
       // Log to Sentry
       this.sentryService.instance().captureException(error, {
-        extra: { 
-          jobId: job.id, 
+        extra: {
+          jobId: job.id,
           userId: job.data.user?.id,
-          operation: 'handleNoProgressEmail' 
+          operation: 'handleNoProgressEmail',
         },
       });
 
@@ -108,11 +110,13 @@ export class EmailProcessor {
   @Process('send-inactivity-warning-email')
   async handleInactivityWarningEmail(job: Job) {
     try {
-      const { user, warningType, daysUntilDeletion } = job.data;
-      
+      const { user, daysUntilDeletion } = job.data;
+
       // Generate email content
-      const emailContent = await this.progressEmailTemplateService
-        .generateInactivityWarningEmail(user, warningType, daysUntilDeletion);
+      const emailContent = await this.progressEmailTemplateService.generateInactivityWarningEmail(
+        user,
+        daysUntilDeletion,
+      );
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
@@ -134,10 +138,10 @@ export class EmailProcessor {
     } catch (error) {
       // Log to Sentry
       this.sentryService.instance().captureException(error, {
-        extra: { 
-          jobId: job.id, 
+        extra: {
+          jobId: job.id,
           userId: job.data.user?.id,
-          operation: 'handleInactivityWarningEmail' 
+          operation: 'handleInactivityWarningEmail',
         },
       });
 
@@ -148,11 +152,14 @@ export class EmailProcessor {
   @Process('send-enhanced-progress-email')
   async handleEnhancedProgressEmail(job: Job) {
     try {
-      const { user, metrics, unsubscribe_token, emailType } = job.data;
-      
+      const { user, metrics, unsubscribe_token } = job.data;
+
       // Generate email content with enhanced context
-      const emailContent = await this.progressEmailTemplateService
-        .generateWeeklyProgressEmail(user, metrics, unsubscribe_token, emailType);
+      const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
+        user,
+        metrics,
+        unsubscribe_token,
+      );
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
@@ -174,10 +181,10 @@ export class EmailProcessor {
     } catch (error) {
       // Log to Sentry
       this.sentryService.instance().captureException(error, {
-        extra: { 
-          jobId: job.id, 
+        extra: {
+          jobId: job.id,
           userId: job.data.user?.id,
-          operation: 'handleEnhancedProgressEmail' 
+          operation: 'handleEnhancedProgressEmail',
         },
       });
 

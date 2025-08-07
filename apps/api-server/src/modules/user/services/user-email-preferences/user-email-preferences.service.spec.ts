@@ -12,7 +12,19 @@ import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
 
 describe('UserEmailPreferencesService', () => {
   let service: UserEmailPreferencesService;
-  let userRepository: UserRepository;
+
+  const createMockUser = (id: string, emailFrequency: EmailFrequency): User => {
+    const user = new User();
+    user.id = id;
+    user.email_frequency = emailFrequency;
+    user.metadata = {
+      name: 'Test User',
+      email_preferences: {
+        include_shareable_content: true,
+      },
+    };
+    return user;
+  };
 
   const mockUserRepository = {
     findOne: jest.fn(),
@@ -72,7 +84,6 @@ describe('UserEmailPreferencesService', () => {
     }).compile();
 
     service = module.get<UserEmailPreferencesService>(UserEmailPreferencesService);
-    userRepository = module.get<UserRepository>(UserRepository);
 
     // Set up transaction mock
     mockDataSource.transaction.mockImplementation(async (callback) => {
@@ -282,18 +293,4 @@ describe('UserEmailPreferencesService', () => {
       });
     });
   });
-
-  // Helper function
-  function createMockUser(id: string, emailFrequency: EmailFrequency): User {
-    const user = new User();
-    user.id = id;
-    user.email_frequency = emailFrequency;
-    user.metadata = {
-      name: 'Test User',
-      email_preferences: {
-        include_shareable_content: true,
-      },
-    };
-    return user;
-  }
 });

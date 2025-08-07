@@ -1,12 +1,7 @@
-import { IsOptional, IsEnum, IsObject, IsBoolean } from 'class-validator';
+import { IsOptional, IsEnum, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { EmailFrequency } from '../entities/user.entity';
-
-export class EmailPreferences {
-  @IsOptional()
-  @IsBoolean()
-  include_shareable_content?: boolean;
-}
+import { EmailPreferences } from './email-preferences.dto';
 
 export class UpdateEmailPreferencesDto {
   @ApiProperty({

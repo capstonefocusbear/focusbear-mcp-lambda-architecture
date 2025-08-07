@@ -14,16 +14,15 @@ export class ProgressEmailTemplateService {
     user: User,
     metrics: WeeklyProgressMetricsDto,
     unsubscribeToken: string,
-    emailType?: string,
   ): Promise<EmailContent> {
     const language = user.language || 'en';
     const userName = user.metadata?.name || 'Focus Bear user';
 
     if (language === 'es') {
-      return this.generateSpanishTemplate(userName, metrics, unsubscribeToken, emailType);
+      return this.generateSpanishTemplate(userName, metrics, unsubscribeToken);
     }
 
-    return this.generateEnglishTemplate(userName, metrics, unsubscribeToken, emailType);
+    return this.generateEnglishTemplate(userName, metrics, unsubscribeToken);
   }
 
   async generateNoProgressEmail(user: User): Promise<EmailContent> {
@@ -37,11 +36,7 @@ export class ProgressEmailTemplateService {
     return this.generateEnglishNoProgressTemplate(userName);
   }
 
-  async generateInactivityWarningEmail(
-    user: User,
-    warningType: string = 'account_deletion',
-    daysUntilDeletion: number = 30,
-  ): Promise<EmailContent> {
+  async generateInactivityWarningEmail(user: User, daysUntilDeletion = 30): Promise<EmailContent> {
     const language = user.language || 'en';
     const userName = user.metadata?.name || 'Focus Bear user';
 
@@ -56,7 +51,6 @@ export class ProgressEmailTemplateService {
     userName: string,
     metrics: WeeklyProgressMetricsDto,
     unsubscribeToken: string,
-    emailType?: string,
   ): EmailContent {
     const weekStart = new Date(metrics.week_start).toLocaleDateString('en-US', {
       month: 'long',
@@ -167,7 +161,6 @@ Keep up the great work!
     userName: string,
     metrics: WeeklyProgressMetricsDto,
     unsubscribeToken: string,
-    emailType?: string,
   ): EmailContent {
     const weekStart = new Date(metrics.week_start).toLocaleDateString('es-ES', {
       month: 'long',

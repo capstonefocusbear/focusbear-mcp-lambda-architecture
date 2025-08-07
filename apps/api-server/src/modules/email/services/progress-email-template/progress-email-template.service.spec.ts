@@ -3,6 +3,57 @@ import { ProgressEmailTemplateService } from './progress-email-template.service'
 import { User, EmailFrequency } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
 
+const createMockUser = (language: string): User => {
+  const user = new User();
+  user.id = 'user-123';
+  user.language = language;
+  user.email_frequency = EmailFrequency.WEEKLY;
+  user.metadata = {
+    name: 'Test User',
+  };
+  return user;
+};
+
+const createMockWeeklyMetrics = (): WeeklyProgressMetricsDto => ({
+  week_start: new Date('2025-01-27'),
+  week_end: new Date('2025-02-02'),
+  routines: {
+    morning: {
+      completed: 5,
+      total: 7,
+      streak: 5,
+    },
+    evening: {
+      completed: 4,
+      total: 7,
+      streak: 3,
+    },
+    micro_breaks: {
+      completed: 10,
+      total: 7,
+      streak: 2,
+    },
+  },
+  focus_sessions: {
+    total_minutes: 480,
+    sessions_count: 12,
+    longest_session: 90,
+    streak: 7,
+  },
+  tasks: {
+    completed: 15,
+    created: 20,
+    completion_rate: 0.75,
+  },
+  streaks: {
+    current_overall: 7,
+    best_overall: 12,
+    morning_routine: 5,
+    evening_routine: 3,
+    focus_mode: 7,
+  },
+});
+
 describe('ProgressEmailTemplateService', () => {
   let service: ProgressEmailTemplateService;
 
@@ -12,7 +63,7 @@ describe('ProgressEmailTemplateService', () => {
     }).compile();
 
     service = module.get<ProgressEmailTemplateService>(ProgressEmailTemplateService);
-    
+
     // Mock environment variables
     process.env.API_URL = 'https://api.focusbear.io';
     process.env.DASHBOARD_URL = 'https://dashboard.focusbear.io';
@@ -36,14 +87,14 @@ describe('ProgressEmailTemplateService', () => {
       // Assert
       expect(result.subject).toContain('Weekly Progress Report');
       expect(result.subject).toContain('January 27 - February 2');
-      
+
       expect(result.html).toContain('Hi Test User!');
       expect(result.html).toContain('5/7 completed');
       expect(result.html).toContain('480 minutes');
       expect(result.html).toContain('Keep up the great work!');
       expect(result.html).toContain('Tasks Completed:</strong> 15');
       expect(result.html).toContain(`token=${unsubscribeToken}`);
-      
+
       expect(result.text).toContain('Hi Test User!');
       expect(result.text).toContain('Morning: 5/7 completed');
       expect(result.text).toContain('Total Focus Time: 480 minutes');
@@ -66,7 +117,7 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('480 minutos');
       expect(result.html).toContain('¡Sigue así con el gran trabajo!');
       expect(result.html).toContain('Cancelar suscripción');
-      
+
       expect(result.text).toContain('¡Hola Test User!');
       expect(result.text).toContain('Mañana: 5/7 completadas');
       expect(result.text).toContain('Tiempo Total de Enfoque: 480 minutos');
@@ -107,7 +158,7 @@ describe('ProgressEmailTemplateService', () => {
       const user = createMockUser('en');
       const metrics = createMockWeeklyMetrics();
       metrics.week_start = new Date('2025-12-01'); // December 1st
-      metrics.week_end = new Date('2025-12-07');   // December 7th
+      metrics.week_end = new Date('2025-12-07'); // December 7th
       const unsubscribeToken = 'test-token-123';
 
       // Act
@@ -132,13 +183,13 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('Focus Sessions');
       expect(result.html).toContain('Tasks & Productivity');
       // Share Your Success section removed from template
-      
+
       // Check for specific metrics
       expect(result.html).toContain('5 day streak'); // Morning streak badge
       expect(result.html).toContain('3 day streak'); // Evening streak badge
-      expect(result.html).toContain('Sessions Completed:</strong> 12');  // Sessions count
-      expect(result.html).toContain('90 minutes');   // Longest session
-      expect(result.html).toContain('75%');          // Completion rate
+      expect(result.html).toContain('Sessions Completed:</strong> 12'); // Sessions count
+      expect(result.html).toContain('90 minutes'); // Longest session
+      expect(result.html).toContain('75%'); // Completion rate
     });
   });
 
@@ -153,12 +204,12 @@ describe('ProgressEmailTemplateService', () => {
       // Assert
       expect(result.subject).toBe('🐻 We miss you at FocusBear!');
       expect(result.html).toContain('Hi Test User');
-      expect(result.html).toContain('We noticed you haven\'t been active');
+      expect(result.html).toContain("We noticed you haven't been active");
       expect(result.html).toContain('Get Back on Track');
       expect(result.html).toContain(process.env.DASHBOARD_URL);
-      
+
       expect(result.text).toContain('Hi Test User');
-      expect(result.text).toContain('We noticed you haven\'t been active');
+      expect(result.text).toContain("We noticed you haven't been active");
       expect(result.text).toContain('Get back on track:');
     });
 
@@ -174,7 +225,7 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('Hola Test User');
       expect(result.html).toContain('no has estado activo');
       expect(result.html).toContain('Volver al Camino');
-      
+
       expect(result.text).toContain('Hola Test User');
       expect(result.text).toContain('no has estado activo');
     });
@@ -190,65 +241,10 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('5-minute morning routine');
       expect(result.html).toContain('15-minute focus sessions');
       expect(result.html).toContain('micro-breaks');
-      
+
       expect(result.text).toContain('5-minute morning routine');
       expect(result.text).toContain('15-minute focus sessions');
       expect(result.text).toContain('micro-breaks');
     });
   });
-
-  // Helper functions
-  function createMockUser(language: string): User {
-    const user = new User();
-    user.id = 'user-123';
-    user.language = language;
-    user.email_frequency = EmailFrequency.WEEKLY;
-    user.metadata = {
-      name: 'Test User',
-    };
-    return user;
-  }
-
-  function createMockWeeklyMetrics(): WeeklyProgressMetricsDto {
-    return {
-      week_start: new Date('2025-01-27'),
-      week_end: new Date('2025-02-02'),
-      routines: {
-        morning: {
-          completed: 5,
-          total: 7,
-          streak: 5,
-        },
-        evening: {
-          completed: 4,
-          total: 7,
-          streak: 3,
-        },
-        micro_breaks: {
-          completed: 10,
-          total: 7,
-          streak: 2,
-        },
-      },
-      focus_sessions: {
-        total_minutes: 480,
-        sessions_count: 12,
-        longest_session: 90,
-        streak: 7,
-      },
-      tasks: {
-        completed: 15,
-        created: 20,
-        completion_rate: 0.75,
-      },
-      streaks: {
-        current_overall: 7,
-        best_overall: 12,
-        morning_routine: 5,
-        evening_routine: 3,
-        focus_mode: 7,
-      },
-
-    };
-  }
 });

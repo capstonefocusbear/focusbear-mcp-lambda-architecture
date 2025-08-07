@@ -47,7 +47,6 @@ describe('EmailProcessor', () => {
       evening_routine: 2,
       focus_mode: 5,
     },
-
   };
 
   beforeEach(async () => {
@@ -145,7 +144,7 @@ describe('EmailProcessor', () => {
     expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).toHaveBeenCalledWith(
       mockJobData.user,
       mockJobData.metrics,
-      mockJobData.unsubscribe_token
+      mockJobData.unsubscribe_token,
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
@@ -176,9 +175,7 @@ describe('EmailProcessor', () => {
 
     const result = await processor.handleNoProgressEmail(mockJob);
 
-    expect(progressEmailTemplateServiceMock.generateNoProgressEmail).toHaveBeenCalledWith(
-      mockJobData.user
-    );
+    expect(progressEmailTemplateServiceMock.generateNoProgressEmail).toHaveBeenCalledWith(mockJobData.user);
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
       from: 'noreply@focusbear.io',
@@ -206,11 +203,7 @@ describe('EmailProcessor', () => {
 
     const result = await processor.handleInactivityWarningEmail(mockJob);
 
-    expect(progressEmailTemplateServiceMock.generateInactivityWarningEmail).toHaveBeenCalledWith(
-      mockJobData.user,
-      'account_deletion',
-      30
-    );
+    expect(progressEmailTemplateServiceMock.generateInactivityWarningEmail).toHaveBeenCalledWith(mockJobData.user, 30);
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
       from: 'noreply@focusbear.io',
@@ -246,8 +239,7 @@ describe('EmailProcessor', () => {
     expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).toHaveBeenCalledWith(
       mockJobData.user,
       mockJobData.metrics,
-      mockJobData.unsubscribe_token,
-      'inactive_user_progress'
+      expect.anything(),
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',

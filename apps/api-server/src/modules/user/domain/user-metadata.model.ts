@@ -7,5 +7,5 @@ export class UserMetadata {
 
   last_email_sent?: Date;
 
-email_preferences?: {};
+  email_preferences?: Record<string, any>;
 }

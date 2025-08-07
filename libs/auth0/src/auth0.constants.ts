@@ -7,4 +7,3 @@ export const ANDROID_DEVICE_NAME = 'okhttp';
 export const MAC_CLIENT_ID = 'dgMrlNC5mM634Sxi9SLqIqi0WvgVpwX7';
 export const WINDOWS_CLIENT_ID = 'YAYPDa7sAVKuheZy3dYWyzNncOSZq98I';
 export const MOBILE_CLIENT_ID = ['cZ2J5dR8FliHiTyOdlyk18wKottWxPaC', '9hhQ3ymKQQsrAHkHlrVYzMPoJ9VZqrJ8'];
-export const UNKNOWN_OPERATING_SYSTEM = 'Unknown';

@@ -21,11 +21,8 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserSettingsService } from './services/user-settings/user-settings.service';
 import { UserService } from './services/user/user.service';
-import { UserOnboardingService } from './services/user-onboarding/user-onboarding.service';
-import { UserOnboarding } from './entities/user-onboarding.entity';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
-import { UserOnboardingController } from './controllers/user-onboarding/user-onboarding.controller';
 import { HabitPackModule } from '../habit-pack/habit-pack.module';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
 import { UserConsentService } from './services/user-consent/user-consent.service';
@@ -63,7 +60,6 @@ import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consu
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
-import { UserOnboardingRepository } from './repositories/user-onboarding.repository';
 
 @Module({
   providers: [
@@ -89,12 +85,10 @@ import { UserOnboardingRepository } from './repositories/user-onboarding.reposit
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
     FlankerTestService,
-    UserOnboardingService,
-    UserOnboardingRepository,
   ],
   exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
   imports: [
-    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest, UserOnboarding]),
+    TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -185,7 +179,6 @@ import { UserOnboardingRepository } from './repositories/user-onboarding.reposit
     StudyParticipantController,
     UsageDataController,
     HealthMetricsController,
-    UserOnboardingController,
   ],
 })
 export class UserModule {}

@@ -30,7 +30,6 @@ import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
-import { UserOnboardingService } from '../user-onboarding/user-onboarding.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -70,7 +69,6 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
-import { OnboardingDto } from '../../dto/onboarding';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -100,8 +98,6 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
-    @Inject(forwardRef(() => UserOnboardingService))
-    private readonly userOnboardingService?: UserOnboardingService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -117,8 +113,8 @@ export class UserService {
       const [auth0User, registeredUser] = await this.consistentlyGetUser(auth0_id);
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
-      const { user, os } = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
-      if (!registeredUser) await this.handleInitialRegistration(user.id, os, auth0_id);
+      const user = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
+      if (!registeredUser) await this.handleInitialRegistration(user.id);
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
@@ -150,7 +146,7 @@ export class UserService {
   async updateOrCreateUser(
     { auth0_id, email, auth0_client }: SyncUserAccountDto,
     registeredUser?: User,
-  ): Promise<{ user: User; os: OperatingSystem }> {
+  ): Promise<User> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -179,44 +175,40 @@ export class UserService {
           message: 'Registering new user in Stripe',
         });
 
-        if (auth0_id) {
-          const devicesFromDb = registeredUser
-            ? await this.deviceRepository.orm.find({
+        const devicesFromDb = registeredUser
+          ? await this.deviceRepository.orm.find({
               where: { user_id: registeredUser.id },
               order: { created_at: 'ASC' },
             })
-            : [];
+          : [];
 
-          this.sentryService.instance().addBreadcrumb({
-            category: 'Service',
-            level: 'debug',
-            message: 'Getting user OS',
-            data: {
-              devicesFromDb,
-              auth0_client,
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Getting user OS',
+          data: {
+            devicesFromDb,
+            auth0_client,
+          },
+        });
+
+        os =
+          devicesFromDb?.[0]?.operating_system ??
+          (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
+
+        if (os === OperatingSystem.Unknown) {
+          this.sentryService.instance().captureEvent({
+            message: 'OS not found',
+            level: 'error',
+            extra: {
+              auth0_id,
+              email,
+              clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
             },
           });
-
-          os =
-            devicesFromDb.length > 0
-              ? devicesFromDb[0]?.operating_system
-              : (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
-
-          if (os === OperatingSystem.Unknown) {
-            const clientId = auth0_client?.client_id?.toString() || 'unknown client ID';
-            this.sentryService.instance().captureEvent({
-              message: 'OS not found',
-              level: 'error',
-              extra: {
-                auth0_id,
-                email,
-                clientId,
-              },
-            });
-          }
-        } else {
-          os = OperatingSystem.Web;
+          // TODO: Create and persist new device entry
         }
+
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
       }
@@ -224,75 +216,33 @@ export class UserService {
       const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
       if (registeredUser) {
         const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
-        return {
-          user: updatedUser,
-          os: registeredUser.devices?.[0]?.operating_system || OperatingSystem.Unknown
-        };
+        return updatedUser;
       }
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
-      return { user: newlySavedUser, os };
+      return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  async createUserWithOnboarding(dto: SyncUserAccountDto): Promise<{ user_id: string; onboarding: OnboardingDto }> {
-    try {
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Creating user with onboarding data for web platform',
-        data: { email: dto.email },
-      });
-
-      const { user } = await this.updateOrCreateUser(dto);
-
-      let onboardingData: OnboardingDto;
-      try {
-        onboardingData = await this.userOnboardingService.getOnboardingProgress({
-          user_id: user.id,
-          os: OperatingSystem.Web,
-        });
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          onboardingData = (await this.userOnboardingService.createOnboardingData(user.id, OperatingSystem.Web))
-            .onboarding;
-        } else {
-          throw error;
-        }
-      }
-
-      return {
-        user_id: user.id,
-        onboarding: onboardingData,
-      };
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
-    }
-  }
-
-  private async handleInitialRegistration(id: string, os: OperatingSystem, auth0_id?: string): Promise<void> {
+  private async handleInitialRegistration(user_id: string): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Handling initial registration',
         data: {
-          user_id: id,
-          auth0_id,
-          os,
+          user_id,
         },
       });
       const settingsConfig = this.config.get('constants.userSettings');
       const defaultSettings = settingsConfig.generateDefault();
 
       const registrationTasks = [
-        this.revenueCatService.grantTrialAccess(id),
-        this.userSettingsService.updateSettings({ user_id: id }, defaultSettings, false, { is_onboarding: true }), // deprecated and will be removed in the future
-        this.userOnboardingService.createOnboardingData(id, os),
+        this.revenueCatService.grantTrialAccess(user_id),
+        this.userSettingsService.updateSettings({ user_id }, defaultSettings, false, { is_onboarding: true }),
       ];
 
       await Promise.all([...registrationTasks]);

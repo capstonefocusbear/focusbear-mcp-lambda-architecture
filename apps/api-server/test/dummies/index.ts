@@ -40,17 +40,11 @@ import {
   MACOS_OPERATING_SYSTEM,
   MAC_CLIENT_ID,
   MOBILE_CLIENT_ID,
-  UNKNOWN_OPERATING_SYSTEM,
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
 import { TeamToMember } from '../../src/modules/team/entities/team-to-member.entity';
 import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
-import { OnboardFlowStep } from '../../src/modules/user/domain/onboarding/onboarding-flow-step.enum';
-import { OnboardFlowFeature } from '../../src/modules/user/domain/onboarding/onboarding-flow-feature.enum';
-import { RoutineType } from '../../src/modules/user/domain/routine-type.enum';
-import { BearsonaProfile } from '../../src/modules/user/domain/onboarding/bearsona-profile.enum';
-import { OnboardFlowTimeUI } from '../../src/modules/user/domain/onboarding/onboarding-flow-time-ui.enum';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -2299,7 +2293,7 @@ export const dummyDeviceCredentials = [
   },
   {
     id: 'dev_ghi520',
-    device_name: UNKNOWN_OPERATING_SYSTEM,
+    device_name: OperatingSystem.Unknown,
     type: 'public_key' as DeviceCredentialTypeEnum,
     user_id: 'auth0|1234567890',
     client_id: 'unknown4934023',
@@ -2496,28 +2490,4 @@ export const dummyNotifyLogsUploadSuccessDto = {
   app_version: '1.0.1',
   feedback_message: 'dummy feedback',
   uploaded_file_url: 'https://dummylogs.com/log.txt',
-};
-
-export const mockDefaultOnboardingData = {
-  currentStep: OnboardFlowStep.DATA_PRIVACY,
-  features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS],
-  routines: [RoutineType.MORNING_ROUTINE, RoutineType.EVENING_ROUTINE],
-  profile: { name: BearsonaProfile.OG, useProfileLang: true },
-  activities: { morning_activities: [], evening_activities: [] },
-  selectedGoals: [],
-  times: {
-    [OnboardFlowTimeUI.WAKE_UP]: '06:00',
-    [OnboardFlowTimeUI.START_STUDY]: '08:00',
-    [OnboardFlowTimeUI.FINISH_STUDY]: '17:30',
-    [OnboardFlowTimeUI.GO_TO_SLEEP]: '21:00',
-  },
-  currentTimeUI: OnboardFlowTimeUI.WAKE_UP,
-  break_after_minutes: 20,
-  skippedSteps: [],
-};
-
-export const mockUpdateOnboardingProgressDto = {
-  ...mockDefaultOnboardingData,
-  currentStep: OnboardFlowStep.HABIT_DESIGN_SESSION,
-  features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS, OnboardFlowFeature.STAY_FOCUSED_AT_WORK],
 };

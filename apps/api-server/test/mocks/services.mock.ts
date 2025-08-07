@@ -351,8 +351,3 @@ export const CalendarServiceMock = {
 export const GoogleAuthServiceMock = {
   refreshToken: jest.fn(),
 };
-
-export const UserOnboardingServiceMock = {
-  createOnboardingData: jest.fn(),
-  getOnboardingProgress: jest.fn(),
-};

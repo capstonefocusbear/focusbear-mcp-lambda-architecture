@@ -10,7 +10,6 @@ import {
   ANDROID_DEVICE_NAME,
   ANDROID_OPERATING_SYSTEM,
   IOS_OPERATING_SYSTEM,
-  UNKNOWN_OPERATING_SYSTEM,
 } from '@app/auth0/auth0.constants';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
@@ -139,7 +138,7 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
         if (MOBILE_CLIENT_ID.includes(client_id)) {
           return name === ANDROID_DEVICE_NAME ? ANDROID_OPERATING_SYSTEM : IOS_OPERATING_SYSTEM;
         }
-        return UNKNOWN_OPERATING_SYSTEM;
+        return OperatingSystem.Unknown;
       }
     }
   };

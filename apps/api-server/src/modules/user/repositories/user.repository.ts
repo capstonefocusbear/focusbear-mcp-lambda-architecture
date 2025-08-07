@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, IsNull, Not } from 'typeorm';
+import { DataSource, In, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { GetUsersQueryDto } from '../dto/get-users-query.dto';
-import { User } from '../entities/user.entity';
+import { User, EmailFrequency } from '../entities/user.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
@@ -15,8 +15,8 @@ import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
-  constructor(private readonly connection: Connection) {
-    super(connection, User);
+  constructor(private readonly dataSource: DataSource) {
+    super(dataSource, User);
   }
 
   /**
@@ -450,6 +450,55 @@ export class UserRepository extends BaseRepository<User> {
       [streakType, userId],
     );
     return result[0] || null;
+  }
+
+  async getUsersForWeeklyEmails(): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
+      },
+      relations: [
+        'activitySequences',
+        'activitySequences.activities',
+        'completedActivitySequences',
+        'completedActivities',
+        'completedFocusBlocks',
+      ],
+    });
+  }
+
+  async getUsersForDailyEmails(): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: EmailFrequency.DAILY,
+      },
+      relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
+    });
+  }
+
+  async updateEmailFrequency(userId: string, frequency: EmailFrequency): Promise<void> {
+    await this.update(userId, {
+      email_frequency: frequency,
+      updated_at: new Date(),
+    });
+  }
+
+  async getUsersForNoProgressEmails(daysThreshold = 7): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return this.orm
+      .createQueryBuilder('users')
+      .where('users.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(users.last_completed_sequence_at IS NULL OR users.last_completed_sequence_at < :threshold)', {
+        threshold: thresholdDate,
+      })
+      .andWhere('(users.last_completed_focus_mode_at IS NULL OR users.last_completed_focus_mode_at < :threshold)', {
+        threshold: thresholdDate,
+      })
+      .getMany();
   }
 
   /* eslint-disable no-param-reassign */

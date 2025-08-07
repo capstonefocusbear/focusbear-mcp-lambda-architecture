@@ -2,6 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { Auth0Module } from '@app/auth0';
 import { OpenAIModule } from '@app/openai';
 import { IStripeOptions, StripeModule } from '@app/stripe';
@@ -15,6 +17,7 @@ import { GeminiModule } from '@app/gemini';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { AsyncTaskModule } from '../async-task/async-task.module';
+import { EmailModule } from '../email/email.module';
 import { UserSettingsController } from './controllers/user-settings/user-settings.controller';
 import { UserController } from './controllers/user/user.controller';
 import { User } from './entities/user.entity';
@@ -22,6 +25,9 @@ import { UserRepository } from './repositories/user.repository';
 import { UserSettingsService } from './services/user-settings/user-settings.service';
 import { UserService } from './services/user/user.service';
 import { UserOnboardingService } from './services/user-onboarding/user-onboarding.service';
+import { UserStreaksService } from './services/user-streaks/user-streaks.service';
+import { UserEmailPreferencesService } from './services/user-email-preferences/user-email-preferences.service';
+import { UserProgressMetricsService } from './services/user-progress-metrics/user-progress-metrics.service';
 import { UserOnboarding } from './entities/user-onboarding.entity';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
@@ -70,6 +76,9 @@ import { UserOnboardingRepository } from './repositories/user-onboarding.reposit
     UserSettingsService,
     UserRepository,
     UserService,
+    UserStreaksService,
+    UserEmailPreferencesService,
+    UserProgressMetricsService,
     UserConsentService,
     UserConsentRepository,
     UserDailyStatsService,
@@ -92,9 +101,24 @@ import { UserOnboardingRepository } from './repositories/user-onboarding.reposit
     UserOnboardingService,
     UserOnboardingRepository,
   ],
-  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
+  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, UserStreaksService, UserEmailPreferencesService, UserProgressMetricsService, CustomRoutineRepository],
   imports: [
     TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest, UserOnboarding]),
+    forwardRef(() => EmailModule),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+        signOptions: { expiresIn: '30d' },
+      }),
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [{
+        ttl: 60,
+        limit: 10,
+      }],
+    }),
     Auth0Module.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

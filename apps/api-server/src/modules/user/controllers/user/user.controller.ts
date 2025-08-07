@@ -37,6 +37,11 @@ import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { Disabled } from '../../../../shared/decorators/disabled.decorator';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
+import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dto';
+import { EmailPreferencesResponseDto } from '../../dto/email-preferences-response.dto';
+import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
+import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('user')
 @ApiTags('user')
@@ -45,6 +50,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly userEmailPreferencesService: UserEmailPreferencesService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -256,5 +262,36 @@ export class UserController {
     @AuthContext() { user }: Passport,
   ) {
     return this.userService.uninstallApplication(uninstallApplicationQueryDto, user.id);
+  }
+
+  @Get('email-preferences')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Get user email preferences' })
+  async getEmailPreferences(
+    @AuthContext() { user }: Passport
+  ): Promise<EmailPreferencesResponseDto> {
+    return this.userEmailPreferencesService.getEmailPreferences(user.id);
+  }
+
+  @Put('email-preferences')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Update user email preferences' })
+  @Throttle({ default: { ttl: 60, limit: 10 } }) // Rate limit: 10 requests per minute
+  async updateEmailPreferences(
+    @AuthContext() { user }: Passport,
+    @Body() dto: UpdateEmailPreferencesDto
+  ): Promise<EmailPreferencesResponseDto> {
+    return this.userEmailPreferencesService.updateEmailPreferences(user.id, dto);
+  }
+
+  @Post('email-preferences/unsubscribe')
+  @ApiOperation({ summary: 'Unsubscribe from emails using token' })
+  async unsubscribeFromEmails(
+    @Body() dto: UnsubscribeEmailDto
+  ): Promise<{ message: string }> {
+    await this.userEmailPreferencesService.unsubscribeFromEmails(dto);
+    return { message: 'Successfully unsubscribed from emails' };
   }
 }

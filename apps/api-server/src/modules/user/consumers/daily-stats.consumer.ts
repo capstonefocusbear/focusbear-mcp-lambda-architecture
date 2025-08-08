@@ -263,7 +263,7 @@ export class DailyStatsConsumer {
         );
         console.log(
           '[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:',
-          user.onboarding_progress ? JSON.stringify(user.onboarding_progress) : 'null',
+          JSON.stringify(user.onboarding_progress),
         );
         /* eslint-enable no-console */
       }

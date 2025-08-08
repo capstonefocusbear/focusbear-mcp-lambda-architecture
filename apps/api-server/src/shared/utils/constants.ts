@@ -1,5 +1,10 @@
+import { OnboardFlowStep } from '../../modules/user/domain/onboarding/onboarding-flow-step.enum';
 import { ImpactCategory } from '../../modules/activity/domain/impact-category.enum';
 import { EventTypes } from '../../modules/events/domain/event-types.enum';
+import { OnboardFlowFeature } from '../../modules/user/domain/onboarding/onboarding-flow-feature.enum';
+import { RoutineType } from '../../modules/user/domain/routine-type.enum';
+import { BearsonaProfile } from '../../modules/user/domain/onboarding/bearsona-profile.enum';
+import { OnboardFlowTimeUI } from '../../modules/user/domain/onboarding/onboarding-flow-time-ui.enum';
 
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
@@ -333,4 +338,27 @@ export const ACITIVITY_EMOJI_MAP = {
   lunges: '🤸‍♂️',
   'upper-body-twist': '🤸‍♂️',
   'office-exercises': '🤸‍♂️',
+};
+
+export const DEFAULT_ONBOARDING_DATA = {
+  currentStep: OnboardFlowStep.DATA_PRIVACY,
+  features: [OnboardFlowFeature.BUILD_HEALTHY_HABITS],
+  routines: [RoutineType.MORNING_ROUTINE, RoutineType.EVENING_ROUTINE],
+  profile: { name: BearsonaProfile.OG, useProfileLang: true },
+  activities: { morning_activities: [], evening_activities: [] },
+  selectedGoals: [],
+  times: {
+    [OnboardFlowTimeUI.WAKE_UP]: '06:00',
+    [OnboardFlowTimeUI.START_STUDY]: '08:00',
+    [OnboardFlowTimeUI.FINISH_STUDY]: '17:30',
+    [OnboardFlowTimeUI.GO_TO_SLEEP]: '21:00',
+  },
+  currentTimeUI: OnboardFlowTimeUI.WAKE_UP,
+  break_after_minutes: 20,
+  skippedSteps: [],
+};
+
+export const DEFAULT_THROTTLE_OPTIONS = {
+  ttl: 60,
+  limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
 };

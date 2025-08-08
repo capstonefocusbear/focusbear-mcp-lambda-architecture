@@ -111,23 +111,25 @@ export class OpenAIService {
     const addedLongTermGoals =
       filteredValidLongTermGoals?.length > 0 ? `Long term goals: ${filteredValidLongTermGoals}` : '';
 
+    const uniquenessInstruction =
+      "Make sure today's message is different from yesterday's message and avoid repeating previous advice.";
     const baseMessage = `Given the user's habits input below ${this.wrapUserInput(
       longTermGoalsPhrase,
-    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone to keep them motivated in their daily habits in ${language}\n\nHabits input: ${JSON.stringify(
+    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone to keep them motivated in their daily habits in ${language}. ${uniquenessInstruction}\n\nHabits input: ${JSON.stringify(
       streaksData,
       null,
       2,
     )}\n\n${this.wrapUserInput(addedLongTermGoals)}`;
     const futureSelfMessage = `Given the user's habits input below ${this.wrapUserInput(
       longTermGoalsPhrase,
-    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone as if you're a future self 20 years from now talking to the present user to encourage them to work hard for the future version of themselves, and don't use past tense. Do this in ${language}\n\nHabits input: ${JSON.stringify(
+    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone as if you're a future self 20 years from now talking to the present user to encourage them to work hard for the future version of themselves, and don't use past tense. Do this in ${language}. ${uniquenessInstruction}\n\nHabits input: ${JSON.stringify(
       streaksData,
       null,
       2,
     )}\n\n${addedLongTermGoals}\n\nDon't start with 'Dear...' just start with the message`;
     const factualMessage = `Given the user's habits input below ${this.wrapUserInput(
       longTermGoalsPhrase,
-    )}, generate a short message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone, pretend you are talking to the user and give them a summary of their habits input streaks. Do this in ${language} and don't start with 'Based on your input,', just start with the message.\n\nHabits input: ${JSON.stringify(
+    )}, generate a short message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone, pretend you are talking to the user and give them a summary of their habits input streaks. Do this in ${language} and don't start with 'Based on your input,', just start with the message. ${uniquenessInstruction}\n\nHabits input: ${JSON.stringify(
       streaksData,
       null,
       2,

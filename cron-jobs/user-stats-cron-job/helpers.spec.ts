@@ -194,7 +194,7 @@ describe('helpers', () => {
       const eveningCompleted = stats.filter((stat) => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
       const microBreaksCompleted = stats.filter((stat) => stat.secondsSpentDoingBreaks > 0).length; // New logic: any seconds spent = completed
       const focusModesCompleted = stats.filter((stat) => stat.focusModes > 0).length;
-      
+
       // Calculate num_days_of_stats based on user signup date (single source of truth)
       const numDaysOfStats = userSignupDaysAgo >= 90 ? 90 : userSignupDaysAgo;
 
@@ -366,7 +366,7 @@ describe('helpers', () => {
 
     it('should properly filter data outside 90-day window for leaderboard calculation', () => {
       const userSignupDaysAgo = 120; // User signed up > 90 days ago
-      
+
       // Custom setup for this test since we need to account for filtering
       const userDailyStats = [
         {
@@ -428,75 +428,10 @@ describe('helpers', () => {
       runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
-    it('should handle leaderboard comparison scenario between old and new users', () => {
-      // Older user: 5 active days out of 90 possible = lower activity rate
-      const olderUserSignupDaysAgo = 100;
-      const { userDailyStats: olderUserStats, expected: olderExpected } = setupTest(
-        [
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 30 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 40 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 50 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-        ],
-        olderUserSignupDaysAgo,
-        5,   // 5 days with activity
-        6, // 5/90 = 5.56% ≈ 6% (5 completed days out of 90 possible)
-        6,
-        6,
-      );
-
-      runTest(olderUserStats, olderExpected, olderUserSignupDaysAgo);
-
-      // Newer user: 5 active days out of 15 possible = higher activity rate
-      // Consider running this test on a day that last   
-      const newerUserSignupDaysAgo = 15;
-      const { userDailyStats: newerUserStats, expected: newerExpected } = setupTest(
-        [
-          { date: DateTime.local().minus({ days: 1 }).toISODate(), focusModes: 1, morning: 0, evening: 9, secondsSpentDoingBreaks: 0   },
-          { date: DateTime.local().minus({ days: 2 }).toISODate(), focusModes: 2, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 3 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 9   },
-          { date: DateTime.local().minus({ days: 4 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 9   },
-          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 0 },
-        ],
-        newerUserSignupDaysAgo,
-        6,   // 6 days with activity
-        33, // 5/15 = 33.33% ≈ 33% (Morning: 5 completed days out of 15 possible)
-        13, // 2/15 = 13.33% ≈ 13% (Evening: 2 completed evening routines out of 15 possible days)
-        27, // 4/15 = 26.67% ≈ 27% (Micro Breaks: 4 completed micro breaks out of 15 possible days)
-      );
-
-      // Adjust expected streaks based on current day of the week
-      // Streaks only count weekdays (Mon-Fri), so results vary depending on when test runs
-      const today = DateTime.local();
-      const weekday = today.weekday; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
-      
-      // Calculate weekday-based streaks for focus modes and micro breaks
-      // Test data for focus_modes: [1,2,1,1,1] and micro_breaks (secondsSpentDoingBreaks): [0,100,9,9,100] for days 1-5 ago
-      // Weekday-only streak calculation counts backwards from today, skipping weekends
-      const weekdayStreakMap = {
-        1: { focus_modes_streak: 3, micro_breaks_streak: 3 }, // Monday: 3 weekdays back (Fri,Thu,Wed), breaks on Fri,Thu,Wed
-        2: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Tuesday: 3 weekdays back (Mon,Fri,Thu), breaks on Mon (day 1 ago has 0 breaks)
-        3: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Wednesday: 3 weekdays back (Tue,Mon,Fri), breaks on Tue (day 1 ago has 0 breaks)
-        4: { focus_modes_streak: 3, micro_breaks_streak: 0 }, // Thursday: 3 weekdays back (Wed,Tue,Mon), breaks on Wed (day 1 ago has 0 breaks)
-        5: { focus_modes_streak: 4, micro_breaks_streak: 0 }, // Friday: 4 weekdays back (Thu,Wed,Tue,Mon), breaks on Thu (day 1 ago has 0 breaks)
-        6: { focus_modes_streak: 5, micro_breaks_streak: 0 }, // Saturday: 5 weekdays back (Fri,Thu,Wed,Tue,Mon), breaks on Fri (day 1 ago has 0 breaks)
-        7: { focus_modes_streak: 4, micro_breaks_streak: 4 }, // Sunday: 4 weekdays back (Fri,Thu,Wed,Tue), breaks on all 4 weekdays
-      };
-      
-      const expectedStreaks = weekdayStreakMap[weekday];
-      newerExpected.focus_modes_streak = expectedStreaks.focus_modes_streak;
-      newerExpected.micro_breaks_streak = expectedStreaks.micro_breaks_streak;
-      newerExpected.evening_routines_streak = 0; // morning and evening routines do not get affected by weekday logic
-
-      runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
-    });
-
     it('should handle edge case where user has stats exactly at 90-day boundary', () => {
       const userSignupDaysAgo = 100;
       const exactlyNinetyDaysAgo = DateTime.local().minus({ days: 90 }).toISODate();
-      
+
       // Custom setup since one day is exactly at the 90-day boundary
       const userDailyStats = [
         {

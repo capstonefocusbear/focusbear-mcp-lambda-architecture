@@ -7,7 +7,7 @@ import { Auth0ManagementService } from '@app/auth0';
 import { R2Service } from '@app/r2/services/r2.service';
 import { SendGridService } from '@app/send-grid';
 import { UserRepository } from '../repositories/user.repository';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 import { BullQueues, BullWorkers, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 
 @Processor(BullQueues.USER_DATA)

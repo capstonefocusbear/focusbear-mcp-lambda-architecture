@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsIn, IsOptional } from 'class-validator';
-import { OperatingSystem } from '../domain/operating-system.enum';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 import { CreateDeviceDto } from './create-device.dto';
 
 export class UpdateDeviceDto extends CreateDeviceDto {

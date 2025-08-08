@@ -1,6 +1,6 @@
 import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { OperatingSystem } from '../domain/operating-system.enum';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 export class SearchDeviceQueryDto {
   @IsOptional()

@@ -40,16 +40,12 @@ import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
+import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60,
-          limit: 30, // TODO: set an appropriate value based on request patterns from mobile and desktop apps
-        },
-      ],
+      throttlers: [DEFAULT_THROTTLE_OPTIONS],
     }),
     ConfigModule.forRoot({ load: configsArray }),
     TypeOrmModule.forRootAsync({

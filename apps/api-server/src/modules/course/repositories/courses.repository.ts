@@ -12,10 +12,10 @@ import { UpdateCourseEnrolmentDto } from '../dto/update-course-enrolment.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
-import { CoursePlatform } from '../domain/course-platform.enum';
 import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
 import { Lesson } from '../../lesson/entities/lesson.entity';
 import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity';
+import { Platform } from '../../../shared/domain/platform.enum';
 
 @Injectable()
 export class CoursesRepository {
@@ -232,7 +232,7 @@ export class CoursesRepository {
     });
   }
 
-  async getPlatformCourses(platform: CoursePlatform) {
+  async getPlatformCourses(platform: Platform) {
     return this.ormCourse.find({
       where: {
         platform,

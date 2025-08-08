@@ -26,8 +26,8 @@ export class ZohoDeskService {
   private readonly whatsappChannelId: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.clientId = this.configService.get<string>('zoho.ZOHO_CLIENT_ID') || '';
-    this.clientSecret = this.configService.get<string>('zoho.ZOHO_CLIENT_SECRET') || '';
+    this.clientId = this.configService.get<string>('zoho.ZOHO_DESK_CLIENT_ID') || '';
+    this.clientSecret = this.configService.get<string>('zoho.ZOHO_DESK_CLIENT_SECRET') || '';
     this.orgId = this.configService.get<string>('zoho.ZOHO_ORG_ID') || '';
     this.whatsappChannelId = this.configService.get<string>('zoho.ZOHO_WHATSAPP_CHANNEL_ID') || '';
     this.refreshToken = this.configService.get<string>('zoho.ZOHO_REFRESH_TOKEN') || '';

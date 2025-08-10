@@ -7,7 +7,9 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bull';
 import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { AuthService } from './services/auth.service';
+import { ServiceAccountAuthService } from './services/service-account-auth.service';
 import { IsAuth } from './guards/is-auth/is-auth.guard';
+import { ServiceAccountAuth } from './guards/service-account-auth/service-account-auth.guard';
 import { HelperModule } from '../helper/helper.module';
 import { HasAuth0ActionSecret } from './guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { PusherAuthController } from './controllers/pusher-auth.controller';
@@ -32,7 +34,9 @@ import { UserModule } from '../user/user.module';
 @Module({
   providers: [
     AuthService,
+    ServiceAccountAuthService,
     IsAuth,
+    ServiceAccountAuth,
     HasAuth0ActionSecret,
     PusherBeamsAuthService,
     UserRepository,
@@ -59,8 +63,10 @@ import { UserModule } from '../user/user.module';
   ],
   exports: [
     IsAuth,
+    ServiceAccountAuth,
     IsAdmin,
     AuthService,
+    ServiceAccountAuthService,
     HasAuth0ActionSecret,
     ZohoAuthService,
     MondayAuthService,

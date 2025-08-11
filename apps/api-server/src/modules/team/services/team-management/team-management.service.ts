@@ -300,11 +300,12 @@ export class TeamManagementService {
     this.validateMemberAction(admins, adminId);
 
     // Get all registered member IDs
-    const memberIds = members.map((member) => member.member_id).filter(Boolean);
+    const registeredMemberIds = members.map((member) => member.member_id).filter(Boolean);
 
     // Get user details for registered members
-    const userDetails = memberIds.length > 0 ? await this.getUserDetails(members, memberIds) : [];
+    const userDetails = await this.getUserDetails(members, registeredMemberIds);
 
+    // return all members including unregistered members
     return {
       members: userDetails,
       admins: admins.map((admin) => admin.admin_id),
@@ -322,7 +323,7 @@ export class TeamManagementService {
     ]);
 
     return members.map((member, index) => {
-      const userDetail = userDetails.find((u) => u.id === member.member_id);
+      const userDetail = member.member_id ? userDetails.find((u) => u.id === member.member_id) : undefined;
       const last90DaysDailyStats = allMembersDailyStats?.[index];
 
       const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
@@ -356,15 +357,9 @@ export class TeamManagementService {
   async getAllTeamMemberServiceAcc(teamId: string): Promise<GetAllTeamMembersResponseDto> {
     const team = await this.validateTeam(teamId);
     const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
-
-    const userDetails =
-      members.length > 0
-        ? await this.getUserDetails(
-            members,
-            members.map((member) => member.member_id),
-          )
-        : [];
-
+    const registeredMembersIds = members.map((member) => member.member_id).filter(Boolean);
+    const userDetails = await this.getUserDetails(members, registeredMembersIds);
+    // return all members including unregistered members
     return {
       members: userDetails,
       admins: admins.map((admin) => admin.admin_id),

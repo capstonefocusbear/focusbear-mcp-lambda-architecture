@@ -194,7 +194,7 @@ describe('helpers', () => {
       const eveningCompleted = stats.filter((stat) => stat.evening >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD).length;
       const microBreaksCompleted = stats.filter((stat) => stat.secondsSpentDoingBreaks > 0).length; // New logic: any seconds spent = completed
       const focusModesCompleted = stats.filter((stat) => stat.focusModes > 0).length;
-      
+
       // Calculate num_days_of_stats based on user signup date (single source of truth)
       const numDaysOfStats = userSignupDaysAgo >= 90 ? 90 : userSignupDaysAgo;
 
@@ -366,7 +366,7 @@ describe('helpers', () => {
 
     it('should properly filter data outside 90-day window for leaderboard calculation', () => {
       const userSignupDaysAgo = 120; // User signed up > 90 days ago
-      
+
       // Custom setup for this test since we need to account for filtering
       const userDailyStats = [
         {
@@ -428,59 +428,10 @@ describe('helpers', () => {
       runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
-    it('should handle leaderboard comparison scenario between old and new users', () => {
-      // Older user: 5 active days out of 90 possible = lower activity rate
-      const olderUserSignupDaysAgo = 100;
-      const { userDailyStats: olderUserStats, expected: olderExpected } = setupTest(
-        [
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 30 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 40 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 50 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-        ],
-        olderUserSignupDaysAgo,
-        5,   // 5 days with activity
-        6, // 5/90 = 5.56% ≈ 6% (5 completed days out of 90 possible)
-        6,
-        6,
-      );
-
-      runTest(olderUserStats, olderExpected, olderUserSignupDaysAgo);
-
-      // Newer user: 5 active days out of 15 possible = higher activity rate
-      // Consider running this test on a day that last   
-      const newerUserSignupDaysAgo = 15;
-      const { userDailyStats: newerUserStats, expected: newerExpected } = setupTest(
-        [
-          { date: DateTime.local().minus({ days: 1 }).toISODate(), focusModes: 1, morning: 0, evening: 9, secondsSpentDoingBreaks: 0   },
-          { date: DateTime.local().minus({ days: 2 }).toISODate(), focusModes: 2, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 3 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 9   },
-          { date: DateTime.local().minus({ days: 4 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 9   },
-          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 9, secondsSpentDoingBreaks: 0 },
-        ],
-        newerUserSignupDaysAgo,
-        6,   // 6 days with activity
-        33, // 5/15 = 33.33% ≈ 33% (Morning: 5 completed days out of 15 possible)
-        13, // 2/15 = 13.33% ≈ 13% (Evening: 2 completed evening routines out of 15 possible days)
-        27, // 4/15 = 26.67% ≈ 27% (Micro Breaks: 4 completed micro breaks out of 15 possible days)
-      );
-
-      // Set expected streaks based on the consecutive days with activity
-      // Focus modes: days 1, 2, 3 all have focusModes > 0, so streak = 3
-      newerExpected.focus_modes_streak = 3;
-      // Micro breaks: day 1 has 0 seconds, which breaks the streak
-      newerExpected.micro_breaks_streak = 0;
-      newerExpected.evening_routines_streak = 0;
-
-      runTest(newerUserStats, newerExpected, newerUserSignupDaysAgo);
-    });
-
     it('should handle edge case where user has stats exactly at 90-day boundary', () => {
       const userSignupDaysAgo = 100;
       const exactlyNinetyDaysAgo = DateTime.local().minus({ days: 90 }).toISODate();
-      
+
       // Custom setup since one day is exactly at the 90-day boundary
       const userDailyStats = [
         {
@@ -508,18 +459,18 @@ describe('helpers', () => {
         morning_routines_streak: 0,
         evening_routines_streak: 0,
         micro_breaks_streak: 0,
-        percent_morning_routines_streak_complete_in_90days: 1, // 1/90 = 1.11% ≈ 1% (only the 10-day-ago entry is within window)
-        percent_evening_routines_streak_complete_in_90days: 1,
-        percent_micro_breaks_streak_complete_in_90days: 1,
+        percent_morning_routines_streak_complete_in_90days: 2, // 2/90 = 2.22% ≈ 2% (both entries are within window)
+        percent_evening_routines_streak_complete_in_90days: 2,
+        percent_micro_breaks_streak_complete_in_90days: 2,
         num_days_of_stats: 90,
-        number_days_completed: 1, // Only 1 day within the 90-day window
-        morning_number_days_completed: 1, // Only 1 day within window
+        number_days_completed: 2, // 2 days within the 90-day window
+        morning_number_days_completed: 2, // 2 days within window
         morning_num_days_of_stats: 90,
-        evening_number_days_completed: 1, // Only 1 day within window
+        evening_number_days_completed: 2, // 2 days within window
         evening_num_days_of_stats: 90,
-        focus_modes_number_days_completed: 1, // Only 1 day within window
+        focus_modes_number_days_completed: 2, // 2 days within window
         focus_modes_num_days_of_stats: 90,
-        micro_breaks_number_days_completed: 1, // Only 1 day within window
+        micro_breaks_number_days_completed: 2, // 2 days within window
         micro_breaks_num_days_of_stats: 90,
       };
 

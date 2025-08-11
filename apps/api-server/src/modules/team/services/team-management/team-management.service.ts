@@ -34,6 +34,8 @@ import { InvitationStatus } from '../../domain/invitation-status.enum';
 import { RemoveTeamMemberDto } from '../../dto/remove-team-member.dto';
 import { BulkDeleteDto } from '../../dto/bulk-delete.dto';
 import { AddTeamMemberDto } from '../../dto/add-team-member.dto';
+import { GetAllTeamMembersResponseDto } from '../../dto/get-all-team-members.dto';
+import { GetTeamMembersDetailsDto } from '../../dto/team-member-details.dto';
 
 /**
  * @TODO: Entitlement assign/revoke should use the `id` column only,
@@ -291,18 +293,27 @@ export class TeamManagementService {
     return this.syncTeamSizeWithSubscription(team, teamSize);
   }
 
-  async getAllTeamMembers(adminId: string, teamId: string) {
+  async getAllTeamMembers(adminId: string, teamId: string): Promise<GetAllTeamMembersResponseDto> {
     const team = await this.validateTeam(teamId);
 
     const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
     this.validateMemberAction(admins, adminId);
 
-    const membersData = [];
-
     // Get all registered member IDs
     const memberIds = members.map((member) => member.member_id).filter(Boolean);
 
-    // Batch queries for members
+    // Get user details for registered members
+    const userDetails = memberIds.length > 0 ? await this.getUserDetails(members, memberIds) : [];
+
+    return {
+      members: userDetails,
+      admins: admins.map((admin) => admin.admin_id),
+      total_count: userDetails.length,
+      team_id: teamId,
+    };
+  }
+
+  private async getUserDetails(members: TeamToMember[], memberIds: string[]): Promise<GetTeamMembersDetailsDto[]> {
     const [userDetails, allMembersDailyStats] = await Promise.all([
       this.userRepository.orm.find({
         where: { id: In(memberIds) },
@@ -310,9 +321,7 @@ export class TeamManagementService {
       Promise.all(memberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
     ]);
 
-    // @Description:  Admins are already members; skip processing
-    // Process member data
-    members.forEach((member, index) => {
+    return members.map((member, index) => {
       const userDetail = userDetails.find((u) => u.id === member.member_id);
       const last90DaysDailyStats = allMembersDailyStats?.[index];
 
@@ -321,7 +330,7 @@ export class TeamManagementService {
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
-      membersData.push({
+      return {
         id: member.member_id,
         email: member.email,
         last_active_date: member?.updated_at,
@@ -340,10 +349,28 @@ export class TeamManagementService {
         invitation_sent_at: member.invitation_sent_at,
         invitation_send_count: member.invitation_send_count,
         invitation_responded_at: member.invitation_responded_at,
-      });
+      };
     });
+  }
 
-    return { members: membersData, admins: admins.map((admin) => admin.admin_id) };
+  async getAllTeamMemberServiceAcc(teamId: string): Promise<GetAllTeamMembersResponseDto> {
+    const team = await this.validateTeam(teamId);
+    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+
+    const userDetails =
+      members.length > 0
+        ? await this.getUserDetails(
+            members,
+            members.map((member) => member.member_id),
+          )
+        : [];
+
+    return {
+      members: userDetails,
+      admins: admins.map((admin) => admin.admin_id),
+      total_count: userDetails.length,
+      team_id: teamId,
+    };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {

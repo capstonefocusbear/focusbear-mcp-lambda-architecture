@@ -40,4 +40,3 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js 
-        

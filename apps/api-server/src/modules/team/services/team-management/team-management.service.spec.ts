@@ -869,7 +869,7 @@ describe('TeamManagementService', () => {
       const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
       expect(response.admins).toHaveLength(1);
-      expect(response.members).toHaveLength(3); // 2 original members + 1 admin
+      expect(response.members).toHaveLength(3); // include admins that have user licenses in members section
     });
   });
 

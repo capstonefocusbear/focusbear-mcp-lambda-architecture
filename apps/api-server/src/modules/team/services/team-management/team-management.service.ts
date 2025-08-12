@@ -301,7 +301,7 @@ export class TeamManagementService {
     const adminIds = admins.map((admin) => admin.admin_id).filter(Boolean);
     const memberIds = members.map((member) => member.member_id).filter(Boolean);
 
-    // Combine member IDs and admin IDs, ensuring admins with licenses appear in members
+    // Combine member IDs and admin IDs so admins can appear in members
     const allMemberIds = [...new Set([...memberIds, ...adminIds])];
 
     // Batch queries for members and their daily stats
@@ -322,7 +322,7 @@ export class TeamManagementService {
       ),
     ]);
 
-    // Create a map of member records for easy lookup
+    // Create a map of member records
     const memberRecordMap = new Map();
     members.forEach((member) => {
       if (member.member_id) {
@@ -330,8 +330,9 @@ export class TeamManagementService {
       }
     });
 
-    // Process all member data
-    const membersData = allMemberIds.map((memberId, index) => {
+    // Process all members' data using push instead of map
+    const membersData: any[] = [];
+    allMemberIds.forEach((memberId, index) => {
       const userDetail = userDetails.find((u) => u.id === memberId);
       const last90DaysDailyStats = allMembersDailyStats?.[index];
       const rawDailyStats = allMembersRawDailyStats?.[index];
@@ -347,7 +348,7 @@ export class TeamManagementService {
         rawDailyStats?.reduce((acc, curr) => acc + (curr.seconds_spent_in_focus_sessions || 0), 0) || 0;
       const total_hours_in_focus_sessions = parseFloat((totalSecondsInFocusSessions / 3600).toFixed(2));
 
-      return {
+      membersData.push({
         id: memberId,
         email: memberRecord?.email,
         last_active_date: userDetail?.updated_at,
@@ -367,7 +368,7 @@ export class TeamManagementService {
         invitation_sent_at: memberRecord?.invitation_sent_at,
         invitation_send_count: memberRecord?.invitation_send_count,
         invitation_responded_at: memberRecord?.invitation_responded_at,
-      };
+      });
     });
 
     return { members: membersData, admins: admins.map((admin) => admin.admin_id) };

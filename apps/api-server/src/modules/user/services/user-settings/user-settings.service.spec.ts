@@ -627,4 +627,80 @@ describe('UserSettingsService', () => {
       expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalled();
     });
   });
+
+  describe('calculateUserUTCRoutineTimes', () => {
+    it('should correctly calculate UTC times for Melbourne (UTC+10)', () => {
+      // Melbourne user setting morning routine at 7:00 AM local time
+      // Should be 21:00 UTC (previous day)
+      const result = userSettingsService.calculateUserUTCRoutineTimes('07:00', '21:00', 'UTC+10:00');
+
+      expect(result.utc_startup_time).toBe('21:00');
+      expect(result.utc_shutdown_time).toBe('11:00');
+    });
+
+    it('should handle timezone format without :00 suffix', () => {
+      const result = userSettingsService.calculateUserUTCRoutineTimes('07:00', '21:00', 'UTC+10');
+
+      expect(result.utc_startup_time).toBe('21:00');
+      expect(result.utc_shutdown_time).toBe('11:00');
+    });
+
+    it('should correctly calculate UTC times for New York (UTC-5)', () => {
+      // New York user setting morning routine at 7:00 AM local time
+      // Should be 12:00 UTC
+      const result = userSettingsService.calculateUserUTCRoutineTimes('07:00', '22:00', 'UTC-5');
+
+      expect(result.utc_startup_time).toBe('12:00');
+      expect(result.utc_shutdown_time).toBe('03:00');
+    });
+
+    it('should handle UTC timezone', () => {
+      const result = userSettingsService.calculateUserUTCRoutineTimes('07:00', '22:00', 'UTC');
+
+      expect(result.utc_startup_time).toBe('07:00');
+      expect(result.utc_shutdown_time).toBe('22:00');
+    });
+
+    it('should handle timezone with half-hour offset', () => {
+      // India (UTC+5:30)
+      const result = userSettingsService.calculateUserUTCRoutineTimes('07:00', '22:00', 'UTC+5:30');
+
+      expect(result.utc_startup_time).toBe('01:30');
+      expect(result.utc_shutdown_time).toBe('16:30');
+    });
+  });
+
+  describe('hasCutoffTimeBeenReached', () => {
+    beforeEach(() => {
+      // Reset Luxon's current time
+      Settings.now = () => new Date().valueOf();
+    });
+
+    it('should correctly check cutoff time for Melbourne timezone', () => {
+      // Mock current time to be 3:00 PM Melbourne time (5:00 AM UTC)
+      const melbourneTime = new Date('2025-08-12T05:00:00Z');
+      Settings.now = () => melbourneTime.valueOf();
+
+      // Cutoff at 2:00 PM (should have been reached)
+      const reached = userSettingsService.hasCutoffTimeBeenReached('14:00', 'UTC+10:00');
+      expect(reached).toBe(true);
+
+      // Cutoff at 4:00 PM (should not have been reached)
+      const notReached = userSettingsService.hasCutoffTimeBeenReached('16:00', 'UTC+10:00');
+      expect(notReached).toBe(false);
+    });
+
+    it('should handle timezone format without :00 suffix', () => {
+      const melbourneTime = new Date('2025-08-12T05:00:00Z');
+      Settings.now = () => melbourneTime.valueOf();
+
+      const reached = userSettingsService.hasCutoffTimeBeenReached('14:00', 'UTC+10');
+      expect(reached).toBe(true);
+    });
+
+    it('should return false when no cutoff time is provided', () => {
+      const result = userSettingsService.hasCutoffTimeBeenReached('', 'UTC+10');
+      expect(result).toBe(false);
+    });
+  });
 });

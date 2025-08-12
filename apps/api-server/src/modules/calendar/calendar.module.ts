@@ -21,6 +21,7 @@ import { SyncEventsConsumer } from './consumers/sync-events.consumer';
 import { BullQueues } from '../../shared/utils/constants';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
 import { AuthModule } from '../auth/auth.module';
+import { ReauthService } from './services/reauth.service';
 
 @Module({
   imports: [
@@ -30,6 +31,20 @@ import { AuthModule } from '../auth/auth.module';
     TypeOrmModule.forFeature([CalendarExcludedKeyword, Calendar, User]),
     BullModule.registerQueue({
       name: BullQueues.SYNC_EVENTS,
+      defaultJobOptions: {
+        attempts: 5, // Retry up to 5 times
+        backoff: {
+          type: 'exponential',
+          delay: 5000, // Start with 5 second delay
+          jitter: 0.2, // Add 20% jitter to prevent thundering herd
+        },
+        removeOnComplete: {
+          count: 100, // Keep last 100 completed jobs for debugging
+        },
+        removeOnFail: {
+          count: 100, // Keep last 100 failed jobs for debugging
+        },
+      },
     }),
   ],
   controllers: [CalendarController],
@@ -47,6 +62,7 @@ import { AuthModule } from '../auth/auth.module';
     PlatformIntegrationsService,
     PlatformIntegrationRepository,
     SyncEventsConsumer,
+    ReauthService,
   ],
 })
 export class CalendarModule {}

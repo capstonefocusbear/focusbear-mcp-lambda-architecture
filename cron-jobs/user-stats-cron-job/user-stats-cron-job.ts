@@ -221,7 +221,7 @@ async function runUserStatsCronJob() {
       morningRoutineDailyDurations,
       eveningRoutineDailyDurations,
       microBreaksDailyDurations,
-    }, new Date(user.created_at));
+    }, new Date(user.created_at), false);
     const userLevel = determineUserLevel(user.onboarding_progress, {
       focus_modes_streak,
       morning_routines_streak,

@@ -98,8 +98,30 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   }
 
   const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
-    const createdAtDate = new Date(current.date_completed).toISOString().split('T')[0];
+    // Enhanced logging for date processing
+    const originalDate = current.date_completed;
+    const dateAsJSDate = new Date(current.date_completed);
+    const isoString = dateAsJSDate.toISOString();
+    const createdAtDate = isoString.split('T')[0];
+    
+    if (isVerboseLoggingEnabled) {
+      /* eslint-disable no-console */
+      console.log('[VERBOSE-DATE-PROCESSING] Processing date_completed:', {
+        original: originalDate,
+        jsDate: dateAsJSDate.toString(),
+        isoString: isoString,
+        extractedDate: createdAtDate,
+        timezone: dateAsJSDate.getTimezoneOffset(),
+      });
+      /* eslint-enable no-console */
+    }
+    
     if (!acc[createdAtDate]) {
+      if (isVerboseLoggingEnabled) {
+        /* eslint-disable no-console */
+        console.log(`[VERBOSE-DATE-PROCESSING] Creating new entry for date: ${createdAtDate}`);
+        /* eslint-enable no-console */
+      }
       acc[createdAtDate] = {
         created_at: current.date_completed,
         morning_routine_completion_percentage: current.morning_routine_completion_percentage,
@@ -109,6 +131,11 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
         seconds_spent_doing_breaks: current.seconds_spent_doing_breaks,
       };
     } else {
+      if (isVerboseLoggingEnabled) {
+        /* eslint-disable no-console */
+        console.log(`[VERBOSE-DATE-PROCESSING] Duplicate entry for date: ${createdAtDate}, keeping max values`);
+        /* eslint-enable no-console */
+      }
       acc[createdAtDate].morning_routine_completion_percentage = Math.max(
         acc[createdAtDate].morning_routine_completion_percentage,
         current.morning_routine_completion_percentage,
@@ -138,6 +165,34 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   if (isVerboseLoggingEnabled) {
     /* eslint-disable no-console */
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Distinct Daily Stats Count (after deduplication):', distinctUserDailyStats.length);
+    
+    // Log all unique dates found
+    const allDates = Object.keys(distinctUserDailyStatObject).sort();
+    console.log('[VERBOSE-DATE-PROCESSING] All unique dates found:', allDates);
+    
+    // Check for missing dates in sequence
+    if (allDates.length > 1) {
+      const missingDates = [];
+      for (let i = 0; i < allDates.length - 1; i++) {
+        const currentDate = new Date(allDates[i]);
+        const nextDate = new Date(allDates[i + 1]);
+        const dayDiff = Math.floor((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (dayDiff > 1) {
+          for (let j = 1; j < dayDiff; j++) {
+            const missingDate = new Date(currentDate);
+            missingDate.setDate(missingDate.getDate() + j);
+            missingDates.push(missingDate.toISOString().split('T')[0]);
+          }
+        }
+      }
+      
+      if (missingDates.length > 0) {
+        console.log('[VERBOSE-DATE-PROCESSING] === MISSING DATES IN SEQUENCE ===');
+        console.log('[VERBOSE-DATE-PROCESSING] Missing dates:', missingDates);
+        console.log('[VERBOSE-DATE-PROCESSING] Total missing dates:', missingDates.length);
+      }
+    }
     /* eslint-enable no-console */
   }
 

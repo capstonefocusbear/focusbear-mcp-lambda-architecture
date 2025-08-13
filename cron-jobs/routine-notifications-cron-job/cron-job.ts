@@ -127,7 +127,7 @@ async function generateRoutineNotification(routine: string, fileName: string, la
       const response = await openAiAPI.chat.completions.create({
         model: GPT_4_1_MINI,
         messages: [{ role: 'system', content: getPrompt(routine, language) }],
-        temperature: 0.5,
+        temperature: 1,
         max_tokens: 100,
         n: 1,
       });

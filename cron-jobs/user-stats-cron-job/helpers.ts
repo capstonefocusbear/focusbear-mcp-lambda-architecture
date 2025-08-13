@@ -76,11 +76,11 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   currentDate.setDate(currentDate.getDate() - 90);
   // Normalise midnight to avoid updating stats for the current day
   currentDate.setHours(0, 0, 0, 0);
-  
+
   // Calculate days since user signup (for users < 90 days old)
   const userSignupDate = new Date(userCreatedAt);
   const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   // Determine the proper time window for this user
   const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
   const totalPossibleDays = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
@@ -98,10 +98,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   }
 
   const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
-    const createdAtDate = new Date(current.created_at).toISOString().split('T')[0];
+    const createdAtDate = new Date(current.date_completed).toISOString().split('T')[0];
     if (!acc[createdAtDate]) {
       acc[createdAtDate] = {
-        created_at: current.created_at,
+        created_at: current.date_completed,
         morning_routine_completion_percentage: current.morning_routine_completion_percentage,
         evening_routine_completion_percentage: current.evening_routine_completion_percentage,
         micro_breaks_routine_completion_percentage: current.micro_breaks_routine_completion_percentage,
@@ -184,25 +184,25 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
     daysWhereMorningRoutinesWereCompletedIn90Days.forEach((day, index) => {
       console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.morning_routine_completion_percentage}%`);
     });
-    
+
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Evening Routines Completed Days:', daysWhereEveningRoutinesWereCompletedIn90Days.length);
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Evening Days List:');
     daysWhereEveningRoutinesWereCompletedIn90Days.forEach((day, index) => {
       console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.evening_routine_completion_percentage}%`);
     });
-    
+
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Focus Modes Completed Days:', daysWhereFocusModesWereCompletedIn90Days.length);
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Focus Mode Days List:');
     daysWhereFocusModesWereCompletedIn90Days.forEach((day, index) => {
       console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.focus_modes_completed} modes`);
     });
-    
+
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Micro Breaks Completed Days:', daysWhereMicroBreaksWereCompletedIn90Days.length);
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Micro Break Days List:');
     daysWhereMicroBreaksWereCompletedIn90Days.forEach((day, index) => {
       console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.seconds_spent_doing_breaks}s`);
     });
-    
+
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Any Activity Completed Days:', number_days_completed);
     console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === END DETAILED DAY COUNTS ===');
     /* eslint-enable no-console */

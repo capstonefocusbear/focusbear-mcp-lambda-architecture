@@ -177,7 +177,7 @@ export class UserSettingsService {
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
 
-      const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
+      const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
         shutdown_time,
         user.timezone,

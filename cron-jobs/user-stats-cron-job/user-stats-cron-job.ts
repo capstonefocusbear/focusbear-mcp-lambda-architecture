@@ -188,6 +188,9 @@ async function runUserStatsCronJob() {
       },
       order: { date_completed: 'DESC' },
     });
+
+    const isVerboseLoggingAllowed = user.verbose_logging;
+
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);
     const {
@@ -208,11 +211,17 @@ async function runUserStatsCronJob() {
       micro_breaks_num_days_of_stats,
       focus_modes_number_days_completed,
       focus_modes_num_days_of_stats,
-    } = calculateStreaks(userDailyStats, user.timezone, {
-      morningRoutineDailyDurations,
-      eveningRoutineDailyDurations,
-      microBreaksDailyDurations,
-    }, new Date(user.created_at), false);
+    } = calculateStreaks(
+      userDailyStats,
+      user.timezone,
+      {
+        morningRoutineDailyDurations,
+        eveningRoutineDailyDurations,
+        microBreaksDailyDurations,
+      },
+      new Date(user.created_at),
+      isVerboseLoggingAllowed,
+    );
     const userLevel = determineUserLevel(user.onboarding_progress, {
       focus_modes_streak,
       morning_routines_streak,

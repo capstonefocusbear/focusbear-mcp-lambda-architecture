@@ -1,0 +1,112 @@
+prompts:
+  - id: routine-notification-prompt
+    raw: |
+      In {{language}}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their {{routine}} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: 
+
+providers:
+  - id: openai:gpt-4.1-mini
+    config:
+      temperature: 1
+      max_tokens: 100
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  # Morning routine tests
+  - description: "Morning routine notification in English"
+    vars:
+      routine: "morning"
+      language: "English"
+    assert:
+      - type: contains-any
+        value: 
+          - "morning"
+          - "routine"
+          - "time"
+          - "start"
+          - "wake"
+          - "rise"
+      - type: javascript
+        value: file://validate-message.js
+
+  - description: "Morning routine notification in Spanish"
+    vars:
+      routine: "morning"
+      language: "Spanish"
+    assert:
+      - type: contains-any
+        value: 
+          - "mañana"
+          - "rutina"
+          - "hora"
+          - "empezar"
+          - "despertar"
+      - type: javascript
+        value: file://validate-message.js
+
+  # Evening routine tests
+  - description: "Evening routine notification in English"
+    vars:
+      routine: "evening"
+      language: "English"
+    assert:
+      - type: contains-any
+        value: 
+          - "evening"
+          - "night"
+          - "routine"
+          - "time"
+          - "start"
+          - "wind"
+          - "relax"
+      - type: javascript
+        value: file://validate-message.js
+
+  # Test different temperature values to see variation
+  - description: "Morning routine with high temperature (1.5) for maximum creativity"
+    vars:
+      routine: "morning"
+      language: "English"
+    override:
+      provider:
+        config:
+          temperature: 2
+          max_tokens: 100
+    assert:
+      - type: javascript
+        value: file://validate-message.js
+      - type: not-contains
+        value: "Message:"  # Should not include the prompt instruction
+
+  - description: "Morning routine with default temperature (1.0) like cron job"
+    vars:
+      routine: "morning"
+      language: "English"
+    override:
+      provider:
+        config:
+          temperature: 1.0
+          max_tokens: 100
+    assert:
+      - type: javascript
+        value: file://validate-message.js
+      - type: not-contains
+        value: "Message:"
+
+  - description: "Evening routine with lower temperature (0.5) like previous cron job"
+    vars:
+      routine: "evening"
+      language: "English"
+    override:
+      provider:
+        config:
+          temperature: 0.1
+          max_tokens: 100
+    assert:
+      - type: javascript
+        value: file://validate-message.js
+      - type: not-contains
+        value: "Message:"

@@ -1,7 +1,7 @@
 prompts:
   - id: routine-notification-prompt
     raw: |
-      In {{language}}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their {{routine}} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: 
+      In {{language}}, create a push notification text in a {{tone}} and motivational tone, telling the user it's time to start their {{routine}} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: 
 
 providers:
   - id: openai:gpt-4.1-mini
@@ -20,6 +20,12 @@ tests:
     vars:
       routine: "morning"
       language: "English"
+      tone: "cheerleader"
+    override:
+      provider:
+        config:
+          temperature: 2
+          max_tokens: 100
     assert:
       - type: contains-any
         value: 
@@ -52,6 +58,12 @@ tests:
     vars:
       routine: "evening"
       language: "English"
+      tone: "pirate"
+    override:
+      provider:
+        config:
+          temperature: 2
+          max_tokens: 100
     assert:
       - type: contains-any
         value: 
@@ -65,48 +77,37 @@ tests:
       - type: javascript
         value: file://validate-message.js
 
-  # Test different temperature values to see variation
-  - description: "Morning routine with high temperature (1.5) for maximum creativity"
-    vars:
-      routine: "morning"
-      language: "English"
-    override:
-      provider:
-        config:
-          temperature: 2
-          max_tokens: 100
-    assert:
-      - type: javascript
-        value: file://validate-message.js
-      - type: not-contains
-        value: "Message:"  # Should not include the prompt instruction
-
-  - description: "Morning routine with default temperature (1.0) like cron job"
-    vars:
-      routine: "morning"
-      language: "English"
-    override:
-      provider:
-        config:
-          temperature: 1.0
-          max_tokens: 100
-    assert:
-      - type: javascript
-        value: file://validate-message.js
-      - type: not-contains
-        value: "Message:"
-
   - description: "Evening routine with lower temperature (0.5) like previous cron job"
     vars:
       routine: "evening"
       language: "English"
+      tone: "humorous"
     override:
       provider:
         config:
-          temperature: 0.1
+          temperature: 0.5
           max_tokens: 100
     assert:
       - type: javascript
         value: file://validate-message.js
       - type: not-contains
         value: "Message:"
+
+  # Test different tones for variety
+  - description: "Cheerleader tone morning routine"
+    vars:
+      routine: "morning"
+      language: "English"
+      tone: "upbeat"
+    assert:
+      - type: javascript
+        value: file://validate-message.js
+
+  - description: "Sassy tone evening routine"
+    vars:
+      routine: "evening"
+      language: "English"
+      tone: "sassy"
+    assert:
+      - type: javascript
+        value: file://validate-message.js

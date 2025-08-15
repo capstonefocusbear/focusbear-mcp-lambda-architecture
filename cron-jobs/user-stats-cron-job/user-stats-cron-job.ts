@@ -189,14 +189,7 @@ async function runUserStatsCronJob() {
       order: { date_completed: 'DESC' },
     });
 
-    // Debug: Check the verbose_logging flag value
-    console.log(`[DEBUG] Processing user ${user.id}: verbose_logging = ${user.verbose_logging}`);
-
-    const isVerboseLoggingAllowed = true || user.verbose_logging;
-
-    if (isVerboseLoggingAllowed) {
-      console.log(`[DEBUG] Verbose logging ENABLED for user ${user.id}`);
-    }
+    const isVerboseLoggingAllowed = user.verbose_logging;
 
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);

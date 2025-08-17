@@ -71,23 +71,59 @@ export function determineUserLevel(
   return level;
 }
 
-export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date) {
+export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date, isVerboseLoggingEnabled = false) {
   const currentDate = new Date();
   currentDate.setDate(currentDate.getDate() - 90);
-  
+  // Normalise midnight to avoid updating stats for the current day
+  currentDate.setHours(0, 0, 0, 0);
+
   // Calculate days since user signup (for users < 90 days old)
   const userSignupDate = new Date(userCreatedAt);
   const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   // Determine the proper time window for this user
   const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
   const totalPossibleDays = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
 
+  if (isVerboseLoggingEnabled) {
+    /* eslint-disable no-console */
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === 90-DAY CALCULATION WINDOW ===');
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Time Window Start:', timeWindowStart.toISOString().split('T')[0]);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Current Date (90 days ago):', currentDate.toISOString().split('T')[0]);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] User Signup Date:', userSignupDate.toISOString().split('T')[0]);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Days Since Signup:', daysSinceSignup);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Total Possible Days in Window:', totalPossibleDays);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Raw Daily Stats Count:', userDailyStats.length);
+    /* eslint-enable no-console */
+  }
+
   const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
-    const createdAtDate = new Date(current.created_at).toISOString().split('T')[0];
+    // Enhanced logging for date processing
+    const originalDate = current.date_completed;
+    const dateAsJSDate = new Date(current.date_completed);
+    const isoString = dateAsJSDate.toISOString();
+    const createdAtDate = isoString.split('T')[0];
+    
+    if (isVerboseLoggingEnabled) {
+      /* eslint-disable no-console */
+      console.log('[VERBOSE-DATE-PROCESSING] Processing date_completed:', {
+        original: originalDate,
+        jsDate: dateAsJSDate.toString(),
+        isoString: isoString,
+        extractedDate: createdAtDate,
+        timezone: dateAsJSDate.getTimezoneOffset(),
+      });
+      /* eslint-enable no-console */
+    }
+    
     if (!acc[createdAtDate]) {
+      if (isVerboseLoggingEnabled) {
+        /* eslint-disable no-console */
+        console.log(`[VERBOSE-DATE-PROCESSING] Creating new entry for date: ${createdAtDate}`);
+        /* eslint-enable no-console */
+      }
       acc[createdAtDate] = {
-        created_at: current.created_at,
+        created_at: current.date_completed,
         morning_routine_completion_percentage: current.morning_routine_completion_percentage,
         evening_routine_completion_percentage: current.evening_routine_completion_percentage,
         micro_breaks_routine_completion_percentage: current.micro_breaks_routine_completion_percentage,
@@ -95,6 +131,11 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
         seconds_spent_doing_breaks: current.seconds_spent_doing_breaks,
       };
     } else {
+      if (isVerboseLoggingEnabled) {
+        /* eslint-disable no-console */
+        console.log(`[VERBOSE-DATE-PROCESSING] Duplicate entry for date: ${createdAtDate}, keeping max values`);
+        /* eslint-enable no-console */
+      }
       acc[createdAtDate].morning_routine_completion_percentage = Math.max(
         acc[createdAtDate].morning_routine_completion_percentage,
         current.morning_routine_completion_percentage,
@@ -121,7 +162,48 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
 
   const distinctUserDailyStats = Object.values(distinctUserDailyStatObject);
 
+  if (isVerboseLoggingEnabled) {
+    /* eslint-disable no-console */
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Distinct Daily Stats Count (after deduplication):', distinctUserDailyStats.length);
+    
+    // Log all unique dates found
+    const allDates = Object.keys(distinctUserDailyStatObject).sort();
+    console.log('[VERBOSE-DATE-PROCESSING] All unique dates found:', allDates);
+    
+    // Check for missing dates in sequence
+    if (allDates.length > 1) {
+      const missingDates = [];
+      for (let i = 0; i < allDates.length - 1; i++) {
+        const currentDate = new Date(allDates[i]);
+        const nextDate = new Date(allDates[i + 1]);
+        const dayDiff = Math.floor((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (dayDiff > 1) {
+          for (let j = 1; j < dayDiff; j++) {
+            const missingDate = new Date(currentDate);
+            missingDate.setDate(missingDate.getDate() + j);
+            missingDates.push(missingDate.toISOString().split('T')[0]);
+          }
+        }
+      }
+      
+      if (missingDates.length > 0) {
+        console.log('[VERBOSE-DATE-PROCESSING] === MISSING DATES IN SEQUENCE ===');
+        console.log('[VERBOSE-DATE-PROCESSING] Missing dates:', missingDates);
+        console.log('[VERBOSE-DATE-PROCESSING] Total missing dates:', missingDates.length);
+      }
+    }
+    /* eslint-enable no-console */
+  }
+
   const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= timeWindowStart);
+
+  if (isVerboseLoggingEnabled) {
+    /* eslint-disable no-console */
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Stats in Time Window Count:', userDailyStatsFromLast90Days.length);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === FILTERING BY COMPLETION CRITERIA ===');
+    /* eslint-enable no-console */
+  }
 
   const daysWhereMorningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
@@ -149,6 +231,38 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
       f.focus_modes_completed > 0,
   ).length;
 
+  if (isVerboseLoggingEnabled) {
+    /* eslint-disable no-console */
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === DETAILED DAY COUNTS ===');
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Morning Routines Completed Days:', daysWhereMorningRoutinesWereCompletedIn90Days.length);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Morning Days List:');
+    daysWhereMorningRoutinesWereCompletedIn90Days.forEach((day, index) => {
+      console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.morning_routine_completion_percentage}%`);
+    });
+
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Evening Routines Completed Days:', daysWhereEveningRoutinesWereCompletedIn90Days.length);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Evening Days List:');
+    daysWhereEveningRoutinesWereCompletedIn90Days.forEach((day, index) => {
+      console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.evening_routine_completion_percentage}%`);
+    });
+
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Focus Modes Completed Days:', daysWhereFocusModesWereCompletedIn90Days.length);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Focus Mode Days List:');
+    daysWhereFocusModesWereCompletedIn90Days.forEach((day, index) => {
+      console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.focus_modes_completed} modes`);
+    });
+
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Micro Breaks Completed Days:', daysWhereMicroBreaksWereCompletedIn90Days.length);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Micro Break Days List:');
+    daysWhereMicroBreaksWereCompletedIn90Days.forEach((day, index) => {
+      console.log(`[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   ${index + 1}. ${new Date(day.created_at).toISOString().split('T')[0]} - ${day.seconds_spent_doing_breaks}s`);
+    });
+
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Any Activity Completed Days:', number_days_completed);
+    console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === END DETAILED DAY COUNTS ===');
+    /* eslint-enable no-console */
+  }
+
   return {
     daysWhereMorningRoutinesWereCompletedIn90Days,
     daysWhereEveningRoutinesWereCompletedIn90Days,
@@ -156,15 +270,6 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
     daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
-    userDailyStatsFromLast90Days,
-    morning_number_days_completed: daysWhereMorningRoutinesWereCompletedIn90Days.length,
-    morning_num_days_of_stats: num_days_of_stats,
-    evening_number_days_completed: daysWhereEveningRoutinesWereCompletedIn90Days.length,
-    evening_num_days_of_stats: num_days_of_stats,
-    micro_breaks_number_days_completed: daysWhereMicroBreaksWereCompletedIn90Days.length,
-    micro_breaks_num_days_of_stats: num_days_of_stats,
-    focus_modes_number_days_completed: daysWhereFocusModesWereCompletedIn90Days.length,
-    focus_modes_num_days_of_stats: num_days_of_stats,
   };
 }
 
@@ -288,6 +393,7 @@ export function calculateStreaks(
     microBreaksDailyDurations: DailySequenceDurations;
   },
   userCreatedAt: Date,
+  isVerboseLoggingEnabled = false,
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
@@ -309,16 +415,13 @@ export function calculateStreaks(
     daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
-    userDailyStatsFromLast90Days,
-    morning_number_days_completed,
-    morning_num_days_of_stats,
-    evening_number_days_completed,
-    evening_num_days_of_stats,
-    micro_breaks_number_days_completed,
-    micro_breaks_num_days_of_stats,
-    focus_modes_number_days_completed,
-    focus_modes_num_days_of_stats,
-  } = calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt);
+  } = calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt, isVerboseLoggingEnabled);
+
+  // Calculate day counts directly from the filtered arrays
+  const morning_number_days_completed = daysWhereMorningRoutinesWereCompletedIn90Days.length;
+  const evening_number_days_completed = daysWhereEveningRoutinesWereCompletedIn90Days.length;
+  const micro_breaks_number_days_completed = daysWhereMicroBreaksWereCompletedIn90Days.length;
+  const focus_modes_number_days_completed = daysWhereFocusModesWereCompletedIn90Days.length;
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
   const morning_routines_streak = calculateStreakForRoutine(
@@ -354,13 +457,13 @@ export function calculateStreaks(
     num_days_of_stats,
     number_days_completed,
     morning_number_days_completed,
-    morning_num_days_of_stats,
+    morning_num_days_of_stats: num_days_of_stats,
     evening_number_days_completed,
-    evening_num_days_of_stats,
+    evening_num_days_of_stats: num_days_of_stats,
     micro_breaks_number_days_completed,
-    micro_breaks_num_days_of_stats,
+    micro_breaks_num_days_of_stats: num_days_of_stats,
     focus_modes_number_days_completed,
-    focus_modes_num_days_of_stats,
+    focus_modes_num_days_of_stats: num_days_of_stats,
   };
 }
 

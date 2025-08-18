@@ -34,6 +34,21 @@ const LANGUAGES_MAP = {
   es: 'Spanish',
 };
 
+// Available tones for routine notifications (subset of AiToneOptions for notifications)
+const NOTIFICATION_TONES = [
+  'humorous',
+  'cheerleader',
+  'upbeat',
+  'sassy',
+  'scientist',
+  'pirate',
+];
+
+// Function to get a random tone
+function getRandomTone(): string {
+  return NOTIFICATION_TONES[Math.floor(Math.random() * NOTIFICATION_TONES.length)];
+}
+
 const beamsClient = new PushNotifications({
   instanceId: process.env.PUSHER_BEAMS_INSTANCE_ID,
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
@@ -53,8 +68,9 @@ interface TranslationDataType {
 
 const openAiAPI = new OpenAI({ apiKey: OPEN_AI_CONFIG.pushNotification.apiKey });
 
-function getPrompt(routine: string, language: string) {
-  return `In ${LANGUAGES_MAP[language]}, create a push notification text in a humorous and and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
+// getPrompt function includes a default tone "humorous" if no tone is provided
+function getPrompt(routine: string, language: string, tone: string = 'humorous') {
+  return `In ${LANGUAGES_MAP[language]}, create a push notification text in a ${tone} and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
 }
 
 function sleep(ms: number) {
@@ -122,12 +138,13 @@ async function addMessageToR2(filename: string, messageData: { message: string; 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
   const maxRetries = 1; //reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
   const TEN_SECONDS = 10000;
+  const randomTone = getRandomTone(); // Get a random tone for this notification
   for (let i = 0; i <= maxRetries; i++) {
     try {
       const response = await openAiAPI.chat.completions.create({
         model: GPT_4_1_MINI,
-        messages: [{ role: 'system', content: getPrompt(routine, language) }],
-        temperature: 0.5,
+        messages: [{ role: 'system', content: getPrompt(routine, language, randomTone) }],
+        temperature: 1,
         max_tokens: 100,
         n: 1,
       });

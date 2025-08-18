@@ -12,6 +12,8 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
+import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
+import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -21,6 +23,7 @@ export class ActivityLibraryService {
     private readonly activityRepository: ActivityRepository,
     private readonly userRepository: UserRepository,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   async getLibraryActivities(user_id: string): Promise<UpdateActivityDto[]> {
@@ -194,5 +197,30 @@ export class ActivityLibraryService {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     return user;
+  }
+
+  async adjustHabitsWithAi(adjustHabitsWithAiDto: AdjustHabitsWithAiDto, user_id: string) {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Adjusting habits with AI',
+        data: { user_id, feedback: adjustHabitsWithAiDto.user_feedback },
+      });
+
+      await this.validateUser(user_id);
+
+      const adjustedHabits = await this.openAIService.adjustHabitsWithAi(
+        adjustHabitsWithAiDto.current_habits,
+        adjustHabitsWithAiDto.user_feedback,
+        adjustHabitsWithAiDto.user_goals,
+        adjustHabitsWithAiDto.routine_duration,
+      );
+
+      return adjustedHabits;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

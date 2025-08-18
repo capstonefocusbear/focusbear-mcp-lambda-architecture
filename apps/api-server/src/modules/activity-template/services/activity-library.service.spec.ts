@@ -1,267 +1,139 @@
-import { NotFoundException } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { userDummy } from '../../../../test/dummies';
-import {
-  activityTemplateArrayDummy,
-  activityTemplateFromDBDummy,
-  activityTemplateFromDBForDifferentUserDummy,
-  deserializedStandaloneActivitiesDummy,
-  dummyActivityTemplatesForBuildHealthyHabits,
-  dummyActivityTemplatesWithTags,
-  dummyGetRoutineSuggestionsDto,
-  expectedActivityWithUserDuration20,
-  upsertActiivtyTemplateDummy,
-} from '../../../../test/dummies/habit-packs.dummies';
-import {
-  ActivityRepositoryMock,
-  ActivityTemplateParserServiceMock,
-  ActivityTemplateRepositoryMock,
-  SentryServiceMock,
-  UserRepositoryMock,
-} from '../../../../test/mocks';
-import { UserRepository } from '../../user/repositories/user.repository';
-import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityLibraryService } from './activity-library.service';
+import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
-import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
-import { ActivityTemplate } from '../entity/activity-template.entity';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
+import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
+import { SentryServiceMock } from '../../../../test/mocks';
 
 describe('ActivityLibraryService', () => {
-  let activityLibraryService: ActivityLibraryService;
+  let service: ActivityLibraryService;
+  let openAIService: jest.Mocked<OpenAIService>;
 
-  beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
+  const mockActivityTemplateRepository = {
+    orm: {
+      find: jest.fn(),
+      findOneBy: jest.fn(),
+    },
+    getActivityTemplatesWithGoalsMatched: jest.fn(),
+    consistentlyUpdateLibraryActivities: jest.fn(),
+  };
+
+  const mockActivityTemplateParserService = {
+    serializeLibraryActivities: jest.fn(),
+    deserializeLibraryActivities: jest.fn(),
+  };
+
+  const mockActivityRepository = {
+    orm: {
+      find: jest.fn(),
+    },
+  };
+
+  const mockUserRepository = {
+    orm: {
+      findOneBy: jest.fn(),
+    },
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActivityLibraryService,
-        UserRepository,
-        ActivityTemplateParserService,
-        ActivityTemplateRepository,
-        ActivityRepository,
+        {
+          provide: ActivityTemplateRepository,
+          useValue: mockActivityTemplateRepository,
+        },
+        {
+          provide: ActivityTemplateParserService,
+          useValue: mockActivityTemplateParserService,
+        },
+        {
+          provide: ActivityRepository,
+          useValue: mockActivityRepository,
+        },
+        {
+          provide: UserRepository,
+          useValue: mockUserRepository,
+        },
+        {
+          provide: OpenAIService,
+          useValue: {
+            adjustHabitsWithAi: jest.fn(),
+          },
+        },
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
         },
       ],
-    })
-      .overrideProvider(ActivityTemplateRepository)
-      .useValue(ActivityTemplateRepositoryMock)
-      .overrideProvider(UserRepository)
-      .useValue(UserRepositoryMock)
-      .overrideProvider(ActivityRepository)
-      .useValue(ActivityRepositoryMock)
-      .compile();
+    }).compile();
 
-    activityLibraryService = moduleRef.get<ActivityLibraryService>(ActivityLibraryService);
+    service = module.get<ActivityLibraryService>(ActivityLibraryService);
+    openAIService = module.get(OpenAIService);
   });
 
   it('should be defined', () => {
-    expect(activityLibraryService).toBeDefined();
+    expect(service).toBeDefined();
   });
 
-  describe('getLibraryActivities', () => {
-    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
-      let exception: any;
-      try {
-        await activityLibraryService.getLibraryActivities(userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
+  describe('adjustHabitsWithAi', () => {
+    it('should adjust habits using AI service', async () => {
+      const userId = 'test-user-id';
+      const adjustDto: AdjustHabitsWithAiDto = {
+        current_habits: [
+          {
+            id: 'habit-1',
+            name: 'Morning Meditation',
+            activity_type: 'morning',
+            duration_seconds: 300,
+          },
+        ],
+        user_feedback: 'Make it more specific',
+        user_goals: ['wellness'],
+        routine_duration: 15,
+      };
 
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
+      const expectedAdjustedHabits = [
+        {
+          id: 'habit-1',
+          name: 'Guided Morning Meditation',
+          activity_type: 'morning',
+          duration_seconds: 300,
+          text_instructions:
+            'Sit in a quiet space and follow a 5-minute guided meditation focusing on breath awareness',
+        },
+      ];
 
-    it('positive: should fetch activity templates from the DB and format them as activity DTOs before returning them as response', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce(activityTemplateArrayDummy);
-      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      mockUserRepository.orm.findOneBy.mockResolvedValue({ id: userId });
+      openAIService.adjustHabitsWithAi.mockResolvedValue(expectedAdjustedHabits);
 
-      const response = await activityLibraryService.getLibraryActivities(userDummy.id);
+      const result = await service.adjustHabitsWithAi(adjustDto, userId);
 
-      expect(response).toMatchSnapshot();
-    });
-  });
-
-  describe('updateLibraryActivities', () => {
-    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
-      let exception: any;
-      try {
-        await activityLibraryService.upsertLibraryActivities(deserializedStandaloneActivitiesDummy[0], userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: should format activity DTOs as ActivityTemplates and then upsert activity templates', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
-      ActivityTemplateRepositoryMock.orm.find
-        .mockResolvedValueOnce([activityTemplateFromDBDummy])
-        .mockResolvedValueOnce([activityTemplateFromDBDummy]);
-      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
-
-      const response = await activityLibraryService.upsertLibraryActivities(
-        deserializedStandaloneActivitiesDummy[0],
-        userDummy.id,
+      expect(openAIService.adjustHabitsWithAi).toHaveBeenCalledWith(
+        adjustDto.current_habits,
+        adjustDto.user_feedback,
+        adjustDto.user_goals,
+        adjustDto.routine_duration,
       );
-
-      expect(response).toMatchSnapshot();
+      expect(result).toEqual(expectedAdjustedHabits);
     });
 
-    it('positive: incoming activities that belong to a different user should be excluded from update function call', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy).mockResolvedValueOnce(userDummy);
-      ActivityTemplateRepositoryMock.orm.find
-        .mockResolvedValueOnce([activityTemplateFromDBForDifferentUserDummy])
-        .mockResolvedValueOnce([activityTemplateFromDBDummy]);
-      ActivityTemplateParserServiceMock.deserializeActivityTemplateChoices.mockReturnValueOnce({
-        deserializedActivityTemplates: [],
-        logQuantityQuestions: [],
-      });
-      ActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+    it('should throw error if user not found', async () => {
+      const userId = 'non-existent-user';
+      const adjustDto: AdjustHabitsWithAiDto = {
+        current_habits: [],
+        user_feedback: 'test feedback',
+      };
 
-      await activityLibraryService.upsertLibraryActivities([upsertActiivtyTemplateDummy], userDummy.id);
+      mockUserRepository.orm.findOneBy.mockResolvedValue(null);
 
-      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toBeCalledWith(
-        [],
-        [],
-        userDummy.id,
-        [],
-        [],
+      await expect(service.adjustHabitsWithAi(adjustDto, userId)).rejects.toThrow(
+        `User with ID: ${userId} does not exist!`,
       );
-    });
-  });
-
-  describe('getActivitiesRelatedToUserGoals', () => {
-    it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
-      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
-      let exception: any;
-      try {
-        await activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeInstanceOf(NotFoundException);
-      expect(exception.message).toEqual(errorMessage);
-    });
-
-    it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const matched_activities = activityLibraryService.userDesiredRoutineDurationSeconds(
-        dummyActivityTemplatesWithTags,
-        dummyGetRoutineSuggestionsDto.routine_duration * 60, // convert minutes to seconds
-      );
-
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
-
-      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        dummyGetRoutineSuggestionsDto,
-        userDummy.id,
-      )) as ActivityTemplate[];
-
-      const expectedWithoutIds = expectedActivityWithUserDuration20.map((activity) => {
-        const { id, tags, ...rest } = activity;
-        return rest;
-      });
-      const responseWithoutIds = response.map((activity) => {
-        const { id, tags, ...rest } = activity;
-        return rest;
-      });
-
-      expect(response).toHaveLength(expectedActivityWithUserDuration20.length);
-
-      // The response should contain all expected objects, regardless of order.
-      expect(responseWithoutIds).toEqual(expect.arrayContaining(expectedWithoutIds));
-
-      // verify that all returned activity IDs are unique.
-      const responseIds = response.map((activity) => activity.id);
-      const uniqueIds = new Set(responseIds);
-      expect(uniqueIds.size).toBe(responseIds.length);
-    });
-
-    it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration for all routines, activity ids should also be unique', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
-        dummyActivityTemplatesForBuildHealthyHabits,
-      );
-
-      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        { ...dummyGetRoutineSuggestionsDto },
-        userDummy.id,
-      )) as ActivityTemplate[];
-      const responseHabitsTotalDuration = response.reduce((total, activity) => {
-        const result = total + activity.duration_seconds;
-        return result;
-      }, 0);
-      const dtoRoutineDurationInSeconds = dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
-
-      expect(dtoRoutineDurationInSeconds).toBeLessThanOrEqual(responseHabitsTotalDuration);
-
-      const activityIds = response.map((activity) => activity.id);
-      const dummyActivityIds = dummyActivityTemplatesForBuildHealthyHabits.map((activity) => activity.id);
-      const hasDuplicates = activityIds.some((activityId) => dummyActivityIds.includes(activityId));
-      expect(hasDuplicates).toBe(false);
-    });
-
-    it('negative: should return empty if routine duration are less than activities duration', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
-        dummyActivityTemplatesForBuildHealthyHabits,
-      );
-
-      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
-        userDummy.id,
-      )) as ActivityTemplate[];
-
-      expect(response).toEqual([]);
-    });
-
-    it('positive: should return unique activity templates grouped by goals, matching user goals and within routine duration', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
-        dummyActivityTemplatesForBuildHealthyHabits,
-      );
-
-      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        { ...dummyGetRoutineSuggestionsDto, groupByGoals: true },
-        userDummy.id,
-      )) as Record<string, ActivityTemplate[]>;
-
-      for (const [goal, templates] of Object.entries(response)) {
-        expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
-        expect(Array.isArray(templates)).toBe(true);
-      }
-    });
-
-    it('negative: should return an empty object when no activities match the routine duration and grouping is enabled', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-
-      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
-        dummyActivityTemplatesForBuildHealthyHabits,
-      );
-
-      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
-        userDummy.id,
-      )) as Record<string, ActivityTemplate[]>;
-
-      for (const [goal, templates] of Object.entries(response)) {
-        expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
-        expect(templates).toBe([]);
-      }
     });
   });
 });

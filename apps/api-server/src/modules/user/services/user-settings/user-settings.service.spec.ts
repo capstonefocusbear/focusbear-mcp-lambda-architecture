@@ -668,6 +668,51 @@ describe('UserSettingsService', () => {
       expect(result.utc_startup_time).toBe('01:30');
       expect(result.utc_shutdown_time).toBe('16:30');
     });
+
+    it('should handle identical times by applying defaults when both are 00:00', () => {
+      // Test the auto-fix behavior for midnight identical times
+      const result = userSettingsService.calculateUserUTCRoutineTimes('00:00', '00:00', 'Australia/Sydney');
+
+      // Should auto-fix to 06:00-22:00 and then convert to UTC
+      expect(result.utc_startup_time).not.toEqual(result.utc_shutdown_time);
+    });
+
+    it('should throw error for non-midnight identical times', () => {
+      // Test that non-midnight identical times throw an error
+      expect(() => {
+        userSettingsService.calculateUserUTCRoutineTimes('10:00', '10:00', 'Australia/Sydney');
+      }).toThrow(BadRequestException);
+
+      expect(() => {
+        userSettingsService.calculateUserUTCRoutineTimes('15:30', '15:30', 'UTC');
+      }).toThrow(BadRequestException);
+    });
+
+    it('should correctly handle AEST timezone conversion with realistic times', () => {
+      // Test with realistic startup/shutdown times in AEST
+      const result = userSettingsService.calculateUserUTCRoutineTimes('06:00', '22:00', 'Australia/Sydney');
+
+      expect(result.utc_startup_time).toBeDefined();
+      expect(result.utc_shutdown_time).toBeDefined();
+      expect(result.utc_startup_time).not.toEqual(result.utc_shutdown_time);
+    });
+
+    it('should log warning for identical times via Sentry', () => {
+      // Test that Sentry breadcrumbs are added for monitoring
+      const mockUserId = randomUUID();
+
+      // This should trigger the auto-fix path and log warnings
+      userSettingsService.calculateUserUTCRoutineTimes('00:00', '00:00', 'Australia/Sydney', mockUserId);
+
+      // Verify Sentry breadcrumb was called (mocked in test setup)
+      expect(SentryServiceMock.instance().addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'Service',
+          level: 'warning',
+          message: 'Identical startup/shutdown times detected',
+        }),
+      );
+    });
   });
 
   describe('hasCutoffTimeBeenReached', () => {

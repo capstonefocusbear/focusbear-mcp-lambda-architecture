@@ -181,6 +181,7 @@ export class UserSettingsService {
         startup_time,
         shutdown_time,
         user.timezone,
+        user.id,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
@@ -344,7 +345,46 @@ export class UserSettingsService {
     }
   }
 
-  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string) {
+  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string, userId?: string) {
+    // Validate times are not identical
+    if (startupTime === shutdownTime) {
+      // Log the issue for monitoring
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'warning',
+        message: 'Identical startup/shutdown times detected',
+        data: {
+          userId,
+          timezone,
+          startup_time: startupTime,
+          shutdown_time: shutdownTime,
+        },
+      });
+
+      // Handle the "00:00" to "00:00" case specially
+      if (startupTime === '00:00') {
+        // Auto-fix to sensible defaults
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Auto-fixing identical midnight times to defaults',
+          data: {
+            userId,
+            original_startup_time: startupTime,
+            original_shutdown_time: shutdownTime,
+            fixed_startup_time: '06:00',
+            fixed_shutdown_time: '22:00',
+          },
+        });
+        /* eslint-disable no-param-reassign */
+        startupTime = '06:00';
+        shutdownTime = '22:00';
+        /* eslint-enable no-param-reassign */
+      } else {
+        throw new BadRequestException('Startup and shutdown times cannot be identical');
+      }
+    }
+
     const [startHours, startMinutes] = startupTime.split(':');
     const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
     const userStartupTime = DateTime.local({ zone: timezone }).set({

@@ -346,9 +346,7 @@ export class UserSettingsService {
   }
 
   calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string, userId?: string) {
-    // Validate times are not identical
     if (startupTime === shutdownTime) {
-      // Log the issue for monitoring
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'warning',
@@ -361,9 +359,7 @@ export class UserSettingsService {
         },
       });
 
-      // Handle the "00:00" to "00:00" case specially
       if (startupTime === '00:00') {
-        // Auto-fix to sensible defaults
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
           level: 'info',

@@ -86,7 +86,14 @@ import { FlankerTest } from './entities/flanker-test.entity';
     UsageDataConsumer,
     FlankerTestService,
   ],
-  exports: [UserRepository, UserService, UserSettingsService, UserDailyStatsService, CustomRoutineRepository],
+  exports: [
+    UserRepository,
+    UserService,
+    UserSettingsService,
+    UserDailyStatsService,
+    CustomRoutineRepository,
+    DailyStatsRepository,
+  ],
   imports: [
     TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),
     Auth0Module.registerAsync({

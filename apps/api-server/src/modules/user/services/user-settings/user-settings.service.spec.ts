@@ -668,6 +668,44 @@ describe('UserSettingsService', () => {
       expect(result.utc_startup_time).toBe('01:30');
       expect(result.utc_shutdown_time).toBe('16:30');
     });
+
+    it('should handle identical times by applying defaults when both are 00:00', () => {
+      const result = userSettingsService.calculateUserUTCRoutineTimes('00:00', '00:00', 'Australia/Sydney');
+
+      expect(result.utc_startup_time).not.toEqual(result.utc_shutdown_time);
+    });
+
+    it('should throw error for non-midnight identical times', () => {
+      expect(() => {
+        userSettingsService.calculateUserUTCRoutineTimes('10:00', '10:00', 'Australia/Sydney');
+      }).toThrow(BadRequestException);
+
+      expect(() => {
+        userSettingsService.calculateUserUTCRoutineTimes('15:30', '15:30', 'UTC');
+      }).toThrow(BadRequestException);
+    });
+
+    it('should correctly handle AEST timezone conversion with realistic times', () => {
+      const result = userSettingsService.calculateUserUTCRoutineTimes('06:00', '22:00', 'Australia/Sydney');
+
+      expect(result.utc_startup_time).toBeDefined();
+      expect(result.utc_shutdown_time).toBeDefined();
+      expect(result.utc_startup_time).not.toEqual(result.utc_shutdown_time);
+    });
+
+    it('should log warning for identical times via Sentry', () => {
+      const mockUserId = randomUUID();
+
+      userSettingsService.calculateUserUTCRoutineTimes('00:00', '00:00', 'Australia/Sydney', mockUserId);
+
+      expect(SentryServiceMock.instance().addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'Service',
+          level: 'warning',
+          message: 'Identical startup/shutdown times detected',
+        }),
+      );
+    });
   });
 
   describe('hasCutoffTimeBeenReached', () => {

@@ -104,6 +104,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     UserEmailPreferencesService,
     UserProgressMetricsService,
     CustomRoutineRepository,
+    DailyStatsRepository,
   ],
   imports: [
     TypeOrmModule.forFeature([User, StudyParticipant, UsageData, HealthMetrics, FlankerTest]),

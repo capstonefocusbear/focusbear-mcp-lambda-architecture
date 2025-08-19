@@ -25,7 +25,7 @@ export class TeamToMember extends BaseEntity {
     nullable: true,
     unique: false,
   })
-  member_id: string | null;
+  member_id: string;
 
   @Column({ type: 'varchar', nullable: true, unique: false, transformer: BaseEntity.encryptField('first_name') })
   first_name?: string;

@@ -3,15 +3,15 @@ import { ApiSecurity, ApiTags, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ServiceAccountContext } from '../../auth/decorators/service-account-context.decorator';
 import { ServiceAccountPassport } from '../../auth/domain/service-account-passport.model';
 import { ServiceAccountAuth } from '../../auth/guards/service-account-auth/service-account-auth.guard';
-import { TeamManagementService } from '../services/team-management/team-management.service';
 import { GetAllTeamMembersResponseDto } from '../dto/get-all-team-members.dto';
+import { ServiceAccountTeamManagementService } from '../services/service-account/service-account-team-management.service';
 
 @Controller('service-account/team-management')
 @ApiTags('service-account-team-management')
 @UseGuards(ServiceAccountAuth)
 @ApiSecurity('Auth0AccessToken')
 export class ServiceAccountTeamManagementController {
-  constructor(private readonly teamManagementService: TeamManagementService) {}
+  constructor(private readonly serviceAccountTeamManagementService: ServiceAccountTeamManagementService) {}
 
   @Get('/all-members')
   @ApiQuery({
@@ -46,6 +46,6 @@ export class ServiceAccountTeamManagementController {
       throw new ForbiddenException('Access denied: team ID mismatch');
     }
 
-    return this.teamManagementService.getAllTeamMemberServiceAcc(team_id);
+    return this.serviceAccountTeamManagementService.getAllTeamMemberServiceAcc(team_id);
   }
 }

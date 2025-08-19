@@ -13,9 +13,16 @@ import { TeamManagementService } from './services/team-management/team-managemen
 import { Auth0Module } from '../../../../../libs/auth0/src';
 import { TeamToMemberRepository } from './repositories/team-to-member.repository';
 import { TeamToAdminRepository } from './repositories/team-to-admin.repository';
+import { ServiceAccountTeamManagementService } from './services/service-account/service-account-team-management.service';
 
 @Module({
-  providers: [TeamRepository, TeamManagementService, TeamToMemberRepository, TeamToAdminRepository],
+  providers: [
+    TeamRepository,
+    TeamManagementService,
+    TeamToMemberRepository,
+    TeamToAdminRepository,
+    ServiceAccountTeamManagementService,
+  ],
   exports: [TeamRepository, TeamManagementService],
   controllers: [TeamManagementController, ServiceAccountTeamManagementController],
   imports: [

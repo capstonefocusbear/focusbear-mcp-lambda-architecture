@@ -354,20 +354,6 @@ export class TeamManagementService {
     });
   }
 
-  async getAllTeamMemberServiceAcc(teamId: string): Promise<GetAllTeamMembersResponseDto> {
-    const team = await this.validateTeam(teamId);
-    const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
-    const registeredMembersIds = members.map((member) => member.member_id).filter(Boolean);
-    const userDetails = await this.getUserDetails(members, registeredMembersIds);
-    // return all members including unregistered members
-    return {
-      members: userDetails,
-      admins: admins.map((admin) => admin.admin_id),
-      total_count: userDetails.length,
-      team_id: teamId,
-    };
-  }
-
   async updateTeamName(adminId: string, teamId: string, name: string) {
     await this.validateTeam(teamId);
     const admins = await this.teamToAdminRepository.getTeamAdmins(adminId);

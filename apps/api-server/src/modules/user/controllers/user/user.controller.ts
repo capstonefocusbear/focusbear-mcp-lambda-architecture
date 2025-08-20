@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger, Param } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -41,7 +41,14 @@ import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dt
 import { EmailPreferencesResponseDto } from '../../dto/email-preferences-response.dto';
 import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
 import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
+import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
+import { UserProgressMetricsService } from '../../services/user-progress-metrics/user-progress-metrics.service';
+import { UserRepository } from '../../repositories/user.repository';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { Throttle } from '@nestjs/throttler';
+import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
+import { EmailFrequency } from '../../entities/user.entity';
 
 @Controller('user')
 @ApiTags('user')
@@ -51,8 +58,13 @@ export class UserController {
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userEmailPreferencesService: UserEmailPreferencesService,
+    private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
+    private readonly userProgressMetricsService: UserProgressMetricsService,
+    private readonly userRepository: UserRepository,
+    @InjectQueue('emailQueue') private readonly emailQueue: Queue,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
+  private readonly logger = new Logger(UserController.name);
 
   @Put('/account-sync')
   @ApiSecurity('Auth0ActionSecret')
@@ -268,9 +280,7 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   @ApiOperation({ summary: 'Get user email preferences' })
-  async getEmailPreferences(
-    @AuthContext() { user }: Passport
-  ): Promise<EmailPreferencesResponseDto> {
+  async getEmailPreferences(@AuthContext() { user }: Passport): Promise<EmailPreferencesResponseDto> {
     return this.userEmailPreferencesService.getEmailPreferences(user.id);
   }
 
@@ -281,17 +291,159 @@ export class UserController {
   @Throttle({ default: { ttl: 60, limit: 10 } }) // Rate limit: 10 requests per minute
   async updateEmailPreferences(
     @AuthContext() { user }: Passport,
-    @Body() dto: UpdateEmailPreferencesDto
+    @Body() dto: UpdateEmailPreferencesDto,
   ): Promise<EmailPreferencesResponseDto> {
     return this.userEmailPreferencesService.updateEmailPreferences(user.id, dto);
   }
 
+  @Get('email-preferences/unsubscribe')
+  @ApiOperation({ summary: 'Unsubscribe confirmation page' })
+  async getUnsubscribePage(@Query('token') token: string, @Res() response: FastifyReply): Promise<void> {
+    try {
+      const html = await this.emailTemplateCompilerService.compilePage('unsubscribe', {
+        token,
+        apiUrl: process.env.API_URL,
+      });
+
+      response.type('text/html');
+      response.send(html);
+    } catch (error) {
+      this.logger.error('Failed to render unsubscribe page:', error);
+      response.status(500).send('Error loading unsubscribe page');
+    }
+  }
+
   @Post('email-preferences/unsubscribe')
   @ApiOperation({ summary: 'Unsubscribe from emails using token' })
-  async unsubscribeFromEmails(
-    @Body() dto: UnsubscribeEmailDto
-  ): Promise<{ message: string }> {
+  async unsubscribeFromEmails(@Body() dto: UnsubscribeEmailDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.unsubscribeFromEmails(dto);
     return { message: 'Successfully unsubscribed from emails' };
+  }
+
+  @Get('email-preferences/manage')
+  @ApiOperation({ summary: 'Email preferences management page' })
+  async getEmailPreferencesManagePage(@Query('token') token: string, @Res() response: FastifyReply): Promise<void> {
+    try {
+      if (!token) {
+        this.logger.error('No token provided for email preferences management page');
+        response.status(400).send('Token is required');
+        return;
+      }
+
+      // Verify token and get user preferences
+      const preferences = await this.userEmailPreferencesService.getEmailPreferencesWithToken(token);
+
+      const templateData = {
+        token,
+        currentFrequency: preferences.email_frequency,
+        apiUrl: process.env.API_URL,
+      };
+
+      const html = await this.emailTemplateCompilerService.compilePage('manage-preferences', templateData);
+
+      response.type('text/html');
+      response.send(html);
+    } catch (error) {
+      this.logger.error('Failed to render email preferences management page:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+        token: token ? 'present' : 'missing',
+        timestamp: new Date().toISOString(),
+      });
+      response.status(500).send(`Error loading preferences page: ${error.message}`);
+    }
+  }
+
+  @Post('email-preferences/manage')
+  @ApiOperation({ summary: 'Update email preferences using token' })
+  async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
+    await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
+    return { message: 'Email preferences updated successfully' };
+  }
+
+  @Post('test-email/:userId')
+  @UseGuards(IsAuth)
+  @ApiOperation({ summary: 'Send test progress email to specific user (Admin only)' })
+  async sendTestEmail(
+    @Param('userId') userId: string,
+    @Query('type') type: 'weekly' | 'no-progress' = 'weekly',
+  ): Promise<{ message: string }> {
+    try {
+      // Use direct repository query to avoid email_frequency column error in production
+      const user = await this.userRepository.orm.findOne({
+        where: { id: userId },
+        select: ['id', 'timezone', 'created_at', 'metadata', 'auth0_id', 'language'],
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Hardcode test email for testing purposes (User entity doesn't store email)
+      const testEmail = 'izexyy@gmail.com';
+      const testUser = {
+        ...user,
+        email: testEmail,
+      };
+
+      this.logger.log(`Sending test ${type} email to user ${userId} -> hardcoded test email: ${testEmail}`);
+
+      if (type === 'weekly') {
+        // Calculate real weekly progress metrics
+        const weeklyMetrics = await this.userProgressMetricsService.calculateWeeklyProgress(user);
+
+        // Generate proper JWT unsubscribe token
+        const unsubscribeToken = await this.userEmailPreferencesService.generateUnsubscribeToken(user.id);
+
+        // Add job to email queue for weekly progress email
+        await this.emailQueue.add(
+          'send-progress-email',
+          {
+            user: testUser,
+            metrics: weeklyMetrics,
+            unsubscribe_token: unsubscribeToken,
+          },
+          {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+          },
+        );
+
+        return {
+          message: `Weekly progress email queued successfully for ${testEmail} (test email) with real metrics data`,
+        };
+      } else if (type === 'no-progress') {
+        // Generate proper JWT unsubscribe token
+        const unsubscribeToken = await this.userEmailPreferencesService.generateUnsubscribeToken(user.id);
+
+        // Add job to email queue for no progress email
+        await this.emailQueue.add(
+          'send-no-progress-email',
+          {
+            user: testUser,
+            unsubscribe_token: unsubscribeToken,
+          },
+          {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+          },
+        );
+
+        return {
+          message: `No progress email queued successfully for ${testEmail} (test email)`,
+        };
+      } else {
+        throw new Error(`Unsupported email type: ${type}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send test email to user ${userId}:`, error);
+      throw error;
+    }
   }
 }

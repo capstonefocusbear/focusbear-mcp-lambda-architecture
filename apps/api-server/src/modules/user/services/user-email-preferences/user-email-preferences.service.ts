@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DataSource } from 'typeorm';
@@ -10,6 +10,7 @@ import { EmailFrequency, User } from '../../entities/user.entity';
 
 @Injectable()
 export class UserEmailPreferencesService {
+  private readonly logger = new Logger(UserEmailPreferencesService.name);
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
@@ -42,7 +43,6 @@ export class UserEmailPreferencesService {
         throw new BadRequestException('User not found');
       }
 
-      // Update email frequency if provided
       if (dto.email_frequency) {
         await this.userRepository.updateEmailFrequency(userId, dto.email_frequency);
       }
@@ -56,17 +56,14 @@ export class UserEmailPreferencesService {
       let userId: string;
 
       if (dto.token) {
-        // Verify and extract userId from token
         const payload = this.jwtService.verify(dto.token);
 
-        // Validate token purpose
         if (payload.purpose !== 'unsubscribe') {
           throw new BadRequestException('Invalid token purpose');
         }
 
         userId = payload.userId;
       } else if (dto.user_id) {
-        // Direct unsubscribe with user_id (for authenticated requests)
         userId = dto.user_id;
       } else {
         throw new BadRequestException('Token or user_id required');
@@ -74,7 +71,6 @@ export class UserEmailPreferencesService {
 
       await this.userRepository.updateEmailFrequency(userId, EmailFrequency.UNSUBSCRIBED);
 
-      // Log unsubscribe event with metrics
       if (dto.reason) {
         this.sentryService.instance().captureMessage('User unsubscribed from emails', {
           level: 'info',
@@ -91,7 +87,60 @@ export class UserEmailPreferencesService {
     }
   }
 
-  private generateUnsubscribeToken(userId: string): string {
+  async getEmailPreferencesWithToken(token: string): Promise<EmailPreferencesResponseDto> {
+    try {
+      const payload = this.jwtService.verify(token);
+
+      if (payload.purpose !== 'unsubscribe') {
+        this.logger.error(`Invalid token purpose: ${payload.purpose}, expected: unsubscribe`);
+        throw new BadRequestException('Invalid token purpose');
+      }
+      const preferences = await this.getEmailPreferences(payload.userId);
+
+      return preferences;
+    } catch (error) {
+      this.logger.error('Failed to get email preferences with token:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+        tokenPresent: !!token,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Invalid or expired token');
+      }
+      throw error;
+    }
+  }
+
+  async updateEmailPreferencesWithToken(token: string, emailFrequency: EmailFrequency): Promise<void> {
+    try {
+      const payload = this.jwtService.verify(token);
+
+      if (payload.purpose !== 'unsubscribe') {
+        throw new BadRequestException('Invalid token purpose');
+      }
+
+      const validFrequencies = Object.values(EmailFrequency);
+
+      await this.userRepository.updateEmailFrequency(payload.userId, emailFrequency as any);
+
+      this.sentryService.instance().captureMessage('User updated email preferences via token', {
+        level: 'info',
+        extra: { userId: payload.userId, newFrequency: emailFrequency },
+        tags: { email_action: 'update_preferences' },
+      });
+    } catch (error) {
+      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Invalid or expired token');
+      }
+      this.sentryService.instance().captureException(error);
+      throw error;
+    }
+  }
+
+  generateUnsubscribeToken(userId: string): string {
     return this.jwtService.sign({ userId, purpose: 'unsubscribe' }, { expiresIn: '30d' });
   }
 }

@@ -923,7 +923,12 @@ export class OpenAIService {
         { role: 'user', content: userPrompt },
       ];
 
-      const completions = await this.getOpenAIChatCompletionsNonStreaming(messages, OpenAIKeyType.GENERAL);
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.HABIT_ADJUSTMENT,
+        OPENAI_PARAMS.habitAdjustment as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
+
       const response = completions.choices[0].message.content;
 
       try {

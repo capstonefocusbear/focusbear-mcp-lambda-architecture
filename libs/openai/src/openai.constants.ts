@@ -28,6 +28,7 @@ export enum OpenAIKeyType {
   BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
   SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
+  HABIT_ADJUSTMENT = 'habitAdjustment',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
@@ -130,6 +131,14 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
 
   analyzeImage: {
+    model: GPT_4_1,
+    messages: null,
+    response_format: {
+      type: 'json_object',
+    },
+  },
+
+  habitAdjustment: {
     model: GPT_4_1,
     messages: null,
     response_format: {

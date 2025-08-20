@@ -69,7 +69,13 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
 }
 
 async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
-  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
+  // Get user's timezone first
+  const user = await CronJobDataSource.manager.findOne(User, { where: { id: userId } });
+  const userTimeZone = user?.timezone || 'UTC';
+
+  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time)
+    .setZone(userTimeZone)
+    .weekdayShort;
   const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
     await getUserRoutineDailyDurations(userId);
   const sequenceType = routineLog.activity_sequence.type;
@@ -224,7 +230,7 @@ async function runUserStatsCronJob() {
       evening_routines_streak,
       micro_breaks_streak,
     });
-    const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
+    const currentTime = DateTime.now().setZone(user.timezone || 'UTC').toJSDate();
     await CronJobDataSource.manager.update(
       User,
       { id: user.id },

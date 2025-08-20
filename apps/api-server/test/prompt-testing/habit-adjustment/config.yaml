@@ -17,3 +17,60 @@ prompts:
 
       Please adjust these habits based on the user's feedback while maintaining the exact same JSON structure and all original properties.
 
+      Current habits:
+      {{habits}}
+
+      User feedback: {{feedback}}
+
+providers:
+  - id: openai:gpt-4.1
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  - description: "Basic habit duration adjustment"
+    vars:
+      habits: '[{"id": "habit1", "name": "Morning Exercise", "duration_seconds": 1800}, {"id": "habit2", "name": "Reading", "duration_seconds": 1200}]'
+      feedback: "I want to increase my morning exercise time to 30 minutes and reduce reading time to 15 minutes"
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Habit name modification"
+    vars:
+      habits: '[{"id": "habit1", "name": "Workout", "duration_seconds": 1800}, {"id": "habit2", "name": "Study", "duration_seconds": 3600}]'
+      feedback: "Change 'Workout' to 'Cardio Training' and 'Study' to 'Learning Session'"
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Mixed feedback with duration and name changes"
+    vars:
+      habits: '[{"id": "habit1", "name": "Meditation", "duration_seconds": 600}, {"id": "habit2", "name": "Journaling", "duration_seconds": 900}]'
+      feedback: "I want to meditate for 20 minutes instead of 10, and rename journaling to 'Daily Reflection'"
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "No changes requested"
+    vars:
+      habits: '[{"id": "habit1", "name": "Walking", "duration_seconds": 1800}, {"id": "habit2", "name": "Cooking", "duration_seconds": 2400}]'
+      feedback: "These habits are perfect as they are"
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Complex feedback with multiple adjustments"
+    vars:
+      habits: '[{"id": "habit1", "name": "Yoga", "duration_seconds": 1200}, {"id": "habit2", "name": "Writing", "duration_seconds": 1800}, {"id": "habit3", "name": "Guitar Practice", "duration_seconds": 900}]'
+      feedback: "I want to do yoga for 45 minutes, write for 1 hour, and practice guitar for 30 minutes. Also rename 'Writing' to 'Creative Writing'"
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+

@@ -1,0 +1,42 @@
+<mj-text>
+  <p>Hi{{#if userName}} {{userName}}{{/if}}!</p>
+  <p>Hope you're doing well! Here's your weekly/daily Focus Bear performance check-in 👇</p>
+</mj-text>
+
+{{#if (lt focusUsagePercentage 50)}}
+{{> metric-card title="🧠 Focus Bear Usage" content=(concat
+  "<p>Your Focus Bear usage this week/today was <strong>" focusUsagePercentage "%</strong>.</p>"
+  "<p>You last used the app on <strong>" lastActiveDate "</strong>.</p>"
+  "<p>This is too low. Consistent usage is key to building strong habits! Let's get back on track this week. 💪</p>"
+  "<p><strong>Why it matters:</strong> Habit building needs daily momentum.</p>"
+)}}
+{{else}}
+{{> metric-card title="🧠 Focus Bear Usage" content=(concat
+  "<p>Your Focus Bear usage this week/today was <strong>" focusUsagePercentage "%</strong>.</p>"
+  "<p>You last used the app on <strong>" lastActiveDate "</strong>.</p>"
+)}}
+{{/if}}
+
+{{> metric-card title="🐻 Your Focus Bear Usage Summary" content=(concat
+  "<ul>"
+  "<li>Overall usage: <strong>" focusUsagePercentage "%</strong></li>"
+  "<li>Morning routine: <strong>" morningRoutineUsage "%</strong> (streak: " morningRoutineStreak " days)</li>"
+  "<li>Evening routine: <strong>" eveningRoutineUsage "%</strong> (streak: " eveningRoutineStreak " days)</li>"
+  "<li>Focus mode: <strong>" focusModeUsage "%</strong> (streak: " focusModeStreak " days)</li>"
+  "<li>Micro breaks: <strong>" microBreaksUsage "%</strong></li>"
+  "<li>Last active: <strong>" lastActiveDate "</strong></li>"
+  "</ul>"
+)}}
+
+<mj-text>
+  <p>You're doing an amazing job — every small step you take is building a stronger future you! Keep it up! 🌟</p>
+  <p>We're cheering for you! 🧡<br/>
+  <strong>Focus Bear Team</strong></p>
+</mj-text>
+
+<mj-divider border-color="#eee" />
+
+<mj-text align="center" color="#999999" font-size="11px">
+  <p>Want to change how often you get these emails?<br/>
+  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">Manage your preferences here</a></p>
+</mj-text>

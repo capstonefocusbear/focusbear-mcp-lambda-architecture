@@ -1,0 +1,30 @@
+<mj-text>
+  <p>Hi{{#if userName}} {{userName}}{{/if}}!</p>
+  <p>We haven't seen you around Focus Bear lately — and that's okay!<br/>
+  Every journey has its pauses. The important thing is starting again.</p>
+</mj-text>
+
+{{> metric-card title="🌟 Good news" content="Your habits and goals are still waiting for you — right where you left them."}}
+
+{{> metric-card title="🐾 Tiny action for today" content=(concat
+  "<ul>"
+  "<li>Open Focus Bear</li>"
+  "<li>Complete just one small habit</li>"
+  "</ul>"
+  "<p>That's it. A small step forward is still a step forward! 🧸</p>"
+)}}
+
+{{> cta-button href=("https://dashboard.focusbear.io/") text="Get Back on Track"}}
+
+<mj-text>
+  <p>Thanks for being part of Focus Bear 🙏<br/>
+  We believe in you!</p>
+  <p><strong>Focus Bear Team</strong></p>
+</mj-text>
+
+<mj-divider border-color="#eee" />
+
+<mj-text align="center" color="#999999" font-size="11px">
+  <p>Want to change how often you get these emails?<br/>
+  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">Manage your preferences here</a></p>
+</mj-text>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage Email Preferences - Focus Bear</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 600px; 
+      margin: 50px auto; 
+      padding: 20px; 
+      background-color: #fff;
+    }
+    .container { 
+      text-align: center; 
+      background: #f8f9fa; 
+      padding: 40px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .logo { 
+      color: #FF6B35; 
+      font-size: 24px; 
+      margin-bottom: 20px; 
+      font-weight: bold;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    .option {
+      background: #fff;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .option:hover {
+      border-color: #FF6B35;
+      background: #fff8f0;
+    }
+    .option.selected {
+      border-color: #FF6B35;
+      background: #fff8f0;
+    }
+    .option-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .option-description {
+      color: #666;
+      font-size: 14px;
+    }
+    .button { 
+      background: #FF6B35; 
+      color: white; 
+      padding: 12px 24px; 
+      border: none; 
+      border-radius: 8px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin: 20px 10px 10px 10px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .button:hover { 
+      background: #e55a2b; 
+    }
+    .button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .unsubscribe-link {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #dee2e6;
+    }
+    .unsubscribe-link a {
+      color: #6c757d;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .unsubscribe-link a:hover {
+      color: #FF6B35;
+    }
+    .success-message {
+      display: none;
+      color: #28a745;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🐻 Focus Bear</div>
+    <h2>Manage Email Preferences</h2>
+    <p>Choose how often you'd like to receive progress updates from Focus Bear.</p>
+    
+    <form id="preferencesForm">
+      <input type="hidden" name="token" value="{{token}}" />
+      
+      <div class="option {{#eq currentFrequency 'daily'}}selected{{/eq}}" data-frequency="daily">
+        <div class="option-title">Daily Updates</div>
+        <div class="option-description">Get your progress summary every day</div>
+      </div>
+      
+      <div class="option {{#eq currentFrequency 'weekly'}}selected{{/eq}}" data-frequency="weekly">
+        <div class="option-title">Weekly Updates</div>
+        <div class="option-description">Get your progress summary once a week (recommended)</div>
+      </div>
+      
+      <div class="option {{#eq currentFrequency 'monthly'}}selected{{/eq}}" data-frequency="monthly">
+        <div class="option-title">Monthly Updates</div>
+        <div class="option-description">Get your progress summary once a month</div>
+      </div>
+      
+      <button type="submit" class="button" id="saveButton">Save Preferences</button>
+    </form>
+    
+    <div id="successMessage" class="success-message">
+      ✅ Your email preferences have been updated successfully!
+    </div>
+    
+    <div class="unsubscribe-link">
+      <a href="{{apiUrl}}/user/email-preferences/unsubscribe?token={{token}}">
+        Or unsubscribe from all emails
+      </a>
+    </div>
+  </div>
+  
+  <script>
+    let selectedFrequency = '{{currentFrequency}}'.toLowerCase();
+    
+    document.querySelectorAll('.option').forEach(option => {
+      option.addEventListener('click', function() {
+        // Remove selected class from all options
+        document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+        
+        // Add selected class to clicked option
+        this.classList.add('selected');
+        selectedFrequency = this.getAttribute('data-frequency');
+      });
+    });
+    
+    document.getElementById('preferencesForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const saveButton = document.getElementById('saveButton');
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+      
+      fetch('{{apiUrl}}/user/email-preferences/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token: '{{token}}',
+          email_frequency: selectedFrequency
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveButton.textContent = 'Saved!';
+        document.getElementById('successMessage').style.display = 'block';
+        
+        setTimeout(() => {
+          saveButton.disabled = false;
+          saveButton.textContent = 'Save Preferences';
+          document.getElementById('successMessage').style.display = 'none';
+        }, 3000);
+      })
+      .catch(error => {
+        alert('Error updating preferences. Please try again.');
+        console.error('Update error:', error);
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Preferences';
+      });
+    });
+  </script>
+</body>
+</html>

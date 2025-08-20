@@ -4,6 +4,7 @@ import { ISendGridOptions, SendGridModule } from '@app/send-grid';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailProcessor } from './services/email.processor';
 import { ProgressEmailTemplateService } from './services/progress-email-template/progress-email-template.service';
+import { EmailTemplateCompilerService } from './services/email-template-compiler/email-template-compiler.service';
 import { UserModule } from '../user/user.module';
 
 @Module({
@@ -18,7 +19,7 @@ import { UserModule } from '../user/user.module';
     }),
     forwardRef(() => UserModule),
   ],
-  providers: [EmailProcessor, ProgressEmailTemplateService],
-  exports: [BullModule, ProgressEmailTemplateService],
+  providers: [EmailProcessor, ProgressEmailTemplateService, EmailTemplateCompilerService],
+  exports: [BullModule, ProgressEmailTemplateService, EmailTemplateCompilerService],
 })
 export class EmailModule {}

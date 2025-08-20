@@ -145,6 +145,7 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
+    "html-minifier": "^4.0.0",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"

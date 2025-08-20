@@ -72,20 +72,23 @@ export function determineUserLevel(
 }
 
 export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date, timeZone) {
+  // Convert userCreatedAt to DateTime in the same timezone and normalize to start of day
+  const userSignupDate = DateTime.fromJSDate(userCreatedAt).setZone(timeZone).startOf('day');
+
   let currentDate = DateTime.now().setZone(timeZone);
-  currentDate = currentDate.minus({ days: 90 }).startOf('day'); // Normalise to midnight to avoid updating stats for the current time (missing one day)
+  // Normalise to midnight to avoid updating stats for the current time (missing one day)
+  const ninetyDaysAgo = currentDate.minus({ days: 90 }).startOf('day');
 
-  // Calculate days since user signup (for users < 90 days old)
-  const userSignupDate = userCreatedAt;
+  // Calculate days since user signup (for users < 90 days old), use Luxon for consistent timezone-aware calculation
+  const daysSinceSignup = Math.floor(currentDate.diff(userSignupDate, 'days').days);
 
-  const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
   // Determine the proper time window for this user
-  const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
+  const timeWindowStart = daysSinceSignup >= 90 ? ninetyDaysAgo : userSignupDate;
 
   // 1) Filter first using zone-aware comparison
   const statsInWindow = userDailyStats.filter((stat) => {
     const statDay = DateTime.fromJSDate(stat.date_completed).setZone(timeZone).startOf('day');
-    return statDay >= timeWindowStart; // 
+    return statDay >= timeWindowStart; // Filter out stats outside the time window
   });
 
 
@@ -174,7 +177,7 @@ function getLatestStatAndStartOfPrevDay(userDailyStats: DailyStats[], timeZone: 
     return followingCompletedDate - precedingCompletedDate;
   });
   const latestStatStartTime = orderedStats[0]?.date_completed;
-  const startOfPreviousDay = DateTime.local({ zone: timeZone }).minus({ days: 1 }).startOf('day').toJSDate();
+  const startOfPreviousDay = DateTime.now().setZone(timeZone).minus({ days: 1 }).startOf('day').toJSDate();
   return { latestStatStartTime, startOfPreviousDay };
 }
 
@@ -192,10 +195,10 @@ export function calculateStreakForRoutine(
   }
   let streak = 0;
   let index = 0;
-  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
+  let currentDate = DateTime.fromJSDate(userDailyStats[index].date_completed).setZone(timeZone);
   while (index < userDailyStats.length) {
     const currentStat = userDailyStats[index];
-    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    const currentStatDate = DateTime.fromJSDate(currentStat.date_completed).setZone(timeZone);
     const correctedPrevDayIndex = (currentDate.weekday - 1 + 6) % 7; // // luxon currentDate.weekday is 1-7 for Monday-Sunday
     const prevDayOfWeek = DAYS_OF_WEEK[correctedPrevDayIndex];
     const doesPrevDayHasActivities = dailySequenceDurations[prevDayOfWeek] > 0;
@@ -239,11 +242,11 @@ export function calculateStreakForWeekdaysOnly(userDailyStats: DailyStats[], tim
   let streak = 0;
   let index = 0;
 
-  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
+  let currentDate = DateTime.fromJSDate(userDailyStats[index].date_completed).setZone(timeZone);
 
   while (index < userDailyStats.length) {
     const currentStat = userDailyStats[index];
-    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    const currentStatDate = DateTime.fromJSDate(currentStat.date_completed).setZone(timeZone);
     const isNonWeekday = !LUXON_WEEK_DAYS.includes(currentStatDate.weekday);
 
     if (currentStatDate.hasSame(currentDate, 'day') || isNonWeekday) {

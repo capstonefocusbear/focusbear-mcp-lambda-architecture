@@ -75,10 +75,10 @@ export class EmailProcessor {
   @Process('send-no-progress-email')
   async handleNoProgressEmail(job: Job) {
     try {
-      const { user } = job.data;
+      const { user, unsubscribe_token } = job.data;
 
       // Generate email content
-      const emailContent = await this.progressEmailTemplateService.generateNoProgressEmail(user);
+      const emailContent = await this.progressEmailTemplateService.generateNoProgressEmail(user, unsubscribe_token);
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
@@ -107,90 +107,6 @@ export class EmailProcessor {
     }
   }
 
-  @Process('send-inactivity-warning-email')
-  async handleInactivityWarningEmail(job: Job) {
-    try {
-      const { user, daysUntilDeletion } = job.data;
-
-      // Generate email content
-      const emailContent = await this.progressEmailTemplateService.generateInactivityWarningEmail(
-        user,
-        daysUntilDeletion,
-      );
-
-      // Send email via SendGrid
-      await this.sendGridService.sendEmail({
-        to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
-        subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text,
-        trackingSettings: {
-          clickTracking: { enable: true },
-          openTracking: { enable: true },
-        },
-      });
-
-      // Update last email sent timestamp
-      await this.updateLastEmailSent(user.id);
-
-      return { success: true, userId: user.id };
-    } catch (error) {
-      // Log to Sentry
-      this.sentryService.instance().captureException(error, {
-        extra: {
-          jobId: job.id,
-          userId: job.data.user?.id,
-          operation: 'handleInactivityWarningEmail',
-        },
-      });
-
-      throw error;
-    }
-  }
-
-  @Process('send-enhanced-progress-email')
-  async handleEnhancedProgressEmail(job: Job) {
-    try {
-      const { user, metrics, unsubscribe_token } = job.data;
-
-      // Generate email content with enhanced context
-      const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
-        user,
-        metrics,
-        unsubscribe_token,
-      );
-
-      // Send email via SendGrid
-      await this.sendGridService.sendEmail({
-        to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
-        subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text,
-        trackingSettings: {
-          clickTracking: { enable: true },
-          openTracking: { enable: true },
-        },
-      });
-
-      // Update last email sent timestamp
-      await this.updateLastEmailSent(user.id);
-
-      return { success: true, userId: user.id };
-    } catch (error) {
-      // Log to Sentry
-      this.sentryService.instance().captureException(error, {
-        extra: {
-          jobId: job.id,
-          userId: job.data.user?.id,
-          operation: 'handleEnhancedProgressEmail',
-        },
-      });
-
-      throw error;
-    }
-  }
 
   private async updateLastEmailSent(userId: string): Promise<void> {
     try {

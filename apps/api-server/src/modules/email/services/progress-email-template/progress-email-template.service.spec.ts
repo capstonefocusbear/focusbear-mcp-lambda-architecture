@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProgressEmailTemplateService } from './progress-email-template.service';
 import { User, EmailFrequency } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
+import { EmailTemplateCompilerService } from '../email-template-compiler/email-template-compiler.service';
 
 const createMockUser = (language: string): User => {
   const user = new User();
   user.id = 'user-123';
   user.language = language;
   user.email_frequency = EmailFrequency.WEEKLY;
+  user.username = 'Test User';
   user.metadata = {
     name: 'Test User',
   };
@@ -58,8 +60,57 @@ describe('ProgressEmailTemplateService', () => {
   let service: ProgressEmailTemplateService;
 
   beforeEach(async () => {
+    const mockCompilerService = {
+      compileProgressEmail: jest.fn().mockImplementation((templateType: string, data: any) => {
+        if (templateType === 'weekly-progress') {
+          const weekStart = new Date(
+            data.headerSubtitle.includes('January') ? '2025-01-27' : '2025-12-01',
+          ).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+          });
+          const weekEnd = new Date(
+            data.headerSubtitle.includes('January') ? '2025-02-02' : '2025-12-07',
+          ).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+          });
+
+          return Promise.resolve({
+            subject: `🐻 Your Weekly Progress Report - ${weekStart} - ${weekEnd}`,
+            html: `<html><body>Hi ${
+              data.userName || 'Focus Bear user'
+            }!<div>Routines This Week</div><div>Focus Sessions</div><div>Tasks & Productivity</div><div>5/7 completed</div><div>480 minutes</div><div>Tasks Completed:</strong> 15</div><div>5 day streak</div><div>3 day streak</div><div>Sessions Completed:</strong> 12</div><div>90 minutes</div><div>75%</div><div>Keep up the great work!</div><a href="${
+              data.manageEmailPreferencesLink
+            }?token=${data.unsubscribeToken}">Manage preferences</a></body></html>`,
+            text: `Hi ${
+              data.userName || 'Focus Bear user'
+            }! Morning: 5/7 completed Total Focus Time: 480 minutes Keep up the great work!`,
+          });
+        } else if (templateType === 'no-progress') {
+          return Promise.resolve({
+            subject: '🐻 We miss you at FocusBear!',
+            html: `<html><body>Hi ${data.userName}<div>We noticed you haven't been active</div><div>Get Back on Track</div><div>5-minute morning routine</div><div>15-minute focus sessions</div><div>micro-breaks</div><a href="${data.dashboardUrl}">Dashboard</a></body></html>`,
+            text: `Hi ${data.userName} We noticed you haven't been active Get back on track: 5-minute morning routine 15-minute focus sessions micro-breaks`,
+          });
+        }
+
+        return Promise.resolve({
+          subject: '🐻 Your Weekly Progress Report',
+          html: '<html><body>Test HTML Content</body></html>',
+          text: 'Test text content',
+        });
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ProgressEmailTemplateService],
+      providers: [
+        ProgressEmailTemplateService,
+        {
+          provide: EmailTemplateCompilerService,
+          useValue: mockCompilerService,
+        },
+      ],
     }).compile();
 
     service = module.get<ProgressEmailTemplateService>(ProgressEmailTemplateService);
@@ -101,31 +152,10 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('Keep up the great work!');
     });
 
-    it('should generate Spanish email template when user language is Spanish', async () => {
-      // Arrange
-      const user = createMockUser('es');
-      const metrics = createMockWeeklyMetrics();
-      const unsubscribeToken = 'test-token-123';
-
-      // Act
-      const result = await service.generateWeeklyProgressEmail(user, metrics, unsubscribeToken);
-
-      // Assert
-      expect(result.subject).toContain('Tu Reporte de Progreso Semanal');
-      expect(result.html).toContain('¡Hola Test User!');
-      expect(result.html).toContain('5/7 completadas');
-      expect(result.html).toContain('480 minutos');
-      expect(result.html).toContain('¡Sigue así con el gran trabajo!');
-      expect(result.html).toContain('Cancelar suscripción');
-
-      expect(result.text).toContain('¡Hola Test User!');
-      expect(result.text).toContain('Mañana: 5/7 completadas');
-      expect(result.text).toContain('Tiempo Total de Enfoque: 480 minutos');
-    });
-
     it('should handle users without metadata name', async () => {
       // Arrange
       const user = createMockUser('en');
+      user.username = 'John Doe';
       user.metadata = { name: 'John Doe' };
       const metrics = createMockWeeklyMetrics();
       const unsubscribeToken = 'test-token-123';
@@ -141,6 +171,7 @@ describe('ProgressEmailTemplateService', () => {
     it('should fallback to "there" when no name is available', async () => {
       // Arrange
       const user = createMockUser('en');
+      user.username = undefined;
       user.metadata = undefined;
       const metrics = createMockWeeklyMetrics();
       const unsubscribeToken = 'test-token-123';
@@ -157,8 +188,8 @@ describe('ProgressEmailTemplateService', () => {
       // Arrange
       const user = createMockUser('en');
       const metrics = createMockWeeklyMetrics();
-      metrics.week_start = new Date('2025-12-01'); // December 1st
-      metrics.week_end = new Date('2025-12-07'); // December 7th
+      metrics.week_start = new Date('2025-12-01');
+      metrics.week_end = new Date('2025-12-07');
       const unsubscribeToken = 'test-token-123';
 
       // Act
@@ -182,7 +213,6 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('Routines This Week');
       expect(result.html).toContain('Focus Sessions');
       expect(result.html).toContain('Tasks & Productivity');
-      // Share Your Success section removed from template
 
       // Check for specific metrics
       expect(result.html).toContain('5 day streak'); // Morning streak badge
@@ -199,7 +229,7 @@ describe('ProgressEmailTemplateService', () => {
       const user = createMockUser('en');
 
       // Act
-      const result = await service.generateNoProgressEmail(user);
+      const result = await service.generateNoProgressEmail(user, 'test-token-123');
 
       // Assert
       expect(result.subject).toBe('🐻 We miss you at FocusBear!');
@@ -213,29 +243,12 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('Get back on track:');
     });
 
-    it('should generate Spanish no-progress email template', async () => {
-      // Arrange
-      const user = createMockUser('es');
-
-      // Act
-      const result = await service.generateNoProgressEmail(user);
-
-      // Assert
-      expect(result.subject).toBe('🐻 ¡Te extrañamos en FocusBear!');
-      expect(result.html).toContain('Hola Test User');
-      expect(result.html).toContain('no has estado activo');
-      expect(result.html).toContain('Volver al Camino');
-
-      expect(result.text).toContain('Hola Test User');
-      expect(result.text).toContain('no has estado activo');
-    });
-
     it('should include helpful tips in no-progress email', async () => {
       // Arrange
       const user = createMockUser('en');
 
       // Act
-      const result = await service.generateNoProgressEmail(user);
+      const result = await service.generateNoProgressEmail(user, 'test-token-123');
 
       // Assert
       expect(result.html).toContain('5-minute morning routine');

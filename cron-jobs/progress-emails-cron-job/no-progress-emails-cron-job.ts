@@ -4,6 +4,7 @@ import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
+import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
@@ -13,6 +14,7 @@ const BATCH_SIZE = 40; // Process inactive users in batches
 async function runNoProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const userRepository = app.get(UserRepository);
+  const userEmailPreferencesService = app.get(UserEmailPreferencesService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
   try {
@@ -29,11 +31,15 @@ async function runNoProgressEmailsCronJob() {
       
       const emailPromises = batch.map(async (user) => {
         try {
+          // Generate unsubscribe token
+          const unsubscribe_token = userEmailPreferencesService.generateUnsubscribeToken(user.id);
+          
           // Queue the no-progress email job
           await emailQueue.add(
             'send-no-progress-email',
             {
               user,
+              unsubscribe_token,
             },
             {
               attempts: 3,

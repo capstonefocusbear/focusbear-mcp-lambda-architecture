@@ -17,6 +17,7 @@ import {
   ActivityRepositoryMock,
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
+  OpenAIServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
@@ -27,6 +28,7 @@ import { ActivityTemplateParserService } from './activity-template-parser.servic
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 import { ActivityTemplate } from '../entity/activity-template.entity';
+import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -39,6 +41,10 @@ describe('ActivityLibraryService', () => {
         ActivityTemplateParserService,
         ActivityTemplateRepository,
         ActivityRepository,
+        {
+          provide: OpenAIService,
+          useValue: OpenAIServiceMock,
+        },
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,

@@ -76,12 +76,11 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   currentDate = currentDate.minus({ days: 90 }).startOf('day'); // Normalise to midnight to avoid updating stats for the current time (missing one day)
 
   // Calculate days since user signup (for users < 90 days old)
-  const userSignupDate = new Date(userCreatedAt);
+  const userSignupDate = userCreatedAt;
 
   const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
   // Determine the proper time window for this user
   const timeWindowStart = daysSinceSignup >= 90 ? currentDate : userSignupDate;
-  const totalPossibleDays = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
 
   // 1) Filter first using zone-aware comparison
   const statsInWindow = userDailyStats.filter((stat) => {
@@ -90,10 +89,10 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
   });
 
 
-  // 2) Deduplicate / aggregate only the filtered rows, keying by local ISO date
+  // 2) Deduplicate / aggregate only the filtered rows, keying by local (user) date
   const distinctUserDailyStatObject = statsInWindow.reduce((acc, current) => {
-    const localDateKey = DateTime.fromJSDate(current.date_completed).setZone(timeZone).toISODate(); // YYYY-MM-DD in user zone
-    const localDateTime = DateTime.fromJSDate(current.date_completed).setZone(timeZone);
+    const localDateTime = DateTime.fromJSDate(current.date_completed).setZone(timeZone); // for date_completed value
+    const localDateKey = localDateTime.toISODate(); // YYYY-MM-DD in user zone as key
     if (!acc[localDateKey]) {
       acc[localDateKey] = {
         // store the timezone-adjusted timestamp instead of original UTC
@@ -146,7 +145,7 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
     (dailyStat) => dailyStat.focus_modes_completed > 0, // At least one focus mode completed in the day
   );
 
-  const num_days_of_stats = totalPossibleDays; // Use total possible days instead of actual activity days
+  const num_days_of_stats = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
 
   const number_days_completed = distinctUserDailyStats.filter(
     (f) =>

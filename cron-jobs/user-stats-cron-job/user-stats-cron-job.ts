@@ -188,9 +188,6 @@ async function runUserStatsCronJob() {
       },
       order: { date_completed: 'DESC' },
     });
-
-    const isVerboseLoggingAllowed = user.verbose_logging;
-
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);
     const {
@@ -220,7 +217,6 @@ async function runUserStatsCronJob() {
         microBreaksDailyDurations,
       },
       new Date(user.created_at),
-      isVerboseLoggingAllowed,
     );
     const userLevel = determineUserLevel(user.onboarding_progress, {
       focus_modes_streak,

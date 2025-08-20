@@ -169,66 +169,8 @@ export class DailyStatsConsumer {
           microBreaksDailyDurations,
         },
         new Date(user.created_at),
-        isVerboseLoggingAllowed,
       );
 
-      // Log the routine calculation results if verbose logging is enabled
-      if (isVerboseLoggingAllowed) {
-        // Add console logs for debugging routine calculations
-        /* eslint-disable no-console */
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === DAILY STATS CALCULATION DEBUG ===');
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] User ID:', user.id);
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] User Created At:', user.created_at);
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] User Timezone:', user.timezone);
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Total Daily Stats Records:', userDailyStats.length);
-
-        // Calculate days since signup for debugging
-        const userSignupDate = new Date(user.created_at);
-        const daysSinceSignup = Math.floor((Date.now() - userSignupDate.getTime()) / (1000 * 60 * 60 * 24));
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Days Since Signup:', daysSinceSignup);
-
-        // Show calculation results
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Calculation Results:');
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - num_days_of_stats (expected days):', num_days_of_stats);
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - number_days_completed (any activity):',
-          number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - morning_number_days_completed:',
-          morning_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - evening_number_days_completed:',
-          evening_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - focus_modes_number_days_completed:',
-          focus_modes_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - micro_breaks_number_days_completed:',
-          micro_breaks_number_days_completed,
-        );
-
-        // Show percentages
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Completion Percentages:');
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - Morning:',
-          `${percent_morning_routines_streak_complete_in_90days}%`,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - Evening:',
-          `${percent_evening_routines_streak_complete_in_90days}%`,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - Micro Breaks:',
-          `${percent_micro_breaks_streak_complete_in_90days}%`,
-        );
-
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === END CALCULATION DEBUG ===');
-        /* eslint-enable no-console */
-      }
       // Add a breadcrumb for debugging purposes
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -242,45 +184,6 @@ export class DailyStatsConsumer {
         morning_routines_streak,
         evening_routines_streak,
         micro_breaks_streak,
-      });
-
-      // Log the user level update if verbose logging is enabled
-      if (isVerboseLoggingAllowed) {
-        // Add console logs for testing
-        /* eslint-disable no-console */
-        console.log('[VERBOSE-LEVEL-UPDATE] === DAILY STATS CONSUMER - USER LEVEL UPDATE ===');
-        console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
-        console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
-        console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', updatedLevel);
-        console.log(
-          '[VERBOSE-LEVEL-UPDATE] Streaks:',
-          JSON.stringify({
-            focus_modes_streak,
-            morning_routines_streak,
-            evening_routines_streak,
-            micro_breaks_streak,
-          }),
-        );
-        console.log(
-          '[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:',
-          JSON.stringify(user.onboarding_progress),
-        );
-        /* eslint-enable no-console */
-      }
-
-      // Also improve the Sentry breadcrumb message
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'User level updated in daily stats consumer', // ← Better message
-        ...(isVerboseLoggingAllowed && {
-          data: {
-            user_id: user.id,
-            previousLevel: user.onboarding_progress?.level,
-            calculatedLevel: updatedLevel,
-            activityType,
-          },
-        }),
       });
 
       await this.userRepository.update(user.id, {
@@ -301,31 +204,6 @@ export class DailyStatsConsumer {
       });
 
       // Log what was saved to database if verbose logging is enabled
-      if (isVerboseLoggingAllowed) {
-        /* eslint-disable no-console */
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === DATABASE UPDATE VALUES ===');
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] Values saved to user table:');
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - morning_number_days_completed:',
-          morning_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - evening_number_days_completed:',
-          evening_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - focus_modes_number_days_completed:',
-          focus_modes_number_days_completed,
-        );
-        console.log(
-          '[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - micro_breaks_number_days_completed:',
-          micro_breaks_number_days_completed,
-        );
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - num_days_of_stats:', num_days_of_stats);
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE]   - number_days_completed:', number_days_completed);
-        console.log('[VERBOSE-CALCULATE-ROUTINE-PERCENTAGE] === END DATABASE UPDATE ===');
-        /* eslint-enable no-console */
-      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.log('Error in daily stats queued job: ', error);

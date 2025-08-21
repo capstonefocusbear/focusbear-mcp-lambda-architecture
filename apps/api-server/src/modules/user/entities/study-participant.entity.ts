@@ -15,16 +15,16 @@ export class StudyParticipant extends BaseEntity {
   @Column({ name: 'participant_code', unique: true })
   participantCode: string;
 
-  @Column({ name: 'email', unique: true })
+  @Column({ name: 'email', unique: true, transformer: BaseEntity.encryptField('email') })
   email: string;
 
-  @Column({ name: 'name' })
+  @Column({ name: 'name', transformer: BaseEntity.encryptField('name') })
   name: string;
 
   @Column({ name: 'user_id', nullable: true })
   userId: string;
 
-  @Column({ name: 'metadata', type: 'jsonb', nullable: true })
+  @Column({ name: 'metadata', type: 'jsonb', nullable: true, transformer: BaseEntity.encryptJSONField('metadata') })
   metadata: Record<string, any>;
 
   @Column({ name: 'assigned_group', nullable: true })

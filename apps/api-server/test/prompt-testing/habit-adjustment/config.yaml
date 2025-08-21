@@ -1,0 +1,81 @@
+prompts:
+  - id: habit-adjustment-default
+    raw: |
+      You are a helpful AI assistant that helps users refine their daily habits and routines.
+
+      Your task is to adjust the user's current habits based on their feedback while maintaining the structure and format of the activities.
+
+      STRICT OUTPUT FORMAT:
+      - Return ONLY a JSON array of objects with EXACT keys: id, name, duration_seconds.
+      - duration_seconds must be an integer number of seconds.
+      - Prefer keeping the same ids and the same number of items unless the user explicitly requests additions/removals.
+      - Do NOT include any other fields.
+
+      SCOPE:
+      - Modify only name and duration_seconds based on the user's feedback and context.
+      - You may adjust duration_seconds to better fit the feedback, keeping values realistic.
+
+      Please adjust these habits based on the user's feedback while maintaining the exact same JSON structure and all original properties.
+
+      Current habits:
+      {{habits}}
+
+      User feedback: {{feedback}}
+
+providers:
+  - id: openai:gpt-4.1
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  - description: "Basic habit duration adjustment"
+    vars:
+      habits: '[{"id": "habit1", "name": "Morning Exercise", "duration_seconds": 1800}, {"id": "habit2", "name": "Reading", "duration_seconds": 1200}]'
+      feedback: "I want to increase my morning exercise time to 30 minutes and reduce reading time to 15 minutes"
+      expected: '[{"id": "habit1", "name": "Morning Exercise", "duration_seconds": 1800}, {"id": "habit2", "name": "Reading", "duration_seconds": 900}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Habit name modification"
+    vars:
+      habits: '[{"id": "habit1", "name": "Workout", "duration_seconds": 1800}, {"id": "habit2", "name": "Study", "duration_seconds": 3600}]'
+      feedback: "Change 'Workout' to 'Cardio Training' and 'Study' to 'Learning Session'"
+      expected: '[{"id": "habit1", "name": "Cardio Training", "duration_seconds": 1800}, {"id": "habit2", "name": "Learning Session", "duration_seconds": 3600}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Mixed feedback with duration and name changes"
+    vars:
+      habits: '[{"id": "habit1", "name": "Meditation", "duration_seconds": 600}, {"id": "habit2", "name": "Journaling", "duration_seconds": 900}]'
+      feedback: "I want to meditate for 20 minutes instead of 10, and rename journaling to 'Daily Reflection'"
+      expected: '[{"id": "habit1", "name": "Meditation", "duration_seconds": 1200}, {"id": "habit2", "name": "Daily Reflection", "duration_seconds": 900}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "No changes requested"
+    vars:
+      habits: '[{"id": "habit1", "name": "Walking", "duration_seconds": 1800}, {"id": "habit2", "name": "Cooking", "duration_seconds": 2400}]'
+      feedback: "These habits are perfect as they are"
+      expected: '[{"id": "habit1", "name": "Walking", "duration_seconds": 1800}, {"id": "habit2", "name": "Cooking", "duration_seconds": 2400}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+
+  - description: "Complex feedback with multiple adjustments"
+    vars:
+      habits: '[{"id": "habit1", "name": "Yoga", "duration_seconds": 1200}, {"id": "habit2", "name": "Writing", "duration_seconds": 1800}, {"id": "habit3", "name": "Guitar Practice", "duration_seconds": 900}]'
+      feedback: "I want to do yoga for 45 minutes, write for 1 hour, and practice guitar for 30 minutes. Also rename 'Writing' to 'Creative Writing'"
+      expected: '[{"id": "habit1", "name": "Yoga", "duration_seconds": 2700}, {"id": "habit2", "name": "Creative Writing", "duration_seconds": 3600}, {"id": "habit3", "name": "Guitar Practice", "duration_seconds": 1800}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js
+

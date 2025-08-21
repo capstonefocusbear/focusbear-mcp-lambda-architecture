@@ -7,6 +7,7 @@ import {
   PROMPT_CONFIG_PATH,
   APP_SAFETY_PROMPT_CONFIG_PATH,
   USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+  HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -67,6 +68,25 @@ export class PromptCacheService implements OnModuleInit {
         this.logger.error(`Failed to load app safety prompts: ${error.message}`);
         this.sentryService.instance().captureException(error, {
           extra: { message: 'Failed to load app safety prompts', configPath: APP_SAFETY_PROMPT_CONFIG_PATH },
+        });
+      }
+
+      // Load habit adjustment prompts
+      this.logger.log(`Loading habit adjustment prompts from ${HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH}`);
+      try {
+        const habitAdjustmentContent = await fs.readFile(HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH, 'utf8');
+        const habitAdjustmentPrompts = yaml.load(habitAdjustmentContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        allPrompts = allPrompts.concat(habitAdjustmentPrompts.prompts);
+        this.logger.log(`Loaded ${habitAdjustmentPrompts.prompts.length} habit adjustment prompts`);
+      } catch (error) {
+        this.logger.error(`Failed to load habit adjustment prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load habit adjustment prompts',
+            configPath: HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
+          },
         });
       }
 

@@ -10,6 +10,7 @@ import { join } from 'path';
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
+import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
@@ -745,6 +746,7 @@ export class OpenAIService {
     params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming = OPENAI_PARAMS.default as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
   ) {
     const instance = this.getOpenAIInstance(type);
+
     return instance.chat.completions.create({
       ...params,
       messages: [...prompts, this.UNTRUSTED_USER_INPUT_PROMPT],
@@ -886,5 +888,90 @@ export class OpenAIService {
     const newMessage = completions.choices[0].message;
     const { content } = newMessage;
     return content;
+  }
+
+  async adjustHabitsWithAi(
+    currentHabits: any[],
+    userFeedback: string,
+    userGoals?: string[],
+    routineDuration?: number,
+  ): Promise<Array<{ id: string; name: string; duration_seconds: number }>> {
+    try {
+      // Only send minimal habit data to the AI
+      const minimalHabits = (currentHabits || []).map((habit) => ({
+        id: habit.id,
+        name: habit.name,
+        duration_seconds: habit.duration_seconds,
+        activity_type: habit.activity_type, // context only; AI must not change this or include it in the output
+      }));
+
+      const systemPrompt = this.promptCacheService.getPrompt('habit-adjustment-default');
+
+      const contextLines: string[] = [];
+      if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
+      if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
+
+      const userPrompt = `Current habits (minimal): ${JSON.stringify(minimalHabits, null, 2)}
+
+        User feedback: ${this.wrapUserInput(userFeedback)}
+        ${contextLines.length ? `\nContext:\n${contextLines.join('\n')}` : ''}
+
+        Please respond with ONLY JSON representing an array of { id, name, duration_seconds } and nothing else.`;
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.HABIT_ADJUSTMENT,
+        OPENAI_PARAMS.habitAdjustment as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
+
+      const response = completions.choices[0].message.content;
+
+      try {
+        const parsed = JSON.parse(response);
+        if (!Array.isArray(parsed)) throw new Error('AI response is not an array');
+
+        // Sanitize and coerce output strictly to expected shape
+        const sanitized = parsed.map((item) => {
+          const rawId = item?.id;
+          const id = rawId == null ? '' : String(rawId);
+          const name = String(item?.name ?? '').trim();
+          const durationRaw = Number(item?.duration_seconds ?? 0);
+          const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
+          return { id, name, duration_seconds };
+        });
+
+        const providedIds = new Set(minimalHabits.map((h) => String(h.id)));
+        const idToOriginal = new Map(minimalHabits.map((h) => [String(h.id), h]));
+
+        // Generate ids when missing
+        const withIds = sanitized.map((item) => {
+          const isNew = !item.id || !providedIds.has(item.id);
+          return {
+            id: isNew ? randomUUID() : item.id,
+            name: item.name || idToOriginal.get(item.id)?.name || '',
+            duration_seconds: Number.isFinite(item.duration_seconds)
+              ? item.duration_seconds
+              : idToOriginal.get(item.id)?.duration_seconds || 0,
+          };
+        });
+
+        return withIds;
+      } catch (parseError) {
+        this.sentryService.instance().captureException(parseError, {
+          level: 'error',
+          extra: { response, currentHabits: minimalHabits, userFeedback },
+        });
+        // Fallback: return original minimal habits if parsing fails
+        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
+      }
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
   }
 }

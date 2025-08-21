@@ -89,6 +89,7 @@ describe('UserStreaksService', () => {
       // Arrange
       const mockUserDailyStats = [createMockDailyStats('2025-08-06')];
       const mockUserCreatedAt = new Date('2025-01-01');
+      const mockTimeZone = 'America/New_York';
       const mockResult = {
         daysWhereMorningRoutinesWereCompletedIn90Days: [],
         daysWhereEveningRoutinesWereCompletedIn90Days: [],
@@ -101,10 +102,14 @@ describe('UserStreaksService', () => {
       mockCalculateRoutineStatsIn90Days.mockReturnValue(mockResult as any);
 
       // Act
-      const result = service.get90DayStats(mockUserDailyStats, mockUserCreatedAt);
+      const result = service.get90DayStats(mockUserDailyStats, mockUserCreatedAt, mockTimeZone);
 
       // Assert
-      expect(mockCalculateRoutineStatsIn90Days).toHaveBeenCalledWith(mockUserDailyStats, mockUserCreatedAt);
+      expect(mockCalculateRoutineStatsIn90Days).toHaveBeenCalledWith(
+        mockUserDailyStats,
+        mockUserCreatedAt,
+        mockTimeZone,
+      );
       expect(result).toBe(mockResult);
     });
   });

@@ -22,7 +22,7 @@ export class UserStreaksService {
     return calculateStreaks(userDailyStats, timeZone, dailySequenceDurations, userCreatedAt);
   }
 
-  public get90DayStats(userDailyStats: DailyStats[], userCreatedAt: Date) {
-    return calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt);
+  public get90DayStats(userDailyStats: DailyStats[], userCreatedAt: Date, timeZone: string) {
+    return calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt, timeZone);
   }
 }

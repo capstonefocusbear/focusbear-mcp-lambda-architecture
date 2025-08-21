@@ -42,10 +42,16 @@ $ touch .env
 $ npm install
 ```
 
-5. Go to project root and run migrations. Migrations will create all tables and seed data
+5. Go to project root and run migrations. Migrations will create all tables
 
 ```bash
 $ npm run migration:up
+```
+
+(Optional) Seed the database with test data
+
+```bash
+$ npm run seed
 ```
 
 6. Run app by executing one of commands. Depends on your needs
@@ -313,19 +319,22 @@ To add a new non-secret environment variable for backend services, follow these 
 > - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
 > - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).
 
-
 ## Guide for New Developers
 
 Welcome to the FocusBear backend repository! This guide will help you get started with development and make your first contribution.
 
 ### Getting Started
-#### Prerequisites: 
+
+#### Prerequisites:
+
 Make sure you follow the [Project local setup](#project-local-setup) instructions to set up your local environment.
 
 ### Troubleshooting Common Issues
+
 #### Database Connection Issues
 
 **Problem**: "Connection refused" or "Database does not exist"
+
 ```bash
 # Solution: Restart Docker containers (use "-d" to run in detached mode)
 docker-compose down
@@ -338,6 +347,7 @@ docker-compose ps
 #### Package Lock Conflicts
 
 **Problem**: Merge conflicts in `package-lock.json`
+
 ```bash
 # Delete the conflicted file and regenerate
 rm package-lock.json
@@ -345,6 +355,7 @@ npm install
 git add package-lock.json
 git commit -m "Resolve package-lock.json conflict"
 ```
+
 > you might need to run `git add -f package-lock.json` if the file is ignored by .gitignore
 
 ### Debugging Tips
@@ -361,6 +372,7 @@ git commit -m "Resolve package-lock.json conflict"
 ### Project Structure Overview
 
 Here is a high-level overview of the project structure to help you navigate:
+
 ```
 backend/
 ├── apps/api-server/          # Main NestJS application
@@ -377,7 +389,9 @@ backend/
 ```
 
 ### Contributing Your First PR
+
 1. **Create a Feature Branch**:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -387,16 +401,19 @@ backend/
    Also, make sure your end of file has a trailing newline. To make sure you don't forget this, configure your VS Code settings:
 
    **Enable "Insert Final Newline"**:
+
    - Open VS Code Settings (File → Preferences → Settings)
    - Search for "insert final newline"
    - Check the box under "Files: Insert Final Newline"
    - This ensures all files end with a newline character (required by our linting rules)
 
 3. **Test Everything**:
+
    ```bash
    npm run test
    npm run lint
    ```
+
    - Ensure all tests pass and linting issues are resolved.
    - You can run individual files by checking the `package.json` scripts for invoking specific commands.
 
@@ -408,6 +425,7 @@ backend/
    ```
    - Use conventional commit messages (e.g., `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `style`, `test`, `hotfix`, `revert`, `chore`, `security`) for types.
 6. **Push and Create PR**:
+
    ```bash
    git push origin feature/your-feature-name
    ```

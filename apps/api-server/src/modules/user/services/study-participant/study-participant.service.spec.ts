@@ -201,7 +201,8 @@ describe('StudyParticipantService', () => {
     it('should successfully add participant with valid data', async () => {
       mockStudyParticipantRepository.findOne.mockResolvedValue(null);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
-      mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
+      // mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
 
@@ -211,7 +212,8 @@ describe('StudyParticipantService', () => {
         where: { email: validDto.email },
       });
       expect(mockStudyParticipantRepository.save).toHaveBeenCalled();
-      expect(mockSendGridService.sendEmail).toHaveBeenCalled();
+      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
+      // expect(mockSendGridService.sendEmail).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if email already exists', async () => {
@@ -243,7 +245,8 @@ describe('StudyParticipantService', () => {
       const focusbearDto = { ...validDto, email: 'internaltest+unicaes_ABC123@focusbear.io' };
       mockStudyParticipantRepository.findOne.mockResolvedValue(null);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
-      mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
+      // mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
 

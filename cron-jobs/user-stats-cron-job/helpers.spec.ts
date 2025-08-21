@@ -497,6 +497,66 @@ describe('helpers', () => {
 
       runTest(userDailyStats, expected, userSignupDaysAgo);
     });
+
+    describe('Timezone Edge Cases', () => {
+      it('should handle UTC-10 user with activities at different times', () => {
+        const userTimezone = 'Pacific/Honolulu'; // UTC-10
+        const userSignupDaysAgo = 100;
+
+        const now = DateTime.now().setZone(userTimezone);
+        console.log(`CURRENT SERVER TIME, ${DateTime.now().toISO()}`);
+        console.log(`CURRENT USER TIME, ${now.toISO()}`);
+
+        // Create activities with specific times in UTC-10 timezone
+        const activities = [
+          { daysAgo: 4, hour: 15, minute: 0 },  // 4 days ago at 15:00 user local time (UTC: 01:00, same day as 3 days ago)
+          { daysAgo: 3, hour: 5, minute: 0 },   // 3 days ago at 05:00 user local time (UTC: 15:00)
+          { daysAgo: 2, hour: 7, minute: 0 },   // 2 days ago at 07:00 user local time (UTC: 17:00)
+          { daysAgo: 1, hour: 10, minute: 5 },  // 1 day ago at 10:05 user local time (UTC: 20:05)
+        ];
+
+        const userDailyStats = activities.map((activity) => {
+          const localTime = now.minus({ days: activity.daysAgo }).set({
+            hour: activity.hour,
+            minute: activity.minute,
+            second: 0
+          });
+
+          return {
+            date_completed: localTime.startOf('day').toJSDate(), // Store as UTC timestamp
+            focus_modes_completed: 1,
+            morning_routine_completion_percentage: 100,
+            evening_routine_completion_percentage: 100,
+            micro_breaks_routine_completion_percentage: 0,
+            seconds_spent_doing_breaks: 100,
+            created_at: localTime.toUTC().toISO(),
+            updated_at: localTime.toUTC().toISO(),
+          };
+        });
+
+        const userCreatedAt = now.minus({ days: userSignupDaysAgo }).startOf('day').toJSDate();
+        const result = calculateStreaks(userDailyStats, userTimezone, {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        }, userCreatedAt);
+
+        // Should count all 4 activities
+        expect(result.number_days_completed).toBe(4);
+        expect(result.morning_number_days_completed).toBe(4);
+        expect(result.evening_number_days_completed).toBe(4);
+        expect(result.micro_breaks_number_days_completed).toBe(4);
+        expect(result.focus_modes_number_days_completed).toBe(4);
+
+        // 90-day window (user signed up 100 days ago, so full 90 days)
+        expect(result.num_days_of_stats).toBe(90);
+
+        // Percentages: 4/90 ≈ 4%
+        expect(result.percent_morning_routines_streak_complete_in_90days).toBe(4);
+        expect(result.percent_evening_routines_streak_complete_in_90days).toBe(4);
+        expect(result.percent_micro_breaks_streak_complete_in_90days).toBe(4);
+      });
+    });
   });
 });
 

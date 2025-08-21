@@ -152,6 +152,12 @@ describe('CompletedActivityService', () => {
     jest.clearAllMocks();
     jest.resetAllMocks();
     jest.useRealTimers();
+
+    // Set up default mock for isVerboseLoggingAllowed
+    UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({
+      isVerboseLoggingAllowed: false,
+      user: null,
+    });
   });
 
   it('should be defined', () => {
@@ -2654,6 +2660,12 @@ describe('CompletedActivityService', () => {
 
       beforeEach(() => {
         jest.useFakeTimers();
+
+        // Set up mock for isVerboseLoggingAllowed
+        UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({
+          isVerboseLoggingAllowed: false,
+          user: null,
+        });
       });
 
       afterEach(() => {

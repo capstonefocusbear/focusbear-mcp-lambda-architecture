@@ -49,6 +49,7 @@ export class OpenAIService {
     [OpenAIKeyType.BRAIN_DUMP_CONVERSION]?: OpenAI;
     [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
+    [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');

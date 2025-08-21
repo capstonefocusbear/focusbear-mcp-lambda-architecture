@@ -9,6 +9,7 @@ export interface IOpenAIOptions {
   usernameValidation?: OpenAI.ClientOptions;
   subtasksGeneration?: OpenAI.ClientOptions;
   brainDumpConversion?: OpenAI.ClientOptions;
+  habitAdjustment?: OpenAI.ClientOptions;
   // Backward compatibility
   apiKey?: string;
 }

@@ -783,10 +783,7 @@ describe('OpenAIService', () => {
 
       expect(result).toEqual(expectedResponse);
       expect(mockFn).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ role: 'system' }),
-          expect.objectContaining({ role: 'user' }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ role: 'system' })]),
         OpenAIKeyType.HABIT_ADJUSTMENT,
         expect.objectContaining({
           model: expect.any(String),
@@ -949,9 +946,9 @@ describe('OpenAIService', () => {
 
       await service.adjustHabitsWithAi(currentHabits, 'Adjust my habits', ['fitness', 'wellness'], 45);
 
-      const userPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'user');
-      expect(userPromptCall.content).toContain('User goals: fitness, wellness');
-      expect(userPromptCall.content).toContain('Routine duration (minutes): 45');
+      const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
+      expect(systemPromptCall.content).toContain('User goals: fitness, wellness');
+      expect(systemPromptCall.content).toContain('Routine duration (minutes): 45');
     });
 
     it('should wrap user feedback to prevent prompt injection', async () => {
@@ -1039,13 +1036,17 @@ describe('OpenAIService', () => {
 
       await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
 
-      const userPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'user');
-      const promptContent = userPromptCall.content;
+      const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
+      const promptContent = systemPromptCall.content;
 
       // Should include activity_type for context but not extra_field
-      expect(promptContent).toContain('activity_type');
+      expect(promptContent).toContain(
+        'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.',
+      );
       expect(promptContent).not.toContain('extra_field');
-      expect(promptContent).toContain('Current habits (minimal):');
+      expect(promptContent).toContain(
+        'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.',
+      );
     });
 
     it('should handle null/undefined habits gracefully', async () => {
@@ -1145,8 +1146,8 @@ describe('OpenAIService', () => {
 
       await service.adjustHabitsWithAi(currentHabits, 'Adjust my habits');
 
-      const userPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'user');
-      const promptContent = userPromptCall.content;
+      const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
+      const promptContent = systemPromptCall.content;
 
       expect(promptContent).not.toContain('User goals:');
       expect(promptContent).not.toContain('Routine duration (minutes):');
@@ -1172,8 +1173,8 @@ describe('OpenAIService', () => {
 
       await service.adjustHabitsWithAi(currentHabits, 'Adjust my habits', [], 30);
 
-      const userPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'user');
-      const promptContent = userPromptCall.content;
+      const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
+      const promptContent = systemPromptCall.content;
 
       expect(promptContent).not.toContain('User goals:');
       expect(promptContent).toContain('Routine duration (minutes): 30');
@@ -1199,8 +1200,8 @@ describe('OpenAIService', () => {
 
       await service.adjustHabitsWithAi(currentHabits, 'Adjust my habits', ['fitness'], 0);
 
-      const userPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'user');
-      const promptContent = userPromptCall.content;
+      const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
+      const promptContent = systemPromptCall.content;
 
       expect(promptContent).toContain('User goals: fitness');
       expect(promptContent).not.toContain('Routine duration (minutes):');

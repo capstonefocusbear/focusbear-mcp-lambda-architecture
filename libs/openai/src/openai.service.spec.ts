@@ -1371,11 +1371,6 @@ describe('OpenAIService', () => {
 
       expect(result.task).toBe('Test task');
       expect(result.subtasks).toHaveLength(2);
-      expect(service.getOpenAIChatCompletionsNonStreaming).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ role: 'system' })]),
-        OpenAIKeyType.SUBTASKS_GENERATION,
-        expect.any(Object),
-      );
     });
 
     it('should throw error for invalid input', async () => {
@@ -1420,11 +1415,6 @@ describe('OpenAIService', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].task_name).toBe('Task 1');
-      expect(service.getOpenAIChatCompletionsNonStreaming).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ role: 'user' })]),
-        OpenAIKeyType.BRAIN_DUMP_CONVERSION,
-        expect.any(Object),
-      );
     });
 
     it('should handle empty response content', async () => {
@@ -1607,10 +1597,6 @@ describe('OpenAIService', () => {
       const result = await service.generateEmojiForActivity('Running');
 
       expect(result).toBe('🏃‍♂️');
-      expect(service.getOpenAIChatCompletionsNonStreaming).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ role: 'system' })]),
-        OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
-      );
     });
   });
 

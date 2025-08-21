@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -58,8 +58,6 @@ export class UserController {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userEmailPreferencesService: UserEmailPreferencesService,
     private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
-    private readonly userProgressMetricsService: UserProgressMetricsService,
-    private readonly userRepository: UserRepository,
     @InjectQueue('emailQueue') private readonly emailQueue: Queue,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
@@ -360,90 +358,5 @@ export class UserController {
   async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
     return { message: 'Email preferences updated successfully' };
-  }
-
-  @Post('test-email/:userId')
-  @UseGuards(IsAuth)
-  @ApiOperation({ summary: 'Send test progress email to specific user (Admin only)' })
-  async sendTestEmail(
-    @Param('userId') userId: string,
-    @Query('type') type: 'weekly' | 'no-progress' = 'weekly',
-  ): Promise<{ message: string }> {
-    try {
-      // Use direct repository query to avoid email_frequency column error in production
-      const user = await this.userRepository.orm.findOne({
-        where: { id: userId },
-        select: ['id', 'timezone', 'created_at', 'metadata', 'auth0_id', 'language'],
-      });
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Hardcode test email for testing purposes (User entity doesn't store email)
-      const testEmail = 'izexyy@gmail.com';
-      const testUser = {
-        ...user,
-        email: testEmail,
-      };
-
-      this.logger.log(`Sending test ${type} email to user ${userId} -> hardcoded test email: ${testEmail}`);
-
-      if (type === 'weekly') {
-        // Calculate real weekly progress metrics
-        const weeklyMetrics = await this.userProgressMetricsService.calculateWeeklyProgress(user);
-
-        // Generate proper JWT unsubscribe token
-        const unsubscribeToken = await this.userEmailPreferencesService.generateUnsubscribeToken(user.id);
-
-        // Add job to email queue for weekly progress email
-        await this.emailQueue.add(
-          'send-progress-email',
-          {
-            user: testUser,
-            metrics: weeklyMetrics,
-            unsubscribe_token: unsubscribeToken,
-          },
-          {
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000,
-            },
-          },
-        );
-
-        return {
-          message: `Weekly progress email queued successfully for ${testEmail} (test email) with real metrics data`,
-        };
-      }
-      if (type === 'no-progress') {
-        // Generate proper JWT unsubscribe token
-        const unsubscribeToken = await this.userEmailPreferencesService.generateUnsubscribeToken(user.id);
-
-        // Add job to email queue for no progress email
-        await this.emailQueue.add(
-          'send-no-progress-email',
-          {
-            user: testUser,
-            unsubscribe_token: unsubscribeToken,
-          },
-          {
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000,
-            },
-          },
-        );
-
-        return {
-          message: `No progress email queued successfully for ${testEmail} (test email)`,
-        };
-      }
-      throw new Error(`Unsupported email type: ${type}`);
-    } catch (error) {
-      this.logger.error(`Failed to send test email to user ${userId}:`, error);
-      throw error;
-    }
   }
 }

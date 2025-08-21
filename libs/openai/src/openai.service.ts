@@ -906,23 +906,31 @@ export class OpenAIService {
         activity_type: habit.activity_type, // context only; AI must not change this or include it in the output
       }));
 
-      const systemPrompt = this.promptCacheService.getPrompt('habit-adjustment-default');
+      const promptContent = this.promptCacheService.getPrompt('habit-adjustment-default');
 
+      if (!promptContent) {
+        this.sentryService.instance().captureMessage('Habit adjustment prompt not found in cache', {
+          level: 'error',
+          extra: { currentHabits: minimalHabits, userFeedback },
+        });
+        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
+      }
+
+      // Fill in the prompt template with actual values
+      let filledPromptContent = promptContent
+        .replace('{{habits}}', JSON.stringify(minimalHabits, null, 2))
+        .replace('{{feedback}}', this.wrapUserInput(userFeedback));
+
+      // Optionally append additional context if available
       const contextLines: string[] = [];
       if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
       if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
 
-      const userPrompt = `Current habits (minimal): ${JSON.stringify(minimalHabits, null, 2)}
+      if (contextLines.length) {
+        filledPromptContent = `${filledPromptContent}\n\nContext:\n${contextLines.join('\n')}`;
+      }
 
-        User feedback: ${this.wrapUserInput(userFeedback)}
-        ${contextLines.length ? `\nContext:\n${contextLines.join('\n')}` : ''}
-
-        Please respond with ONLY JSON representing an array of { id, name, duration_seconds } and nothing else.`;
-
-      const messages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ];
+      const messages: ChatCompletionMessageParam[] = [{ role: 'system', content: filledPromptContent }];
 
       const completions = await this.getOpenAIChatCompletionsNonStreaming(
         messages,
@@ -934,10 +942,15 @@ export class OpenAIService {
 
       try {
         const parsed = JSON.parse(response);
-        if (!Array.isArray(parsed)) throw new Error('AI response is not an array');
+
+        if (!Array.isArray(parsed) && !Array.isArray(parsed?.[Object.keys(parsed)[0]])) {
+          throw new Error('AI response is not an array');
+        }
+
+        const habits = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
 
         // Sanitize and coerce output strictly to expected shape
-        const sanitized = parsed.map((item) => {
+        const sanitized = habits.map((item) => {
           const rawId = item?.id;
           const id = rawId == null ? '' : String(rawId);
           const name = String(item?.name ?? '').trim();

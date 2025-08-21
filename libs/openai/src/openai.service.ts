@@ -942,10 +942,15 @@ export class OpenAIService {
 
       try {
         const parsed = JSON.parse(response);
-        if (!Array.isArray(parsed)) throw new Error('AI response is not an array');
+
+        if (!Array.isArray(parsed) && !Array.isArray(parsed?.[Object.keys(parsed)[0]])) {
+          throw new Error('AI response is not an array');
+        }
+
+        const habits = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
 
         // Sanitize and coerce output strictly to expected shape
-        const sanitized = parsed.map((item) => {
+        const sanitized = habits.map((item) => {
           const rawId = item?.id;
           const id = rawId == null ? '' : String(rawId);
           const name = String(item?.name ?? '').trim();

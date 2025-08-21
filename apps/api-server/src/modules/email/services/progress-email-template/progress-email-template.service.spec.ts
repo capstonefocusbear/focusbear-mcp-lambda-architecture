@@ -87,7 +87,8 @@ describe('ProgressEmailTemplateService', () => {
               data.userName || 'Focus Bear user'
             }! Morning: 5/7 completed Total Focus Time: 480 minutes Keep up the great work!`,
           });
-        } else if (templateType === 'no-progress') {
+        }
+        if (templateType === 'no-progress') {
           return Promise.resolve({
             subject: '🐻 We miss you at FocusBear!',
             html: `<html><body>Hi ${data.userName}<div>We noticed you haven't been active</div><div>Get Back on Track</div><div>5-minute morning routine</div><div>15-minute focus sessions</div><div>micro-breaks</div><a href="${data.dashboardUrl}">Dashboard</a></body></html>`,

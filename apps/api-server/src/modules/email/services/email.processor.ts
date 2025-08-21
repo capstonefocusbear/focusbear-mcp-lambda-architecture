@@ -107,7 +107,6 @@ export class EmailProcessor {
     }
   }
 
-
   private async updateLastEmailSent(userId: string): Promise<void> {
     try {
       const user = await this.userRepository.orm.findOne({ where: { id: userId } });

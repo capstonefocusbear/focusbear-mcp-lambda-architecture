@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EmailFrequency } from '../entities/user.entity';
+
 export class EmailPreferencesResponseDto {
   @ApiProperty({ enum: EmailFrequency, description: 'Current email frequency setting' })
   email_frequency: EmailFrequency;
@@ -9,6 +10,4 @@ export class EmailPreferencesResponseDto {
 
   @ApiProperty({ description: 'Token for one-click unsubscribe' })
   unsubscribe_token: string;
-
-
 }

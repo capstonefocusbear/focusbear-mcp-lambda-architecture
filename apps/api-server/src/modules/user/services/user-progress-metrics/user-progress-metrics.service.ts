@@ -67,7 +67,6 @@ export class UserProgressMetricsService {
           evening_routine: streaks.evening_routines_streak,
           focus_mode: streaks.focus_modes_streak,
         },
-
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, {
@@ -134,6 +133,4 @@ export class UserProgressMetricsService {
       completion_rate: Math.min(completionRate, 1),
     };
   }
-
-
 }

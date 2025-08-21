@@ -1,13 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmailTemplateCompilerService } from './email-template-compiler.service';
 import * as fs from 'fs/promises';
-import * as path from 'path';
+import mjml2html from 'mjml';
+import { EmailTemplateCompilerService } from './email-template-compiler.service';
 
 jest.mock('fs/promises');
-jest.mock('mjml');
+jest.mock('mjml', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 
 const mockFs = fs as jest.Mocked<typeof fs>;
-const mockMjml = require('mjml') as jest.MockedFunction<any>;
+const mockMjml = mjml2html as jest.MockedFunction<typeof mjml2html>;
 
 describe('EmailTemplateCompilerService', () => {
   let service: EmailTemplateCompilerService;
@@ -43,6 +46,7 @@ describe('EmailTemplateCompilerService', () => {
     mockMjml.mockReturnValue({
       html: '<html><body>Test HTML</body></html>',
       errors: [],
+      json: null,
     });
   });
 
@@ -84,7 +88,15 @@ describe('EmailTemplateCompilerService', () => {
     it('should handle MJML compilation errors gracefully', async () => {
       mockMjml.mockReturnValue({
         html: '<html><body>Test HTML</body></html>',
-        errors: [{ line: 1, message: 'Test warning', tagName: 'mj-test' }],
+        errors: [
+          {
+            line: 1,
+            message: 'Test warning',
+            tagName: 'mj-test',
+            formattedMessage: 'Line 1 (mj-test): Test warning',
+          },
+        ],
+        json: null,
       });
 
       const result = await service.compileProgressEmail('weekly-progress', mockTemplateData);
@@ -96,11 +108,11 @@ describe('EmailTemplateCompilerService', () => {
       // Clear all previous mocks and set up fresh ones
       mockFs.readdir.mockReset();
       mockFs.readFile.mockReset();
-      
+
       mockFs.readdir.mockResolvedValue(['metric-card.hbs', 'cta-button.hbs'] as any);
       mockFs.readFile
         .mockResolvedValueOnce('{{> metric-card}}') // partial
-        .mockResolvedValueOnce('{{> cta-button}}') // partial  
+        .mockResolvedValueOnce('{{> cta-button}}') // partial
         .mockRejectedValueOnce(new Error('File not found')); // template read fails
 
       await expect(service.compileProgressEmail('weekly-progress', mockTemplateData)).rejects.toThrow(
@@ -114,18 +126,19 @@ describe('EmailTemplateCompilerService', () => {
       // Clear all previous mocks and set up fresh ones
       mockFs.readdir.mockReset();
       mockFs.readFile.mockReset();
-      
+
       mockFs.readdir.mockResolvedValue([]);
       mockFs.readFile
         .mockResolvedValueOnce('{{concat "Hello " "World"}}') // template
         .mockResolvedValueOnce('<mjml><mj-body>{{{content}}}</mj-body></mjml>'); // layout
-      
+
       mockMjml.mockReturnValue({
         html: '<html><body>Test HTML</body></html>',
         errors: [],
+        json: null,
       });
 
-      const result = await service.compileProgressEmail('weekly-progress', mockTemplateData);
+      await service.compileProgressEmail('weekly-progress', mockTemplateData);
 
       expect(mockMjml).toHaveBeenCalled();
     });
@@ -136,7 +149,7 @@ describe('EmailTemplateCompilerService', () => {
         .mockResolvedValueOnce('{{round 0.75}}')
         .mockResolvedValueOnce('<mjml><mj-body>{{{content}}}</mj-body></mjml>');
 
-      const result = await service.compileProgressEmail('weekly-progress', mockTemplateData);
+      await service.compileProgressEmail('weekly-progress', mockTemplateData);
 
       expect(mockMjml).toHaveBeenCalled();
     });

@@ -11,6 +11,7 @@ import { EmailFrequency, User } from '../../entities/user.entity';
 @Injectable()
 export class UserEmailPreferencesService {
   private readonly logger = new Logger(UserEmailPreferencesService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
@@ -35,7 +36,7 @@ export class UserEmailPreferencesService {
   }
 
   async updateEmailPreferences(userId: string, dto: UpdateEmailPreferencesDto): Promise<EmailPreferencesResponseDto> {
-    return await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
       const userRepository = manager.getRepository(User);
       const user = await userRepository.findOne({ where: { id: userId } });
 
@@ -121,8 +122,6 @@ export class UserEmailPreferencesService {
       if (payload.purpose !== 'unsubscribe') {
         throw new BadRequestException('Invalid token purpose');
       }
-
-      const validFrequencies = Object.values(EmailFrequency);
 
       await this.userRepository.updateEmailFrequency(payload.userId, emailFrequency as any);
 

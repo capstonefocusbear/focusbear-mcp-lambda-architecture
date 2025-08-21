@@ -2,6 +2,9 @@ import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Lo
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { Throttle } from '@nestjs/throttler';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -44,11 +47,7 @@ import { UserEmailPreferencesService } from '../../services/user-email-preferenc
 import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
 import { UserProgressMetricsService } from '../../services/user-progress-metrics/user-progress-metrics.service';
 import { UserRepository } from '../../repositories/user.repository';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
-import { Throttle } from '@nestjs/throttler';
 import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
-import { EmailFrequency } from '../../entities/user.entity';
 
 @Controller('user')
 @ApiTags('user')
@@ -64,6 +63,7 @@ export class UserController {
     @InjectQueue('emailQueue') private readonly emailQueue: Queue,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
+
   private readonly logger = new Logger(UserController.name);
 
   @Put('/account-sync')
@@ -415,7 +415,8 @@ export class UserController {
         return {
           message: `Weekly progress email queued successfully for ${testEmail} (test email) with real metrics data`,
         };
-      } else if (type === 'no-progress') {
+      }
+      if (type === 'no-progress') {
         // Generate proper JWT unsubscribe token
         const unsubscribeToken = await this.userEmailPreferencesService.generateUnsubscribeToken(user.id);
 
@@ -438,9 +439,8 @@ export class UserController {
         return {
           message: `No progress email queued successfully for ${testEmail} (test email)`,
         };
-      } else {
-        throw new Error(`Unsupported email type: ${type}`);
       }
+      throw new Error(`Unsupported email type: ${type}`);
     } catch (error) {
       this.logger.error(`Failed to send test email to user ${userId}:`, error);
       throw error;

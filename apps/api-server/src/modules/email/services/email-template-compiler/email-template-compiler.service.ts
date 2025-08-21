@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-const mjml = require('mjml');
+import mjml2html from 'mjml';
 
 interface CompiledTemplate {
   subject: string;
@@ -26,8 +26,11 @@ interface TemplateData {
 @Injectable()
 export class EmailTemplateCompilerService {
   private readonly logger = new Logger(EmailTemplateCompilerService.name);
+
   private readonly templatesPath = path.join(process.cwd(), 'apps/api-server/src/modules/email/templates');
+
   private templateCache = new Map<string, Handlebars.TemplateDelegate>();
+
   private partialCache = new Map<string, string>();
 
   constructor() {
@@ -58,7 +61,7 @@ export class EmailTemplateCompilerService {
 
       const fullHtml = baseLayout(layoutData);
 
-      const mjmlResult = mjml(fullHtml, {
+      const mjmlResult = mjml2html(fullHtml, {
         validationLevel: 'soft',
         fonts: {
           Arial: 'https://fonts.googleapis.com/css?family=Arial',
@@ -113,14 +116,19 @@ export class EmailTemplateCompilerService {
     try {
       const partialFiles = await fs.readdir(partialsPath);
 
-      for (const file of partialFiles) {
-        if (file.endsWith('.hbs')) {
+      const partialPromises = partialFiles
+        .filter((file) => file.endsWith('.hbs'))
+        .map(async (file) => {
           const partialName = file.replace('.hbs', '');
           const partialContent = await fs.readFile(path.join(partialsPath, file), 'utf8');
+          return { partialName, partialContent };
+        });
 
-          this.partialCache.set(partialName, partialContent);
-          Handlebars.registerPartial(partialName, partialContent);
-        }
+      const partials = await Promise.all(partialPromises);
+
+      for (const { partialName, partialContent } of partials) {
+        this.partialCache.set(partialName, partialContent);
+        Handlebars.registerPartial(partialName, partialContent);
       }
     } catch (error) {
       this.logger.error('Failed to load partials:', error);
@@ -210,6 +218,7 @@ export class EmailTemplateCompilerService {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailTitle(templateType: string, data: TemplateData): string {
     const titles = {
       'weekly-progress': 'Weekly Progress Report',
@@ -228,11 +237,12 @@ export class EmailTemplateCompilerService {
     return previews[templateType] || 'Focus Bear Update';
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailSubject(templateType: string, data: TemplateData): string {
     const subjects = {
-      'weekly-progress': `🐻 Your Weekly Progress Report`,
-      'no-progress': `🐻 We miss you at FocusBear!`,
-      'inactivity-warning': `⚠️ Important: Your FocusBear account will be deleted soon`,
+      'weekly-progress': '🐻 Your Weekly Progress Report',
+      'no-progress': '🐻 We miss you at FocusBear!',
+      'inactivity-warning': '⚠️ Important: Your FocusBear account will be deleted soon',
     };
 
     return subjects[templateType] || '🐻 Focus Bear Update';

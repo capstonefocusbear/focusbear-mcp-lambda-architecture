@@ -2,8 +2,6 @@ import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Lo
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
 import { Throttle } from '@nestjs/throttler';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -45,8 +43,6 @@ import { EmailPreferencesResponseDto } from '../../dto/email-preferences-respons
 import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
 import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
 import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
-import { UserProgressMetricsService } from '../../services/user-progress-metrics/user-progress-metrics.service';
-import { UserRepository } from '../../repositories/user.repository';
 import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
 
 @Controller('user')
@@ -58,7 +54,6 @@ export class UserController {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly userEmailPreferencesService: UserEmailPreferencesService,
     private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
-    @InjectQueue('emailQueue') private readonly emailQueue: Queue,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -286,7 +281,7 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   @ApiOperation({ summary: 'Update user email preferences' })
-  @Throttle({ default: { ttl: 60, limit: 10 } }) // Rate limit: 10 requests per minute
+  @Throttle({ default: { ttl: 60, limit: 10 } })
   async updateEmailPreferences(
     @AuthContext() { user }: Passport,
     @Body() dto: UpdateEmailPreferencesDto,

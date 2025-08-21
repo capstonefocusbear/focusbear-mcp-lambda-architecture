@@ -5,12 +5,15 @@ import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
 import axios from 'axios';
+import { Stream } from 'stream';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
+import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IOpenAIOptions } from './interfaces';
 import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS, OpenAIKeyType } from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
+import { AiToneOptions } from './domain/ai-tones.enum';
 
 // Define mock prompt data that will be returned
 const mockPrompts = {
@@ -1242,6 +1245,413 @@ describe('OpenAIService', () => {
       });
       expect(result[0]).not.toHaveProperty('extra_property');
       expect(result[0]).not.toHaveProperty('activity_type');
+    });
+  });
+
+  describe('createMotivationalSummary', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          motivationalMessage: { apiKey: 'test-motivational-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should create motivational summary with streaming response', async () => {
+      const mockResponse = {
+        raw: {
+          headersSent: false,
+          setHeader: jest.fn(),
+          on: jest.fn(),
+          end: jest.fn(),
+        },
+        send: jest.fn().mockResolvedValue(undefined),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      const mockStream = {
+        write: jest.fn(),
+        end: jest.fn(),
+        on: jest.fn(),
+        destroyed: false,
+      };
+
+      const mockChatStream = [
+        {
+          choices: [
+            {
+              finish_reason: null,
+              delta: { content: 'Hello' },
+            },
+          ],
+        },
+        {
+          choices: [
+            {
+              finish_reason: 'stop',
+              delta: { content: ' World' },
+            },
+          ],
+        },
+      ];
+
+      jest.spyOn(Stream, 'PassThrough').mockReturnValue(mockStream as any);
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsStreaming').mockResolvedValue(mockChatStream as any);
+
+      await service.createMotivationalSummary(
+        mockResponse as any,
+        [{ name: 'Exercise', streak_days: 5 }],
+        ['fitness'],
+        { language: 'en', tone: AiToneOptions.UPBEAT, device_type: DeviceType.MOBILE },
+      );
+
+      expect(mockResponse.raw.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
+      expect(mockStream.write).toHaveBeenCalledWith('data: Hello\n\n');
+      expect(mockStream.write).toHaveBeenCalledWith('data: [DONE]\n\n');
+    });
+
+    it('should handle timeout errors', async () => {
+      const mockResponse = {
+        raw: { headersSent: false, setHeader: jest.fn(), on: jest.fn(), end: jest.fn() },
+        send: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      const timeoutError = new Error('Request timed out');
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsStreaming').mockRejectedValue(timeoutError);
+
+      await service.createMotivationalSummary(
+        mockResponse as any,
+        [{ name: 'Exercise', streak_days: 5 }],
+        ['fitness'],
+        { language: 'en', tone: AiToneOptions.UPBEAT },
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(504);
+    });
+  });
+
+  describe('createSubtasks', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          subtasksGeneration: { apiKey: 'test-subtasks-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should create subtasks successfully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                task: 'Test task',
+                subtasks: [
+                  { name: 'Subtask 1', is_completed: false },
+                  { name: 'Subtask 2', is_completed: false },
+                ],
+              }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValue(mockResponse);
+
+      const result = await service.createSubtasks({ task: 'Test task', language: 'english' });
+
+      expect(result.task).toBe('Test task');
+      expect(result.subtasks).toHaveLength(2);
+    });
+
+    it('should throw error for invalid input', async () => {
+      const longTask = 'a'.repeat(201); // Exceeds MAX_WORD_LENGTH.default
+      await expect(service.createSubtasks({ task: longTask, language: 'english' })).rejects.toThrow('Invalid Input');
+    });
+  });
+
+  describe('convertBrainDumpToTasks', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          brainDumpConversion: { apiKey: 'test-braindump-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should convert brain dump to tasks successfully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify([
+                {
+                  task_name: 'Task 1',
+                  estimated_duration_minutes: 20,
+                  subtasks: ['Subtask 1', 'Subtask 2'],
+                },
+              ]),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValue(mockResponse);
+
+      const result = await service.convertBrainDumpToTasks('I need to clean my room and study');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].task_name).toBe('Task 1');
+    });
+
+    it('should handle empty response content', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: null,
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValue(mockResponse);
+
+      const result = await service.convertBrainDumpToTasks('Test brain dump');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw error for invalid input', async () => {
+      const longBrainDump = 'a'.repeat(1001); // Exceeds MAX_WORD_LENGTH.brainDump
+      await expect(service.convertBrainDumpToTasks(longBrainDump)).rejects.toThrow('Invalid input');
+    });
+  });
+
+  describe('analyzeImage', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          screenTimeImageOcr: { apiKey: 'test-image-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should analyze image successfully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: 'Image analysis result',
+            },
+          },
+        ],
+      };
+
+      const mockOpenAI = {
+        chat: {
+          completions: {
+            create: jest.fn().mockResolvedValue(mockResponse),
+          },
+        },
+      };
+
+      jest.spyOn(service as any, 'getOpenAIInstance').mockReturnValue(mockOpenAI as any);
+
+      const messages = [{ role: 'user', content: 'Analyze this image' }] as any;
+      const result = await service.analyzeImage(messages);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.any(String),
+          response_format: { type: 'json_object' },
+          messages: expect.any(Array),
+        }),
+      );
+    });
+
+    it('should handle analysis errors', async () => {
+      const mockOpenAI = {
+        chat: {
+          completions: {
+            create: jest.fn().mockRejectedValue(new Error('Analysis failed')),
+          },
+        },
+      };
+
+      jest.spyOn(service as any, 'getOpenAIInstance').mockReturnValue(mockOpenAI as any);
+
+      const messages = [{ role: 'user', content: 'Analyze this image' }] as any;
+      await expect(service.analyzeImage(messages)).rejects.toThrow('Analysis failed');
+    });
+  });
+
+  describe('processUsageImage', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          screenTimeImageOcr: { apiKey: 'test-image-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'usage-screenshot-analysis') {
+          return 'Analyze this usage screenshot';
+        }
+        return null;
+      });
+    });
+
+    it('should process usage image successfully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                'App 1': [
+                  {
+                    sourceName: 'App 1',
+                    minutesUsedTotal: 30,
+                    category: 'Productivity',
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service, 'analyzeImage').mockResolvedValue(mockResponse as any);
+
+      const result = await service.processUsageImage('data:image/jpeg;base64,test');
+
+      expect(result).toEqual({
+        'App 1': [
+          {
+            sourceName: 'App 1',
+            minutesUsedTotal: 30,
+            category: 'Productivity',
+          },
+        ],
+      });
+      expect(promptCacheServiceMock.getPrompt).toHaveBeenCalledWith('usage-screenshot-analysis');
+    });
+
+    it('should handle processing errors', async () => {
+      jest.spyOn(service, 'analyzeImage').mockRejectedValue(new Error('Processing failed'));
+
+      await expect(service.processUsageImage('data:image/jpeg;base64,test')).rejects.toThrow(
+        'Failed to process usage image',
+      );
+    });
+  });
+
+  describe('generateEmojiForActivity', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {
+          activityEmojiGeneration: { apiKey: 'test-emoji-key' },
+        } as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should generate emoji for activity successfully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: '🏃‍♂️',
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValue(mockResponse);
+
+      const result = await service.generateEmojiForActivity('Running');
+
+      expect(result).toBe('🏃‍♂️');
+    });
+  });
+
+  describe('constructMotivationalMessagePrompt', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new OpenAIService(
+        {} as any,
+        SentryServiceMock as unknown as SentryService,
+        { t: () => '' } as unknown as I18nService,
+        promptCacheServiceMock as any,
+      );
+    });
+
+    it('should construct future self message prompt', () => {
+      const result = service.constructMotivationalMessagePrompt([{ name: 'Exercise', streak_days: 5 }], ['fitness'], {
+        language: 'en',
+        tone: AiToneOptions.FUTURE_SELF,
+        device_type: DeviceType.DESKTOP,
+      });
+
+      expect(result).toContain('future self 20 years from now');
+      expect(result).toContain('100');
+    });
+
+    it('should construct factual message prompt', () => {
+      const result = service.constructMotivationalMessagePrompt([{ name: 'Exercise', streak_days: 5 }], ['fitness'], {
+        language: 'en',
+        tone: AiToneOptions.FACTUAL,
+        device_type: DeviceType.MOBILE,
+      });
+
+      expect(result).toContain('summary of their habits input streaks');
+      expect(result).toContain('50');
+    });
+
+    it('should construct default motivational message prompt', () => {
+      const result = service.constructMotivationalMessagePrompt([{ name: 'Exercise', streak_days: 5 }], ['fitness'], {
+        language: 'en',
+        tone: AiToneOptions.UPBEAT,
+        device_type: DeviceType.MOBILE,
+      });
+
+      expect(result).toContain('motivational message');
+      expect(result).toContain('50');
+    });
+
+    it('should handle empty long term goals', () => {
+      const result = service.constructMotivationalMessagePrompt([{ name: 'Exercise', streak_days: 5 }], [], {
+        language: 'en',
+        tone: AiToneOptions.UPBEAT,
+      });
+
+      expect(result).not.toContain("user's long term goals");
+      expect(result).not.toContain('Long term goals:');
     });
   });
 });

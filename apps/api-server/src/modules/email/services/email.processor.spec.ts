@@ -65,11 +65,6 @@ describe('EmailProcessor', () => {
         html: '<html>No Progress HTML</html>',
         text: 'No progress text content',
       }),
-      generateInactivityWarningEmail: jest.fn().mockResolvedValue({
-        subject: 'Test Inactivity Warning',
-        html: '<html>Warning HTML</html>',
-        text: 'Warning text content',
-      }),
     };
 
     userRepositoryMock = {
@@ -166,6 +161,7 @@ describe('EmailProcessor', () => {
   it('should handle no progress email jobs correctly', async () => {
     const mockJobData = {
       user: { ...mockUser, email: 'test@example.com' },
+      unsubscribe_token: 'test-unsubscribe-token',
     };
 
     const mockJob = { id: 'job-456', data: mockJobData } as Job;
@@ -175,45 +171,16 @@ describe('EmailProcessor', () => {
 
     const result = await processor.handleNoProgressEmail(mockJob);
 
-    expect(progressEmailTemplateServiceMock.generateNoProgressEmail).toHaveBeenCalledWith(mockJobData.user);
+    expect(progressEmailTemplateServiceMock.generateNoProgressEmail).toHaveBeenCalledWith(
+      mockJobData.user,
+      mockJobData.unsubscribe_token,
+    );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
       from: 'noreply@focusbear.io',
       subject: 'Test No Progress Email',
       html: '<html>No Progress HTML</html>',
       text: 'No progress text content',
-    });
-    expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
-    });
-    expect(result).toEqual({ success: true, userId: 'user-123' });
-  });
-
-  it('should handle inactivity warning email jobs correctly', async () => {
-    const mockJobData = {
-      user: { ...mockUser, email: 'test@example.com' },
-      warningType: 'account_deletion',
-      daysUntilDeletion: 30,
-    };
-
-    const mockJob = { id: 'job-789', data: mockJobData } as Job;
-
-    // Setup mock to return user when looking for it
-    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUser);
-
-    const result = await processor.handleInactivityWarningEmail(mockJob);
-
-    expect(progressEmailTemplateServiceMock.generateInactivityWarningEmail).toHaveBeenCalledWith(mockJobData.user, 30);
-    expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
-      to: 'test@example.com',
-      from: 'noreply@focusbear.io',
-      subject: 'Test Inactivity Warning',
-      html: '<html>Warning HTML</html>',
-      text: 'Warning text content',
-      trackingSettings: {
-        clickTracking: { enable: true },
-        openTracking: { enable: true },
-      },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
       metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
@@ -234,7 +201,7 @@ describe('EmailProcessor', () => {
     // Setup mock to return user when looking for it
     userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUser);
 
-    const result = await processor.handleEnhancedProgressEmail(mockJob);
+    const result = await processor.handleProgressEmail(mockJob);
 
     expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).toHaveBeenCalledWith(
       mockJobData.user,

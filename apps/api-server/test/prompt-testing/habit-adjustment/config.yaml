@@ -15,7 +15,16 @@ prompts:
       - Modify only name and duration_seconds based on the user's feedback and context.
       - You may adjust duration_seconds to better fit the feedback, keeping values realistic.
 
+      Return ONLY a JSON array of objects with EXACT keys: id, name, duration_seconds.
+
       Please adjust these habits based on the user's feedback while maintaining the exact same JSON structure and all original properties.
+
+      STRUCTURE:
+      [{
+        "id": "string",
+        "name": "string",
+        "duration_seconds": "int"
+      }]
 
       Current habits:
       {{habits}}

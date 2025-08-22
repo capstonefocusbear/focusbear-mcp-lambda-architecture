@@ -4,7 +4,7 @@ import { EmailFrequency } from '../entities/user.entity';
 
 export class UpdateEmailPreferencesWithTokenDto {
   @ApiProperty({
-    description: 'The management token sent to the user via email.',
+    description: 'The email preferences token sent to the user via email.',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @IsString()

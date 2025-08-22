@@ -9,6 +9,8 @@ import { WeeklyProgressMetricsDto } from '../../dto/weekly-progress-metrics.dto'
 import { DailyStats } from '../../entities/user-daily-stats.entity';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 
+const DAYS_IN_WEEK = 7;
+
 @Injectable()
 export class UserProgressMetricsService {
   constructor(
@@ -84,17 +86,17 @@ export class UserProgressMetricsService {
     return {
       morning: {
         completed: morningRoutinesCompleted,
-        total: 7,
+        total: DAYS_IN_WEEK,
         streak: streaks.morning_routines_streak,
       },
       evening: {
         completed: eveningRoutinesCompleted,
-        total: 7,
+        total: DAYS_IN_WEEK,
         streak: streaks.evening_routines_streak,
       },
       micro_breaks: {
         completed: microBreaksCompleted,
-        total: 7,
+        total: DAYS_IN_WEEK,
         streak: streaks.micro_breaks_streak,
       },
     };

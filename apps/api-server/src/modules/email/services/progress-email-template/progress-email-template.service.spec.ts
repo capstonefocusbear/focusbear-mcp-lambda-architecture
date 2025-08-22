@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { I18nService } from 'nestjs-i18n';
+import { mockDeep } from 'jest-mock-extended';
 import { ProgressEmailTemplateService } from './progress-email-template.service';
 import { User, EmailFrequency } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
@@ -58,8 +60,11 @@ const createMockWeeklyMetrics = (): WeeklyProgressMetricsDto => ({
 
 describe('ProgressEmailTemplateService', () => {
   let service: ProgressEmailTemplateService;
+  const mockI18nService = mockDeep<I18nService>();
 
   beforeEach(async () => {
+    mockI18nService.t.mockImplementation(() => undefined);
+
     const mockCompilerService = {
       compileProgressEmail: jest.fn().mockImplementation((templateType: string, data: any) => {
         if (templateType === 'weekly-progress') {
@@ -110,6 +115,10 @@ describe('ProgressEmailTemplateService', () => {
         {
           provide: EmailTemplateCompilerService,
           useValue: mockCompilerService,
+        },
+        {
+          provide: I18nService,
+          useValue: mockI18nService,
         },
       ],
     }).compile();
@@ -169,7 +178,7 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('Hi John Doe!');
     });
 
-    it('should fallback to "there" when no name is available', async () => {
+    it('should fallback to "Friend" when no name is available', async () => {
       // Arrange
       const user = createMockUser('en');
       user.username = undefined;
@@ -181,8 +190,8 @@ describe('ProgressEmailTemplateService', () => {
       const result = await service.generateWeeklyProgressEmail(user, metrics, unsubscribeToken);
 
       // Assert
-      expect(result.html).toContain('Hi Focus Bear user!');
-      expect(result.text).toContain('Hi Focus Bear user!');
+      expect(result.html).toContain('Hi Friend!');
+      expect(result.text).toContain('Hi Friend!');
     });
 
     it('should include proper date formatting in subject', async () => {

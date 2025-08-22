@@ -1,30 +1,30 @@
-<mj-text>
-  <p>Hi{{#if userName}} {{userName}}{{/if}}!</p>
-  <p>We haven't seen you around Focus Bear lately — and that's okay!<br/>
-  Every journey has its pauses. The important thing is starting again.</p>
+<mj-text color="#333333">
+  <p>{{headerSubtitle}}</p>
+  <p>{{haventSeenYouText}}<br/>
+  {{journeyPausesText}}</p>
 </mj-text>
 
-{{> metric-card title="🌟 Good news" content="Your habits and goals are still waiting for you — right where you left them."}}
+{{> metric-card title=goodNewsTitle content=goodNewsContent}}
 
-{{> metric-card title="🐾 Tiny action for today" content=(concat
+{{> metric-card title=tinyActionTitle content=(concat
   "<ul>"
-  "<li>Open Focus Bear</li>"
-  "<li>Complete just one small habit</li>"
+  "<li>" openFocusBearText "</li>"
+  "<li>" completeOneHabitText "</li>"
   "</ul>"
-  "<p>That's it. A small step forward is still a step forward! 🧸</p>"
+  "<p>" smallStepForwardText "</p>"
 )}}
 
-{{> cta-button href=("https://dashboard.focusbear.io/") text="Get Back on Track"}}
+{{> cta-button href=dashboardUrl text=getBackOnTrackText}}
 
-<mj-text>
-  <p>Thanks for being part of Focus Bear 🙏<br/>
-  We believe in you!</p>
-  <p><strong>Focus Bear Team</strong></p>
+<mj-text color="#333333">
+  <p>{{footerText}}<br/>
+  {{weBelieveInYouText}}</p>
+  <p><strong>{{focusBearTeamText}}</strong></p>
 </mj-text>
 
 <mj-divider border-color="#eee" />
 
 <mj-text align="center" color="#999999" font-size="11px">
-  <p>Want to change how often you get these emails?<br/>
-  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">Manage your preferences here</a></p>
+  <p>{{wantToChangeFrequencyText}}<br/>
+  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">{{unsubscribeText}}</a></p>
 </mj-text>

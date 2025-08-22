@@ -31,9 +31,9 @@ async function getInactiveUsers() {
   const currentDate = DateTime.now();
   const fiveMonthsAgo = currentDate.minus({ months: 5 });
   const inactiveUsers = await CronJobDataSource.manager.find(User, {
-    where: { 
+    where: {
       updated_at: LessThan(fiveMonthsAgo.toString()),
-      has_received_inactivity_warning: false 
+      has_received_inactivity_warning: false,
     },
   });
   console.log(`Found ${inactiveUsers.length} inactive users without inactivity warnings`);
@@ -84,13 +84,10 @@ async function getActiveUsers() {
   return userInfo.filter((user) => user.email);
 }
 
-async function sendEnhancedInactivityWarningEmails(
-  users: { email: string; user: User }[],
-  emailQueue: Queue
-) {
+async function sendEnhancedInactivityWarningEmails(users: { email: string; user: User }[], emailQueue: Queue) {
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
-    
+
     const emailPromises = batch.map(async (userData) => {
       try {
         await emailQueue.add(
@@ -105,7 +102,7 @@ async function sendEnhancedInactivityWarningEmails(
             backoff: { type: 'exponential', delay: 2000 },
             removeOnComplete: true,
             removeOnFail: false,
-          }
+          },
         );
       } catch (error) {
         captureErrorWithContext(error, {
@@ -115,22 +112,19 @@ async function sendEnhancedInactivityWarningEmails(
         });
       }
     });
-    
+
     await Promise.all(emailPromises);
-    
+
     if (i + BATCH_SIZE < users.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 }
 
-async function sendEnhancedNoProgressEmails(
-  users: { email: string; user: User }[],
-  emailQueue: Queue
-) {
+async function sendEnhancedNoProgressEmails(users: { email: string; user: User }[], emailQueue: Queue) {
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
-    
+
     const emailPromises = batch.map(async (userData) => {
       try {
         await emailQueue.add(
@@ -144,7 +138,7 @@ async function sendEnhancedNoProgressEmails(
             backoff: { type: 'exponential', delay: 2000 },
             removeOnComplete: true,
             removeOnFail: false,
-          }
+          },
         );
       } catch (error) {
         captureErrorWithContext(error, {
@@ -154,11 +148,11 @@ async function sendEnhancedNoProgressEmails(
         });
       }
     });
-    
+
     await Promise.all(emailPromises);
-    
+
     if (i + BATCH_SIZE < users.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 }
@@ -167,20 +161,19 @@ async function sendEnhancedProgressEmails(
   users: { email: string; user: User }[],
   emailQueue: Queue,
   userProgressMetricsService: UserProgressMetricsService,
-  userEmailPreferencesService: UserEmailPreferencesService
+  userEmailPreferencesService: UserEmailPreferencesService,
 ) {
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
-    
+
     const emailPromises = batch.map(async (userData) => {
       if (userData.user.email_frequency === EmailFrequency.WEEKLY) {
         try {
           // Calculate progress metrics
           const metrics = await userProgressMetricsService.calculateWeeklyProgress(userData.user);
-          
+
           // Get unsubscribe token
-          const { unsubscribe_token } = await userEmailPreferencesService
-            .getEmailPreferences(userData.user.id);
+          const { unsubscribe_token } = await userEmailPreferencesService.getEmailPreferences(userData.user.id);
 
           // Queue enhanced progress email
           await emailQueue.add(
@@ -196,7 +189,7 @@ async function sendEnhancedProgressEmails(
               backoff: { type: 'exponential', delay: 2000 },
               removeOnComplete: true,
               removeOnFail: false,
-            }
+            },
           );
         } catch (error) {
           captureErrorWithContext(error, {
@@ -207,12 +200,12 @@ async function sendEnhancedProgressEmails(
         }
       }
     });
-    
+
     await Promise.all(emailPromises);
-    
+
     // Delay between batches
     if (i + BATCH_SIZE < users.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 }
@@ -333,16 +326,18 @@ async function runInactiveAccountsCronJob() {
 
   try {
     await CronJobDataSource.initialize();
-    
+
     console.log('Starting inactive accounts cron job...');
-    
+
     // Get users for deletion (6+ months inactive with warning)
     const usersToDelete = await getUsersToDelete();
     if (usersToDelete.length > 0) {
-      console.log(`Deleting ${usersToDelete.length} users who exceeded inactivity period`);
-      await deleteUsers(usersToDelete);
+      console.log(`Found ${usersToDelete.length} users who exceeded inactivity period`);
+      // TODO: Uncomment when warning emails are fully implemented and tested
+      // await deleteUsers(usersToDelete);
+      console.log('User deletion is currently disabled pending warning email implementation');
     }
-    
+
     // Get users for inactivity warning (5+ months inactive, no warning sent)
     const inactiveUsers = await getInactiveUsers();
     if (inactiveUsers.length > 0) {
@@ -350,7 +345,7 @@ async function runInactiveAccountsCronJob() {
       await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
       await updateUsersInactivityWarningFields(inactiveUsers);
     }
-    
+
     // Get recently active users for progress emails
     const activeUsers = await getActiveUsers();
     if (activeUsers.length > 0) {
@@ -359,20 +354,24 @@ async function runInactiveAccountsCronJob() {
         activeUsers,
         emailQueue,
         userProgressMetricsService,
-        userEmailPreferencesService
+        userEmailPreferencesService,
       );
     }
-    
+
     // Clean up internal test users
     await deleteInternalTestUsers();
-    
+
     console.log('Inactive accounts cron job completed successfully');
   } catch (error) {
-    captureErrorWithContext(error, {
-      operation: 'runInactiveAccountsCronJob',
-    }, {
-      logLevel: 'error',
-    });
+    captureErrorWithContext(
+      error,
+      {
+        operation: 'runInactiveAccountsCronJob',
+      },
+      {
+        logLevel: 'error',
+      },
+    );
     throw error;
   } finally {
     await app.close();

@@ -1,16 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import * as fs from 'fs/promises';
-import mjml2html from 'mjml';
 import { EmailTemplateCompilerService } from './email-template-compiler.service';
 
 jest.mock('fs/promises');
-jest.mock('mjml', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
+jest.mock('mjml', () => jest.fn());
 
 const mockFs = fs as jest.Mocked<typeof fs>;
-const mockMjml = mjml2html as jest.MockedFunction<typeof mjml2html>;
+// eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+const mockMjml = require('mjml') as jest.MockedFunction<any>;
 
 describe('EmailTemplateCompilerService', () => {
   let service: EmailTemplateCompilerService;
@@ -64,8 +61,8 @@ describe('EmailTemplateCompilerService', () => {
       mockFs.readFile
         .mockResolvedValueOnce('{{> metric-card}}') // partial
         .mockResolvedValueOnce('{{> cta-button}}') // partial
-        .mockResolvedValueOnce('<mj-text>{{userName}}</mj-text>') // template
-        .mockResolvedValueOnce('<mjml><mj-body>{{{content}}}</mj-body></mjml>'); // layout
+        .mockResolvedValueOnce('<mj-section><mj-column><mj-text>{{userName}}</mj-text></mj-column></mj-section>') // template
+        .mockResolvedValueOnce('<mjml><mj-head></mj-head><mj-body>{{{content}}}</mj-body></mjml>'); // layout
     });
 
     it('should compile weekly progress email in English', async () => {
@@ -85,7 +82,7 @@ describe('EmailTemplateCompilerService', () => {
       expect(result.html).toContain('Test HTML');
     });
 
-    it('should handle MJML compilation errors gracefully', async () => {
+    it('should throw error when MJML compilation has errors', async () => {
       mockMjml.mockReturnValue({
         html: '<html><body>Test HTML</body></html>',
         errors: [
@@ -99,9 +96,9 @@ describe('EmailTemplateCompilerService', () => {
         json: null,
       });
 
-      const result = await service.compileProgressEmail('weekly-progress', mockTemplateData);
-
-      expect(result.html).toContain('Test HTML');
+      await expect(service.compileProgressEmail('weekly-progress', mockTemplateData)).rejects.toThrow(
+        'Email template compilation failed',
+      );
     });
 
     it('should throw error when template compilation fails', async () => {
@@ -129,8 +126,8 @@ describe('EmailTemplateCompilerService', () => {
 
       mockFs.readdir.mockResolvedValue([]);
       mockFs.readFile
-        .mockResolvedValueOnce('{{concat "Hello " "World"}}') // template
-        .mockResolvedValueOnce('<mjml><mj-body>{{{content}}}</mj-body></mjml>'); // layout
+        .mockResolvedValueOnce('<mj-section><mj-column>{{concat "Hello " "World"}}</mj-column></mj-section>') // template
+        .mockResolvedValueOnce('<mjml><mj-head></mj-head><mj-body>{{{content}}}</mj-body></mjml>'); // layout
 
       mockMjml.mockReturnValue({
         html: '<html><body>Test HTML</body></html>',
@@ -146,8 +143,8 @@ describe('EmailTemplateCompilerService', () => {
     it('should register round helper', async () => {
       mockFs.readdir.mockResolvedValue([]);
       mockFs.readFile
-        .mockResolvedValueOnce('{{round 0.75}}')
-        .mockResolvedValueOnce('<mjml><mj-body>{{{content}}}</mj-body></mjml>');
+        .mockResolvedValueOnce('<mj-section><mj-column>{{round 0.75}}</mj-column></mj-section>')
+        .mockResolvedValueOnce('<mjml><mj-head></mj-head><mj-body>{{{content}}}</mj-body></mjml>');
 
       await service.compileProgressEmail('weekly-progress', mockTemplateData);
 

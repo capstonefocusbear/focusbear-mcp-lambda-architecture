@@ -457,6 +457,21 @@ export class UserRepository extends BaseRepository<User> {
       where: {
         email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
       },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
       relations: [
         'activitySequences',
         'activitySequences.activities',
@@ -472,6 +487,21 @@ export class UserRepository extends BaseRepository<User> {
       where: {
         email_frequency: EmailFrequency.DAILY,
       },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
       relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
     });
   }
@@ -488,14 +518,29 @@ export class UserRepository extends BaseRepository<User> {
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
     return this.orm
-      .createQueryBuilder('users')
-      .where('users.email_frequency IN (:...frequencies)', {
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.auth0_id',
+        'user.username',
+        'user.language',
+        'user.timezone',
+        'user.created_at',
+        'user.updated_at',
+        'user.last_completed_sequence_at',
+        'user.last_completed_focus_mode_at',
+        'user.last_completed_sequence_started_at',
+        'user.last_time_stats_updated',
+        'user.metadata',
+        'user.email_frequency',
+      ])
+      .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('(users.last_completed_sequence_at IS NULL OR users.last_completed_sequence_at < :threshold)', {
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at < :threshold)', {
         threshold: thresholdDate,
       })
-      .andWhere('(users.last_completed_focus_mode_at IS NULL OR users.last_completed_focus_mode_at < :threshold)', {
+      .andWhere('(user.last_completed_focus_mode_at IS NULL OR user.last_completed_focus_mode_at < :threshold)', {
         threshold: thresholdDate,
       })
       .getMany();

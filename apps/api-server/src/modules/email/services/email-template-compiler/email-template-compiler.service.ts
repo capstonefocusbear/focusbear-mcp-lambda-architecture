@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import mjml2html from 'mjml';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mjml2html = require('mjml');
 
 interface CompiledTemplate {
   subject: string;
@@ -34,9 +35,7 @@ export class EmailTemplateCompilerService {
   private partialCache = new Map<string, string>();
 
   constructor() {
-    this.logger.log('Initializing EmailTemplateCompilerService...');
     this.registerHandlebarsHelpers();
-    this.logger.log(`Handlebars helpers registered: ${Object.keys(Handlebars.helpers).join(', ')}`);
   }
 
   async compileProgressEmail(
@@ -44,41 +43,108 @@ export class EmailTemplateCompilerService {
     data: TemplateData,
   ): Promise<CompiledTemplate> {
     try {
+      // Sanitize template data to ensure no undefined values
+      const sanitizedData = {
+        ...data,
+        headerTitle: data.headerTitle || '',
+        headerSubtitle: data.headerSubtitle || '',
+        footerText: data.footerText || '',
+        unsubscribeText: data.unsubscribeText || '',
+        userName: data.userName || '',
+        apiUrl: data.apiUrl || '',
+        dashboardUrl: data.dashboardUrl || '',
+        manageEmailPreferencesLink: data.manageEmailPreferencesLink || '',
+        unsubscribeToken: data.unsubscribeToken || '',
+      };
+
       await this.loadPartials();
 
       const template = await this.getTemplate(templateType);
-
       const baseLayout = await this.getBaseLayout();
 
-      const contentHtml = template(data);
+      const contentHtml = template(sanitizedData);
+
+      if (!contentHtml || contentHtml.trim().length === 0) {
+        this.logger.error({ templateType, sanitizedData }, 'Content template compilation returned empty result');
+        throw new Error('Content template compilation returned empty result');
+      }
 
       const layoutData = {
-        ...data,
-        title: this.getEmailTitle(templateType, data),
-        preview: this.getEmailPreview(templateType, data),
+        ...sanitizedData,
+        title: this.getEmailTitle(templateType, sanitizedData),
+        preview: this.getEmailPreview(templateType, sanitizedData),
         content: contentHtml,
       };
 
       const fullHtml = baseLayout(layoutData);
 
-      const mjmlResult = mjml2html(fullHtml, {
-        validationLevel: 'soft',
-        fonts: {
-          Arial: 'https://fonts.googleapis.com/css?family=Arial',
-        },
-      });
-
-      if (mjmlResult.errors.length > 0) {
-        this.logger.warn('MJML compilation warnings:', mjmlResult.errors);
+      if (!fullHtml || fullHtml.trim().length === 0) {
+        this.logger.error({ templateType, layoutData }, 'Base layout compilation returned empty result');
+        throw new Error('Base layout compilation returned empty result');
       }
 
+      // Validate MJML structure before conversion
+      this.validateMjmlStructure(fullHtml, layoutData);
+
+      let mjmlResult;
+      try {
+        mjmlResult = mjml2html(fullHtml, {
+          validationLevel: 'soft',
+          keepComments: false,
+          minify: false,
+          fonts: {
+            Arial: 'https://fonts.googleapis.com/css?family=Arial',
+          },
+        });
+
+        if (mjmlResult.errors && mjmlResult.errors.length > 0) {
+          this.logger.error(
+            {
+              errors: mjmlResult.errors,
+              mjmlContent: fullHtml,
+              layoutData: JSON.stringify(layoutData, null, 2),
+            },
+            'MJML validation errors',
+          );
+          throw new Error(`MJML validation failed: ${JSON.stringify(mjmlResult.errors)}`);
+        }
+
+        if (mjmlResult.warnings && mjmlResult.warnings.length > 0) {
+          this.logger.warn({ warnings: mjmlResult.warnings }, 'MJML validation warnings');
+        }
+      } catch (mjmlError) {
+        this.logger.error(
+          {
+            error: mjmlError.message,
+            stack: mjmlError.stack,
+            mjmlSnippet: fullHtml.substring(0, 2000),
+            mjmlLength: fullHtml.length,
+            layoutData: JSON.stringify(layoutData, null, 2),
+            errorType: mjmlError.constructor.name,
+          },
+          'MJML conversion failed',
+        );
+        throw mjmlError;
+      }
       return {
         subject: this.getEmailSubject(templateType, data),
         html: mjmlResult.html,
         text: this.generateTextVersion(contentHtml, data),
       };
     } catch (error) {
-      this.logger.error('Failed to compile email template:', error);
+      this.logger.error(
+        {
+          templateType,
+          error: error.message,
+          stack: error.stack,
+          fullError: JSON.stringify(error, null, 2),
+          dataKeys: Object.keys(data),
+          availableHelpers: Object.keys(Handlebars.helpers),
+          errorName: error.name,
+          errorCause: error.cause,
+        },
+        'Failed to compile email template',
+      );
       throw new Error(`Email template compilation failed: ${error.message}`);
     }
   }
@@ -93,15 +159,18 @@ export class EmailTemplateCompilerService {
 
       return result;
     } catch (error) {
-      this.logger.error(`Failed to compile page template: ${templateName}`, {
-        error: error.message,
-        stack: error.stack,
-        name: error.name,
-        templateName,
-        dataKeys: Object.keys(data),
-        availableHelpers: Object.keys(Handlebars.helpers),
-        timestamp: new Date().toISOString(),
-      });
+      this.logger.error(
+        {
+          error: error.message,
+          stack: error.stack,
+          name: error.name,
+          templateName,
+          dataKeys: Object.keys(data),
+          availableHelpers: Object.keys(Handlebars.helpers),
+          timestamp: new Date().toISOString(),
+        },
+        `Failed to compile page template: ${templateName}`,
+      );
       throw new Error(`Page template compilation failed: ${error.message}`);
     }
   }
@@ -198,23 +267,63 @@ export class EmailTemplateCompilerService {
 
   private registerHandlebarsHelpers(): void {
     Handlebars.registerHelper('concat', (...args) => {
-      return args.slice(0, -1).join('');
+      try {
+        // Remove the last argument (Handlebars options object)
+        const values = args.slice(0, -1);
+
+        // Filter out undefined/null and convert to strings
+        const result = values
+          .filter((val) => val !== undefined && val !== null)
+          .map((val) => String(val))
+          .join('');
+
+        return result;
+      } catch (error) {
+        this.logger.error({ error: error.message, stack: error.stack }, 'Concat helper error');
+        return '';
+      }
     });
 
     Handlebars.registerHelper('round', (value: number) => {
-      return Math.round(value * 100);
+      try {
+        const result = Math.round(value * 100);
+        return result;
+      } catch (error) {
+        this.logger.error({ error: error.message, value }, 'Round helper error');
+        return 0;
+      }
     });
+
     // Less than
     Handlebars.registerHelper('lt', (a: number, b: number) => {
-      return a < b;
+      try {
+        const result = a < b;
+        return result;
+      } catch (error) {
+        this.logger.error({ error: error.message, a, b }, 'LT helper error');
+        return false;
+      }
     });
+
     // Greater than
     Handlebars.registerHelper('gt', (a: number, b: number) => {
-      return a > b;
+      try {
+        const result = a > b;
+        return result;
+      } catch (error) {
+        this.logger.error({ error: error.message, a, b }, 'GT helper error');
+        return false;
+      }
     });
 
     Handlebars.registerHelper('eq', (a: any, b: any) => {
-      return a === b;
+      try {
+        const result = a === b;
+        return result;
+      } catch (error) {
+        this.logger.error({ error: error.message, a, b }, 'EQ helper error');
+        return false;
+      }
     });
   }
 
@@ -246,6 +355,58 @@ export class EmailTemplateCompilerService {
     };
 
     return subjects[templateType] || '🐻 Focus Bear Update';
+  }
+
+  private validateMjmlStructure(mjmlContent: string, layoutData: any): void {
+    // Check for empty or undefined content
+    if (!mjmlContent || mjmlContent.trim().length === 0) {
+      this.logger.error('MJML content is empty');
+      throw new Error('Generated MJML content is empty');
+    }
+
+    // Check for basic MJML structure
+    if (!mjmlContent.includes('<mjml>') || !mjmlContent.includes('</mjml>')) {
+      this.logger.error('Missing MJML root tags');
+      throw new Error('Generated content is missing MJML root tags');
+    }
+
+    // Check for required MJML sections (using regex to handle attributes)
+    const requiredTags = [
+      { name: '<mj-head>', regex: /<mj-head[^>]*>/i },
+      { name: '<mj-body>', regex: /<mj-body[^>]*>/i },
+      { name: '<mj-section>', regex: /<mj-section[^>]*>/i },
+      { name: '<mj-column>', regex: /<mj-column[^>]*>/i },
+    ];
+    const missingTags = requiredTags.filter((tag) => !tag.regex.test(mjmlContent)).map((tag) => tag.name);
+    if (missingTags.length > 0) {
+      this.logger.error({ missingTags, fullMjml: mjmlContent }, 'Missing required MJML tags');
+      throw new Error(`Missing required MJML tags: ${missingTags.join(', ')}`);
+    }
+
+    // Check for unclosed or malformed Handlebars expressions
+    const unclosedHandlebars = mjmlContent.match(/\{\{[^}]*$/gm);
+    if (unclosedHandlebars) {
+      this.logger.error({ unclosedHandlebars }, 'Unclosed Handlebars expressions found');
+      throw new Error(`Unclosed Handlebars expressions: ${unclosedHandlebars.join(', ')}`);
+    }
+
+    // Check for undefined placeholders that weren't replaced
+    const undefinedPlaceholders = mjmlContent.match(/\{\{\s*undefined\s*\}\}/g);
+    if (undefinedPlaceholders) {
+      this.logger.error({ undefinedPlaceholders }, 'Undefined placeholders found in MJML');
+      throw new Error(`Undefined placeholders in MJML: ${undefinedPlaceholders.join(', ')}`);
+    }
+
+    // Validate key template variables were replaced
+    const templateVars = ['headerTitle', 'headerSubtitle', 'footerText', 'content'];
+    const unreplacedVars = templateVars.filter(
+      (varName) => mjmlContent.includes(`{{${varName}}}`) || mjmlContent.includes(`{{ ${varName} }}`),
+    );
+    if (unreplacedVars.length > 0) {
+      this.logger.error({ unreplacedVars }, 'Template variables not replaced');
+      this.logger.error({ layoutData: JSON.stringify(layoutData, null, 2) }, 'Layout data provided');
+      throw new Error(`Template variables not replaced: ${unreplacedVars.join(', ')}`);
+    }
   }
 
   private generateTextVersion(html: string, data: TemplateData): string {

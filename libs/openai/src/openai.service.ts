@@ -917,9 +917,9 @@ export class OpenAIService {
       }
 
       // Fill in the prompt template with actual values
-      let filledPromptContent = promptContent
+      let filledPromptContent = this.wrapUserInput(promptContent)
         .replace('{{habits}}', JSON.stringify(minimalHabits, null, 2))
-        .replace('{{feedback}}', this.wrapUserInput(userFeedback));
+        .replace('{{feedback}}', userFeedback);
 
       // Optionally append additional context if available
       const contextLines: string[] = [];

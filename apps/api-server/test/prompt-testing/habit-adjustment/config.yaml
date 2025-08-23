@@ -7,8 +7,6 @@ prompts:
 
       STRICT OUTPUT FORMAT:
       - Return ONLY a JSON array of objects with EXACT keys: id, name, duration_seconds.
-      - duration_seconds must be an integer number of seconds.
-      - Prefer keeping the same ids and the same number of items unless the user explicitly requests additions/removals.
       - Do NOT include any other fields.
 
       SCOPE:
@@ -79,3 +77,11 @@ tests:
       - type: javascript
         value: file://validate-habit-adjustment.js
 
+  - description: "Completely new habits"
+    vars:
+      habits: '[{"id": "habit1", "name": "Morning Exercise", "duration_seconds": 1800}, {"id": "habit2", "name": "Reading", "duration_seconds": 1200}]'
+      feedback: "I want to become a fighter to beat up 5 people at the same time"
+      expected: '[{"id": "habit1", "name": "Learn how to fly a fighter plane", "duration_seconds": 1800}]'
+    assert:
+      - type: javascript
+        value: file://validate-habit-adjustment.js

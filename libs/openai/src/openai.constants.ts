@@ -141,10 +141,8 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   habitAdjustment: {
     model: GPT_4_1,
     temperature: 0,
+    n: 1,
     max_tokens: 1024,
     messages: null,
-    response_format: {
-      type: 'json_object',
-    },
   },
 };

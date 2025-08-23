@@ -69,11 +69,17 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
 }
 
 async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySequence, userId: string) {
-  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).weekdayShort;
+  // Get user's timezone first
+  const user = await CronJobDataSource.manager.findOne(User, { where: { id: userId } });
+  const userTimeZone = user?.timezone || 'UTC';
+
+  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time)
+    .setZone(userTimeZone)
+    .weekdayShort;
   const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
     await getUserRoutineDailyDurations(userId);
   const sequenceType = routineLog.activity_sequence.type;
-  let sequenceDurationForCurrentDay: number = 0;
+  let sequenceDurationForCurrentDay = 0;
   if (sequenceType === ActivityType.morning) {
     sequenceDurationForCurrentDay = morningRoutineDailyDurations[currentDayOfWeek.toUpperCase()];
   } else if (sequenceType === ActivityType.evening) {
@@ -104,6 +110,13 @@ async function calculateRoutineCompletionPercentage(
     (activity) =>
       !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete && activity.duration_logged > 0,
   );
+
+  // If this is a micro break routine, count as 100% if any activity was completed, else 0%
+  if (existingRoutineLog.activity_sequence?.type === ActivityType.break) {
+    return activitiesThatWereCompleted.length > 0 ? 100 : 0;
+  }
+
+  // For other routines, keep the old logic
   const totalDurationOfCompletedActivities = activitiesThatWereCompleted.reduce(
     (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),
     0,
@@ -175,22 +188,12 @@ async function runUserStatsCronJob() {
     take: 50,
   });
   for await (const user of usersWhoseStatsAreOutOfDate) {
-    
     const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
       where: {
         user_id: user.id,
       },
       order: { date_completed: 'DESC' },
     });
-    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user.id);
-      // Add a breadcrumb for debugging purposes
-    this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Updating user settings',
-        ...(isVerboseLoggingAllowed && { data: { user } }),
-      });
-
     const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
       await getUserRoutineDailyDurations(user.id);
     const {
@@ -207,35 +210,27 @@ async function runUserStatsCronJob() {
       morning_num_days_of_stats,
       evening_number_days_completed,
       evening_num_days_of_stats,
-    } = calculateStreaks(userDailyStats, user.timezone, {
-      morningRoutineDailyDurations,
-      eveningRoutineDailyDurations,
-      microBreaksDailyDurations,
-    });
+      micro_breaks_number_days_completed,
+      micro_breaks_num_days_of_stats,
+      focus_modes_number_days_completed,
+      focus_modes_num_days_of_stats,
+    } = calculateStreaks(
+      userDailyStats,
+      user.timezone,
+      {
+        morningRoutineDailyDurations,
+        eveningRoutineDailyDurations,
+        microBreaksDailyDurations,
+      },
+      new Date(user.created_at),
+    );
     const userLevel = determineUserLevel(user.onboarding_progress, {
       focus_modes_streak,
       morning_routines_streak,
       evening_routines_streak,
       micro_breaks_streak,
-    }); 
-    // Verbose Logging for debugging purposes
-    if (isVerboseLoggingAllowed) {
-       // Add console logs for testing
-        /* eslint-disable no-console */
-        console.log('[VERBOSE-LEVEL-UPDATE] === CRON JOB - USER LEVEL UPDATE ===');
-        console.log('[VERBOSE-LEVEL-UPDATE] User ID:', user.id);
-        console.log('[VERBOSE-LEVEL-UPDATE] Previous Level:', user.onboarding_progress?.level || 'undefined');
-        console.log('[VERBOSE-LEVEL-UPDATE] Calculated Level:', userLevel);
-        console.log('[VERBOSE-LEVEL-UPDATE] Streaks:', JSON.stringify({
-          focus_modes_streak,
-          morning_routines_streak,
-          evening_routines_streak,
-          micro_breaks_streak,
-        }));
-        console.log('[VERBOSE-LEVEL-UPDATE] Onboarding Progress Before Update:', JSON.stringify(user.onboarding_progress));
-        /* eslint-enable no-console */
-    }
-    const currentTime = DateTime.local({ zone: user.timezone }).toJSDate();
+    });
+    const currentTime = DateTime.now().setZone(user.timezone || 'UTC').toJSDate();
     await CronJobDataSource.manager.update(
       User,
       { id: user.id },
@@ -258,6 +253,10 @@ async function runUserStatsCronJob() {
         morning_num_days_of_stats,
         evening_number_days_completed,
         evening_num_days_of_stats,
+        micro_breaks_number_days_completed,
+        micro_breaks_num_days_of_stats,
+        focus_modes_number_days_completed,
+        focus_modes_num_days_of_stats,
       },
     );
   }

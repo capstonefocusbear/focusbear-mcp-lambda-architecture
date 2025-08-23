@@ -29,6 +29,7 @@ import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { UpdateMemberExpiryDateDto } from '../../dto/update-member-expiry-date.dto';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { DailyStatsRepository } from '../../../user/repositories/user-daily-stats.repository';
 import { AddTeamManuallyDto } from '../../dto/add-team-member-manually.dto';
 import { InvitationStatus } from '../../domain/invitation-status.enum';
 import { RemoveTeamMemberDto } from '../../dto/remove-team-member.dto';
@@ -56,6 +57,7 @@ export class TeamManagementService {
     private readonly teamToMemberRepository: TeamToMemberRepository,
     private readonly teamToAdminRepository: TeamToAdminRepository,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly dailyStatsRepository: DailyStatsRepository,
   ) {}
 
   async bulkDeleteTeamMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
@@ -300,10 +302,13 @@ export class TeamManagementService {
     this.validateMemberAction(admins, adminId);
 
     // Get all registered member IDs
-    const registeredMemberIds = members.map((member) => member.member_id).filter(Boolean);
+    const adminIds = admins.map((admin) => admin.admin_id).filter(Boolean);
+    const memberIds = members.map((member) => member.member_id).filter(Boolean);
+
+    const allMemberIds = [...new Set([...memberIds, ...adminIds])];
 
     // Get user details for registered members
-    const userDetails = await this.getUserDetails(members, registeredMemberIds);
+    const userDetails = await this.getUserDetails(members, allMemberIds);
 
     // return all members including unregistered members
     return {
@@ -325,12 +330,17 @@ export class TeamManagementService {
     return members.map((member, index) => {
       const userDetail = member.member_id ? userDetails.find((u) => u.id === member.member_id) : undefined;
       const last90DaysDailyStats = allMembersDailyStats?.[index];
-
       const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
+      const totalFocusModesHours =
+        parseFloat(
+          last90DaysDailyStats
+            ?.reduce((acc, curr) => acc + curr.total_hours_spent_in_focus_sessions, 0)
+            .toFixed(DECIMAL_PRECISION),
+        ) || 0;
       return {
         id: member.member_id,
         email: member.email,
@@ -346,6 +356,7 @@ export class TeamManagementService {
         micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
         evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
         focus_modes_percent_number_day_of_stats_completed,
+        total_hours_in_focus_sessions: totalFocusModesHours,
         invitation_status: member.invitation_status,
         invitation_sent_at: member.invitation_sent_at,
         invitation_send_count: member.invitation_send_count,

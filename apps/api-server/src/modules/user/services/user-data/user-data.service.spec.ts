@@ -19,7 +19,7 @@ import {
 import { UserRepository } from '../../repositories/user.repository';
 import { UserDataService } from './user-data.service';
 import { dummyRevenueCatCustomer, QueueMock, userDummy } from '../../../../../test/dummies';
-import { LanguageOptions } from '../../domain/language-options.enum';
+import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 // Mock axios and set the type

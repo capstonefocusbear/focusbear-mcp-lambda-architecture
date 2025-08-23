@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -9,12 +10,29 @@ import {
   IsOptional,
   IsString,
   Min,
+  Validate,
   ValidateNested,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationArguments,
 } from 'class-validator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
-import { LanguageOptions } from '../domain/language-options.enum';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 import { UpdateCustomRoutineDto } from './update-custom-routine.dto.dto';
 import { IsValidCutoffTime } from '../../../shared/decorators/is-valid-cutoff-time.decorator';
+
+@ValidatorConstraint({ name: 'NotIdenticalTimes', async: false })
+export class NotIdenticalTimesConstraint implements ValidatorConstraintInterface {
+  validate(shutdownTime: string, args: ValidationArguments) {
+    const object = args.object as any;
+    return shutdownTime !== object.startup_time;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  defaultMessage(args: ValidationArguments) {
+    return 'Shutdown time cannot be the same as startup time';
+  }
+}
 
 export class UpdateUserSettingsDto {
   @IsNotEmpty()
@@ -25,6 +43,7 @@ export class UpdateUserSettingsDto {
   @IsNotEmpty()
   @IsString()
   @IsMilitaryTime()
+  @Validate(NotIdenticalTimesConstraint)
   shutdown_time?: string;
 
   @IsOptional()

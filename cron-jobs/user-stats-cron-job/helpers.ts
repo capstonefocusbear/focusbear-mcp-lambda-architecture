@@ -49,11 +49,18 @@ export function determineUserLevel(
     const areEnoughEveningRoutinesCompleted = evening_routines_streak >= currentLevelBeingChecked.routines;
     const areEnoughFocusModesCompleted = focus_modes_streak >= currentLevelBeingChecked.focus_modes;
     const areEnoughMicroBreakRoutinesCompleted = micro_breaks_streak >= currentLevelBeingChecked.routines;
+
+    // Adding the condition for micro breaks streak progression
+    // Level 1 and Level 2 users can bypass the micro breaks requirement
+    // Micro breaks only required from Level 3 and above
+    const isMicroBreaksBypassLevel = currentLevelBeingChecked.level === 1 || currentLevelBeingChecked.level === 2;
+    const microBreaksRequirementMet = isMicroBreaksBypassLevel || areEnoughMicroBreakRoutinesCompleted;
+
     if (
       areEnoughMorningRoutinesCompleted &&
       areEnoughEveningRoutinesCompleted &&
       areEnoughFocusModesCompleted &&
-      areEnoughMicroBreakRoutinesCompleted
+      microBreaksRequirementMet
     ) {
       level = currentLevelBeingChecked.level;
       currentLevelIndex += 1;
@@ -64,15 +71,35 @@ export function determineUserLevel(
   return level;
 }
 
-export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
-  const currentDate = new Date();
-  currentDate.setDate(currentDate.getDate() - 90);
+export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], userCreatedAt: Date, timeZone) {
+  // Convert userCreatedAt to DateTime in the same timezone and normalize to start of day
+  const userSignupDate = DateTime.fromJSDate(userCreatedAt).setZone(timeZone).startOf('day');
 
-  const distinctUserDailyStatObject = userDailyStats.reduce((acc, current) => {
-    const createdAtDate = new Date(current.created_at).toISOString().split('T')[0];
-    if (!acc[createdAtDate]) {
-      acc[createdAtDate] = {
-        created_at: current.created_at,
+  let currentDate = DateTime.now().setZone(timeZone);
+  // Normalise to midnight to avoid updating stats for the current time (missing one day)
+  const ninetyDaysAgo = currentDate.minus({ days: 90 }).startOf('day');
+
+  // Calculate days since user signup (for users < 90 days old), use Luxon for consistent timezone-aware calculation
+  const daysSinceSignup = Math.floor(currentDate.diff(userSignupDate, 'days').days);
+
+  // Determine the proper time window for this user
+  const timeWindowStart = daysSinceSignup >= 90 ? ninetyDaysAgo : userSignupDate;
+
+  // 1) Filter first using zone-aware comparison
+  const statsInWindow = userDailyStats.filter((stat) => {
+    const statDay = DateTime.fromJSDate(stat.date_completed).setZone(timeZone).startOf('day');
+    return statDay >= timeWindowStart; // Filter out stats outside the time window
+  });
+
+
+  // 2) Deduplicate / aggregate only the filtered rows, keying by local (user) date
+  const distinctUserDailyStatObject = statsInWindow.reduce((acc, current) => {
+    const localDateTime = DateTime.fromJSDate(current.date_completed).setZone(timeZone); // for date_completed value
+    const localDateKey = localDateTime.toISODate(); // YYYY-MM-DD in user zone as key
+    if (!acc[localDateKey]) {
+      acc[localDateKey] = {
+        // store the timezone-adjusted timestamp instead of original UTC
+        date_completed: localDateTime.toISO(),
         morning_routine_completion_percentage: current.morning_routine_completion_percentage,
         evening_routine_completion_percentage: current.evening_routine_completion_percentage,
         micro_breaks_routine_completion_percentage: current.micro_breaks_routine_completion_percentage,
@@ -80,49 +107,50 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
         seconds_spent_doing_breaks: current.seconds_spent_doing_breaks,
       };
     } else {
-      acc[createdAtDate].morning_routine_completion_percentage = Math.max(
-        acc[createdAtDate].morning_routine_completion_percentage,
+      acc[localDateKey].morning_routine_completion_percentage = Math.max(
+        acc[localDateKey].morning_routine_completion_percentage,
         current.morning_routine_completion_percentage,
       );
-      acc[createdAtDate].evening_routine_completion_percentage = Math.max(
-        acc[createdAtDate].evening_routine_completion_percentage,
+      acc[localDateKey].evening_routine_completion_percentage = Math.max(
+        acc[localDateKey].evening_routine_completion_percentage,
         current.evening_routine_completion_percentage,
       );
-      acc[createdAtDate].micro_breaks_routine_completion_percentage = Math.max(
-        acc[createdAtDate].micro_breaks_routine_completion_percentage,
+      acc[localDateKey].micro_breaks_routine_completion_percentage = Math.max(
+        acc[localDateKey].micro_breaks_routine_completion_percentage,
         current.micro_breaks_routine_completion_percentage,
       );
-      acc[createdAtDate].focus_modes_completed = Math.max(
-        acc[createdAtDate].focus_modes_completed,
+      acc[localDateKey].focus_modes_completed = Math.max(
+        acc[localDateKey].focus_modes_completed,
         current.focus_modes_completed,
       );
-      acc[createdAtDate].seconds_spent_doing_breaks = Math.max(
-        acc[createdAtDate].seconds_spent_doing_breaks,
+      acc[localDateKey].seconds_spent_doing_breaks = Math.max(
+        acc[localDateKey].seconds_spent_doing_breaks,
         current.seconds_spent_doing_breaks,
       );
     }
     return acc;
   }, {});
-
   const distinctUserDailyStats = Object.values(distinctUserDailyStatObject);
 
-  const userDailyStatsFromLast90Days = distinctUserDailyStats.filter((f) => new Date(f.created_at) >= currentDate);
-
-  const daysWhereMorningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
+  const daysWhereMorningRoutinesWereCompletedIn90Days = distinctUserDailyStats.filter(
     (dailyStat) => dailyStat.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
 
-  const daysWhereEveningRoutinesWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
+  const daysWhereEveningRoutinesWereCompletedIn90Days = distinctUserDailyStats.filter(
     (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
 
-  const daysWhereMicroBreaksWereCompletedIn90Days = userDailyStatsFromLast90Days.filter(
-    (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
+  const daysWhereMicroBreaksWereCompletedIn90Days = distinctUserDailyStats.filter(
+    (dailyStat) => dailyStat.seconds_spent_doing_breaks > 0,
   );
 
-  const num_days_of_stats = userDailyStatsFromLast90Days.length;
+  const daysWhereFocusModesWereCompletedIn90Days = distinctUserDailyStats.filter(
+    (dailyStat) => dailyStat.focus_modes_completed > 0, // At least one focus mode completed in the day
+  );
 
-  const number_days_completed = userDailyStatsFromLast90Days.filter(
+  const num_days_of_stats = daysSinceSignup >= 90 ? 90 : daysSinceSignup;
+
+  const number_days_completed = distinctUserDailyStats.filter(
     (f) =>
       f.morning_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD ||
       f.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD ||
@@ -134,13 +162,9 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[]) {
     daysWhereMorningRoutinesWereCompletedIn90Days,
     daysWhereEveningRoutinesWereCompletedIn90Days,
     daysWhereMicroBreaksWereCompletedIn90Days,
+    daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
-    userDailyStatsFromLast90Days,
-    morning_number_days_completed: daysWhereMorningRoutinesWereCompletedIn90Days.length,
-    morning_num_days_of_stats: num_days_of_stats,
-    evening_number_days_completed: daysWhereEveningRoutinesWereCompletedIn90Days.length,
-    evening_num_days_of_stats: num_days_of_stats,
   };
 }
 
@@ -153,7 +177,7 @@ function getLatestStatAndStartOfPrevDay(userDailyStats: DailyStats[], timeZone: 
     return followingCompletedDate - precedingCompletedDate;
   });
   const latestStatStartTime = orderedStats[0]?.date_completed;
-  const startOfPreviousDay = DateTime.local({ zone: timeZone }).minus({ days: 1 }).startOf('day').toJSDate();
+  const startOfPreviousDay = DateTime.now().setZone(timeZone).minus({ days: 1 }).startOf('day').toJSDate();
   return { latestStatStartTime, startOfPreviousDay };
 }
 
@@ -171,10 +195,10 @@ export function calculateStreakForRoutine(
   }
   let streak = 0;
   let index = 0;
-  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
+  let currentDate = DateTime.fromJSDate(userDailyStats[index].date_completed).setZone(timeZone);
   while (index < userDailyStats.length) {
     const currentStat = userDailyStats[index];
-    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    const currentStatDate = DateTime.fromJSDate(currentStat.date_completed).setZone(timeZone);
     const correctedPrevDayIndex = (currentDate.weekday - 1 + 6) % 7; // // luxon currentDate.weekday is 1-7 for Monday-Sunday
     const prevDayOfWeek = DAYS_OF_WEEK[correctedPrevDayIndex];
     const doesPrevDayHasActivities = dailySequenceDurations[prevDayOfWeek] > 0;
@@ -203,7 +227,7 @@ const getStartOfPrevWeekDay = (startOfPrevDay: Date) => {
   return dayToCheck.startOf('day').toJSDate();
 };
 
-export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZone: string) {
+export function calculateStreakForWeekdaysOnly(userDailyStats: DailyStats[], timeZone: string) {
   if (userDailyStats.length === 0) {
     return 0;
   }
@@ -218,11 +242,11 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   let streak = 0;
   let index = 0;
 
-  let currentDate = DateTime.fromMillis(userDailyStats[index].date_completed.valueOf()).setZone(timeZone);
+  let currentDate = DateTime.fromJSDate(userDailyStats[index].date_completed).setZone(timeZone);
 
   while (index < userDailyStats.length) {
     const currentStat = userDailyStats[index];
-    const currentStatDate = DateTime.fromMillis(currentStat.date_completed.valueOf()).setZone(timeZone);
+    const currentStatDate = DateTime.fromJSDate(currentStat.date_completed).setZone(timeZone);
     const isNonWeekday = !LUXON_WEEK_DAYS.includes(currentStatDate.weekday);
 
     if (currentStatDate.hasSame(currentDate, 'day') || isNonWeekday) {
@@ -242,18 +266,28 @@ export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZ
   return isValidStreak(streak) ? streak : 0;
 }
 
+export function calculateStreakForFocusModes(userDailyStats: DailyStats[], timeZone: string) {
+  return calculateStreakForWeekdaysOnly(userDailyStats, timeZone);
+}
+
+export function calculateStreakForMicroBreaks(userDailyStats: DailyStats[], timeZone: string) {
+  return calculateStreakForWeekdaysOnly(userDailyStats, timeZone);
+}
+
 export function calculateStreaks(
   userDailyStats: DailyStats[],
   timeZone: string,
   {
     morningRoutineDailyDurations,
     eveningRoutineDailyDurations,
-    microBreaksDailyDurations,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    microBreaksDailyDurations, // Not used in simplified micro break logic
   }: {
     morningRoutineDailyDurations: DailySequenceDurations;
     eveningRoutineDailyDurations: DailySequenceDurations;
     microBreaksDailyDurations: DailySequenceDurations;
   },
+  userCreatedAt: Date,
 ): TasksStreaksResponse {
   const daysWhereFocusModesWereCompleted = userDailyStats.filter((dailyStat) => dailyStat.focus_modes_completed > 0);
   const daysWhereMorningRoutinesWereCompleted = userDailyStats.filter(
@@ -262,8 +296,9 @@ export function calculateStreaks(
   const daysWhereEveningRoutinesWereCompleted = userDailyStats.filter(
     (dailyStat) => dailyStat.evening_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
   );
+  // Simplified micro break completion logic: if any time was spent doing breaks that day, count it as completed
   const daysWhereMicroBreaksWereCompleted = userDailyStats.filter(
-    (dailyStat) => dailyStat.micro_breaks_routine_completion_percentage >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
+    (dailyStat) => dailyStat.seconds_spent_doing_breaks > 0,
   );
 
   // calculate the tasks complete in 90 days (percent)
@@ -271,14 +306,16 @@ export function calculateStreaks(
     daysWhereEveningRoutinesWereCompletedIn90Days,
     daysWhereMicroBreaksWereCompletedIn90Days,
     daysWhereMorningRoutinesWereCompletedIn90Days,
+    daysWhereFocusModesWereCompletedIn90Days,
     num_days_of_stats,
     number_days_completed,
-    userDailyStatsFromLast90Days,
-    morning_number_days_completed,
-    morning_num_days_of_stats,
-    evening_number_days_completed,
-    evening_num_days_of_stats,
-  } = calculateRoutineStatsIn90Days(userDailyStats);
+  } = calculateRoutineStatsIn90Days(userDailyStats, userCreatedAt, timeZone);
+
+  // Calculate day counts directly from the filtered arrays
+  const morning_number_days_completed = daysWhereMorningRoutinesWereCompletedIn90Days.length;
+  const evening_number_days_completed = daysWhereEveningRoutinesWereCompletedIn90Days.length;
+  const micro_breaks_number_days_completed = daysWhereMicroBreaksWereCompletedIn90Days.length;
+  const focus_modes_number_days_completed = daysWhereFocusModesWereCompletedIn90Days.length;
 
   const focus_modes_streak = calculateStreakForFocusModes(daysWhereFocusModesWereCompleted, timeZone);
   const morning_routines_streak = calculateStreakForRoutine(
@@ -292,11 +329,7 @@ export function calculateStreaks(
     eveningRoutineDailyDurations,
   );
 
-  const micro_breaks_streak = calculateStreakForRoutine(
-    daysWhereMicroBreaksWereCompleted,
-    timeZone,
-    microBreaksDailyDurations,
-  );
+  const micro_breaks_streak = calculateStreakForMicroBreaks(daysWhereMicroBreaksWereCompleted, timeZone);
 
   return {
     focus_modes_streak: isValidStreak(focus_modes_streak) ? focus_modes_streak : 0,
@@ -304,23 +337,27 @@ export function calculateStreaks(
     evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
     micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
     percent_morning_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_evening_routines_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereEveningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     percent_micro_breaks_streak_complete_in_90days:
-      userDailyStatsFromLast90Days.length > 0
-        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / userDailyStatsFromLast90Days.length) * 100)
+      num_days_of_stats > 0
+        ? Math.round((daysWhereMicroBreaksWereCompletedIn90Days.length / num_days_of_stats) * 100)
         : 0,
     num_days_of_stats,
     number_days_completed,
     morning_number_days_completed,
-    morning_num_days_of_stats,
+    morning_num_days_of_stats: num_days_of_stats,
     evening_number_days_completed,
-    evening_num_days_of_stats,
+    evening_num_days_of_stats: num_days_of_stats,
+    micro_breaks_number_days_completed,
+    micro_breaks_num_days_of_stats: num_days_of_stats,
+    focus_modes_number_days_completed,
+    focus_modes_num_days_of_stats: num_days_of_stats,
   };
 }
 

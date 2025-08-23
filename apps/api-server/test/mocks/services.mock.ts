@@ -171,6 +171,7 @@ export const SentryServiceMock = {
   captureException: jest.fn(),
   addBreadcrumb: jest.fn(),
   instance: () => SentryServiceMock,
+  captureEvent: jest.fn(),
 };
 
 export const FocusModeServiceMock = {
@@ -203,6 +204,7 @@ export const OpenAIServiceMock = {
   checkIfUrlIsSafeToUse: jest.fn(),
   checkIfAppIsSafeToUse: jest.fn(),
   generateEmojiForActivity: jest.fn(),
+  adjustHabitsWithAi: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

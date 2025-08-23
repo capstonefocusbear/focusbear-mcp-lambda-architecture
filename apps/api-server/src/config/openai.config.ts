@@ -28,4 +28,7 @@ export const openAiConfig = registerAs('openai', () => ({
   screenTimeImageOcr: {
     apiKey: process.env.OPENAI_SCREEN_TIME_IMAGE_OCR_API_KEY || process.env.OPENAI_API_KEY,
   },
+  habitAdjustment: {
+    apiKey: process.env.OPENAI_HABIT_ADJUSTMENT_API_KEY || process.env.OPENAI_API_KEY,
+  },
 }));

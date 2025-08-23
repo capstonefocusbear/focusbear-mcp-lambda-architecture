@@ -17,7 +17,7 @@ import { Passport } from '../../src/modules/auth/domain/passport.model';
 import { User } from '../../src/modules/user/entities/user.entity';
 import { ActivityType } from '../../src/modules/activity/domain/activity-type.enum';
 import { Device } from '../../src/modules/device/entities/device.entity';
-import { OperatingSystem } from '../../src/modules/device/domain/operating-system.enum';
+import { OperatingSystem } from '../../src/shared/domain/operating-system.enum';
 import { ActivitySequence } from '../../src/modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../../src/modules/activity/entities/activity.entity';
 import { LogSummaryType } from '../../src/modules/activity/domain/log-summary-type.enum';
@@ -40,7 +40,6 @@ import {
   MACOS_OPERATING_SYSTEM,
   MAC_CLIENT_ID,
   MOBILE_CLIENT_ID,
-  UNKNOWN_OPERATING_SYSTEM,
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
 } from '../../../../libs/auth0/src/auth0.constants';
@@ -2076,17 +2075,18 @@ export const DummyTasksStreaksResponse = {
     micro_breaks_streak: 2,
   },
   LEVEL_ONE: {
-    // Set streaks to minimum for level 1
+    // Set streaks to minimum for level 1 (micro breaks not required)
     focus_modes_streak: 1,
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Changed: micro breaks not required for level 1
   },
   LEVEL_TWO: {
-    focus_modes_streak: 1, // Just below the threshold for level 2
+    // Just below the threshold for level 2 (should stay at level 1)
+    focus_modes_streak: 1, // Below level 2 requirement (2)
     morning_routines_streak: 1,
     evening_routines_streak: 1,
-    micro_breaks_streak: 1,
+    micro_breaks_streak: 0, // Not required for levels 1-2 anyway
   },
   LEVEL_MAX: {
     focus_modes_streak: 100, // High streaks
@@ -2293,7 +2293,7 @@ export const dummyDeviceCredentials = [
   },
   {
     id: 'dev_ghi520',
-    device_name: UNKNOWN_OPERATING_SYSTEM,
+    device_name: OperatingSystem.Unknown,
     type: 'public_key' as DeviceCredentialTypeEnum,
     user_id: 'auth0|1234567890',
     client_id: 'unknown4934023',

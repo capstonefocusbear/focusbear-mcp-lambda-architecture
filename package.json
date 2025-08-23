@@ -153,7 +153,8 @@
     "cross-spawn": "7.0.6",
     "undici": "6.21.3",
     "brace-expansion": "^2.0.2",
-    "form-data": "^4.0.4"
+    "form-data": "^4.0.4",
+    "tmp": "0.2.4"
   },
   "resolutions": {
     "auth0": {
@@ -168,7 +169,8 @@
     "cross-spawn": "7.0.6",
     "undici": "6.21.3",
     "brace-expansion": "^2.0.2",
-    "form-data": "^4.0.4"
+    "form-data": "^4.0.4",
+    "tmp": "0.2.4"
   },
   "husky": {
     "hooks": {
@@ -186,6 +188,9 @@
   "jest": {
     "setupFilesAfterEnv": [
       "jest-extended/all"
+    ],
+    "setupFiles": [
+      "<rootDir>/apps/api-server/test/mocks/index.ts"
     ],
     "moduleFileExtensions": [
       "js",
@@ -230,6 +235,8 @@
       "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
       "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
+      "^@app/gemini(|/.*)$": "<rootDir>/libs/gemini/src/$1",
+      "^@api-server(|/.*)$": "<rootDir>/apps/api-server/src/$1",
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs",
       "sanitize-url": "<rootDir>/node_modules/@braintree/sanitize-url/dist/index.js"
     },

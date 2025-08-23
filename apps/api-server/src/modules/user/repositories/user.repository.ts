@@ -290,6 +290,10 @@ export class UserRepository extends BaseRepository<User> {
       morning_num_days_of_stats,
       evening_number_days_completed,
       evening_num_days_of_stats,
+      micro_breaks_number_days_completed,
+      micro_breaks_num_days_of_stats,
+      focus_modes_number_days_completed,
+      focus_modes_num_days_of_stats,
       num_days_of_stats,
       number_days_completed,
       item_count,
@@ -325,11 +329,16 @@ export class UserRepository extends BaseRepository<User> {
         users.morning_num_days_of_stats,
         users.evening_number_days_completed,
         users.evening_num_days_of_stats,
+        users.micro_breaks_number_days_completed,
+        users.micro_breaks_num_days_of_stats,
+        users.focus_modes_number_days_completed,
+        users.focus_modes_num_days_of_stats,
         users.num_days_of_stats,
         users.number_days_completed,
         COUNT(daily_stats.id) AS item_count
         FROM users
-        LEFT JOIN daily_stats ON daily_stats.user_id = users.id
+        LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
+          AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
         WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
         GROUP BY users.id
         ) as result
@@ -358,6 +367,10 @@ export class UserRepository extends BaseRepository<User> {
           morning_num_days_of_stats,
           evening_number_days_completed,
           evening_num_days_of_stats,
+          micro_breaks_number_days_completed,
+          micro_breaks_num_days_of_stats,
+          focus_modes_number_days_completed,
+          focus_modes_num_days_of_stats,
           num_days_of_stats,
           number_days_completed,
           item_count,
@@ -393,12 +406,17 @@ export class UserRepository extends BaseRepository<User> {
             users.morning_num_days_of_stats,
             users.evening_number_days_completed,
             users.evening_num_days_of_stats,
+            users.micro_breaks_number_days_completed,
+            users.micro_breaks_num_days_of_stats,
+            users.focus_modes_number_days_completed,
+            users.focus_modes_num_days_of_stats,
             users.num_days_of_stats,
             users.number_days_completed,
             COUNT(daily_stats.id) AS item_count
             FROM 
                 users
-            LEFT JOIN daily_stats ON daily_stats.user_id = users.id
+            LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
+              AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
             WHERE 
               users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
             GROUP BY users.id
@@ -419,6 +437,10 @@ export class UserRepository extends BaseRepository<User> {
         morning_num_days_of_stats,
         evening_number_days_completed,
         evening_num_days_of_stats,
+        micro_breaks_number_days_completed,
+        micro_breaks_num_days_of_stats,
+        focus_modes_number_days_completed,
+        focus_modes_num_days_of_stats,
         num_days_of_stats,
         number_days_completed,
         rank

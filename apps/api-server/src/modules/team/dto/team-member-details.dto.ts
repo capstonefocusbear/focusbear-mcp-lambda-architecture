@@ -44,6 +44,9 @@ export class GetTeamMembersDetailsDto {
   @ApiProperty({ example: 67.2 })
   focus_modes_percent_number_day_of_stats_completed: number;
 
+  @ApiProperty({ example: 10.5 })
+  total_hours_in_focus_sessions: number;
+
   @ApiProperty({ example: InvitationStatus.PENDING, enum: InvitationStatus })
   invitation_status: InvitationStatus;
 

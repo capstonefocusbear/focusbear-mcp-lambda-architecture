@@ -29,9 +29,11 @@ import {
   TeamToMemberRepositoryMock,
   TeamToAdminRepositoryMock,
   UserDailyStatsServiceMock,
+  DailyStatsRepositoryMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
+import { DailyStatsRepository } from '../../../user/repositories/user-daily-stats.repository';
 import { TeamManagementService } from './team-management.service';
 import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
@@ -83,6 +85,7 @@ describe('TeamManagementService', () => {
           useValue: SentryServiceMock,
         },
         UserDailyStatsService,
+        DailyStatsRepository,
       ],
     })
       .overrideProvider(UserRepository)
@@ -107,6 +110,8 @@ describe('TeamManagementService', () => {
       .useValue(TeamToAdminRepositoryMock)
       .overrideProvider(UserDailyStatsService)
       .useValue(UserDailyStatsServiceMock)
+      .overrideProvider(DailyStatsRepository)
+      .useValue(DailyStatsRepositoryMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -912,7 +917,7 @@ describe('TeamManagementService', () => {
       const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
       expect(response.admins).toHaveLength(1);
-      expect(response.members).toHaveLength(2);
+      expect(response.members).toHaveLength(3); // include admins that have user licenses in members section
     });
 
     it('positive: should handle team with no members', async () => {

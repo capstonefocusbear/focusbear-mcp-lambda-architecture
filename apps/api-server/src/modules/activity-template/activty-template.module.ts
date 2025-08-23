@@ -1,4 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityTemplateService } from './services/activity-template.service';
 import { ActivityTemplateRepository } from './repository/activity-template.repository';
@@ -9,6 +10,7 @@ import { ActivityLibraryService } from './services/activity-library.service';
 import { UserModule } from '../user/user.module';
 import { ActivityModule } from '../activity/activity.module';
 import { ActivityTemplateTagRepository } from './repository/activity-template-tag.repository';
+import { OpenAIModule } from '../../../../../libs/openai/src';
 
 @Module({
   providers: [
@@ -20,6 +22,15 @@ import { ActivityTemplateTagRepository } from './repository/activity-template-ta
   ],
   exports: [ActivityTemplateParserService, ActivityTemplateService, ActivityTemplateRepository, ActivityLibraryService],
   controllers: [ActivityLibraryController],
-  imports: [TypeOrmModule.forFeature([ActivityTemplate]), forwardRef(() => UserModule), ActivityModule],
+  imports: [
+    TypeOrmModule.forFeature([ActivityTemplate]),
+    forwardRef(() => UserModule),
+    ActivityModule,
+    OpenAIModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('openai'),
+    }),
+  ],
 })
 export class ActivityTemplateModule {}

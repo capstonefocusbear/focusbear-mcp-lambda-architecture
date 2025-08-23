@@ -32,7 +32,7 @@ import { HelperCommonService } from '../../../helper/services/helper-common/help
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { UserService } from '../user/user.service';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';
-import { LanguageOptions } from '../../domain/language-options.enum';
+import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { ActivitySequence } from '../../../activity/entities/activity-sequence.entity';
 import { FunctionCallParametersDto } from '../../../ai/dto/function-call-parameters.dto';
 import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
@@ -177,10 +177,11 @@ export class UserSettingsService {
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
 
-      const { utc_shutdown_time, utc_startup_time } = this.calculateUserUTCRoutineTimes(
+      const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
         shutdown_time,
         user.timezone,
+        user.id,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
@@ -344,7 +345,42 @@ export class UserSettingsService {
     }
   }
 
-  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string) {
+  calculateUserUTCRoutineTimes(startupTime: string, shutdownTime: string, timezone: string, userId?: string) {
+    if (startupTime === shutdownTime) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'warning',
+        message: 'Identical startup/shutdown times detected',
+        data: {
+          userId,
+          timezone,
+          startup_time: startupTime,
+          shutdown_time: shutdownTime,
+        },
+      });
+
+      if (startupTime === '00:00') {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Auto-fixing identical midnight times to defaults',
+          data: {
+            userId,
+            original_startup_time: startupTime,
+            original_shutdown_time: shutdownTime,
+            fixed_startup_time: '06:00',
+            fixed_shutdown_time: '22:00',
+          },
+        });
+        /* eslint-disable no-param-reassign */
+        startupTime = '06:00';
+        shutdownTime = '22:00';
+        /* eslint-enable no-param-reassign */
+      } else {
+        throw new BadRequestException('Startup and shutdown times cannot be identical');
+      }
+    }
+
     const [startHours, startMinutes] = startupTime.split(':');
     const [shutdownHours, shutdownMinutes] = shutdownTime.split(':');
     const userStartupTime = DateTime.local({ zone: timezone }).set({

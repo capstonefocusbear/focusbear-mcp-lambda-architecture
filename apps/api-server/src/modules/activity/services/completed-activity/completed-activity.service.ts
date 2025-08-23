@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  OnModuleInit,
   UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
@@ -63,7 +64,7 @@ import { UserService } from '../../../user/services/user/user.service';
 import { UserTimesResponse } from '../../domain/user-times-response.model';
 
 @Injectable()
-export class CompletedActivityService {
+export class CompletedActivityService implements OnModuleInit {
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
     @Inject(forwardRef(() => DeviceService))
@@ -86,6 +87,55 @@ export class CompletedActivityService {
     private readonly userService: UserService,
     private readonly i18nService: I18nService,
   ) {}
+
+  async onModuleInit() {
+    await this.validatePusherConfiguration();
+  }
+
+  private async validatePusherConfiguration(): Promise<void> {
+    try {
+      // Validate Pusher Channels configuration
+      if (!this.pusher) {
+        throw new Error('Pusher Channels service not available');
+      }
+
+      // Validate Pusher Beams configuration
+      if (!this.pusherBeams) {
+        throw new Error('Pusher Beams service not available');
+      }
+
+      console.log('Pusher services initialized successfully:', {
+        pusher: !!this.pusher,
+        pusherBeams: !!this.pusherBeams,
+        timestamp: new Date().toISOString(),
+      });
+
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'Pusher services configuration validated successfully',
+        data: {
+          pusher_available: !!this.pusher,
+          pusher_beams_available: !!this.pusherBeams,
+        },
+      });
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        tags: { service: 'pusher', operation: 'configuration_validation' },
+        extra: {
+          error_message: error.message,
+          error_stack: error.stack,
+        },
+      });
+
+      console.error('Pusher services configuration validation failed:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 
   async completeActivity(
     completedActivity: CreateCompletedActivityDto,
@@ -1151,10 +1201,8 @@ export class CompletedActivityService {
       // upsert completed activity records if activity is part morning or evening routine
       // in case activity gets done for second time one same date
       [completed_activity_log, completed_choice_log] = await Promise.all([
-        this.completedActivityRepository.upsert(completedItem, ['activity_id', 'completed_sequence_id']),
-        has_choices
-          ? this.completedActivityRepository.upsert(completedChoice, ['activity_id', 'completed_sequence_id'])
-          : null,
+        this.completedActivityRepository.upsertActivity(completedItem),
+        has_choices ? this.completedActivityRepository.upsertActivity(completedChoice) : null,
       ]);
     }
     return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });
@@ -1167,30 +1215,128 @@ export class CompletedActivityService {
     activity: Activity,
     language: string,
   ): Promise<void> {
+    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
+
+    if (isVerboseLoggingAllowed) {
+      console.log('Broadcasting completion event for user:', {
+        user_id,
+        completed_activity_id,
+        activity_id: activity.id,
+        activity_name: activity.activity_data.name,
+        language,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
-    await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
-    const title = this.i18nService.t('common.activity_completed', { lang: language });
-    const body = this.i18nService.t('common.activity_completed_message', {
-      lang: language,
-      args: { activity_name: activity.activity_data.name },
-    });
-    const publishRequest = this.pusherBeams.createBeamsPublishRequest({
-      title,
-      body,
-      pushData,
-      should_send_only_data_for_android: true,
-    });
+
+    // Pusher Channels broadcast with error handling
+    try {
+      if (isVerboseLoggingAllowed) {
+        console.log('Triggering Pusher Channels event:', {
+          channel: `private-${user_id}`,
+          event: 'activity-completed',
+          pushData,
+        });
+      }
+
+      await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
+
+      if (isVerboseLoggingAllowed) {
+        console.log('Pusher Channels trigger successful for user:', user_id);
+      }
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        tags: { service: 'pusher-channels', operation: 'trigger' },
+        extra: {
+          user_id,
+          channel: `private-${user_id}`,
+          event: 'activity-completed',
+          pushData,
+          error_message: error.message,
+          error_stack: error.stack,
+        },
+      });
+
+      if (isVerboseLoggingAllowed) {
+        console.error('Pusher Channels trigger failed:', {
+          user_id,
+          error: error.message,
+          stack: error.stack,
+          channel: `private-${user_id}`,
+          event: 'activity-completed',
+        });
+      }
+    }
+
+    // Pusher Beams notification with error handling
+    try {
+      const title = this.i18nService.t('common.activity_completed', { lang: language });
+      const body = this.i18nService.t('common.activity_completed_message', {
+        lang: language,
+        args: { activity_name: activity.activity_data.name },
+      });
+
+      const publishRequest = this.pusherBeams.createBeamsPublishRequest({
+        title,
+        body,
+        pushData,
+        should_send_only_data_for_android: true,
+      });
+
+      if (isVerboseLoggingAllowed) {
+        console.log('Publishing Pusher Beams notification:', {
+          user_id,
+          title,
+          body,
+          publishRequest: JSON.stringify(publishRequest),
+        });
+      }
+
+      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
+      await this.pusherBeams.publishToUsers([user_id], publishRequest);
+
+      if (isVerboseLoggingAllowed) {
+        console.log('Pusher Beams notification published successfully for user:', user_id);
+      }
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        tags: { service: 'pusher-beams', operation: 'publishToUsers' },
+        extra: {
+          user_id,
+          title: this.i18nService.t('common.activity_completed', { lang: language }),
+          body: this.i18nService.t('common.activity_completed_message', {
+            lang: language,
+            args: { activity_name: activity.activity_data.name },
+          }),
+          pushData,
+          error_message: error.message,
+          error_stack: error.stack,
+        },
+      });
+
+      if (isVerboseLoggingAllowed) {
+        console.error('Pusher Beams notification failed:', {
+          user_id,
+          error: error.message,
+          stack: error.stack,
+          activity_name: activity.activity_data.name,
+        });
+      }
+    }
+
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
-      message: 'Broadcasting completion event to Pusher',
+      message: 'Broadcasting completion event to Pusher completed',
       data: {
         user_id,
         pushData,
+        activity_name: activity.activity_data.name,
       },
     });
-    console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
-    await this.pusherBeams.publishToUsers([user_id], publishRequest);
   }
 
   async getStatsByActivityPerDay(

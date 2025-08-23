@@ -28,11 +28,13 @@ export enum OpenAIKeyType {
   BRAIN_DUMP_CONVERSION = 'brainDumpConversion',
   SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
+  HABIT_ADJUSTMENT = 'habitAdjustment',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
 export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
+export const HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/habit-adjustment/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
@@ -122,7 +124,7 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
 
   createMotivation: {
     model: GPT_4_1_MINI,
-    temperature: 0.7,
+    temperature: 1,
     n: 1,
     messages: null,
     stream: true,
@@ -130,6 +132,16 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
 
   analyzeImage: {
     model: GPT_4_1,
+    messages: null,
+    response_format: {
+      type: 'json_object',
+    },
+  },
+
+  habitAdjustment: {
+    model: GPT_4_1,
+    temperature: 0,
+    max_tokens: 1024,
     messages: null,
     response_format: {
       type: 'json_object',

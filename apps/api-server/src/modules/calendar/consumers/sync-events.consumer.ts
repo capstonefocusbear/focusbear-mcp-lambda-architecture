@@ -1,7 +1,8 @@
 /* eslint-disable linebreak-style */
+import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
 import { In, MoreThan } from 'typeorm';
 import { DateTime } from 'luxon';
 import axios from 'axios';
@@ -17,15 +18,46 @@ import { Notification } from '../../notification/entities/notification.entity';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { PlatformIntegration } from '../../platform-integrations/entities/platform-integration.entity';
 import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/platform-integration-metadata.dto';
+import {
+  InvalidRefreshTokenError,
+  InsufficientPermissionsError,
+  TransientNetworkError,
+  TokenRefreshError,
+  AuthenticationFailedError,
+} from '../errors/oauth.errors';
+import { ReauthService } from '../services/reauth.service';
 
 @Processor(BullQueues.SYNC_EVENTS)
 export class SyncEventsConsumer extends WorkerHost {
+  private readonly logger = new Logger(SyncEventsConsumer.name);
+
+  // Circuit breaker pattern properties
+  private readonly userFailures = new Map<
+    string,
+    {
+      count: number;
+      firstFailure: Date;
+      lastFailure: Date;
+    }
+  >();
+
+  // Circuit breaker configuration
+  private readonly FAILURE_THRESHOLD = 5;
+
+  private readonly FAILURE_WINDOW_MS = 3600000; // 1 hour
+
+  private readonly BLOCK_DURATION_MS = 86400000; // 24 hours
+
+  // Token refresh configuration
+  private readonly TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly notificationRepository: NotificationRepository,
     private readonly calendarRepository: CalendarRepository,
     private readonly platformIntegrationRepository: PlatformIntegrationRepository,
     protected readonly configService: ConfigService,
+    private readonly reauthService: ReauthService,
   ) {
     super();
   }
@@ -34,6 +66,13 @@ export class SyncEventsConsumer extends WorkerHost {
     const {
       data: { platform, userId, account },
     } = job;
+
+    // Check if user is blocked by circuit breaker
+    if (this.isUserBlocked(userId)) {
+      // Don't retry blocked users
+      throw new UnrecoverableError(`User ${userId} is blocked due to repeated failures`);
+    }
+
     switch (job.name) {
       case BullWorkers.SYNC_EVENTS_FOR_PLATFORM:
         try {
@@ -91,8 +130,46 @@ export class SyncEventsConsumer extends WorkerHost {
 
           await this.notificationRepository.orm.save(eventsToSync);
           await this.notificationRepository.orm.delete({ external_id: In(eventsToRemoveIds) });
+
+          // Reset failure count on success
+          this.resetUserFailureCount(userId);
         } catch (error) {
-          this.sentryService.instance().captureException(error, { level: 'error' });
+          // Track failures for circuit breaker
+          this.incrementUserFailureCount(userId);
+
+          // Determine if error is recoverable
+          if (
+            error instanceof InvalidRefreshTokenError ||
+            error instanceof InsufficientPermissionsError ||
+            error instanceof AuthenticationFailedError
+          ) {
+            // These errors require user action - don't retry
+            throw new UnrecoverableError(error.message);
+          }
+
+          if (error instanceof TransientNetworkError) {
+            // Network errors should retry with backoff
+            throw error; // Will trigger BullMQ retry
+          }
+
+          // Check if we've exceeded retry attempts
+          if (job.attemptsStarted >= (job.opts?.attempts || 3)) {
+            // Final attempt failed
+            this.sentryService.instance().captureException(error, {
+              level: 'error',
+              extra: {
+                userId,
+                platform,
+                account,
+                attemptsMade: job.attemptsStarted,
+                jobId: job.id,
+              },
+            });
+            throw new UnrecoverableError(`Max retries exceeded: ${error.message}`);
+          }
+
+          // Log and re-throw for retry
+          this.sentryService.instance().captureException(error, { level: 'warning' });
           console.error(
             'Problem with calendar events. Error in sync-events-for-platform queued job: ',
             userId,
@@ -100,6 +177,7 @@ export class SyncEventsConsumer extends WorkerHost {
             platform,
             account,
           );
+          throw error;
         }
         break;
 
@@ -160,6 +238,55 @@ export class SyncEventsConsumer extends WorkerHost {
     const oauth2Client = new Google.auth.OAuth2(clientId, clientSecret, callbackUrl);
     oauth2Client.setCredentials(record.data);
 
+    // Add token event listener for monitoring token refreshes
+    oauth2Client.on('tokens', (tokens) => {
+      // Log token refresh for monitoring
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'OAuth2 tokens refreshed automatically',
+        data: {
+          userId,
+          account,
+          hasRefreshToken: !!tokens.refresh_token,
+          expiryDate: tokens.expiry_date,
+          expiresIn: tokens.expiry_date ? tokens.expiry_date - DateTime.local().toMillis() : 'unknown',
+        },
+      });
+
+      // Store new tokens asynchronously (fire-and-forget to avoid blocking)
+      this.updateStoredTokens(userId, account, tokens, platform).catch((error) => {
+        console.error('Failed to update stored tokens:', error);
+        this.sentryService.instance().captureException(error, {
+          level: 'warning',
+          extra: { userId, account, platform },
+        });
+      });
+    });
+
+    // Validate required scopes before API calls
+    const REQUIRED_SCOPES = [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events.readonly',
+    ];
+
+    // Validate scopes if available
+    if ((record.data as any).scope) {
+      const grantedScopes = (record.data as any).scope.split(' ');
+      const missingScopes = REQUIRED_SCOPES.filter((scope) => !grantedScopes.includes(scope));
+
+      if (missingScopes.length > 0) {
+        await this.reauthService.markIntegrationForReauth(userId, account, {
+          reason: 'missing_scopes',
+          required: REQUIRED_SCOPES,
+          granted: grantedScopes,
+          missing: missingScopes,
+        });
+
+        throw new UnrecoverableError(`Missing required scopes: ${missingScopes.join(', ')}`);
+      }
+    }
+
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',
@@ -168,37 +295,171 @@ export class SyncEventsConsumer extends WorkerHost {
         platform,
         hasAccessToken: !!record.data.access_token,
         hasRefreshToken: !!record.data.refresh_token,
-        expiryDate: DateTime.fromMillis(record.data.expiry_date).toISO(),
+        expiryDate: record.data.expiry_date ? DateTime.fromMillis(record.data.expiry_date).toISO() : null,
       },
     });
 
-    if (!record.data.expiry_date || record.data.expiry_date < DateTime.local().toMillis() + 1000) {
+    // Proactive token refresh with configurable buffer to prevent expiration
+    const now = DateTime.local().toMillis();
+    const shouldRefresh = !record.data.expiry_date || record.data.expiry_date < now + this.TOKEN_REFRESH_BUFFER_MS;
+
+    if (shouldRefresh) {
       if (!record.data.refresh_token) {
-        throw new Error('No refresh token found');
+        // No refresh token available - mark for reauth
+        await this.reauthService.markIntegrationForReauth(userId, account, {
+          reason: 'no_refresh_token',
+          hasExpired: !record.data.expiry_date || record.data.expiry_date < now,
+          tokenExpiryDate: record.data.expiry_date,
+        });
+        throw new InvalidRefreshTokenError(
+          `No refresh token available for user ${userId}. Re-authorization required.`,
+          { userId, account, hasRefreshToken: false },
+        );
       }
-      // Access token is expired
-      // Refresh access token using refresh token already provided
+
+      // Log proactive refresh attempt
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'Proactive token refresh initiated',
+        data: {
+          userId,
+          account,
+          expiryDate: record.data.expiry_date,
+          timeUntilExpiry: record.data.expiry_date ? record.data.expiry_date - now : 'unknown',
+          isProactive: record.data.expiry_date > now,
+        },
+      });
+
+      // Perform token refresh
       try {
         const response = await oauth2Client.refreshAccessToken();
         const authToken: PlatformIntegrationMetadataDto = response.credentials;
 
-        // Update your storage with new tokens
-        const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
-        const platformIntegration = new PlatformIntegration({
-          ...existingRecord,
-          data: authToken,
-        });
-        await this.platformIntegrationRepository.orm.save(platformIntegration);
+        // Update stored tokens with success logging
+        await this.updateStoredTokens(userId, account, authToken, platform);
 
         // Set the new credentials
         oauth2Client.setCredentials(authToken);
+
+        // Log successful proactive refresh
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Proactive token refresh completed successfully',
+          data: {
+            userId,
+            account,
+            previousExpiryDate: record.data.expiry_date,
+            newExpiryDate: authToken.expiry_date,
+            refreshedBeforeExpiry: record.data.expiry_date > now,
+          },
+        });
       } catch (error) {
-        throw new Error('Error refreshing access token');
+        const googleError = error as any;
+        const errorDetails = {
+          statusCode: googleError?.response?.status,
+          errorCode: googleError?.response?.data?.error,
+          errorDescription: googleError?.response?.data?.error_description,
+          message: googleError?.message,
+          userId,
+          account,
+          hasRefreshToken: !!record.data.refresh_token,
+          tokenExpiryDate: record.data.expiry_date,
+        };
+
+        // Log to Sentry with full context including proactive refresh info
+        this.sentryService.instance().captureException(error, {
+          level: 'error',
+          extra: {
+            ...errorDetails,
+            isProactiveRefresh: record.data.expiry_date > now,
+            refreshBuffer: this.TOKEN_REFRESH_BUFFER_MS,
+            timeUntilExpiry: record.data.expiry_date ? record.data.expiry_date - now : 'unknown',
+          },
+          fingerprint: ['google-oauth', googleError?.response?.data?.error || 'unknown'],
+        });
+
+        // Throw specific error types for different failures
+        if (googleError?.response?.status === 401 && googleError?.response?.data?.error === 'invalid_grant') {
+          // Refresh token is invalid - user must re-authenticate
+          await this.reauthService.markIntegrationForReauth(userId, account, {
+            reason: 'invalid_refresh_token',
+            errorCode: googleError?.response?.data?.error,
+            statusCode: googleError?.response?.status,
+          });
+
+          throw new InvalidRefreshTokenError(
+            `Refresh token invalid for user ${userId}. Re-authorization required.`,
+            errorDetails,
+          );
+        }
+
+        if (googleError?.code === 'ENOTFOUND' || googleError?.code === 'ETIMEDOUT') {
+          // Network error - should retry
+          throw new TransientNetworkError(`Network error refreshing token: ${googleError.message}`, errorDetails);
+        }
+
+        // Unknown error - preserve original message
+        throw new TokenRefreshError(
+          `Failed to refresh Google token: ${googleError?.message || 'Unknown error'}`,
+          errorDetails,
+        );
       }
     }
 
     const calendar = Google.calendar({ version: 'v3', auth: oauth2Client });
-    const { data: googleCalendars } = await calendar.calendarList.list();
+
+    let googleCalendars;
+    try {
+      const response = await calendar.calendarList.list();
+      googleCalendars = response.data;
+    } catch (error) {
+      const apiError = error as any;
+
+      if (apiError?.response?.status === 403) {
+        // Insufficient permissions - user needs to re-authorize
+        const missingScope = apiError?.response?.data?.error_description;
+
+        await this.reauthService.markIntegrationForReauth(userId, account, {
+          reason: 'insufficient_permissions',
+          missingScope,
+          currentScopes: (record.data as any).scope,
+        });
+
+        this.sentryService.instance().captureException(error, {
+          level: 'warning',
+          extra: {
+            userId,
+            account,
+            missingScope,
+            currentScopes: (record.data as any).scope,
+          },
+          fingerprint: ['google-calendar', 'insufficient-permissions'],
+        });
+
+        throw new InsufficientPermissionsError(
+          `Calendar access denied for user ${userId}. Missing scope: ${missingScope}`,
+          { userId, account, missingScope },
+        );
+      }
+
+      if (apiError?.response?.status === 401) {
+        // Token invalid even after refresh - critical failure
+        await this.reauthService.markIntegrationForReauth(userId, account, {
+          reason: 'authentication_failed',
+          statusCode: apiError?.response?.status,
+        });
+
+        throw new AuthenticationFailedError(`Authentication failed after token refresh for user ${userId}`, {
+          userId,
+          account,
+        });
+      }
+
+      throw error;
+    }
+
     const { items: calendarList } = googleCalendars;
     const calendarsFromGoogleIds: string[] = calendarList.map((googleCalendar) => googleCalendar.id);
     const syncedGoogleCalendars = await this.calendarRepository.orm.find({
@@ -354,5 +615,101 @@ export class SyncEventsConsumer extends WorkerHost {
       event_ends: new Date(event_ends),
       external_metadata: event,
     });
+  }
+
+  private isUserBlocked(userId: string): boolean {
+    const failures = this.userFailures.get(userId);
+    if (!failures) return false;
+
+    // Check if blocked period has expired
+    const blockExpiry = failures.lastFailure.getTime() + this.BLOCK_DURATION_MS;
+    if (Date.now() > blockExpiry) {
+      this.userFailures.delete(userId);
+      return false;
+    }
+
+    // Check if user has exceeded failure threshold
+    return failures.count >= this.FAILURE_THRESHOLD;
+  }
+
+  private incrementUserFailureCount(userId: string): void {
+    const existing = this.userFailures.get(userId) || {
+      count: 0,
+      firstFailure: new Date(),
+      lastFailure: new Date(),
+    };
+
+    // Reset if outside failure window
+    if (Date.now() - existing.firstFailure.getTime() > this.FAILURE_WINDOW_MS) {
+      existing.count = 0;
+      existing.firstFailure = new Date();
+    }
+
+    existing.count++;
+    existing.lastFailure = new Date();
+    this.userFailures.set(userId, existing);
+
+    // Log if threshold reached
+    if (existing.count === this.FAILURE_THRESHOLD) {
+      this.logger.warn(`User ${userId} blocked due to ${this.FAILURE_THRESHOLD} failures`);
+
+      // Log to Sentry
+      this.sentryService.instance().captureMessage(`User ${userId} circuit breaker activated`, 'warning');
+    }
+  }
+
+  private resetUserFailureCount(userId: string): void {
+    this.userFailures.delete(userId);
+  }
+
+  // Helper method to update stored OAuth tokens
+  private async updateStoredTokens(userId: string, account: string, tokens: any, platform: string): Promise<void> {
+    try {
+      const existingRecord = await this.getPlatformIntegrationData(platform, userId, account);
+
+      if (!existingRecord) {
+        throw new Error(`No existing platform integration found for user ${userId}, account ${account}`);
+      }
+
+      // Merge new token data with existing data, preserving other fields
+      const updatedData = {
+        ...existingRecord.data,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || existingRecord.data.refresh_token, // Keep existing if not provided
+        expiry_date: tokens.expiry_date,
+        // Preserve any existing fields not related to tokens
+        requires_reauth: false, // Clear reauth flag on successful refresh
+      };
+
+      const platformIntegration = new PlatformIntegration({
+        ...existingRecord,
+        data: updatedData,
+      });
+
+      await this.platformIntegrationRepository.orm.save(platformIntegration);
+
+      // Log successful token update
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'OAuth tokens updated in database',
+        data: {
+          userId,
+          account,
+          platform,
+          expiryDate: tokens.expiry_date,
+          hasRefreshToken: !!(tokens.refresh_token || existingRecord.data.refresh_token),
+        },
+      });
+    } catch (error) {
+      // Log error but don't throw - token updates shouldn't block sync
+      console.error('Failed to update stored tokens:', error);
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        extra: { userId, account, platform, tokenData: tokens },
+        fingerprint: ['token-update-failure'],
+      });
+      throw error; // Re-throw for caller to handle
+    }
   }
 }

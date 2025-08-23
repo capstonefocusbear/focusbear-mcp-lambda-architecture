@@ -104,7 +104,288 @@ $ npm run test:cov
 4. Enter the email address and password for the new user.
 5. You can view the newly created user in the **User Management** section.
 
-### Obtain an API access token
+### Service Account Management for External Integrations
+
+Service accounts are machine-to-machine (M2M) applications that can authenticate with the Focus Bear API using JWT tokens. They are designed for external integrations like team usage bots, cron jobs, and other automated services.
+
+#### 1. Understanding Service Account Architecture
+
+Service accounts use Auth0's client credentials flow to obtain JWT tokens with specific permissions. Each service account is scoped to a particular team and has defined actions (admin, read, write).
+
+**Key Components:**
+
+- **API**: Defines the service scope (e.g., team management, cron jobs)
+- **Permissions**: Granular access control using team IDs as scope
+- **Applications**: Client applications with unique client ID and secret
+- **JWT Tokens**: Machine-to-machine tokens with embedded permissions
+
+#### 2. Setting Up Auth0 for Service Accounts
+
+##### Step 1: Create a New API
+
+1. Navigate to **Auth0 Dashboard** → **Applications** → **APIs**
+2. Click **Create API**
+3. Configure the API:
+   - **Name**: `Team Management API` (or your service name)
+   - **Identifier**: `https://focusbear.io/team-management` //update this based on the routes
+   - **Signing Algorithm**: `RS256`
+   - **Token Expiration**: Set appropriate expiration (e.g., 24 hours)
+
+##### Step 2: Create Permissions
+
+1. In your API, go to **Permissions** tab
+2. Create permissions using the format: `{action}:{teamId}`
+   - **Admin permission**: `admin:{teamId}` (full access)
+   - **Read permission**: `read:{teamId}` (read-only access)
+   - **Write permission**: `write:{teamId}` (read/write access)
+
+**Example permissions:**
+
+```
+admin:b9f1bce9-c130-4141-80d6-3bde32a66542
+read:b9f1bce9-c130-4141-80d6-3bde32a66542
+write:b9f1bce9-c130-4141-80d6-3bde32a66542
+```
+
+##### Step 3: Create a Machine-to-Machine Application
+
+1. Navigate to **Auth0 Dashboard** → **Applications**
+2. Click **Create Application**
+3. Select **Machine to Machine Applications**
+4. Configure the application:
+   - **Name**: `Team Usage Bot` (or descriptive name)
+   - **Client ID**: Auto-generated (save this)
+   - **Client Secret**: Auto-generated (save this)
+5. **Authorize the API**: Select your Team Management API
+6. **Authorize Permissions**: Select the specific permissions this app needs
+
+#### 3. Using Service Account JWT Tokens
+
+##### Obtaining a Token
+
+```bash
+curl -X POST https://{AUTH0_DOMAIN}/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "YOUR_CLIENT_ID",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "audience": "https://focusbear.io/team-management",
+    "grant_type": "client_credentials",
+    "scope": "read:b9f1bce9-c130-4141-80d6-3bde32a66542"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "scope": "read:b9f1bce9-c130-4141-80d6-3bde32a66542"
+}
+```
+
+##### Making Authenticated Requests
+
+```bash
+curl -X GET "http://localhost:5038/service-account/team-management/all-members?team_id=b9f1bce9-c130-4141-80d6-3bde32a66542" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### 4. Service Account Security Features
+
+**Token Validation:**
+
+- JWT tokens are validated using RS256 algorithm
+- Audience (`aud`) must match `https://focusbear.io/team-management`
+- Grant type must be `client-credentials` (M2M)
+- Scope format is validated: `{action}:{teamId}`
+
+**Permission Enforcement:**
+
+- Team ID in scope must match requested team ID
+- Action permissions are enforced at the controller level
+- Tokens are immutable and cannot be modified after creation
+
+**Available Actions:**
+
+- `admin`: Full access to team management endpoints
+- `read`: Read-only access to team data
+- `write`: Read and write access (future implementation)
+
+#### 5. Example Use Cases
+
+**Team Usage Bot:**
+
+```typescript
+// Example bot implementation
+const token = await getServiceAccountToken();
+const response = await fetch('/service-account/team-management/all-members?team_id=TEAM_ID', {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+#### 6. Best Practices
+
+1. **Token Management:**
+
+   - Store client secrets securely (never in code)
+   - Implement token caching with proper expiration handling
+   - Rotate client secrets regularly
+
+2. **Permission Design:**
+
+   - Use least privilege principle
+   - Create separate applications for different services
+   - Use descriptive permission names
+
+3. **Error Handling:**
+
+   - Handle 401 (Unauthorized) for invalid tokens
+   - Handle 403 (Forbidden) for insufficient permissions
+   - Implement proper retry logic for token expiration
+
+#### 7. Development Guidelines for Service Account Routes
+
+When creating new service account endpoints, follow these architectural patterns to maintain consistency and security:
+
+##### Controller Structure
+
+- **Separate Controllers**: Never combine service account routes with user controllers
+- **Naming Convention**: Use `ServiceAccount{Feature}Controller` naming pattern
+- **Route Prefix**: All service account routes must use `/service-account` prefix
+- **File Location**: Place in `src/modules/{feature}/controllers/` directory
+
+**Example Structure:**
+
+```
+src/modules/team/controllers/
+├── team.controller.ts                    # User-facing team routes
+├── service-account-team-management.controller.ts  # Service account routes
+└── service-account-team-analytics.controller.ts   # Additional service account routes
+```
+
+##### Route Implementation Pattern
+
+```typescript
+@Controller('service-account/team-management')
+@ApiTags('service-account-team-management')
+@UseGuards(ServiceAccountAuth)
+@ApiSecurity('Auth0AccessToken')
+export class ServiceAccountTeamManagementController {
+  @Get('/all-members')
+  @ApiQuery({
+    name: 'team_id',
+    description: 'The UUID of the team to retrieve members for',
+    required: true,
+    type: String,
+  })
+  async getAllMembers(
+    @Query() { team_id }: { team_id: string },
+    @ServiceAccountContext() { serviceAccount }: ServiceAccountPassport,
+  ): Promise<GetAllTeamMembersResponseDto> {
+    // Validate permissions
+    if (!['admin', 'read'].includes(serviceAccount.action)) {
+      throw new UnauthorizedException('Insufficient permissions: read access required');
+    }
+
+    // Validate team access
+    if (team_id !== serviceAccount.teamId) {
+      throw new ForbiddenException('Access denied: team ID mismatch');
+    }
+
+    return this.serviceAccountService.getAllTeamMembers(team_id);
+  }
+}
+```
+
+##### Required Decorators and Guards
+
+1. **@UseGuards(ServiceAccountAuth)**: Enforces service account authentication
+2. **@ServiceAccountContext()**: Extracts service account context from JWT token
+3. **@ApiSecurity('Auth0AccessToken')**: Documents the authentication requirement
+4. **@ApiTags('service-account-{feature}')**: Groups related endpoints in Swagger
+
+##### Permission Validation
+
+Always implement these security checks in your service account endpoints:
+
+```typescript
+// 1. Check action permissions
+if (!['admin', 'read'].includes(serviceAccount.action)) {
+  throw new UnauthorizedException('Insufficient permissions: read access required');
+}
+
+// 2. Validate team access (if applicable)
+if (team_id !== serviceAccount.teamId) {
+  throw new ForbiddenException('Access denied: team ID mismatch');
+}
+
+// 3. Validate scope format
+if (!serviceAccount.scope.match(/^(admin|read|write):[a-f0-9-]+$/)) {
+  throw new UnauthorizedException('Invalid scope format');
+}
+```
+
+##### Adding New Actions
+
+To extend the service account system with new action types (e.g., `analytics`, `billing`, `moderation`), you need to modify both the Auth0 configuration and the controller validation logic.
+
+**Step 1: Auth0 Configuration**
+
+1. **Create New Permissions in Auth0:**
+
+   - Navigate to your API → **Permissions** tab
+   - Add new permissions using the format: `{newAction}:{teamId}`
+   - Example: `analytics:b9f1bce9-c130-4141-80d6-3bde32a66542`
+
+2. **Update Application Scopes:**
+   - Go to your Machine-to-Machine application
+   - In **Authorized APIs**, select your API
+   - Check the new permissions you want to grant to this application
+
+**Step 2: Controller Validation Updates**
+
+1. **Update Permission Validation Logic:**
+
+   ```typescript
+   // Before: Only admin and read actions
+   if (!['admin', 'read'].includes(serviceAccount.action)) {
+     throw new UnauthorizedException('Insufficient permissions: read access required');
+   }
+
+   // After: Include new actions
+   if (!['admin', 'read', 'analytics', 'billing'].includes(serviceAccount.action)) {
+     throw new UnauthorizedException('Insufficient permissions: analytics access required');
+   }
+   ```
+
+2. **Update Scope Validation Regex:**
+
+   ```typescript
+   // Before: Only admin, read, write actions
+   if (!serviceAccount.scope.match(/^(admin|read|write):[a-f0-9-]+$/)) {
+     throw new UnauthorizedException('Invalid scope format');
+   }
+
+   // After: Include new actions
+   if (!serviceAccount.scope.match(/^(admin|read|write|analytics|billing):[a-f0-9-]+$/)) {
+     throw new UnauthorizedException('Invalid scope format');
+   }
+   ```
+
+##### Service Layer
+
+- Create dedicated service classes for service account operations
+- Use naming pattern: `ServiceAccount{Feature}Service`
+- Implement proper error handling and logging
+- Keep business logic separate from authentication logic
+
+### Obtain an API access token for Users
 
 #### Option 1
 
@@ -313,19 +594,22 @@ To add a new non-secret environment variable for backend services, follow these 
 > - Non-secret environment variables are stored in SSM Parameter Store, while secrets are stored in AWS Secrets Manager.
 > - The `provided` field in `BACKEND_ENV_PATHS` indicates whether the value is provided by the infrastructure (`false`) or manually set (`true`).
 
-
 ## Guide for New Developers
 
 Welcome to the FocusBear backend repository! This guide will help you get started with development and make your first contribution.
 
 ### Getting Started
-#### Prerequisites: 
+
+#### Prerequisites:
+
 Make sure you follow the [Project local setup](#project-local-setup) instructions to set up your local environment.
 
 ### Troubleshooting Common Issues
+
 #### Database Connection Issues
 
 **Problem**: "Connection refused" or "Database does not exist"
+
 ```bash
 # Solution: Restart Docker containers (use "-d" to run in detached mode)
 docker-compose down
@@ -338,6 +622,7 @@ docker-compose ps
 #### Package Lock Conflicts
 
 **Problem**: Merge conflicts in `package-lock.json`
+
 ```bash
 # Delete the conflicted file and regenerate
 rm package-lock.json
@@ -345,6 +630,7 @@ npm install
 git add package-lock.json
 git commit -m "Resolve package-lock.json conflict"
 ```
+
 > you might need to run `git add -f package-lock.json` if the file is ignored by .gitignore
 
 ### Debugging Tips
@@ -361,6 +647,7 @@ git commit -m "Resolve package-lock.json conflict"
 ### Project Structure Overview
 
 Here is a high-level overview of the project structure to help you navigate:
+
 ```
 backend/
 ├── apps/api-server/          # Main NestJS application
@@ -377,7 +664,9 @@ backend/
 ```
 
 ### Contributing Your First PR
+
 1. **Create a Feature Branch**:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -387,16 +676,19 @@ backend/
    Also, make sure your end of file has a trailing newline. To make sure you don't forget this, configure your VS Code settings:
 
    **Enable "Insert Final Newline"**:
+
    - Open VS Code Settings (File → Preferences → Settings)
    - Search for "insert final newline"
    - Check the box under "Files: Insert Final Newline"
    - This ensures all files end with a newline character (required by our linting rules)
 
 3. **Test Everything**:
+
    ```bash
    npm run test
    npm run lint
    ```
+
    - Ensure all tests pass and linting issues are resolved.
    - You can run individual files by checking the `package.json` scripts for invoking specific commands.
 
@@ -408,6 +700,7 @@ backend/
    ```
    - Use conventional commit messages (e.g., `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `style`, `test`, `hotfix`, `revert`, `chore`, `security`) for types.
 6. **Push and Create PR**:
+
    ```bash
    git push origin feature/your-feature-name
    ```

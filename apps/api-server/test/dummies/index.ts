@@ -1836,23 +1836,29 @@ export const DailyStatsDummy = [
   {
     date_completed: DateTime.local().minus({ days: 1 }).toJSDate(),
     focus_modes_completed: 3,
+    focus_modes: 3,
     morning_routine_completion_percentage: 50,
     evening_routine_completion_percentage: 60,
     micro_breaks_routine_completion_percentage: 90,
+    total_hours_spent_in_focus_sessions: 2.5,
   },
   {
     date_completed: DateTime.local().minus({ days: 2 }).toJSDate(),
     focus_modes_completed: 3,
+    focus_modes: 3,
     morning_routine_completion_percentage: 34,
     evening_routine_completion_percentage: 78,
     micro_breaks_routine_completion_percentage: 83,
+    total_hours_spent_in_focus_sessions: 1.8,
   },
   {
     date_completed: DateTime.local().minus({ days: 3 }).toJSDate(),
     focus_modes_completed: 3,
+    focus_modes: 3,
     morning_routine_completion_percentage: 47,
     evening_routine_completion_percentage: 98,
     micro_breaks_routine_completion_percentage: 91,
+    total_hours_spent_in_focus_sessions: 3.2,
   },
 ];
 

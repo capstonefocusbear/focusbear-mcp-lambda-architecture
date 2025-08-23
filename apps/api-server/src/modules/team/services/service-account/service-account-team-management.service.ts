@@ -41,6 +41,13 @@ export class ServiceAccountTeamManagementService {
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
+      const totalFocusModesHours =
+        parseFloat(
+          last90DaysDailyStats
+            ?.reduce((acc, curr) => acc + curr.total_hours_spent_in_focus_sessions, 0)
+            .toFixed(DECIMAL_PRECISION),
+        ) || 0;
+
       return {
         id: member.member_id,
         email: member.email,
@@ -56,6 +63,7 @@ export class ServiceAccountTeamManagementService {
         micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
         evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
         focus_modes_percent_number_day_of_stats_completed,
+        total_hours_in_focus_sessions: totalFocusModesHours,
         invitation_status: member.invitation_status,
         invitation_sent_at: member.invitation_sent_at,
         invitation_send_count: member.invitation_send_count,

@@ -88,6 +88,11 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(response.members).toHaveLength(2);
       expect(response.total_count).toBe(2);
       expect(response.team_id).toBe(TeamWithMembersDummy.id);
+
+      // Verify total_hours_in_focus_sessions is calculated correctly
+      // DailyStatsDummy has: 2.5 + 1.8 + 3.2 = 7.5 hours
+      const member = response.members.find((m) => m.id === TeamMemberDummy.member_id);
+      expect(member?.total_hours_in_focus_sessions).toBe(7.5);
     });
 
     it('positive: should handle team with no members', async () => {
@@ -149,6 +154,7 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(response.total_count).toBe(1);
       expect(response.members[0].id).toBe(null);
       expect(response.members[0].email).toBe('unregistered@email.com');
+      expect(response.members[0].total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should handle team with mixed registered and unregistered members', async () => {
@@ -197,6 +203,7 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(unregisteredMemberResponse).toBeDefined();
       expect(unregisteredMemberResponse?.email).toBe('unregistered@email.com');
       expect(unregisteredMemberResponse?.morning_routines_streak).toBe(0);
+      expect(unregisteredMemberResponse?.total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should handle team with only admins and no regular members', async () => {
@@ -259,11 +266,13 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(response.members[0].email).toBe('unregistered1@email.com');
       expect(response.members[0].first_name).toBe('Unregistered1');
       expect(response.members[0].last_name).toBe('User1');
+      expect(response.members[0].total_hours_in_focus_sessions).toBe(0);
 
       expect(response.members[1].id).toBe(null);
       expect(response.members[1].email).toBe('unregistered2@email.com');
       expect(response.members[1].first_name).toBe('Unregistered2');
       expect(response.members[1].last_name).toBe('User2');
+      expect(response.members[1].total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should handle team with members having missing optional fields', async () => {
@@ -313,6 +322,42 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(member.invitation_sent_at).toBe(null);
       expect(member.invitation_responded_at).toBe(null);
       expect(member.invitation_send_count).toBe(0);
+      expect(member.total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should calculate total_hours_in_focus_sessions correctly from daily stats', async () => {
+      const mockDailyStats = [
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.5 },
+        { focus_modes: 1, total_hours_spent_in_focus_sessions: 0.8 },
+        { focus_modes: 3, total_hours_spent_in_focus_sessions: 2.2 },
+        { focus_modes: 0, total_hours_spent_in_focus_sessions: 0.0 },
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.1 },
+      ];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await service.getAllTeamMemberServiceAcc(TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+
+      // Total hours: 1.5 + 0.8 + 2.2 + 0.0 + 1.1 = 5.6
+      expect(member.total_hours_in_focus_sessions).toBe(5.6);
     });
 
     it('positive: should demonstrate database behavior with null vs undefined member_id', async () => {
@@ -360,7 +405,9 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(response.total_count).toBe(2);
 
       expect(response.members[0].id).toBe(null);
+      expect(response.members[0].total_hours_in_focus_sessions).toBe(0);
       expect(response.members[1].id).toBe(undefined);
+      expect(response.members[1].total_hours_in_focus_sessions).toBe(0);
     });
   });
 });

@@ -917,7 +917,12 @@ describe('TeamManagementService', () => {
       const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
       expect(response.admins).toHaveLength(1);
-      expect(response.members).toHaveLength(3); // include admins that have user licenses in members section
+      expect(response.members).toHaveLength(2); // Only includes members, not admins
+
+      // Verify total_hours_in_focus_sessions is calculated correctly
+      // DailyStatsDummy has: 2.5 + 1.8 + 3.2 = 7.5 hours
+      const member = response.members.find((m) => m.id === TeamMemberDummy.member_id);
+      expect(member?.total_hours_in_focus_sessions).toBe(7.5);
     });
 
     it('positive: should handle team with no members', async () => {
@@ -963,6 +968,7 @@ describe('TeamManagementService', () => {
       expect(response.total_count).toBe(1);
       expect(response.members[0].id).toBe(null);
       expect(response.members[0].email).toBe('unregistered@email.com');
+      expect(response.members[0].total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should handle team with mixed registered and unregistered members', async () => {
@@ -995,7 +1001,10 @@ describe('TeamManagementService', () => {
         },
       ]);
 
-      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(DailyStatsDummy);
+      // Mock daily stats for registered member only
+      UserDailyStatsServiceMock.getLastNDaysDailyStats
+        .mockResolvedValueOnce(DailyStatsDummy) // For TeamMemberDummy
+        .mockResolvedValueOnce([]); // For unregistered member (no stats)
 
       const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
@@ -1013,6 +1022,7 @@ describe('TeamManagementService', () => {
       expect(unregisteredMemberResponse).toBeDefined();
       expect(unregisteredMemberResponse.email).toBe('unregistered@email.com');
       expect(unregisteredMemberResponse.morning_routines_streak).toBe(0);
+      expect(unregisteredMemberResponse.total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should calculate focus_modes_percent_number_day_of_stats_completed correctly', async () => {
@@ -1075,6 +1085,7 @@ describe('TeamManagementService', () => {
       expect(response.members).toHaveLength(1);
       const member = response.members[0];
       expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(0);
+      expect(member.total_hours_in_focus_sessions).toBe(0);
     });
 
     it('positive: should handle null daily stats', async () => {
@@ -1100,6 +1111,42 @@ describe('TeamManagementService', () => {
       expect(response.members).toHaveLength(1);
       const member = response.members[0];
       expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(0);
+      expect(member.total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should calculate total_hours_in_focus_sessions correctly from daily stats', async () => {
+      const mockDailyStats = [
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.5 },
+        { focus_modes: 1, total_hours_spent_in_focus_sessions: 0.8 },
+        { focus_modes: 3, total_hours_spent_in_focus_sessions: 2.2 },
+        { focus_modes: 0, total_hours_spent_in_focus_sessions: 0.0 },
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.1 },
+      ];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+
+      // Total hours: 1.5 + 0.8 + 2.2 + 0.0 + 1.1 = 5.6
+      expect(member.total_hours_in_focus_sessions).toBe(5.6);
     });
   });
 

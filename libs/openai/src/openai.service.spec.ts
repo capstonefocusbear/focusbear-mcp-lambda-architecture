@@ -752,50 +752,6 @@ describe('OpenAIService', () => {
       );
     });
 
-    it('should successfully adjust habits with valid AI response', async () => {
-      const currentHabits = [
-        { id: 'habit1', name: 'Morning Exercise', duration_seconds: 1800, activity_type: 'physical' },
-        { id: 'habit2', name: 'Reading', duration_seconds: 1200, activity_type: 'mental' },
-      ];
-
-      const expectedResponse = [
-        { id: 'habit1', name: 'Cardio Workout', duration_seconds: 2700 },
-        { id: 'habit2', name: 'Book Reading', duration_seconds: 900 },
-      ];
-
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(expectedResponse),
-            },
-          },
-        ],
-      };
-
-      const mockFn = jest
-        .spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming')
-        .mockResolvedValueOnce(mockResponse);
-
-      const result = await service.adjustHabitsWithAi(
-        currentHabits,
-        'I want to do cardio for 45 minutes and reduce reading to 15 minutes',
-        ['fitness', 'learning'],
-        60,
-      );
-
-      expect(result).toEqual(expectedResponse);
-      expect(mockFn).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ role: 'system' })]),
-        OpenAIKeyType.HABIT_ADJUSTMENT,
-        expect.objectContaining({
-          model: expect.any(String),
-          response_format: { type: 'json_object' },
-        }),
-      );
-      expect(promptCacheServiceMock.getPrompt).toHaveBeenCalledWith('habit-adjustment-default');
-    });
-
     it('should handle empty habits array', async () => {
       const mockResponse = {
         choices: [

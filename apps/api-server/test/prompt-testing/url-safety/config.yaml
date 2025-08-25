@@ -189,7 +189,7 @@ tests:
   - description: Hacker News for Tech Research (No Justification)
     vars:
       url: https://news.ycombinator.com
-      meta_description: 'Hacker Newsnew | past | comments | ask | show | jobs | submitlogin1.What are OKLCH colors? (jakub.kr)177 points by tontonius 2 hours ago | hide | 49 comments2.Git-Annex (branchable.com)89 points by keepamovin 4 hours ago | hide | 17 comments3.SmallJS: Smalltalk-80 that compiles to JavaScript (small-js.org)22 points by mpweiher 2 hours ago | hide | 5 comments4.Ban me at the IP level if you don''t like me (conman.org)247 points by classichasclass 4 hours ago | hide | 151 comments5.MCP Gateway and R'
+      meta_description: 'Hacker Newsnew | past | comments | ask | show | jobs | submitlogin1.What are OKLCH colors? (jakub.kr)319 points by tontonius 5 hours ago | hide | 66 comments2.Agent-C: a 4KB AI agent (github.com/bravenewxyz)18 points by liszper 1 hour ago | hide | 11 comments3.Git-Annex (branchable.com)135 points by keepamovin 7 hours ago | hide | 31 comments4.SmallJS: Smalltalk-80 that compiles to JavaScript (small-js.org)60 points by mpweiher 5 hours ago | hide | 12 comments5.The great medieval water myth (201'
       tab_title: Hacker News
       focus_mode: work
       intention: researching tech news
@@ -219,7 +219,7 @@ tests:
   - description: Google Search During Deep Work (No Justification)
     vars:
       url: google.co.in/
-      meta_description: 'GmailImagesSign in Tab See moreDeleteDelete Report inappropriate predictions Google offered in: Filipino Cebuano PhilippinesAboutAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
+      meta_description: 'GmailImagesSign in See moreDeleteDelete Report inappropriate predictions Google offered in: Filipino Cebuano PhilippinesAboutAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
       tab_title: Google
       focus_mode: Deep Work
       intention: deep work
@@ -1312,6 +1312,18 @@ tests:
         [
           {"pageTitle": "", "url": "youtube.com/watch?v=nsJfu4zlAV0", "justification": "video regarding my research topic for my essay, slef worth"}
         ]
+      currentTaskInToDoPlayer: research
+      min_probability: 0.7
+      max_probability: 1
+  - description: 'Feedback: Ignoring justification"'
+    vars:
+      url: marketresearchfuture.com/reports/web-filtering-market-5962
+      meta_description: Web Filtering Market size is projected to grow USD 9.06 Billion by 2030, exhibiting a CAGR of 12.44% during the forecast period 2024 - 2030.
+      tab_title: Web Filtering Market Size, Trends, Industry Report - 2030
+      focus_mode: Deep Work
+      intention: pre-seed application
+      justificationForThisUrl: need market sizing data
+      lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: research
       min_probability: 0.7
       max_probability: 1

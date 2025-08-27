@@ -18,20 +18,21 @@ prompts:
         - **Example Reason:** "Perfect! This app is just what you need for your task. Keeping you in the zone."
 
       **2. Is it a SUPPORTING tool or for a related activity? (Score 0.7-0.9)**
-        - **Supporting Utilities:** The app helps perform the `currentTask`, like using `1Password` to log in or `CleanShot X` to capture a bug.
+        - **Supporting Utilities & General Productivity Tools:** The app helps perform the `currentTask`, even if not directly creating output. This includes apps like `1Password` to log in, `CleanShot X` to capture an image (even if not explicitly requested, it *could* be useful for documentation), or a PDF editor (like `Nitro PDF Pro`) for reviewing documents related to research. If the app *could reasonably* aid the task, it falls here.
         - **Task-Relevant Communication:** A communication app like `Slack` or `Teams` is needed when the `currentTask` is "Discuss implementation with team".
         - **Focus Aids:** An app like `Spotify` is used with a justification like "Need music to focus". Acknowledge the reason and allow it.
         - **Example Reason:** "Looks like a helpful tool to get your main task done. Go for it!" or "A little music to help you focus? Sounds good, let's keep the rhythm going."
 
       **3. Is there a MAJOR MISMATCH with your task? (Score 0.1-0.3)**
         - **First, check for a Mismatch against the Current Task:** The `currentTask` is your ultimate guide. If the `appName` (e.g., "Figma") is unrelated to the `currentTask` (e.g., "Review team's quarterly report"), this is a major mismatch. **A conflicting `intention` (e.g., "Prepare new UI mockups") MUST BE IGNORED.**
-        - The app's function is completely unrelated to the `currentTask` (e.g., app `Minecraft` during task "write project report").
-        - Social Media, Entertainment, or Games during a focused work/study task without a strong, relevant justification.
-        - **Example Reason:** "Hmm, this app seems a bit off-topic from your goal. Let's get you back on track!"
+        - The app's function is **clearly and universally unrelated** to the `currentTask` (e.g., app `Minecraft` during task "write project report", or `Instagram` when the task is "Review study materials for exam" without any justification).
+        - Social Media, Entertainment, or Games during a focused work/study task without any relevant justification.
+        - **Example Reason:** "Hmm, this app seems totally off-topic from your goal. Let's get you back on track!"
 
       **4. If none of the above, is it a POTENTIAL distraction? (Score 0.4-0.7)**
         - A communication app (`Slack`) during a "deep work" solo task (e.g., "Write code"). It *could* be needed, but it's a high risk for distraction.
-        - A general-purpose app like a web browser when the task is specific to another application (e.g., using Chrome when the task is "Code in VS Code").
+        - A general-purpose app like a web browser when the task is specific to another application (e.g., using Chrome when the task is "Code in VS Code") and no research/web-based activity is part of the task.
+        - Other general utility apps that aren't clearly a "direct" or "supporting" tool but *could* be used, albeit with a risk of sidetracking.
         - **Example Reason:** "This could be useful, but be careful not to get sidetracked! A quick check and then back to it."
 
       ## OUTPUT FORMAT
@@ -145,7 +146,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Communication App During Deep Work (Distraction)" # NEW
+  - description: "Communication App During Deep Work (Distraction)"
     vars:
       appName: "Slack"
       focusMode: "Deep Work"
@@ -153,12 +154,12 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "Write sorting algorithm"
       min_probability: 0.2
-      max_probability: 0.4
+      max_probability: 0.5
     assert:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Supporting Utility (Password Manager)" # NEW
+  - description: "Supporting Utility (Password Manager)"
     vars:
       appName: "1Password"
       focusMode: "work"
@@ -166,12 +167,12 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "Access client's new dashboard"
       min_probability: 0.7
-      max_probability: 0.9
+      max_probability: 1.0
     assert:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Supporting Utility with Justification (Screenshot Tool)" # NEW
+  - description: "Supporting Utility with Justification (Screenshot Tool)"
     vars:
       appName: "CleanShot X"
       focusMode: "work"
@@ -184,7 +185,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Entertainment with Ambiguous Justification" # NEW
+  - description: "Entertainment with Ambiguous Justification"
     vars:
       appName: "Spotify"
       focusMode: "Deep Work"
@@ -197,7 +198,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Browser with Non-Research Task (Neutral)" # NEW
+  - description: "Browser with Non-Research Task (Neutral)"
     vars:
       appName: "Safari"
       focusMode: "Deep Work"
@@ -210,7 +211,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Direct Tool without Justification" # NEW
+  - description: "Direct Tool without Justification"
     vars:
       appName: "Microsoft Word"
       focusMode: "work"
@@ -223,7 +224,7 @@ tests:
       - type: javascript
         value: file://validate-probability.js
 
-  - description: "Mismatched Tool (Task vs. Intention)" # NEW
+  - description: "Mismatched Tool (Task vs. Intention)"
     vars:
       appName: "Figma"
       focusMode: "work"
@@ -232,6 +233,30 @@ tests:
       currentTaskInToDoPlayer: "Review team's quarterly report"
       min_probability: 0.2
       max_probability: 0.4
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Nitro PDF"
+    vars:
+      appName: "Nitro PDF Pro"
+      focusMode: "Deep Work"
+      intention: "LaunchHUB Video"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "research unemployment stats"
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Cleanshot - Utilties"
+    vars:
+      appName: "CleanShot X"
+      focusMode: "Deep Work"
+      intention: "deep work"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "prepare HR docs"
+      min_probability: 0.7
+      max_probability: 1.0
     assert:
       - type: javascript
         value: file://validate-probability.js

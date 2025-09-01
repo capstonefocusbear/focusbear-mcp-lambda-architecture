@@ -96,9 +96,8 @@ export class StudyParticipantService {
       }
     }
 
-    const existingParticipant = await this.studyParticipantRepository.findOne({
-      where: { email: dto.email },
-    });
+    const allParticipants = await this.studyParticipantRepository.find();
+    const existingParticipant = allParticipants.find((p) => p.email === dto.email);
 
     if (existingParticipant) {
       throw new ConflictException('Email already exists registered for the study');

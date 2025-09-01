@@ -15,6 +15,7 @@ describe('StudyParticipantService', () => {
   let service: StudyParticipantService;
 
   const mockStudyParticipantRepository = {
+    find: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
     count: jest.fn(),
@@ -199,23 +200,32 @@ describe('StudyParticipantService', () => {
     };
 
     it('should successfully add participant with valid data', async () => {
-      mockStudyParticipantRepository.findOne.mockResolvedValue(null);
+      mockStudyParticipantRepository.find.mockResolvedValue([]);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
+      // Mock group assignment logic
+      mockStudyParticipantRepository.count
+        .mockResolvedValueOnce(10) // Group 1 total
+        .mockResolvedValueOnce(15) // Group 2 total
+        .mockResolvedValueOnce(20); // Group 3 total
+      mockStudyParticipantRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(2),
+      });
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
 
       await service.addParticipantDetails(validDto);
 
-      expect(mockStudyParticipantRepository.findOne).toHaveBeenCalledWith({
-        where: { email: validDto.email },
-      });
+      expect(mockStudyParticipantRepository.find).toHaveBeenCalled();
       expect(mockStudyParticipantRepository.save).toHaveBeenCalled();
       expect(mockSendGridService.sendEmail).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if email already exists', async () => {
-      mockStudyParticipantRepository.findOne.mockResolvedValue({} as StudyParticipant);
+      const existingParticipant = { email: validDto.email, participantCode: 'existing123' } as StudyParticipant;
+      mockStudyParticipantRepository.find.mockResolvedValue([existingParticipant]);
 
       await expect(service.addParticipantDetails(validDto)).rejects.toThrow(ConflictException);
     });
@@ -228,8 +238,18 @@ describe('StudyParticipantService', () => {
 
     it('should accept focusbear.io emails for testing', async () => {
       const focusbearDto = { ...validDto, email: 'test@focusbear.io' };
-      mockStudyParticipantRepository.findOne.mockResolvedValue(null);
+      mockStudyParticipantRepository.find.mockResolvedValue([]);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
+      // Mock group assignment logic
+      mockStudyParticipantRepository.count
+        .mockResolvedValueOnce(10) // Group 1 total
+        .mockResolvedValueOnce(15) // Group 2 total
+        .mockResolvedValueOnce(20); // Group 3 total
+      mockStudyParticipantRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(2),
+      });
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
@@ -241,8 +261,18 @@ describe('StudyParticipantService', () => {
 
     it('should extract participant code from focusbear.io email', async () => {
       const focusbearDto = { ...validDto, email: 'internaltest+unicaes_ABC123@focusbear.io' };
-      mockStudyParticipantRepository.findOne.mockResolvedValue(null);
+      mockStudyParticipantRepository.find.mockResolvedValue([]);
       mockStudyParticipantRepository.save.mockResolvedValue({} as StudyParticipant);
+      // Mock group assignment logic
+      mockStudyParticipantRepository.count
+        .mockResolvedValueOnce(10) // Group 1 total
+        .mockResolvedValueOnce(15) // Group 2 total
+        .mockResolvedValueOnce(20); // Group 3 total
+      mockStudyParticipantRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(2),
+      });
       mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');

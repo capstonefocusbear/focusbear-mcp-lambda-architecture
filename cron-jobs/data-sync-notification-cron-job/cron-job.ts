@@ -221,9 +221,10 @@ export async function runDataSyncCronJob() {
       await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode);
     }
 
-    if (email) {
-      await sendUnicaesDataSyncEmail(email, name, os);
-    }
+    // Temporarily disabled: rely on WhatsApp only (issue #1274)
+    // if (email) {
+    //   await sendUnicaesDataSyncEmail(email, name, os);
+    // }
   }
 
   // Close the NestJS application context

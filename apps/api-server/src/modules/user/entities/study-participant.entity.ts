@@ -61,6 +61,7 @@ export class StudyParticipant extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: true,
+    transformer: BaseEntity.encryptField('phone_number'),
   })
   phoneNumber: string;
 

@@ -212,8 +212,7 @@ describe('StudyParticipantService', () => {
         andWhere: jest.fn().mockReturnThis(),
         getCount: jest.fn().mockResolvedValue(2),
       });
-      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
-      // mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
 
@@ -221,8 +220,7 @@ describe('StudyParticipantService', () => {
 
       expect(mockStudyParticipantRepository.find).toHaveBeenCalled();
       expect(mockStudyParticipantRepository.save).toHaveBeenCalled();
-      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
-      // expect(mockSendGridService.sendEmail).toHaveBeenCalled();
+      expect(mockSendGridService.sendEmail).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if email already exists', async () => {
@@ -275,8 +273,7 @@ describe('StudyParticipantService', () => {
         andWhere: jest.fn().mockReturnThis(),
         getCount: jest.fn().mockResolvedValue(2),
       });
-      // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
-      // mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockSendGridService.sendEmail.mockResolvedValue(undefined);
       mockI18nService.translate.mockResolvedValue('Test subject');
       mockI18nService.translate.mockResolvedValue('Test body');
 

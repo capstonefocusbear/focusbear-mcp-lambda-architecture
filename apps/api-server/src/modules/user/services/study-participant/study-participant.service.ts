@@ -2,10 +2,10 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-// import { SendGridService } from '@app/send-grid';
+import { SendGridService } from '@app/send-grid';
 import { Auth0ManagementService } from '@app/auth0';
 import { I18nService } from 'nestjs-i18n';
-// import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { User } from '../../entities/user.entity';
 import { AppActivationStatus, StudyParticipant } from '../../entities/study-participant.entity';
 import {
@@ -24,7 +24,7 @@ export class StudyParticipantService {
     private readonly studyParticipantRepository: Repository<StudyParticipant>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    // private readonly sendGridService: SendGridService,
+    private readonly sendGridService: SendGridService,
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly flankerTestService: FlankerTestService,
     private readonly i18nService: I18nService,
@@ -125,15 +125,13 @@ export class StudyParticipantService {
       args: { code: participantCode },
     });
 
-    console.log(subject, text);
-    // NOTE: Email sending temporarily disabled (issue #1274) — rely on WhatsApp for now.
-    // await this.sendGridService.sendEmail({
-    //   from: FOCUS_BEAR_EMAILS.SUPPORT,
-    //   to: dto.email,
-    //   replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
-    //   subject,
-    //   html: text,
-    // });
+    await this.sendGridService.sendEmail({
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      to: dto.email,
+      replyTo: FOCUS_BEAR_EMAILS.SUPPORT,
+      subject,
+      html: text,
+    });
   }
 
   async verifyParticipantCode(participantCode: string): Promise<ParticipantCodeResponseDto> {

@@ -25,6 +25,8 @@ describe('Time Pressure Score - Size-Aware Implementation', () => {
       expect(perspirationLevelToMinutes(8)).toBe(480);
       expect(perspirationLevelToMinutes(9)).toBe(3360);
       expect(perspirationLevelToMinutes(10)).toBe(3360);
+
+      // Unknown perspiration level should default to 5 minutes
       expect(perspirationLevelToMinutes(99)).toBe(5);
     });
   });

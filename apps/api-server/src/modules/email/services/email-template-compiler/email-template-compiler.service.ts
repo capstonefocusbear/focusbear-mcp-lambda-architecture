@@ -349,9 +349,9 @@ export class EmailTemplateCompilerService {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailSubject(templateType: string, data: TemplateData): string {
     const subjects = {
-      'weekly-progress': '🐻 Your Weekly Progress Report',
-      'no-progress': '🐻 We miss you at FocusBear!',
-      'inactivity-warning': '⚠️ Important: Your FocusBear account will be deleted soon',
+      'weekly-progress': '🐻 Your Weekly Progress Report at Focus Bear',
+      'no-progress': '🐻 We miss you at Focus Bear!',
+      'inactivity-warning': '⚠️ Important: Your Focus Bear account will be deleted soon',
     };
 
     return subjects[templateType] || '🐻 Focus Bear Update';

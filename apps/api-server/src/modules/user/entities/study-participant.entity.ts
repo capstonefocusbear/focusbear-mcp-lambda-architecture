@@ -15,16 +15,16 @@ export class StudyParticipant extends BaseEntity {
   @Column({ name: 'participant_code', unique: true })
   participantCode: string;
 
-  @Column({ name: 'email', unique: true, transformer: BaseEntity.encryptField('email') })
+  @Column({ name: 'email', unique: true })
   email: string;
 
-  @Column({ name: 'name', transformer: BaseEntity.encryptField('name') })
+  @Column({ name: 'name' })
   name: string;
 
   @Column({ name: 'user_id', nullable: true })
   userId: string;
 
-  @Column({ name: 'metadata', type: 'jsonb', nullable: true, transformer: BaseEntity.encryptJSONField('metadata') })
+  @Column({ name: 'metadata', type: 'jsonb', nullable: true })
   metadata: Record<string, any>;
 
   @Column({ name: 'assigned_group', nullable: true })
@@ -61,7 +61,6 @@ export class StudyParticipant extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: true,
-    transformer: BaseEntity.encryptField('phone_number'),
   })
   phoneNumber: string;
 

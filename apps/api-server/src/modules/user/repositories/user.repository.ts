@@ -297,22 +297,35 @@ export class UserRepository extends BaseRepository<User> {
       num_days_of_stats,
       number_days_completed,
       item_count,
-      ROW_NUMBER() OVER (ORDER BY
-            CASE 
-              WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-              WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-              WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-              ELSE micro_percent_number_day_of_stats_completed
-            END
-        DESC,
-        CASE 
-          WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-          WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-          WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-          ELSE micro_breaks_streak
-        END
-        DESC,
-        username) AS rank
+      ROW_NUMBER() OVER (
+        ORDER BY
+          -- Primary sort: days completed in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
+            WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
+            ELSE micro_breaks_number_days_completed
+          END DESC,
+          -- Secondary: completion percentage in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN (
+              CASE WHEN focus_modes_num_days_of_stats > 0
+                   THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
+                   ELSE 0 END
+            )
+            WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+            ELSE micro_percent_number_day_of_stats_completed
+          END DESC,
+          -- Tertiary: current streak value
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+            ELSE micro_breaks_streak
+          END DESC,
+          username
+      ) AS rank
       FROM
       (
         SELECT 
@@ -374,22 +387,35 @@ export class UserRepository extends BaseRepository<User> {
           num_days_of_stats,
           number_days_completed,
           item_count,
-          ROW_NUMBER() OVER (ORDER BY
-                CASE 
-                  WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-                  WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-                  WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-                  ELSE micro_percent_number_day_of_stats_completed
-                END
-            DESC,
-              CASE 
+          ROW_NUMBER() OVER (
+            ORDER BY
+              -- Primary sort: days completed in the last 90 days
+              CASE
+                WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
+                WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
+                WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
+                ELSE micro_breaks_number_days_completed
+              END DESC,
+              -- Secondary: completion percentage in the last 90 days
+              CASE
+                WHEN $1 = 'focus_modes_streak' THEN (
+                  CASE WHEN focus_modes_num_days_of_stats > 0
+                       THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
+                       ELSE 0 END
+                )
+                WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+                WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+                ELSE micro_percent_number_day_of_stats_completed
+              END DESC,
+              -- Tertiary: current streak value
+              CASE
                 WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
                 WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
                 WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
                 ELSE micro_breaks_streak
-              END
-            DESC,
-            username) AS rank
+              END DESC,
+              username
+          ) AS rank
           FROM
           (
             SELECT 

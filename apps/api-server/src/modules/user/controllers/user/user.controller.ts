@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { Throttle } from '@nestjs/throttler';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -37,6 +38,12 @@ import { UpdateUsernameDto } from '../../dto/update-username.dto';
 import { SearchForUserDto } from '../../dto/search-for-user.dto';
 import { Disabled } from '../../../../shared/decorators/disabled.decorator';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
+import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dto';
+import { EmailPreferencesResponseDto } from '../../dto/email-preferences-response.dto';
+import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
+import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
+import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
+import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -45,8 +52,12 @@ export class UserController {
     private readonly userService: UserService,
     private readonly userConsentService: UserConsentService,
     private readonly userDailyStatsService: UserDailyStatsService,
+    private readonly userEmailPreferencesService: UserEmailPreferencesService,
+    private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
+
+  private readonly logger = new Logger(UserController.name);
 
   @Put('/account-sync')
   @ApiSecurity('Auth0ActionSecret')
@@ -256,5 +267,91 @@ export class UserController {
     @AuthContext() { user }: Passport,
   ) {
     return this.userService.uninstallApplication(uninstallApplicationQueryDto, user.id);
+  }
+
+  @Get('email-preferences')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Get user email preferences' })
+  async getEmailPreferences(@AuthContext() { user }: Passport): Promise<EmailPreferencesResponseDto> {
+    return this.userEmailPreferencesService.getEmailPreferences(user.id);
+  }
+
+  @Put('email-preferences')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Update user email preferences' })
+  @Throttle({ default: { ttl: 60, limit: 10 } })
+  async updateEmailPreferences(
+    @AuthContext() { user }: Passport,
+    @Body() dto: UpdateEmailPreferencesDto,
+  ): Promise<EmailPreferencesResponseDto> {
+    return this.userEmailPreferencesService.updateEmailPreferences(user.id, dto);
+  }
+
+  @Get('email-preferences/unsubscribe')
+  @ApiOperation({ summary: 'Unsubscribe confirmation page' })
+  async getUnsubscribePage(@Query('token') token: string, @Res() response: FastifyReply): Promise<void> {
+    try {
+      const html = await this.emailTemplateCompilerService.compilePage('unsubscribe', {
+        token,
+        apiUrl: process.env.API_URL,
+      });
+
+      response.type('text/html');
+      response.send(html);
+    } catch (error) {
+      this.logger.error('Failed to render unsubscribe page:', error);
+      response.status(500).send('Error loading unsubscribe page');
+    }
+  }
+
+  @Post('email-preferences/unsubscribe')
+  @ApiOperation({ summary: 'Unsubscribe from emails using token' })
+  async unsubscribeFromEmails(@Body() dto: UnsubscribeEmailDto): Promise<{ message: string }> {
+    await this.userEmailPreferencesService.unsubscribeFromEmails(dto);
+    return { message: 'Successfully unsubscribed from emails' };
+  }
+
+  @Get('email-preferences/manage')
+  @ApiOperation({ summary: 'Email preferences management page' })
+  async getEmailPreferencesManagePage(@Query('token') token: string, @Res() response: FastifyReply): Promise<void> {
+    try {
+      if (!token) {
+        this.logger.error('No token provided for email preferences management page');
+        response.status(400).send('Token is required');
+        return;
+      }
+
+      // Verify token and get user preferences
+      const preferences = await this.userEmailPreferencesService.getEmailPreferencesWithToken(token);
+
+      const templateData = {
+        token,
+        currentFrequency: preferences.email_frequency,
+        apiUrl: process.env.API_URL,
+      };
+
+      const html = await this.emailTemplateCompilerService.compilePage('manage-preferences', templateData);
+
+      response.type('text/html');
+      response.send(html);
+    } catch (error) {
+      this.logger.error('Failed to render email preferences management page:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+        token: token ? 'present' : 'missing',
+        timestamp: new Date().toISOString(),
+      });
+      response.status(500).send(`Error loading preferences page: ${error.message}`);
+    }
+  }
+
+  @Post('email-preferences/manage')
+  @ApiOperation({ summary: 'Update email preferences using token' })
+  async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
+    await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
+    return { message: 'Email preferences updated successfully' };
   }
 }

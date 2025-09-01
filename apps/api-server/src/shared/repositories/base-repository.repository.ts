@@ -1,9 +1,9 @@
-import { Connection, EntityTarget, Repository, UpdateResult, FindOptionsWhere } from 'typeorm';
+import { DataSource, EntityTarget, Repository, UpdateResult, FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 export class BaseRepository<T> {
-  constructor(connection: Connection, Entity: EntityTarget<T> | any) {
-    this.orm = connection.getRepository<T>(Entity);
+  constructor(dataSource: DataSource, Entity: EntityTarget<T> | any) {
+    this.orm = dataSource.getRepository<T>(Entity);
     this.Entity = Entity;
   }
 
@@ -47,7 +47,7 @@ export class BaseRepository<T> {
       .insert()
       .into(this.Entity)
       .values([item])
-      .orUpdate({ conflict_target: conflictTarget, overwrite: keysForUpdate })
+      .orUpdate(keysForUpdate, conflictTarget)
       .returning('*')
       .execute()
       .then(({ raw: [{ id }] }: UpdateResult) => this.orm.findOneBy({ id } as FindOptionsWhere<T>));

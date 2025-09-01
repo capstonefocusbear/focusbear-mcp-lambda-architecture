@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unsubscribe from Focus Bear Emails</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 600px; 
+      margin: 50px auto; 
+      padding: 20px; 
+      background-color: #fff;
+    }
+    .container { 
+      text-align: center; 
+      background: #f8f9fa; 
+      padding: 40px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .logo { 
+      color: #FF6B35; 
+      font-size: 24px; 
+      margin-bottom: 20px; 
+      font-weight: bold;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    .button { 
+      background: #FF6B35; 
+      color: white; 
+      padding: 12px 24px; 
+      border: none; 
+      border-radius: 8px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin: 10px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .button:hover { 
+      background: #e55a2b; 
+    }
+    .cancel { 
+      background: #6c757d; 
+    }
+    .cancel:hover { 
+      background: #5a6268; 
+    }
+    .success-message {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🐻 Focus Bear</div>
+    <h2>Unsubscribe from Email Updates</h2>
+    <p>Are you sure you want to unsubscribe from Focus Bear progress emails?</p>
+    <p>You'll miss out on your weekly progress reports and motivational updates.</p>
+    
+    <form id="unsubscribeForm" method="POST" action="{{apiUrl}}/user/email-preferences/unsubscribe">
+      <input type="hidden" name="token" value="{{token}}" />
+      <button type="submit" class="button">Yes, Unsubscribe</button>
+      <button type="button" class="button cancel" onclick="window.close()">Cancel</button>
+    </form>
+    
+    <div id="successMessage" class="success-message">
+      <div class="logo">🐻 Focus Bear</div>
+      <h2>Successfully Unsubscribed</h2>
+      <p>You have been unsubscribed from Focus Bear progress emails.</p>
+      <p>You can re-subscribe anytime from your account settings.</p>
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById('unsubscribeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      fetch('{{apiUrl}}/user/email-preferences/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: '{{token}}' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Hide the form and show success message
+        document.querySelector('.container').innerHTML = document.getElementById('successMessage').innerHTML;
+      })
+      .catch(error => {
+        alert('Error unsubscribing. Please try again.');
+        console.error('Unsubscribe error:', error);
+      });
+    });
+  </script>
+</body>
+</html>

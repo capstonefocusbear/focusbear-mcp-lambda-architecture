@@ -1,0 +1,42 @@
+<mj-text color="#333333">
+  <p>{{headerSubtitle}}</p>
+  <p>{{hopeDoingWellText}}</p>
+</mj-text>
+
+{{#if (lt focusUsagePercentage 50)}}
+{{> metric-card title=focusBearUsageTitle content=(concat
+  "<p>" yourUsageWasText " <strong>" focusUsagePercentage "%</strong>.</p>"
+  "<p>" youLastUsedText " <strong>" lastActiveDate "</strong>.</p>"
+  "<p>" usageLowWarningText "</p>"
+  "<p><strong>" whyItMattersText ":</strong> " habitMomentumText "</p>"
+)}}
+{{else}}
+{{> metric-card title=focusBearUsageTitle content=(concat
+  "<p>" yourUsageWasText " <strong>" focusUsagePercentage "%</strong>.</p>"
+  "<p>" youLastUsedText " <strong>" lastActiveDate "</strong>.</p>"
+)}}
+{{/if}}
+
+{{> metric-card title=usageSummaryTitle content=(concat
+  "<ul>"
+  "<li>" overallUsageLabel ": <strong>" focusUsagePercentage "%</strong></li>"
+  "<li>" morningRoutineLabel ": <strong>" morningRoutineUsage "%</strong> (" streakLabel ": " morningRoutineStreak " " streakDaysLabel ")</li>"
+  "<li>" eveningRoutineLabel ": <strong>" eveningRoutineUsage "%</strong> (" streakLabel ": " eveningRoutineStreak " " streakDaysLabel ")</li>"
+  "<li>" focusModeLabel ": <strong>" focusModeUsage "%</strong> (" streakLabel ": " focusModeStreak " " streakDaysLabel ")</li>"
+  "<li>" microBreaksLabel ": <strong>" microBreaksUsage "%</strong></li>"
+  "<li>" lastActiveLabel ": <strong>" lastActiveDate "</strong></li>"
+  "</ul>"
+)}}
+
+<mj-text color="#333333">
+  <p>{{footerText}}</p>
+  <p>{{cheeringForYouText}}<br/>
+  <strong>{{focusBearTeamText}}</strong></p>
+</mj-text>
+
+<mj-divider border-color="#eee" />
+
+<mj-text align="center" color="#999999" font-size="11px">
+  <p>{{wantToChangeFrequencyText}}<br/>
+  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">{{unsubscribeText}}</a></p>
+</mj-text>

@@ -1,0 +1,204 @@
+import { Injectable } from '@nestjs/common';
+import { I18nService } from 'nestjs-i18n';
+import { User } from '../../../user/entities/user.entity';
+import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
+import { EmailTemplateCompilerService } from '../email-template-compiler/email-template-compiler.service';
+
+interface EmailContent {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+@Injectable()
+export class ProgressEmailTemplateService {
+  constructor(
+    private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
+    private readonly i18nService: I18nService,
+  ) {}
+
+  async generateWeeklyProgressEmail(
+    user: User,
+    metrics: WeeklyProgressMetricsDto,
+    unsubscribeToken: string,
+  ): Promise<EmailContent> {
+    const userName = user.username || 'Friend';
+    const userLang = user.language || 'en';
+
+    const weekStart = new Date(metrics.week_start).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    });
+    const weekEnd = new Date(metrics.week_end).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const templateData = {
+      userName,
+      headerTitle:
+        this.i18nService.t('common.email_weekly_progress_header_title', { lang: userLang }) || 'Weekly Progress Report',
+      headerSubtitle:
+        this.i18nService.t('common.email_weekly_progress_header_subtitle', {
+          lang: userLang,
+          args: { username: userName, weekStart, weekEnd },
+        }) || `Hi ${userName}! Here's how you did from ${weekStart} to ${weekEnd}`,
+      footerText:
+        this.i18nService.t('common.email_weekly_progress_footer_text', { lang: userLang }) || 'Keep up the great work!',
+      unsubscribeText:
+        this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: process.env.API_URL || '',
+      dashboardUrl: process.env.DASHBOARD_URL || '',
+      unsubscribeToken,
+      manageEmailPreferencesLink: `${
+        process.env.API_URL || ''
+      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+
+      // Progress metrics
+      focusUsagePercentage: this.calculateOverallUsage(metrics),
+      lastActiveDate: this.getLastActiveDate(user, userLang),
+      morningRoutineUsage: Math.round((metrics.routines.morning.completed / metrics.routines.morning.total) * 100) || 0,
+      eveningRoutineUsage: Math.round((metrics.routines.evening.completed / metrics.routines.evening.total) * 100) || 0,
+      focusModeUsage:
+        metrics.focus_sessions.sessions_count > 0 ? Math.min(100, metrics.focus_sessions.sessions_count * 10) : 0,
+      microBreaksUsage:
+        Math.round((metrics.routines.micro_breaks.completed / metrics.routines.micro_breaks.total) * 100) || 0,
+      morningRoutineStreak: metrics.streaks.morning_routine,
+      eveningRoutineStreak: metrics.streaks.evening_routine,
+      focusModeStreak: metrics.streaks.focus_mode,
+
+      // Translated labels
+      focusBearUsageTitle:
+        this.i18nService.t('common.email_focus_bear_usage_title', { lang: userLang }) || '🧠 Focus Bear Usage',
+      usageSummaryTitle:
+        this.i18nService.t('common.email_usage_summary_title', { lang: userLang }) ||
+        '🐻 Your Focus Bear Usage Summary',
+      overallUsageLabel: this.i18nService.t('common.email_overall_usage', { lang: userLang }) || 'Overall usage',
+      morningRoutineLabel: this.i18nService.t('common.email_morning_routine', { lang: userLang }) || 'Morning routine',
+      eveningRoutineLabel: this.i18nService.t('common.email_evening_routine', { lang: userLang }) || 'Evening routine',
+      focusModeLabel: this.i18nService.t('common.email_focus_mode', { lang: userLang }) || 'Focus mode',
+      microBreaksLabel: this.i18nService.t('common.email_micro_breaks', { lang: userLang }) || 'Micro breaks',
+      lastActiveLabel: this.i18nService.t('common.email_last_active', { lang: userLang }) || 'Last active',
+      streakDaysLabel: this.i18nService.t('common.email_streak_days', { lang: userLang }) || 'days',
+      streakLabel: this.i18nService.t('common.email_streak', { lang: userLang }) || 'streak',
+      yourUsageWasText:
+        this.i18nService.t('common.email_your_usage_was', { lang: userLang }) ||
+        'Your Focus Bear usage this week/today was',
+      youLastUsedText:
+        this.i18nService.t('common.email_you_last_used', { lang: userLang }) || 'You last used the app on',
+      usageLowWarningText:
+        this.i18nService.t('common.email_usage_low_warning', { lang: userLang }) ||
+        "This is too low. Consistent usage is key to building strong habits! Let's get back on track this week. 💪",
+      whyItMattersText: this.i18nService.t('common.email_why_it_matters', { lang: userLang }) || 'Why it matters',
+      habitMomentumText:
+        this.i18nService.t('common.email_habit_momentum', { lang: userLang }) || 'Habit building needs daily momentum.',
+      hopeDoingWellText:
+        this.i18nService.t('common.email_hope_doing_well', { lang: userLang }) ||
+        "Hope you're doing well! Here's your weekly/daily Focus Bear performance check-in 👇",
+      cheeringForYouText:
+        this.i18nService.t('common.email_cheering_for_you', { lang: userLang }) || "We're cheering for you! 🧡",
+      focusBearTeamText: this.i18nService.t('common.email_focus_bear_team', { lang: userLang }) || 'Focus Bear Team',
+      wantToChangeFrequencyText:
+        this.i18nService.t('common.email_want_to_change_frequency', { lang: userLang }) ||
+        'Want to change how often you get these emails?',
+    };
+
+    return this.emailTemplateCompilerService.compileProgressEmail('weekly-progress', templateData);
+  }
+
+  async generateNoProgressEmail(user: User, unsubscribeToken: string): Promise<EmailContent> {
+    const userName = user.username || 'Friend';
+    const userLang = user.language || 'en';
+
+    const templateData = {
+      userName,
+      headerTitle: this.i18nService.t('common.email_no_progress_header_title', { lang: userLang }) || 'We Miss You!',
+      headerSubtitle:
+        this.i18nService.t('common.email_no_progress_header_subtitle', {
+          lang: userLang,
+          args: { username: userName },
+        }) || `${userName}, we miss you at Focus Bear`,
+      footerText:
+        this.i18nService.t('common.email_no_progress_footer_text', { lang: userLang }) || 'We believe in you!',
+      unsubscribeText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: process.env.API_URL || '',
+      dashboardUrl: process.env.DASHBOARD_URL || '',
+      manageEmailPreferencesLink: `${
+        process.env.API_URL || ''
+      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      unsubscribeToken,
+
+      // Translated labels for no-progress email
+      haventSeenYouText:
+        this.i18nService.t('common.email_havent_seen_you', { lang: userLang }) ||
+        "We haven't seen you around Focus Bear lately — and that's okay!",
+      journeyPausesText:
+        this.i18nService.t('common.email_journey_pauses', { lang: userLang }) ||
+        'Every journey has its pauses. The important thing is starting again.',
+      goodNewsTitle: this.i18nService.t('common.email_good_news_title', { lang: userLang }) || '🌟 Good news',
+      goodNewsContent:
+        this.i18nService.t('common.email_good_news_content', { lang: userLang }) ||
+        'Your habits and goals are still waiting for you — right where you left them.',
+      tinyActionTitle:
+        this.i18nService.t('common.email_tiny_action_title', { lang: userLang }) || '🐾 Tiny action for today',
+      openFocusBearText: this.i18nService.t('common.email_open_focus_bear', { lang: userLang }) || 'Open Focus Bear',
+      completeOneHabitText:
+        this.i18nService.t('common.email_complete_one_habit', { lang: userLang }) || 'Complete just one small habit',
+      smallStepForwardText:
+        this.i18nService.t('common.email_small_step_forward', { lang: userLang }) ||
+        "That's it. A small step forward is still a step forward! 🧸",
+      getBackOnTrackText:
+        this.i18nService.t('common.email_get_back_on_track', { lang: userLang }) || 'Get Back on Track',
+      weBelieveInYouText:
+        this.i18nService.t('common.email_we_believe_in_you', { lang: userLang }) || 'We believe in you!',
+      focusBearTeamText: this.i18nService.t('common.email_focus_bear_team', { lang: userLang }) || 'Focus Bear Team',
+      wantToChangeFrequencyText:
+        this.i18nService.t('common.email_want_to_change_frequency', { lang: userLang }) ||
+        'Want to change how often you get these emails?',
+    };
+
+    return this.emailTemplateCompilerService.compileProgressEmail('no-progress', templateData);
+  }
+
+  private calculateOverallUsage(metrics: WeeklyProgressMetricsDto): number {
+    const morningUsage = metrics.routines.morning.completed / metrics.routines.morning.total || 0;
+    const eveningUsage = metrics.routines.evening.completed / metrics.routines.evening.total || 0;
+    const microBreaksUsage = metrics.routines.micro_breaks.completed / metrics.routines.micro_breaks.total || 0;
+
+    const routineUsage = (morningUsage + eveningUsage + microBreaksUsage) / 3;
+
+    const focusUsage =
+      metrics.focus_sessions.sessions_count > 0 ? Math.min(1, metrics.focus_sessions.sessions_count / 7) : 0;
+    const taskUsage = metrics.tasks.completion_rate || 0;
+
+    return Math.round(((routineUsage + focusUsage + taskUsage) / 3) * 100);
+  }
+
+  private getLastActiveDate(user: User, userLang = 'en'): string {
+    const dates = [
+      user.last_completed_sequence_at,
+      user.last_completed_focus_mode_at,
+      user.last_completed_sequence_started_at,
+      user.last_time_stats_updated,
+      user.updated_at, // Add fallback to updated_at
+    ].filter((date) => date !== null && date !== undefined);
+
+    if (dates.length === 0) {
+      // Translate "Never" based on language
+      return userLang === 'es' ? 'Nunca' : 'Never';
+    }
+
+    const mostRecentDate = dates.reduce((latest, current) => {
+      return current > latest ? current : latest;
+    });
+
+    // Format the date with appropriate locale
+    const locale = userLang === 'es' ? 'es-ES' : 'en-US';
+    return new Date(mostRecentDate).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+}

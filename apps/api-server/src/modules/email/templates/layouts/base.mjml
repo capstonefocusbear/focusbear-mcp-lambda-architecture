@@ -1,0 +1,98 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{title}}</mj-title>
+    <mj-preview>{{preview}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+      <mj-section background-color="#ffffff" />
+    </mj-attributes>
+    <mj-style>
+      .metric-card {
+        background: #fff8f0;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+        border-left: 4px solid #FF6B35;
+      }
+      .metric-title {
+        font-weight: bold;
+        color: #FF6B35;
+        margin-bottom: 10px;
+        font-size: 16px;
+      }
+      .metric-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+      }
+      .streak-badge {
+        display: inline-block;
+        background: #FF6B35;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+      .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .warning-title {
+        color: #856404;
+        font-weight: bold;
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+      .cta-button {
+        background: #FF6B35;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        display: inline-block;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#ffffff">
+    <!-- Header -->
+    <mj-section background-color="#FF6B35" padding="20px">
+      <mj-column>
+        <mj-text align="center" color="#ffffff" font-size="24px" font-weight="bold">
+          🐻 {{headerTitle}}
+        </mj-text>
+        <mj-text align="center" color="#ffffff" font-size="16px">
+          {{headerSubtitle}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="20px">
+      <mj-column>
+        {{{content}}}
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#ffffff" padding="15px" border-top="1px solid #eee">
+      <mj-column>
+        <mj-text align="center" color="#666666" font-size="12px">
+          {{footerText}}
+        </mj-text>
+        {{#if unsubscribeToken}}
+        <mj-text align="center" color="#999999" font-size="11px">
+          <a href="{{apiUrl}}/user/email-preferences/unsubscribe?token={{unsubscribeToken}}" style="color: #999;">
+            {{unsubscribeText}}
+          </a>
+        </mj-text>
+        {{/if}}
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

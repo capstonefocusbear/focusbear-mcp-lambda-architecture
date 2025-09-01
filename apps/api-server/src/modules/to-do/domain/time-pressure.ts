@@ -1,6 +1,4 @@
 // Domain constants (Preset A)
-export const URGENCY_DECAY_TAU_DAYS = 8.586175740226025; // where the cliff starts
-export const URGENCY_SHAPE_BETA = 0.4289868389966291; // steepness of the cliff
 export const EFFORT_MINUTES_PER_RUNWAY_DAY = 60; // 1 hour ≍ 1 runway day
 export const SCORE_TODAY = 9;
 export const SCORE_PAST_DUE = 10;

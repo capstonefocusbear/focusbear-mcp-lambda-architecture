@@ -35,6 +35,8 @@ import { InvitationStatus } from '../../domain/invitation-status.enum';
 import { RemoveTeamMemberDto } from '../../dto/remove-team-member.dto';
 import { BulkDeleteDto } from '../../dto/bulk-delete.dto';
 import { AddTeamMemberDto } from '../../dto/add-team-member.dto';
+import { GetAllTeamMembersResponseDto } from '../../dto/get-all-team-members.dto';
+import { GetTeamMembersDetailsDto } from '../../dto/team-member-details.dto';
 
 /**
  * @TODO: Entitlement assign/revoke should use the `id` column only,
@@ -293,68 +295,60 @@ export class TeamManagementService {
     return this.syncTeamSizeWithSubscription(team, teamSize);
   }
 
-  async getAllTeamMembers(adminId: string, teamId: string) {
+  async getAllTeamMembers(adminId: string, teamId: string): Promise<GetAllTeamMembersResponseDto> {
     const team = await this.validateTeam(teamId);
 
     const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
     this.validateMemberAction(admins, adminId);
+
+    // Get all registered member IDs
     const adminIds = admins.map((admin) => admin.admin_id).filter(Boolean);
     const memberIds = members.map((member) => member.member_id).filter(Boolean);
 
-    // Combine member IDs and admin IDs so admins can appear in members
     const allMemberIds = [...new Set([...memberIds, ...adminIds])];
 
-    // Batch queries for members and their daily stats
-    const [userDetails, allMembersDailyStats, allMembersRawDailyStats] = await Promise.all([
+    // Get user details for registered members
+    const userDetails = await this.getUserDetails(members, allMemberIds);
+
+    // return all members including unregistered members
+    return {
+      members: userDetails,
+      admins: admins.map((admin) => admin.admin_id),
+      total_count: userDetails.length,
+      team_id: teamId,
+    };
+  }
+
+  private async getUserDetails(members: TeamToMember[], memberIds: string[]): Promise<GetTeamMembersDetailsDto[]> {
+    const [userDetails, allMembersDailyStats] = await Promise.all([
       this.userRepository.orm.find({
-        where: { id: In(allMemberIds) },
+        where: { id: In(memberIds) },
       }),
-      Promise.all(allMemberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
-      Promise.all(
-        allMemberIds.map((id) =>
-          this.dailyStatsRepository.orm.find({
-            where: { user_id: id },
-            select: ['seconds_spent_in_focus_sessions'],
-            order: { date_completed: 'DESC' },
-            take: DAYS_IN_MONTH * 3, // Last 90 days
-          }),
-        ),
-      ),
+      Promise.all(memberIds.map((id) => this.userDailyStatsService.getLastNDaysDailyStats(id, DAYS_IN_MONTH * 3))),
     ]);
 
-    // Create a map of member records
-    const memberRecordMap = new Map();
-    members.forEach((member) => {
-      if (member.member_id) {
-        memberRecordMap.set(member.member_id, member);
-      }
-    });
-
-    const membersData: any[] = [];
-    allMemberIds.forEach((memberId, index) => {
-      const userDetail = userDetails.find((u) => u.id === memberId);
+    return members.map((member, index) => {
+      const userDetail = member.member_id ? userDetails.find((u) => u.id === member.member_id) : undefined;
       const last90DaysDailyStats = allMembersDailyStats?.[index];
-      const rawDailyStats = allMembersRawDailyStats?.[index];
-      const memberRecord = memberRecordMap.get(memberId);
-
       const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
       const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
         ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
         : 0;
 
-      // Calculate total hours in focus sessions from raw daily stats
-      const totalSecondsInFocusSessions =
-        rawDailyStats?.reduce((acc, curr) => acc + (curr.seconds_spent_in_focus_sessions || 0), 0) || 0;
-      const total_hours_in_focus_sessions = parseFloat((totalSecondsInFocusSessions / 3600).toFixed(2));
-
-      membersData.push({
-        id: memberId,
-        email: memberRecord?.email,
-        last_active_date: userDetail?.updated_at,
-        first_name: memberRecord?.first_name,
-        last_name: memberRecord?.last_name,
-        member_expiry_date: memberRecord?.member_expiry_date,
-        created_at: memberRecord?.created_at,
+      const totalFocusModesHours =
+        parseFloat(
+          last90DaysDailyStats
+            ?.reduce((acc, curr) => acc + curr.total_hours_spent_in_focus_sessions, 0)
+            .toFixed(DECIMAL_PRECISION),
+        ) || 0;
+      return {
+        id: member.member_id,
+        email: member.email,
+        last_active_date: member?.updated_at,
+        first_name: member?.first_name,
+        last_name: member?.last_name,
+        member_expiry_date: member?.member_expiry_date,
+        created_at: member?.created_at,
         morning_routines_streak: userDetail?.morning_routines_streak || 0,
         evening_routines_streak: userDetail?.evening_routines_streak || 0,
         focus_modes_streak: userDetail?.focus_modes_streak || 0,
@@ -362,15 +356,13 @@ export class TeamManagementService {
         micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
         evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
         focus_modes_percent_number_day_of_stats_completed,
-        total_hours_in_focus_sessions,
-        invitation_status: memberRecord?.invitation_status,
-        invitation_sent_at: memberRecord?.invitation_sent_at,
-        invitation_send_count: memberRecord?.invitation_send_count,
-        invitation_responded_at: memberRecord?.invitation_responded_at,
-      });
+        total_hours_in_focus_sessions: totalFocusModesHours,
+        invitation_status: member.invitation_status,
+        invitation_sent_at: member.invitation_sent_at,
+        invitation_send_count: member.invitation_send_count,
+        invitation_responded_at: member.invitation_responded_at,
+      };
     });
-
-    return { members: membersData, admins: admins.map((admin) => admin.admin_id) };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {

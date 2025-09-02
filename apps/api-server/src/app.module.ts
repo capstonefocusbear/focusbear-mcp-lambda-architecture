@@ -12,6 +12,7 @@ import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
 import { PassportMiddleware } from './modules/auth/middlewares/passport.middleware';
+import { ServiceAccountPassportMiddleware } from './modules/auth/middlewares/service-account-passport.middleware';
 import { HelperModule } from './modules/helper/helper.module';
 import { UserModule } from './modules/user/user.module';
 import { ActivityModule } from './modules/activity/activity.module';
@@ -114,5 +115,6 @@ import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(PassportMiddleware).forRoutes('*');
+    consumer.apply(ServiceAccountPassportMiddleware).forRoutes('/service-account/*');
   }
 }

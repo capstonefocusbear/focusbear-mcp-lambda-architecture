@@ -12,6 +12,7 @@ export class DailyStatSummary {
     evening_total_minutes = 0,
     micro_breaks_minutes,
     micro_breaks_total_minutes = 0,
+    total_hours_spent_in_focus_sessions = 0,
   }: DailyStatSummary) {
     this.date = date;
     this.day_of_week = day_of_week;
@@ -25,6 +26,7 @@ export class DailyStatSummary {
     this.evening_total_minutes = evening_total_minutes;
     this.micro_breaks_minutes = micro_breaks_minutes;
     this.micro_breaks_total_minutes = micro_breaks_total_minutes;
+    this.total_hours_spent_in_focus_sessions = total_hours_spent_in_focus_sessions;
   }
 
   date: Date;
@@ -50,4 +52,6 @@ export class DailyStatSummary {
   micro_breaks_minutes?: number;
 
   micro_breaks_total_minutes: number;
+
+  total_hours_spent_in_focus_sessions: number;
 }

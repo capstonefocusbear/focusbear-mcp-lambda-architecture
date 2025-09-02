@@ -90,6 +90,18 @@ export class CompletedActivitySequenceService {
     return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }
 
+  /**
+   * Returns the current uncompleted sequence log with activity relations, or null.
+   */
+  async getUncompletedSequenceLogWithActivities(id: string): Promise<CompletedActivitySequence | null> {
+    try {
+      return await this.completedActivitySequenceRepository.getUncompletedSequenceLog(id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      return null;
+    }
+  }
+
   async completeActivitySequence(log_id: string, user_id: string): Promise<CompletedActivitySequence> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -110,6 +122,29 @@ export class CompletedActivitySequenceService {
             user_id,
           },
         });
+        return;
+      }
+
+      // Guard: do not auto-complete routines that have zero non-skipped logs
+      // Treat "skipped_did_complete" as a completed habit (counts toward routine completion)
+      const hasNonSkippedLogs = (uncompletedSequenceLog.completed_activity_logs || []).some((log) => {
+        const m = log?.metadata || {};
+        const countsAsCompletion = m.skipped_did_complete === true || !(m.is_skipped || m.skipped_did_not_complete);
+        return countsAsCompletion;
+      });
+
+      if (!hasNonSkippedLogs) {
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Skip completing empty routine (no non-skipped logs)',
+          data: {
+            user_id,
+            log_id,
+            activity_sequence_id: uncompletedSequenceLog.activity_sequence_id,
+          },
+        });
+        await this.nullifyCurrentSequenceSkippedActivities(user_id);
         return;
       }
 
@@ -404,6 +439,28 @@ export class CompletedActivitySequenceService {
     };
 
     return this.userRepository.update(user_id, nullifiedCurrentSequence);
+  }
+
+  /**
+   * Clears current activity pointers without recording a completed sequence.
+   * Useful when a routine is abandoned with zero completed habits.
+   */
+  async clearUserCurrentActivityPropsWithoutCompletion(user_id: string) {
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'info',
+      message: 'Clearing user current activity state without completion',
+      data: { user_id },
+    });
+    return this.userRepository.update(user_id, {
+      current_activity_sequence_id: null,
+      current_activity_id: null,
+      current_activity_assigned_at: null,
+      current_sequence_started_at: null,
+      current_completing_sequence_log_id: null,
+      updated_at: new Date().toISOString(),
+      has_received_inactivity_warning: false,
+    });
   }
 
   private validateCurrentActivitySequence(

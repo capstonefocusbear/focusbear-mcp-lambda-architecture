@@ -75,8 +75,10 @@ export const CompletedActivitySequenceServiceMock = {
   forceCompleteCurrentSequence: jest.fn(),
   getOrCreateCompletingSequenceLogForSyncing: jest.fn(),
   completeActivitySequenceByDate: jest.fn(),
+  getUncompletedSequenceLogWithActivities: jest.fn(),
   getUserTimes: jest.fn(),
   nullifyUserCurrentActivityProps: jest.fn(),
+  clearUserCurrentActivityPropsWithoutCompletion: jest.fn(),
   getRoutinesProgress: jest.fn(),
 };
 

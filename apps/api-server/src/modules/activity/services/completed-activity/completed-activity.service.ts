@@ -610,7 +610,8 @@ export class CompletedActivityService implements OnModuleInit {
       });
       const { activity_id, choice_id } = skippedActivity;
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
-      const skippedActivityMetadata = { skipped_did_not_complete: true };
+      // Respect client-provided skip reason if present. Default to "did not complete".
+      const skippedActivityMetadata = skippedActivity?.metadata ?? { skipped_did_not_complete: true };
       const completingSequenceLog = await this.updateUserAndSequence(
         { ...skippedActivity, metadata: skippedActivityMetadata },
         { user_id },
@@ -1059,6 +1060,46 @@ export class CompletedActivityService implements OnModuleInit {
     id: string,
     partialUser: Partial<User>,
   ) {
+    // Inspect current sequence log to decide whether we should mark it completed
+    const seqLog = await this.completedActivitySequenceService.getUncompletedSequenceLogWithActivities(
+      current_completing_sequence_log_id,
+    );
+
+    if (!seqLog) {
+      // Fallback to legacy behavior if we can't load the log: finalize & clear
+      await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
+      await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
+        partialUser.id,
+        partialUser.current_activity_sequence_id,
+        partialUser.current_sequence_started_at,
+      );
+      return;
+    }
+
+    // Treat "skipped_did_complete" as a completed habit (counts toward routine completion)
+    const hasNonSkippedLogs = (seqLog?.completed_activity_logs || []).some((log) => {
+      const m = log?.metadata || {};
+      const countsAsCompletion = m.skipped_did_complete === true || !(m.is_skipped || m.skipped_did_not_complete);
+      return countsAsCompletion;
+    });
+
+    if (!hasNonSkippedLogs) {
+      // No completed habits: clear pointers but do NOT mark as completed
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'Avoiding auto-completion: zero completed habits in sequence',
+        data: {
+          user_id: id,
+          current_completing_sequence_log_id,
+          current_sequence_id: partialUser.current_activity_sequence_id,
+        },
+      });
+      await this.completedActivitySequenceService.clearUserCurrentActivityPropsWithoutCompletion(id);
+      return;
+    }
+
+    // At least one completed habit (or did already) → finalize as completed
     await this.completedActivitySequenceService.completeActivitySequence(current_completing_sequence_log_id, id);
     await this.completedActivitySequenceService.nullifyUserCurrentActivityProps(
       partialUser.id,

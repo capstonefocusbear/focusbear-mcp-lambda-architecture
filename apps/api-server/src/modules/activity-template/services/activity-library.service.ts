@@ -215,6 +215,7 @@ export class ActivityLibraryService {
         adjustHabitsWithAiDto.user_feedback,
         adjustHabitsWithAiDto.user_goals,
         adjustHabitsWithAiDto.routine_duration,
+        adjustHabitsWithAiDto.groupByGoals,
       );
 
       return adjustedHabits;

@@ -10,17 +10,23 @@ import { join } from 'path';
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
+import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
 import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
-import { HabitOption, IOpenAIOptions } from './interfaces';
+import {
+  AdjustedHabit,
+  AdjustedHabitsGrouped,
+  AdjustHabitsWithAiResult,
+  HabitOption,
+  IOpenAIOptions,
+} from './interfaces';
 import {
   INPUT_WRAPPER,
   MAX_WORD_LENGTH,
@@ -895,44 +901,37 @@ export class OpenAIService {
   }
 
   async adjustHabitsWithAi(
-    currentHabits: any[],
+    currentHabits: UpdateActivityDto[],
     userFeedback: string,
     userGoals?: string[],
     routineDuration?: number,
-  ): Promise<Array<{ id: string; name: string; duration_seconds: number }>> {
+    groupByGoals?: boolean,
+  ): Promise<AdjustHabitsWithAiResult> {
     try {
-      // Only send minimal habit data to the AI
       const minimalHabits = (currentHabits || []).map((habit) => ({
         id: habit.id,
         name: habit.name,
         duration_seconds: habit.duration_seconds,
-        activity_type: habit.activity_type, // context only; AI must not change this or include it in the output
+        activity_type: habit.activity_type,
       }));
 
       const promptContent = this.promptCacheService.getPrompt('habit-adjustment-default');
-
       if (!promptContent) {
         this.sentryService.instance().captureMessage('Habit adjustment prompt not found in cache', {
           level: 'error',
           extra: { currentHabits: minimalHabits, userFeedback },
         });
-        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
+        return minimalHabits;
       }
 
-      // Fill in the prompt template with actual values
-      let filledPromptContent = this.wrapUserInput(promptContent)
-        .replace('{{habits}}', JSON.stringify(minimalHabits, null, 2))
-        .replace('{{feedback}}', userFeedback);
-
-      // Optionally append additional context if available
-      const contextLines: string[] = [];
-      if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
-      if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
-
-      if (contextLines.length) {
-        filledPromptContent = `${filledPromptContent}\n\nContext:\n${contextLines.join('\n')}`;
-      }
-
+      const filledPromptContent = this.buildAdjustHabitsPrompt(
+        promptContent,
+        minimalHabits,
+        userFeedback,
+        userGoals,
+        routineDuration,
+        groupByGoals,
+      );
       const messages: ChatCompletionMessageParam[] = [{ role: 'system', content: filledPromptContent }];
 
       const completions = await this.getOpenAIChatCompletionsNonStreaming(
@@ -945,50 +944,77 @@ export class OpenAIService {
 
       try {
         const parsed = JSON.parse(response);
-
-        if (!Array.isArray(parsed) && !Array.isArray(parsed?.[Object.keys(parsed)[0]])) {
-          throw new Error('AI response is not an array');
+        if (groupByGoals && !Array.isArray(parsed) && typeof parsed === 'object') {
+          const validGrouped: AdjustedHabitsGrouped = {};
+          for (const [goal, habits] of Object.entries(parsed)) {
+            validGrouped[goal] = Array.isArray(habits)
+              ? habits.map((item) => ({
+                  id: String(item?.id ?? ''),
+                  name: String(item?.name ?? '').trim(),
+                  duration_seconds: Number.isFinite(Number(item?.duration_seconds))
+                    ? Math.max(0, Math.round(Number(item?.duration_seconds)))
+                    : 0,
+                }))
+              : [];
+          }
+          return validGrouped;
         }
 
-        const habits = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
-
-        // Sanitize and coerce output strictly to expected shape
+        const habits: AdjustedHabit[] = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
         const sanitized = habits.map((item) => {
           const rawId = item?.id;
           const id = rawId == null ? '' : String(rawId);
           const name = String(item?.name ?? '').trim();
           const durationRaw = Number(item?.duration_seconds ?? 0);
           const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
-          return { id, name, duration_seconds };
+          const tags = item.tags || [];
+          return { id, name, duration_seconds, tags };
         });
 
-        const providedIds = new Set(minimalHabits.map((h) => String(h.id)));
-        const idToOriginal = new Map(minimalHabits.map((h) => [String(h.id), h]));
-
-        // Generate ids when missing
-        const withIds = sanitized.map((item) => {
-          const isNew = !item.id || !providedIds.has(item.id);
-          return {
-            id: isNew ? randomUUID() : item.id,
-            name: item.name || idToOriginal.get(item.id)?.name || '',
-            duration_seconds: Number.isFinite(item.duration_seconds)
-              ? item.duration_seconds
-              : idToOriginal.get(item.id)?.duration_seconds || 0,
-          };
-        });
-
-        return withIds;
+        // If groupByGoals is requested but AI did not group, group here
+        if (groupByGoals && userGoals?.length) {
+          return this.groupHabitsByGoals(sanitized, userGoals);
+        }
+        return sanitized;
       } catch (parseError) {
         this.sentryService.instance().captureException(parseError, {
           level: 'error',
           extra: { response, currentHabits: minimalHabits, userFeedback },
         });
-        // Fallback: return original minimal habits if parsing fails
-        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
+        return minimalHabits;
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private groupHabitsByGoals(habits: AdjustedHabit[], userGoals: string[]): AdjustedHabitsGrouped {
+    const grouped: AdjustedHabitsGrouped = {};
+    for (const goal of userGoals) {
+      grouped[goal] = habits.filter((habit) => habit.tags?.includes(goal));
+    }
+    return grouped;
+  }
+
+  private buildAdjustHabitsPrompt(
+    promptTemplate: string,
+    minimalHabits: UpdateActivityDto[],
+    userFeedback: string,
+    userGoals?: string[],
+    routineDuration?: number,
+    groupByGoals?: boolean,
+  ): string {
+    let filledPromptContent = `${INPUT_WRAPPER}${promptTemplate}${INPUT_WRAPPER}`
+      .replace('{{habits}}', JSON.stringify(minimalHabits, null, 2))
+      .replace('{{feedback}}', userFeedback);
+    const contextLines: string[] = [];
+    if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
+    if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
+    if (groupByGoals) contextLines.push('Group the output by user goals if possible.');
+    if (contextLines.length) {
+      filledPromptContent = `${filledPromptContent}\n\nContext:\n${contextLines.join('\n')}`;
+    }
+    return filledPromptContent;
   }
 }

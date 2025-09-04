@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiResponse, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -134,5 +134,16 @@ export class TeamManagementController {
     @AuthContext() { user: { id: adminId } }: Passport,
   ): Promise<any> {
     return this.teamManagementService.addTeamMemberManually(adminId, addTeamManuallyDto);
+  }
+
+  @Get('/member-insights')
+  @ApiQuery({ name: 'team_id', required: true, type: String })
+  @ApiQuery({ name: 'member_id', required: true, type: String })
+  @ApiResponse({ status: 200, description: 'Member insights with devices' })
+  async getMemberInsights(
+    @Query() { team_id, member_id }: { team_id: string; member_id: string },
+    @AuthContext() { user }: Passport,
+  ) {
+    return this.teamManagementService.getMemberInsights(user.id, team_id, member_id);
   }
 }

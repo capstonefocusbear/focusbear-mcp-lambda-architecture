@@ -1,3 +1,5 @@
+import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
+
 export * from './openai-module-options.interface';
 
 export interface AdjustedHabit {
@@ -6,5 +8,4 @@ export interface AdjustedHabit {
   duration_seconds: number;
   tags?: string[];
 }
-export type AdjustedHabitsGrouped = Record<string, AdjustedHabit[]>;
-export type AdjustHabitsWithAiResult = AdjustedHabit[] | AdjustedHabitsGrouped;
+export type AdjustedHabitsGrouped = Record<string, Partial<UpdateActivityDto>[]>;

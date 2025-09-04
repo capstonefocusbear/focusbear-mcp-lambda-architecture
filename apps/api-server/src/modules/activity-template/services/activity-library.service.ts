@@ -121,16 +121,14 @@ export class ActivityLibraryService {
       if (getRoutineSuggestionsDto.groupByGoals) {
         const groupedByGoal: Record<string, ActivityTemplate[]> = {};
         for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
-          groupedByGoal[goal] = templates
-            .filter((template: ActivityTemplate) => {
-              return template.tags?.some((tag) => tag.tags.includes(goal));
-            })
-            .map(({ tags, ...rest }) => rest);
+          groupedByGoal[goal] = templates.filter((template: ActivityTemplate) => {
+            return template.tags?.some((tag) => tag.tags.includes(goal));
+          });
         }
 
         return groupedByGoal;
       }
-      return templates.map(({ tags, ...rest }) => rest);
+      return templates;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

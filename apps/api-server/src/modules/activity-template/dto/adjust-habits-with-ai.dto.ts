@@ -1,13 +1,9 @@
-import { IsArray, IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { UpdateActivityTemplateDto } from './activity-template.dto';
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class AdjustHabitsWithAiDto {
   @IsNotEmpty()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => UpdateActivityTemplateDto)
-  current_habits: UpdateActivityTemplateDto[];
+  current_habits: any[];
 
   @IsNotEmpty()
   @IsString()
@@ -19,7 +15,7 @@ export class AdjustHabitsWithAiDto {
   user_goals?: string[];
 
   @IsOptional()
-  @IsString()
+  @IsNumber()
   routine_duration?: number;
 
   @IsOptional()

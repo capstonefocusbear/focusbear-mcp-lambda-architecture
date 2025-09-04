@@ -137,6 +137,7 @@ export class TeamManagementController {
   }
 
   @Get('/member-insights')
+  @RequireEntitlements([Entitlement.team_admin])
   @ApiQuery({ name: 'team_id', required: true, type: String })
   @ApiQuery({ name: 'member_id', required: true, type: String })
   @ApiResponse({ status: 200, description: 'Member insights with devices' })

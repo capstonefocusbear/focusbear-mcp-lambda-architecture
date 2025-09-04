@@ -47,6 +47,37 @@ export class GetTeamMembersDetailsDto {
   @ApiProperty({ example: 10.5 })
   total_hours_in_focus_sessions: number;
 
+  // Added raw day-count fields used by leaderboard and UI
+  @ApiProperty({ example: 35 })
+  morning_number_days_completed: number;
+
+  @ApiProperty({ example: 37 })
+  morning_num_days_of_stats: number;
+
+  @ApiProperty({ example: 33 })
+  evening_number_days_completed: number;
+
+  @ApiProperty({ example: 37 })
+  evening_num_days_of_stats: number;
+
+  @ApiProperty({ example: 40 })
+  micro_breaks_number_days_completed: number;
+
+  @ApiProperty({ example: 45 })
+  micro_breaks_num_days_of_stats: number;
+
+  @ApiProperty({ example: 55 })
+  focus_modes_number_days_completed: number;
+
+  @ApiProperty({ example: 60 })
+  focus_modes_num_days_of_stats: number;
+
+  @ApiProperty({ example: 90 })
+  num_days_of_stats: number;
+
+  @ApiProperty({ example: 80 })
+  number_days_completed: number;
+
   @ApiProperty({ example: InvitationStatus.PENDING, enum: InvitationStatus })
   invitation_status: InvitationStatus;
 

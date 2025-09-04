@@ -30,6 +30,7 @@ import {
   TeamToAdminRepositoryMock,
   UserDailyStatsServiceMock,
   DailyStatsRepositoryMock,
+  DeviceServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
@@ -43,6 +44,7 @@ import { TeamToAdminRepository } from '../../repositories/team-to-admin.reposito
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { DeviceService } from '../../../device/services/device/device.service';
 import { InvitationStatus } from '../../domain/invitation-status.enum';
 import { TeamToMember } from '../../entities/team-to-member.entity';
 
@@ -86,6 +88,7 @@ describe('TeamManagementService', () => {
         },
         UserDailyStatsService,
         DailyStatsRepository,
+        DeviceService,
       ],
     })
       .overrideProvider(UserRepository)
@@ -112,6 +115,8 @@ describe('TeamManagementService', () => {
       .useValue(UserDailyStatsServiceMock)
       .overrideProvider(DailyStatsRepository)
       .useValue(DailyStatsRepositoryMock)
+      .overrideProvider(DeviceService)
+      .useValue(DeviceServiceMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -179,6 +184,47 @@ describe('TeamManagementService', () => {
         1,
       );
       expect(TeamRepositoryMock.update).toBeCalledWith(teamId, { team_size: 1 });
+    });
+  });
+
+  describe('getMemberInsights', () => {
+    it('positive: returns member details with devices', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        id: TeamMemberDummy.member_id,
+        morning_routines_streak: 1,
+        evening_routines_streak: 2,
+        focus_modes_streak: 3,
+        morning_number_days_completed: 5,
+        morning_num_days_of_stats: 7,
+      });
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValueOnce([]);
+
+      DeviceServiceMock.getDevicesByUserId.mockResolvedValueOnce([
+        {
+          id: 'dev-1',
+          operating_system: 'MacOS',
+          app_version: '1.2.3',
+          is_leader: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await teamManagementService.getMemberInsights(
+        adminId,
+        TeamWithMembersDummy.id,
+        TeamMemberDummy.member_id,
+      );
+
+      expect(result.member.id).toBe(TeamMemberDummy.member_id);
+      expect(result.devices.length).toBe(1);
+      expect(DeviceServiceMock.getDevicesByUserId).toHaveBeenCalled();
     });
   });
 

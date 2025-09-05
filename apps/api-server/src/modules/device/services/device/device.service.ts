@@ -167,8 +167,8 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
       return OperatingSystem.iOS;
     }
 
-    // Default to Web for browsers and other unknown user agents
-    return OperatingSystem.Web;
+    // If OS can't be determined from User-Agent, return Unknown
+    return OperatingSystem.Unknown;
   }
 
   async searchUserDevice(searchDeviceQueryDto: SearchDeviceQueryDto, userId: string) {

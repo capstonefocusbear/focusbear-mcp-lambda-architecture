@@ -68,16 +68,11 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
-import { Auth0ClientDto } from '../../dto/auth0-client.dto';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
-  private tempUserOS: OperatingSystem;
-
-  private tempAuth0Client: Auth0ClientDto;
-
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -212,10 +207,6 @@ export class UserService {
           });
         }
 
-        // Store OS for device creation after user is created
-        this.tempUserOS = os;
-        this.tempAuth0Client = auth0_client;
-
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
       }
@@ -229,14 +220,14 @@ export class UserService {
       const newlySavedUser = await this.userRepository.create(newUser);
 
       // Create device entry for new users
-      if (this.tempUserOS) {
+      if (os) {
         try {
           await this.deviceService.createOrUpdateDevice(
             {
-              operating_system: this.tempUserOS,
+              operating_system: os,
               metadata: {
                 source: 'user_creation',
-                auth0_client_id: this.tempAuth0Client?.client_id,
+                auth0_client_id: auth0_client?.client_id,
                 created_at: new Date().toISOString(),
               },
             },
@@ -248,13 +239,10 @@ export class UserService {
             extra: {
               auth0_id,
               email,
-              operating_system: this.tempUserOS,
+              operating_system: os,
             },
           });
         }
-        // Clear temporary values
-        this.tempUserOS = null;
-        this.tempAuth0Client = null;
       }
 
       return newlySavedUser;

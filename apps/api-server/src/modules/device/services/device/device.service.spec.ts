@@ -11,6 +11,7 @@ import {
   MOBILE_CLIENT_ID,
   WINDOWS_CLIENT_ID,
   WINDOWS_OPERATING_SYSTEM,
+  WEB_CLIENT_ID,
 } from '@app/auth0/auth0.constants';
 import { Auth0ManagementService, Auth0Module } from '../../../../../../../libs/auth0/src';
 import { DeviceDummy, dummyAuth0Client, userDummy } from '../../../../../test/dummies';
@@ -243,9 +244,28 @@ describe('DeviceService', () => {
       expect(response).toEqual(WINDOWS_OPERATING_SYSTEM);
     });
 
+    it('if the user logged in via Web, it should correctly identify the Web', async () => {
+      const web = { client_id: WEB_CLIENT_ID, name: 'Web Browser' };
+      const response = await deviceService.parseDeviceFromAuth0Client(web);
+      expect(response).toEqual(OperatingSystem.Web);
+    });
+
     it('if auth0 client is null, it should correctly identify the string empty', async () => {
       const response = deviceService.parseDeviceFromAuth0Client(null);
       expect(response).toEqual(OperatingSystem.Unknown);
+    });
+
+    it('if unknown client ID is provided without user agent, it should return Unknown', async () => {
+      const unknown = { client_id: 'unknown-client-id', name: 'Unknown Client' };
+      const response = await deviceService.parseDeviceFromAuth0Client(unknown);
+      expect(response).toEqual(OperatingSystem.Unknown);
+    });
+
+    it('if unknown client ID with User-Agent is provided, it should detect from User-Agent', async () => {
+      const unknown = { client_id: 'unknown-client-id', name: 'Unknown Client' };
+      const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36';
+      const response = await deviceService.parseDeviceFromAuth0Client(unknown, userAgent);
+      expect(response).toEqual(OperatingSystem.MacOS);
     });
   });
 

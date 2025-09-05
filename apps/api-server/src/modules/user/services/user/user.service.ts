@@ -68,11 +68,16 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { Auth0ClientDto } from '../../dto/auth0-client.dto';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private tempUserOS: OperatingSystem;
+
+  private tempAuth0Client: Auth0ClientDto;
+
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -193,20 +198,23 @@ export class UserService {
 
         os =
           devicesFromDb?.[0]?.operating_system ??
-          (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
+          (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
 
         if (os === OperatingSystem.Unknown) {
           this.sentryService.instance().captureEvent({
             message: 'OS not found',
-            level: 'error',
+            level: 'warning',
             extra: {
               auth0_id,
               email,
               clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
             },
           });
-          // TODO: Create and persist new device entry
         }
+
+        // Store OS for device creation after user is created
+        this.tempUserOS = os;
+        this.tempAuth0Client = auth0_client;
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
         stripeId = stripeCustomer.id;
@@ -219,6 +227,36 @@ export class UserService {
       }
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
+
+      // Create device entry for new users
+      if (this.tempUserOS) {
+        try {
+          await this.deviceService.createOrUpdateDevice(
+            {
+              operating_system: this.tempUserOS,
+              metadata: {
+                source: 'user_creation',
+                auth0_client_id: this.tempAuth0Client?.client_id,
+                created_at: new Date().toISOString(),
+              },
+            },
+            newlySavedUser.id,
+          );
+        } catch (error) {
+          this.sentryService.instance().captureException(error, {
+            level: 'error',
+            extra: {
+              auth0_id,
+              email,
+              operating_system: this.tempUserOS,
+            },
+          });
+        }
+        // Clear temporary values
+        this.tempUserOS = null;
+        this.tempAuth0Client = null;
+      }
+
       return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

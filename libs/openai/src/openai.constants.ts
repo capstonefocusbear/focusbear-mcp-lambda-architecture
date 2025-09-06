@@ -146,3 +146,5 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     messages: null,
   },
 };
+
+export const AdjustedHabitFallbacks = ['New Habit', 'Mini Win', 'Daily Boost', 'Focus Time', 'Good Vibes Habit'];

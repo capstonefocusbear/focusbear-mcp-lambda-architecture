@@ -10,10 +10,18 @@ import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IOpenAIOptions } from './interfaces';
-import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS, OpenAIKeyType } from './openai.constants';
+import {
+  OPENAI_MODULE_OPTIONS,
+  TRANSLATION_KEYS,
+  TEST_CONSTANTS,
+  OpenAIKeyType,
+  AdjustedHabitFallbacks,
+} from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 import { AiToneOptions } from './domain/ai-tones.enum';
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Define mock prompt data that will be returned
 const mockPrompts = {
@@ -233,6 +241,7 @@ describe('OpenAIService', () => {
       isValidInputSpy.mockImplementation(originalImplementation);
     });
   });
+
   describe('sanitizeMetadata', () => {
     it('should return null if input is null', () => {
       const sanitizeMetadata = (service as any).sanitizeMetadata.bind(service);
@@ -731,6 +740,15 @@ describe('OpenAIService', () => {
   });
 
   describe('adjustHabitsWithAi', () => {
+    const currentHabits = [
+      {
+        id: 'e1c022d5-f729-45de-9e9f-a21df524a749',
+        name: 'Exercise',
+        duration_seconds: 1800,
+        activity_type: 'physical',
+      },
+    ];
+
     beforeEach(() => {
       jest.clearAllMocks();
 
@@ -771,12 +789,13 @@ describe('OpenAIService', () => {
     });
 
     it('should generate new IDs for habits without IDs', async () => {
-      const currentHabits = [
-        { id: 'habit1', name: 'Existing Habit', duration_seconds: 1800, activity_type: 'physical' },
+      const mixedHabitsWithEmptyId = [
+        ...currentHabits,
+        { id: '', name: 'New Habit', duration_seconds: 600, activity_type: 'physical' },
       ];
 
       const aiResponse = [
-        { id: 'habit1', name: 'Existing Habit', duration_seconds: 1800 },
+        ...currentHabits,
         { id: '', name: 'New Habit', duration_seconds: 600 }, // AI returned empty ID
       ];
 
@@ -792,25 +811,20 @@ describe('OpenAIService', () => {
 
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
 
-      const result = await service.adjustHabitsWithAi(currentHabits, 'Add a new 10-minute habit');
+      const result = await service.adjustHabitsWithAi(mixedHabitsWithEmptyId, 'Add a new 10-minute habit');
+
+      const [habitWithId, habitWithGeneratedId] = mixedHabitsWithEmptyId;
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        id: 'habit1',
-        name: 'Existing Habit',
-        duration_seconds: 1800,
-        activity_type: 'physical',
-      });
-      expect(result[1].name).toBe('New Habit');
-      expect(result[1].duration_seconds).toBe(600);
-      expect(result[1].id).toBe(''); // Implementation does not generate UUID
+      expect(result[0]).toEqual(habitWithId);
+      expect(result[1].name).toBe(habitWithGeneratedId.name);
+      expect(result[1].duration_seconds).toBe(habitWithGeneratedId.duration_seconds);
+      expect(uuidRegex.test(result[1].id)).toBe(true);
     });
 
     it('should sanitize and coerce invalid duration values', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Test Habit', duration_seconds: 1800, activity_type: 'physical' }];
-
       const aiResponse = [
-        { id: 'habit1', name: 'Test Habit', duration_seconds: 'invalid' }, // Invalid type
+        { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Test Habit', duration_seconds: 'invalid' }, // Invalid type
         { id: 'habit2', name: 'Another Habit', duration_seconds: -100 }, // Negative value
         { id: 'habit3', name: 'Third Habit', duration_seconds: 1.5 }, // Float value
       ];
@@ -830,14 +844,19 @@ describe('OpenAIService', () => {
       const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
 
       expect(result).toHaveLength(3);
-      expect(result[0].duration_seconds).toBe(0); // Invalid string becomes 0
+      expect(result[0].duration_seconds).toBe(0); // Invalid string becomes  0
       expect(result[1].duration_seconds).toBe(0); // Coerced to 0 (max of 0 and -100)
       expect(result[2].duration_seconds).toBe(2); // Rounded to integer
     });
 
     it('should handle JSON parsing errors and return original habits', async () => {
-      const currentHabits = [
-        { id: 'habit1', name: 'Morning Exercise', duration_seconds: 1800, activity_type: 'physical' },
+      const habits = [
+        {
+          id: 'e1c022d5-f729-45de-9e9f-a21df524a749',
+          name: 'Morning Exercise',
+          duration_seconds: 1800,
+          activity_type: 'physical',
+        },
       ];
 
       const mockResponse = {
@@ -853,10 +872,15 @@ describe('OpenAIService', () => {
       const mockCaptureException = jest.spyOn(SentryServiceMock.instance(), 'captureException');
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
 
-      const result = await service.adjustHabitsWithAi(currentHabits, 'Some feedback');
+      const result = await service.adjustHabitsWithAi(habits, 'Some feedback');
 
       expect(result).toEqual([
-        { id: 'habit1', name: 'Morning Exercise', duration_seconds: 1800, activity_type: 'physical' },
+        {
+          id: 'e1c022d5-f729-45de-9e9f-a21df524a749',
+          name: 'Morning Exercise',
+          duration_seconds: 1800,
+          activity_type: 'physical',
+        },
       ]);
       expect(mockCaptureException).toHaveBeenCalledWith(
         expect.any(Error),
@@ -872,8 +896,6 @@ describe('OpenAIService', () => {
     });
 
     it('should handle non-array AI responses', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Test Habit', duration_seconds: 1800, activity_type: 'physical' }];
-
       const mockResponse = {
         choices: [
           {
@@ -889,18 +911,18 @@ describe('OpenAIService', () => {
 
       const result = await service.adjustHabitsWithAi(currentHabits, 'Some feedback');
 
-      expect(result).toEqual([{ id: 'habit1', name: 'Test Habit', duration_seconds: 1800, activity_type: 'physical' }]);
+      expect(result).toEqual(currentHabits);
       expect(mockCaptureException).toHaveBeenCalled();
     });
 
     it('should include user goals and routine duration in prompt context', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
-
       const mockResponse = {
         choices: [
           {
             message: {
-              content: JSON.stringify([{ id: 'habit1', name: 'Exercise', duration_seconds: 1800 }]),
+              content: JSON.stringify([
+                { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 },
+              ]),
             },
           },
         ],
@@ -918,22 +940,29 @@ describe('OpenAIService', () => {
     });
 
     it('should handle OpenAI API errors', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Test', duration_seconds: 1800, activity_type: 'physical' }];
+      const habits = [
+        { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Test', duration_seconds: 1800, activity_type: 'physical' },
+      ];
 
       const apiError = new Error('OpenAI API Error');
       const mockCaptureException = jest.spyOn(SentryServiceMock.instance(), 'captureException');
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockRejectedValueOnce(apiError);
 
-      await expect(service.adjustHabitsWithAi(currentHabits, 'Some feedback')).rejects.toThrow('OpenAI API Error');
+      await expect(service.adjustHabitsWithAi(habits, 'Some feedback')).rejects.toThrow('OpenAI API Error');
       expect(mockCaptureException).toHaveBeenCalledWith(apiError, { level: 'error' });
     });
 
     it('should preserve original habit names when AI returns empty names', async () => {
-      const currentHabits = [
-        { id: 'habit1', name: 'Original Name', duration_seconds: 1800, activity_type: 'physical' },
+      const originalHabits = [
+        {
+          id: 'e1c022d5-f729-45de-9e9f-a21df524a749',
+          name: 'Original Name',
+          duration_seconds: 1800,
+          activity_type: 'physical',
+        },
       ];
 
-      const aiResponse = [{ id: 'habit1', name: '', duration_seconds: 2400 }]; // Empty name
+      const aiResponse = [{ id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: '', duration_seconds: 2400 }]; // Empty name
 
       const mockResponse = {
         choices: [
@@ -947,15 +976,23 @@ describe('OpenAIService', () => {
 
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
 
-      const result = await service.adjustHabitsWithAi(currentHabits, 'Increase duration');
+      const [aiAdjustedHabit] = aiResponse;
+      const [originalHabit] = originalHabits;
+      const habitsWithPreservedName = [
+        {
+          ...originalHabit,
+          duration_seconds: aiAdjustedHabit.duration_seconds,
+        },
+      ];
+      const result = await service.adjustHabitsWithAi(originalHabits, 'Increase duration');
 
-      expect(result).toEqual([{ id: 'habit1', name: '', duration_seconds: 2400 }]);
+      expect(result).toEqual(habitsWithPreservedName);
     });
 
     it('should only include minimal habit data in the prompt (no activity_type)', async () => {
-      const currentHabits = [
+      const habits = [
         {
-          id: 'habit1',
+          id: 'e1c022d5-f729-45de-9e9f-a21df524a749',
           name: 'Exercise',
           duration_seconds: 1800,
           activity_type: 'physical',
@@ -967,7 +1004,9 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify([{ id: 'habit1', name: 'Exercise', duration_seconds: 1800 }]),
+              content: JSON.stringify([
+                { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 },
+              ]),
             },
           },
         ],
@@ -977,7 +1016,7 @@ describe('OpenAIService', () => {
         .spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming')
         .mockResolvedValueOnce(mockResponse);
 
-      await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+      await service.adjustHabitsWithAi(habits, 'Test feedback');
 
       const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
       const promptContent = systemPromptCall.content;
@@ -1014,12 +1053,24 @@ describe('OpenAIService', () => {
     });
 
     it('should handle habits with null/undefined properties', async () => {
-      const currentHabits = [
+      const habits = [
         { id: null, name: undefined, duration_seconds: null, activity_type: 'physical' },
-        { id: 'habit2', name: 'Valid Habit', duration_seconds: 1800, activity_type: null },
+        {
+          id: 'ac976082-7ef3-4f0f-882c-afb0a49a3fed',
+          name: 'Valid Habit',
+          duration_seconds: 1800,
+          activity_type: null,
+        },
       ];
 
-      const aiResponse = [{ id: 'habit2', name: 'Valid Habit', duration_seconds: 1800 }];
+      const aiResponse = [
+        {
+          id: 'ac976082-7ef3-4f0f-882c-afb0a49a3fed',
+          name: 'Valid Habit',
+          duration_seconds: 1800,
+          activity_type: null,
+        },
+      ];
 
       const mockResponse = {
         choices: [
@@ -1033,18 +1084,17 @@ describe('OpenAIService', () => {
 
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
 
-      const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+      const result = await service.adjustHabitsWithAi(habits, 'Test feedback');
+      const [aiHabit] = aiResponse;
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ id: 'habit2', name: 'Valid Habit', duration_seconds: 1800 });
+      expect(result[0]).toEqual(aiHabit);
     });
 
     it('should handle AI response with null values', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Test Habit', duration_seconds: 1800, activity_type: 'physical' }];
-
       const aiResponse = [
         { id: null, name: null, duration_seconds: null },
-        { id: 'habit1', name: '', duration_seconds: undefined },
+        { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: '', duration_seconds: undefined },
       ];
 
       const mockResponse = {
@@ -1062,22 +1112,22 @@ describe('OpenAIService', () => {
       const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
 
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(''); // Implementation does not generate UUID
-      expect(result[0].name).toBe('');
+      expect(uuidRegex.test(result[0].id)).toBe(true);
+      expect(AdjustedHabitFallbacks).toContain(result[0].name);
       expect(result[0].duration_seconds).toBe(0);
-      expect(result[1].id).toBe('habit1');
-      expect(result[1].name).toBe('Test Habit'); // Fallback to original name only if present in original, but implementation does not do this, so expect ''
+      expect(result[1].id).toBe('e1c022d5-f729-45de-9e9f-a21df524a749');
+      expect(result[1].name).toContain(currentHabits[0].name);
       expect(result[1].duration_seconds).toBe(0); // undefined becomes 0
     });
 
     it('should handle context without user goals or routine duration', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
-
       const mockResponse = {
         choices: [
           {
             message: {
-              content: JSON.stringify([{ id: 'habit1', name: 'Exercise', duration_seconds: 1800 }]),
+              content: JSON.stringify([
+                { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 },
+              ]),
             },
           },
         ],
@@ -1098,13 +1148,13 @@ describe('OpenAIService', () => {
     });
 
     it('should handle empty user goals array', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
-
       const mockResponse = {
         choices: [
           {
             message: {
-              content: JSON.stringify([{ id: 'habit1', name: 'Exercise', duration_seconds: 1800 }]),
+              content: JSON.stringify([
+                { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 },
+              ]),
             },
           },
         ],
@@ -1125,13 +1175,13 @@ describe('OpenAIService', () => {
     });
 
     it('should handle zero routine duration', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
-
       const mockResponse = {
         choices: [
           {
             message: {
-              content: JSON.stringify([{ id: 'habit1', name: 'Exercise', duration_seconds: 1800 }]),
+              content: JSON.stringify([
+                { id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 },
+              ]),
             },
           },
         ],
@@ -1150,41 +1200,61 @@ describe('OpenAIService', () => {
       expect(promptContent).not.toContain('Routine duration (minutes):');
     });
 
-    it('should handle AI response with extra properties that get filtered out', async () => {
-      const currentHabits = [{ id: 'habit1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
-
-      const aiResponse = [
-        {
-          id: 'habit1',
-          name: 'Updated Exercise',
-          duration_seconds: 2400,
-          extra_property: 'should be filtered',
-          activity_type: 'should be filtered',
-        },
+    it('should handle groupByGoals=true when AI returns grouped response', async () => {
+      const habits = [
+        { id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical', tags: ['fitness'] },
+        { id: 'h2', name: 'Read', duration_seconds: 1200, activity_type: 'mental', tags: ['learning'] },
       ];
-
+      const aiGroupedResponse = [
+        { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800 }] },
+        { goal: 'learning', habits: [{ id: 'h2', name: 'Read', duration_seconds: 1200 }] },
+      ];
       const mockResponse = {
         choices: [
           {
             message: {
-              content: JSON.stringify(aiResponse),
+              content: JSON.stringify(aiGroupedResponse),
             },
           },
         ],
       };
-
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
-
-      const result = await service.adjustHabitsWithAi(currentHabits, 'Update exercise');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        id: 'habit1',
-        name: 'Updated Exercise',
-        duration_seconds: 2400,
+      const userGoals = ['fitness', 'learning'];
+      const result = await service.adjustHabitsWithAi(habits, 'Group by goals', userGoals, undefined, true);
+      expect(result).toEqual({
+        fitness: [expect.objectContaining({ id: 'h1', name: 'Exercise', duration_seconds: 1800 })],
+        learning: [expect.objectContaining({ id: 'h2', name: 'Read', duration_seconds: 1200 })],
       });
-      expect(result[0]).not.toHaveProperty('extra_property');
-      expect(result[0]).not.toHaveProperty('activity_type');
+    });
+
+    it('should handle groupByGoals=true when AI returns flat array and service groups by userGoals', async () => {
+      const habits = [
+        { id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical', tags: ['fitness'] },
+        { id: 'h2', name: 'Read', duration_seconds: 1200, activity_type: 'mental', tags: ['learning'] },
+        { id: 'h3', name: 'Meditate', duration_seconds: 600, activity_type: 'mental', tags: ['wellness'] },
+      ];
+      const aiFlatResponse = [
+        { id: 'h1', name: 'Exercise', duration_seconds: 1800, tags: ['fitness'] },
+        { id: 'h2', name: 'Read', duration_seconds: 1200, tags: ['learning'] },
+        { id: 'h3', name: 'Meditate', duration_seconds: 600, tags: ['wellness'] },
+      ];
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(aiFlatResponse),
+            },
+          },
+        ],
+      };
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+      const userGoals = ['fitness', 'learning', 'wellness'];
+      const result = await service.adjustHabitsWithAi(habits, 'Group by goals', userGoals, undefined, true);
+      expect(result).toEqual({
+        fitness: [expect.objectContaining({ id: 'h1', name: 'Exercise' })],
+        learning: [expect.objectContaining({ id: 'h2', name: 'Read' })],
+        wellness: [expect.objectContaining({ id: 'h3', name: 'Meditate' })],
+      });
     });
   });
 

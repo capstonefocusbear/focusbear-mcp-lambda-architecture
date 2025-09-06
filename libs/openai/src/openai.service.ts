@@ -11,10 +11,12 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI from 'openai';
+import { randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
+import { isUUID } from '@api-server/shared/utils/helpers';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -28,6 +30,7 @@ import {
   OPENAI_PARAMS,
   PROMPT_INJECTION_PATTERNS,
   OpenAIKeyType,
+  AdjustedHabitFallbacks,
 } from './openai.constants';
 import { AiToneOptions } from './domain/ai-tones.enum';
 import { URLSafeProbabilityResponseDto } from './dto/url-safe-probability-response.dto';
@@ -943,36 +946,32 @@ export class OpenAIService {
           const validGrouped: AdjustedHabitsGrouped = {};
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = habits.map((habit: any) => {
-              const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id);
+              const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
               return {
+                ...rest,
                 id: String(habit?.id ?? ''),
                 name: String(habit?.name ?? '').trim(),
                 duration_seconds: Number.isFinite(Number(habit?.duration_seconds))
                   ? Math.max(0, Math.round(Number(habit?.duration_seconds)))
                   : 0,
-                ...rest,
               };
             });
           }
-
           return validGrouped;
         }
 
-        const isInvalidAiResponse = !Array.isArray(parsed) && !Array.isArray(parsed?.[Object.keys(parsed)[0]]);
-
-        if (isInvalidAiResponse) {
-          throw new Error('AI response is not an array');
-        }
-        const habits: AdjustedHabit[] = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
+        const habits: AdjustedHabit[] = this.getValidatedArray(parsed, 'AI response is not an array');
 
         const sanitized = habits.map((item) => {
           const rawId = item?.id;
-          const id = rawId == null ? '' : String(rawId);
           const name = String(item?.name ?? '').trim();
           const durationRaw = Number(item?.duration_seconds ?? 0);
           const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
-          const rest = currentHabits.find((incomingHabit) => incomingHabit.id === item.id);
-          return { id, name, duration_seconds, ...rest };
+          const rest = currentHabits.find((incomingHabit) => incomingHabit.id === item.id) || {};
+          const resolvedId = rest?.id || isUUID(rawId) ? rawId : randomUUID();
+          const resolvedName =
+            name || (rest?.name ?? AdjustedHabitFallbacks[Math.floor(Math.random() * AdjustedHabitFallbacks.length)]);
+          return { ...rest, id: resolvedId, name: resolvedName, duration_seconds };
         });
 
         // If groupByGoals is requested but AI did not group, group here
@@ -987,7 +986,7 @@ export class OpenAIService {
       } catch (parseError) {
         this.sentryService.instance().captureException(parseError, {
           level: 'error',
-          extra: { response, currentHabits: minimalHabits, userFeedback },
+          extra: { response, currentHabits, userFeedback },
         });
         return currentHabits;
       }
@@ -1038,5 +1037,20 @@ export class OpenAIService {
           Array.isArray((item as any).habits),
       )
     );
+  }
+
+  private getValidatedArray<T = any>(parsed: unknown, error: string): T[] {
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const firstKey = Object.keys(parsed)[0];
+      if (Array.isArray((parsed as Record<string, unknown>)[firstKey])) {
+        return (parsed as Record<string, T[]>)[firstKey];
+      }
+    }
+
+    throw new Error(error);
   }
 }

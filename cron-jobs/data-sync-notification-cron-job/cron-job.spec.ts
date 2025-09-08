@@ -171,7 +171,7 @@ describe('data-sync-notification cron (lean behavior)', () => {
     expect(mockApp.get).toHaveBeenCalled();
     expect(mockZoho.initiateWhatsAppSession).toHaveBeenCalledWith(
       '+50370000000',
-      'ios',
+      'es',
       expect.any(Number),
       expect.stringContaining('Focus Bear'),
     );

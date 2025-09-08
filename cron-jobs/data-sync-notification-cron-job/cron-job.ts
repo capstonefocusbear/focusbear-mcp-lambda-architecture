@@ -192,6 +192,7 @@ async function sendUnicaesDataSyncWhatsapp(
   name: string,
   os: 'ios' | 'android',
   participantCode: string,
+  language: string,
 ) {
   try {
     const whatsappMessage = `Hola ${
@@ -203,7 +204,14 @@ async function sendUnicaesDataSyncWhatsapp(
 
     const cannedMessageId = os === 'ios' ? cannedMessageIdIos : cannedMessageIdAndroid;
 
-    await zohoService.initiateWhatsAppSession(phoneNumber, os, cannedMessageId, whatsappMessage);
+    if (!Number.isFinite(cannedMessageId)) {
+      throw new Error(
+        `Missing canned message id for ${os}. Set ZOHO_CANNED_MESSAGE_ID_${os.toUpperCase()} in environment.`,
+      );
+    }
+
+    // Use user's language for WhatsApp template selection; OS only selects canned message
+    await zohoService.initiateWhatsAppSession(phoneNumber, language, cannedMessageId, whatsappMessage);
 
     console.log(`WhatsApp notification sent to participant ${participantCode}`);
   } catch (error) {
@@ -235,10 +243,10 @@ export async function runDataSyncCronJob() {
   console.log(`Found ${participants.length} participants with outdated usage data`);
 
   for (const participant of participants) {
-    const { email, name, os, phoneNumber } = await getUserDetails(participant.userId);
+    const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
 
     if (phoneNumber) {
-      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode);
+      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
     }
 
     // Temporarily disabled: rely on WhatsApp only (issue #1274)

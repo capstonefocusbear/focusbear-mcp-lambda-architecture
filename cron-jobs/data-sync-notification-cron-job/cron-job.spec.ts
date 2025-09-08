@@ -136,6 +136,10 @@ describe('data-sync-notification cron (lean behavior)', () => {
   });
 
   it('uses a minimal Nest application context (not AppModule) and closes it', async () => {
+    // Ensure canned message IDs are present to avoid early validation error
+    process.env.ZOHO_CANNED_MESSAGE_ID_IOS = '123456';
+    process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID = '789012';
+
     const { NestFactory } = require('@nestjs/core');
     const createCtx = NestFactory.createApplicationContext as any;
 

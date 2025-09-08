@@ -14,6 +14,7 @@ describe('ZohoDeskService', () => {
     'zoho.ZOHO_DESK_CLIENT_SECRET': 'test-client-secret',
     'zoho.ZOHO_ORG_ID': 'test-org-id',
     'zoho.ZOHO_WHATSAPP_CHANNEL_ID': 'test-channel-id',
+    'zoho.ZOHO_REFRESH_TOKEN': 'test-refresh-token',
   };
 
   beforeEach(async () => {

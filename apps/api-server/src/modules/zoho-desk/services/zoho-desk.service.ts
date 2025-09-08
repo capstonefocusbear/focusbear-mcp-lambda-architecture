@@ -25,12 +25,19 @@ export class ZohoDeskService {
 
   private readonly whatsappChannelId: string;
 
+  private readonly deskBaseUrl: string;
+
+  private readonly accountsBaseUrl: string;
+
   constructor(private readonly configService: ConfigService) {
     this.clientId = this.configService.get<string>('zoho.ZOHO_DESK_CLIENT_ID') || '';
     this.clientSecret = this.configService.get<string>('zoho.ZOHO_DESK_CLIENT_SECRET') || '';
     this.orgId = this.configService.get<string>('zoho.ZOHO_ORG_ID') || '';
     this.whatsappChannelId = this.configService.get<string>('zoho.ZOHO_WHATSAPP_CHANNEL_ID') || '';
     this.refreshToken = this.configService.get<string>('zoho.ZOHO_REFRESH_TOKEN') || '';
+    this.deskBaseUrl = this.configService.get<string>('zoho.ZOHO_DESK_BASE_URL') || 'https://desk.zoho.com.au';
+    this.accountsBaseUrl =
+      this.configService.get<string>('zoho.ZOHO_ACCOUNTS_BASE_URL') || 'https://accounts.zoho.com.au';
   }
 
   private async getAccessToken(): Promise<string> {
@@ -39,7 +46,7 @@ export class ZohoDeskService {
     }
 
     try {
-      const tokenUrl = 'https://accounts.zoho.com.au/oauth/v2/token';
+      const tokenUrl = `${this.accountsBaseUrl}/oauth/v2/token`;
       const params = new URLSearchParams({
         client_id: this.clientId,
         client_secret: this.clientSecret,
@@ -71,11 +78,31 @@ export class ZohoDeskService {
     message: string,
   ): Promise<any> {
     try {
+      // Validate required configuration & parameters early to avoid opaque 404s
+      if (!this.orgId) {
+        throw new Error('Missing Zoho Desk orgId configuration');
+      }
+      if (!this.whatsappChannelId) {
+        throw new Error('Missing Zoho WhatsApp channel ID configuration');
+      }
+      if (!this.clientId || !this.clientSecret || !this.refreshToken) {
+        throw new Error('Missing Zoho Desk OAuth credentials or refresh token');
+      }
+      if (!phoneNumber) {
+        throw new Error('Phone number is required');
+      }
+      if (!language) {
+        throw new Error('Language is required');
+      }
+      if (!Number.isFinite(cannedMessageId)) {
+        throw new Error('Invalid cannedMessageId');
+      }
+
       // Get valid access token
       const accessToken = await this.getAccessToken();
 
       // Construct the API endpoint
-      const apiUrl = `https://desk.zoho.com.au/api/v1/im/channels/${this.whatsappChannelId}/initiateSession`;
+      const apiUrl = `${this.deskBaseUrl}/api/v1/im/channels/${this.whatsappChannelId}/initiateSession`;
 
       // Construct the request body according to Zoho Desk API documentation
       const requestBody = {
@@ -103,7 +130,7 @@ export class ZohoDeskService {
         throw new Error(
           `Failed to initiate WhatsApp session: ${error.response?.status} - ${
             error.response?.data?.message || error.message
-          }`,
+          }${error.config?.url ? ` (url: ${error.config.url})` : ''}`,
         );
       }
 

@@ -10,4 +10,6 @@ export const zohoConfig = registerAs('zoho', () => ({
   ZOHO_REFRESH_TOKEN: process.env.ZOHO_REFRESH_TOKEN,
   ZOHO_DESK_CLIENT_ID: process.env.ZOHO_DESK_CLIENT_ID,
   ZOHO_DESK_CLIENT_SECRET: process.env.ZOHO_DESK_CLIENT_SECRET,
+  ZOHO_DESK_BASE_URL: process.env.ZOHO_DESK_BASE_URL,
+  ZOHO_ACCOUNTS_BASE_URL: process.env.ZOHO_ACCOUNTS_BASE_URL,
 }));

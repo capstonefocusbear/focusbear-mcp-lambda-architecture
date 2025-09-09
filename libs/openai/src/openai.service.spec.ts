@@ -10,13 +10,7 @@ import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IOpenAIOptions } from './interfaces';
-import {
-  OPENAI_MODULE_OPTIONS,
-  TRANSLATION_KEYS,
-  TEST_CONSTANTS,
-  OpenAIKeyType,
-  AdjustedHabitFallbacks,
-} from './openai.constants';
+import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS, OpenAIKeyType } from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 import { AiToneOptions } from './domain/ai-tones.enum';
@@ -1111,13 +1105,10 @@ describe('OpenAIService', () => {
 
       const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
 
-      expect(result).toHaveLength(2);
-      expect(uuidRegex.test(result[0].id)).toBe(true);
-      expect(AdjustedHabitFallbacks).toContain(result[0].name);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('e1c022d5-f729-45de-9e9f-a21df524a749');
+      expect(result[0].name).toContain(currentHabits[0].name);
       expect(result[0].duration_seconds).toBe(0);
-      expect(result[1].id).toBe('e1c022d5-f729-45de-9e9f-a21df524a749');
-      expect(result[1].name).toContain(currentHabits[0].name);
-      expect(result[1].duration_seconds).toBe(0); // undefined becomes 0
     });
 
     it('should handle context without user goals or routine duration', async () => {

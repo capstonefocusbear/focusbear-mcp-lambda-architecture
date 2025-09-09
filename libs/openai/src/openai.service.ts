@@ -17,12 +17,14 @@ import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
 import { isUUID } from '@api-server/shared/utils/helpers';
+import { UpdateActivityTemplateDto } from '@api-server/modules/activity-template/dto/activity-template.dto';
+import { ActivityTemplate } from '@api-server/modules/activity-template/entity/activity-template.entity';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-url-safe.dto';
 import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
-import { AdjustedHabit, AdjustedHabitsGrouped, HabitOption, IOpenAIOptions } from './interfaces';
+import { HabitOption, IOpenAIOptions } from './interfaces';
 import {
   INPUT_WRAPPER,
   MAX_WORD_LENGTH,
@@ -30,7 +32,6 @@ import {
   OPENAI_PARAMS,
   PROMPT_INJECTION_PATTERNS,
   OpenAIKeyType,
-  AdjustedHabitFallbacks,
 } from './openai.constants';
 import { AiToneOptions } from './domain/ai-tones.enum';
 import { URLSafeProbabilityResponseDto } from './dto/url-safe-probability-response.dto';
@@ -903,7 +904,7 @@ export class OpenAIService {
     userGoals?: string[],
     routineDuration?: number,
     groupByGoals?: boolean,
-  ): Promise<UpdateActivityDto[] | AdjustedHabitsGrouped> {
+  ) {
     try {
       const promptContent = this.promptCacheService.getPrompt('habit-adjustment-default');
       if (!promptContent) {
@@ -943,9 +944,9 @@ export class OpenAIService {
         const parsed = JSON.parse(response);
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
-          const validGrouped: AdjustedHabitsGrouped = {};
+          const validGrouped: Record<string, ActivityTemplate[]> = {};
           for (const { goal, habits } of parsed) {
-            validGrouped[String(goal).trim()] = habits.map((habit: any) => {
+            validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
               const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
               return {
                 ...rest,
@@ -960,29 +961,35 @@ export class OpenAIService {
           return validGrouped;
         }
 
-        const habits: AdjustedHabit[] = this.getValidatedArray(parsed, 'AI response is not an array');
+        const adjustedHabits: Partial<UpdateActivityDto>[] = this.getValidatedArray(
+          parsed,
+          'AI response is not an array',
+        );
 
-        const sanitized = habits.map((item) => {
-          const rawId = item?.id;
-          const name = String(item?.name ?? '').trim();
-          const durationRaw = Number(item?.duration_seconds ?? 0);
-          const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
-          const rest = currentHabits.find((incomingHabit) => incomingHabit.id === item.id) || {};
-          const resolvedId = rest?.id || isUUID(rawId) ? rawId : randomUUID();
-          const resolvedName =
-            name || (rest?.name ?? AdjustedHabitFallbacks[Math.floor(Math.random() * AdjustedHabitFallbacks.length)]);
-          return { ...rest, id: resolvedId, name: resolvedName, duration_seconds };
-        });
+        const sanitizedAdjustedHabits = adjustedHabits
+          .map((adjustedHabit) => {
+            const rawId = adjustedHabit?.id;
+            const name = String(adjustedHabit?.name ?? '').trim();
+            const durationRaw = Number(adjustedHabit?.duration_seconds ?? 0);
+            const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
+            const rest = currentHabits.find((incomingHabit) => incomingHabit.id === adjustedHabit.id) || {};
+            const generatedId = isUUID(rawId) ? rawId : randomUUID();
+            const resolvedName = name || rest?.name || '';
+            return { ...rest, id: rest.id || generatedId, name: resolvedName, duration_seconds };
+          })
+          .filter((adjustedHabit) => Boolean(adjustedHabit.name));
 
         // If groupByGoals is requested but AI did not group, group here
         if (groupByGoals) {
-          const grouped: AdjustedHabitsGrouped = {};
+          const grouped: Record<string, ActivityTemplate[]> = {};
           for (const goal of userGoals) {
-            grouped[goal] = habits.filter((habit) => habit.tags?.includes(goal));
+            grouped[goal] = sanitizedAdjustedHabits.filter((adjustedHabit) => {
+              return currentHabits.find((habit) => adjustedHabit.id === habit.id).tags?.includes(goal);
+            });
           }
           return grouped;
         }
-        return sanitized;
+        return sanitizedAdjustedHabits;
       } catch (parseError) {
         this.sentryService.instance().captureException(parseError, {
           level: 'error',

@@ -332,48 +332,7 @@ export class TeamManagementService {
     return members.map((member, index) => {
       const userDetail = member.member_id ? userDetails.find((u) => u.id === member.member_id) : undefined;
       const last90DaysDailyStats = allMembersDailyStats?.[index];
-      const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
-      const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-        ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
-        : 0;
-
-      const totalFocusModesHours =
-        parseFloat(
-          last90DaysDailyStats
-            ?.reduce((acc, curr) => acc + curr.total_hours_spent_in_focus_sessions, 0)
-            .toFixed(DECIMAL_PRECISION),
-        ) || 0;
-      return {
-        id: member.member_id,
-        email: member.email,
-        last_active_date: member?.updated_at,
-        first_name: member?.first_name,
-        last_name: member?.last_name,
-        member_expiry_date: member?.member_expiry_date,
-        created_at: member?.created_at,
-        morning_routines_streak: userDetail?.morning_routines_streak || 0,
-        evening_routines_streak: userDetail?.evening_routines_streak || 0,
-        focus_modes_streak: userDetail?.focus_modes_streak || 0,
-        morning_percent_number_day_of_stats_completed: userDetail?.morning_percent_number_day_of_stats_completed || 0,
-        micro_percent_number_day_of_stats_completed: userDetail?.micro_percent_number_day_of_stats_completed || 0,
-        evening_percent_number_day_of_stats_completed: userDetail?.evening_percent_number_day_of_stats_completed || 0,
-        focus_modes_percent_number_day_of_stats_completed,
-        total_hours_in_focus_sessions: totalFocusModesHours,
-        morning_number_days_completed: userDetail?.morning_number_days_completed || 0,
-        morning_num_days_of_stats: userDetail?.morning_num_days_of_stats || 0,
-        evening_number_days_completed: userDetail?.evening_number_days_completed || 0,
-        evening_num_days_of_stats: userDetail?.evening_num_days_of_stats || 0,
-        micro_breaks_number_days_completed: userDetail?.micro_breaks_number_days_completed || 0,
-        micro_breaks_num_days_of_stats: userDetail?.micro_breaks_num_days_of_stats || 0,
-        focus_modes_number_days_completed: userDetail?.focus_modes_number_days_completed || 0,
-        focus_modes_num_days_of_stats: userDetail?.focus_modes_num_days_of_stats || 0,
-        num_days_of_stats: userDetail?.num_days_of_stats || 0,
-        number_days_completed: userDetail?.number_days_completed || 0,
-        invitation_status: member.invitation_status,
-        invitation_sent_at: member.invitation_sent_at,
-        invitation_send_count: member.invitation_send_count,
-        invitation_responded_at: member.invitation_responded_at,
-      };
+      return this.buildMemberDetails(member, userDetail, last90DaysDailyStats);
     });
   }
 
@@ -393,25 +352,45 @@ export class TeamManagementService {
       this.deviceService.getDevicesByUserId(memberId),
     ]);
 
-    const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
+    const member = this.buildMemberDetails(memberRecord, userDetail, last90DaysDailyStats) as GetTeamMembersDetailsDto;
+
+    const devicesPayload = devices.map((d) => ({
+      id: d.id,
+      operating_system: String(d.operating_system),
+      app_version: d.app_version,
+      is_leader: !!d.is_leader,
+      created_at: d.created_at,
+      updated_at: d.updated_at,
+    }));
+
+    return { member, devices: devicesPayload };
+  }
+
+  private buildMemberDetails(
+    member: TeamToMember,
+    userDetail: any,
+    last90DaysDailyStats: Array<Partial<{ focus_modes: number; total_hours_spent_in_focus_sessions: number }>> = [],
+  ): GetTeamMembersDetailsDto {
+    const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + (curr?.focus_modes || 0), 0) || 0;
     const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-      ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
+      ? parseFloat(((totalFocusModes / (last90DaysDailyStats?.length || 1)) * 100).toFixed(DECIMAL_PRECISION))
       : 0;
+
     const totalFocusModesHours =
       parseFloat(
-        last90DaysDailyStats
-          ?.reduce((acc, curr) => acc + curr.total_hours_spent_in_focus_sessions, 0)
+        (last90DaysDailyStats || [])
+          .reduce((acc, curr) => acc + (curr?.total_hours_spent_in_focus_sessions || 0), 0)
           .toFixed(DECIMAL_PRECISION),
       ) || 0;
 
-    const member = {
-      id: memberRecord.member_id,
-      email: memberRecord.email,
-      last_active_date: memberRecord?.updated_at,
-      first_name: memberRecord?.first_name,
-      last_name: memberRecord?.last_name,
-      member_expiry_date: memberRecord?.member_expiry_date,
-      created_at: memberRecord?.created_at,
+    return {
+      id: member.member_id,
+      email: member.email,
+      last_active_date: member?.updated_at,
+      first_name: member?.first_name,
+      last_name: member?.last_name,
+      member_expiry_date: member?.member_expiry_date,
+      created_at: member?.created_at,
       morning_routines_streak: userDetail?.morning_routines_streak || 0,
       evening_routines_streak: userDetail?.evening_routines_streak || 0,
       focus_modes_streak: userDetail?.focus_modes_streak || 0,
@@ -430,22 +409,11 @@ export class TeamManagementService {
       focus_modes_num_days_of_stats: userDetail?.focus_modes_num_days_of_stats || 0,
       num_days_of_stats: userDetail?.num_days_of_stats || 0,
       number_days_completed: userDetail?.number_days_completed || 0,
-      invitation_status: memberRecord.invitation_status,
-      invitation_sent_at: memberRecord.invitation_sent_at,
-      invitation_send_count: memberRecord.invitation_send_count,
-      invitation_responded_at: memberRecord.invitation_responded_at,
+      invitation_status: member.invitation_status,
+      invitation_sent_at: member.invitation_sent_at,
+      invitation_send_count: member.invitation_send_count,
+      invitation_responded_at: member.invitation_responded_at,
     } as GetTeamMembersDetailsDto;
-
-    const devicesPayload = devices.map((d) => ({
-      id: d.id,
-      operating_system: String(d.operating_system),
-      app_version: d.app_version,
-      is_leader: !!d.is_leader,
-      created_at: d.created_at,
-      updated_at: d.updated_at,
-    }));
-
-    return { member, devices: devicesPayload };
   }
 
   async updateTeamName(adminId: string, teamId: string, name: string) {

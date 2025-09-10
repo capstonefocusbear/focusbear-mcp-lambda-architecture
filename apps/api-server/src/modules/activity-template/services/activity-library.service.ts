@@ -119,11 +119,19 @@ export class ActivityLibraryService {
         return [];
       }
       if (getRoutineSuggestionsDto.groupByGoals) {
-        const groupedByGoal: Record<string, ActivityTemplate[]> = {};
+        const groupedByGoal: Record<
+          string,
+          Omit<ActivityTemplate, 'tags'> &
+            {
+              tags: string[];
+            }[]
+        > = {};
         for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
-          groupedByGoal[goal] = templates.filter((template: ActivityTemplate) => {
-            return template.tags?.some((tag) => tag.tags.includes(goal));
-          });
+          groupedByGoal[goal] = templates
+            .filter((template: ActivityTemplate) => {
+              return template.tags?.some((tag) => tag.tags.includes(goal));
+            })
+            .map((template) => ({ ...template, tags: template.tags.flatMap((tag) => tag.tags) }));
         }
 
         return groupedByGoal;

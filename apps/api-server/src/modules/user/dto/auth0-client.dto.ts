@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class Auth0ClientDto {
   @IsNotEmpty()
@@ -8,4 +8,8 @@ export class Auth0ClientDto {
   @IsNotEmpty()
   @IsString()
   name: string;
+
+  @IsOptional()
+  @IsString()
+  user_agent?: string;
 }

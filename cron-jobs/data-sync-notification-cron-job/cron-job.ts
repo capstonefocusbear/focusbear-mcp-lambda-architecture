@@ -5,13 +5,16 @@ import * as sendGrid from '@sendgrid/mail';
 import { LessThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
 import { NestFactory } from '@nestjs/core';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
 import { captureErrorWithContext, withSentry } from '../sentry';
-import { AppModule } from '../../apps/api-server/src/app.module';
 import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho-desk/services/zoho-desk.service';
+import { ZohoDeskModule } from '../../apps/api-server/src/modules/zoho-desk/zoho-desk.module';
+import { zohoConfig } from '../../apps/api-server/src/config/zoho.config';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
@@ -29,29 +32,38 @@ const auth0 = new ManagementClient({
   clientSecret: process.env.AUTH0_MANAGEMENT_CLIENT_SECRET,
 });
 
-// Load translation files
-const enTranslations = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/en/common.json'), 'utf8'),
-);
-const esTranslations = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/es/common.json'), 'utf8'),
-);
+// Lazy init heavy dependencies to avoid import-time overhead
+let i18nInitialized = false;
+function ensureI18n() {
+  if (i18nInitialized) return;
+  try {
+    const enTranslations = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/en/common.json'), 'utf8'),
+    );
+    const esTranslations = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../apps/api-server/src/shared/i18n/es/common.json'), 'utf8'),
+    );
+    i18next.init({
+      lng: 'en',
+      fallbackLng: 'en',
+      resources: {
+        en: { translation: enTranslations },
+        es: { translation: esTranslations },
+      },
+    });
+    i18nInitialized = true;
+  } catch (error) {
+    captureErrorWithContext(error, { operation: 'ensureI18n', cronJob: 'data-sync-notification' });
+  }
+}
 
-// Initialize i18next with translations
-i18next.init({
-  lng: 'en', // default language
-  fallbackLng: 'en',
-  resources: {
-    en: {
-      translation: enTranslations,
-    },
-    es: {
-      translation: esTranslations,
-    },
-  },
-});
-
-sendGrid.setApiKey(process.env.SENDGRID_KEY);
+function ensureSendGrid() {
+  try {
+    if (process.env.SENDGRID_KEY) sendGrid.setApiKey(process.env.SENDGRID_KEY);
+  } catch (error) {
+    captureErrorWithContext(error, { operation: 'ensureSendGrid', cronJob: 'data-sync-notification' });
+  }
+}
 
 export async function getUsersWithOutdatedData() {
   const threeDaysAgo = DateTime.now().minus({ days: 3 }).toJSDate();
@@ -99,6 +111,8 @@ export async function getUserDetails(
 // The following function is intentionally unused in this file but kept for reference and potential future use.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function sendEmail(email: string, language: string) {
+  ensureI18n();
+  ensureSendGrid();
   const msg = {
     to: email,
     from: FOCUS_BEAR_EMAILS.SUPPORT,
@@ -122,6 +136,7 @@ async function sendEmail(email: string, language: string) {
 
 // Move the UNICAES-specific logic to a new function
 async function sendUnicaesDataSyncEmail(email: string, name?: string, os: 'ios' | 'android' = 'ios') {
+  ensureSendGrid();
   const imageUrl = 'https://images.focusbear.io/unicaes-email-header.png';
 
   const content = {
@@ -177,6 +192,7 @@ async function sendUnicaesDataSyncWhatsapp(
   name: string,
   os: 'ios' | 'android',
   participantCode: string,
+  language: string,
 ) {
   try {
     const whatsappMessage = `Hola ${
@@ -188,7 +204,14 @@ async function sendUnicaesDataSyncWhatsapp(
 
     const cannedMessageId = os === 'ios' ? cannedMessageIdIos : cannedMessageIdAndroid;
 
-    await zohoService.initiateWhatsAppSession(phoneNumber, os, cannedMessageId, whatsappMessage);
+    if (!Number.isFinite(cannedMessageId)) {
+      throw new Error(
+        `Missing canned message id for ${os}. Set ZOHO_CANNED_MESSAGE_ID_${os.toUpperCase()} in environment.`,
+      );
+    }
+
+    // Use user's language for WhatsApp template selection; OS only selects canned message
+    await zohoService.initiateWhatsAppSession(phoneNumber, language, cannedMessageId, whatsappMessage);
 
     console.log(`WhatsApp notification sent to participant ${participantCode}`);
   } catch (error) {
@@ -207,18 +230,23 @@ async function sendUnicaesDataSyncWhatsapp(
 export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
 
-  // Bootstrap NestJS application context to access ZohoService
-  const app = await NestFactory.createApplicationContext(AppModule);
+  // Bootstrap a minimal NestJS application context to access ZohoDeskService only
+  @Module({
+    imports: [ConfigModule.forRoot({ load: [zohoConfig] }), ZohoDeskModule],
+  })
+  class CronContextModule {}
+
+  const app = await NestFactory.createApplicationContext(CronContextModule, { logger: false });
   const zohoService = app.get(ZohoDeskService);
 
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
 
   for (const participant of participants) {
-    const { email, name, os, phoneNumber } = await getUserDetails(participant.userId);
+    const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
 
     if (phoneNumber) {
-      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode);
+      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
     }
 
     // Temporarily disabled: rely on WhatsApp only (issue #1274)

@@ -121,7 +121,6 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 
-  // Fetch devices for a user without requiring platform admin privileges.
   async getDevicesByUserId(userId: string) {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }

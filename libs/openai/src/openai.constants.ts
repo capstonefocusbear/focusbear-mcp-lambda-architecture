@@ -82,7 +82,7 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4_1_MINI,
+    model: GPT_4_1,
     temperature: 0,
     n: 1,
     messages: null,
@@ -133,9 +133,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   analyzeImage: {
     model: GPT_4_1,
     messages: null,
-    response_format: {
-      type: 'json_object',
-    },
   },
 
   habitAdjustment: {

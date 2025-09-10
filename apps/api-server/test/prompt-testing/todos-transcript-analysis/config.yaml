@@ -1,0 +1,27 @@
+prompts:
+  - id: todos-transcript-analysis
+    raw: file://prompt.json
+
+tests:
+  - description: "Multiple independent tasks from transcript"
+    vars:
+      min_tasks: 3
+      max_tasks: 3
+      expected_task_names: ["Call mom", "Review quarterly report", "Schedule dentist appointment"]
+      min_estimated_time: 10
+      max_estimated_time: 120
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+providers:
+  - id: openai:gpt-4.1-mini
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_GENERAL_API_KEY
+
+output:
+  - debug
+  - json
+

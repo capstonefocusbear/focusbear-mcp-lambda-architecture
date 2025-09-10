@@ -7,6 +7,7 @@ import { JwtModule } from '@app/jwt';
 import { IStripeOptions, StripeModule } from '@app/stripe';
 import { UserModule } from '../user/user.module';
 import { TeamManagementController } from './controllers/team-management.controller';
+import { DeviceModule } from '../device/device.module';
 import { ServiceAccountTeamManagementController } from './controllers/service-account-team-management.controller';
 import { TeamRepository } from './repositories/team.repository';
 import { TeamManagementService } from './services/team-management/team-management.service';
@@ -27,6 +28,7 @@ import { ServiceAccountTeamManagementService } from './services/service-account/
   controllers: [TeamManagementController, ServiceAccountTeamManagementController],
   imports: [
     forwardRef(() => UserModule),
+    forwardRef(() => DeviceModule),
     ConfigModule,
     RevenueCatModule.registerAsync({
       imports: [ConfigModule],

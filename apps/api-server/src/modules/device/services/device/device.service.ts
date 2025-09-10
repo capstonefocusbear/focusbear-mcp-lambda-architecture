@@ -121,6 +121,10 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 
+  async getDevicesByUserId(userId: string) {
+    return this.deviceRepository.orm.find({ where: { user_id: userId } });
+  }
+
   parseDeviceFromAuth0Client = (auth0ClientDto: Auth0ClientDto | null | undefined, userAgent?: string) => {
     if (!auth0ClientDto?.client_id) {
       return OperatingSystem.Unknown;

@@ -95,6 +95,45 @@ describe('ServiceAccountTeamManagementService', () => {
       expect(member?.total_hours_in_focus_sessions).toBe(7.5);
     });
 
+    it('positive: includes day-count leaderboard fields from user entity', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          id: TeamMemberDummy.member_id,
+          morning_number_days_completed: 35,
+          morning_num_days_of_stats: 37,
+          evening_number_days_completed: 33,
+          evening_num_days_of_stats: 37,
+          micro_breaks_number_days_completed: 40,
+          micro_breaks_num_days_of_stats: 45,
+          focus_modes_number_days_completed: 55,
+          focus_modes_num_days_of_stats: 60,
+          num_days_of_stats: 90,
+          number_days_completed: 80,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue([]);
+
+      const response = await service.getAllTeamMemberServiceAcc(TeamWithMembersDummy.id);
+      const member = response.members[0];
+      expect(member.morning_number_days_completed).toBe(35);
+      expect(member.morning_num_days_of_stats).toBe(37);
+      expect(member.evening_number_days_completed).toBe(33);
+      expect(member.evening_num_days_of_stats).toBe(37);
+      expect(member.micro_breaks_number_days_completed).toBe(40);
+      expect(member.micro_breaks_num_days_of_stats).toBe(45);
+      expect(member.focus_modes_number_days_completed).toBe(55);
+      expect(member.focus_modes_num_days_of_stats).toBe(60);
+      expect(member.num_days_of_stats).toBe(90);
+      expect(member.number_days_completed).toBe(80);
+    });
+
     it('positive: should handle team with no members', async () => {
       TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
       TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({

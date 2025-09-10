@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiResponse, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -18,6 +18,8 @@ import { UpdateMemberExpiryDateDto } from '../dto/update-member-expiry-date.dto'
 import { AddTeamManuallyDto } from '../dto/add-team-member-manually.dto';
 import { HasTeamSubscription } from '../../subscription/guards/has-team-subscription/has-team-subscription.guard';
 import { RemoveTeamMemberDto } from '../dto/remove-team-member.dto';
+import { GetTeamInsightsQueryDto } from '../dto/get-team-insights-query.dto';
+import { GetMemberInsightsResponseDto } from '../dto/get-member-insights-response.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -138,13 +140,8 @@ export class TeamManagementController {
 
   @Get('/member-insights')
   @RequireEntitlements([Entitlement.team_admin])
-  @ApiQuery({ name: 'team_id', required: true, type: String })
-  @ApiQuery({ name: 'member_id', required: true, type: String })
-  @ApiResponse({ status: 200, description: 'Member insights with devices' })
-  async getMemberInsights(
-    @Query() { team_id, member_id }: { team_id: string; member_id: string },
-    @AuthContext() { user }: Passport,
-  ) {
+  @ApiResponse({ status: 200, description: 'Member insights with devices', type: GetMemberInsightsResponseDto })
+  async getMemberInsights(@Query() { team_id, member_id }: GetTeamInsightsQueryDto, @AuthContext() { user }: Passport) {
     return this.teamManagementService.getMemberInsights(user.id, team_id, member_id);
   }
 }

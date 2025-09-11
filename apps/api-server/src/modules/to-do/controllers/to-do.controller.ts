@@ -74,7 +74,7 @@ export class TodoController {
   async generateUploadImageUrl(@AuthContext() { user }: Passport): Promise<{ uploadUrl: string; imageKey: string }> {
     const imageKey = `${user.id}-${Date.now()}-todo-image.png`;
 
-    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_USAGE_IMAGES, imageKey, 'image/png');
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_AUDIO, imageKey, 'image/png');
     return { uploadUrl, imageKey };
   }
 

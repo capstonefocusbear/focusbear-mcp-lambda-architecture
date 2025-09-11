@@ -58,7 +58,9 @@ export class TodoImageConsumer {
       const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
       const imageBuffer = `data:image/png;base64,${base64}`;
 
-      const tasks = await this.openAIService.processUsageImage(imageBuffer);
+      const now = new Date().toISOString();
+
+      const tasks = await this.openAIService.extractTodosFromImage(imageBuffer, now);
 
       if (!tasks) {
         throw new Error('No todos detected in image');

@@ -995,11 +995,7 @@ export class OpenAIService {
     }
   }
 
-  async extractTodosFromImage(
-    imageBuffer: string,
-    imageUrl?: string,
-    currentDatetimeIso?: string,
-  ): Promise<BraindumpTaskDto[]> {
+  async extractTodosFromImage(imageBuffer: string, currentDatetimeIso?: string): Promise<BraindumpTaskDto[]> {
     try {
       const prompt = this.promptCacheService.getPrompt('handwritten-todos-analysis');
 

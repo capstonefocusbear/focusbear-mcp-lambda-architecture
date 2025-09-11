@@ -29,6 +29,7 @@ export enum OpenAIKeyType {
   SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
   HABIT_ADJUSTMENT = 'habitAdjustment',
+  TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';

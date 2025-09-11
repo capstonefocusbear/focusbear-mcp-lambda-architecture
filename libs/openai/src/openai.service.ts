@@ -50,6 +50,7 @@ export class OpenAIService {
     [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
+    [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -1058,8 +1059,11 @@ export class OpenAIService {
         throw new Error('Invalid input');
       }
 
+      const currentDatetimeIso = new Date().toISOString();
       const prompt = this.promptCacheService.getPrompt('todos-transcript-analysis') || '';
-      const filledPrompt = prompt.replace('{{transcript}}', this.wrapUserInput(transcript));
+      const filledPrompt = prompt
+        .replace('{{transcript}}', transcript)
+        .replace('{{current_datetime}}', currentDatetimeIso);
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1068,7 +1072,11 @@ export class OpenAIService {
         },
       ];
 
-      const completions = await this.getOpenAIChatCompletionsNonStreaming(messages, OpenAIKeyType.GENERAL);
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS,
+        OPENAI_PARAMS.todosTranscriptAnalysis as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
 
       const content = completions.choices[0]?.message?.content;
       const parsed = content ? JSON.parse(content) : [];

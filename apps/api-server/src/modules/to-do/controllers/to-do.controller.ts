@@ -16,7 +16,7 @@ import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
 import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
-import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES, S3_BUCKET_TODO_AUDIO } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIO } from '../../../shared/utils/constants';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 
 @Controller('to-do')
@@ -28,6 +28,7 @@ export class TodoController {
     private readonly toDoService: ToDoService,
     private readonly r2Service: R2Service,
     @InjectQueue(BullQueues.TODO_IMAGE) private todoImageQueue: Queue,
+    @InjectQueue(BullQueues.TODO_AUDIO) private todoAudioQueue: Queue,
     private readonly asyncTaskService: AsyncTaskService,
   ) {}
 
@@ -125,7 +126,7 @@ export class TodoController {
       },
     });
 
-    await this.todoImageQueue.add(
+    await this.todoAudioQueue.add(
       BullWorkers.PROCESS_TODO_AUDIO,
       {
         userId: user.id,

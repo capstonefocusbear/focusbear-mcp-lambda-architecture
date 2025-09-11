@@ -49,7 +49,7 @@ export class TodoAudioConsumer {
 
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
         processingCompleted: new Date(),
-        todosExtracted: tasks.length,
+        aiResponse: tasks,
       });
 
       return tasks;

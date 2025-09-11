@@ -184,3 +184,75 @@ describe('data-sync-notification cron (lean behavior)', () => {
     exitSpy.mockRestore();
   });
 });
+
+// Rate limiting & batching tests (integrated from rate-limiting.spec.ts)
+describe('processInBatches utility (TDD for rate limiting)', () => {
+  // We import lazily so the test can fail first when the function is missing
+  const importModule = async () => import('./cron-job');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('processes items in batches and waits a cooldown between batches', async () => {
+    const { processInBatches } = await importModule();
+
+    const items = Array.from({ length: 120 }, (_, i) => i + 1);
+
+    const processed: number[] = [];
+    const processItem = jest.fn(async (n: number) => {
+      processed.push(n);
+    });
+
+    // Custom sleep where we control when it resolves
+    const sleepResolvers: Array<() => void> = [];
+    const sleep = jest.fn(() => new Promise<void>((resolve) => sleepResolvers.push(resolve)));
+
+    const promise = processInBatches<number>({
+      items,
+      batchSize: 50,
+      cooldownMs: 60_000,
+      processItem,
+      sleep,
+    });
+
+    // Flush enough microtasks for first batch to complete and reach sleep
+    for (let i = 0; i < 60; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+    // First sleep
+    sleepResolvers.shift()?.();
+    // Flush enough microtasks for second batch to complete and reach sleep
+    for (let i = 0; i < 60; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+    // Second sleep
+    sleepResolvers.shift()?.();
+
+    await promise; // finish
+
+    expect(processItem).toHaveBeenCalledTimes(120);
+    // processed items are in order
+    expect(processed[0]).toBe(1);
+    expect(processed[49]).toBe(50);
+    expect(processed[99]).toBe(100);
+    expect(processed[119]).toBe(120);
+    // Two cooldowns for 120 items with batch size 50
+    expect(sleep).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not sleep if items fit into a single batch', async () => {
+    const { processInBatches } = await importModule();
+
+    const items = Array.from({ length: 50 }, (_, i) => i + 1);
+    const processItem = jest.fn(async () => {});
+    const sleep = jest.fn(async () => {});
+
+    await processInBatches<number>({ items, batchSize: 50, cooldownMs: 60_000, processItem, sleep });
+
+    expect(processItem).toHaveBeenCalledTimes(50);
+    expect(sleep).not.toHaveBeenCalled();
+  });
+});

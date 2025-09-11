@@ -227,6 +227,36 @@ async function sendUnicaesDataSyncWhatsapp(
   }
 }
 
+export async function processInBatches<T>(args: {
+  items: T[];
+  batchSize: number;
+  cooldownMs: number;
+  processItem: (item: T) => Promise<void>;
+  sleep?: (ms: number) => Promise<void>;
+}) {
+  const { items, batchSize, cooldownMs, processItem } = args;
+  const sleep = args.sleep || ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+
+  if (!Array.isArray(items) || items.length === 0) return;
+  const effectiveBatch = Number.isFinite(batchSize) && batchSize > 0 ? batchSize : 50;
+  const effectiveCooldown = Number.isFinite(cooldownMs) && cooldownMs >= 0 ? cooldownMs : 60_000;
+
+  for (let start = 0; start < items.length; start += effectiveBatch) {
+    const batch = items.slice(start, start + effectiveBatch);
+    // sequential send inside a batch
+    // eslint-disable-next-line no-restricted-syntax
+    for (const item of batch) {
+      // eslint-disable-next-line no-await-in-loop
+      await processItem(item);
+    }
+    const hasMore = start + effectiveBatch < items.length;
+    if (hasMore && effectiveCooldown > 0) {
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(effectiveCooldown);
+    }
+  }
+}
+
 export async function runDataSyncCronJob() {
   await CronJobDataSource.initialize();
 
@@ -242,18 +272,32 @@ export async function runDataSyncCronJob() {
   const participants = await getUsersWithOutdatedData();
   console.log(`Found ${participants.length} participants with outdated usage data`);
 
-  for (const participant of participants) {
-    const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
+  const batchSize = Number.parseInt(process.env.ZOHO_IM_RATE_LIMIT_BATCH_SIZE || '50', 10);
+  const cooldownMs = Number.parseInt(process.env.ZOHO_IM_RATE_LIMIT_COOLDOWN_MS || '60000', 10);
 
-    if (phoneNumber) {
-      await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
-    }
+  await processInBatches({
+    items: participants,
+    batchSize,
+    cooldownMs,
+    processItem: async (participant) => {
+      const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
+      if (phoneNumber) {
+        await sendUnicaesDataSyncWhatsapp(
+          zohoService,
+          phoneNumber,
+          name,
+          os,
+          participant.participantCode,
+          language,
+        );
+      }
 
-    // Temporarily disabled: rely on WhatsApp only (issue #1274)
-    // if (email) {
-    //   await sendUnicaesDataSyncEmail(email, name, os);
-    // }
-  }
+      // Temporarily disabled: rely on WhatsApp only (issue #1274)
+      // if (email) {
+      //   await sendUnicaesDataSyncEmail(email, name, os);
+      // }
+    },
+  });
 
   // Close the NestJS application context
   await app.close();

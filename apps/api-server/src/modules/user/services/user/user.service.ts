@@ -193,19 +193,18 @@ export class UserService {
 
         os =
           devicesFromDb?.[0]?.operating_system ??
-          (this.deviceService.parseDeviceFromAuth0Client(auth0_client) as OperatingSystem);
+          (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
 
         if (os === OperatingSystem.Unknown) {
           this.sentryService.instance().captureEvent({
             message: 'OS not found',
-            level: 'error',
+            level: 'warning',
             extra: {
               auth0_id,
               email,
               clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
             },
           });
-          // TODO: Create and persist new device entry
         }
 
         const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
@@ -219,6 +218,33 @@ export class UserService {
       }
       const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
+
+      // Create device entry for new users
+      if (os) {
+        try {
+          await this.deviceService.createOrUpdateDevice(
+            {
+              operating_system: os,
+              metadata: {
+                source: 'user_creation',
+                auth0_client_id: auth0_client?.client_id,
+                created_at: new Date().toISOString(),
+              },
+            },
+            newlySavedUser.id,
+          );
+        } catch (error) {
+          this.sentryService.instance().captureException(error, {
+            level: 'error',
+            extra: {
+              auth0_id,
+              email,
+              operating_system: os,
+            },
+          });
+        }
+      }
+
       return newlySavedUser;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

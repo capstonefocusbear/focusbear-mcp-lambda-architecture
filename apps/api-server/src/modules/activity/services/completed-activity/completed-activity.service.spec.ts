@@ -1252,6 +1252,34 @@ describe('CompletedActivityService', () => {
 
       expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(updatedCompletedActivity);
     });
+
+    it('positive: if client passes skipped_did_complete, service should respect it and treat as completion in guard later', async () => {
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+        current_sequence_started_at: new Date(),
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.skipActivity(
+        { ...completedActivity, metadata: { skipped_did_complete: true } },
+        { user_id },
+      );
+
+      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+        expect.objectContaining({ metadata: { skipped_did_complete: true } }),
+      );
+    });
   });
 
   describe('getStatsByActivityPerDay', () => {
@@ -2211,6 +2239,76 @@ describe('CompletedActivityService', () => {
         partialUserDummy.current_sequence_started_at,
       );
     });
+  });
+
+  it('guard: when routine should complete but no non-skipped logs exist, do not finalize; clear pointers only', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2022-12-10T05:30:00.000Z'));
+    const partialUserDummy = new User({
+      id: randomUUID(),
+      current_activity: ActivityDummy,
+      current_activity_sequence_id: ActivitySequenceDummy.id,
+      current_activity_assigned_at: new Date('2022-12-09T20:00:00+0000'),
+      current_completing_sequence_log_id: randomUUID(),
+      current_sequence_started_at: new Date(),
+      timezone: 'UTC',
+      startup_time: '05:00',
+      shutdown_time: '18:00',
+      cutoff_time_for_non_high_priority_activities: '20:00',
+    });
+    ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+      ...ActivitySequenceDummy,
+      type: ActivityType.evening,
+    });
+    CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+    // No non-skipped logs in current sequence
+    CompletedActivitySequenceServiceMock.getUncompletedSequenceLogWithActivities.mockResolvedValueOnce({
+      completed_activity_logs: [{ metadata: { is_skipped: true } }, { metadata: { skipped_did_not_complete: true } }],
+    });
+
+    const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+    expect(response.activity).toBe(null);
+    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toBeCalled();
+    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).toBeCalledWith(
+      partialUserDummy.id,
+    );
+    jest.useRealTimers();
+  });
+
+  it('positive: when at least one log has skipped_did_complete, finalize and clear pointers as completed', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-12-10T05:30:00.000Z'));
+    const partialUserDummy = new User({
+      id: randomUUID(),
+      current_activity: ActivityDummy,
+      current_activity_sequence_id: ActivitySequenceDummy.id,
+      current_activity_assigned_at: new Date('2025-12-09T20:00:00+0000'),
+      current_completing_sequence_log_id: randomUUID(),
+      current_sequence_started_at: new Date(),
+      timezone: 'UTC',
+      startup_time: '05:00',
+      shutdown_time: '18:00',
+      cutoff_time_for_non_high_priority_activities: '20:00',
+    });
+    ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+      ...ActivitySequenceDummy,
+      type: ActivityType.evening,
+    });
+    CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+    CompletedActivitySequenceServiceMock.getUncompletedSequenceLogWithActivities.mockResolvedValueOnce({
+      completed_activity_logs: [{ metadata: { is_skipped: true } }, { metadata: { skipped_did_complete: true } }],
+    });
+
+    const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
+
+    expect(response.activity).toBe(null);
+    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      partialUserDummy.current_completing_sequence_log_id,
+      partialUserDummy.id,
+    );
+    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).not.toBeCalled();
+    jest.useRealTimers();
   });
 
   describe('getLogQuantityAnswersByQuestionInTimeRange', () => {

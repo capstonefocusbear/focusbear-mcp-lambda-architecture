@@ -30,6 +30,7 @@ import {
   TeamToAdminRepositoryMock,
   UserDailyStatsServiceMock,
   DailyStatsRepositoryMock,
+  DeviceServiceMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
@@ -43,7 +44,9 @@ import { TeamToAdminRepository } from '../../repositories/team-to-admin.reposito
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
+import { DeviceService } from '../../../device/services/device/device.service';
 import { InvitationStatus } from '../../domain/invitation-status.enum';
+import { TeamToMember } from '../../entities/team-to-member.entity';
 
 describe('TeamManagementService', () => {
   let teamManagementService: TeamManagementService;
@@ -85,6 +88,7 @@ describe('TeamManagementService', () => {
         },
         UserDailyStatsService,
         DailyStatsRepository,
+        DeviceService,
       ],
     })
       .overrideProvider(UserRepository)
@@ -111,6 +115,8 @@ describe('TeamManagementService', () => {
       .useValue(UserDailyStatsServiceMock)
       .overrideProvider(DailyStatsRepository)
       .useValue(DailyStatsRepositoryMock)
+      .overrideProvider(DeviceService)
+      .useValue(DeviceServiceMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -178,6 +184,47 @@ describe('TeamManagementService', () => {
         1,
       );
       expect(TeamRepositoryMock.update).toBeCalledWith(teamId, { team_size: 1 });
+    });
+  });
+
+  describe('getMemberInsights', () => {
+    it('positive: returns member details with devices', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        id: TeamMemberDummy.member_id,
+        morning_routines_streak: 1,
+        evening_routines_streak: 2,
+        focus_modes_streak: 3,
+        morning_number_days_completed: 5,
+        morning_num_days_of_stats: 7,
+      });
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValueOnce([]);
+
+      DeviceServiceMock.getDevicesByUserId.mockResolvedValueOnce([
+        {
+          id: 'dev-1',
+          operating_system: 'MacOS',
+          app_version: '1.2.3',
+          is_leader: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await teamManagementService.getMemberInsights(
+        adminId,
+        TeamWithMembersDummy.id,
+        TeamMemberDummy.member_id,
+      );
+
+      expect(result.member.id).toBe(TeamMemberDummy.member_id);
+      expect(result.devices.length).toBe(1);
+      expect(DeviceServiceMock.getDevicesByUserId).toHaveBeenCalled();
     });
   });
 
@@ -842,6 +889,53 @@ describe('TeamManagementService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: if user is not admin member of team (empty admins array), throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${adminId} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team (different admin), throw the UnauthorizedException', async () => {
+      const differentAdminId = randomUUID();
+      const differentAdmin = new TeamToAdmin({
+        id: randomUUID(),
+        admin_id: differentAdminId,
+        team_id: TeamWithMembersDummy.id,
+      });
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [differentAdmin],
+      });
+      let exception: any;
+
+      try {
+        await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${adminId} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('positive: should get members, admins of team with last 90 days DailyStats', async () => {
       TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
       TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
@@ -869,7 +963,236 @@ describe('TeamManagementService', () => {
       const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
 
       expect(response.admins).toHaveLength(1);
-      expect(response.members).toHaveLength(3); // include admins that have user licenses in members section
+      expect(response.members).toHaveLength(2); // Only includes members, not admins
+
+      // Verify total_hours_in_focus_sessions is calculated correctly
+      // DailyStatsDummy has: 2.5 + 1.8 + 3.2 = 7.5 hours
+      const member = response.members.find((m) => m.id === TeamMemberDummy.member_id);
+      expect(member?.total_hours_in_focus_sessions).toBe(7.5);
+    });
+
+    it('positive: should handle team with no members', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [],
+        admins: [teamToAdminDummy],
+      });
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.admins).toHaveLength(1);
+      expect(response.members).toHaveLength(0);
+      expect(response.total_count).toBe(0);
+      expect(response.team_id).toBe(TeamWithMembersDummy.id);
+    });
+
+    it('positive: should handle team with only unregistered members (no member_id)', async () => {
+      const unregisteredMember = new TeamToMember({
+        id: randomUUID(),
+        first_name: 'Unregistered',
+        last_name: 'User',
+        email: 'unregistered@email.com',
+        team_id: TeamWithMembersDummy.id,
+        member_id: null, // Unregistered user
+        member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(),
+        invitation_send_count: 1,
+        invitation_responded_at: null,
+      });
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [unregisteredMember],
+        admins: [teamToAdminDummy],
+      });
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.admins).toHaveLength(1);
+      expect(response.members).toHaveLength(1);
+      expect(response.total_count).toBe(1);
+      expect(response.members[0].id).toBe(null);
+      expect(response.members[0].email).toBe('unregistered@email.com');
+      expect(response.members[0].total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should handle team with mixed registered and unregistered members', async () => {
+      const unregisteredMember = new TeamToMember({
+        id: randomUUID(),
+        first_name: 'Unregistered',
+        last_name: 'User',
+        email: 'unregistered@email.com',
+        team_id: TeamWithMembersDummy.id,
+        member_id: null,
+        member_expiry_date: TeamWithMembersDummy.expires_date as Date,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(),
+        invitation_send_count: 1,
+        invitation_responded_at: null,
+      });
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, unregisteredMember],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      // Mock daily stats for registered member only
+      UserDailyStatsServiceMock.getLastNDaysDailyStats
+        .mockResolvedValueOnce(DailyStatsDummy) // For TeamMemberDummy
+        .mockResolvedValueOnce([]); // For unregistered member (no stats)
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.admins).toHaveLength(1);
+      expect(response.members).toHaveLength(2);
+      expect(response.total_count).toBe(2);
+
+      // Check registered member has user details
+      const registeredMember = response.members.find((m) => m.id === TeamMemberDummy.member_id);
+      expect(registeredMember).toBeDefined();
+      expect(registeredMember.morning_routines_streak).toBe(userDummy.morning_routines_streak);
+
+      // Check unregistered member has basic info but no user details
+      const unregisteredMemberResponse = response.members.find((m) => m.id === null);
+      expect(unregisteredMemberResponse).toBeDefined();
+      expect(unregisteredMemberResponse.email).toBe('unregistered@email.com');
+      expect(unregisteredMemberResponse.morning_routines_streak).toBe(0);
+      expect(unregisteredMemberResponse.total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should calculate focus_modes_percent_number_day_of_stats_completed correctly', async () => {
+      const mockDailyStats = [
+        { focus_modes: 2 },
+        { focus_modes: 1 },
+        { focus_modes: 3 },
+        { focus_modes: 0 },
+        { focus_modes: 2 },
+      ];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+
+      // Total focus modes: 2+1+3+0+2 = 8
+      // Days with stats: 5
+      // Percentage: (8/5) * 100 = 160%
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(160);
+    });
+
+    it('positive: should handle empty daily stats array', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue([]);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(0);
+      expect(member.total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should handle null daily stats', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(null);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(0);
+      expect(member.total_hours_in_focus_sessions).toBe(0);
+    });
+
+    it('positive: should calculate total_hours_in_focus_sessions correctly from daily stats', async () => {
+      const mockDailyStats = [
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.5 },
+        { focus_modes: 1, total_hours_spent_in_focus_sessions: 0.8 },
+        { focus_modes: 3, total_hours_spent_in_focus_sessions: 2.2 },
+        { focus_modes: 0, total_hours_spent_in_focus_sessions: 0.0 },
+        { focus_modes: 2, total_hours_spent_in_focus_sessions: 1.1 },
+      ];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: userDummy.morning_routines_streak,
+          evening_routines_streak: userDummy.evening_routines_streak,
+          focus_modes_streak: userDummy.focus_modes_streak,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+
+      expect(response.members).toHaveLength(1);
+      const member = response.members[0];
+
+      // Total hours: 1.5 + 0.8 + 2.2 + 0.0 + 1.1 = 5.6
+      expect(member.total_hours_in_focus_sessions).toBe(5.6);
     });
   });
 

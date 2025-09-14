@@ -244,7 +244,13 @@ describe('ActivityLibraryService', () => {
       const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto, groupByGoals: true },
         userDummy.id,
-      )) as Record<string, ActivityTemplate[]>;
+      )) as Record<
+        string,
+        Omit<ActivityTemplate, 'tags'> &
+          {
+            tags: string[];
+          }[]
+      >;
 
       for (const [goal, templates] of Object.entries(response)) {
         expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
@@ -262,7 +268,13 @@ describe('ActivityLibraryService', () => {
       const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
         userDummy.id,
-      )) as Record<string, ActivityTemplate[]>;
+      )) as Record<
+        string,
+        Omit<ActivityTemplate, 'tags'> &
+          {
+            tags: string[];
+          }[]
+      >;
 
       for (const [goal, templates] of Object.entries(response)) {
         expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);

@@ -40,6 +40,13 @@ import { Tutorial } from '../../activity/entities/tutorial.entity';
 import { Feedback } from '../../../../../../libs/stripe/src/entities/feedback.entity';
 import { CustomRoutine } from './custom-routine';
 
+// Enum EmailFrequency
+export enum EmailFrequency {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  UNSUBSCRIBED = 'unsubscribed',
+}
 @Entity('users')
 export class User extends BaseEntity {
   constructor({ id, ...user }: Partial<User> = {}, options = { generateId: false }) {
@@ -416,6 +423,13 @@ export class User extends BaseEntity {
     default: LanguageOptions.ENGLISH,
   })
   language?: string;
+
+  @Column({
+    type: 'enum',
+    enum: EmailFrequency,
+    default: EmailFrequency.WEEKLY,
+  })
+  email_frequency?: EmailFrequency;
 
   @Column({
     type: 'jsonb',

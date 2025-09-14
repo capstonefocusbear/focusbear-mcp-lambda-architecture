@@ -56,6 +56,7 @@ export const DeviceServiceMock = {
   getUserInstalledDevices: jest.fn(),
   updateDeviceAppVersion: jest.fn(),
   parseDeviceFromAuth0Client: jest.fn(),
+  getDevicesByUserId: jest.fn(),
 };
 
 export const ActivitySequenceServiceMock = {
@@ -75,8 +76,10 @@ export const CompletedActivitySequenceServiceMock = {
   forceCompleteCurrentSequence: jest.fn(),
   getOrCreateCompletingSequenceLogForSyncing: jest.fn(),
   completeActivitySequenceByDate: jest.fn(),
+  getUncompletedSequenceLogWithActivities: jest.fn(),
   getUserTimes: jest.fn(),
   nullifyUserCurrentActivityProps: jest.fn(),
+  clearUserCurrentActivityPropsWithoutCompletion: jest.fn(),
   getRoutinesProgress: jest.fn(),
 };
 

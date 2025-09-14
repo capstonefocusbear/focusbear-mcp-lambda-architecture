@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Connection, In, IsNull, Not } from 'typeorm';
+import { DataSource, In, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
 import { Activity } from '../../activity/entities/activity.entity';
 import { DeserializedActivity } from '../../activity/services/activity-parser/activity-parser.service';
 import { GetUsersQueryDto } from '../dto/get-users-query.dto';
-import { User } from '../entities/user.entity';
+import { User, EmailFrequency } from '../entities/user.entity';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { StreakTypes } from '../domain/StreakTypes.enum';
 import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
@@ -15,8 +15,8 @@ import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
-  constructor(private readonly connection: Connection) {
-    super(connection, User);
+  constructor(private readonly dataSource: DataSource) {
+    super(dataSource, User);
   }
 
   /**
@@ -297,22 +297,35 @@ export class UserRepository extends BaseRepository<User> {
       num_days_of_stats,
       number_days_completed,
       item_count,
-      ROW_NUMBER() OVER (ORDER BY
-            CASE 
-              WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-              WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-              WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-              ELSE micro_percent_number_day_of_stats_completed
-            END
-        DESC,
-        CASE 
-          WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-          WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-          WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-          ELSE micro_breaks_streak
-        END
-        DESC,
-        username) AS rank
+      ROW_NUMBER() OVER (
+        ORDER BY
+          -- Primary sort: days completed in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
+            WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
+            ELSE micro_breaks_number_days_completed
+          END DESC,
+          -- Secondary: completion percentage in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN (
+              CASE WHEN focus_modes_num_days_of_stats > 0
+                   THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
+                   ELSE 0 END
+            )
+            WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+            ELSE micro_percent_number_day_of_stats_completed
+          END DESC,
+          -- Tertiary: current streak value
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+            ELSE micro_breaks_streak
+          END DESC,
+          username
+      ) AS rank
       FROM
       (
         SELECT 
@@ -374,22 +387,35 @@ export class UserRepository extends BaseRepository<User> {
           num_days_of_stats,
           number_days_completed,
           item_count,
-          ROW_NUMBER() OVER (ORDER BY
-                CASE 
-                  WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-                  WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-                  WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-                  ELSE micro_percent_number_day_of_stats_completed
-                END
-            DESC,
-              CASE 
+          ROW_NUMBER() OVER (
+            ORDER BY
+              -- Primary sort: days completed in the last 90 days
+              CASE
+                WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
+                WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
+                WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
+                ELSE micro_breaks_number_days_completed
+              END DESC,
+              -- Secondary: completion percentage in the last 90 days
+              CASE
+                WHEN $1 = 'focus_modes_streak' THEN (
+                  CASE WHEN focus_modes_num_days_of_stats > 0
+                       THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
+                       ELSE 0 END
+                )
+                WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+                WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+                ELSE micro_percent_number_day_of_stats_completed
+              END DESC,
+              -- Tertiary: current streak value
+              CASE
                 WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
                 WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
                 WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
                 ELSE micro_breaks_streak
-              END
-            DESC,
-            username) AS rank
+              END DESC,
+              username
+          ) AS rank
           FROM
           (
             SELECT 
@@ -450,6 +476,100 @@ export class UserRepository extends BaseRepository<User> {
       [streakType, userId],
     );
     return result[0] || null;
+  }
+
+  async getUsersForWeeklyEmails(): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
+      },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
+      relations: [
+        'activitySequences',
+        'activitySequences.activities',
+        'completedActivitySequences',
+        'completedActivities',
+        'completedFocusBlocks',
+      ],
+    });
+  }
+
+  async getUsersForDailyEmails(): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: EmailFrequency.DAILY,
+      },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
+      relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
+    });
+  }
+
+  async updateEmailFrequency(userId: string, frequency: EmailFrequency): Promise<void> {
+    await this.update(userId, {
+      email_frequency: frequency,
+      updated_at: new Date(),
+    });
+  }
+
+  async getUsersForNoProgressEmails(daysThreshold = 7): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return this.orm
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.auth0_id',
+        'user.username',
+        'user.language',
+        'user.timezone',
+        'user.created_at',
+        'user.updated_at',
+        'user.last_completed_sequence_at',
+        'user.last_completed_focus_mode_at',
+        'user.last_completed_sequence_started_at',
+        'user.last_time_stats_updated',
+        'user.metadata',
+        'user.email_frequency',
+      ])
+      .where('user.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at < :threshold)', {
+        threshold: thresholdDate,
+      })
+      .andWhere('(user.last_completed_focus_mode_at IS NULL OR user.last_completed_focus_mode_at < :threshold)', {
+        threshold: thresholdDate,
+      })
+      .getMany();
   }
 
   /* eslint-disable no-param-reassign */

@@ -102,7 +102,10 @@ describe('Auth0AuthenticationService', () => {
 
       const result = await service.validateAccessToken(mockToken);
 
-      expect(result).toEqual([false, { declineReason: 'Token is not an access auth0 token type!' }]);
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: test-identifier' },
+      ]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
       expect(jwt.verify).not.toHaveBeenCalled();
@@ -202,7 +205,286 @@ describe('Auth0AuthenticationService', () => {
 
       const result = await service.validateAccessToken(mockToken);
 
-      expect(result).toEqual([false, { declineReason: 'Token is not an access auth0 token type!' }]);
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: test-identifier' },
+      ]);
+    });
+  });
+
+  describe('validateServiceAccountToken', () => {
+    const mockToken = 'mock.service.account.token';
+    const mockDecodedToken = {
+      header: { kid: 'test-kid' },
+      payload: {
+        aud: ['https://focusbear.io/team-management', 'other-audience'],
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      },
+    };
+    const mockSigningKey = {
+      getPublicKey: jest.fn().mockReturnValue('mock-public-key'),
+    };
+
+    it('positive: should validate a valid service account token', async () => {
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockReturnValue(mockDecodedToken.payload);
+
+      const result = await service.validateServiceAccountToken(mockToken);
+
+      expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+    });
+
+    it('negative: should return false when service account token has wrong audience', async () => {
+      const wrongAudienceToken = {
+        ...mockDecodedToken,
+        payload: {
+          ...mockDecodedToken.payload,
+          aud: ['wrong-audience', 'other-audience'],
+        },
+      };
+      (jwt.decode as jest.Mock).mockReturnValue(wrongAudienceToken);
+
+      const result = await service.validateServiceAccountToken(mockToken);
+
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: https://focusbear.io/team-management' },
+      ]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when service account token is missing or corrupted', async () => {
+      (jwt.decode as jest.Mock).mockReturnValue(null);
+
+      const result = await service.validateServiceAccountToken(mockToken);
+
+      expect(result).toEqual([false, { declineReason: 'Token missing or corrupted!' }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when service account token has invalid signature', async () => {
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockImplementation(() => {
+        throw new Error('invalid signature');
+      });
+
+      const result = await service.validateServiceAccountToken(mockToken);
+
+      expect(result).toEqual([false, { declineReason: 'invalid signature' }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+    });
+  });
+
+  describe('validateToken', () => {
+    const mockToken = 'mock.generic.token';
+    const mockDecodedToken = {
+      header: { kid: 'test-kid' },
+      payload: {
+        aud: ['custom-audience', 'other-audience'],
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      },
+    };
+    const mockSigningKey = {
+      getPublicKey: jest.fn().mockReturnValue('mock-public-key'),
+    };
+
+    it('positive: should validate token with custom allowed audiences', async () => {
+      const customAudiences = ['custom-audience', 'another-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockReturnValue(mockDecodedToken.payload);
+
+      const result = await service.validateToken(mockToken, customAudiences);
+
+      expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+    });
+
+    it('positive: should validate token with single allowed audience', async () => {
+      const singleAudience = ['custom-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockReturnValue(mockDecodedToken.payload);
+
+      const result = await service.validateToken(mockToken, singleAudience);
+
+      expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
+    });
+
+    it('negative: should return false when token audience is not in allowed list', async () => {
+      const allowedAudiences = ['different-audience', 'another-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+
+      const result = await service.validateToken(mockToken, allowedAudiences);
+
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: different-audience, another-audience' },
+      ]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when token has no audience', async () => {
+      const tokenWithoutAud = {
+        header: { kid: 'test-kid' },
+        payload: {
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+        },
+      };
+      const allowedAudiences = ['custom-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(tokenWithoutAud);
+
+      const result = await service.validateToken(mockToken, allowedAudiences);
+
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: custom-audience' },
+      ]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when token is missing or corrupted', async () => {
+      const allowedAudiences = ['custom-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(null);
+
+      const result = await service.validateToken(mockToken, allowedAudiences);
+
+      expect(result).toEqual([false, { declineReason: 'Token missing or corrupted!' }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when unable to fetch signing key', async () => {
+      const allowedAudiences = ['custom-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockRejectedValue(new Error('Network error'));
+
+      const result = await service.validateToken(mockToken, allowedAudiences);
+
+      expect(result).toEqual([false, { declineReason: 'Network error' }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
+      expect(jwt.verify).not.toHaveBeenCalled();
+    });
+
+    it('negative: should return false when token verification fails', async () => {
+      const allowedAudiences = ['custom-audience'];
+      (jwt.decode as jest.Mock).mockReturnValue(mockDecodedToken);
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockImplementation(() => {
+        throw new Error('verification failed');
+      });
+
+      const result = await service.validateToken(mockToken, allowedAudiences);
+
+      expect(result).toEqual([false, { declineReason: 'verification failed' }]);
+      expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
+      expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+    });
+  });
+
+  describe('hasValidAudience (through public methods)', () => {
+    const mockToken = 'mock.audience.test.token';
+
+    it('should handle string audience format', async () => {
+      const tokenWithStringAud = {
+        header: { kid: 'test-kid' },
+        payload: {
+          aud: 'test-identifier',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+        },
+      };
+      (jwt.decode as jest.Mock).mockReturnValue(tokenWithStringAud);
+      const mockSigningKey = {
+        getPublicKey: jest.fn().mockReturnValue('mock-public-key'),
+      };
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockReturnValue(tokenWithStringAud.payload);
+
+      const result = await service.validateAccessToken(mockToken);
+
+      expect(result).toEqual([true, { payload: tokenWithStringAud.payload }]);
+    });
+
+    it('should handle array audience format', async () => {
+      const tokenWithArrayAud = {
+        header: { kid: 'test-kid' },
+        payload: {
+          aud: ['test-identifier', 'other-audience'],
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+        },
+      };
+      (jwt.decode as jest.Mock).mockReturnValue(tokenWithArrayAud);
+      const mockSigningKey = {
+        getPublicKey: jest.fn().mockReturnValue('mock-public-key'),
+      };
+      mockJwksClient.getSigningKey.mockResolvedValue(mockSigningKey);
+      (jwt.verify as jest.Mock).mockReturnValue(tokenWithArrayAud.payload);
+
+      const result = await service.validateAccessToken(mockToken);
+
+      expect(result).toEqual([true, { payload: tokenWithArrayAud.payload }]);
+    });
+
+    it('should handle undefined audience', async () => {
+      const tokenWithoutAud = {
+        header: { kid: 'test-kid' },
+        payload: {
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+        },
+      };
+      (jwt.decode as jest.Mock).mockReturnValue(tokenWithoutAud);
+
+      const result = await service.validateAccessToken(mockToken);
+
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: test-identifier' },
+      ]);
+    });
+
+    it('should handle empty array audience', async () => {
+      const tokenWithEmptyAud = {
+        header: { kid: 'test-kid' },
+        payload: {
+          aud: [],
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+        },
+      };
+      (jwt.decode as jest.Mock).mockReturnValue(tokenWithEmptyAud);
+
+      const result = await service.validateAccessToken(mockToken);
+
+      expect(result).toEqual([
+        false,
+        { declineReason: 'Token audience not allowed. Expected one of: test-identifier' },
+      ]);
     });
   });
 });

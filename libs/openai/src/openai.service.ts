@@ -10,11 +10,14 @@ import { join } from 'path';
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
+import { randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
+import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
+import { ActivityTemplate } from '@api-server/modules/activity-template/entity/activity-template.entity';
+import { isUUID } from '../../../apps/api-server/src/shared/utils/helpers';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -902,39 +905,33 @@ export class OpenAIService {
     userFeedback: string,
     userGoals?: string[],
     routineDuration?: number,
-  ): Promise<Array<{ id: string; name: string; duration_seconds: number }>> {
+    groupByGoals?: boolean,
+  ) {
     try {
-      // Only send minimal habit data to the AI
+      const promptContent = this.promptCacheService.getPrompt('habit-adjustment-default');
+      if (!promptContent) {
+        this.sentryService.instance().captureMessage('Habit adjustment prompt not found in cache', {
+          level: 'error',
+          extra: { currentHabits, userFeedback },
+        });
+        return currentHabits;
+      }
+
       const minimalHabits = (currentHabits || []).map((habit) => ({
         id: habit.id,
         name: habit.name,
         duration_seconds: habit.duration_seconds,
-        activity_type: habit.activity_type, // context only; AI must not change this or include it in the output
+        activity_type: habit.activity_type,
       }));
 
-      const promptContent = this.promptCacheService.getPrompt('habit-adjustment-default');
-
-      if (!promptContent) {
-        this.sentryService.instance().captureMessage('Habit adjustment prompt not found in cache', {
-          level: 'error',
-          extra: { currentHabits: minimalHabits, userFeedback },
-        });
-        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
-      }
-
-      // Fill in the prompt template with actual values
-      let filledPromptContent = this.wrapUserInput(promptContent)
-        .replace('{{habits}}', JSON.stringify(minimalHabits, null, 2))
-        .replace('{{feedback}}', userFeedback);
-
-      // Optionally append additional context if available
-      const contextLines: string[] = [];
-      if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
-      if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
-
-      if (contextLines.length) {
-        filledPromptContent = `${filledPromptContent}\n\nContext:\n${contextLines.join('\n')}`;
-      }
+      const filledPromptContent = this.buildAdjustHabitsPrompt(
+        promptContent,
+        minimalHabits,
+        userFeedback,
+        userGoals,
+        routineDuration,
+        groupByGoals,
+      );
 
       const messages: ChatCompletionMessageParam[] = [{ role: 'system', content: filledPromptContent }];
 
@@ -945,49 +942,62 @@ export class OpenAIService {
       );
 
       const response = completions.choices[0].message.content;
-
       try {
         const parsed = JSON.parse(response);
 
-        if (!Array.isArray(parsed) && !Array.isArray(parsed?.[Object.keys(parsed)[0]])) {
-          throw new Error('AI response is not an array');
+        if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
+          const validGrouped: Record<string, ActivityTemplate[]> = {};
+          for (const { goal, habits } of parsed) {
+            validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
+              const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
+              return {
+                ...rest,
+                id: String(habit?.id ?? ''),
+                name: String(habit?.name ?? '').trim(),
+                duration_seconds: Number.isFinite(Number(habit?.duration_seconds))
+                  ? Math.max(0, Math.round(Number(habit?.duration_seconds)))
+                  : 0,
+              };
+            });
+          }
+          return validGrouped;
         }
 
-        const habits = Array.isArray(parsed) ? parsed : parsed[Object.keys(parsed)[0]];
+        const adjustedHabits: Partial<UpdateActivityDto>[] = this.getValidatedArray(
+          parsed,
+          'AI response is not an array',
+        );
 
-        // Sanitize and coerce output strictly to expected shape
-        const sanitized = habits.map((item) => {
-          const rawId = item?.id;
-          const id = rawId == null ? '' : String(rawId);
-          const name = String(item?.name ?? '').trim();
-          const durationRaw = Number(item?.duration_seconds ?? 0);
-          const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
-          return { id, name, duration_seconds };
-        });
+        const sanitizedAdjustedHabits = adjustedHabits
+          .map((adjustedHabit) => {
+            const rawId = adjustedHabit?.id;
+            const name = String(adjustedHabit?.name ?? '').trim();
+            const durationRaw = Number(adjustedHabit?.duration_seconds ?? 0);
+            const duration_seconds = Number.isFinite(durationRaw) ? Math.max(0, Math.round(durationRaw)) : 0;
+            const rest = currentHabits.find((incomingHabit) => incomingHabit.id === adjustedHabit.id) || {};
+            const generatedId = isUUID(rawId) ? rawId : randomUUID();
+            const resolvedName = name || rest?.name || '';
+            return { ...rest, id: rest.id || generatedId, name: resolvedName, duration_seconds };
+          })
+          .filter((adjustedHabit) => Boolean(adjustedHabit.name));
 
-        const providedIds = new Set(minimalHabits.map((h) => String(h.id)));
-        const idToOriginal = new Map(minimalHabits.map((h) => [String(h.id), h]));
-
-        // Generate ids when missing
-        const withIds = sanitized.map((item) => {
-          const isNew = !item.id || !providedIds.has(item.id);
-          return {
-            id: isNew ? randomUUID() : item.id,
-            name: item.name || idToOriginal.get(item.id)?.name || '',
-            duration_seconds: Number.isFinite(item.duration_seconds)
-              ? item.duration_seconds
-              : idToOriginal.get(item.id)?.duration_seconds || 0,
-          };
-        });
-
-        return withIds;
+        // If groupByGoals is requested but AI did not group, group here
+        if (groupByGoals) {
+          const grouped: Record<string, ActivityTemplate[]> = {};
+          for (const goal of userGoals) {
+            grouped[goal] = sanitizedAdjustedHabits.filter((adjustedHabit) => {
+              return currentHabits.find((habit) => adjustedHabit.id === habit.id).tags?.includes(goal);
+            });
+          }
+          return grouped;
+        }
+        return sanitizedAdjustedHabits;
       } catch (parseError) {
         this.sentryService.instance().captureException(parseError, {
           level: 'error',
-          extra: { response, currentHabits: minimalHabits, userFeedback },
+          extra: { response, currentHabits, userFeedback },
         });
-        // Fallback: return original minimal habits if parsing fails
-        return minimalHabits.map(({ id, name, duration_seconds }) => ({ id: String(id), name, duration_seconds }));
+        return currentHabits;
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -1082,5 +1092,63 @@ export class OpenAIService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw new Error('Failed to create todos from transcript');
     }
+  }
+
+  private buildAdjustHabitsPrompt(
+    promptTemplate: string,
+    minimalHabits: UpdateActivityDto[],
+    userFeedback: string,
+    userGoals?: string[],
+    routineDuration?: number,
+    groupByGoals?: boolean,
+  ): string {
+    const replacements: Record<string, string> = {
+      '{{habits}}': JSON.stringify(minimalHabits, null, 2),
+      '{{feedback}}': userFeedback,
+    };
+
+    let filledPromptContent = `${INPUT_WRAPPER}${promptTemplate}${INPUT_WRAPPER}`;
+    for (const [key, value] of Object.entries(replacements)) {
+      filledPromptContent = filledPromptContent.replace(key, value);
+    }
+
+    const contextLines: string[] = [];
+    if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
+    if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
+    if (groupByGoals) contextLines.push('Group the output by user goals if possible.');
+
+    if (contextLines.length) {
+      filledPromptContent += `\n\nContext:\n${contextLines.join('\n')}`;
+    }
+
+    return filledPromptContent;
+  }
+
+  private isGroupedHabitsResponse(value: unknown): value is { goal: string; habits: any[] }[] {
+    return (
+      Array.isArray(value) &&
+      value.every(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          typeof (item as any).goal === 'string' &&
+          Array.isArray((item as any).habits),
+      )
+    );
+  }
+
+  private getValidatedArray<T = any>(parsed: unknown, error: string): T[] {
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const firstKey = Object.keys(parsed)[0];
+      if (Array.isArray((parsed as Record<string, unknown>)[firstKey])) {
+        return (parsed as Record<string, T[]>)[firstKey];
+      }
+    }
+
+    throw new Error(error);
   }
 }

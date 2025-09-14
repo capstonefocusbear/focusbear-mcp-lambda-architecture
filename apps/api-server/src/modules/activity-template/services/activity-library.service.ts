@@ -119,18 +119,24 @@ export class ActivityLibraryService {
         return [];
       }
       if (getRoutineSuggestionsDto.groupByGoals) {
-        const groupedByGoal: Record<string, ActivityTemplate[]> = {};
+        const groupedByGoal: Record<
+          string,
+          Omit<ActivityTemplate, 'tags'> &
+            {
+              tags: string[];
+            }[]
+        > = {};
         for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
           groupedByGoal[goal] = templates
             .filter((template: ActivityTemplate) => {
               return template.tags?.some((tag) => tag.tags.includes(goal));
             })
-            .map(({ tags, ...rest }) => rest);
+            .map((template) => ({ ...template, tags: template.tags.flatMap((tag) => tag.tags) }));
         }
 
         return groupedByGoal;
       }
-      return templates.map(({ tags, ...rest }) => rest);
+      return templates;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -215,6 +221,7 @@ export class ActivityLibraryService {
         adjustHabitsWithAiDto.user_feedback,
         adjustHabitsWithAiDto.user_goals,
         adjustHabitsWithAiDto.routine_duration,
+        adjustHabitsWithAiDto.groupByGoals,
       );
 
       return adjustedHabits;

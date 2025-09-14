@@ -9,6 +9,7 @@ import {
   BullQueues,
   BullWorkers,
   DAYS_OF_WEEK,
+  ONE_HOUR_SECONDS,
   ONE_MINUTE_SECONDS,
   TEN_MINUTES,
 } from '../../../../shared/utils/constants';
@@ -506,6 +507,7 @@ export class UserDailyStatsService {
           evening_total_minutes: eveningTotalMinutes,
           micro_breaks_minutes: microBreaksSeconds / ONE_MINUTE_SECONDS,
           micro_breaks_total_minutes: microBreaksTotalMinutes,
+          total_hours_spent_in_focus_sessions: dayStat.seconds_spent_in_focus_sessions / ONE_HOUR_SECONDS,
         });
       }
       return new DailyStatSummary({
@@ -514,6 +516,7 @@ export class UserDailyStatsService {
         morning_total_minutes: morningTotalMinutes,
         evening_total_minutes: eveningTotalMinutes,
         micro_breaks_total_minutes: microBreaksTotalMinutes,
+        total_hours_spent_in_focus_sessions: 0,
       });
     });
     return lastNDaysSummary;

@@ -9,15 +9,50 @@ import { RecentToDoDto } from '../dto/recent-to-do.dto';
 
 @Injectable()
 export class ToDoRepository extends BaseRepository<ToDo> {
+  private static readonly EFFORT_MINUTES = `
+    CASE to_do.perspiration_level
+      WHEN 1 THEN 5
+      WHEN 2 THEN 15
+      WHEN 3 THEN 30
+      WHEN 4 THEN 60
+      WHEN 5 THEN 240
+      WHEN 6 THEN 240
+      WHEN 7 THEN 480
+      WHEN 8 THEN 480
+      WHEN 9 THEN 3360
+      WHEN 10 THEN 3360
+      ELSE 5
+    END
+  `;
+
   public static readonly TOP_SCORE_SQL = `
-    (
-      CASE 
-        WHEN to_do.due_date IS NULL THEN 0.1
-        WHEN to_do.due_date < CURRENT_DATE THEN 10.0
-        WHEN to_do.due_date = CURRENT_DATE THEN 9
-        ELSE GREATEST(0.1, 8.0 - (LN(EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE)) + 1) * 1.5))
-      END
-    ) * (to_do.outcome::float / NULLIF(to_do.perspiration_level, 0))
+    CASE
+      WHEN to_do.due_date IS NULL THEN 0.1
+      WHEN to_do.due_date < CURRENT_DATE THEN 10.0
+      WHEN to_do.due_date = CURRENT_DATE THEN 9.0
+      ELSE GREATEST(
+        0.1,
+        /* Final formula: ((base / 8) * 10) * modifier */
+        (
+          /* base = GREATEST(0.1, 8 - LN(days_until_due + 1) * 1.5) */
+          GREATEST(
+            0.1,
+            8.0 - LN((EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE))::numeric + 1.0)) * 1.5
+          ) / 8.0
+        ) * 10.0
+        *
+        /* modifier = minutes / (minutes + 60 * days_until_due) */
+        (
+          (${ToDoRepository.EFFORT_MINUTES})::numeric
+          / NULLIF(
+              (${ToDoRepository.EFFORT_MINUTES})::numeric
+              + 60.0 * (EXTRACT(DAY FROM (to_do.due_date - CURRENT_DATE))::numeric),
+              0
+            )
+        )
+      )
+    END
+    * (to_do.outcome::float / NULLIF((${ToDoRepository.EFFORT_MINUTES}), 0))
   `;
 
   constructor(private readonly connection: Connection) {
@@ -61,12 +96,12 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.perspiration_level',
         'to_do.outcome',
       ])
+      .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
       .take(take)
       .skip(skip)
       .where('to_do.user_id = :user_id', { user_id: userId });
 
     // order by the score (normalized to scale of 10: overdue=10, due today=9.9, due in morethan 1 year=0.1, no due date=5)
-    query.addSelect(ToDoRepository.TOP_SCORE_SQL, 'top_score');
     query.orderBy('top_score', order === PageOrder.ASC ? 'ASC' : 'DESC');
     if (status) {
       query.andWhere('to_do.status = :status', { status });

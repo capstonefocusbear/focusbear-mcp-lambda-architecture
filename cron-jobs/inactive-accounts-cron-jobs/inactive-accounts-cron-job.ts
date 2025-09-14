@@ -1,41 +1,23 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
+import { NestFactory } from '@nestjs/core';
+import { getQueueToken } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { DateTime } from 'luxon';
-import { LessThan } from 'typeorm';
+import { LessThan, MoreThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
-import * as sendGrid from '@sendgrid/mail';
 import axios from 'axios';
 import Stripe from 'stripe';
-import * as i18next from 'i18next';
+import { AppModule } from '../../apps/api-server/src/app.module';
 import { CronJobDataSource } from '../data-source';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
-import { FOCUS_BEAR_EMAILS, STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
+import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
+import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
+import { STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
 import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
-i18next.init({
-  lng: 'en',
-  debug: true,
-  resources: {
-    en: {
-      translation: {
-        inactivity_warning_email_content:
-          "Hi there! We've noticed that you haven't used Focus Bear in a while. Please note that your profile will be deleted if use is not resumed within the next 30 days to ensure adherence to privacy laws and minimize the risk of personal data breaches.Log in and resume your healthy habits at https://dashboard.focusbear.io to retain your Focus Bear profile.",
-        inactivity_email_subject: 'Inactive Account',
-      },
-    },
-    es: {
-      translation: {
-        inactivity_warning_email_content:
-          '¡Hola! Hemos notado que hace tiempo que no utilizas Focus Bear. Por favor, ten en cuenta que tu perfil será eliminado si no se reanuda su uso en los próximos 30 días para garantizar el cumplimiento de las leyes de privacidad y minimizar el riesgo de vulneración de datos personales. Inicia sesión y reanuda tus hábitos saludables en https://dashboard.focusbear.io para conservar tu perfil de Focus Bear.',
-        inactivity_email_subject: 'Cuenta inactiva',
-      },
-    },
-  },
-});
-
-sendGrid.setApiKey(process.env.SENDGRID_KEY);
+const BATCH_SIZE = 25; // Process users in smaller batches for inactive users
 
 const auth0 = new ManagementClient({
   domain: process.env.AUTH0_DOMAIN,
@@ -49,13 +31,16 @@ async function getInactiveUsers() {
   const currentDate = DateTime.now();
   const fiveMonthsAgo = currentDate.minus({ months: 5 });
   const inactiveUsers = await CronJobDataSource.manager.find(User, {
-    where: { updated_at: LessThan(fiveMonthsAgo.toString()) },
+    where: {
+      updated_at: LessThan(fiveMonthsAgo.toString()),
+      has_received_inactivity_warning: false,
+    },
   });
-  console.log(inactiveUsers);
+  console.log(`Found ${inactiveUsers.length} inactive users without inactivity warnings`);
   const userInfoPromise = inactiveUsers.map(async (user) => {
     try {
-      const { data: auth0User } = await auth0.users.get({ id: user.auth0_id });
-      return { email: auth0User.email, user };
+      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
+      return { email: auth0User.email || null, user };
     } catch (error) {
       captureErrorWithContext(error, {
         operation: 'getInactiveUsers.getUserEmail',
@@ -72,16 +57,156 @@ async function getInactiveUsers() {
   return userInfo.filter((user) => user.email);
 }
 
-async function sendInactivityWarningEmails(users: { email: string; user: User }[]) {
-  for await (const user of users) {
-    i18next.changeLanguage(user.user.language);
-    const message = {
-      to: user.email,
-      from: FOCUS_BEAR_EMAILS.SUPPORT,
-      subject: i18next.t('inactivity_email_subject'),
-      text: i18next.t('inactivity_warning_email_content'),
-    };
-    await sendGrid.send(message);
+async function getActiveUsers() {
+  const currentDate = DateTime.now();
+  const sevenDaysAgo = currentDate.minus({ days: 7 });
+  const activeUsers = await CronJobDataSource.manager.find(User, {
+    where: { updated_at: MoreThan(sevenDaysAgo.toString()) },
+  });
+  console.log(`Found ${activeUsers.length} recently active users`);
+  const userInfoPromise = activeUsers.map(async (user) => {
+    try {
+      const auth0User = (await auth0.users.get({ id: user.auth0_id })) as { email?: string };
+      return { email: auth0User.email || null, user };
+    } catch (error) {
+      captureErrorWithContext(error, {
+        operation: 'getActiveUsers.getUserEmail',
+        cronJob: 'inactive-accounts',
+        userId: user.id,
+        extra: {
+          auth0Id: user.auth0_id,
+        },
+      });
+      return null;
+    }
+  });
+  const userInfo = await Promise.all(userInfoPromise);
+  return userInfo.filter((user) => user.email);
+}
+
+async function sendEnhancedInactivityWarningEmails(users: { email: string; user: User }[], emailQueue: Queue) {
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
+
+    const emailPromises = batch.map(async (userData) => {
+      try {
+        await emailQueue.add(
+          'send-inactivity-warning-email',
+          {
+            user: { ...userData.user, email: userData.email },
+            warningType: 'account_deletion',
+            daysUntilDeletion: 30,
+          },
+          {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2000 },
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        );
+      } catch (error) {
+        captureErrorWithContext(error, {
+          operation: 'sendEnhancedInactivityWarningEmails',
+          userId: userData.user.id,
+          cronJob: 'inactive-accounts',
+        });
+      }
+    });
+
+    await Promise.all(emailPromises);
+
+    if (i + BATCH_SIZE < users.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+async function sendEnhancedNoProgressEmails(users: { email: string; user: User }[], emailQueue: Queue) {
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
+
+    const emailPromises = batch.map(async (userData) => {
+      try {
+        await emailQueue.add(
+          'send-no-progress-email',
+          {
+            user: { ...userData.user, email: userData.email },
+            context: 'inactive_user_encouragement',
+          },
+          {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2000 },
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        );
+      } catch (error) {
+        captureErrorWithContext(error, {
+          operation: 'sendEnhancedNoProgressEmails',
+          userId: userData.user.id,
+          cronJob: 'inactive-accounts',
+        });
+      }
+    });
+
+    await Promise.all(emailPromises);
+
+    if (i + BATCH_SIZE < users.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+async function sendEnhancedProgressEmails(
+  users: { email: string; user: User }[],
+  emailQueue: Queue,
+  userProgressMetricsService: UserProgressMetricsService,
+  userEmailPreferencesService: UserEmailPreferencesService,
+) {
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
+
+    const emailPromises = batch.map(async (userData) => {
+      if (userData.user.email_frequency === EmailFrequency.WEEKLY) {
+        try {
+          // Calculate progress metrics
+          const metrics = await userProgressMetricsService.calculateWeeklyProgress(userData.user);
+
+          // Get unsubscribe token
+          const { unsubscribe_token } = await userEmailPreferencesService.getEmailPreferences(userData.user.id);
+
+          // Queue enhanced progress email
+          await emailQueue.add(
+            'send-enhanced-progress-email',
+            {
+              user: { ...userData.user, email: userData.email },
+              metrics,
+              unsubscribe_token,
+              emailType: 'inactive_user_progress',
+            },
+            {
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 2000 },
+              removeOnComplete: true,
+              removeOnFail: false,
+            },
+          );
+        } catch (error) {
+          captureErrorWithContext(error, {
+            operation: 'sendEnhancedProgressEmails',
+            userId: userData.user.id,
+            cronJob: 'inactive-accounts',
+          });
+        }
+      }
+    });
+
+    await Promise.all(emailPromises);
+
+    // Delay between batches
+    if (i + BATCH_SIZE < users.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
 }
 
@@ -126,19 +251,132 @@ async function deleteUsers(users: User[]) {
   }
 }
 
+async function getInternalTestUsers() {
+  const currentDate = DateTime.now();
+  const sixMonthsAgo = currentDate.minus({ months: 6 });
+  const inactiveUsers = await CronJobDataSource.manager.find(User, {
+    where: { updated_at: LessThan(sixMonthsAgo.toString()) },
+  });
+
+  if (inactiveUsers.length === 0) {
+    return [];
+  }
+
+  // Construct a query to fetch all users by their Auth0 IDs
+  const userIds = inactiveUsers.map((user) => user.auth0_id);
+  const query = `user_id:(${userIds.join(' OR ')})`;
+
+  try {
+    // Fetch all Auth0 users at once
+    const auth0Users = await auth0.users.getAll({ q: query, search_engine: 'v3' });
+
+    // Create a map for quick lookups
+    const auth0UsersMap = new Map(auth0Users.data.map((u) => [u.user_id, u]));
+
+    const internalTestUsers = [];
+    for (const user of inactiveUsers) {
+      const auth0User = auth0UsersMap.get(user.auth0_id);
+      if (auth0User?.email && auth0User.email.match(/^internaltest\+.*@focusbear\.io$/)) {
+        internalTestUsers.push({ email: auth0User.email, user });
+      }
+    }
+    return internalTestUsers;
+  } catch (error) {
+    console.error('Error fetching bulk Auth0 users:', error);
+    return [];
+  }
+}
+
+async function deleteInternalTestUsers() {
+  try {
+    console.log('Starting internal test user cleanup...');
+
+    const internalTestUsers = await getInternalTestUsers();
+
+    if (internalTestUsers.length === 0) {
+      console.log('No internal test users found.');
+      return;
+    }
+
+    // Log users that will be deleted for safety
+    console.log(`Found ${internalTestUsers.length} internal test users to delete:`);
+    for (const testUser of internalTestUsers) {
+      console.log(`- User ID: ${testUser.user.id}, Email: ${testUser.email}`);
+    }
+
+    // Extract just the User objects for deletion
+    const usersToDelete = internalTestUsers.map((userData) => userData.user);
+
+    console.log('Deleting internal test users...');
+    await deleteUsers(usersToDelete);
+
+    console.log('Internal test users deleted successfully.');
+  } catch (error) {
+    console.error('Error deleting internal test users:', error);
+    throw error;
+  }
+}
+
 async function runInactiveAccountsCronJob() {
-  await CronJobDataSource.initialize();
-  // delete users who have been inactive for 6 months or longer and have been warned for inactivity
-  // const usersToDelete = await getUsersToDelete();
-  // await deleteUsers(usersToDelete);
-  // email a notification to users who have been inactive for 5 months warning them that their account will
-  // be deleted
-  const inactiveUsers = await getInactiveUsers();
-  // await sendInactivityWarningEmails(inactiveUsers);
-  // temporarily not emailing users or updating has_received_inactivity_warning field
-  // await updateUsersInactivityWarningFields(inactiveUsers);
-  logInactiveUsers(inactiveUsers);
-  process.exit();
+  // Initialize NestJS application context
+  const app = await NestFactory.createApplicationContext(AppModule);
+  const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
+  const userProgressMetricsService = app.get(UserProgressMetricsService);
+  const userEmailPreferencesService = app.get(UserEmailPreferencesService);
+
+  try {
+    await CronJobDataSource.initialize();
+
+    console.log('Starting inactive accounts cron job...');
+
+    // Get users for deletion (6+ months inactive with warning)
+    const usersToDelete = await getUsersToDelete();
+    if (usersToDelete.length > 0) {
+      console.log(`Found ${usersToDelete.length} users who exceeded inactivity period`);
+      // TODO: Uncomment when warning emails are fully implemented and tested
+      // await deleteUsers(usersToDelete);
+      console.log('User deletion is currently disabled pending warning email implementation');
+    }
+
+    // Get users for inactivity warning (5+ months inactive, no warning sent)
+    const inactiveUsers = await getInactiveUsers();
+    if (inactiveUsers.length > 0) {
+      console.log(`Sending inactivity warnings to ${inactiveUsers.length} users`);
+      await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
+      await updateUsersInactivityWarningFields(inactiveUsers);
+    }
+
+    // Get recently active users for progress emails
+    const activeUsers = await getActiveUsers();
+    if (activeUsers.length > 0) {
+      console.log(`Sending progress emails to ${activeUsers.length} active users`);
+      await sendEnhancedProgressEmails(
+        activeUsers,
+        emailQueue,
+        userProgressMetricsService,
+        userEmailPreferencesService,
+      );
+    }
+
+    // Clean up internal test users
+    await deleteInternalTestUsers();
+
+    console.log('Inactive accounts cron job completed successfully');
+  } catch (error) {
+    captureErrorWithContext(
+      error,
+      {
+        operation: 'runInactiveAccountsCronJob',
+      },
+      {
+        logLevel: 'error',
+      },
+    );
+    throw error;
+  } finally {
+    await app.close();
+    process.exit();
+  }
 }
 
 if (require.main === module) {

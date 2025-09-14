@@ -10,6 +10,7 @@ import {
   ANDROID_DEVICE_NAME,
   ANDROID_OPERATING_SYSTEM,
   IOS_OPERATING_SYSTEM,
+  WEB_CLIENT_ID,
 } from '@app/auth0/auth0.constants';
 import { BaseCRUDService } from '../../../../shared/services/base-crud.service';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
@@ -120,7 +121,11 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
     return this.deviceRepository.orm.find({ where: { user_id: userId } });
   }
 
-  parseDeviceFromAuth0Client = (auth0ClientDto: Auth0ClientDto | null | undefined) => {
+  async getDevicesByUserId(userId: string) {
+    return this.deviceRepository.orm.find({ where: { user_id: userId } });
+  }
+
+  parseDeviceFromAuth0Client = (auth0ClientDto: Auth0ClientDto | null | undefined, userAgent?: string) => {
     if (!auth0ClientDto?.client_id) {
       return OperatingSystem.Unknown;
     }
@@ -134,14 +139,41 @@ export class DeviceService extends BaseCRUDService<DeviceRepository, Device> {
         return MACOS_OPERATING_SYSTEM;
       case WINDOWS_CLIENT_ID:
         return WINDOWS_OPERATING_SYSTEM;
+      case WEB_CLIENT_ID:
+        return OperatingSystem.Web;
       default: {
         if (MOBILE_CLIENT_ID.includes(client_id)) {
           return name === ANDROID_DEVICE_NAME ? ANDROID_OPERATING_SYSTEM : IOS_OPERATING_SYSTEM;
         }
+        // For unknown client IDs, try to detect from User-Agent first
+        if (userAgent) {
+          return this.detectOSFromUserAgent(userAgent);
+        }
+        // If no user agent, return Unknown
         return OperatingSystem.Unknown;
       }
     }
   };
+
+  private detectOSFromUserAgent(userAgent: string): OperatingSystem {
+    const ua = userAgent.toLowerCase();
+
+    if (ua.includes('mac os x') || ua.includes('macintosh')) {
+      return OperatingSystem.MacOS;
+    }
+    if (ua.includes('windows')) {
+      return OperatingSystem.Windows;
+    }
+    if (ua.includes('android')) {
+      return OperatingSystem.Android;
+    }
+    if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
+      return OperatingSystem.iOS;
+    }
+
+    // If OS can't be determined from User-Agent, return Unknown
+    return OperatingSystem.Unknown;
+  }
 
   async searchUserDevice(searchDeviceQueryDto: SearchDeviceQueryDto, userId: string) {
     const user = await this.userRepository.orm.findOneBy({ id: userId });

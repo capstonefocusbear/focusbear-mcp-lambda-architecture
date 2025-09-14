@@ -225,6 +225,39 @@ describe('CompletedActivitySequenceService', () => {
       log.finalizeUncompletedLog();
       expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
     });
+
+    it('guard: should NOT finalize if sequence has zero non-skipped logs (only true skips)', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const emptyLog = new CompletedActivitySequence({
+        ...UncompletedSequenceLogDummy,
+        completed_activity_logs: [{ metadata: { is_skipped: true } }, { metadata: { skipped_did_not_complete: true } }],
+      } as any);
+      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(emptyLog);
+
+      await completedActivitySequenceService.completeActivitySequence(emptyLog.id, userDummy.id);
+
+      // Should not finalize/save the sequence
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).not.toBeCalled();
+      // But should still clear skipped list for the user
+      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { current_sequence_skipped_activities: null });
+    });
+
+    it('positive: should finalize if there is at least one "did already" log (skipped_did_complete)', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const logWithDidAlready = new CompletedActivitySequence({
+        ...UncompletedSequenceLogDummy,
+        completed_activity_logs: [
+          { metadata: { is_skipped: true } },
+          { metadata: { skipped_did_complete: true } }, // counts as completion
+          { metadata: { skipped_did_not_complete: true } },
+        ],
+      } as any);
+      CompletedActivitySequenceRepositoryMock.getUncompletedSequenceLog.mockResolvedValueOnce(logWithDidAlready);
+
+      await completedActivitySequenceService.completeActivitySequence(logWithDidAlready.id, userDummy.id);
+
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalled();
+    });
   });
 
   describe('completeActivitySequenceByDate', () => {

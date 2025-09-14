@@ -1,0 +1,30 @@
+<mj-text color="#333333">
+  <p>{{headerSubtitle}}</p>
+  <p>{{haventSeenYouText}}<br/>
+  {{journeyPausesText}}</p>
+</mj-text>
+
+{{> metric-card title=goodNewsTitle content=goodNewsContent}}
+
+{{> metric-card title=tinyActionTitle content=(concat
+  "<ul>"
+  "<li>" openFocusBearText "</li>"
+  "<li>" completeOneHabitText "</li>"
+  "</ul>"
+  "<p>" smallStepForwardText "</p>"
+)}}
+
+{{> cta-button href=dashboardUrl text=getBackOnTrackText}}
+
+<mj-text color="#333333">
+  <p>{{footerText}}<br/>
+  {{weBelieveInYouText}}</p>
+  <p><strong>{{focusBearTeamText}}</strong></p>
+</mj-text>
+
+<mj-divider border-color="#eee" />
+
+<mj-text align="center" color="#999999" font-size="11px">
+  <p>{{wantToChangeFrequencyText}}<br/>
+  <a href="{{manageEmailPreferencesLink}}" style="color: #FF6B35;">{{unsubscribeText}}</a></p>
+</mj-text>

@@ -16,7 +16,7 @@ import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
 import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
-import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIO } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIOS, S3_BUCKET_TODO_IMAGES } from '../../../shared/utils/constants';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 
 @Controller('to-do')
@@ -74,7 +74,7 @@ export class TodoController {
   async generateUploadImageUrl(@AuthContext() { user }: Passport): Promise<{ uploadUrl: string; imageKey: string }> {
     const imageKey = `${user.id}-${Date.now()}-todo-image.png`;
 
-    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_AUDIO, imageKey, 'image/png');
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_IMAGES, imageKey, 'image/png');
     return { uploadUrl, imageKey };
   }
 
@@ -112,7 +112,7 @@ export class TodoController {
   @Post('generate-upload-audio-url')
   async generateUploadAudioUrl(@AuthContext() { user }: Passport): Promise<{ uploadUrl: string; audioKey: string }> {
     const audioKey = `${user.id}-${Date.now()}-todo-audio.mp3`;
-    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_AUDIO, audioKey, 'audio/mpeg');
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_AUDIOS, audioKey, 'audio/mpeg');
     return { uploadUrl, audioKey };
   }
 

@@ -301,7 +301,7 @@ export const S3_BUCKET_EMOJIS = 'emojis';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
 export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
 export const S3_BUCKET_TODO_IMAGES = 'todo-images';
-export const S3_BUCKET_TODO_AUDIO = 'todo-audio';
+export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

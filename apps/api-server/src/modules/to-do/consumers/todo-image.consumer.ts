@@ -5,7 +5,7 @@ import { Job } from 'bull';
 import { OpenAIService } from '@app/openai';
 import { R2Service } from '@app/r2';
 import axios from 'axios';
-import { BullQueues, BullWorkers, S3_BUCKET_USAGE_IMAGES } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, S3_BUCKET_TODO_IMAGES } from '../../../shared/utils/constants';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 
@@ -50,7 +50,7 @@ export class TodoImageConsumer {
         },
       });
 
-      const imageUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_USAGE_IMAGES, imageKey);
+      const imageUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_TODO_IMAGES, imageKey);
 
       const imageResponse = await axios.get(imageUrl, {
         responseType: 'arraybuffer',

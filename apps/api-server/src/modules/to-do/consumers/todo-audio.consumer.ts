@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
@@ -8,7 +7,7 @@ import axios from 'axios';
 import { toFile } from 'openai/uploads';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
-import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIO } from '../../../shared/utils/constants';
+import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIOS } from '../../../shared/utils/constants';
 
 @Processor(BullQueues.TODO_AUDIO)
 export class TodoAudioConsumer {
@@ -40,7 +39,7 @@ export class TodoAudioConsumer {
     });
 
     try {
-      const audioUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_TODO_AUDIO, audioKey);
+      const audioUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_TODO_AUDIOS, audioKey);
       const resp = await axios.get<ArrayBuffer>(audioUrl, { responseType: 'arraybuffer', timeout: 120000 });
       const buffer = Buffer.from(resp.data);
       const file = await toFile(buffer, 'todo-audio.mp3');

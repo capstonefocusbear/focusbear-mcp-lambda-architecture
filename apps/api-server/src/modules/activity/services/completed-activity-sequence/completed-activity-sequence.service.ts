@@ -18,6 +18,51 @@ import { SequenceStatus } from '../../domain/sequence-status.enum';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
+function logSeqDecisionLocal({
+  path,
+  action,
+  user,
+  activity_sequence_id,
+  start_time,
+  tzOverride,
+}: {
+  path: string;
+  action: string;
+  user: User;
+  activity_sequence_id: string;
+  start_time: Date;
+  tzOverride?: string;
+}) {
+  const tz = tzOverride ?? user.timezone ?? 'UTC';
+  const base = DateTime.fromJSDate(start_time).setZone(tz);
+  const startOfDayUserTZ = base.startOf('day');
+  const endOfDayUserTZ = base.endOf('day');
+  const bucketStartUtc = startOfDayUserTZ.toUTC();
+
+  const payload = {
+    path,
+    action,
+    user_id: user.id,
+    activity_sequence_id,
+    start_time,
+    user_tz: tz,
+    day_user_start: startOfDayUserTZ.toISO(),
+    day_user_end: endOfDayUserTZ.toISO(),
+    day_bucket_start_utc: bucketStartUtc.toISO(),
+  };
+
+  console.log(`[SEQ-DECISION]`, JSON.stringify(payload, null, 2));
+}
+
+// Correct time calculation to prevent UTC double monday bug when parsing times before ~10am
+function dayWindowForUser(start: Date, tz: string) {
+  const base = DateTime.fromJSDate(start).setZone(tz || 'UTC');
+  return {
+    start: base.startOf('day').toJSDate(),
+    end: base.endOf('day').toJSDate(),
+  };
+}
+
 @Injectable()
 export class CompletedActivitySequenceService {
   constructor(
@@ -43,11 +88,29 @@ export class CompletedActivitySequenceService {
       const hasCurrentSequence = user?.current_activity_sequence_id;
       const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;
       if (hasCurrentSequence && hasConsistentSequence) return completing_sequence_log;
+      if (hasCurrentSequence && hasConsistentSequence) {
+        logSeqDecisionLocal({
+          path: 'getOrCreateCompletingSequenceLog',
+          action: 'FOUND_CONSISTENT',
+          user,
+          activity_sequence_id,
+          start_time,
+        });
+        return completing_sequence_log;
+      }
       const newCompletingSequenceLog = new CompletedActivitySequence({
         activity_sequence_id,
         user_id: user.id,
         start_time,
         is_completed: false,
+      });
+
+      logSeqDecisionLocal({
+        path: 'getOrCreateCompletingSequenceLog',
+        action: 'INSERTED',
+        user,
+        activity_sequence_id,
+        start_time,
       });
       return await this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
     } catch (error) {
@@ -67,9 +130,18 @@ export class CompletedActivitySequenceService {
         start_time: Between(new Date(startOfDay), new Date(endOfDay)),
       },
     });
+
     if (incompleteSequence) {
+      logSeqDecisionLocal({
+        path: 'getOrCreateCompletingSequenceLogForSyncing',
+        action: 'FOUND_INCOMPLETE',
+        user,
+        activity_sequence_id,
+        start_time,
+      });
       return incompleteSequence;
     }
+
     const completedSequenceFromCurrentDate = await this.completedActivitySequenceRepository.orm.findOne({
       where: {
         user_id: user.id,
@@ -79,13 +151,29 @@ export class CompletedActivitySequenceService {
       },
     });
     if (completedSequenceFromCurrentDate) {
+      logSeqDecisionLocal({
+        path: 'getOrCreateCompletingSequenceLogForSyncing',
+        action: 'FOUND_COMPLETED',
+        user,
+        activity_sequence_id,
+        start_time,
+      });
       return completedSequenceFromCurrentDate;
     }
+
     const newCompletingSequenceLog = new CompletedActivitySequence({
       activity_sequence_id,
       user_id: user.id,
       start_time,
       is_completed: false,
+    });
+
+    logSeqDecisionLocal({
+      path: 'getOrCreateCompletingSequenceLogForSyncing',
+      action: 'INSERTED',
+      user,
+      activity_sequence_id,
+      start_time,
     });
     return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
   }

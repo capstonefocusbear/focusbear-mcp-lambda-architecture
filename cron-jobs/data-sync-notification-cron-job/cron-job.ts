@@ -372,5 +372,5 @@ export async function runDataSyncCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runDataSyncCronJob, { exitOnFinish: true });
+  withSentry(runDataSyncCronJob);
 }

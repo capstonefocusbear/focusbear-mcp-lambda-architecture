@@ -148,7 +148,6 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
-    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"
@@ -165,7 +164,6 @@
     "tmp": "0.2.4"
   },
   "resolutions": {
-    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"

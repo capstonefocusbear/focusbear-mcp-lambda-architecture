@@ -244,7 +244,7 @@ async function sendUnicaesDataSyncWhatsapp(
 ) {
   const whatsappMessage = `Hola ${
     name || 'participante'
-  }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. 📱✨`;
+  }, recuerda sincronizar tus datos de Screen Time esta semana en Focus Bear. Tu código de participante es: ${participantCode}. 📱✨`;
 
   const cannedMessageIdIos = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_IOS!, 10);
   const cannedMessageIdAndroid = parseInt(process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID!, 10);
@@ -333,32 +333,31 @@ export async function runDataSyncCronJob() {
     const reserved = await reserveParticipantsForDataSync(50);
     console.log(`Reserved ${reserved.length} participants for data-sync notifications`);
 
-    // Process sequentially by default to be gentle on provider APIs
-    for (const participant of reserved) {
-      // eslint-disable-next-line no-await-in-loop
-      const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
-      if (phoneNumber) {
-        // eslint-disable-next-line no-await-in-loop
-        await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
+    // Process notifications in manageable batches with a cooldown to respect provider rate limits
+    await processInBatches({
+      items: reserved,
+      batchSize: 30,
+      cooldownMs: 60_000,
+      processItem: async (participant) => {
+        const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
+        if (phoneNumber) {
+          await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
 
-        // Mark as notified and clear reservation
-        // eslint-disable-next-line no-await-in-loop
-        await CronJobDataSource.manager.query(
-          `UPDATE study_participants SET last_data_sync_notified_at = NOW(), reserved_at = NULL WHERE id = $1`,
-          [participant.id],
-        );
-      } else {
-        // No phone number available; clear the reservation for future handling
-        // eslint-disable-next-line no-await-in-loop
-        await CronJobDataSource.manager.query(`UPDATE study_participants SET reserved_at = NULL WHERE id = $1`, [
-          participant.id,
-        ]);
-        console.log('Skipping participant with no phone number; reservation cleared');
-      }
+          await CronJobDataSource.manager.query(
+            `UPDATE study_participants SET last_data_sync_notified_at = NOW(), reserved_at = NULL WHERE id = $1`,
+            [participant.id],
+          );
+        } else {
+          await CronJobDataSource.manager.query(`UPDATE study_participants SET reserved_at = NULL WHERE id = $1`, [
+            participant.id,
+          ]);
+          console.log('Skipping participant with no phone number; reservation cleared');
+        }
 
-      // Email path remains disabled
-      // if (email) { await sendUnicaesDataSyncEmail(email, name, os); }
-    }
+        // Email path remains disabled
+        // if (email) { await sendUnicaesDataSyncEmail(email, name, os); }
+      },
+    });
 
     console.log('Usage data sync notification cronjob completed successfully');
   } finally {

@@ -1034,8 +1034,7 @@ export class OpenAIService {
 
       const { content } = response.choices[0].message;
 
-      const parsed: unknown = content ? JSON.parse(content) : [];
-      const tasks = Array.isArray(parsed) ? parsed : [];
+      const tasks = content ? JSON.parse(content).tasks : [];
       return tasks.map((task) => plainToClass(BraindumpTaskDto, task));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

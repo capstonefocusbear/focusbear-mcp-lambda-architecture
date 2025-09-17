@@ -153,5 +153,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     temperature: 0,
     n: 1,
     messages: null,
+    response_format: { type: 'json_object' },
   },
 };

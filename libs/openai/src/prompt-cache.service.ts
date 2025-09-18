@@ -8,6 +8,8 @@ import {
   APP_SAFETY_PROMPT_CONFIG_PATH,
   USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
   HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
+  HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
+  TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -86,6 +88,46 @@ export class PromptCacheService implements OnModuleInit {
           extra: {
             message: 'Failed to load habit adjustment prompts',
             configPath: HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
+      this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
+      try {
+        const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');
+        const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent)[0];
+        allPrompts.push({
+          id: 'handwritten-todos-analysis',
+          raw: handwrittenTodosPrompt.content[0].text,
+        });
+        this.logger.log('Loaded handwritten todos prompt');
+      } catch (error) {
+        this.logger.error(`Failed to load handwritten todos prompt: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load handwritten todos prompt',
+            configPath: HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load todos transcript prompt (audio flow) - prompt.json style (same as usage screenshot)
+      this.logger.log(`Loading todos transcript prompt from ${TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
+      try {
+        const todosTranscriptContent = await fs.readFile(TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH, 'utf8');
+        const todosTranscriptPrompt = JSON.parse(todosTranscriptContent)[0];
+        allPrompts.push({
+          id: 'todos-transcript-analysis',
+          raw: todosTranscriptPrompt.content[0].text,
+        });
+        this.logger.log('Loaded todos transcript prompt');
+      } catch (error) {
+        this.logger.error(`Failed to load todos transcript prompt: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load todos transcript prompt',
+            configPath: TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
           },
         });
       }

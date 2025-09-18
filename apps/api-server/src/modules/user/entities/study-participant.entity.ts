@@ -44,6 +44,12 @@ export class StudyParticipant extends BaseEntity {
   @Column({ name: 'health_data_last_received', type: 'date', nullable: true })
   healthDataLastReceived: Date;
 
+  @Column({ name: 'last_data_sync_notified_at', type: 'timestamptz', nullable: true })
+  lastDataSyncNotifiedAt?: Date;
+
+  @Column({ name: 'reserved_at', type: 'timestamptz', nullable: true })
+  reservedAt?: Date;
+
   @Column({ name: 'is_questionnaire_completed', type: 'boolean', default: false })
   isQuestionnaireCompleted: boolean;
 

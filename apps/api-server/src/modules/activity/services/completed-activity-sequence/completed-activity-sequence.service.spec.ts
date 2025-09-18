@@ -916,3 +916,200 @@ describe('CompletedActivitySequenceService', () => {
     });
   });
 });
+
+describe('CompletedActivitySequenceService() test', () => {
+  let service: CompletedActivitySequenceService;
+  let completedRepo: any;
+  let activitySequenceRepo: any;
+  let userRepo: any;
+  let sentry: any;
+
+  beforeEach(() => {
+    completedRepo = {
+      orm: {
+        findOne: jest.fn(),
+        save: jest.fn(),
+      },
+      create: jest.fn(),
+    };
+    activitySequenceRepo = {};
+    userRepo = {};
+    sentry = {
+      instance: () => ({
+        addBreadcrumb: jest.fn(),
+        captureException: jest.fn(),
+      }),
+    };
+
+    service = new CompletedActivitySequenceService(
+      completedRepo as any,
+      activitySequenceRepo as any,
+      userRepo as any,
+      sentry as any,
+    );
+
+    jest.clearAllMocks();
+  });
+
+  const makeUser = (overrides: Partial<User> = {}): User =>
+    ({
+      id: 'user-1',
+      timezone: 'UTC+10:00', // matches your prod format
+      current_activity_sequence_id: null,
+      completing_sequence_log: null,
+      ...overrides,
+    } as User);
+
+  const baseStartLocal = new Date('2025-09-11T07:00:00+10:00');
+
+  describe('getOrCreateCompletingSequenceLog() test', () => {
+    it('returns existing consistent log when user already has one on same local day', async () => {
+      const existingLog = {
+        id: 'log-1',
+        activity_sequence_id: 'seq-1',
+        start_time: baseStartLocal,
+      } as CompletedActivitySequence;
+
+      const user = makeUser({
+        current_activity_sequence_id: 'seq-1',
+        completing_sequence_log: existingLog,
+      });
+
+      const result = await service.getOrCreateCompletingSequenceLog(user, 'seq-1', baseStartLocal);
+      expect(result).toBe(existingLog);
+      expect(completedRepo.create).not.toHaveBeenCalled();
+      expect(completedRepo.orm.findOne).not.toHaveBeenCalled();
+    });
+
+    it('returns found log in DB for same local day', async () => {
+      const foundLog = {
+        id: 'log-2',
+        activity_sequence_id: 'seq-1',
+        start_time: baseStartLocal,
+      } as CompletedActivitySequence;
+      completedRepo.orm.findOne.mockResolvedValueOnce(foundLog);
+
+      const user = makeUser();
+      const result = await service.getOrCreateCompletingSequenceLog(user, 'seq-1', baseStartLocal);
+      expect(result).toBe(foundLog);
+    });
+
+    it('creates new log if none found', async () => {
+      completedRepo.orm.findOne.mockResolvedValueOnce(null);
+      const newLog = { id: 'log-3' } as CompletedActivitySequence;
+      completedRepo.create.mockResolvedValueOnce(newLog);
+
+      const user = makeUser();
+      const result = await service.getOrCreateCompletingSequenceLog(user, 'seq-1', baseStartLocal);
+      expect(result).toBe(newLog);
+      expect(completedRepo.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('getOrCreateCompletingSequenceLogForSyncing', () => {
+    it('returns incomplete log if one exists for local day', async () => {
+      const incomplete = { id: 'log-4', is_completed: false } as CompletedActivitySequence;
+      completedRepo.orm.findOne.mockResolvedValueOnce(incomplete); // first call: incomplete
+
+      const user = makeUser();
+      const result = await service.getOrCreateCompletingSequenceLogForSyncing(user, 'seq-1', baseStartLocal);
+      expect(result).toBe(incomplete);
+    });
+
+    it('returns completed log if no incomplete exists', async () => {
+      completedRepo.orm.findOne
+        .mockResolvedValueOnce(null) // incomplete
+        .mockResolvedValueOnce({ id: 'log-5', is_completed: true } as CompletedActivitySequence); // completed
+
+      const user = makeUser();
+      const result = await service.getOrCreateCompletingSequenceLogForSyncing(user, 'seq-1', baseStartLocal);
+      expect(result.id).toBe('log-5');
+    });
+
+    it('creates new log if none exist for the day', async () => {
+      completedRepo.orm.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+      const newLog = { id: 'log-6' } as CompletedActivitySequence;
+      completedRepo.create.mockResolvedValueOnce(newLog);
+
+      const user = makeUser();
+      const result = await service.getOrCreateCompletingSequenceLogForSyncing(user, 'seq-1', baseStartLocal);
+      expect(result).toBe(newLog);
+      expect(completedRepo.create).toHaveBeenCalled();
+    });
+  });
+
+  //
+  // --- Timezone bucketing / bounds checks ---
+  // Issue #1169 Bug stems from early morning being bucketed with the previous day sequence that should have ended at 11:59. Now past midnight = new activity sequence generated.
+  //
+  describe('timezone bucketing (user local day windows)', () => {
+    const captureWhereBounds = () => {
+      let lastWhere: any;
+      completedRepo.orm.findOne.mockImplementation(async (arg: any) => {
+        lastWhere = arg?.where;
+        return null;
+      });
+      return () => lastWhere;
+    };
+
+    it('buckets AEST local 2025-09-11 07:00 (+10) into [2025-09-10T14:00Z, 2025-09-11T13:59:59.999Z]', async () => {
+      const getWhere = captureWhereBounds();
+
+      const user = makeUser({ timezone: 'UTC+10:00' });
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-11T07:00:00+10:00'));
+
+      const where = getWhere();
+      const [lower, upper] = where.start_time?.value || [];
+      expect(new Date(lower).toISOString()).toBe('2025-09-10T14:00:00.000Z');
+      expect(new Date(upper).toISOString()).toBe('2025-09-11T13:59:59.999Z');
+    });
+
+    it('same instant as 2025-09-10 21:00Z buckets to the same AEST window', async () => {
+      const getWhere = captureWhereBounds();
+
+      const user = makeUser({ timezone: 'UTC+10:00' });
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-10T21:00:00Z'));
+
+      const where = getWhere();
+      const [lower, upper] = where.start_time?.value || [];
+      expect(new Date(lower).toISOString()).toBe('2025-09-10T14:00:00.000Z');
+      expect(new Date(upper).toISOString()).toBe('2025-09-11T13:59:59.999Z');
+    });
+
+    it('UTC user buckets by [00:00Z, 23:59:59.999Z]', async () => {
+      const getWhere = captureWhereBounds();
+
+      const user = makeUser({ timezone: 'UTC' });
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-11T07:00:00Z'));
+
+      const where = getWhere();
+      const [lower, upper] = where.start_time?.value || [];
+      expect(new Date(lower).toISOString()).toBe('2025-09-11T00:00:00.000Z');
+      expect(new Date(upper).toISOString()).toBe('2025-09-11T23:59:59.999Z');
+    });
+
+    it('same local day → identical bounds; across midnight → different', async () => {
+      const bounds: string[] = [];
+      completedRepo.orm.findOne.mockImplementation(async (arg: any) => {
+        const [l, u] = arg.where.start_time.value;
+        bounds.push(`${new Date(l).toISOString()}|${new Date(u).toISOString()}`);
+        return null;
+      });
+
+      const user = makeUser({ timezone: 'UTC+10:00' });
+
+      // same local day
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-11T07:00:00+10:00'));
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-11T12:00:00+10:00'));
+      expect(bounds[0]).toBe(bounds[1]);
+      expect(bounds[1]).toBe('2025-09-10T14:00:00.000Z|2025-09-11T13:59:59.999Z');
+
+      // across midnight (should generate a new day, not the same day)
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-11T23:30:00+10:00')); // still 11th local day
+      await service.getOrCreateCompletingSequenceLog(user, 'seq-1', new Date('2025-09-12T00:10:00+10:00')); // now 12th local day
+      expect(bounds[bounds.length - 2]).toBe('2025-09-10T14:00:00.000Z|2025-09-11T13:59:59.999Z'); // 11th local
+      expect(bounds[bounds.length - 1]).toBe('2025-09-11T14:00:00.000Z|2025-09-12T13:59:59.999Z'); // 12th local
+      expect(bounds[bounds.length - 2]).not.toBe(bounds[bounds.length - 1]);
+    });
+  });
+});

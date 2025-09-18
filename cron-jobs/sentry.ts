@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
-require('dotenv').config();
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export function initializeSentry() {
   Sentry.init({
@@ -15,18 +16,30 @@ export function initializeSentry() {
 // @returns Whatever your job returns
 // Example:
 // WithSentry(runMyCronJob);
-export async function withSentry<T>(job: () => Promise<T>): Promise<T> {
+export async function withSentry<T>(
+  job: () => Promise<T>,
+  options: { exitOnFinish?: boolean } = {},
+): Promise<T> {
+  const { exitOnFinish = true } = options;
   initializeSentry();
+  let succeeded = false;
   try {
     const result = await job();
+    succeeded = true;
     return result;
   } catch (error) {
     Sentry.captureException(error);
     console.error(error);
     throw error;
   } finally {
-    await Sentry.flush(2000);
-    process.exit(1);
+    try {
+      await Sentry.flush(2000);
+    } catch (_) {}
+    if (exitOnFinish) {
+      // Exit with appropriate code after resources have been flushed
+      // eslint-disable-next-line no-process-exit
+      process.exit(succeeded ? 0 : 1);
+    }
   }
 }
 

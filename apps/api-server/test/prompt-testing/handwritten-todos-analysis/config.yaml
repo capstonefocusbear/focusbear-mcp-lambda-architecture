@@ -1,0 +1,112 @@
+prompts:
+  - id: handwritten-todos-analysis
+    file: prompt.json
+
+providers:
+  - id: openai:gpt-4.1
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  - description: "Simple grocery list"
+    vars:
+      image_description: "Handwritten note: Buy groceries - milk, bread, eggs, cheese"
+      min_tasks: 1
+      max_tasks: 1
+      expected_task_names: ["Buy groceries"]
+      min_estimated_time: 20
+      max_estimated_time: 45
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Multiple independent tasks"
+    vars:
+      image_description: "Handwritten note: Call mom, Review quarterly report, Schedule dentist appointment"
+      min_tasks: 3
+      max_tasks: 3
+      expected_task_names: ["Call mom", "Review quarterly report", "Schedule dentist appointment"]
+      min_estimated_time: 10
+      max_estimated_time: 120
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Complex task with subtasks"
+    vars:
+      image_description: "Handwritten note: Prepare presentation - research topic, create slides, practice delivery"
+      min_tasks: 1
+      max_tasks: 1
+      expected_task_names: ["Prepare presentation"]
+      min_subtasks: 2
+      max_subtasks: 4
+      min_estimated_time: 60
+      max_estimated_time: 180
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Mixed format tasks"
+    vars:
+      image_description: "Handwritten note: [ ] Buy groceries, ✓ Call mom, Review project docs, [ ] Schedule meeting"
+      min_tasks: 3
+      max_tasks: 4
+      expected_task_names: ["Buy groceries", "Call mom", "Review project docs", "Schedule meeting"]
+      min_estimated_time: 10
+      max_estimated_time: 120
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Work-related tasks"
+    vars:
+      image_description: "Handwritten note: Send follow-up emails, Update project timeline, Prepare for team meeting"
+      min_tasks: 3
+      max_tasks: 3
+      expected_task_names: ["Send follow-up emails", "Update project timeline", "Prepare for team meeting"]
+      min_estimated_time: 15
+      max_estimated_time: 90
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Study tasks"
+    vars:
+      image_description: "Handwritten note: Read chapter 5, Complete practice problems, Review notes for exam"
+      min_tasks: 3
+      max_tasks: 3
+      expected_task_names: ["Read chapter 5", "Complete practice problems", "Review notes for exam"]
+      min_estimated_time: 30
+      max_estimated_time: 180
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+  - description: "Personal tasks"
+    vars:
+      image_description: "Handwritten note: Pay bills, Clean kitchen, Walk dog, Call insurance company"
+      min_tasks: 4
+      max_tasks: 4
+      expected_task_names: ["Pay bills", "Clean kitchen", "Walk dog", "Call insurance company"]
+      min_estimated_time: 10
+      max_estimated_time: 120
+    assert:
+      - type: javascript
+        value: file://validate-todos.js
+
+providers:
+  - id: openai:gpt-4.1
+    config:
+      temperature: 0
+      max_tokens: 1024
+      apiKeyEnvar: $OPENAI_API_KEY
+
+output:
+  - debug
+  - json

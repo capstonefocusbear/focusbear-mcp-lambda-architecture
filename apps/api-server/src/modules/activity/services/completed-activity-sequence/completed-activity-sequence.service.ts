@@ -18,6 +18,20 @@ import { SequenceStatus } from '../../domain/sequence-status.enum';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
+// Expect: 'UTC' or 'UTC±HH:MM'. Treat ±00:00 as 'UTC'.
+const zoneFromUser = (tz?: string) => (!tz || tz === 'UTC+00:00' || tz === 'UTC-00:00' ? 'UTC' : tz);
+
+// Compute the correct day window in the user's timezone.
+// This avoids the bug where early-morning local times (e.g. 7am AEST) are still the previous UTC day, which caused duplicate sequence logs.
+function dayWindowForUser(start: Date, userTz?: string) {
+  const zone = zoneFromUser(userTz);
+  const base = DateTime.fromJSDate(start).setZone(zone);
+  return {
+    startOfDay: base.startOf('day').toJSDate(),
+    endOfDay: base.endOf('day').toJSDate(),
+  };
+}
+
 @Injectable()
 export class CompletedActivitySequenceService {
   constructor(
@@ -42,7 +56,26 @@ export class CompletedActivitySequenceService {
       const { current_activity_sequence_id, completing_sequence_log } = user;
       const hasCurrentSequence = user?.current_activity_sequence_id;
       const hasConsistentSequence = current_activity_sequence_id === completing_sequence_log?.activity_sequence_id;
-      if (hasCurrentSequence && hasConsistentSequence) return completing_sequence_log;
+
+      const zone = zoneFromUser(user.timezone);
+      const isSameLocalDay =
+        !!completing_sequence_log &&
+        DateTime.fromJSDate(completing_sequence_log.start_time)
+          .setZone(zone)
+          .hasSame(DateTime.fromJSDate(start_time).setZone(zone), 'day');
+
+      if (hasCurrentSequence && hasConsistentSequence && isSameLocalDay) return completing_sequence_log;
+
+      // compute timezone correctly
+      const { startOfDay, endOfDay } = dayWindowForUser(start_time, user.timezone);
+
+      // If sequence already exist do not insert another
+      const existing = await this.completedActivitySequenceRepository.orm.findOne({
+        where: { user_id: user.id, activity_sequence_id, start_time: Between(startOfDay, endOfDay) },
+        order: { start_time: 'ASC' },
+      });
+      if (existing) return existing;
+
       const newCompletingSequenceLog = new CompletedActivitySequence({
         activity_sequence_id,
         user_id: user.id,
@@ -57,37 +90,35 @@ export class CompletedActivitySequenceService {
   }
 
   async getOrCreateCompletingSequenceLogForSyncing(user: User, activity_sequence_id: string, start_time: Date) {
-    const startOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).startOf('day').toString();
-    const endOfDay = DateTime.fromJSDate(new Date(start_time), { zone: 'UTC' }).endOf('day').toString();
-    const incompleteSequence = await this.completedActivitySequenceRepository.orm.findOne({
+    const { startOfDay, endOfDay } = dayWindowForUser(start_time, user.timezone);
+
+    const incomplete = await this.completedActivitySequenceRepository.orm.findOne({
       where: {
         user_id: user.id,
         is_completed: false,
         activity_sequence_id,
-        start_time: Between(new Date(startOfDay), new Date(endOfDay)),
+        start_time: Between(startOfDay, endOfDay),
       },
     });
-    if (incompleteSequence) {
-      return incompleteSequence;
-    }
-    const completedSequenceFromCurrentDate = await this.completedActivitySequenceRepository.orm.findOne({
+    if (incomplete) return incomplete;
+
+    const completed = await this.completedActivitySequenceRepository.orm.findOne({
       where: {
         user_id: user.id,
         is_completed: true,
         activity_sequence_id,
-        start_time: Between(new Date(startOfDay), new Date(endOfDay)),
+        start_time: Between(startOfDay, endOfDay),
       },
     });
-    if (completedSequenceFromCurrentDate) {
-      return completedSequenceFromCurrentDate;
-    }
-    const newCompletingSequenceLog = new CompletedActivitySequence({
+    if (completed) return completed;
+
+    const newLog = new CompletedActivitySequence({
       activity_sequence_id,
       user_id: user.id,
       start_time,
       is_completed: false,
     });
-    return this.completedActivitySequenceRepository.create(newCompletingSequenceLog);
+    return this.completedActivitySequenceRepository.create(newLog);
   }
 
   /**

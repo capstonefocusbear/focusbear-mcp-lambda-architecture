@@ -1483,7 +1483,6 @@ describe('OpenAIService', () => {
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           model: expect.any(String),
-          response_format: { type: 'json_object' },
           messages: expect.any(Array),
         }),
       );

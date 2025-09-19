@@ -29,12 +29,17 @@ export enum OpenAIKeyType {
   SCREEN_TIME_IMAGE_OCR = 'screenTimeImageOcr',
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
   HABIT_ADJUSTMENT = 'habitAdjustment',
+  TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
 export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
 export const HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/habit-adjustment/config.yaml';
+export const HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/handwritten-todos-analysis/prompt.json';
+export const TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/todos-transcript-analysis/prompt.json';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
@@ -82,7 +87,7 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4_1_MINI,
+    model: GPT_4_1,
     temperature: 0,
     n: 1,
     messages: null,
@@ -133,9 +138,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   analyzeImage: {
     model: GPT_4_1,
     messages: null,
-    response_format: {
-      type: 'json_object',
-    },
   },
 
   habitAdjustment: {
@@ -144,5 +146,13 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     n: 1,
     max_tokens: 1024,
     messages: null,
+  },
+
+  todosTranscriptAnalysis: {
+    model: GPT_4_1,
+    temperature: 0,
+    n: 1,
+    messages: null,
+    response_format: { type: 'json_object' },
   },
 };

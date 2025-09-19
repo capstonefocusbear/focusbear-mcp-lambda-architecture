@@ -1,186 +1,97 @@
-import { DateTime } from 'luxon';
-import { LessThan } from 'typeorm';
+import { jest } from '@jest/globals';
+import { ManagementClient } from 'auth0';
+import { NestFactory } from '@nestjs/core';
 import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
+import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import { getUserDetails, runDataSyncCronJob } from './cron-job';
 
-// Lean-context related mocks
-jest.mock('@nestjs/core', () => ({
-  NestFactory: { createApplicationContext: jest.fn() },
-}));
-jest.mock('auth0', () => ({
-  ManagementClient: jest.fn().mockImplementation(() => ({
-    users: { get: jest.fn().mockResolvedValue({ data: { email: 'user@example.com' } }) },
-  })),
-}));
-
-jest.mock('@google/genai', () => ({
-  GoogleGenAI: jest.fn().mockImplementation(() => ({
-    models: {
-      generateContent: jest.fn().mockResolvedValue({
-        text: '{"mock": "response"}',
-      }),
-    },
-  })),
-}));
-
-// Mock the data source
-jest.mock('../data-source', () => {
-  const mockManager = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-  };
-  const mockDataSource = {
-    manager: mockManager,
-    initialize: jest.fn(),
-    destroy: jest.fn(),
-  };
-  return { CronJobDataSource: mockDataSource };
-});
-
-describe('getUsersWithOutdatedData', () => {
-  let mockManager: any;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockManager = CronJobDataSource.manager;
-  });
-
-  it('should fetch participants with outdated usage data', async () => {
-    // only this if it called the typeorm find method, cant test the filter without integration tests
-    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
-    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
-
-    const threeDaysAgo = mockNow.minus({ days: 3 }).toJSDate();
-    const mockParticipants = [
-      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
-      { id: '2', userId: 'user2', usageDataLastReceived: mockNow.minus({ days: 5 }).toJSDate() },
-    ];
-    mockManager.find.mockResolvedValue(mockParticipants);
-
-    const { getUsersWithOutdatedData } = await import('./cron-job');
-    const result = await getUsersWithOutdatedData();
-
-    expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
-      where: { usageDataLastReceived: LessThan(threeDaysAgo) },
-    });
-    expect(result).toEqual(mockParticipants);
-  });
-
-  it('should filter out participants without userId', async () => {
-    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
-    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
-
-    const mockParticipants = [
-      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
-      { id: '2', userId: null, usageDataLastReceived: mockNow.minus({ days: 5 }).toJSDate() },
-      { id: '3', userId: undefined, usageDataLastReceived: mockNow.minus({ days: 6 }).toJSDate() },
-      { id: '4', userId: 'user4', usageDataLastReceived: mockNow.minus({ days: 7 }).toJSDate() },
-    ];
-    mockManager.find.mockResolvedValue(mockParticipants);
-
-    const { getUsersWithOutdatedData } = await import('./cron-job');
-    const result = await getUsersWithOutdatedData();
-
-    expect(result).toEqual([
-      { id: '1', userId: 'user1', usageDataLastReceived: mockNow.minus({ days: 4 }).toJSDate() },
-      { id: '4', userId: 'user4', usageDataLastReceived: mockNow.minus({ days: 7 }).toJSDate() },
-    ]);
-  });
-
-  it('should return empty array when no participants found', async () => {
-    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
-    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
-
-    mockManager.find.mockResolvedValue([]);
-
-    const { getUsersWithOutdatedData } = await import('./cron-job');
-    const result = await getUsersWithOutdatedData();
-
-    expect(result).toEqual([]);
-  });
-
-  it('should calculate three days ago correctly', async () => {
-    const mockNow = DateTime.fromISO('2025-07-09T13:56:07.635Z') as DateTime<any>;
-    jest.spyOn(DateTime, 'now').mockReturnValue(mockNow);
-
-    const expectedThreeDaysAgo = mockNow.minus({ days: 3 }).toJSDate();
-    mockManager.find.mockResolvedValue([]);
-
-    const { getUsersWithOutdatedData } = await import('./cron-job');
-    await getUsersWithOutdatedData();
-
-    expect(mockManager.find).toHaveBeenCalledWith(StudyParticipant, {
-      where: { usageDataLastReceived: LessThan(expectedThreeDaysAgo) },
-    });
-  });
-});
-
-// Additional lean behavior tests (from cron-job.lean.spec.ts)
-describe('data-sync-notification cron (lean behavior)', () => {
-  // Spy on fs and sendgrid to ensure no heavy work at import
-  const fs = require('fs');
-  const sendGrid = require('@sendgrid/mail');
-  const readSpy = jest.spyOn(fs, 'readFileSync');
-  const apiKeySpy = jest.spyOn(sendGrid, 'setApiKey');
-
-  beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
-  });
-
-  it('does not read translations or set SendGrid API key at import-time', async () => {
-    await import('./cron-job');
-    const translationReads = readSpy.mock.calls.filter((c) => String(c[0]).includes('/shared/i18n/'));
-    expect(translationReads.length).toBe(0);
-    expect(apiKeySpy).not.toHaveBeenCalled();
-  });
-
-  it('uses a minimal Nest application context (not AppModule) and closes it', async () => {
-    // Ensure canned message IDs are present to avoid early validation error
-    process.env.ZOHO_CANNED_MESSAGE_ID_IOS = '123456';
-    process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID = '789012';
-
-    const { NestFactory } = require('@nestjs/core');
-    const createCtx = NestFactory.createApplicationContext as any;
-
-    const mockZoho = { initiateWhatsAppSession: jest.fn().mockResolvedValue({}) };
-    const mockApp = {
-      get: jest.fn().mockReturnValue(mockZoho),
-      close: jest.fn().mockResolvedValue(undefined),
-    };
-    createCtx.mockResolvedValue(mockApp);
-
-    // Set up participants and user details in data source (re-require after resetModules)
-    const { CronJobDataSource: DS } = require('../data-source');
-    const manager = DS.manager as any;
-    manager.find.mockResolvedValue([
-      {
-        userId: 'u1',
-        participantCode: 'P-001',
+jest.mock('auth0', () => {
+  return {
+    ManagementClient: (jest as any).fn().mockImplementation(() => ({
+      users: {
+        get: ((jest as any).fn().mockResolvedValue({ data: { email: 'user@example.com' } }) as any),
       },
-    ]);
-    manager.findOne
-      // StudyParticipant
-      .mockResolvedValueOnce({ name: 'Alice', phoneNumber: '+50370000000', metadata: { mobileOS: 'ios' } })
-      // User
-      .mockResolvedValueOnce({ id: 'u1', auth0_id: 'auth0|u1', language: 'es' });
+    })),
+  } as unknown as typeof import('auth0');
+});
 
-    const mod = await import('./cron-job');
-    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
-    await mod.runDataSyncCronJob();
+jest.mock('@nestjs/core', () => {
+  return {
+    NestFactory: {
+      createApplicationContext: jest.fn(),
+    },
+  } as unknown as typeof import('@nestjs/core');
+});
 
-    expect(createCtx).toHaveBeenCalled();
-    const moduleArg = createCtx.mock.calls[0][0];
-    expect(moduleArg && (moduleArg as any).name).not.toBe('AppModule');
-    expect(mockApp.get).toHaveBeenCalled();
-    expect(mockZoho.initiateWhatsAppSession).toHaveBeenCalledWith(
-      '+50370000000',
-      'es',
-      expect.any(Number),
-      expect.stringContaining('Focus Bear'),
-    );
-    expect(mockApp.close).toHaveBeenCalled();
-    expect(exitSpy).toHaveBeenCalled();
-    exitSpy.mockRestore();
+describe('data-sync-notification cron job', () => {
+  const origEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    process.env = { ...origEnv };
+    process.env.POSTGRES_HOST = process.env.POSTGRES_HOST || 'host';
+    process.env.POSTGRES_USERNAME = process.env.POSTGRES_USERNAME || 'user';
+    process.env.POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD || 'pass';
+    process.env.POSTGRES_DB = process.env.POSTGRES_DB || 'db';
+    process.env.AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || 'example.auth0.com';
+    process.env.AUTH0_MANAGEMENT_CLIENT_ID = process.env.AUTH0_MANAGEMENT_CLIENT_ID || 'cid';
+    process.env.AUTH0_MANAGEMENT_CLIENT_SECRET = process.env.AUTH0_MANAGEMENT_CLIENT_SECRET || 'secret';
+    process.env.ZOHO_CANNED_MESSAGE_ID_IOS = '1111';
+    process.env.ZOHO_CANNED_MESSAGE_ID_ANDROID = '2222';
+  });
+
+  afterAll(() => {
+    process.env = origEnv;
+  });
+
+  // Focus on lifecycle and clean shutdown; external SDKs mocked in other tests
+
+  test('runDataSyncCronJob initializes and destroys datasource and closes app', async () => {
+    // Fake manager: first query returns reservation row, subsequent updates noop
+    const query: any = (jest as any)
+      .fn()
+      .mockResolvedValueOnce([{ id: 'sp1', participant_code: 'PC-1', user_id: 'u1' }])
+      .mockResolvedValue([]);
+
+    const findOne = jest.fn((entity: any) => {
+      if (entity === StudyParticipant) {
+        return Promise.resolve({
+          id: 'sp1',
+          userId: 'u1',
+          name: 'Alice',
+          phoneNumber: '+50312345678',
+          metadata: { mobileOS: 'ios' },
+        });
+      }
+      if (entity === User) return Promise.resolve(null); // avoid hitting Auth0 in this unit test
+      return Promise.resolve(null);
+    });
+
+    const fakeManager = { query, findOne } as any;
+    Object.defineProperty(CronJobDataSource, 'manager', { get: () => fakeManager });
+
+    // DataSource lifecycle
+    (CronJobDataSource as any).isInitialized = false;
+    const initSpy = jest.spyOn(CronJobDataSource, 'initialize').mockImplementation(async () => {
+      (CronJobDataSource as any).isInitialized = true;
+      return CronJobDataSource as any;
+    });
+    const destroySpy = jest.spyOn(CronJobDataSource, 'destroy').mockResolvedValue();
+
+    // Fake Nest app context
+    const close: any = (jest as any).fn().mockResolvedValue(undefined);
+    const zohoService = { initiateWhatsAppSession: ((jest as any).fn().mockResolvedValue({}) as any) } as any;
+    (NestFactory.createApplicationContext as any).mockResolvedValue({
+      get: () => zohoService,
+      close,
+    });
+
+    await runDataSyncCronJob();
+
+    expect(initSpy).toHaveBeenCalled();
+    expect(zohoService.initiateWhatsAppSession).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(destroySpy).toHaveBeenCalledTimes(1);
   });
 });

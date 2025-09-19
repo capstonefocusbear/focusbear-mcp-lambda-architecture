@@ -170,6 +170,17 @@ describe('CompletedActivityService', () => {
     });
   });
 
+  afterAll(async () => {
+    if (moduleRef) {
+      // Close Redis connection if it exists
+      const { redisClient } = completedActivityService as any;
+      if (redisClient && typeof redisClient.disconnect === 'function') {
+        redisClient.disconnect();
+      }
+      await moduleRef.close();
+    }
+  });
+
   it('should be defined', () => {
     expect(completedActivityService).toBeDefined();
   });
@@ -604,6 +615,20 @@ describe('CompletedActivityService', () => {
       const completedActivityId = randomUUID();
       const headers = { 'x-idempotency-key': idempotencyKey };
 
+      // Mock Redis client for idempotency
+      const { redisClient } = completedActivityService as any;
+      redisClient.get = jest
+        .fn()
+        .mockResolvedValueOnce(null) // First call returns null (no cache)
+        .mockResolvedValueOnce(
+          JSON.stringify({
+            // Second call returns cached response
+            completed_activity_log: { id: completedActivityId },
+            completed_choice_log: null,
+          }),
+        );
+      redisClient.setex = jest.fn().mockResolvedValue('OK');
+
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
       ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
@@ -628,7 +653,11 @@ describe('CompletedActivityService', () => {
 
       // Verify background job was only enqueued once (first request)
       expect(CompletedActivityQueueMock.add).toHaveBeenCalledTimes(1);
-    });
+
+      // Verify Redis was called correctly
+      expect(redisClient.get).toHaveBeenCalledWith(`idempotency:${idempotencyKey}`);
+      expect(redisClient.setex).toHaveBeenCalledWith(`idempotency:${idempotencyKey}`, 86400, expect.any(String));
+    }, 10000);
 
     it('positive: should handle daily stats asynchronously (already enqueued to BullQueues.STATS)', async () => {
       const completedActivityId = randomUUID();

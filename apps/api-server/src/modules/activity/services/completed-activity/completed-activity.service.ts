@@ -173,7 +173,7 @@ export class CompletedActivityService implements OnModuleInit {
           completedActivity,
         },
       });
-      const startTimeToUse = this.handleStartTime(completedActivity?.start_time);
+      const startTimeToUse = this.handleStartTime(completedActivity?.start_time, headers);
 
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(
         completedActivity.activity_id,
@@ -299,13 +299,24 @@ export class CompletedActivityService implements OnModuleInit {
     }
   }
 
-  private handleStartTime(start_time: Date): Date {
+  private handleStartTime(start_time: Date, headers: any): Date {
     const oneMonthAgo = DateTime.local().minus({ days: 30 }).toJSDate();
     const startTimeAsDate = new Date(start_time);
     let startTimeToUse = start_time;
     // log start time with wrong date to identify which client it's coming from
     // see issue https://github.com/Focus-Bear/backend/issues/469
     if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
+      // Log client info when fixing invalid start time
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Client Debug',
+        level: 'warning',
+        message: 'Fixed invalid start_time from client',
+        data: {
+          original_start_time: start_time,
+          user_agent: headers['user-agent'],
+          client_ip: headers['x-forwarded-for'] || headers['x-real-ip'],
+        },
+      });
       startTimeToUse = new Date();
     }
     return startTimeToUse;

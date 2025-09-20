@@ -1084,7 +1084,7 @@ export class OpenAIService {
       );
 
       const content = completions.choices[0]?.message?.content;
-      const parsed = content ? JSON.parse(content) : [];
+      const parsed = content ? JSON.parse(content).tasks : [];
       const tasks = Array.isArray(parsed) ? parsed : [];
       return tasks.map((task) => plainToClass(BraindumpTaskDto, task));
     } catch (error) {

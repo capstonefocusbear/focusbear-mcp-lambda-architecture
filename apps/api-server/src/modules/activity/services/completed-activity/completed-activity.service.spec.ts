@@ -88,6 +88,9 @@ describe('CompletedActivityService', () => {
   const i18nServiceMock = mockDeep<I18nService>();
 
   beforeAll(async () => {
+    // Mock Redis environment variables for tests
+    process.env.REDIS_HOSTNAME = 'localhost';
+    process.env.REDIS_PORT = '6379';
     moduleRef = await Test.createTestingModule({
       imports: [
         BullModule.registerQueue({
@@ -179,6 +182,9 @@ describe('CompletedActivityService', () => {
       }
       await moduleRef.close();
     }
+    // Clean up environment variables
+    delete process.env.REDIS_HOSTNAME;
+    delete process.env.REDIS_PORT;
   });
 
   it('should be defined', () => {

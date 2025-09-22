@@ -74,7 +74,7 @@ import { UserTimesResponse } from '../../domain/user-times-response.model';
 
 @Injectable()
 export class CompletedActivityService implements OnModuleInit {
-  private redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
+  private redisClient: Redis;
 
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -98,7 +98,19 @@ export class CompletedActivityService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly i18nService: I18nService,
     @InjectQueue(BullQueues.COMPLETED_ACTIVITY) private completedActivityQueue: Queue,
-  ) {}
+  ) {
+    this.validateRedisEnvironment();
+    this.redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
+  }
+
+  private validateRedisEnvironment(): void {
+    if (!process.env.REDIS_HOSTNAME) {
+      throw new Error('REDIS_HOSTNAME environment variable is required but not set');
+    }
+    if (!process.env.REDIS_PORT) {
+      throw new Error('REDIS_PORT environment variable is required but not set');
+    }
+  }
 
   async onModuleInit() {
     await this.validatePusherConfiguration();
@@ -157,7 +169,7 @@ export class CompletedActivityService implements OnModuleInit {
     // Handle idempotency
     const idempotencyKey = headers['x-idempotency-key'];
     if (idempotencyKey) {
-      const cachedResponse = await this.getCachedResponse(idempotencyKey);
+      const cachedResponse = await this.getCachedResponse(idempotencyKey, user_id);
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -235,12 +247,11 @@ export class CompletedActivityService implements OnModuleInit {
         createdItem,
       );
 
-      // Enqueue Pusher broadcasts (the slow operations) to background
+      // Enqueue Pusher broadcasts to background
       await this.completedActivityQueue.add(
         BullWorkers.PROCESS_COMPLETED_ACTIVITY,
         {
           completedActivity,
-          headers,
           user_id,
           completed_activity_log_id: createdItem.completed_activity_log.id,
           completed_choice_log_id: createdItem.completed_choice_log?.id,
@@ -266,7 +277,7 @@ export class CompletedActivityService implements OnModuleInit {
 
       // Cache for idempotency
       if (idempotencyKey) {
-        await this.setCachedResponse(idempotencyKey, response);
+        await this.setCachedResponse(idempotencyKey, user_id, response);
       }
 
       return response;
@@ -2015,29 +2026,35 @@ export class CompletedActivityService implements OnModuleInit {
     return activitiesWithSequenceIds;
   }
 
-  private async getCachedResponse(idempotencyKey: string): Promise<CompletedActivityResponse | null> {
+  private async getCachedResponse(idempotencyKey: string, user_id: string): Promise<CompletedActivityResponse | null> {
     try {
-      const cached = await this.redisClient.get(`idempotency:${idempotencyKey}`);
+      const cacheKey = `idempotency:${user_id}:${idempotencyKey}`;
+      const cached = await this.redisClient.get(cacheKey);
       return cached ? JSON.parse(cached) : null;
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
         tags: { service: 'redis', operation: 'get_cached_response' },
-        extra: { idempotencyKey, error_message: error.message },
+        extra: { idempotencyKey, user_id, error_message: error.message },
       });
       return null;
     }
   }
 
-  private async setCachedResponse(idempotencyKey: string, response: CompletedActivityResponse): Promise<void> {
+  private async setCachedResponse(
+    idempotencyKey: string,
+    user_id: string,
+    response: CompletedActivityResponse,
+  ): Promise<void> {
     try {
       // Cache for 24 hours (86400 seconds)
-      await this.redisClient.setex(`idempotency:${idempotencyKey}`, 86400, JSON.stringify(response));
+      const cacheKey = `idempotency:${user_id}:${idempotencyKey}`;
+      await this.redisClient.setex(cacheKey, 86400, JSON.stringify(response));
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
         tags: { service: 'redis', operation: 'set_cached_response' },
-        extra: { idempotencyKey, error_message: error.message },
+        extra: { idempotencyKey, user_id, error_message: error.message },
       });
     }
   }

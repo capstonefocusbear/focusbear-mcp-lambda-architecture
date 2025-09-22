@@ -7,7 +7,6 @@ import { CompletedActivityService } from '../services/completed-activity/complet
 
 export interface CompletedActivityJobData {
   completedActivity: CreateCompletedActivityDto;
-  headers: any;
   user_id: string;
   completed_activity_log_id: string;
   completed_choice_log_id?: string;
@@ -27,6 +26,19 @@ export class CompletedActivityConsumer {
     const startTime = Date.now();
 
     try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Processing completed activity background job',
+        data: {
+          user_id,
+          completed_activity_log_id,
+          activity_id: completedActivity.activity_id,
+          job_id: job.id?.toString(),
+          attempts: job.attemptsMade?.toString(),
+        },
+      });
+
       // Fetch the data needed for broadcast
       const [, activity, user] = await this.completedActivityService.fetchPreparatoryData(
         completedActivity.activity_id,
@@ -42,15 +54,30 @@ export class CompletedActivityConsumer {
         activity,
         user.language,
       );
+
+      const processingTime = Date.now() - startTime;
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Completed activity background job processed successfully',
+        data: {
+          user_id,
+          completed_activity_log_id,
+          processing_time_ms: processingTime,
+        },
+      });
     } catch (error) {
       const processingTime = Date.now() - startTime;
+      const isLastAttempt = job.attemptsMade >= (job.opts.attempts || 3);
+
       this.sentryService.instance().captureException(error, {
-        level: 'error',
+        level: isLastAttempt ? 'error' : 'warning',
         tags: {
           service: 'completed-activity',
           operation: 'pusher-broadcasts',
           job_id: job.id?.toString(),
           attempts: job.attemptsMade?.toString(),
+          is_last_attempt: isLastAttempt.toString(),
         },
         extra: {
           user_id,
@@ -59,12 +86,31 @@ export class CompletedActivityConsumer {
           processing_time_ms: processingTime,
           error_message: error.message,
           error_stack: error.stack,
+          job_data: {
+            completedActivity: {
+              activity_id: completedActivity.activity_id,
+              choice_id: completedActivity.choice_id,
+              start_time: completedActivity.start_time,
+            },
+            user_id,
+            completed_activity_log_id,
+          },
         },
       });
 
       console.error(
-        `Background job failed: user_id=${user_id}, job_id=${job.id}, attempts=${job.attemptsMade}, error=${error.message}`,
+        `Background job failed: user_id=${user_id}, job_id=${job.id}, attempts=${job.attemptsMade}/${
+          job.opts.attempts || 3
+        }, error=${error.message}`,
       );
+
+      // If this is the last attempt, log to dead letter queue equivalent
+      if (isLastAttempt) {
+        console.error(
+          `Job permanently failed and will be dead-lettered: user_id=${user_id}, job_id=${job.id}, activity_id=${completedActivity.activity_id}`,
+        );
+      }
+
       throw error;
     }
   }

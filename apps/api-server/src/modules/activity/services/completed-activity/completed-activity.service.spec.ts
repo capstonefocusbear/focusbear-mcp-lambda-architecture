@@ -655,8 +655,12 @@ describe('CompletedActivityService', () => {
       expect(CompletedActivityQueueMock.add).toHaveBeenCalledTimes(1);
 
       // Verify Redis was called correctly
-      expect(redisClient.get).toHaveBeenCalledWith(`idempotency:${idempotencyKey}`);
-      expect(redisClient.setex).toHaveBeenCalledWith(`idempotency:${idempotencyKey}`, 86400, expect.any(String));
+      expect(redisClient.get).toHaveBeenCalledWith(`idempotency:${user_id}:${idempotencyKey}`);
+      expect(redisClient.setex).toHaveBeenCalledWith(
+        `idempotency:${user_id}:${idempotencyKey}`,
+        86400,
+        expect.any(String),
+      );
     }, 10000);
 
     it('positive: should handle daily stats asynchronously (already enqueued to BullQueues.STATS)', async () => {

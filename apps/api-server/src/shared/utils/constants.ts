@@ -150,6 +150,7 @@ export enum BullQueues {
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
   USAGE_DATA = 'usage-data',
   COMPLETED_ACTIVITY = 'completed-activity',
+  COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
 }

@@ -1,6 +1,6 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Process, Processor, InjectQueue } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
-import { Job } from 'bull';
+import { Job, Queue } from 'bull';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';
 import { CompletedActivityService } from '../services/completed-activity/completed-activity.service';
@@ -18,6 +18,8 @@ export class CompletedActivityConsumer {
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly completedActivityService: CompletedActivityService,
+    @InjectQueue(BullQueues.COMPLETED_ACTIVITY_DLQ)
+    private readonly completedActivityDlq: Queue<CompletedActivityJobData>,
   ) {}
 
   @Process(BullWorkers.PROCESS_COMPLETED_ACTIVITY)
@@ -104,11 +106,15 @@ export class CompletedActivityConsumer {
         }, error=${error.message}`,
       );
 
-      // If this is the last attempt, log to dead letter queue equivalent
       if (isLastAttempt) {
         console.error(
           `Job permanently failed and will be dead-lettered: user_id=${user_id}, job_id=${job.id}, activity_id=${completedActivity.activity_id}`,
         );
+
+        await this.completedActivityDlq.add('dead-letter', job.data, {
+          removeOnComplete: false,
+          removeOnFail: false,
+        });
       }
 
       throw error;

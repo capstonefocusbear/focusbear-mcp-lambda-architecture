@@ -90,6 +90,9 @@ import { CompletedActivityConsumer } from './consumers/completed-activity.consum
     BullModule.registerQueue({
       name: BullQueues.COMPLETED_ACTIVITY,
     }),
+    BullModule.registerQueue({
+      name: BullQueues.COMPLETED_ACTIVITY_DLQ,
+    }),
     StripeModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

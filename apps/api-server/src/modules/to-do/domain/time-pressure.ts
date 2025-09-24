@@ -42,7 +42,7 @@ export const workloadShareOfRunway = (effortMinutes: number, days: number): numb
   return minutes / Math.max(NUMERIC_STABILITY_EPS, minutes + runwayMinutes);
 };
 
-// ---- Final time-pressure score (0.1..10) -----------------------------------
+// ---- Final time-pressure score -----------------------------------
 export const timePressureScore = (due: Date | string, effortMinutes = 0): number => {
   // Handle null/undefined due dates
   if (!due) return SCORE_FLOOR;
@@ -51,7 +51,15 @@ export const timePressureScore = (due: Date | string, effortMinutes = 0): number
   if (Number.isNaN(dueDate.getTime())) return SCORE_FLOOR;
 
   const days = daysUntilDue(dueDate);
-  if (days < 0) return SCORE_PAST_DUE;
+
+  // Handle overdue tasks: base score + 1 point per overdue day
+  if (days < 0) {
+    const overdueDays = Math.abs(days);
+    const baseScore = SCORE_PAST_DUE; // 10 points
+    const overduePenalty = overdueDays; // No cap - keep adding +1 for each day
+    return baseScore + overduePenalty;
+  }
+
   if (days === 0) return SCORE_TODAY;
 
   // Use the exact formula from original proposal

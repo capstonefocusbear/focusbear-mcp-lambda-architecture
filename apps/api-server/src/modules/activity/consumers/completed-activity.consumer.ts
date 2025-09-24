@@ -70,7 +70,7 @@ export class CompletedActivityConsumer {
       });
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      const isLastAttempt = job.attemptsMade >= (job.opts.attempts || 3);
+      const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 3);
 
       this.sentryService.instance().captureException(error, {
         level: isLastAttempt ? 'error' : 'warning',

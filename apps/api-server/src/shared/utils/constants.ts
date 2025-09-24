@@ -149,6 +149,8 @@ export enum BullQueues {
   USAGE_IMAGE = 'usage-image',
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
   USAGE_DATA = 'usage-data',
+  COMPLETED_ACTIVITY = 'completed-activity',
+  COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
 }
@@ -170,6 +172,7 @@ export enum BullWorkers {
   SYNC_HEALTH_METRICS = 'sync-health-metrics',
   SYNC_USAGE_DATA = 'sync-usage-data',
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
+  PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
 }
 
 export const createActivityFunction = {

@@ -11,10 +11,19 @@ import {
 import { DateTime, IANAZone } from 'luxon';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import Redis from 'ioredis';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
-import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE, IDS_TO_LOG_FOR } from '../../../../shared/utils/constants';
+import {
+  UTC_TO_IANA_MAP,
+  DEFAULT_IANA_TIMEZONE,
+  IDS_TO_LOG_FOR,
+  BullQueues,
+  BullWorkers,
+} from '../../../../shared/utils/constants';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { GetUserSettingsDto } from '../../../user/dto/get-user-settings.dto';
 import { User } from '../../../user/entities/user.entity';
@@ -65,6 +74,8 @@ import { UserTimesResponse } from '../../domain/user-times-response.model';
 
 @Injectable()
 export class CompletedActivityService implements OnModuleInit {
+  private redisClient: Redis;
+
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
     @Inject(forwardRef(() => DeviceService))
@@ -86,7 +97,20 @@ export class CompletedActivityService implements OnModuleInit {
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly i18nService: I18nService,
-  ) {}
+    @InjectQueue(BullQueues.COMPLETED_ACTIVITY) private completedActivityQueue: Queue,
+  ) {
+    this.validateRedisEnvironment();
+    this.redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
+  }
+
+  private validateRedisEnvironment(): void {
+    if (!process.env.REDIS_HOSTNAME) {
+      throw new Error('REDIS_HOSTNAME environment variable is required but not set');
+    }
+    if (!process.env.REDIS_PORT) {
+      throw new Error('REDIS_PORT environment variable is required but not set');
+    }
+  }
 
   async onModuleInit() {
     await this.validatePusherConfiguration();
@@ -142,6 +166,15 @@ export class CompletedActivityService implements OnModuleInit {
     headers: any,
     { user_id }: GetUserSettingsDto,
   ): Promise<CompletedActivityResponse> {
+    // Handle idempotency
+    const idempotencyKey = headers['x-idempotency-key'];
+    if (idempotencyKey) {
+      const cachedResponse = await this.getCachedResponse(idempotencyKey, user_id);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -213,16 +246,41 @@ export class CompletedActivityService implements OnModuleInit {
         user,
         createdItem,
       );
-      await this.broadcastCompletionEvent(
-        user_id,
-        createdItem.completed_activity_log.id,
-        { ...completedActivity },
-        activity,
-        user.language,
+
+      // Enqueue Pusher broadcasts to background
+      await this.completedActivityQueue.add(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        {
+          completedActivity,
+          user_id,
+          completed_activity_log_id: createdItem.completed_activity_log.id,
+          completed_choice_log_id: createdItem.completed_choice_log?.id,
+          startTimeToUse,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
       );
+
       this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
 
-      return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
+      const response = new CompletedActivityResponse({
+        ...createdItem,
+        saved_log_quantity_answers: logQuantityAnswers,
+      });
+
+      // Cache for idempotency
+      if (idempotencyKey) {
+        await this.setCachedResponse(idempotencyKey, user_id, response);
+      }
+
+      return response;
     } catch (error) {
       this.handleError(error);
     }
@@ -259,7 +317,17 @@ export class CompletedActivityService implements OnModuleInit {
     // log start time with wrong date to identify which client it's coming from
     // see issue https://github.com/Focus-Bear/backend/issues/469
     if (startTimeAsDate.getTime() < oneMonthAgo.getTime()) {
-      console.log('Error with start time date: ', { start_time, headers });
+      // Log client info when fixing invalid start time
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Client Debug',
+        level: 'warning',
+        message: 'Fixed invalid start_time from client',
+        data: {
+          original_start_time: start_time,
+          user_agent: headers['user-agent'],
+          client_ip: headers['x-forwarded-for'] || headers['x-real-ip'],
+        },
+      });
       startTimeToUse = new Date();
     }
     return startTimeToUse;
@@ -706,7 +774,7 @@ export class CompletedActivityService implements OnModuleInit {
     return completingSequenceLog;
   }
 
-  private async fetchPreparatoryData(
+  async fetchPreparatoryData(
     activity_id: string,
     user_id: string,
     choice_id?: string,
@@ -1249,7 +1317,7 @@ export class CompletedActivityService implements OnModuleInit {
     return new CompletedActivityResponse({ completed_activity_log, completed_choice_log });
   }
 
-  private async broadcastCompletionEvent(
+  async broadcastCompletionEvent(
     user_id: string,
     completed_activity_id: string,
     completedActivity: CreateCompletedActivityDto | CreateSkippedActivityDto,
@@ -1956,5 +2024,38 @@ export class CompletedActivityService implements OnModuleInit {
       };
     });
     return activitiesWithSequenceIds;
+  }
+
+  private async getCachedResponse(idempotencyKey: string, user_id: string): Promise<CompletedActivityResponse | null> {
+    try {
+      const cacheKey = `idempotency:${user_id}:${idempotencyKey}`;
+      const cached = await this.redisClient.get(cacheKey);
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        tags: { service: 'redis', operation: 'get_cached_response' },
+        extra: { idempotencyKey, user_id, error_message: error.message },
+      });
+      return null;
+    }
+  }
+
+  private async setCachedResponse(
+    idempotencyKey: string,
+    user_id: string,
+    response: CompletedActivityResponse,
+  ): Promise<void> {
+    try {
+      // Cache for 24 hours (86400 seconds)
+      const cacheKey = `idempotency:${user_id}:${idempotencyKey}`;
+      await this.redisClient.setex(cacheKey, 86400, JSON.stringify(response));
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+        tags: { service: 'redis', operation: 'set_cached_response' },
+        extra: { idempotencyKey, user_id, error_message: error.message },
+      });
+    }
   }
 }

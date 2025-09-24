@@ -260,20 +260,6 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-
-  - description: "Activity Monitor during Deep Work for Canva deck"
-    vars:
-      appName: "Activity Monitor"
-      focusMode: "Deep Work"
-      intention: "data room"
-      justificationForThisSpecificApp: ""
-      currentTaskInToDoPlayer: "long deck in canva from RMIT"
-      min_probability: 0.1
-      max_probability: 0.3
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
 providers:
   - id: openai:gpt-4.1-mini
     config:

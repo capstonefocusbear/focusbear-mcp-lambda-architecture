@@ -12,7 +12,7 @@ import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
 import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
-import { BadGatewayExceptionFilter } from './shared/exceptions/badGatewayExceptionFilter ';
+import { BadGatewayExceptionFilter } from './shared/exceptions/badGatewayExceptionFilter';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder()

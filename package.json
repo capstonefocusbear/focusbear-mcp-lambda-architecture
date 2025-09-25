@@ -67,9 +67,7 @@
     "@pusher/push-notifications-server": "^1.2.6",
     "@sendgrid/mail": "^8.1.0",
     "@sentry/node": "^7.22.0",
-    "@types/handlebars": "^4.0.40",
     "@types/html-to-text": "^9.0.0",
-    "@types/mjml": "^4.7.4",
     "api": "^6.1.2",
     "auth0": "^4.25.0",
     "axios": "^1.12.2",
@@ -106,7 +104,9 @@
     "stripe": "^10.2.0",
     "typeorm": "^0.3.14",
     "typeorm-encrypted": "^0.8.0",
-    "typeorm-extension": "^3.6.1"
+    "typeorm-extension": "^3.6.1",
+    "@nestjs/schedule": "^6.0.1",
+    "aws-embedded-metrics": "^4.2.0"
   },
   "devDependencies": {
     "@commitlint/config-angular": "^13.1.0",
@@ -148,6 +148,7 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
+    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"
@@ -164,6 +165,7 @@
     "tmp": "0.2.4"
   },
   "resolutions": {
+    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"

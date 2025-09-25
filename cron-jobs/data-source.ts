@@ -48,6 +48,7 @@ import { ActivityTemplateTag } from '../apps/api-server/src/modules/activity-tem
 import { CustomRoutine } from '../apps/api-server/src/modules/user/entities/custom-routine';
 import { StudyParticipant } from '../apps/api-server/src/modules/user/entities/study-participant.entity';
 
+
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
   host: process.env.POSTGRES_HOST,
@@ -56,7 +57,7 @@ export const CronJobDataSource = new DataSource({
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
   synchronize: false,
-  logging: false,
+  logging: true,
   entities: [
     User,
     Activity,

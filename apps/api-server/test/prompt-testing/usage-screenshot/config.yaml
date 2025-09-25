@@ -1,6 +1,6 @@
 prompts:
-  - id: usage-screenshot-analysis
-    file: prompt.json
+  - id:usage-screenshot-analysis
+  - file://prompt.json
 
 providers:
   - id: openai:gpt-4.1

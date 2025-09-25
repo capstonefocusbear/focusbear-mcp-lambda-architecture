@@ -1,6 +1,6 @@
 prompts:
-  - id: gemini-usage-screenshot-analysis
-    file: prompt.json
+  - id:gemini-usage-screenshot-analysis
+  - file://prompt.json
 
 providers:
   - id: google:gemini-2.5-pro

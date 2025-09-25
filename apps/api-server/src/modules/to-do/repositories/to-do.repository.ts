@@ -30,7 +30,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       WHEN to_do.due_date IS NULL THEN 0.1
       WHEN to_do.due_date < CURRENT_DATE THEN 
         /* Overdue: base score + 1 point per overdue day (no cap) */
-        10.0 + (DATE_PART('day', CURRENT_DATE - to_do.due_date)::integer + 1)
+        10.0 + (DATE_PART('day', CURRENT_DATE - to_do.due_date::date)::integer + 1)
       WHEN to_do.due_date = CURRENT_DATE THEN 9.0
       ELSE GREATEST(
         0.1,

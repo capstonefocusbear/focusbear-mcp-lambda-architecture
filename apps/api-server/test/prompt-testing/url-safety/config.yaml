@@ -1330,6 +1330,76 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
+  - description: 'Feedback: I gave a justification and it ignored it'
+    vars:
+      url: photos.google.com/
+      meta_description: ''
+      tab_title: photos - google photos
+      focus_mode: Deep Work
+      intention: UX changes, RMIT data room
+      justificationForThisUrl: getting screenshots to add to design feedback
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: review UI designs
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "CleanShot X during Deep Work for assigning intern tasks"
+    vars:
+      appName: "CleanShot X"
+      focusMode: "Deep Work"
+      intention: "deep work"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "assign task to interns"
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Xero invoice for Zoho store update
+    vars:
+      url: go.xero.com/app/!hmLlG/dashboard
+      tab_title: xero
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: check meeting details in email
+      justificationForThisUrl: need to add invoice to zoho store
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: update zoho store
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: Google Photos for meeting slides
+    vars:
+      url: photos.google.com/
+      tab_title: ''
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: prep for snow foundation meeting
+      justificationForThisUrl: get photos for slides
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: ''
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Activity Monitor during Deep Work for Canva deck"
+    vars:
+      appName: "Activity Monitor"
+      focusMode: "Deep Work"
+      intention: "data room"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "long deck in canva from RMIT"
+      min_probability: 0.1
+      max_probability: 0.3
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
 providers:
   - id: openai:gpt-4.1-mini
     config:

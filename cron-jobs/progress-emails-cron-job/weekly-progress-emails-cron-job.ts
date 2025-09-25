@@ -9,7 +9,7 @@ import { UserProgressMetricsService } from '../../apps/api-server/src/modules/us
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 const BATCH_SIZE = 50; // Process users in batches to avoid overwhelming the queue
@@ -22,12 +22,15 @@ async function runWeeklyProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
+  let emailsQueued = 0;
+  let usersConsidered = 0;
   try {
     console.log('Starting weekly progress emails cron job...');
 
     // Use repository method for getting users eligible for weekly emails
     const users = await userRepository.getUsersForWeeklyEmails();
-    console.log(`Found ${users.length} users for weekly emails.`);
+    usersConsidered = users.length;
+    console.log(`Found ${usersConsidered} users for weekly emails.`);
 
     // Process users in batches to avoid overwhelming the system
     for (let i = 0; i < users.length; i += BATCH_SIZE) {
@@ -70,6 +73,7 @@ async function runWeeklyProgressEmailsCronJob() {
           );
 
           console.log(`Queued weekly progress email for user ${user.id}`);
+          emailsQueued += 1;
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -98,6 +102,10 @@ async function runWeeklyProgressEmailsCronJob() {
     }
 
     console.log('Weekly progress emails cron job completed successfully.');
+    return {
+      emailsQueued,
+      usersConsidered,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -111,10 +119,9 @@ async function runWeeklyProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runWeeklyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('weekly-progress-emails-cron', () => withTimeout(runWeeklyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

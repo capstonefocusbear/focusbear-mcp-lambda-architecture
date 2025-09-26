@@ -658,8 +658,52 @@ describe('UserProgressMetricsService', () => {
 
       // Assert - Test aggregateMonthlyTaskMetrics indirectly
       expect(result.tasks.completed).toBe(10); // 5 + 3 + 2
-      expect(result.tasks.completion_rate).toBeGreaterThan(0);
-      expect(result.tasks.completion_rate).toBeLessThanOrEqual(1);
+      expect(result.tasks.completion_rate).toBe(1); // Math.min(10/3, 1) = 1 (clamped)
+      expect(result.tasks.created).toBe(3); // Math.round(10 / Math.max(10/3, 0.1)) = 3
+    });
+
+    it('should handle low task completion rate correctly', async () => {
+      // Arrange - scenario where completion rate is low
+      const user = createMockUser();
+      const monthStart = new Date('2025-08-01');
+
+      const monthlyStats = [
+        createMockDailyStats('2025-08-01', {
+          focus_modes_completed: 1, // Low completion
+        }),
+        createMockDailyStats('2025-08-02', {
+          focus_modes_completed: 0, // Zero completion
+        }),
+        createMockDailyStats('2025-08-03', {
+          focus_modes_completed: 1, // Low completion
+        }),
+        createMockDailyStats('2025-08-04', {
+          focus_modes_completed: 0, // Zero completion
+        }),
+        createMockDailyStats('2025-08-05', {
+          focus_modes_completed: 1, // Low completion
+        }),
+      ];
+
+      const mockStreaks = {
+        focus_modes_streak: 1,
+        morning_routines_streak: 0,
+        evening_routines_streak: 0,
+        micro_breaks_streak: 0,
+      };
+
+      mockDailyStatsRepository.orm.find.mockResolvedValue(monthlyStats);
+      mockDailyStatsRepository.getUserDailyStats.mockResolvedValue(monthlyStats);
+      mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
+      mockUserStreaksService.calculateStreaksForUser.mockReturnValue(mockStreaks as any);
+
+      // Act
+      const result = await service.calculateMonthlyProgress(user, monthStart);
+
+      // Assert - When completion rate is low, created should be higher than completed
+      expect(result.tasks.completed).toBe(3); // 1 + 0 + 1 + 0 + 1
+      expect(result.tasks.completion_rate).toBe(0.6); // 3/5 = 0.6
+      expect(result.tasks.created).toBe(5); // Math.round(3 / 0.6) = 5
       expect(result.tasks.created).toBeGreaterThan(result.tasks.completed);
     });
 

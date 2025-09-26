@@ -25,9 +25,6 @@ async function runWeeklyProgressEmailsCronJob() {
   try {
     console.log('Starting weekly progress emails cron job...');
 
-    // Use repository method for getting users eligible for weekly emails
-    const users = await userRepository.getUsersForWeeklyEmails();
-    console.log(`Found ${users.length} users for weekly emails.`);
 
     // Process users in batches to avoid overwhelming the system
     let skip = 0;

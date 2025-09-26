@@ -11,7 +11,7 @@ import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/cons
 import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-const BATCH_SIZE = 30; // Smaller batches for daily emails
+const BATCH_SIZE = 15; // Smaller batches for daily emails
 
 async function runDailyProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -24,17 +24,18 @@ async function runDailyProgressEmailsCronJob() {
   try {
     console.log('Starting daily progress emails cron job...');
 
-    // Use repository method for getting users eligible for daily emails
-    const users = await userRepository.getUsersForDailyEmails();
-    console.log(`Found ${users.length} users for daily emails.`);
+    // Log initial memory usage
+    const initialMemory = process.memoryUsage();
+    console.log(`Initial memory usage: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB heap, ${Math.round(initialMemory.rss / 1024 / 1024)}MB RSS`);
 
     // Process users in batches
-    for (let i = 0; i < users.length; i += BATCH_SIZE) {
-      const batch = users.slice(i, i + BATCH_SIZE);
+    let skip = 0;
+    let batchNum = 1;
+    while (true) {
+      const batch = await userRepository.getUsersForDailyEmailsBatch(skip, BATCH_SIZE);
+      if (batch.length === 0) break;
       console.log(
-        `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(users.length / BATCH_SIZE)} (${
-          batch.length
-        } users)`,
+        `Processing batch ${batchNum} (${batch.length} users)`,
       );
 
       const emailPromises = batch.map(async (user) => {
@@ -79,13 +80,15 @@ async function runDailyProgressEmailsCronJob() {
               operation: 'queueDailyProgressEmail',
               userId: user.id,
               extra: {
-                batchIndex: Math.floor(i / BATCH_SIZE),
+                batchIndex: batchNum - 1,
               },
             },
             {
               logLevel: 'error',
             },
           );
+          console.error(`Failed to queue daily progress email for user ${user.id}:`, error);
+          return { success: false, error: error.message || 'Unknown error' };
         }
       });
 

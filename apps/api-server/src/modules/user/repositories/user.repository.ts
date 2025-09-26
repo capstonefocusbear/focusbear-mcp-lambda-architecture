@@ -513,7 +513,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async getUsersForDailyEmails(): Promise<User[]> {
+  async getUsersForDailyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
     return this.orm.find({
       where: {
         email_frequency: EmailFrequency.DAILY,
@@ -534,6 +534,11 @@ export class UserRepository extends BaseRepository<User> {
         'email_frequency',
       ],
       relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
+      order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
     });
   }
 

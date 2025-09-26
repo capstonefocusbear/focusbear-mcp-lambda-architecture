@@ -549,6 +549,41 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: In([EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
+      },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
+      relations: [
+        'activitySequences',
+        'activitySequences.activities',
+        'completedActivitySequences',
+        'completedActivities',
+        'completedFocusBlocks',
+      ],
+      order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
+    });
+  }
+
   async getUsersForNoProgressEmailsBatch(skip = 0, take = 30, daysThreshold = 7): Promise<User[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);

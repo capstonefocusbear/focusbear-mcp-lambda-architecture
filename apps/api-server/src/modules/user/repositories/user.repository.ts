@@ -549,7 +549,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async getUsersForNoProgressEmails(daysThreshold = 7): Promise<User[]> {
+  async getUsersForNoProgressEmailsBatch(skip = 0, take = 30, daysThreshold = 7): Promise<User[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
@@ -579,6 +579,9 @@ export class UserRepository extends BaseRepository<User> {
       .andWhere('(user.last_completed_focus_mode_at IS NULL OR user.last_completed_focus_mode_at < :threshold)', {
         threshold: thresholdDate,
       })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
       .getMany();
   }
 

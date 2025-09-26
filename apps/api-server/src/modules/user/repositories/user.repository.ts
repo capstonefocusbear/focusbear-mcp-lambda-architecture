@@ -478,7 +478,7 @@ export class UserRepository extends BaseRepository<User> {
     return result[0] || null;
   }
 
-  async getUsersForWeeklyEmails(): Promise<User[]> {
+  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
     return this.orm.find({
       where: {
         email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
@@ -505,6 +505,11 @@ export class UserRepository extends BaseRepository<User> {
         'completedActivities',
         'completedFocusBlocks',
       ],
+       order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
     });
   }
 

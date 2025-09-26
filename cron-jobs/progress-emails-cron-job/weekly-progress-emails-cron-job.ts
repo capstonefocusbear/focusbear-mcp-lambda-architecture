@@ -12,7 +12,7 @@ import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/cons
 import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-const BATCH_SIZE = 50; // Process users in batches to avoid overwhelming the queue
+const BATCH_SIZE = 30; // Process users in batches to avoid overwhelming the queue
 
 async function runWeeklyProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -30,12 +30,13 @@ async function runWeeklyProgressEmailsCronJob() {
     console.log(`Found ${users.length} users for weekly emails.`);
 
     // Process users in batches to avoid overwhelming the system
-    for (let i = 0; i < users.length; i += BATCH_SIZE) {
-      const batch = users.slice(i, i + BATCH_SIZE);
+    let skip = 0;
+    let batchNum = 1;
+    while (true) {
+      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE);
+      if (batch.length === 0) break;
       console.log(
-        `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(users.length / BATCH_SIZE)} (${
-          batch.length
-        } users)`,
+        `Processing batch ${batchNum} (${batch.length} users)`
       );
 
       const emailPromises = batch.map(async (user) => {
@@ -77,7 +78,7 @@ async function runWeeklyProgressEmailsCronJob() {
               operation: 'queueWeeklyProgressEmail',
               userId: user.id,
               extra: {
-                batchIndex: Math.floor(i / BATCH_SIZE),
+                batchIndex: batchNum - 1,
               },
             },
             {
@@ -91,10 +92,12 @@ async function runWeeklyProgressEmailsCronJob() {
       await Promise.all(emailPromises);
 
       // Small delay between batches to avoid overwhelming the system
-      if (i + BATCH_SIZE < users.length) {
-        console.log('Waiting 2 seconds before processing next batch...');
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (batch.length === BATCH_SIZE) {
+        console.log('Waiting 1 second before processing next batch...');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+      skip += BATCH_SIZE;
+      batchNum++;
     }
 
     console.log('Weekly progress emails cron job completed successfully.');

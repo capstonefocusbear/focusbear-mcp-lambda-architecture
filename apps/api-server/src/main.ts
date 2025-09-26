@@ -28,6 +28,7 @@ async function bootstrap(): Promise<void> {
   const fastifyAdapter: FastifyAdapter = new FastifyAdapter();
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, { rawBody: true });
+  type RegisterParams = Parameters<typeof app.register>;
 
   const configService: ConfigService = app.get(ConfigService);
   const PORT = configService.get('server.port');
@@ -41,10 +42,11 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
   app.useGlobalInterceptors(new TimeoutInterceptor());
 
-  await app.register(helmet, HELMET);
-  await app.register(cors, { origin: '*', methods: ['*'] });
+  // Align @fastify/* plugins with Nest's bundled Fastify types.
+  await app.register(helmet as unknown as RegisterParams[0], HELMET as unknown as RegisterParams[1]);
+  await app.register(cors as unknown as RegisterParams[0], { origin: '*', methods: ['*'] } as unknown as RegisterParams[1]);
 
-  app.register(fastifyMultiPart);
+  app.register(fastifyMultiPart as unknown as RegisterParams[0]);
   app.useLogger(app.get(Pino));
 
   AppDataSource.initialize()

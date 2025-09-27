@@ -29,7 +29,8 @@ const createMockDailyStats = (date: string, overrides: Partial<DailyStats> = {})
   stats.micro_breaks_routine_completion_percentage = overrides.micro_breaks_routine_completion_percentage || 0;
   stats.seconds_spent_in_focus_sessions = (overrides.seconds_spent_in_focus_sessions || 0) * 60;
   stats.seconds_spent_doing_breaks = overrides.seconds_spent_doing_breaks || 0;
-  stats.focus_modes_completed = overrides.focus_modes_completed || Math.floor(Math.random() * 5) + 1;
+  stats.focus_modes_completed =
+    overrides.focus_modes_completed !== undefined ? overrides.focus_modes_completed : Math.floor(Math.random() * 5) + 1;
   return stats;
 };
 

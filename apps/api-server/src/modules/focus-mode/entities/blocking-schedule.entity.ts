@@ -33,7 +33,6 @@ export class BlockingSchedule extends BaseEntity {
     type: 'varchar',
     length: 255,
     nullable: false,
-    transformer: BaseEntity.encryptField('name'),
   })
   name?: string;
 

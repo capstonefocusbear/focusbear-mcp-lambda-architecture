@@ -17,7 +17,12 @@ export const pinoConfig = registerAs('pino', () => ({
         : undefined,
     useLevelLabels: true,
     timestamp: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
-    autoLogging: process.env.NODE_ENV === 'development',
+    autoLogging:
+      process.env.NODE_ENV === 'development'
+        ? true
+        : {
+            ignore: (req) => req.url === '/healthcheck',
+          },
     // remove sensitive data from logs
     redact: ['req.headers.authorization', 'req.headers.cookie'],
     // keep only the fields that are needed for logging

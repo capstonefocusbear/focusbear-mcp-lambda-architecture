@@ -50,8 +50,8 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
         `);
 
     // Data migration: Create blocking schedule records based on user's cutoff_time and startup_time
-    // For each user, create a blocking schedule between cutoff_time and startup_time
-    // using their existing focus mode or create a default one
+    // For each user, create a blocking schedule between cutoff_time and startup_time (e.g. 10pm to 6am)
+    // using the "Block super distracting sites" focus mode
     await queryRunner.query(`
             INSERT INTO "blocking_schedules" (
                 "user_id", 
@@ -73,14 +73,18 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
                 COALESCE(
                     (SELECT fm.id FROM focus_modes fm 
                      WHERE fm.user_id = u.id 
-                     AND (fm.name ILIKE '%block%' OR fm.name ILIKE '%distract%' OR fm.name ILIKE '%super%')
+                     AND fm.name ILIKE '%block%super%distract%'
+                     ORDER BY fm.created_at DESC 
+                     LIMIT 1),
+                    (SELECT fm.id FROM focus_modes fm 
+                     WHERE fm.user_id = u.id 
+                     AND (fm.name ILIKE '%block%' OR fm.name ILIKE '%distract%')
                      ORDER BY fm.created_at DESC 
                      LIMIT 1),
                     (SELECT fm.id FROM focus_modes fm 
                      WHERE fm.user_id = u.id 
                      ORDER BY fm.created_at ASC 
-                     LIMIT 1),
-                    (SELECT id FROM focus_modes WHERE user_id = u.id LIMIT 1)
+                     LIMIT 1)
                 ) as focus_mode_id,
                 'none' as pause_friction,
                 'strict' as block_level,

@@ -27,12 +27,14 @@ export const pinoConfig = registerAs('pino', () => ({
           id: req.id,
           method: req.method,
           url: req.url,
+          path: req.raw?.url,
           headers: req.headers,
         };
       },
       res(res) {
         return {
           statusCode: res.statusCode,
+          responseTime: res.responseTime,
         };
       },
     },

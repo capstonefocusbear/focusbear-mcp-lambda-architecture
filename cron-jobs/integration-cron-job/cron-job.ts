@@ -9,7 +9,7 @@ import { createNewToDos, getTasksToDelete } from './helpers';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { IntegrationPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/integration-platforms.enum';
 import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/synced-project.entity';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -246,10 +246,23 @@ async function runIntegrationCronJob() {
   await CronJobDataSource.initialize();
   const usersToSync = await getUsersToSyncWithZoho();
   const syncUserPromises = usersToSync.map((userId) => syncUserTasks(userId));
-  await Promise.all(syncUserPromises);
-  process.exit();
+  const results = await Promise.all(syncUserPromises);
+
+  const aggregate = results.reduce(
+    (acc, current) => {
+      acc.tasksSaved += current?.tasksSaved || 0;
+      acc.tasksRemoved += current?.tasksRemoved || 0;
+      return acc;
+    },
+    { tasksSaved: 0, tasksRemoved: 0 },
+  );
+
+  return {
+    usersProcessed: usersToSync.length,
+    ...aggregate,
+  };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runIntegrationCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('integration-cron', () => withTimeout(runIntegrationCronJob(), CRON_JOB_TIMEOUT_MS));
 }

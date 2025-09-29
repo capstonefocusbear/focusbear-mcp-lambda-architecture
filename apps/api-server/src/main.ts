@@ -12,7 +12,7 @@ import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
 import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
-import { BadGatewayExceptionFilter } from './shared/exceptions/badGatewayExceptionFilter ';
+import { BadGatewayExceptionFilter } from './shared/exceptions/badGatewayExceptionFilter';
 
 function bootstrapApiDocumentation(app: NestFastifyApplication): void {
   const config = new DocumentBuilder()
@@ -44,7 +44,10 @@ async function bootstrap(): Promise<void> {
 
   // Align @fastify/* plugins with Nest's bundled Fastify types.
   await app.register(helmet as unknown as RegisterParams[0], HELMET as unknown as RegisterParams[1]);
-  await app.register(cors as unknown as RegisterParams[0], { origin: '*', methods: ['*'] } as unknown as RegisterParams[1]);
+  await app.register(
+    cors as unknown as RegisterParams[0],
+    { origin: '*', methods: ['*'] } as unknown as RegisterParams[1],
+  );
 
   app.register(fastifyMultiPart as unknown as RegisterParams[0]);
   app.useLogger(app.get(Pino));

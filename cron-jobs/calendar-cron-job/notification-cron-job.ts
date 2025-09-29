@@ -7,7 +7,7 @@ import { Notification } from '../../apps/api-server/src/modules/notification/ent
 import { CronJobDataSource } from '../data-source';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -136,29 +136,27 @@ async function runNotificationCronJob() {
   const calendarEventsToSend = await fetchEvents();
   // eslint-disable-next-line no-console
   console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
-  if (calendarEventsToSend.length === 0) process.exit();
-  const sendNotificationsPromises = calendarEventsToSend.map(async (calendarEvent) => {
-    const { id, summary, description, event_begins, event_ends } = calendarEvent;
-    await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
-      id,
-      summary,
-      description,
-      event_begins,
-      event_ends,
-    });
-    await updateNotificationStatus(id);
-  });
-  const updateNotificationStatusPromises = calendarEventsToSend.map(async (calendarEvent) => {
-    const { id } = calendarEvent;
-    await updateNotificationStatus(id);
-  });
-  await Promise.all(sendNotificationsPromises);
-  await Promise.all(updateNotificationStatusPromises);
-  // give me code to change the code above to send all the push notifications simultaneously
+  if (calendarEventsToSend.length === 0) {
+    return { notificationsSent: 0 };
+  }
 
-  process.exit();
+  await Promise.all(
+    calendarEventsToSend.map(async (calendarEvent) => {
+      const { id, summary, description, event_begins, event_ends } = calendarEvent;
+      await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
+        id,
+        summary,
+        description,
+        event_begins,
+        event_ends,
+      });
+      await updateNotificationStatus(id);
+    }),
+  );
+
+  return { notificationsSent: calendarEventsToSend.length };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runNotificationCronJob(), CRON_JOB_TIMEOUT_MS))
+  runCronWithTelemetry('calendar-notification-cron', () => withTimeout(runNotificationCronJob(), CRON_JOB_TIMEOUT_MS));
 }

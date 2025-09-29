@@ -96,10 +96,12 @@ async function runDailyProgressEmailsCronJob() {
       await Promise.all(emailPromises);
 
       // Delay between batches
-      if (i + BATCH_SIZE < users.length) {
+      if (batch.length === BATCH_SIZE) {
         console.log('Waiting 1 second before processing next batch...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+      skip += BATCH_SIZE;
+      batchNum++;
     }
 
     console.log('Daily progress emails cron job completed successfully.');

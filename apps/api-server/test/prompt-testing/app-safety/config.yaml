@@ -260,7 +260,6 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-
 providers:
   - id: openai:gpt-4.1-mini
     config:

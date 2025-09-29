@@ -5,6 +5,7 @@ import { OpenAIService } from '@app/openai';
 import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { toFile } from 'openai/uploads';
+import { extname } from 'path';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { BullQueues, BullWorkers, S3_BUCKET_TODO_AUDIOS } from '../../../shared/utils/constants';
@@ -42,7 +43,11 @@ export class TodoAudioConsumer {
       const audioUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_TODO_AUDIOS, audioKey);
       const resp = await axios.get<ArrayBuffer>(audioUrl, { responseType: 'arraybuffer', timeout: 120000 });
       const buffer = Buffer.from(resp.data);
-      const file = await toFile(buffer, 'todo-audio.mp3');
+      const rawExt = extname(audioKey).toLowerCase();
+      const allowed = new Set(['.flac', '.m4a', '.mp3', '.mp4', '.mpeg', '.mpga', '.oga', '.ogg', '.wav', '.webm']);
+      const safeExt = allowed.has(rawExt) ? rawExt : '.mp3';
+      const fileName = `todo-audio${safeExt}`;
+      const file = await toFile(buffer, fileName);
       const transcript = await this.openAIService.transcribeAudioToText(file as unknown as File);
       const tasks = await this.openAIService.createDraftTodosFromTranscript(transcript);
 

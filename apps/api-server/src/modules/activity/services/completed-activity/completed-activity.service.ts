@@ -286,6 +286,37 @@ export class CompletedActivityService implements OnModuleInit {
     }
   }
 
+  // Ensures the sequence log (CAS) we write to matches the sequence we’re completing.
+  // If it doesn’t, re-fetch via the wrapper that tests already mock; on failure, fall back to the original log.
+  private async ensureSequenceLogForSequence(
+    log: CompletedActivitySequence | null,
+    user: User,
+    sequence: ActivitySequence,
+    at: Date,
+  ): Promise<CompletedActivitySequence> {
+    if (log?.activity_sequence_id === sequence.id) {
+      // should be the same. If it isn't get the correct one that is contained in user.
+      return log;
+    }
+
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'warning',
+      message: 'Sequence log mismatch detected; getting CAS for correct sequence',
+      data: {
+        user_id: user.id,
+        expected_sequence_id: sequence.id,
+        current_log_sequence_id: log?.activity_sequence_id,
+      },
+    });
+
+    // Use the wrapper so existing Jest mocks don't fail.
+    const corrected = await this.getOrCreateCompletingSequenceLog(user, sequence.id, at); // Get/create the per-user, per-sequence, per-day CAS (keyed by user, sequence.id, and at) so this habit attaches to the correct routine/day and not an broken log.
+
+    // Fallback to the originally provided log if corrected == undefined
+    return (corrected ?? log)!;
+  }
+
   private async handleUpdateDailyStats(
     activity: Activity,
     should_not_update_current_activity: boolean,
@@ -543,7 +574,16 @@ export class CompletedActivityService implements OnModuleInit {
   }: SyncOfflineActivityArgs): Promise<boolean> {
     try {
       const { choice_id, activity_id, log_quantity_answers, metadata, start_time } = completedActivity;
-      const completingSequenceLog = await this.getOrCreateCompletingSequenceLog(user, sequence.id, start_time);
+      let completingSequenceLog = await this.getOrCreateCompletingSequenceLog(user, sequence.id, start_time);
+
+      // #1199: guard against stale/incorrect CAS
+      completingSequenceLog = await this.ensureSequenceLogForSequence(
+        completingSequenceLog,
+        user,
+        sequence,
+        start_time,
+      );
+
       const activity = this.findMatchingActivity(allActivitiesFromSequence, activity_id);
 
       if (!activity) {
@@ -735,11 +775,20 @@ export class CompletedActivityService implements OnModuleInit {
     const { device_id, activity_id, metadata } = activityData;
     const start_time = activityData?.start_time ?? new Date();
 
-    const completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
+    let completingSequenceLog = await this.completedActivitySequenceService.getOrCreateCompletingSequenceLog(
       updatedUser,
       sequence.id,
       start_time,
     );
+
+    // #1199: ensure we’re writing to the CAS that actually belongs to this sequence
+    completingSequenceLog = await this.ensureSequenceLogForSequence(
+      completingSequenceLog,
+      updatedUser,
+      sequence,
+      start_time,
+    );
+
     const { nextActivityId, currentState } = await this.defineNextCurrentActivity(
       sequence,
       activity_id,

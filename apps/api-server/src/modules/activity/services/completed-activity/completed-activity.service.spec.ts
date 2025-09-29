@@ -3296,4 +3296,161 @@ describe('CompletedActivityService', () => {
       );
     });
   });
+
+  describe('CompletedActivityService - ensure CAS belongs to active sequence (A postponed → B active)', () => {
+    const OLD_ENV = process.env;
+    let svc: CompletedActivityService;
+    beforeAll(() => {
+      process.env = { ...OLD_ENV, REDIS_HOSTNAME: 'localhost', REDIS_PORT: '6379' };
+    });
+
+    afterAll(async () => {
+      await (svc as any)?.redisClient?.quit?.();
+    });
+
+    it('completing habit from B attaches to CAS_B (not stale CAS_A)', async () => {
+      const SEQ_B = {
+        id: 'B',
+        type: ActivityType.morning,
+        activity_ids: ['hB1', 'hB2'],
+        sequenceActivityIds: ['hB1', 'hB2'],
+        activities: [
+          {
+            id: 'hB1',
+            activity_sequence_id: 'B',
+            user_id: 'U',
+            type: ActivityType.morning,
+            has_choices: false,
+            activity_data: { priority: ActivityPriority.STANDARD },
+          },
+          {
+            id: 'hB2',
+            activity_sequence_id: 'B',
+            user_id: 'U',
+            type: ActivityType.morning,
+            has_choices: false,
+            activity_data: { priority: ActivityPriority.STANDARD },
+          },
+        ],
+      };
+      const hB1 = SEQ_B.activities[0];
+      const USER = {
+        id: 'U',
+        timezone: 'America/Los_Angeles',
+        startup_time: '07:00',
+        shutdown_time: '23:00',
+        cutoff_time_for_non_high_priority_activities: '00:00',
+        language: 'en',
+        current_activity_sequence_id: 'B',
+        current_completing_sequence_log_id: 'CAS_A', // stale pointer
+        current_activity_assigned_at: new Date(),
+      };
+
+      const CAS_A = { id: 'CAS_A', activity_sequence_id: 'A', is_completed: false, completed_activity_logs: [] };
+      const CAS_B = { id: 'CAS_B', activity_sequence_id: 'B', is_completed: false, completed_activity_logs: [] };
+
+      const completedActivityRepository = {
+        upsertActivity: jest.fn().mockImplementation(async (entity: any) => ({ id: 'LOG_B1', ...entity })),
+        create: jest.fn(),
+        orm: {
+          find: jest.fn().mockResolvedValue([]),
+          findOneBy: jest.fn(),
+          insert: jest.fn(),
+          save: jest.fn(),
+        },
+      };
+
+      const deviceService = { markAsLeader: jest.fn() };
+      const activitySequenceRepository = { orm: { findOne: jest.fn().mockResolvedValue(SEQ_B as any) } };
+      const userRepository = {
+        orm: {
+          findOne: jest.fn().mockResolvedValue({ ...USER }),
+          update: jest.fn().mockResolvedValue(undefined),
+        },
+      };
+      const activityRepository = {
+        orm: {
+          findOneBy: jest.fn().mockResolvedValueOnce(hB1 as any), // fetchPreparatoryData(activity)
+          find: jest.fn(),
+        },
+      };
+
+      const completedActivitySequenceService = {
+        getOrCreateCompletingSequenceLog: jest.fn().mockResolvedValueOnce(CAS_A as any), // legacy returns wrong A
+        getOrCreateCompletingSequenceLogForSyncing: jest.fn().mockResolvedValueOnce(CAS_B as any), // ensure→B
+        getUncompletedSequenceLogWithActivities: jest.fn(),
+        completeActivitySequence: jest.fn(),
+        completeActivitySequenceByDate: jest.fn(),
+        nullifyUserCurrentActivityProps: jest.fn(),
+        clearUserCurrentActivityPropsWithoutCompletion: jest.fn(),
+      };
+
+      const pusher = { trigger: jest.fn() };
+      const beams = { publishToUsers: jest.fn(), createBeamsPublishRequest: jest.fn().mockReturnValue({}) };
+      const completedFocusModesRepository = {};
+      const userSettingsService = { updateUserTimezoneAndLanguage: jest.fn() };
+      const sentry = { instance: () => ({ addBreadcrumb: jest.fn(), captureException: jest.fn() }) } as any;
+      const userDailyStatsService = {
+        updateDailyStatsRoutineCompletion: jest.fn(),
+        updateTimeSpentInBreaks: jest.fn(),
+      };
+      const helperCommonService = { getDayOfWeek: jest.fn().mockReturnValue(1 as any) };
+      const activitySequenceService = {
+        checkIfActivityExistsInSequence: jest.fn(),
+        filterActivitiesForCurrentDay: jest.fn((_, acts: any[]) => acts),
+        sortActivityIdsByExecutionSequence: jest.fn((ids: string[]) => ids),
+      };
+      const logQuantityAnswerRepository = { orm: { create: jest.fn(), insert: jest.fn(), find: jest.fn() } };
+      const logQuantityQuestionRepository = { orm: { find: jest.fn(), findOneBy: jest.fn() } };
+      const userService = { isVerboseLoggingAllowed: jest.fn().mockResolvedValue({ isVerboseLoggingAllowed: false }) };
+      const i18n = { t: jest.fn().mockReturnValue('ok') };
+      const queue = { add: jest.fn() };
+
+      svc = new CompletedActivityService(
+        completedActivityRepository as any,
+        deviceService as any,
+        activitySequenceRepository as any,
+        userRepository as any,
+        activityRepository as any,
+        completedActivitySequenceService as any,
+        pusher as any,
+        beams as any,
+        completedFocusModesRepository as any,
+        userSettingsService as any,
+        sentry as any,
+        userDailyStatsService as any,
+        helperCommonService as any,
+        activitySequenceService as any,
+        logQuantityAnswerRepository as any,
+        logQuantityQuestionRepository as any,
+        userService as any,
+        i18n as any,
+        queue as any,
+      );
+
+      await (svc as any).redisClient?.quit?.();
+
+      // redis stub so we don't get the listening client persisting at the end of the test
+
+      (svc as any).redisClient = {
+        get: jest.fn().mockResolvedValue(null),
+        setex: jest.fn().mockResolvedValue('OK'),
+        quit: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn(),
+        on: jest.fn(),
+        duplicate: jest.fn().mockImplementation(() => (svc as any).redisClient),
+      };
+
+      await svc.completeActivity(
+        { activity_id: 'hB1', device_id: 'D', start_time: new Date(), finish_time: new Date() } as any,
+        { 'x-idempotency-key': 'k1' },
+        { user_id: USER.id } as any,
+      );
+
+      expect(completedActivityRepository.upsertActivity).toHaveBeenCalled();
+      const saved = completedActivityRepository.upsertActivity.mock.calls[0][0];
+      expect(saved.activity_sequence_id).toBe('B');
+      expect(saved.completed_sequence_id).toBe('CAS_B');
+    });
+  });
 });

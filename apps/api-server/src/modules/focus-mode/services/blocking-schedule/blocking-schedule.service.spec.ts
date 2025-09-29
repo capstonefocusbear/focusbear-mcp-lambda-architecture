@@ -81,7 +81,7 @@ describe('BlockingScheduleService', () => {
     });
   });
 
-  describe('upsertBlockingSchedule', () => {
+  describe('createBlockingSchedule and updateBlockingSchedule', () => {
     const userId = userDummy.id;
     const focusModeId = randomUUID();
     const focusMode = new FocusMode({
@@ -105,7 +105,7 @@ describe('BlockingScheduleService', () => {
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(focusMode);
     });
 
-    it('should create new blocking schedule when no ID provided', async () => {
+    it('should create new blocking schedule', async () => {
       const expectedSchedule = new BlockingSchedule({
         ...createDto,
         user_id: userId,
@@ -113,7 +113,7 @@ describe('BlockingScheduleService', () => {
 
       BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(expectedSchedule);
 
-      const result = await blockingScheduleService.upsertBlockingSchedule(userId, createDto);
+      const result = await blockingScheduleService.createBlockingSchedule(userId, createDto);
 
       expect(FocusModeRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: focusModeId, user_id: userId },
@@ -130,7 +130,7 @@ describe('BlockingScheduleService', () => {
       expect(result).toEqual(expectedSchedule);
     });
 
-    it('should update existing blocking schedule when ID provided', async () => {
+    it('should update existing blocking schedule', async () => {
       const scheduleId = randomUUID();
       const updateDto = { ...createDto, id: scheduleId };
       const existingSchedule = new BlockingSchedule({
@@ -145,7 +145,7 @@ describe('BlockingScheduleService', () => {
         ...updateDto,
       });
 
-      await blockingScheduleService.upsertBlockingSchedule(userId, updateDto);
+      await blockingScheduleService.updateBlockingSchedule(userId, scheduleId, updateDto);
 
       expect(BlockingScheduleRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: scheduleId, user_id: userId },
@@ -153,16 +153,15 @@ describe('BlockingScheduleService', () => {
       expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalled();
     });
 
-    it('should create new schedule when ID provided but schedule not found', async () => {
+    it('should throw NotFound when updating non-existing schedule', async () => {
       const scheduleId = randomUUID();
       const updateDto = { ...createDto, id: scheduleId };
 
       BlockingScheduleRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(new BlockingSchedule(updateDto));
 
-      await blockingScheduleService.upsertBlockingSchedule(userId, updateDto);
-
-      expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(expect.objectContaining(updateDto));
+      await expect(
+        blockingScheduleService.updateBlockingSchedule(userId, scheduleId, updateDto),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should set default values when not provided', async () => {
@@ -175,7 +174,7 @@ describe('BlockingScheduleService', () => {
 
       BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(new BlockingSchedule(minimalDto));
 
-      await blockingScheduleService.upsertBlockingSchedule(userId, minimalDto);
+      await blockingScheduleService.createBlockingSchedule(userId, minimalDto);
 
       expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({

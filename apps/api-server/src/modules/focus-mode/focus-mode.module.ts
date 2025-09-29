@@ -14,7 +14,7 @@ import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-temp
 import { FocusModeTagRepository } from './repositories/focus-mode-tags.repository';
 import { CompletedFocusBlockService } from './services/completed-focus-blocks/completed-focus-blocks.service';
 import { CompletedFocusBlocksController } from './controllers/completed-focus-blocks/completed-focus-blocks.controller';
-import { BlockingScheduleController } from './controllers/blocking-schedule.controller';
+import { BlockingScheduleController } from './controllers/blocking-schedule/blocking-schedule.controller';
 import { ToDoModule } from '../to-do/to-do.module';
 import { CompletedActivitySequenceRepository } from '../activity/repositories/completed-activity-sequence.repository';
 

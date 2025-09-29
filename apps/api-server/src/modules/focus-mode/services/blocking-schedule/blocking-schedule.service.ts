@@ -32,7 +32,7 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
     }
   }
 
-  async upsertBlockingSchedule(
+  async createBlockingSchedule(
     userId: string,
     blockingScheduleDto: UpsertBlockingScheduleDto,
   ): Promise<BlockingSchedule> {
@@ -40,7 +40,7 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Upserting blocking schedule',
+        message: 'Creating blocking schedule',
         data: { userId, blockingScheduleDto },
       });
 
@@ -67,21 +67,59 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         is_ai_blocking_enabled: blockingScheduleDto.is_ai_blocking_enabled || false,
       };
 
-      // If ID is provided, try to update existing schedule
-      if (blockingScheduleDto.id) {
-        const existingSchedule = await this.blockingScheduleRepository.orm.findOne({
-          where: { id: blockingScheduleDto.id, user_id: userId },
-        });
-
-        if (existingSchedule) {
-          Object.assign(existingSchedule, blockingScheduleData);
-          return await this.blockingScheduleRepository.orm.save(existingSchedule);
-        }
-      }
-
-      // Create new schedule (either no ID provided or existing schedule not found)
+      // Always create a new schedule
       const blockingSchedule = new BlockingSchedule(blockingScheduleData);
       return await this.blockingScheduleRepository.orm.save(blockingSchedule);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async updateBlockingSchedule(
+    userId: string,
+    id: string,
+    blockingScheduleDto: UpsertBlockingScheduleDto,
+  ): Promise<BlockingSchedule> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Updating blocking schedule',
+        data: { userId, id, blockingScheduleDto },
+      });
+
+      // Validate that the focus mode belongs to the user
+      const focusMode = await this.focusModeRepository.orm.findOne({
+        where: { id: blockingScheduleDto.focus_mode_id, user_id: userId },
+      });
+
+      if (!focusMode) {
+        throw new BadRequestException('Focus mode not found or does not belong to user');
+      }
+
+      // Validate time format and logic
+      this.validateTimeFormat(blockingScheduleDto.start_time);
+      this.validateTimeFormat(blockingScheduleDto.end_time);
+
+      const existingSchedule = await this.blockingScheduleRepository.orm.findOne({
+        where: { id, user_id: userId },
+      });
+
+      if (!existingSchedule) {
+        throw new NotFoundException('Blocking schedule not found');
+      }
+
+      Object.assign(existingSchedule, {
+        ...blockingScheduleDto,
+        user_id: userId,
+        days_of_week: blockingScheduleDto.days_of_week || [0, 1, 2, 3, 4, 5, 6],
+        pause_friction: blockingScheduleDto.pause_friction || PauseFriction.NONE,
+        block_level: blockingScheduleDto.block_level || BlockLevel.STRICT,
+        is_ai_blocking_enabled: blockingScheduleDto.is_ai_blocking_enabled || false,
+      });
+
+      return await this.blockingScheduleRepository.orm.save(existingSchedule);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

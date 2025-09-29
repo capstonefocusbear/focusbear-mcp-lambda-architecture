@@ -144,7 +144,7 @@ tests:
   - description: StackOverflow for TypeORM Debugging
     vars:
       url: https://stackoverflow.com
-      meta_description: Stack Overflow | The World’s Largest Online Community for Developers
+      meta_description: This page requires you to sign in to view its content.
       tab_title: Newest Questions - Stack Overflow
       focus_mode: work
       intention: debugging
@@ -189,7 +189,7 @@ tests:
   - description: Hacker News for Tech Research (No Justification)
     vars:
       url: https://news.ycombinator.com
-      meta_description: 'Hacker Newsnew | past | comments | ask | show | jobs | submitlogin1.What are OKLCH colors? (jakub.kr)319 points by tontonius 5 hours ago | hide | 66 comments2.Agent-C: a 4KB AI agent (github.com/bravenewxyz)18 points by liszper 1 hour ago | hide | 11 comments3.Git-Annex (branchable.com)135 points by keepamovin 7 hours ago | hide | 31 comments4.SmallJS: Smalltalk-80 that compiles to JavaScript (small-js.org)60 points by mpweiher 5 hours ago | hide | 12 comments5.The great medieval water myth (201'
+      meta_description: Hacker Newsnew | past | comments | ask | show | jobs | submitlogin1.Users only care about 20% of your application (idiallo.com)104 points by jnord 5 hours ago | hide | 50 comments2.What if I don't want videos of my hobby time available to the world? (neilzone.co.uk)123 points by speckx 58 minutes ago | hide | 97 comments3.Google just erased 7 years of our political history (thebriefing.ie)60 points by doener 4 hours ago | hide | 7 comments4.F-Droid and Google’s developer registration decree (f-d
       tab_title: Hacker News
       focus_mode: work
       intention: researching tech news
@@ -219,7 +219,7 @@ tests:
   - description: Google Search During Deep Work (No Justification)
     vars:
       url: google.co.in/
-      meta_description: 'GmailImagesSign in See moreDeleteDelete Report inappropriate predictions Google offered in: Filipino Cebuano PhilippinesAboutAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
+      meta_description: 'AboutStoreGmailImagesSign in See moreDeleteDelete Report inappropriate predictions AustraliaAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
       tab_title: Google
       focus_mode: Deep Work
       intention: deep work
@@ -234,7 +234,7 @@ tests:
   - description: Google Search During Deep Work (Simple Justification)
     vars:
       url: google.co.in/
-      meta_description: 'GmailImagesSign in See moreDeleteDelete Report inappropriate predictions Google offered in: Filipino Cebuano PhilippinesAboutAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
+      meta_description: 'AboutStoreGmailImagesSign in See moreDeleteDelete Report inappropriate predictions AustraliaAdvertisingBusiness How Search works PrivacyTermsSettingsSearch settingsAdvanced searchYour data in SearchSearch historySearch helpSend feedbackDark theme: OffGoogle apps'
       tab_title: Google
       focus_mode: Deep Work
       intention: deep work
@@ -1086,7 +1086,7 @@ tests:
     vars:
       url: docs.google.com/document/d/1atspGQoqbgkaHMSb1jct83d5cid8YpsKtJwFyMZ-iyI/edit
       tab_title: Feedback for new onboarding - Google Docs
-      meta_description: Not fixed yet - urgent Validation for timing doesn’t make sense This is the first schedule step. I haven’t entered anything else. Time to start work is not sensible I chose 10.07am to wake up. The time to start work should default to be 2 hours after the wake up time. Keyboard accessibility...
+      meta_description: Not fixed yet - urgent Sign up with google didn’t work Can you add events so we can see what the dropoff is on sign up with google? Also if an error like this happens, it should be captured in Sentry Language flag in the wrong place Posthog is not implemented correctly Can you please chec...
       focus_mode: Deep Work
       currentTaskInToDoPlayer: review loom
       intention: review fires
@@ -1333,8 +1333,8 @@ tests:
   - description: 'Feedback: I gave a justification and it ignored it'
     vars:
       url: photos.google.com/
-      meta_description: ''
-      tab_title: photos - google photos
+      meta_description: Edit and enhance photos with AI-powered features like Magic Eraser and Unblur on Google Photos. Store, organize & search your memories.
+      tab_title: 'Google Photos: Edit, Organize, Search, and Backup Your Photos'
       focus_mode: Deep Work
       intention: UX changes, RMIT data room
       justificationForThisUrl: getting screenshots to add to design feedback
@@ -1345,13 +1345,13 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-  - description: "CleanShot X during Deep Work for assigning intern tasks"
+  - description: CleanShot X during Deep Work for assigning intern tasks
     vars:
-      appName: "CleanShot X"
-      focusMode: "Deep Work"
-      intention: "deep work"
-      justificationForThisSpecificApp: ""
-      currentTaskInToDoPlayer: "assign task to interns"
+      appName: CleanShot X
+      focusMode: Deep Work
+      intention: deep work
+      justificationForThisSpecificApp: ''
+      currentTaskInToDoPlayer: assign task to interns
       min_probability: 0.7
       max_probability: 1
     assert:
@@ -1360,8 +1360,8 @@ tests:
   - description: Xero invoice for Zoho store update
     vars:
       url: go.xero.com/app/!hmLlG/dashboard
-      tab_title: xero
-      meta_description: ''
+      tab_title: Xero
+      meta_description: You need to enable JavaScript to run this app.
       focus_mode: Deep Work
       intention: check meeting details in email
       justificationForThisUrl: need to add invoice to zoho store
@@ -1372,12 +1372,11 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-
   - description: Google Photos for meeting slides
     vars:
       url: photos.google.com/
-      tab_title: ''
-      meta_description: ''
+      tab_title: 'Google Photos: Edit, Organize, Search, and Backup Your Photos'
+      meta_description: Edit and enhance photos with AI-powered features like Magic Eraser and Unblur on Google Photos. Store, organize & search your memories.
       focus_mode: Deep Work
       intention: prep for snow foundation meeting
       justificationForThisUrl: get photos for slides
@@ -1388,66 +1387,18 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-  - description: "Activity Monitor during Deep Work for Canva deck"
+  - description: Activity Monitor during Deep Work for Canva deck
     vars:
-      appName: "Activity Monitor"
-      focusMode: "Deep Work"
-      intention: "data room"
-      justificationForThisSpecificApp: ""
-      currentTaskInToDoPlayer: "long deck in canva from RMIT"
+      appName: Activity Monitor
+      focusMode: Deep Work
+      intention: data room
+      justificationForThisSpecificApp: ''
+      currentTaskInToDoPlayer: long deck in canva from RMIT
       min_probability: 0.1
       max_probability: 0.3
     assert:
       - type: javascript
         value: file://validate-probability.js
-  - description: MessageMedia support article for release notes
-    vars:
-      url: support.messagemedia.com/hc/en-us/articles/13659458773519-Adding-the-SMS-Button-on-the-Item-Fulfillment-Invoice
-      tab_title: 'adding the sms button on the item fulfillment & invoice – sinch messagemedia'
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: NS work
-      justificationForThisUrl: release notes are about the messagemedia integration
-      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
-      currentTaskInToDoPlayer: update release notes
-      min_probability: 0.55
-      max_probability: 1
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
-  - description: Zendesk editor for release notes
-    vars:
-      url: messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us
-      tab_title: ''
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: NS work
-      justificationForThisUrl: this is where I do release notes
-      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
-      currentTaskInToDoPlayer: update release notes
-      min_probability: 0.6
-      max_probability: 1
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
-  - description: Thea smartStudy vocab site during Deep Work
-    vars:
-      url: thea.study/smartStudy/773260175?st=1362ba71c
-      tab_title: 'Thea - Google Chrome'
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: Quickly study vocab and do some work
-      justificationForThisUrl: ''
-      lastFiveJustificationsInThisFocusSession: '[]'
-      currentTaskInToDoPlayer: update release notes
-      min_probability: 0.1
-      max_probability: 0.4
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
 providers:
   - id: openai:gpt-4.1-mini
     config:

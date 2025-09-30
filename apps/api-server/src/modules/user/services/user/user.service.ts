@@ -315,35 +315,63 @@ export class UserService {
     }
   }
 
+  private async seg<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    const t0 = process.hrtime.bigint();
+    try {
+      return await fn();
+    } finally {
+      const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+      const line = `[seg] ${label} ${ms.toFixed(1)}ms`;
+      // log + breadcrumb to Sentry
+      const sentry = this.sentryService.instance();
+      sentry.addBreadcrumb({
+        category: 'perf',
+        level: ms > 200 ? 'warning' : 'info',
+        message: label,
+        data: { ms: Number(ms.toFixed(1)) },
+      });
+      if (ms > 200) console.warn(line);
+      else console.log(line);
+    }
+  }
+
   async getUserCurrentActivityProps(id: string): Promise<CurrentActivityProps> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Getting user current activity props',
-        data: {
-          user_id: id,
-        },
+        data: { user_id: id },
       });
-      let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
+
+      let partialUser = await this.seg('userRepo.getUserCurrentActivityProps', () =>
+        this.userRepository.getUserCurrentActivityProps(id),
+      );
 
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
+
       const initialCurrentActivity = partialUser.current_activity_id;
-      let current_sequence_completed_activities = [];
+      let current_sequence_completed_activities: string[] = [];
+
       if (partialUser.current_activity) {
-        const updatedPartialUser = await this.recalculateActivityProps(partialUser);
+        const updatedPartialUser = await this.seg('recalculateActivityProps', () =>
+          this.recalculateActivityProps(partialUser),
+        );
         partialUser = updatedPartialUser;
+
         if (partialUser.current_completing_sequence_log_id) {
-          current_sequence_completed_activities =
-            await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
-              partialUser.current_completing_sequence_log_id,
-            );
+          current_sequence_completed_activities = await this.seg(
+            'completedActivityService.getCurrentSequenceCompletedActivityIds',
+            () =>
+              this.completedActivityService.getCurrentSequenceCompletedActivityIds(
+                partialUser.current_completing_sequence_log_id,
+              ),
+          );
         }
       }
 
-      const todayRoutineProgress = await this.completedActivitySequenceService.getRoutinesProgress(
-        partialUser.id,
-        partialUser.timezone,
+      const todayRoutineProgress = await this.seg('completedActivitySequenceService.getRoutinesProgress', () =>
+        this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
       );
 
       const currentActivityProps = new CurrentActivityProps({
@@ -351,6 +379,7 @@ export class UserService {
         current_sequence_completed_activities,
         today_routine_progress: todayRoutineProgress,
       });
+
       if (id === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console
         console.log('Jeremy current user state', {
@@ -359,6 +388,7 @@ export class UserService {
           originalActivityProps: partialUser,
         });
       }
+
       return currentActivityProps;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

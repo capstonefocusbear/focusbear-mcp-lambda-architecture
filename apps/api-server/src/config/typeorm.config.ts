@@ -66,7 +66,7 @@ export const typeormConfig = registerAs(
     synchronize: false,
     logging: true,
     maxQueryExecutionTime: 200,
-    ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+    ssl: { rejectUnauthorized: false },
     entities: [
       User,
       Activity,
@@ -124,5 +124,8 @@ export const typeormConfig = registerAs(
       AsyncTask,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
+    extra: {
+      application_name: 'api-prod', // shows up in pg_stat_activity
+    },
   }),
 );

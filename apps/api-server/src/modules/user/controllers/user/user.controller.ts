@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Query,
+  Sse,
+  UseGuards,
+  Res,
+  Patch,
+  Logger,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
@@ -11,6 +24,7 @@ import { Passport } from '../../../auth/domain/passport.model';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
+import { TimingInterceptor } from '../../../../shared/interceptors/timing.interceptor';
 import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import {
@@ -78,6 +92,7 @@ export class UserController {
 
   @Get('/details/current-activity-props')
   @UseGuards(IsAuth)
+  @UseInterceptors(TimingInterceptor)
   @ApiSecurity('Auth0AccessToken')
   async getUserCurrentActivity(@AuthContext() { user }: Passport): Promise<CurrentActivityProps> {
     return this.userService.getUserCurrentActivityProps(user.id);

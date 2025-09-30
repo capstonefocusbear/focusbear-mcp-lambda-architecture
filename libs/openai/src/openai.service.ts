@@ -1044,9 +1044,9 @@ export class OpenAIService {
 
   async transcribeAudioToText(file: File): Promise<string> {
     try {
-      const openai = this.getOpenAIInstance(OpenAIKeyType.GENERAL);
+      const openai = this.getOpenAIInstance(OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS);
       const transcription: any = await openai.audio.transcriptions.create({
-        model: 'whisper-1',
+        model: 'gpt-4o-transcribe',
         file,
         response_format: 'text',
         temperature: 0,

@@ -13,7 +13,7 @@ import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/ent
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
@@ -85,6 +85,7 @@ async function getActiveUsers() {
 }
 
 async function sendEnhancedInactivityWarningEmails(users: { email: string; user: User }[], emailQueue: Queue) {
+  let emailsQueued = 0;
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
 
@@ -104,6 +105,7 @@ async function sendEnhancedInactivityWarningEmails(users: { email: string; user:
             removeOnFail: false,
           },
         );
+        emailsQueued += 1;
       } catch (error) {
         captureErrorWithContext(error, {
           operation: 'sendEnhancedInactivityWarningEmails',
@@ -119,9 +121,12 @@ async function sendEnhancedInactivityWarningEmails(users: { email: string; user:
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
+
+  return emailsQueued;
 }
 
 async function sendEnhancedNoProgressEmails(users: { email: string; user: User }[], emailQueue: Queue) {
+  let emailsQueued = 0;
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
 
@@ -140,6 +145,7 @@ async function sendEnhancedNoProgressEmails(users: { email: string; user: User }
             removeOnFail: false,
           },
         );
+        emailsQueued += 1;
       } catch (error) {
         captureErrorWithContext(error, {
           operation: 'sendEnhancedNoProgressEmails',
@@ -155,6 +161,8 @@ async function sendEnhancedNoProgressEmails(users: { email: string; user: User }
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
+
+  return emailsQueued;
 }
 
 async function sendEnhancedProgressEmails(
@@ -163,6 +171,7 @@ async function sendEnhancedProgressEmails(
   userProgressMetricsService: UserProgressMetricsService,
   userEmailPreferencesService: UserEmailPreferencesService,
 ) {
+  let emailsQueued = 0;
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
 
@@ -191,6 +200,7 @@ async function sendEnhancedProgressEmails(
               removeOnFail: false,
             },
           );
+          emailsQueued += 1;
         } catch (error) {
           captureErrorWithContext(error, {
             operation: 'sendEnhancedProgressEmails',
@@ -208,6 +218,8 @@ async function sendEnhancedProgressEmails(
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
+
+  return emailsQueued;
 }
 
 async function updateUsersInactivityWarningFields(users: { user: User }[]) {
@@ -241,7 +253,7 @@ async function deleteUserFromRevenueCat(user_id: string) {
   await axios.delete(callUrl, { headers });
 }
 
-async function deleteUsers(users: User[]) {
+async function deleteUsers(users: User[]): Promise<number> {
   for await (const user of users) {
     const auth0Promise = auth0.users.delete({ id: user.auth0_id });
     const revenueCatPromise = deleteUserFromRevenueCat(user.id);
@@ -249,6 +261,8 @@ async function deleteUsers(users: User[]) {
     const userRepositoryPromise = CronJobDataSource.manager.delete(User, user.id);
     await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise]);
   }
+
+  return users.length;
 }
 
 async function getInternalTestUsers() {
@@ -287,7 +301,7 @@ async function getInternalTestUsers() {
   }
 }
 
-async function deleteInternalTestUsers() {
+async function deleteInternalTestUsers(): Promise<number> {
   try {
     console.log('Starting internal test user cleanup...');
 
@@ -295,7 +309,7 @@ async function deleteInternalTestUsers() {
 
     if (internalTestUsers.length === 0) {
       console.log('No internal test users found.');
-      return;
+      return 0;
     }
 
     // Log users that will be deleted for safety
@@ -311,6 +325,7 @@ async function deleteInternalTestUsers() {
     await deleteUsers(usersToDelete);
 
     console.log('Internal test users deleted successfully.');
+    return usersToDelete.length;
   } catch (error) {
     console.error('Error deleting internal test users:', error);
     throw error;
@@ -329,6 +344,10 @@ async function runInactiveAccountsCronJob() {
 
     console.log('Starting inactive accounts cron job...');
 
+    let inactivityWarningsQueued = 0;
+    let progressEmailsQueued = 0;
+    let internalTestUsersDeleted = 0;
+
     // Get users for deletion (6+ months inactive with warning)
     const usersToDelete = await getUsersToDelete();
     if (usersToDelete.length > 0) {
@@ -342,7 +361,7 @@ async function runInactiveAccountsCronJob() {
     const inactiveUsers = await getInactiveUsers();
     if (inactiveUsers.length > 0) {
       console.log(`Sending inactivity warnings to ${inactiveUsers.length} users`);
-      await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
+      inactivityWarningsQueued = await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
       await updateUsersInactivityWarningFields(inactiveUsers);
     }
 
@@ -350,7 +369,7 @@ async function runInactiveAccountsCronJob() {
     const activeUsers = await getActiveUsers();
     if (activeUsers.length > 0) {
       console.log(`Sending progress emails to ${activeUsers.length} active users`);
-      await sendEnhancedProgressEmails(
+      progressEmailsQueued = await sendEnhancedProgressEmails(
         activeUsers,
         emailQueue,
         userProgressMetricsService,
@@ -359,9 +378,18 @@ async function runInactiveAccountsCronJob() {
     }
 
     // Clean up internal test users
-    await deleteInternalTestUsers();
+    internalTestUsersDeleted = await deleteInternalTestUsers();
 
     console.log('Inactive accounts cron job completed successfully');
+
+    return {
+      inactivityWarningsQueued,
+      progressEmailsQueued,
+      internalTestUsersDeleted,
+      warningsEvaluated: inactiveUsers.length,
+      activeUsersEvaluated: activeUsers.length,
+      usersEligibleForDeletion: usersToDelete.length,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -375,10 +403,9 @@ async function runInactiveAccountsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runInactiveAccountsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('inactive-accounts-cron', () => withTimeout(runInactiveAccountsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

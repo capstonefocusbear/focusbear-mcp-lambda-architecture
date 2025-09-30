@@ -7,7 +7,7 @@ import { UserRepository } from '../../apps/api-server/src/modules/user/repositor
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 const BATCH_SIZE = 30; // Process inactive users in batches
@@ -19,6 +19,8 @@ async function runNoProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
+  let emailsQueued = 0;
+  let usersConsidered = 0;
   try {
     console.log('Starting no-progress emails cron job...');
     // Paginated batch processing to avoid OOM
@@ -59,6 +61,7 @@ async function runNoProgressEmailsCronJob() {
           );
 
           console.log(`Queued no-progress email for user ${user.id}`);
+          emailsQueued += 1;
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -88,6 +91,10 @@ async function runNoProgressEmailsCronJob() {
     }
 
     console.log('No-progress emails cron job completed successfully.');
+    return {
+      emailsQueued,
+      usersConsidered,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -101,10 +108,9 @@ async function runNoProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runNoProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('no-progress-emails-cron', () => withTimeout(runNoProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

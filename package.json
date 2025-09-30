@@ -14,17 +14,16 @@
     "start:debug": "nest start --debug --watch",
     "start": "sh start-server-with-memory-limit.sh",
     "start:no-migration": "sh start-server-with-memory-limit.sh",
-    "cron:routine-push-notifications": "ts-node ./cron-jobs/routine-notifications-cron-job/cron-job.ts",
-    "cron:calendar-event-notifications": "ts-node ./cron-jobs/calendar-cron-job/notification-cron-job.ts",
-    "cron:user-daily-stats": "ts-node ./cron-jobs/user-stats-cron-job/user-stats-cron-job.ts",
-    "cron:events": "ts-node ./cron-jobs/calendar-cron-job/event-cron-job.ts",
-    "cron:expired-team-members": "ts-node ./cron-jobs/expired-team-members/cron-job.ts",
-    "cron:pusher": "ts-node ./cron-jobs/pusher-cron-job/pusher-cron-job.ts",
-    "cron:data-sync-notification": "ts-node ./cron-jobs/data-sync-notification-cron-job/cron-job.ts",
-    "cron:monthly": "ts-node ./cron-jobs/progress-emails-cron-job/monthly-progress-emails-cron-job.ts",
-    "cron:daily": "ts-node ./cron-jobs/progress-emails-cron-job/daily-progress-emails-cron-job.ts",
-    "cron:weekly": "ts-node ./cron-jobs/progress-emails-cron-job/weekly-progress-emails-cron-job.ts",
-    "cron:no-progress": "ts-node ./cron-jobs/progress-emails-cron-job/no-progress-emails-cron-job.ts",
+    "cron:routine-push-notifications": "ts-node -r tsconfig-paths/register ./cron-jobs/routine-notifications-cron-job/cron-job.ts",
+    "cron:calendar-event-notifications": "ts-node -r tsconfig-paths/register ./cron-jobs/calendar-cron-job/notification-cron-job.ts",
+    "cron:user-daily-stats": "ts-node -r tsconfig-paths/register ./cron-jobs/user-stats-cron-job/user-stats-cron-job.ts",
+    "cron:events": "ts-node -r tsconfig-paths/register ./cron-jobs/calendar-cron-job/event-cron-job.ts",
+    "cron:expired-team-members": "ts-node -r tsconfig-paths/register ./cron-jobs/expired-team-members/cron-job.ts",
+    "cron:pusher": "ts-node -r tsconfig-paths/register ./cron-jobs/pusher-cron-job/pusher-cron-job.ts",
+    "cron:data-sync-notification": "ts-node -r tsconfig-paths/register ./cron-jobs/data-sync-notification-cron-job/cron-job.ts",
+    "cron:weekly": "ts-node -r tsconfig-paths/register ./cron-jobs/progress-emails-cron-job/daily-progress-emails-cron-job.ts",
+    "cron:daily": "ts-node -r tsconfig-paths/register ./cron-jobs/progress-emails-cron-job/weekly-progress-emails-cron-job.ts",
+    "cron:no-progress": "ts-node -r tsconfig-paths/register ./cron-jobs/progress-emails-cron-job/no-progress-emails-cron-job.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -64,6 +63,7 @@
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.0.12",
+    "@nestjs/schedule": "^6.0.1",
     "@ntegral/nestjs-sentry": "^4.0.1",
     "@pusher/push-notifications-server": "^1.2.6",
     "@sendgrid/mail": "^8.1.6",
@@ -75,6 +75,7 @@
     "auth0": "^4.25.0",
     "axios": "^1.12.2",
     "axios-retry": "^3.6.0",
+    "aws-embedded-metrics": "^4.2.0",
     "bull": "^4.16.5",
     "bullmq": "^5.1.0",
     "cheerio": "^1.0.0-rc.12",
@@ -150,6 +151,7 @@
     "webpack": "^5.58.2"
   },
   "overrides": {
+    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"
@@ -166,6 +168,7 @@
     "tmp": "0.2.4"
   },
   "resolutions": {
+    "html-minifier": "npm:html-minifier-next@^1.2.1",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"
@@ -244,6 +247,7 @@
       "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
       "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
       "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
+      "^@app/observability(|/.*)$": "<rootDir>/libs/observability/src/$1",
       "^@app/gemini(|/.*)$": "<rootDir>/libs/gemini/src/$1",
       "^@api-server(|/.*)$": "<rootDir>/apps/api-server/src/$1",
       "axios": "<rootDir>/node_modules/axios/dist/node/axios.cjs",

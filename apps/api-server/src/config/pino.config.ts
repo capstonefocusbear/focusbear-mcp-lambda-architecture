@@ -17,7 +17,12 @@ export const pinoConfig = registerAs('pino', () => ({
         : undefined,
     useLevelLabels: true,
     timestamp: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
-    autoLogging: process.env.NODE_ENV === 'development',
+    autoLogging:
+      process.env.NODE_ENV === 'development'
+        ? true
+        : {
+            ignore: (req) => req.url === '/healthcheck',
+          },
     // remove sensitive data from logs
     redact: ['req.headers.authorization', 'req.headers.cookie'],
     // keep only the fields that are needed for logging
@@ -27,12 +32,14 @@ export const pinoConfig = registerAs('pino', () => ({
           id: req.id,
           method: req.method,
           url: req.url,
+          path: req.raw?.url,
           headers: req.headers,
         };
       },
       res(res) {
         return {
           statusCode: res.statusCode,
+          responseTime: res.responseTime,
         };
       },
     },

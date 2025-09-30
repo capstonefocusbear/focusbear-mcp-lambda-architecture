@@ -8,7 +8,7 @@ import { UserProgressMetricsService } from '../../apps/api-server/src/modules/us
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 const BATCH_SIZE = 15; // Smaller batches for daily emails
@@ -21,6 +21,8 @@ async function runDailyProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
+  let emailsQueued = 0;
+  let usersConsidered = 0;
   try {
     console.log('Starting daily progress emails cron job...');
 
@@ -74,6 +76,7 @@ async function runDailyProgressEmailsCronJob() {
           );
 
           console.log(`Queued daily progress email for user ${user.id}`);
+          emailsQueued += 1;
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -105,6 +108,10 @@ async function runDailyProgressEmailsCronJob() {
     }
 
     console.log('Daily progress emails cron job completed successfully.');
+    return {
+      emailsQueued,
+      usersConsidered,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -118,10 +125,9 @@ async function runDailyProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runDailyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('daily-progress-emails-cron', () => withTimeout(runDailyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

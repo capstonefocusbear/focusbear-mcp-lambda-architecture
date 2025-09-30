@@ -56,7 +56,7 @@ async function runMonthlyProgressEmailsCronJob() {
 
           // Queue the progress email job
           await emailQueue.add(
-            'send-progress-email',
+            'send-monthly-progress-email',
             {
               user: userWithEmail,
               metrics,

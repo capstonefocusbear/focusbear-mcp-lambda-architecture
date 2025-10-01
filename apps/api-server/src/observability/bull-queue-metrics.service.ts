@@ -3,10 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { QueueEvents } from 'bullmq';
+import IORedis from 'ioredis';
 import { getQueueToken } from '@nestjs/bull-shared';
 import { emitQueueMetrics, QueueMetricCounts } from '@app/observability';
 import { MetricsConfig } from '../config/metrics.config';
 import { BullQueues } from '../shared/utils/constants';
+
+type RedisLike = {
+  quit?: () => Promise<unknown>;
+  disconnect?: () => void | Promise<unknown>;
+};
 
 type QueueLike = {
   name: string;
@@ -23,7 +29,7 @@ interface QueueDescriptor {
 export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BullQueueMetricsService.name);
 
-  private readonly queueEvents: QueueEvents[] = [];
+  private readonly queueEvents: Array<{ instance: QueueEvents; client?: RedisLike }> = [];
 
   private queues: QueueDescriptor[] = [];
 
@@ -39,16 +45,19 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
 
     await Promise.all(
       this.queues.map(async ({ name, queue }) => {
-        try {
-          const connection = (queue.opts as any)?.connection;
-          if (!connection) {
-            return;
-          }
+        const connection = (queue.opts as any)?.connection;
+        if (!connection) {
+          return;
+        }
 
+        const { connection: queueEventsConnection, client } = this.createDedicatedConnection(connection);
+
+        try {
           const queueEvents = new QueueEvents(name, {
-            connection,
+            connection: queueEventsConnection,
           });
           await queueEvents.waitUntilReady();
+
           queueEvents.on('failed', (event) => {
             const failedEvent = event as { jobId: string; failedReason: string; prev?: string; attemptsMade?: number };
             const logPayload = {
@@ -61,8 +70,10 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
             };
             this.logger.error(JSON.stringify(logPayload), undefined, 'BullQueueJobFailed');
           });
-          this.queueEvents.push(queueEvents);
+
+          this.queueEvents.push({ instance: queueEvents, client });
         } catch (error) {
+          await this.disposeDedicatedClient(client);
           this.logger.error(
             `Failed to initialise queue events for ${name}`,
             error instanceof Error ? error.stack : undefined,
@@ -74,14 +85,17 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await Promise.all(
-      this.queueEvents.map(async (queueEvent) => {
+      this.queueEvents.map(async ({ instance, client }) => {
         try {
-          await queueEvent.close();
+          await instance.close();
         } catch (error) {
-          this.logger.warn(`Unable to close queue events for ${queueEvent.name}: ${error}`);
+          this.logger.warn(`Unable to close queue events for ${instance.name}: ${error}`);
+        } finally {
+          await this.disposeDedicatedClient(client);
         }
       }),
     );
+    this.queueEvents.length = 0;
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -147,9 +161,45 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
         pollIntervalMs: 60_000,
         namespace: 'FocusBear/Queues',
         service: 'api',
-        environment: process.env.APP_ENV || process.env.SENTRY_ENV || process.env.NODE_ENV || 'development',
+        environment: 'prod',
         logQueueFailures: true,
       }
     );
+  }
+
+  private createDedicatedConnection(connection: any): { connection: any; client?: RedisLike } {
+    if (connection && typeof connection.duplicate === 'function') {
+      const duplicate = connection.duplicate();
+      return { connection: duplicate, client: duplicate };
+    }
+
+    if (connection instanceof IORedis) {
+      const duplicate = new IORedis(connection.options);
+      return { connection: duplicate, client: duplicate };
+    }
+
+    if (connection && typeof connection === 'object') {
+      return { connection: { ...connection } };
+    }
+
+    return { connection };
+  }
+
+  private async disposeDedicatedClient(client?: RedisLike): Promise<void> {
+    if (!client) {
+      return;
+    }
+
+    try {
+      if (typeof client.quit === 'function') {
+        await client.quit();
+        return;
+      }
+      if (typeof client.disconnect === 'function') {
+        await client.disconnect();
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to cleanly close QueueEvents Redis client: ${error}`);
+    }
   }
 }

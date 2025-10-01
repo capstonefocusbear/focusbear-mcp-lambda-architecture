@@ -5,7 +5,7 @@
  * @param {string|object} output - The LLM response to validate
  * @returns {object} - A grading result object
  */
-function validateProbability(output) {
+function validateProbability(output, context = {}) {
   try {
     // Handle both cases where output could be an object or a string
     const result = typeof output === 'object' ? output : JSON.parse(output.replace(/```json|```/g, '').trim());
@@ -31,6 +31,9 @@ function validateProbability(output) {
       'MAPS',
       'PRODUCTIVITY',
       'ACCESSIBILITY',
+      'SYSTEM',
+      'FINANCE',
+      'Health & Fitness',
     ];
 
     for (const app of result.apps) {
@@ -56,6 +59,31 @@ function validateProbability(output) {
           score: 0.0,
           reason: 'Invalid or missing category in app entry',
         };
+      }
+    }
+
+    // 🔥 Extra: compare with expected values if provided
+    const expected = context.config.expectedApps;
+    if (Array.isArray(expected) && expected.length) {
+      for (const exp of expected) {
+        const got = result.apps.find((a) => a.sourceName === exp.sourceName);
+        if (!got) {
+          return { pass: false, score: 0, reason: `Missing app: ${exp.sourceName}` };
+        }
+        if (got.minutesUsedTotal !== exp.minutesUsedTotal) {
+          return {
+            pass: false,
+            score: 0,
+            reason: `Minutes mismatch for ${exp.sourceName}: expected ${exp.minutesUsedTotal}, got ${got.minutesUsedTotal}`,
+          };
+        }
+        if (got.category !== exp.category) {
+          return {
+            pass: false,
+            score: 0,
+            reason: `Category mismatch for ${exp.sourceName}: expected ${exp.category}, got ${got.category}`,
+          };
+        }
       }
     }
 

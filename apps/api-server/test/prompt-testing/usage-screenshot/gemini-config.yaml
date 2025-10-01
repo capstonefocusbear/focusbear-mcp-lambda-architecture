@@ -1,5 +1,5 @@
 prompts:
-  - id:gemini-usage-screenshot-analysis
+  # - id:gemini-usage-screenshot-analysis
   - file://prompt.json
 
 providers:
@@ -7,7 +7,7 @@ providers:
     config:
       temperature: 0
       max_tokens: 1024
-      apiKeyEnvar: ${GEMINI_API_KEY}
+      # apiKey: ${GOOGLE_API_KEY}
 
 output:
   - debug

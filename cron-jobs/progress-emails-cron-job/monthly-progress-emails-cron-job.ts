@@ -46,9 +46,9 @@ async function runMonthlyProgressEmailsCronJob() {
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
           const userWithEmail = { ...user, email };
 
-          // Calculate monthly progress metrics for the user
-          const monthStart = new Date();
-          monthStart.setDate(1); // First day of the current month
+          // Calculate monthly progress metrics for the user (previous month)
+          const now = new Date();
+          const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
           const metrics = await userProgressMetricsService.calculateMonthlyProgress(user, monthStart);
 
           // Get unsubscribe token

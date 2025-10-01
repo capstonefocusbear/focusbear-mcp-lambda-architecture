@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, IsEnum, IsBoolean, IsArray, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsUUID, IsEnum, IsBoolean, IsArray, IsOptional, IsNotEmpty, IsObject } from 'class-validator';
 import { PauseFriction, BlockLevel } from '../entities/blocking-schedule.entity';
 
 export class UpsertBlockingScheduleDto {
@@ -47,4 +47,9 @@ export class UpsertBlockingScheduleDto {
   @IsOptional()
   @ApiProperty({ required: false })
   is_ai_blocking_enabled?: boolean;
+
+  @IsObject()
+  @IsOptional()
+  @ApiProperty({ required: false, type: Object })
+  metadata?: Record<string, any>;
 }

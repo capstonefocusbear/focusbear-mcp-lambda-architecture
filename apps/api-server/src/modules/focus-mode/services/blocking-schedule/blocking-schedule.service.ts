@@ -57,9 +57,12 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
       this.validateTimeFormat(blockingScheduleDto.start_time);
       this.validateTimeFormat(blockingScheduleDto.end_time);
 
-      // Set default values
+      // Set default values - exclude id to prevent IDOR vulnerability
+      const { id, ...dtoWithoutId } = blockingScheduleDto;
       const blockingScheduleData = {
-        ...blockingScheduleDto,
+        ...dtoWithoutId,
+        start_time: this.normalizeTimeFormat(blockingScheduleDto.start_time),
+        end_time: this.normalizeTimeFormat(blockingScheduleDto.end_time),
         user_id: userId,
         days_of_week: blockingScheduleDto.days_of_week || [0, 1, 2, 3, 4, 5, 6], // Default to all days
         pause_friction: blockingScheduleDto.pause_friction || PauseFriction.NONE,
@@ -110,8 +113,12 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         throw new NotFoundException('Blocking schedule not found');
       }
 
+      // Exclude id to prevent IDOR vulnerability - use the id from URL parameter
+      const { id: dtoId, ...dtoWithoutId } = blockingScheduleDto;
       Object.assign(existingSchedule, {
-        ...blockingScheduleDto,
+        ...dtoWithoutId,
+        start_time: this.normalizeTimeFormat(blockingScheduleDto.start_time),
+        end_time: this.normalizeTimeFormat(blockingScheduleDto.end_time),
         user_id: userId,
         days_of_week: blockingScheduleDto.days_of_week || [0, 1, 2, 3, 4, 5, 6],
         pause_friction: blockingScheduleDto.pause_friction || PauseFriction.NONE,
@@ -151,9 +158,15 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
   }
 
   private validateTimeFormat(time: string): void {
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    // Support both HH:MM and HH:MM:SS formats (PostgreSQL time type returns HH:MM:SS)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
     if (!timeRegex.test(time)) {
-      throw new BadRequestException('Invalid time format. Use HH:MM format (24-hour)');
+      throw new BadRequestException('Invalid time format. Use HH:MM or HH:MM:SS format (24-hour)');
     }
+  }
+
+  private normalizeTimeFormat(time: string): string {
+    // Convert HH:MM:SS to HH:MM for consistency
+    return time.substring(0, 5);
   }
 }

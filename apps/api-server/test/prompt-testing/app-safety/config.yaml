@@ -260,6 +260,54 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
+
+  - description: MessageMedia support article for release notes
+    vars:
+      url: support.messagemedia.com/hc/en-us/articles/13659458773519-Adding-the-SMS-Button-on-the-Item-Fulfillment-Invoice
+      tab_title: 'adding the sms button on the item fulfillment & invoice – sinch messagemedia'
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: NS work
+      justificationForThisUrl: release notes are about the messagemedia integration
+      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
+      currentTaskInToDoPlayer: update release notes
+      min_probability: 0.1
+      max_probability: 0.4
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: Zendesk editor for release notes
+    vars:
+      url: messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us
+      tab_title: ''
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: NS work
+      justificationForThisUrl: this is where I do release notes
+      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
+      currentTaskInToDoPlayer: update release notes
+      min_probability: 0.3
+      max_probability: 0.6
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: Thea smartStudy vocab site during Deep Work
+    vars:
+      url: thea.study/smartStudy/773260175?st=1362ba71c
+      tab_title: 'Thea - Google Chrome'
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: Quickly study vocab and do some work
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: update release notes
+      min_probability: 0.1
+      max_probability: 0.4
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
 providers:
   - id: openai:gpt-4.1-mini
     config:

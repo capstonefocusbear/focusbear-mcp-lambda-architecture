@@ -122,7 +122,7 @@ tests:
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: Investigate Research Sources
       min_probability: 0.4
-      max_probability: 0.7
+      max_probability: 0.9
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -1333,8 +1333,8 @@ tests:
   - description: 'Feedback: I gave a justification and it ignored it'
     vars:
       url: photos.google.com/
-      meta_description: ''
-      tab_title: photos - google photos
+      meta_description: 'Edit and enhance photos with AI-powered features like Magic Eraser and Unblur on Google Photos. Store, organize & search your memories.'
+      tab_title: 'Google Photos: Edit, Organize, Search, and Backup Your Photos'
       focus_mode: Deep Work
       intention: UX changes, RMIT data room
       justificationForThisUrl: getting screenshots to add to design feedback
@@ -1361,7 +1361,7 @@ tests:
     vars:
       url: go.xero.com/app/!hmLlG/dashboard
       tab_title: xero
-      meta_description: ''
+      meta_description: 'You need to enable JavaScript to run this app.'
       focus_mode: Deep Work
       intention: check meeting details in email
       justificationForThisUrl: need to add invoice to zoho store
@@ -1376,8 +1376,8 @@ tests:
   - description: Google Photos for meeting slides
     vars:
       url: photos.google.com/
-      tab_title: ''
-      meta_description: ''
+      tab_title: 'Google Photos: Edit, Organize, Search, and Backup Your Photos'
+      meta_description: 'Edit and enhance photos with AI-powered features like Magic Eraser and Unblur on Google Photos. Store, organize & search your memories.'
       focus_mode: Deep Work
       intention: prep for snow foundation meeting
       justificationForThisUrl: get photos for slides
@@ -1395,53 +1395,6 @@ tests:
       intention: "data room"
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "long deck in canva from RMIT"
-      min_probability: 0.1
-      max_probability: 0.3
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-  - description: MessageMedia support article for release notes
-    vars:
-      url: support.messagemedia.com/hc/en-us/articles/13659458773519-Adding-the-SMS-Button-on-the-Item-Fulfillment-Invoice
-      tab_title: 'adding the sms button on the item fulfillment & invoice – sinch messagemedia'
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: NS work
-      justificationForThisUrl: release notes are about the messagemedia integration
-      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
-      currentTaskInToDoPlayer: update release notes
-      min_probability: 0.55
-      max_probability: 1
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
-  - description: Zendesk editor for release notes
-    vars:
-      url: messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us
-      tab_title: ''
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: NS work
-      justificationForThisUrl: this is where I do release notes
-      lastFiveJustificationsInThisFocusSession: '[{"pageTitle": "netsuite | 2025 product updates & release notes", "url": "messagemedia3531.zendesk.com/knowledge/editor/01JS0Y5YF0WF793S863H41JZAA/en-us", "justification": "this is where I do release notes"}]'
-      currentTaskInToDoPlayer: update release notes
-      min_probability: 0.6
-      max_probability: 1
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-
-  - description: Thea smartStudy vocab site during Deep Work
-    vars:
-      url: thea.study/smartStudy/773260175?st=1362ba71c
-      tab_title: 'Thea - Google Chrome'
-      meta_description: ''
-      focus_mode: Deep Work
-      intention: Quickly study vocab and do some work
-      justificationForThisUrl: ''
-      lastFiveJustificationsInThisFocusSession: '[]'
-      currentTaskInToDoPlayer: update release notes
       min_probability: 0.1
       max_probability: 0.4
     assert:

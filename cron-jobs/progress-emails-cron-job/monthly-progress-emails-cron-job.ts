@@ -2,6 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { DateTime } from 'luxon';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
@@ -47,8 +48,11 @@ async function runMonthlyProgressEmailsCronJob() {
           const userWithEmail = { ...user, email };
 
           // Calculate monthly progress metrics for the user (previous month)
-          const now = new Date();
-          const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const monthStart = DateTime.now()
+            .setZone(user.timezone || 'UTC')
+            .minus({ months: 1 })
+            .startOf('month')
+            .toJSDate();
           const metrics = await userProgressMetricsService.calculateMonthlyProgress(user, monthStart);
 
           // Get unsubscribe token

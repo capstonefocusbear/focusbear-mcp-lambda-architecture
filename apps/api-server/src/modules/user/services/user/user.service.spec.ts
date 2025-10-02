@@ -71,6 +71,9 @@ import { CompletedActivitySequenceService } from '../../../activity/services/com
 // Mock axios and set the type
 jest.mock('axios');
 
+// flag so cache is disabled for getUserCurrentActivityProps(). Cache breaks expected side-effects test is testing for in testing environment.
+process.env.DISABLE_CAP_CACHE = '1';
+
 describe('UserService', () => {
   let userService: UserService;
 

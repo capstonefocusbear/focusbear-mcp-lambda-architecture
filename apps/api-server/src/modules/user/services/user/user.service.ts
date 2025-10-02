@@ -71,6 +71,13 @@ import { CompletedActivitySequenceService } from '../../../activity/services/com
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
+type CacheEntry<T> = { exp: number; val: T };
+const capCache = new Map<string, CacheEntry<CurrentActivityProps>>();
+function cacheKeyForCap(userId: string, localDay?: string) {
+  const day = localDay ?? new Date().toISOString().slice(0, 10);
+  return `cap:${userId}:${day}`;
+}
+
 @Injectable()
 export class UserService {
   constructor(
@@ -335,7 +342,19 @@ export class UserService {
     }
   }
 
-  async getUserCurrentActivityProps(id: string): Promise<CurrentActivityProps> {
+  async getUserCurrentActivityProps(id: string, opts: { bypassCache?: boolean } = {}): Promise<CurrentActivityProps> {
+    // cache toggle (toggled off in unit test as cache breaks expected side-effects)
+    const useCache = process.env.DISABLE_CAP_CACHE !== '1' && process.env.NODE_ENV !== 'test' && !opts.bypassCache;
+
+    const key = cacheKeyForCap(id);
+    const now = Date.now();
+
+    // read-through cache
+    if (useCache) {
+      const hit = capCache.get(key);
+      if (hit && hit.exp > now) return hit.val;
+    }
+
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -347,17 +366,19 @@ export class UserService {
       let partialUser = await this.seg('userRepo.getUserCurrentActivityProps', () =>
         this.userRepository.getUserCurrentActivityProps(id),
       );
-
       if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
 
       const initialCurrentActivity = partialUser.current_activity_id;
       let current_sequence_completed_activities: string[] = [];
 
+      // Start an independent I/O call *now* and await it later to overlap.
+      // Runs in parallel with recalc + completed-IDs fetch below.
+      const todayRoutineProgressPromise = this.seg('completedActivitySequenceService.getRoutinesProgress', () =>
+        this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
+      );
+
       if (partialUser.current_activity) {
-        const updatedPartialUser = await this.seg('recalculateActivityProps', () =>
-          this.recalculateActivityProps(partialUser),
-        );
-        partialUser = updatedPartialUser;
+        partialUser = await this.seg('recalculateActivityProps', () => this.recalculateActivityProps(partialUser));
 
         if (partialUser.current_completing_sequence_log_id) {
           current_sequence_completed_activities = await this.seg(
@@ -370,15 +391,21 @@ export class UserService {
         }
       }
 
-      const todayRoutineProgress = await this.seg('completedActivitySequenceService.getRoutinesProgress', () =>
-        this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
-      );
+      const todayRoutineProgress = await todayRoutineProgressPromise;
 
       const currentActivityProps = new CurrentActivityProps({
         ...partialUser,
         current_sequence_completed_activities,
         today_routine_progress: todayRoutineProgress,
       });
+
+      // write-through cache
+      if (useCache) {
+        const TTL_MS = 10_000;
+        const JITTER_MS = 2_000;
+        const ttl = TTL_MS - Math.floor(Math.random() * JITTER_MS);
+        capCache.set(key, { exp: now + ttl, val: currentActivityProps });
+      }
 
       if (id === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console

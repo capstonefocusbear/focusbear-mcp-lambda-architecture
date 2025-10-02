@@ -6,6 +6,7 @@ import { CompletedActivitySequence } from '../../activity/entities/completed-act
 import { CompletedActivity } from '../../activity/entities/completed-activity.entity';
 import { Device } from '../../device/entities/device.entity';
 import { FocusMode } from '../../focus-mode/entities/focus-mode.entity';
+import { BlockingSchedule } from '../../focus-mode/entities/blocking-schedule.entity';
 import { ActivityTemplate } from '../../activity-template/entity/activity-template.entity';
 import { HabitPack } from '../../habit-pack/entity/habit-pack.entity';
 import { InstalledPack } from '../../habit-pack/entity/installed-pack.entity';
@@ -497,6 +498,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => FocusMode, (focus_mode) => focus_mode.user)
   focus_modes?: FocusMode[];
+
+  @OneToMany(() => BlockingSchedule, (blocking_schedule) => blocking_schedule.user)
+  blocking_schedules?: BlockingSchedule[];
 
   @OneToMany(() => FocusModeTemplate, (focus_mode_template) => focus_mode_template.author)
   focus_mode_templates?: FocusModeTemplate[];

@@ -15,6 +15,7 @@ import { User } from '../../user/entities/user.entity';
 import { CompletedFocusBlock } from './completed-focus-block.entity';
 import { FocusModeTag } from './focus-mode-tags';
 import { ToDo } from '../../to-do/entities/to-do.entity';
+import { BlockingSchedule } from './blocking-schedule.entity';
 
 @Entity('focus_modes')
 export class FocusMode extends BaseEntity {
@@ -85,4 +86,7 @@ export class FocusMode extends BaseEntity {
   @ManyToMany(() => FocusModeTag, { cascade: true, eager: true })
   @JoinTable()
   tags?: FocusModeTag[];
+
+  @OneToMany(() => BlockingSchedule, (blocking_schedule) => blocking_schedule.focus_mode)
+  blocking_schedules?: BlockingSchedule[];
 }

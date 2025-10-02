@@ -2,19 +2,19 @@
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { DateTime } from 'luxon';
 import { AppModule } from '../../apps/api-server/src/app.module';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
+import { withSentry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-const BATCH_SIZE = 30; // Process users in batches to avoid overwhelming the queue
+const BATCH_SIZE = 15; // Reduced batch size to prevent OOM issues
 
-async function runWeeklyProgressEmailsCronJob() {
+async function runMonthlyProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const userRepository = app.get(UserRepository);
   const userProgressMetricsService = app.get(UserProgressMetricsService);
@@ -22,20 +22,23 @@ async function runWeeklyProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
-  let emailsQueued = 0;
-  let usersConsidered = 0;
   try {
-    console.log('Starting weekly progress emails cron job...');
+    console.log('Starting monthly progress emails cron job...');
 
+    // Log initial memory usage
+    const initialMemory = process.memoryUsage();
+    console.log(`Initial memory usage: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB heap, ${Math.round(initialMemory.rss / 1024 / 1024)}MB RSS`);
 
-    // Process users in batches to avoid overwhelming the system
+    // Paginated batch processing to avoid OOM
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForMonthlyEmailsBatch(skip, BATCH_SIZE);
       if (batch.length === 0) break;
+      // Log memory usage for this batch
+      const batchMemory = process.memoryUsage();
       console.log(
-        `Processing batch ${batchNum} (${batch.length} users)`
+        `Processing batch ${batchNum} (${batch.length} users) - Memory: ${Math.round(batchMemory.heapUsed / 1024 / 1024)}MB heap`
       );
 
       const emailPromises = batch.map(async (user) => {
@@ -44,15 +47,20 @@ async function runWeeklyProgressEmailsCronJob() {
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
           const userWithEmail = { ...user, email };
 
-          // Calculate weekly progress metrics for the user
-          const metrics = await userProgressMetricsService.calculateWeeklyProgress(user);
+          // Calculate monthly progress metrics for the user (previous month)
+          const monthStart = DateTime.now()
+            .setZone(user.timezone || 'UTC')
+            .minus({ months: 1 })
+            .startOf('month')
+            .toJSDate();
+          const metrics = await userProgressMetricsService.calculateMonthlyProgress(user, monthStart);
 
           // Get unsubscribe token
           const { unsubscribe_token } = await userEmailPreferencesService.getEmailPreferences(user.id);
 
           // Queue the progress email job
           await emailQueue.add(
-            'send-progress-email',
+            'send-monthly-progress-email',
             {
               user: userWithEmail,
               metrics,
@@ -69,13 +77,13 @@ async function runWeeklyProgressEmailsCronJob() {
             },
           );
 
-          console.log(`Queued weekly progress email for user ${user.id}`);
-          emailsQueued += 1;
+          console.log(`Queued monthly progress email for user ${user.id}`);
+          return { success: true, userId: user.id };
         } catch (error) {
           captureErrorWithContext(
             error,
             {
-              operation: 'queueWeeklyProgressEmail',
+              operation: 'queueMonthlyProgressEmail',
               userId: user.id,
               extra: {
                 batchIndex: batchNum - 1,
@@ -85,31 +93,36 @@ async function runWeeklyProgressEmailsCronJob() {
               logLevel: 'error',
             },
           );
+          console.error(`Failed to process user ${user.id}: ${error.message}`);
+          return { success: false, userId: user.id, error: error.message };
         }
       });
 
-      // Wait for all emails in this batch to be queued
-      await Promise.all(emailPromises);
+      const results = await Promise.all(emailPromises);
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      console.log(`Batch ${batchNum} completed: ${successful} successful, ${failed} failed`);
 
-      // Small delay between batches to avoid overwhelming the system
+      // Force garbage collection and connection cleanup between batches
+      if (global.gc) {
+        global.gc();
+      }
+
+      // Delay between batches for memory recovery and rate limiting
       if (batch.length === BATCH_SIZE) {
-        console.log('Waiting 1 second before processing next batch...');
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log('Waiting 3 seconds before processing next batch (memory recovery)...');
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
       skip += BATCH_SIZE;
       batchNum++;
     }
 
-    console.log('Weekly progress emails cron job completed successfully.');
-    return {
-      emailsQueued,
-      usersConsidered,
-    };
+    console.log('Monthly progress emails cron job completed successfully.');
   } catch (error) {
     captureErrorWithContext(
       error,
       {
-        operation: 'runWeeklyProgressEmailsCronJob',
+        operation: 'runMonthlyProgressEmailsCronJob',
       },
       {
         logLevel: 'error',
@@ -118,9 +131,10 @@ async function runWeeklyProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
+    process.exit();
   }
 }
 
 if (require.main === module) {
-  runCronWithTelemetry('weekly-progress-emails-cron', () => withTimeout(runWeeklyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  withSentry(() => withTimeout(runMonthlyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

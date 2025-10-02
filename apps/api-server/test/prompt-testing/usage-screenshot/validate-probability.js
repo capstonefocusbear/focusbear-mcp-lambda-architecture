@@ -33,7 +33,7 @@ function validateProbability(output, context = {}) {
       'ACCESSIBILITY',
       'SYSTEM',
       'FINANCE',
-      'Health & Fitness',
+      'HEALTH & FITNESS',
     ];
 
     for (const app of result.apps) {
@@ -62,7 +62,7 @@ function validateProbability(output, context = {}) {
       }
     }
 
-    // 🔥 Extra: compare with expected values if provided
+    // Validate expected value
     const expected = context.config.expectedApps;
     if (Array.isArray(expected) && expected.length) {
       for (const exp of expected) {

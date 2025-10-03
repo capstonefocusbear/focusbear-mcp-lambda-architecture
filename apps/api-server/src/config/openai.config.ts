@@ -31,4 +31,7 @@ export const openAiConfig = registerAs('openai', () => ({
   habitAdjustment: {
     apiKey: process.env.OPENAI_HABIT_ADJUSTMENT_API_KEY || process.env.OPENAI_API_KEY,
   },
+  todosTranscriptAnalysis: {
+    apiKey: process.env.OPENAI_TODOS_TRANSCRIPT_ANALYSIS_API_KEY || process.env.OPENAI_API_KEY,
+  },
 }));

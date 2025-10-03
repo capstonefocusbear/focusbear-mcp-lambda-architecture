@@ -1,11 +1,13 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
+import { BullModule } from '@nestjs/bull';
+import { BullWorkers, BullQueues, UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import {
   ActivityRepositoryMock,
   ActivitySequenceRepositoryMock,
@@ -22,6 +24,7 @@ import {
   LogQuantityQuestionsRepositoryMock,
   UserServiceMock,
   PusherBeamsServiceMock,
+  CompletedActivityQueueMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -64,7 +67,6 @@ import { User } from '../../../user/entities/user.entity';
 import { Activity } from '../../entities/activity.entity';
 import { ActivityStatType } from '../../domain/activity-stat-type.enum';
 import { CompletedActivityStats } from '../../domain/completed-activity-stats.model';
-import { ActivityCompletedPush } from '../../domain/activity-completed-push.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { DaySummary } from '../../domain/day-summary.mode';
@@ -78,15 +80,23 @@ import { LogQuantityQuestionsRepository } from '../../repositories/log-quantity-
 import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats.model';
 import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 import { UserService } from '../../../user/services/user/user.service';
-import { UTC_TO_IANA_MAP, DEFAULT_IANA_TIMEZONE } from '../../../../shared/utils/constants';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
+  let moduleRef: TestingModule;
   const i18nServiceMock = mockDeep<I18nService>();
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
+    // Mock Redis environment variables for tests
+    process.env.REDIS_HOSTNAME = 'localhost';
+    process.env.REDIS_PORT = '6379';
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        BullModule.registerQueue({
+          name: BullQueues.COMPLETED_ACTIVITY,
+        }),
+      ],
       providers: [
         CompletedActivityService,
         CompletedActivityRepository,
@@ -143,6 +153,8 @@ describe('CompletedActivityService', () => {
       .useValue(UserServiceMock)
       .overrideProvider(PusherBeamsService)
       .useValue(PusherBeamsServiceMock)
+      .overrideProvider('BullQueue_completed-activity')
+      .useValue(CompletedActivityQueueMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -152,12 +164,27 @@ describe('CompletedActivityService', () => {
     jest.clearAllMocks();
     jest.resetAllMocks();
     jest.useRealTimers();
+    CompletedActivityQueueMock.add.mockResolvedValue({ id: 'test-job-id' });
 
     // Set up default mock for isVerboseLoggingAllowed
     UserServiceMock.isVerboseLoggingAllowed.mockResolvedValue({
       isVerboseLoggingAllowed: false,
       user: null,
     });
+  });
+
+  afterAll(async () => {
+    if (moduleRef) {
+      // Close Redis connection if it exists
+      const { redisClient } = completedActivityService as any;
+      if (redisClient && typeof redisClient.disconnect === 'function') {
+        redisClient.disconnect();
+      }
+      await moduleRef.close();
+    }
+    // Clean up environment variables
+    delete process.env.REDIS_HOSTNAME;
+    delete process.env.REDIS_PORT;
   });
 
   it('should be defined', () => {
@@ -426,11 +453,295 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(PusherServiceMock.trigger).toBeCalledWith(
-        `private-${user_id}`,
-        'activity-completed',
-        new ActivityCompletedPush(completedActivityId, { ...completedActivity }),
+      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        expect.objectContaining({
+          completedActivity,
+          user_id,
+          completed_activity_log_id: completedActivityId,
+        }),
+        expect.objectContaining({
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }),
       );
+    });
+
+    it('positive: should enqueue background job for Pusher broadcasts', async () => {
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      const completedActivityId = randomUUID();
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      const result = await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        expect.objectContaining({
+          completedActivity,
+          user_id,
+          completed_activity_log_id: completedActivityId,
+        }),
+        expect.objectContaining({
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }),
+      );
+      expect(result).toBeDefined();
+      expect(result.completed_activity_log.id).toBe(completedActivityId);
+    });
+
+    it('positive: should return macOS-compatible response with completed_activity_log and completed_choice_log IDs', async () => {
+      const activityWithChoices: Activity = {
+        ...ActivityDummy,
+        has_choices: true,
+        choices: [{ ...ActivityDummy, id: randomUUID(), parent_id: ActivityDummy.id }],
+      };
+      const dtoWithChoice: CreateCompletedActivityDto = {
+        ...completedActivity,
+        choice_id: activityWithChoices.choices[0].id,
+      };
+      const completedActivityId = randomUUID();
+      const completedChoiceId = randomUUID();
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithChoices);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(activityWithChoices.choices[0]);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsertActivity
+        .mockResolvedValueOnce({ id: completedActivityId })
+        .mockResolvedValueOnce({ id: completedChoiceId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      const result = await completedActivityService.completeActivity(dtoWithChoice, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      // Verify macOS response structure
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('completed_activity_log');
+      expect(result).toHaveProperty('completed_choice_log');
+      expect(result).toHaveProperty('saved_log_quantity_answers');
+
+      // Verify IDs are present (required for macOS)
+      expect(result.completed_activity_log).toBeDefined();
+      expect(result.completed_activity_log.id).toBe(completedActivityId);
+      expect(result.completed_choice_log).toBeDefined();
+      expect(result.completed_choice_log.id).toBe(completedChoiceId);
+
+      // Verify background job is enqueued
+      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        expect.objectContaining({
+          completedActivity: dtoWithChoice,
+          user_id,
+          completed_activity_log_id: completedActivityId,
+          completed_choice_log_id: completedChoiceId,
+        }),
+        expect.objectContaining({
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }),
+      );
+    });
+
+    it('positive: should return macOS-compatible response for activities without choices (completed_choice_log should be null)', async () => {
+      const completedActivityId = randomUUID();
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      const result = await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      // Verify macOS response structure
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('completed_activity_log');
+      expect(result).toHaveProperty('completed_choice_log');
+      expect(result).toHaveProperty('saved_log_quantity_answers');
+
+      // Verify IDs are present (required for macOS)
+      expect(result.completed_activity_log).toBeDefined();
+      expect(result.completed_activity_log.id).toBe(completedActivityId);
+      expect(result.completed_choice_log).toBeNull(); // Should be null for activities without choices
+
+      // Verify background job is enqueued
+      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        expect.objectContaining({
+          completedActivity,
+          user_id,
+          completed_activity_log_id: completedActivityId,
+          completed_choice_log_id: undefined, // Should be undefined for activities without choices
+        }),
+        expect.objectContaining({
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }),
+      );
+    });
+
+    it('positive: should support idempotency with X-Idempotency-Key header - same request returns same IDs', async () => {
+      const idempotencyKey = 'test-idempotency-key-123';
+      const completedActivityId = randomUUID();
+      const headers = { 'x-idempotency-key': idempotencyKey };
+
+      // Mock Redis client for idempotency
+      const { redisClient } = completedActivityService as any;
+      redisClient.get = jest
+        .fn()
+        .mockResolvedValueOnce(null) // First call returns null (no cache)
+        .mockResolvedValueOnce(
+          JSON.stringify({
+            // Second call returns cached response
+            completed_activity_log: { id: completedActivityId },
+            completed_choice_log: null,
+          }),
+        );
+      redisClient.setex = jest.fn().mockResolvedValue('OK');
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      // First request
+      const result1 = await completedActivityService.completeActivity(completedActivity, headers, { user_id });
+
+      // Second request with same idempotency key
+      const result2 = await completedActivityService.completeActivity(completedActivity, headers, { user_id });
+
+      // Verify both responses have same IDs
+      expect(result1.completed_activity_log.id).toBe(completedActivityId);
+      expect(result2.completed_activity_log.id).toBe(completedActivityId);
+      expect(result1.completed_activity_log.id).toBe(result2.completed_activity_log.id);
+
+      // Verify background job was only enqueued once (first request)
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledTimes(1);
+
+      // Verify Redis was called correctly
+      expect(redisClient.get).toHaveBeenCalledWith(`idempotency:${user_id}:${idempotencyKey}`);
+      expect(redisClient.setex).toHaveBeenCalledWith(
+        `idempotency:${user_id}:${idempotencyKey}`,
+        86400,
+        expect.any(String),
+      );
+    }, 10000);
+
+    it('positive: should handle daily stats asynchronously (already enqueued to BullQueues.STATS)', async () => {
+      const completedActivityId = randomUUID();
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+
+      const result = await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      // Verify response is returned quickly
+      expect(result).toBeDefined();
+      expect(result.completed_activity_log.id).toBe(completedActivityId);
+
+      // Verify daily stats service is called (it handles its own Bull queue)
+      expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toHaveBeenCalled();
+
+      // Verify background job is enqueued for Pusher broadcasts
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.PROCESS_COMPLETED_ACTIVITY,
+        expect.objectContaining({
+          completedActivity,
+          user_id,
+          completed_activity_log_id: completedActivityId,
+        }),
+        expect.objectContaining({
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }),
+      );
+    });
+
+    it('positive: should handle break activities without background job (break type returns early)', async () => {
+      const breakActivity: Activity = {
+        ...ActivityDummy,
+        type: ActivityType.break,
+      };
+      const completedActivityId = randomUUID();
+
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(breakActivity);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
+      DeviceServiceMock.markAsLeader.mockResolvedValue(LeaderDeviceDummy);
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: completedActivityId });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      const result = await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, {
+        user_id,
+      });
+
+      // Verify response is returned quickly
+      expect(result).toBeDefined();
+      expect(result.completed_activity_log.id).toBe(completedActivityId);
+
+      // Verify break activity handling (should not call sequence completion)
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toHaveBeenCalled();
+
+      // Verify break activities return early and don't enqueue background jobs
+      expect(CompletedActivityQueueMock.add).not.toHaveBeenCalled();
+
+      // Verify break-specific daily stats are called
+      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toHaveBeenCalled();
     });
 
     it('positive: if should_not_update_current_activity value is passed as true, user current activity properties should not be updated', async () => {
@@ -2764,6 +3075,9 @@ describe('CompletedActivityService', () => {
           isVerboseLoggingAllowed: false,
           user: null,
         });
+
+        // Set up queue mock
+        CompletedActivityQueueMock.add.mockResolvedValue({ id: 'test-job-id' });
       });
 
       afterEach(() => {
@@ -2980,6 +3294,163 @@ describe('CompletedActivityService', () => {
           last_completed_sequence_started_at: new Date('2025-07-14T01:00:00.000Z'),
         }),
       );
+    });
+  });
+
+  describe('CompletedActivityService - ensure CAS belongs to active sequence (A postponed → B active)', () => {
+    const OLD_ENV = process.env;
+    let svc: CompletedActivityService;
+    beforeAll(() => {
+      process.env = { ...OLD_ENV, REDIS_HOSTNAME: 'localhost', REDIS_PORT: '6379' };
+    });
+
+    afterAll(async () => {
+      await (svc as any)?.redisClient?.quit?.();
+    });
+
+    it('completing habit from B attaches to CAS_B (not stale CAS_A)', async () => {
+      const SEQ_B = {
+        id: 'B',
+        type: ActivityType.morning,
+        activity_ids: ['hB1', 'hB2'],
+        sequenceActivityIds: ['hB1', 'hB2'],
+        activities: [
+          {
+            id: 'hB1',
+            activity_sequence_id: 'B',
+            user_id: 'U',
+            type: ActivityType.morning,
+            has_choices: false,
+            activity_data: { priority: ActivityPriority.STANDARD },
+          },
+          {
+            id: 'hB2',
+            activity_sequence_id: 'B',
+            user_id: 'U',
+            type: ActivityType.morning,
+            has_choices: false,
+            activity_data: { priority: ActivityPriority.STANDARD },
+          },
+        ],
+      };
+      const hB1 = SEQ_B.activities[0];
+      const USER = {
+        id: 'U',
+        timezone: 'America/Los_Angeles',
+        startup_time: '07:00',
+        shutdown_time: '23:00',
+        cutoff_time_for_non_high_priority_activities: '00:00',
+        language: 'en',
+        current_activity_sequence_id: 'B',
+        current_completing_sequence_log_id: 'CAS_A', // stale pointer
+        current_activity_assigned_at: new Date(),
+      };
+
+      const CAS_A = { id: 'CAS_A', activity_sequence_id: 'A', is_completed: false, completed_activity_logs: [] };
+      const CAS_B = { id: 'CAS_B', activity_sequence_id: 'B', is_completed: false, completed_activity_logs: [] };
+
+      const completedActivityRepository = {
+        upsertActivity: jest.fn().mockImplementation(async (entity: any) => ({ id: 'LOG_B1', ...entity })),
+        create: jest.fn(),
+        orm: {
+          find: jest.fn().mockResolvedValue([]),
+          findOneBy: jest.fn(),
+          insert: jest.fn(),
+          save: jest.fn(),
+        },
+      };
+
+      const deviceService = { markAsLeader: jest.fn() };
+      const activitySequenceRepository = { orm: { findOne: jest.fn().mockResolvedValue(SEQ_B as any) } };
+      const userRepository = {
+        orm: {
+          findOne: jest.fn().mockResolvedValue({ ...USER }),
+          update: jest.fn().mockResolvedValue(undefined),
+        },
+      };
+      const activityRepository = {
+        orm: {
+          findOneBy: jest.fn().mockResolvedValueOnce(hB1 as any), // fetchPreparatoryData(activity)
+          find: jest.fn(),
+        },
+      };
+
+      const completedActivitySequenceService = {
+        getOrCreateCompletingSequenceLog: jest.fn().mockResolvedValueOnce(CAS_A as any), // legacy returns wrong A
+        getOrCreateCompletingSequenceLogForSyncing: jest.fn().mockResolvedValueOnce(CAS_B as any), // ensure→B
+        getUncompletedSequenceLogWithActivities: jest.fn(),
+        completeActivitySequence: jest.fn(),
+        completeActivitySequenceByDate: jest.fn(),
+        nullifyUserCurrentActivityProps: jest.fn(),
+        clearUserCurrentActivityPropsWithoutCompletion: jest.fn(),
+      };
+
+      const pusher = { trigger: jest.fn() };
+      const beams = { publishToUsers: jest.fn(), createBeamsPublishRequest: jest.fn().mockReturnValue({}) };
+      const completedFocusModesRepository = {};
+      const userSettingsService = { updateUserTimezoneAndLanguage: jest.fn() };
+      const sentry = { instance: () => ({ addBreadcrumb: jest.fn(), captureException: jest.fn() }) } as any;
+      const userDailyStatsService = {
+        updateDailyStatsRoutineCompletion: jest.fn(),
+        updateTimeSpentInBreaks: jest.fn(),
+      };
+      const helperCommonService = { getDayOfWeek: jest.fn().mockReturnValue(1 as any) };
+      const activitySequenceService = {
+        checkIfActivityExistsInSequence: jest.fn(),
+        filterActivitiesForCurrentDay: jest.fn((_, acts: any[]) => acts),
+        sortActivityIdsByExecutionSequence: jest.fn((ids: string[]) => ids),
+      };
+      const logQuantityAnswerRepository = { orm: { create: jest.fn(), insert: jest.fn(), find: jest.fn() } };
+      const logQuantityQuestionRepository = { orm: { find: jest.fn(), findOneBy: jest.fn() } };
+      const userService = { isVerboseLoggingAllowed: jest.fn().mockResolvedValue({ isVerboseLoggingAllowed: false }) };
+      const i18n = { t: jest.fn().mockReturnValue('ok') };
+      const queue = { add: jest.fn() };
+
+      svc = new CompletedActivityService(
+        completedActivityRepository as any,
+        deviceService as any,
+        activitySequenceRepository as any,
+        userRepository as any,
+        activityRepository as any,
+        completedActivitySequenceService as any,
+        pusher as any,
+        beams as any,
+        completedFocusModesRepository as any,
+        userSettingsService as any,
+        sentry as any,
+        userDailyStatsService as any,
+        helperCommonService as any,
+        activitySequenceService as any,
+        logQuantityAnswerRepository as any,
+        logQuantityQuestionRepository as any,
+        userService as any,
+        i18n as any,
+        queue as any,
+      );
+
+      await (svc as any).redisClient?.quit?.();
+
+      // redis stub so we don't get the listening client persisting at the end of the test
+
+      (svc as any).redisClient = {
+        get: jest.fn().mockResolvedValue(null),
+        setex: jest.fn().mockResolvedValue('OK'),
+        quit: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn(),
+        on: jest.fn(),
+        duplicate: jest.fn().mockImplementation(() => (svc as any).redisClient),
+      };
+
+      await svc.completeActivity(
+        { activity_id: 'hB1', device_id: 'D', start_time: new Date(), finish_time: new Date() } as any,
+        { 'x-idempotency-key': 'k1' },
+        { user_id: USER.id } as any,
+      );
+
+      expect(completedActivityRepository.upsertActivity).toHaveBeenCalled();
+      const saved = completedActivityRepository.upsertActivity.mock.calls[0][0];
+      expect(saved.activity_sequence_id).toBe('B');
+      expect(saved.completed_sequence_id).toBe('CAS_B');
     });
   });
 });

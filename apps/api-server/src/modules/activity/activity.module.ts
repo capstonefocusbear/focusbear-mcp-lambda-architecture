@@ -29,6 +29,7 @@ import { LogQuantityQuestionsRepository } from './repositories/log-quantity-ques
 import { BullQueues } from '../../shared/utils/constants';
 import { TutorialsRepository } from './repositories/tutorial.repository';
 import { EmojiGenerationConsumer } from './consumers/emoji-generation.consumer';
+import { CompletedActivityConsumer } from './consumers/completed-activity.consumer';
 
 @Module({
   providers: [
@@ -47,6 +48,7 @@ import { EmojiGenerationConsumer } from './consumers/emoji-generation.consumer';
     LogQuantityQuestionsRepository,
     TutorialsRepository,
     EmojiGenerationConsumer,
+    CompletedActivityConsumer,
   ],
   exports: [
     ActivityParserService,
@@ -84,6 +86,12 @@ import { EmojiGenerationConsumer } from './consumers/emoji-generation.consumer';
     }),
     BullModule.registerQueue({
       name: BullQueues.EMOJI_GENERATION,
+    }),
+    BullModule.registerQueue({
+      name: BullQueues.COMPLETED_ACTIVITY,
+    }),
+    BullModule.registerQueue({
+      name: BullQueues.COMPLETED_ACTIVITY_DLQ,
     }),
     StripeModule.registerAsync({
       imports: [ConfigModule],

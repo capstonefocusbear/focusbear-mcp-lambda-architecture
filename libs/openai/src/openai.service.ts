@@ -53,6 +53,7 @@ export class OpenAIService {
     [OpenAIKeyType.SCREEN_TIME_IMAGE_OCR]?: OpenAI;
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
+    [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -285,6 +286,8 @@ export class OpenAIService {
 
     // 1. Always fetch metadata from the server to detect redirects and auth errors.
     const fetchedMetadata = await this.getMetadata(sanitizedUrl);
+    console.log('[DEBUG] Raw URL: ', url);
+    console.log('[DEBUG] Sanitized URL: ', sanitizedUrl);
     console.log('[DEBUG] 1. Metadata from getMetadata:', fetchedMetadata);
 
     // 2. Establish a priority-based fallback for the title and description.
@@ -855,11 +858,13 @@ export class OpenAIService {
     try {
       const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
 
+      const filledPrompt = (prompt || '').replace('{{current_datetime}}', new Date().toISOString());
+
       const messages: ChatCompletionMessageParam[] = [
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompt },
+            { type: 'text', text: filledPrompt },
             {
               type: 'image_url',
               image_url: {
@@ -999,6 +1004,94 @@ export class OpenAIService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
+    }
+  }
+
+  async extractTodosFromImage(imageBuffer: string, currentDatetimeIso?: string): Promise<BraindumpTaskDto[]> {
+    try {
+      const prompt = this.promptCacheService.getPrompt('handwritten-todos-analysis');
+
+      const filledPrompt = (prompt || '').replace(
+        '{{current_datetime}}',
+        currentDatetimeIso || new Date().toISOString(),
+      );
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: filledPrompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+              },
+            },
+          ],
+        },
+      ];
+
+      // Use the same approach as processUsageImage
+      const response = await this.analyzeImage(messages);
+
+      const { content } = response.choices[0].message;
+
+      const tasks = content ? JSON.parse(content).tasks : [];
+      return tasks.map((task) => plainToClass(BraindumpTaskDto, task));
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to extract todos from image');
+    }
+  }
+
+  async transcribeAudioToText(file: File): Promise<string> {
+    try {
+      const openai = this.getOpenAIInstance(OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS);
+      const transcription: any = await openai.audio.transcriptions.create({
+        model: 'gpt-4o-transcribe',
+        file,
+        response_format: 'text',
+        temperature: 0,
+      });
+      return typeof transcription === 'string' ? transcription : transcription?.text || '';
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to transcribe audio');
+    }
+  }
+
+  async createDraftTodosFromTranscript(transcript: string): Promise<BraindumpTaskDto[]> {
+    try {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'audio_transcript')) {
+        throw new Error('Invalid input');
+      }
+
+      const currentDatetimeIso = new Date().toISOString();
+      const prompt = this.promptCacheService.getPrompt('todos-transcript-analysis') || '';
+      const filledPrompt = prompt
+        .replace('{{transcript}}', transcript)
+        .replace('{{current_datetime}}', currentDatetimeIso);
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: filledPrompt,
+        },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS,
+        OPENAI_PARAMS.todosTranscriptAnalysis as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
+
+      const content = completions.choices[0]?.message?.content;
+      const parsed = content ? JSON.parse(content).tasks : [];
+      const tasks = Array.isArray(parsed) ? parsed : [];
+      return tasks.map((task) => plainToClass(BraindumpTaskDto, task));
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to create todos from transcript');
     }
   }
 

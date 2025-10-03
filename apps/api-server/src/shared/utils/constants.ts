@@ -149,6 +149,10 @@ export enum BullQueues {
   USAGE_IMAGE = 'usage-image',
   HEALTH_METRICS_SYNC = 'health-metrics-sync',
   USAGE_DATA = 'usage-data',
+  COMPLETED_ACTIVITY = 'completed-activity',
+  COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
+  TODO_IMAGE = 'todo-image',
+  TODO_AUDIO = 'todo-audio',
 }
 
 export enum BullWorkers {
@@ -163,9 +167,12 @@ export enum BullWorkers {
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
   PROCESS_USAGE_IMAGE = 'process-usage-image',
+  PROCESS_TODO_IMAGE = 'process-todo-image',
+  PROCESS_TODO_AUDIO = 'process-todo-audio',
   SYNC_HEALTH_METRICS = 'sync-health-metrics',
   SYNC_USAGE_DATA = 'sync-usage-data',
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
+  PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
 }
 
 export const createActivityFunction = {
@@ -296,6 +303,8 @@ export const S3_BUCKET_APP_USAGE_LOGS = 'app-usage-logs';
 export const S3_BUCKET_EMOJIS = 'emojis';
 export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
 export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
+export const S3_BUCKET_TODO_IMAGES = 'todo-images';
+export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

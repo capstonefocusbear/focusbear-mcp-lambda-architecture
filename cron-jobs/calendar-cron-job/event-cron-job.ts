@@ -4,7 +4,7 @@ import { BullQueues, BullWorkers, CRON_JOB_TIMEOUT_MS } from '../../apps/api-ser
 import { CronJobDataSource } from '../data-source';
 import { PlatformIntegration } from '../../apps/api-server/src/modules/platform-integrations/entities/platform-integration.entity';
 import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-integrations/domain/calendar-platforms.enum';
-import { withSentry } from '../sentry';
+import { runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -33,6 +33,7 @@ async function runEventCronJob() {
   const syncQueue = new Queue(BullQueues.SYNC_EVENTS, {
     connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
   });
+  let jobsEnqueued = 0;
 
   // Function to enqueue jobs
   const enqueueSyncJobs = async (
@@ -48,6 +49,7 @@ async function runEventCronJob() {
         userId: user.id,
         account: user.account,
       });
+      jobsEnqueued += 1;
     }
   };
 
@@ -59,9 +61,11 @@ async function runEventCronJob() {
   const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
   await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
 
-  process.exit();
+  await syncQueue.close();
+
+  return { jobsEnqueued };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runEventCronJob(), CRON_JOB_TIMEOUT_MS))
+  runCronWithTelemetry('calendar-event-cron', () => withTimeout(runEventCronJob(), CRON_JOB_TIMEOUT_MS));
 }

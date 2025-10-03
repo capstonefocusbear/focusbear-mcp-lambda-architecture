@@ -13,7 +13,7 @@ import { CronJobDataSource } from '../data-source';
 import { StudyParticipant } from '../../apps/api-server/src/modules/user/entities/study-participant.entity';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/constants';
-import { captureErrorWithContext, withSentry } from '../sentry';
+import { captureErrorWithContext, runCronWithTelemetry } from '../sentry';
 import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho-desk/services/zoho-desk.service';
 import { ZohoDeskModule } from '../../apps/api-server/src/modules/zoho-desk/zoho-desk.module';
 import { zohoConfig } from '../../apps/api-server/src/config/zoho.config';
@@ -326,6 +326,7 @@ export async function runDataSyncCronJob() {
   class CronContextModule {}
 
   let app: any;
+  let participantsNotified = 0;
   try {
     app = await NestFactory.createApplicationContext(CronContextModule, { logger: false });
     const zohoService = app.get(ZohoDeskService);
@@ -342,6 +343,7 @@ export async function runDataSyncCronJob() {
         const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
         if (phoneNumber) {
           await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
+          participantsNotified += 1;
 
           await CronJobDataSource.manager.query(
             `UPDATE study_participants SET last_data_sync_notified_at = NOW(), reserved_at = NULL WHERE id = $1`,
@@ -360,6 +362,11 @@ export async function runDataSyncCronJob() {
     });
 
     console.log('Usage data sync notification cronjob completed successfully');
+
+    return {
+      participantsReserved: reserved.length,
+      participantsNotified,
+    };
   } finally {
     try {
       if (app) await app.close();
@@ -371,5 +378,5 @@ export async function runDataSyncCronJob() {
 }
 
 if (require.main === module) {
-  withSentry(runDataSyncCronJob);
+  runCronWithTelemetry('data-sync-notification-cron', runDataSyncCronJob);
 }

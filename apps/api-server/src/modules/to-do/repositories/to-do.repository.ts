@@ -28,7 +28,9 @@ export class ToDoRepository extends BaseRepository<ToDo> {
   public static readonly TOP_SCORE_SQL = `
     CASE
       WHEN to_do.due_date IS NULL THEN 0.1
-      WHEN to_do.due_date < CURRENT_DATE THEN 10.0
+      WHEN to_do.due_date::date < CURRENT_DATE THEN 
+        /* Overdue: base score + 1 point per overdue day (no cap) */
+        10.0 + (CURRENT_DATE - to_do.due_date::date)
       WHEN to_do.due_date = CURRENT_DATE THEN 9.0
       ELSE GREATEST(
         0.1,

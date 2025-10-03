@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class UpdateTableUsersAddColumnEmailFrequency1754503253311 implements MigrationInterface {
   name = 'UpdateTableUsersAddColumnEmailFrequency1754503253311';
-  
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Check if email_frequency_enum exists, create if not
     await queryRunner.query(`
@@ -14,7 +14,7 @@ export class UpdateTableUsersAddColumnEmailFrequency1754503253311 implements Mig
       END $$;
     `);
 
-    // Check if email_frequency column exists, add if not  
+    // Check if email_frequency column exists, add if not
     await queryRunner.query(`
       DO $$
       BEGIN
@@ -33,8 +33,8 @@ export class UpdateTableUsersAddColumnEmailFrequency1754503253311 implements Mig
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_email_frequency";`);
-    
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_users_email_frequency";');
+
     // Only drop the column if it was created by this migration
     // In practice, we may want to keep the column but this provides a clean rollback
     await queryRunner.query(`
@@ -46,7 +46,7 @@ export class UpdateTableUsersAddColumnEmailFrequency1754503253311 implements Mig
         END IF;
       END $$;
     `);
-    
-    await queryRunner.query(`DROP TYPE IF EXISTS "email_frequency_enum";`);
+
+    await queryRunner.query('DROP TYPE IF EXISTS "email_frequency_enum";');
   }
 }

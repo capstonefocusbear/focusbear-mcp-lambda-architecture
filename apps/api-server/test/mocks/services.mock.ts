@@ -44,6 +44,10 @@ export const Auth0ManagementServiceMock = {
   resendEmailVerification: jest.fn(),
 };
 
+export const CompletedActivityQueueMock = {
+  add: jest.fn(),
+};
+
 export const UserServiceMock = {
   getUserLocalDeviceSettings: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),

@@ -8,6 +8,7 @@ import { CompletedActivity } from '../modules/activity/entities/completed-activi
 import { Device } from '../modules/device/entities/device.entity';
 import { CompletedFocusBlock } from '../modules/focus-mode/entities/completed-focus-block.entity';
 import { FocusMode } from '../modules/focus-mode/entities/focus-mode.entity';
+import { BlockingSchedule } from '../modules/focus-mode/entities/blocking-schedule.entity';
 import { Team } from '../modules/team/entities/team.entity';
 import { User } from '../modules/user/entities/user.entity';
 import { HabitPack } from '../modules/habit-pack/entity/habit-pack.entity';
@@ -64,7 +65,7 @@ export const typeormConfig = registerAs(
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DB,
     synchronize: false,
-    logging: false,
+    logging: ['error', 'warn'],
     maxQueryExecutionTime: 200,
     ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
     entities: [
@@ -76,6 +77,7 @@ export const typeormConfig = registerAs(
       CompletedActivitySequence,
       FocusMode,
       CompletedFocusBlock,
+      BlockingSchedule,
       Team,
       HabitPack,
       InstalledPack,

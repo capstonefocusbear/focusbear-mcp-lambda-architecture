@@ -39,7 +39,7 @@ export class EmailTemplateCompilerService {
   }
 
   async compileProgressEmail(
-    templateType: 'weekly-progress' | 'no-progress',
+    templateType: 'weekly-progress' | 'monthly-progress' | 'no-progress',
     data: TemplateData,
   ): Promise<CompiledTemplate> {
     try {
@@ -209,7 +209,9 @@ export class EmailTemplateCompilerService {
       return this.templateCache.get(templateType);
     }
 
-    const templatePath = path.join(this.templatesPath, 'progress', `${templateType}.hbs`);
+    // Map monthly-progress to weekly-progress template since they share the same layout
+    const actualTemplateType = templateType === 'monthly-progress' ? 'weekly-progress' : templateType;
+    const templatePath = path.join(this.templatesPath, 'progress', `${actualTemplateType}.hbs`);
 
     try {
       const templateContent = await fs.readFile(templatePath, 'utf8');
@@ -331,6 +333,7 @@ export class EmailTemplateCompilerService {
   private getEmailTitle(templateType: string, data: TemplateData): string {
     const titles = {
       'weekly-progress': 'Weekly Progress Report',
+      'monthly-progress': 'Monthly Progress Report',
       'no-progress': 'We Miss You!',
     };
 
@@ -340,6 +343,7 @@ export class EmailTemplateCompilerService {
   private getEmailPreview(templateType: string, data: TemplateData): string {
     const previews = {
       'weekly-progress': `Hi ${data.userName}, here's your weekly progress report`,
+      'monthly-progress': `Hi ${data.userName}, here's your monthly progress report`,
       'no-progress': `${data.userName}, we miss you at Focus Bear`,
     };
 
@@ -350,6 +354,7 @@ export class EmailTemplateCompilerService {
   private getEmailSubject(templateType: string, data: TemplateData): string {
     const subjects = {
       'weekly-progress': '🐻 Your Weekly Progress Report at Focus Bear',
+      'monthly-progress': '🐻 Your Monthly Progress Report at Focus Bear',
       'no-progress': '🐻 We miss you at Focus Bear!',
       'inactivity-warning': '⚠️ Important: Your Focus Bear account will be deleted soon',
     };

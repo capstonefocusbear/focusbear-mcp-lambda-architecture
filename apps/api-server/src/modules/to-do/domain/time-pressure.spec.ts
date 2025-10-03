@@ -84,10 +84,10 @@ describe('Time Pressure Score - Size-Aware Implementation', () => {
       expect(score7).toBeGreaterThan(score14);
     });
 
-    it('AC5: Past due = 10.0', () => {
+    it('AC5: Past due = 11.0 (1 day overdue)', () => {
       const pastDue = new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000);
       const score = timePressureScore(pastDue, 60);
-      expect(score).toBe(10.0);
+      expect(score).toBe(11.0);
     });
 
     it('AC6: Due today = 9.0', () => {
@@ -98,6 +98,41 @@ describe('Time Pressure Score - Size-Aware Implementation', () => {
     it('AC7: NULL date = 0.1', () => {
       const score = timePressureScore(null as any, 60);
       expect(score).toBe(0.1);
+    });
+  });
+
+  describe('timePressureScore - Overdue Penalty Logic', () => {
+    it('should add +1 point for each overdue day (1 day overdue = 11 points)', () => {
+      const oneDayOverdue = new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000);
+      const score = timePressureScore(oneDayOverdue, 60);
+      expect(score).toBe(11.0);
+    });
+
+    it('should add +1 point for each overdue day (5 days overdue = 15 points)', () => {
+      const fiveDaysOverdue = new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000);
+      const score = timePressureScore(fiveDaysOverdue, 60);
+      expect(score).toBe(15.0);
+    });
+
+    it('should add +1 point for each overdue day (10 days overdue = 20 points)', () => {
+      const tenDaysOverdue = new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000);
+      const score = timePressureScore(tenDaysOverdue, 60);
+      expect(score).toBe(20.0);
+    });
+
+    it('should add +1 point for each overdue day (20 days overdue = 30 points)', () => {
+      const twentyDaysOverdue = new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000);
+      const score = timePressureScore(twentyDaysOverdue, 60);
+      expect(score).toBe(30.0);
+    });
+
+    it('should prioritize more overdue tasks over less overdue tasks', () => {
+      const oneDayOverdue = timePressureScore(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), 60);
+      const fiveDaysOverdue = timePressureScore(new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000), 60);
+      const tenDaysOverdue = timePressureScore(new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000), 60);
+
+      expect(fiveDaysOverdue).toBeGreaterThan(oneDayOverdue);
+      expect(tenDaysOverdue).toBeGreaterThan(fiveDaysOverdue);
     });
   });
 

@@ -101,7 +101,7 @@
     "nestjs-pino": "^4.2.0",
     "openai": "^5.1.1",
     "pg": "^8.7.1",
-    "pino-http": "^10.5.0",
+    "pino-http": "^8.2.0",
     "pusher": "^5.1.0-beta",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
@@ -153,6 +153,7 @@
   },
   "overrides": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
+    "fast-redact": "^3.5.0",
     "auth0": {
       "jsonwebtoken": "9.0.0",
       "jose": "4.15.5"

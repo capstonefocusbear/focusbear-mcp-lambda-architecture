@@ -184,7 +184,8 @@
     "undici": "6.21.3",
     "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
-    "tmp": "0.2.4"
+    "tmp": "0.2.4",
+    "fast-redact": "^3.5.0"
   },
   "husky": {
     "hooks": {

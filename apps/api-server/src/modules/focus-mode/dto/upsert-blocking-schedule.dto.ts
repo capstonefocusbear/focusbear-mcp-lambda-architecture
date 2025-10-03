@@ -48,6 +48,11 @@ export class UpsertBlockingScheduleDto {
   @ApiProperty({ required: false })
   is_ai_blocking_enabled?: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  is_micro_breaks_enabled?: boolean;
+
   @IsObject()
   @IsOptional()
   @ApiProperty({ required: false, type: Object })

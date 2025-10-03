@@ -8,7 +8,7 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
         `);
 
     await queryRunner.query(`
-            CREATE TYPE "block_level_enum" AS ENUM('gentle', 'strict');
+            CREATE TYPE "block_level_enum" AS ENUM('gentle', 'strict', 'super-strict');
         `);
 
     await queryRunner.query(`
@@ -25,6 +25,8 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
                 "pause_friction" "pause_friction_enum" NOT NULL DEFAULT 'none',
                 "block_level" "block_level_enum" NOT NULL DEFAULT 'strict',
                 "is_ai_blocking_enabled" boolean NOT NULL DEFAULT false,
+                "is_micro_breaks_enabled" boolean NOT NULL DEFAULT false,
+                "metadata" jsonb,
                 CONSTRAINT "PK_blocking_schedules" PRIMARY KEY ("id")
             )
         `);
@@ -62,7 +64,8 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
                 "focus_mode_id", 
                 "pause_friction", 
                 "block_level", 
-                "is_ai_blocking_enabled"
+                "is_ai_blocking_enabled",
+                "is_micro_breaks_enabled"
             )
             SELECT 
                 u.id as user_id,
@@ -88,7 +91,8 @@ export class CreateTableBlockingSchedules1758845856956 implements MigrationInter
                 ) as focus_mode_id,
                 'none' as pause_friction,
                 'strict' as block_level,
-                false as is_ai_blocking_enabled
+                false as is_ai_blocking_enabled,
+                false as is_micro_breaks_enabled
             FROM users u
             WHERE u.shutdown_time IS NOT NULL 
             AND u.startup_time IS NOT NULL

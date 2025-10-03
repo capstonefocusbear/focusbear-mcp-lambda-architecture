@@ -13,6 +13,7 @@ export enum PauseFriction {
 export enum BlockLevel {
   GENTLE = 'gentle',
   STRICT = 'strict',
+  SUPER_STRICT = 'super-strict',
 }
 
 @Entity('blocking_schedules')
@@ -80,6 +81,18 @@ export class BlockingSchedule extends BaseEntity {
     default: false,
   })
   is_ai_blocking_enabled?: boolean;
+
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  is_micro_breaks_enabled?: boolean;
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+  })
+  metadata?: Record<string, any>;
 
   @ManyToOne(() => User, (user) => user.blocking_schedules, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

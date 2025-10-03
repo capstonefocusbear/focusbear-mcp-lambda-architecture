@@ -72,6 +72,49 @@ export class EmailProcessor {
     }
   }
 
+  @Process('send-monthly-progress-email')
+  async handleMonthlyProgressEmail(job: Job) {
+    try {
+      const { user, metrics, unsubscribe_token } = job.data;
+
+      // Generate email content using monthly template
+      const emailContent = await this.progressEmailTemplateService.generateMonthlyProgressEmail(
+        user,
+        metrics,
+        unsubscribe_token,
+      );
+
+      // Send email via SendGrid
+      await this.sendGridService.sendEmail({
+        to: user.email,
+        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+        trackingSettings: {
+          clickTracking: { enable: true },
+          openTracking: { enable: true },
+        },
+      });
+
+      // Update last email sent timestamp
+      await this.updateLastEmailSent(user.id);
+
+      return { success: true, userId: user.id };
+    } catch (error) {
+      // Log to Sentry
+      this.sentryService.instance().captureException(error, {
+        extra: {
+          jobId: job.id,
+          userId: job.data.user?.id,
+          operation: 'handleMonthlyProgressEmail',
+        },
+      });
+
+      throw error;
+    }
+  }
+
   @Process('send-no-progress-email')
   async handleNoProgressEmail(job: Job) {
     try {

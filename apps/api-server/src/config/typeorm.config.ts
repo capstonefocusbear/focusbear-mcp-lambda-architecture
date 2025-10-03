@@ -65,7 +65,7 @@ export const typeormConfig = registerAs(
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DB,
     synchronize: false,
-    logging: false,
+    logging: ['error', 'warn'],
     maxQueryExecutionTime: 200,
     ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
     entities: [

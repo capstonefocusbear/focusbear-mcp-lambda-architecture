@@ -6,7 +6,7 @@ import { Entitlement } from '../../apps/api-server/src/modules/subscription/doma
 import { TeamToMember } from '../../apps/api-server/src/modules/team/entities/team-to-member.entity';
 import { Team } from '../../apps/api-server/src/modules/team/entities/team.entity';
 import { PaymentType } from '../../apps/api-server/src/modules/team/domain/payment-type.enum';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -121,9 +121,9 @@ async function runExpiredTeamMembersCronJob() {
   for await (const member of expiringMembers) {
     await disassociateMemberFromTeam(member);
   }
-  process.exit();
+  return { membersProcessed: expiringMembers.length };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runExpiredTeamMembersCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('expired-team-members-cron', () => withTimeout(runExpiredTeamMembersCronJob(), CRON_JOB_TIMEOUT_MS));
 }

@@ -31,6 +31,15 @@
         "tsConfigPath": "apps/api-server/tsconfig.app.json"
       }
     },
+    "observability": {
+      "type": "library",
+      "root": "libs/observability",
+      "entryFile": "index",
+      "sourceRoot": "libs/observability/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/observability/tsconfig.lib.json"
+      }
+    },
     "fastify-content-types": {
       "type": "library",
       "root": "libs/fastify-content-types",

@@ -7,10 +7,10 @@ import { UserRepository } from '../../apps/api-server/src/modules/user/repositor
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-const BATCH_SIZE = 40; // Process inactive users in batches
+const BATCH_SIZE = 30; // Process inactive users in batches
 
 async function runNoProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -19,20 +19,18 @@ async function runNoProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
+  let emailsQueued = 0;
+  let usersConsidered = 0;
   try {
     console.log('Starting no-progress emails cron job...');
-
-    // Get users who haven't been active in 7 days
-    const users = await userRepository.getUsersForNoProgressEmails(7);
-    console.log(`Found ${users.length} inactive users for re-engagement emails.`);
-
-    // Process users in batches
-    for (let i = 0; i < users.length; i += BATCH_SIZE) {
-      const batch = users.slice(i, i + BATCH_SIZE);
+    // Paginated batch processing to avoid OOM
+    let skip = 0;
+    let batchNum = 1;
+    while (true) {
+      const batch = await userRepository.getUsersForNoProgressEmailsBatch(skip, BATCH_SIZE, 7);
+      if (batch.length === 0) break;
       console.log(
-        `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(users.length / BATCH_SIZE)} (${
-          batch.length
-        } users)`,
+        `Processing batch ${batchNum} (${batch.length} users)`,
       );
 
       const emailPromises = batch.map(async (user) => {
@@ -63,6 +61,7 @@ async function runNoProgressEmailsCronJob() {
           );
 
           console.log(`Queued no-progress email for user ${user.id}`);
+          emailsQueued += 1;
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -70,7 +69,7 @@ async function runNoProgressEmailsCronJob() {
               operation: 'queueNoProgressEmail',
               userId: user.id,
               extra: {
-                batchIndex: Math.floor(i / BATCH_SIZE),
+                batchIndex: batchNum - 1,
               },
             },
             {
@@ -83,13 +82,19 @@ async function runNoProgressEmailsCronJob() {
       await Promise.all(emailPromises);
 
       // Delay between batches
-      if (i + BATCH_SIZE < users.length) {
-        console.log('Waiting 1.5 seconds before processing next batch...');
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+       if (batch.length === BATCH_SIZE) {
+        console.log('Waiting 1 second before processing next batch...');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+      skip += BATCH_SIZE;
+      batchNum += 1;
     }
 
     console.log('No-progress emails cron job completed successfully.');
+    return {
+      emailsQueued,
+      usersConsidered,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -103,10 +108,9 @@ async function runNoProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runNoProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('no-progress-emails-cron', () => withTimeout(runNoProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

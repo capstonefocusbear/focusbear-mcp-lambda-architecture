@@ -286,6 +286,8 @@ export class OpenAIService {
 
     // 1. Always fetch metadata from the server to detect redirects and auth errors.
     const fetchedMetadata = await this.getMetadata(sanitizedUrl);
+    console.log('[DEBUG] Raw URL: ', url);
+    console.log('[DEBUG] Sanitized URL: ', sanitizedUrl);
     console.log('[DEBUG] 1. Metadata from getMetadata:', fetchedMetadata);
 
     // 2. Establish a priority-based fallback for the title and description.
@@ -1044,9 +1046,9 @@ export class OpenAIService {
 
   async transcribeAudioToText(file: File): Promise<string> {
     try {
-      const openai = this.getOpenAIInstance(OpenAIKeyType.GENERAL);
+      const openai = this.getOpenAIInstance(OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS);
       const transcription: any = await openai.audio.transcriptions.create({
-        model: 'whisper-1',
+        model: 'gpt-4o-transcribe',
         file,
         response_format: 'text',
         temperature: 0,

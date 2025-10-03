@@ -43,7 +43,9 @@
       "@api-server/*": ["apps/api-server/src/*"],
       "@api-server": ["apps/api-server/src"],
       "@app/gemini": ["libs/gemini/src"],
-      "@app/gemini/*": ["libs/gemini/src/*"]
+      "@app/gemini/*": ["libs/gemini/src/*"],
+      "@app/observability": ["libs/observability/src"],
+      "@app/observability/*": ["libs/observability/src/*"]
     }
   }
 }

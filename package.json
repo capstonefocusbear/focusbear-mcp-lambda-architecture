@@ -101,7 +101,7 @@
     "nestjs-pino": "^4.2.0",
     "openai": "^5.1.1",
     "pg": "^8.7.1",
-    "pino-http": "^8.2.0",
+    "pino-http": "^10.5.0",
     "pusher": "^5.1.0-beta",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",

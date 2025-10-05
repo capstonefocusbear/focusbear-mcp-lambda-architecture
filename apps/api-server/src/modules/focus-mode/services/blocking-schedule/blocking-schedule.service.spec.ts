@@ -216,7 +216,6 @@ describe('BlockingScheduleService', () => {
           pause_friction: PauseFriction.NONE,
           block_level: BlockLevel.STRICT,
           is_ai_blocking_enabled: false,
-          is_micro_breaks_enabled: false,
           metadata: null, // Default to null
         }),
       );
@@ -269,32 +268,6 @@ describe('BlockingScheduleService', () => {
       expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({
           block_level: BlockLevel.SUPER_STRICT,
-        }),
-      );
-      expect(result).toEqual(expectedSchedule);
-    });
-
-    it('should handle is_micro_breaks_enabled field', async () => {
-      const dtoWithMicroBreaks = {
-        name: 'Schedule with Micro Breaks',
-        start_time: '09:00',
-        end_time: '17:00',
-        focus_mode_id: focusModeId,
-        is_micro_breaks_enabled: true,
-      };
-
-      const expectedSchedule = new BlockingSchedule({
-        ...dtoWithMicroBreaks,
-        user_id: userId,
-      });
-
-      BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(expectedSchedule);
-
-      const result = await blockingScheduleService.createBlockingSchedule(userId, dtoWithMicroBreaks);
-
-      expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          is_micro_breaks_enabled: true,
         }),
       );
       expect(result).toEqual(expectedSchedule);

@@ -83,12 +83,6 @@ export class BlockingSchedule extends BaseEntity {
   is_ai_blocking_enabled?: boolean;
 
   @Column({
-    type: 'boolean',
-    default: false,
-  })
-  is_micro_breaks_enabled?: boolean;
-
-  @Column({
     type: 'jsonb',
     nullable: true,
   })

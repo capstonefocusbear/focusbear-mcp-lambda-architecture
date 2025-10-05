@@ -68,7 +68,6 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         pause_friction: blockingScheduleDto.pause_friction || PauseFriction.NONE,
         block_level: blockingScheduleDto.block_level || BlockLevel.STRICT,
         is_ai_blocking_enabled: blockingScheduleDto.is_ai_blocking_enabled || false,
-        is_micro_breaks_enabled: blockingScheduleDto.is_micro_breaks_enabled || false,
         metadata: blockingScheduleDto.metadata || null,
       };
 
@@ -126,7 +125,6 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         pause_friction: blockingScheduleDto.pause_friction || PauseFriction.NONE,
         block_level: blockingScheduleDto.block_level || BlockLevel.STRICT,
         is_ai_blocking_enabled: blockingScheduleDto.is_ai_blocking_enabled || false,
-        is_micro_breaks_enabled: blockingScheduleDto.is_micro_breaks_enabled || false,
         metadata: blockingScheduleDto.metadata || null,
       });
 

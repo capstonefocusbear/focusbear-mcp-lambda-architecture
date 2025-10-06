@@ -342,20 +342,27 @@ export class UserService {
     }
   }
 
-  async getUserCurrentActivityProps(id: string, opts: { bypassCache?: boolean } = {}): Promise<CurrentActivityProps> {
-    // cache toggle (toggled off in unit test as cache breaks expected side-effects)
-    const useCache = process.env.DISABLE_CAP_CACHE !== '1' && process.env.NODE_ENV !== 'test' && !opts.bypassCache;
+  async getUserCurrentActivityProps(
+    userId: string,
+    options: { bypassCache?: boolean } = {},
+  ): Promise<CurrentActivityProps> {
+    const useCache = process.env.DISABLE_CAP_CACHE !== '1' && process.env.NODE_ENV !== 'test' && !options.bypassCache; // cache toggle (toggled off in unit test as cache breaks expected side-effects)
 
-    const key = cacheKeyForCap(id);
-    const now = Date.now();
+    const cacheKey = cacheKeyForCap(userId);
+    const nowInMilliseconds = Date.now();
 
-    // read-through cache
+    // Read-through cache
     if (useCache) {
-      const hit = capCache.get(key);
-      if (hit) {
-        // drop expired cache entries
-        if (hit.exp <= now) capCache.delete(key);
-        else return hit.val;
+      const cacheEntry = capCache.get(cacheKey) as { exp: number; val: CurrentActivityProps } | undefined;
+      if (cacheEntry) {
+        const expirationEpochMilliseconds = cacheEntry.exp;
+        const cachedValue = cacheEntry.val;
+
+        if (expirationEpochMilliseconds <= nowInMilliseconds) {
+          capCache.delete(cacheKey); // drop expired cache entries
+        } else {
+          return cachedValue;
+        }
       }
     }
 
@@ -363,17 +370,19 @@ export class UserService {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Getting user current activity props',
-        data: { user_id: id },
+        message: 'Getting user current activity properties',
+        data: { user_id: userId },
       });
 
-      let partialUser = await this.seg('userRepo.getUserCurrentActivityProps', () =>
-        this.userRepository.getUserCurrentActivityProps(id),
+      let partialUser = await this.seg('userRepository.getUserCurrentActivityProps', () =>
+        this.userRepository.getUserCurrentActivityProps(userId),
       );
-      if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      if (!partialUser) {
+        throw new NotFoundException(`User with id: ${userId} does not exist!`);
+      }
 
       const initialCurrentActivity = partialUser.current_activity_id;
-      let current_sequence_completed_activities: string[] = [];
+      let currentSequenceCompletedActivityIds: string[] = [];
 
       // Start an independent I/O call *now* and await it later to overlap.
       // Runs in parallel with recalc + completed-IDs fetch below.
@@ -385,7 +394,7 @@ export class UserService {
         partialUser = await this.seg('recalculateActivityProps', () => this.recalculateActivityProps(partialUser));
 
         if (partialUser.current_completing_sequence_log_id) {
-          current_sequence_completed_activities = await this.seg(
+          currentSequenceCompletedActivityIds = await this.seg(
             'completedActivityService.getCurrentSequenceCompletedActivityIds',
             () =>
               this.completedActivityService.getCurrentSequenceCompletedActivityIds(
@@ -399,19 +408,24 @@ export class UserService {
 
       const currentActivityProps = new CurrentActivityProps({
         ...partialUser,
-        current_sequence_completed_activities,
+        current_sequence_completed_activities: currentSequenceCompletedActivityIds,
         today_routine_progress: todayRoutineProgress,
       });
 
-      // write-through cache
+      // Write-through cache
       if (useCache) {
-        const TTL_MS = 10_000;
-        const JITTER_MS = 2_000;
-        const ttl = TTL_MS - Math.floor(Math.random() * JITTER_MS);
-        capCache.set(key, { exp: now + ttl, val: currentActivityProps });
+        const CACHE_TIME_TO_LIVE_MILLISECONDS = 10_000;
+        const CACHE_JITTER_MILLISECONDS = 2_000;
+        const timeToLiveMilliseconds =
+          CACHE_TIME_TO_LIVE_MILLISECONDS - Math.floor(Math.random() * CACHE_JITTER_MILLISECONDS);
+
+        capCache.set(cacheKey, {
+          exp: nowInMilliseconds + timeToLiveMilliseconds,
+          val: currentActivityProps,
+        });
       }
 
-      if (id === JEREMYS_USER_ID) {
+      if (userId === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console
         console.log('Jeremy current user state', {
           initialCurrentActivity,

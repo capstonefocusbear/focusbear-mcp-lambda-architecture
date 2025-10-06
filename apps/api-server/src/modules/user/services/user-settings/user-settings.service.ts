@@ -473,6 +473,28 @@ export class UserSettingsService {
             current_activity_id: nextId ?? null,
             current_activity_sequence_id,
           });
+        } else {
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Service',
+            level: 'debug',
+            message: 'Current activity was deleted but no active sequence found, clearing user pointers',
+            data: {
+              user_id: user.id,
+              current_activity_sequence_id,
+            },
+          });
+          if (current_completing_sequence_log_id) {
+            await this.handleRoutineBeingCompleted(null, current_completing_sequence_log_id, user.id);
+          }
+          current_completing_sequence_log_id = null;
+          current_activity_sequence_id = null;
+          current_activity_id = null;
+          await this.userRepository.orm.update(user.id, {
+            ...user,
+            current_completing_sequence_log_id: null,
+            current_activity_id: null,
+            current_activity_sequence_id: null,
+          });
         }
       }
       return {

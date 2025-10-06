@@ -16,7 +16,6 @@ export class UserEndpointIndexing1759217602679 implements MigrationInterface {
       WHERE is_completed = false
     `);
 
-    // speed up queries that use start_time
     await q.query(`
       CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cas_user_start_time
       ON completed_activity_sequences (user_id, start_time)
@@ -35,15 +34,22 @@ export class UserEndpointIndexing1759217602679 implements MigrationInterface {
 
     // faster “in-progress” activity lookup
     await q.query(`
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ca_user_finish_time_null
-      ON completed_activities (user_id)
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ca_user_start_time_open
+      ON completed_activities (user_id, start_time)
       WHERE finish_time IS NULL
+    `);
+
+    // completed_focus_blocks (weekly summary)
+    await q.query(`
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cfb_user_created_at
+      ON completed_focus_blocks (user_id, created_at)
     `);
   }
 
   public async down(q: QueryRunner): Promise<void> {
+    await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_cfb_user_created_at');
+    await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_ca_user_start_time_open');
     await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_ca_user_start_time');
-    await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_ca_user_finish_time_null');
     await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_ca_seq_created');
     await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_cas_user_start_time');
     await q.query('DROP INDEX CONCURRENTLY IF EXISTS idx_cas_user_current');

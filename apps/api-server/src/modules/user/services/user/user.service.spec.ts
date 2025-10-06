@@ -45,7 +45,7 @@ import {
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
-import { UserService } from './user.service';
+import { UserService, capCache, cacheKeyForCap } from './user.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
@@ -70,9 +70,6 @@ import { CompletedActivitySequenceService } from '../../../activity/services/com
 
 // Mock axios and set the type
 jest.mock('axios');
-
-// flag so cache is disabled for getUserCurrentActivityProps(). Cache breaks expected side-effects test is testing for in testing environment.
-process.env.DISABLE_CAP_CACHE = '1';
 
 describe('UserService', () => {
   let userService: UserService;
@@ -376,6 +373,84 @@ describe('UserService', () => {
       const response = await userService.getUserCurrentActivityProps(userDummy.id);
 
       expect(response.current_activity).toBe(ActivityDummy);
+    });
+  });
+
+  describe('getUserCurrentActivityProps (cache behavior)', () => {
+    const prevEnv = process.env.NODE_ENV;
+    const prevDisable = process.env.DISABLE_CAP_CACHE;
+
+    beforeAll(() => {
+      // Cache on for these tests only
+      process.env.NODE_ENV = 'development';
+      process.env.DISABLE_CAP_CACHE = '0';
+    });
+
+    afterAll(() => {
+      process.env.NODE_ENV = prevEnv;
+      if (prevDisable === undefined) delete process.env.DISABLE_CAP_CACHE;
+      else process.env.DISABLE_CAP_CACHE = prevDisable;
+    });
+
+    beforeEach(() => {
+      capCache.clear();
+      // make seg() a passthroug
+      jest.spyOn(userService as any, 'seg').mockImplementation((_label: string, fn: any) => fn());
+    });
+
+    it('evicts expired entry on read, fetches fresh, and reseeds cache', async () => {
+      const id = 'u-cache-1';
+      const key = cacheKeyForCap(id);
+
+      // Seed an expired cache entry
+      capCache.set(key, { exp: Date.now() - 1, val: { old: true } as any });
+
+      // Minimal partial user
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        id,
+        timezone: 'Australia/Adelaide',
+        current_activity_id: 'act-1',
+        current_activity: null,
+      });
+
+      // Required parallel call
+      CompletedActivitySequenceServiceMock.getRoutinesProgress.mockResolvedValue({
+        morning_routine: { status: 'NOT_STARTED' },
+      });
+
+      const result = await userService.getUserCurrentActivityProps(id, { bypassCache: false });
+
+      // Repo called once to refresh after delete
+      expect(UserRepositoryMock.getUserCurrentActivityProps).toHaveBeenCalledWith(id);
+
+      // Reseeded with a future TTL as service returns the same instance it cached
+      const seeded = capCache.get(key)!;
+      expect(seeded.exp).toBeGreaterThan(Date.now());
+      expect(result).toBe(seeded.val);
+      expect(result).toBeInstanceOf(CurrentActivityProps);
+      expect((result as any).today_routine_progress).toEqual({
+        morning_routine: { status: 'NOT_STARTED' },
+      });
+    });
+
+    it('returns from cache when entry is fresh (skips repo)', async () => {
+      const id = 'u-cache-2';
+      const key = cacheKeyForCap(id);
+      const cachedVal = new CurrentActivityProps({
+        id,
+        timezone: 'Australia/Adelaide',
+        current_activity_id: null,
+        current_activity: null,
+        current_sequence_completed_activities: [],
+        today_routine_progress: {},
+      });
+
+      capCache.set(key, { exp: Date.now() + 60_000, val: cachedVal });
+
+      const result = await userService.getUserCurrentActivityProps(id);
+
+      expect(result).toBe(cachedVal);
+      expect(UserRepositoryMock.getUserCurrentActivityProps).not.toHaveBeenCalled();
     });
   });
 

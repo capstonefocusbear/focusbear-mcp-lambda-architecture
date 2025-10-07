@@ -400,6 +400,108 @@ describe('FocusModeManagerService', () => {
       expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([user_id], pusherBeamsPublishRequestDummy);
     });
 
+    // #D30000
+    it('positive: should ignore frontend session duration if longer than maximum allowed', async () => {
+      // Arrange: a 30-minute planned session
+      const start = new Date('2025-01-01T10:00:00.000Z');
+      const scheduledFinish = new Date(start.getTime() + 30 * 60 * 1000); // 30m cap = 1800s
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+
+      const completingBlock = {
+        ...CompletedFocusBlockDummy,
+        id: current_completing_focus_block_id,
+        start_time: start,
+        scheduled_finish_time: scheduledFinish,
+      };
+
+      const userWithCurrent: User = {
+        ...userDummy,
+        current_focus_mode_id: focus_mode_id,
+        current_completing_focus_block_id,
+      };
+
+      // Mocks
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrent);
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completingBlock);
+      ToDoServiceMock.logToDosTime.mockResolvedValueOnce(undefined);
+
+      // Frontend lies: 2 hours, but max is 30 mins
+      const tooLong = 2 * 60 * 60; // 7200s
+      const dto: FinishFocusModeDto = {
+        finish_time: new Date('2025-01-01T12:30:00.000Z'), // any value; duration is what we test
+        focus_duration_seconds: tooLong,
+      };
+
+      // Act
+      await focusModeManagerService.finishCurrentFocusMode(dto, { focus_mode_id }, user_id, { device_id: '12345' });
+
+      // Assert: saved duration is capped to 30 minutes (1800s), not 7200s
+      const expected = 30 * 60; // 1800
+      const effectiveFinish = scheduledFinish; // min(dto.finish_time, scheduledFinish)
+
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({ focus_duration_seconds: expected }),
+      );
+
+      // And stats update uses the capped duration too
+      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toHaveBeenCalledWith(
+        user_id,
+        effectiveFinish,
+        userWithCurrent.timezone,
+        expected,
+      );
+    });
+
+    it('positive: should accept frontend session duration when under maximum allowed', async () => {
+      // Arrange: planned 30-minute session → max = 1800s
+      const start = new Date('2025-01-01T10:00:00.000Z');
+      const scheduledFinish = new Date(start.getTime() + 30 * 60 * 1000);
+      const current_completing_focus_block_id = CompletedFocusBlockDummy.id;
+
+      const completingBlock = {
+        ...CompletedFocusBlockDummy,
+        id: current_completing_focus_block_id,
+        start_time: start,
+        scheduled_finish_time: scheduledFinish,
+      };
+
+      const userWithCurrent: User = {
+        ...userDummy,
+        current_focus_mode_id: focus_mode_id,
+        current_completing_focus_block_id,
+      };
+
+      // Mocks
+      FocusModeRepositoryMock.findOneByIdForUser.mockResolvedValueOnce(FocusModeDummy);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithCurrent);
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(completingBlock);
+      ToDoServiceMock.logToDosTime.mockResolvedValueOnce(undefined);
+
+      // Frontend provides a shorter duration (15m = 900s) → should be kept
+      const clientDuration = 15 * 60; // 900
+      const dto: FinishFocusModeDto = {
+        finish_time: new Date('2025-01-01T10:20:00.000Z'),
+        focus_duration_seconds: clientDuration,
+      };
+
+      // Act
+      await focusModeManagerService.finishCurrentFocusMode(dto, { focus_mode_id }, user_id, { device_id: '12345' });
+
+      // Assert: saved duration equals the client-provided (no capping applied)
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({ focus_duration_seconds: clientDuration }),
+      );
+
+      // And daily stats use the same accepted duration
+      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toHaveBeenCalledWith(
+        user_id,
+        dto.finish_time,
+        userWithCurrent.timezone,
+        clientDuration,
+      );
+    });
+
     it('positive: user last_completed_focus_mode_at field should be updated', async () => {
       Settings.now = () => new Date('2023-02-07T05:42:39.221Z').valueOf();
       const current_focus_mode_id = FocusModeDummy.id;

@@ -184,41 +184,65 @@ export class FocusModeManagerService {
         category: 'Service',
         level: 'debug',
         message: 'Finishing current focus mode',
-        data: {
-          focus_mode_id,
-          user_id,
-        },
+        data: { focus_mode_id, user_id },
       });
       let device_id = null;
       if (headers?.device_id) {
         device_id = headers.device_id;
       }
       const { finish_time, focus_duration_seconds, tags, to_dos } = finishFocusBlockDto;
+
       const user = await this.validateFinishingFocusMode(focus_mode_id, user_id);
+
+      // NOTE: use findOneBy (mock-friendly); throw if not found
       const completingFocusBlock = await this.completedFocusBlockRepository.orm.findOneBy({
         id: user.current_completing_focus_block_id,
       });
-      const { intention } = completingFocusBlock;
+      if (!completingFocusBlock) {
+        throw new NotFoundException('Completing focus block not found');
+      }
+
+      const { intention, start_time, scheduled_finish_time } = completingFocusBlock;
+
+      // Update to-do time logs before persisting the block
       await this.toDoService.logToDosTime(to_dos, user_id, completingFocusBlock.id);
-      const isDurationPassedAsParam = typeof focus_duration_seconds === 'number';
-      const durationToUse = isDurationPassedAsParam
-        ? focus_duration_seconds
-        : this.calculateFocusDurationSeconds(completingFocusBlock.start_time, finish_time);
+
+      // ---- duration calculation + cap -----------------------------------------
+      const clientFinish = finish_time ?? new Date();
+
+      // Effective finish cannot exceed scheduled_finish_time (if present)
+      const effectiveFinish =
+        scheduled_finish_time && clientFinish > scheduled_finish_time ? scheduled_finish_time : clientFinish;
+
+      const serverComputedSecs = this.calculateFocusDurationSeconds(start_time, effectiveFinish);
+
+      const finalDurationSecs =
+        typeof focus_duration_seconds === 'number'
+          ? Math.max(0, Math.min(focus_duration_seconds, serverComputedSecs))
+          : serverComputedSecs;
+      // -------------------------------------------------------------------------
+
+      // Tags
       let focusModeTags = [];
       if (tags?.length) {
         focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
       }
+
+      // Persist updates; keep existing relations; do NOT add new fields
       const updateCompletingFocusBlock = {
         ...completingFocusBlock,
         ...finishFocusBlockDto,
         to_dos: completingFocusBlock?.to_dos,
-        focus_duration_seconds: durationToUse,
+        finish_time: effectiveFinish, // bounded end
+        focus_duration_seconds: finalDurationSecs, // trusted duration
         tags: focusModeTags,
       };
+
       const [, completedMode] = await Promise.all([
         this.nullifyCurrentFocusModeForUser(user_id),
         this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
+
       if (!isForcefullyFinishing) {
         await this.sendFinishFocusModeNotification({
           user_id,
@@ -228,12 +252,14 @@ export class FocusModeManagerService {
           intention,
         });
       }
+
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
         user_id,
-        finish_time,
+        effectiveFinish,
         user.timezone,
-        durationToUse,
+        finalDurationSecs,
       );
+
       await this.userRepository.update(user.id, {
         last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
         updated_at: new Date().toISOString(),

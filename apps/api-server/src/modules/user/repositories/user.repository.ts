@@ -505,7 +505,7 @@ export class UserRepository extends BaseRepository<User> {
         'completedActivities',
         'completedFocusBlocks',
       ],
-       order: {
+      order: {
         id: 'ASC',
       },
       skip,

@@ -167,10 +167,38 @@ describe('OpenAIService', () => {
   describe('addHttpsProtocol', () => {
     it('should add https:// to URLs without protocol', () => {
       expect(service.addHttpsProtocol('example.com')).toBe('https://example.com');
+      expect(service.addHttpsProtocol('www.example.com')).toBe('https://www.example.com');
+      expect(service.addHttpsProtocol('subdomain.example.com')).toBe('https://subdomain.example.com');
     });
 
     it('should not modify URLs that already have https://', () => {
       expect(service.addHttpsProtocol('https://example.com')).toBe('https://example.com');
+      expect(service.addHttpsProtocol('https://www.example.com')).toBe('https://www.example.com');
+      expect(service.addHttpsProtocol('https://subdomain.example.com/path')).toBe('https://subdomain.example.com/path');
+    });
+
+    it('should not modify URLs that already have http://', () => {
+      expect(service.addHttpsProtocol('http://example.com')).toBe('http://example.com');
+      expect(service.addHttpsProtocol('http://www.example.com')).toBe('http://www.example.com');
+      expect(service.addHttpsProtocol('http://localhost:3000')).toBe('http://localhost:3000');
+    });
+
+    it('should handle URLs with paths and query parameters', () => {
+      expect(service.addHttpsProtocol('example.com/path')).toBe('https://example.com/path');
+      expect(service.addHttpsProtocol('example.com/path?query=value')).toBe('https://example.com/path?query=value');
+      expect(service.addHttpsProtocol('example.com:8080/path')).toBe('https://example.com:8080/path');
+    });
+
+    it('should handle edge cases', () => {
+      expect(service.addHttpsProtocol('localhost')).toBe('https://localhost');
+      expect(service.addHttpsProtocol('localhost:3000')).toBe('https://localhost:3000');
+      expect(service.addHttpsProtocol('127.0.0.1')).toBe('https://127.0.0.1');
+      expect(service.addHttpsProtocol('192.168.1.1:8080')).toBe('https://192.168.1.1:8080');
+    });
+
+    it('should preserve URLs with protocol-like strings in domain', () => {
+      expect(service.addHttpsProtocol('http-example.com')).toBe('https://http-example.com');
+      expect(service.addHttpsProtocol('https-test.com')).toBe('https://https-test.com');
     });
   });
 

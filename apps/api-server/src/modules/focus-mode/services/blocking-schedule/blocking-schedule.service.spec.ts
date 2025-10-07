@@ -216,8 +216,61 @@ describe('BlockingScheduleService', () => {
           pause_friction: PauseFriction.NONE,
           block_level: BlockLevel.STRICT,
           is_ai_blocking_enabled: false,
+          metadata: null, // Default to null
         }),
       );
+    });
+
+    it('should handle metadata field in create and update operations', async () => {
+      const dtoWithMetadata = {
+        name: 'Schedule with Metadata',
+        start_time: '09:00',
+        end_time: '17:00',
+        focus_mode_id: focusModeId,
+        metadata: { customField: 'test', priority: 'high' },
+      };
+
+      const expectedSchedule = new BlockingSchedule({
+        ...dtoWithMetadata,
+        user_id: userId,
+      });
+
+      BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(expectedSchedule);
+
+      const result = await blockingScheduleService.createBlockingSchedule(userId, dtoWithMetadata);
+
+      expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { customField: 'test', priority: 'high' },
+        }),
+      );
+      expect(result).toEqual(expectedSchedule);
+    });
+
+    it('should handle SUPER_STRICT block level', async () => {
+      const dtoWithSuperStrict = {
+        name: 'Super Strict Schedule',
+        start_time: '09:00',
+        end_time: '17:00',
+        focus_mode_id: focusModeId,
+        block_level: BlockLevel.SUPER_STRICT,
+      };
+
+      const expectedSchedule = new BlockingSchedule({
+        ...dtoWithSuperStrict,
+        user_id: userId,
+      });
+
+      BlockingScheduleRepositoryMock.orm.save.mockResolvedValueOnce(expectedSchedule);
+
+      const result = await blockingScheduleService.createBlockingSchedule(userId, dtoWithSuperStrict);
+
+      expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          block_level: BlockLevel.SUPER_STRICT,
+        }),
+      );
+      expect(result).toEqual(expectedSchedule);
     });
 
     it('should handle PostgreSQL time format (HH:MM:SS) and normalize to HH:MM', async () => {

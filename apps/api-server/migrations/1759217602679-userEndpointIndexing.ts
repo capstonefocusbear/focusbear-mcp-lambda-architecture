@@ -24,7 +24,7 @@ export class UserEndpointIndexing1759217602679 implements MigrationInterface {
     // completed_activities
     await q.query(`
       CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ca_seq_created
-      ON completed_activities (activity_sequence_id, created_at)
+      ON completed_activities (completed_sequence_id, created_at DESC)
     `);
 
     await q.query(`

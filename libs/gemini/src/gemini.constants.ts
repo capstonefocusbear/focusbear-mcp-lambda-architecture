@@ -11,4 +11,4 @@ export const GEMINI_PARAMS = {
   },
 };
 
-export const GEMINI_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
+export const GEMINI_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/gemini-prompt.json';

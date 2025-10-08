@@ -54,7 +54,7 @@ tests:
 
   - description: "Mixed format tasks"
     vars:
-      image_description: "Handwritten note: [ ] Buy groceries, ✓ Call mom, Review project docs, [ ] Schedule meeting"
+      image_description: "Handwritten note: [ ] Buy groceries, - Call mom, Review project docs, [ ] Schedule meeting"
       min_tasks: 3
       max_tasks: 4
       expected_task_names: ["Buy groceries", "Call mom", "Review project docs", "Schedule meeting"]

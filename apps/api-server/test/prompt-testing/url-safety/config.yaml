@@ -227,7 +227,7 @@ tests:
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: ''
       min_probability: 0.4
-      max_probability: 0.7
+      max_probability: 0.9
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -242,7 +242,7 @@ tests:
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: ''
       min_probability: 0.4
-      max_probability: 0.7
+      max_probability: 0.9
     assert:
       - type: javascript
         value: file://validate-probability.js

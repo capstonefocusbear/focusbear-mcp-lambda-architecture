@@ -43,6 +43,28 @@ module.exports = async function (response, context, artifacts) {
       if (typeof task.outcome !== 'number') {
         throw new Error('Each task must have an outcome number');
       }
+      
+      // Subtasks validation
+      if ('subtasks' in task) {
+        if (!Array.isArray(task.subtasks)) {
+          throw new Error('The "subtasks" attribute must be an array if present.');
+        }
+        // Check subtask count if specified
+        if (context.vars.min_subtasks && task.subtasks.length < context.vars.min_subtasks) {
+          throw new Error(`Expected at least ${context.vars.min_subtasks} subtasks, got ${task.subtasks.length}`);
+        }
+        if (context.vars.max_subtasks && task.subtasks.length > context.vars.max_subtasks) {
+          throw new Error(`Expected at most ${context.vars.max_subtasks} subtasks, got ${task.subtasks.length}`);
+        }
+        for (const subtask of task.subtasks) {
+          if (!subtask.name || typeof subtask.name !== 'string') {
+            throw new Error(`Subtask in task "${task.title}" must have a name string`);
+          }
+          if (typeof subtask.is_completed !== 'boolean') {
+            throw new Error(`Subtask "${subtask.name}" must have an is_completed boolean`);
+          }
+        }
+      }
     }
 
     // Check expected task names if provided

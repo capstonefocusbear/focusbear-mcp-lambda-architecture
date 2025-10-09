@@ -33,7 +33,8 @@ export enum OpenAIKeyType {
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
-export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/usage-screenshot/prompt.json';
+export const USAGE_SCREENSHOT_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/usage-screenshot/openai-prompt.json';
 export const PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/url-safety/config.yaml';
 export const HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/habit-adjustment/config.yaml';
 export const HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH =

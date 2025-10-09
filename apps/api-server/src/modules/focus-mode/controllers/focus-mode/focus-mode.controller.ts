@@ -100,11 +100,10 @@ export class FocusModeController {
 
   @Get('tags')
   async getUserFocusTags(@AuthContext() { user }: Passport) {
-    return this.focusModeService.getUserFocusTags('9884b0af-dc9f-4207-964e-e4db537a2234');
+    return this.focusModeService.getUserFocusTags(user.id);
   }
-  // #D30000
 
-  @Patch(':focus_mode_id/scheduled-finish')
+  @Patch(':focus_mode_id/update_scheduled-finish')
   async updateScheduledFinish(
     @Body() dto: UpdateScheduledFinishDto,
     @Param() params: GetFocusModeParamsDto,
@@ -117,8 +116,6 @@ export class FocusModeController {
     );
     return new ResponseMessage('Scheduled finish time updated');
   }
-
-  //#D30000
 
   @Put('tags')
   async upsertFocusModeTag(@Body() tag: CreateFocusModeTagDto, @AuthContext() { user }: Passport) {

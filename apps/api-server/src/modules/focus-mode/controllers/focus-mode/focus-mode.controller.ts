@@ -103,7 +103,7 @@ export class FocusModeController {
     return this.focusModeService.getUserFocusTags(user.id);
   }
 
-  @Patch(':focus_mode_id/update_scheduled-finish')
+  @Patch(':focus_mode_id/update_scheduled_finish')
   async updateScheduledFinish(
     @Body() dto: UpdateScheduledFinishDto,
     @Param() params: GetFocusModeParamsDto,

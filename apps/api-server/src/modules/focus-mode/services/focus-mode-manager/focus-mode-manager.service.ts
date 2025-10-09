@@ -19,6 +19,7 @@ import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { FocusModeService } from '../focus-mode/focus-mode.service';
 import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
 import { ToDoService } from '../../../to-do/services/to-do.service';
+import { UpdateScheduledFinishDto } from '../../dto/update-scheduled-finish-time.dto';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -82,32 +83,32 @@ export class FocusModeManagerService {
       const completedMode = await this.completedFocusBlockRepository.orm.save(completedFocusBlock);
       const completed_mode_id = completedMode.id;
       const userDataToUpdate = new CurrentFocusModeData({ finish_time, focus_mode_id, completed_mode_id });
-      const pushNotificationTitle = this.i18nService.t('common.focus_mode_started', {
-        lang: language,
-      });
-      const pushNotificationBody = this.i18nService.t('common.focus_mode_started_message', {
-        lang: language,
-        args: { focus_mode_name: name },
-      });
+      // const pushNotificationTitle = this.i18nService.t('common.focus_mode_started', {
+      //   lang: language,
+      // });
+      // const pushNotificationBody = this.i18nService.t('common.focus_mode_started_message', {
+      //   lang: language,
+      //   args: { focus_mode_name: name },
+      // });
       const notificationData = { ...completedMode, device_id };
-      const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
-        title: pushNotificationTitle,
-        body: pushNotificationBody,
-        pushData: notificationData,
-      });
+      // const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+      //   title: pushNotificationTitle,
+      //   body: pushNotificationBody,
+      //   pushData: notificationData,
+      // });
       await this.userRepository.orm.update(user_id, userDataToUpdate);
       // Pusher throwing error about data exceeding size limit, removing to dos
-      delete notificationData?.to_dos;
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Sending start focus mode notification with Pusher',
-        data: { user_id, notificationData },
-      });
-      await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
+      // delete notificationData?.to_dos;
+      // this.sentryService.instance().addBreadcrumb({
+      //   category: 'Service',
+      //   level: 'debug',
+      //   message: 'Sending start focus mode notification with Pusher',
+      //   data: { user_id, notificationData },
+      // });
+      // await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
       // eslint-disable-next-line no-console
-      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
-      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+      // console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
+      // await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -172,6 +173,8 @@ export class FocusModeManagerService {
     ]);
   }
 
+  // #D30000
+
   async finishCurrentFocusMode(
     finishFocusBlockDto: FinishFocusModeDto,
     { focus_mode_id }: GetFocusModeParamsDto,
@@ -228,7 +231,6 @@ export class FocusModeManagerService {
         focusModeTags = await this.focusModeService.saveFocusModeTags(user_id, tags);
       }
 
-      // Persist updates; keep existing relations; do NOT add new fields
       const updateCompletingFocusBlock = {
         ...completingFocusBlock,
         ...finishFocusBlockDto,
@@ -243,15 +245,22 @@ export class FocusModeManagerService {
         this.completedFocusBlockRepository.orm.save(updateCompletingFocusBlock),
       ]);
 
-      if (!isForcefullyFinishing) {
-        await this.sendFinishFocusModeNotification({
-          user_id,
-          language: user.language,
-          device_id,
-          completedMode,
-          intention,
-        });
-      }
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Finishing current focus mode',
+        data: { focus_mode_id, user_id, device_id, intention }, // <— uses them
+      });
+
+      // if (!isForcefullyFinishing) {
+      //   await this.sendFinishFocusModeNotification({
+      //     user_id,
+      //     language: user.language,
+      //     device_id,
+      //     completedMode,
+      //     intention,
+      //   });
+      // }
 
       await this.userDailyStatsService.updateDailyStatsFocusModesCompleted(
         user_id,
@@ -271,11 +280,13 @@ export class FocusModeManagerService {
     }
   }
 
+  // #D30000
+
   async sendFinishFocusModeNotification({
     user_id,
-    language,
+    // language,
     completedMode,
-    intention,
+    // intention,
     device_id,
   }: {
     user_id: string;
@@ -284,19 +295,19 @@ export class FocusModeManagerService {
     intention: string;
     device_id: string;
   }) {
-    const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
-      lang: language,
-    });
-    const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
-      lang: language,
-      args: { intention },
-    });
+    // const pushNotificationTitle = this.i18nService.t('common.focus_mode_completed', {
+    //   lang: language,
+    // });
+    // const pushNotificationBody = this.i18nService.t('common.focus_mode_completed_message', {
+    //   lang: language,
+    //   args: { intention },
+    // });
     const notificationData = { ...completedMode, device_id };
-    const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
-      title: pushNotificationTitle,
-      body: pushNotificationBody,
-      pushData: notificationData,
-    });
+    // const publishRequest = this.pusherBeamsService.createBeamsPublishRequest({
+    //   title: pushNotificationTitle,
+    //   body: pushNotificationBody,
+    //   pushData: notificationData,
+    // });
     // Pusher throwing error about data exceeding size limit, removing to dos
     delete notificationData?.to_dos;
     this.sentryService.instance().addBreadcrumb({
@@ -306,7 +317,7 @@ export class FocusModeManagerService {
       data: { user_id, notificationData },
     });
     await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', notificationData);
-    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+    // await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
   }
 
   calculateFocusDurationSeconds(fromTime: Date, toTime: Date): number {
@@ -351,4 +362,39 @@ export class FocusModeManagerService {
     });
     await this.userRepository.orm.update(user_id, userDataToUpdate);
   }
+
+  // #D30000
+
+  async updateScheduledFinishTime(
+    { scheduled_finish_time }: UpdateScheduledFinishDto,
+    { focus_mode_id }: GetFocusModeParamsDto,
+    user_id: string,
+  ): Promise<void> {
+    // must be the user’s current focus mode
+    const user = await this.validateFinishingFocusMode(focus_mode_id, user_id);
+
+    const block = await this.completedFocusBlockRepository.orm.findOneBy({
+      id: user.current_completing_focus_block_id,
+    });
+    if (!block) throw new NotFoundException('Current focus block not found');
+
+    const newTime = new Date(scheduled_finish_time);
+    if (newTime < block.start_time) {
+      throw new BadRequestException('scheduled_finish_time must be after start_time');
+    }
+
+    // Update the running block
+    await this.completedFocusBlockRepository.orm.update(block.id, {
+      scheduled_finish_time: newTime,
+    });
+
+    // Keep the user’s “current focus mode” metadata in sync (what CAP returns)
+    await this.userRepository.orm.update(user_id, {
+      current_focus_mode_finish_time: newTime,
+      current_focus_mode_id: focus_mode_id,
+      current_completing_focus_block_id: block.id,
+      updated_at: new Date().toISOString(),
+    });
+  }
+  // #D30000
 }

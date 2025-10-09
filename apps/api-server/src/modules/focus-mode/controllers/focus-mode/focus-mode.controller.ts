@@ -28,6 +28,7 @@ import { UpdateFocusModeDto } from '../../dto/update-focus-mode.dto';
 import { BulkDeleteQueryDto } from '../../dto/bulck-delete-query.dto';
 import { CreateFocusModeTagDto } from '../../dto/create-focus-mode-tag.dto';
 import { DeleteFocusModeTagQuery } from '../../dto/delete-focus-mode-tag-query.dto';
+import { UpdateScheduledFinishDto } from '../../dto/update-scheduled-finish-time.dto';
 
 @Controller('focus-mode')
 @ApiTags('focus-mode')
@@ -99,8 +100,25 @@ export class FocusModeController {
 
   @Get('tags')
   async getUserFocusTags(@AuthContext() { user }: Passport) {
-    return this.focusModeService.getUserFocusTags(user.id);
+    return this.focusModeService.getUserFocusTags('9884b0af-dc9f-4207-964e-e4db537a2234');
   }
+  // #D30000
+
+  @Patch(':focus_mode_id/scheduled-finish')
+  async updateScheduledFinish(
+    @Body() dto: UpdateScheduledFinishDto,
+    @Param() params: GetFocusModeParamsDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    await this.focusModeManagerService.updateScheduledFinishTime(
+      { scheduled_finish_time: dto.scheduled_finish_time as unknown as Date },
+      params,
+      user.id,
+    );
+    return new ResponseMessage('Scheduled finish time updated');
+  }
+
+  //#D30000
 
   @Put('tags')
   async upsertFocusModeTag(@Body() tag: CreateFocusModeTagDto, @AuthContext() { user }: Passport) {

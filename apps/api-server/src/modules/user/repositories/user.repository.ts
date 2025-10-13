@@ -499,11 +499,11 @@ export class UserRepository extends BaseRepository<User> {
         'email_frequency',
       ],
       relations: [
-        'activitySequences',
-        'activitySequences.activities',
-        'completedActivitySequences',
-        'completedActivities',
-        'completedFocusBlocks',
+        'activity_sequences',
+        'activity_sequences.activities',
+        'completed_activity_sequences',
+        'completed_activities',
+        'completed_focus_blocks',
       ],
       order: {
         id: 'ASC',
@@ -533,7 +533,7 @@ export class UserRepository extends BaseRepository<User> {
         'metadata',
         'email_frequency',
       ],
-      relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
+      relations: ['activity_sequences', 'completed_activities', 'completed_focus_blocks'],
       order: {
         id: 'ASC',
       },
@@ -570,11 +570,11 @@ export class UserRepository extends BaseRepository<User> {
         'email_frequency',
       ],
       relations: [
-        'activitySequences',
-        'activitySequences.activities',
-        'completedActivitySequences',
-        'completedActivities',
-        'completedFocusBlocks',
+        'activity_sequences',
+        'activity_sequences.activities',
+        'completed_activity_sequences',
+        'completed_activities',
+        'completed_focus_blocks',
       ],
       order: {
         id: 'ASC',

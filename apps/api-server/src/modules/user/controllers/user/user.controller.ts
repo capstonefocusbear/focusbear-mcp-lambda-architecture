@@ -12,6 +12,7 @@ import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
+import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import {
   HasSubscription,
@@ -103,6 +104,13 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserCompletedActivitySummary(@AuthContext() { user }: Passport): Promise<CompletedActivity[]> {
     return this.userService.getCompletedActivitySummary(user.id);
+  }
+
+  @Get('focus-modes')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserFocusModes(@AuthContext() { user }: Passport): Promise<FocusMode[]> {
+    return this.userService.getUserFocusModes(user.id);
   }
 
   @Get('/user-list')

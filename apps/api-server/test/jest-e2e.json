@@ -1,6 +1,12 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
-  "setupFilesAfterEnv": ["jest-extended/all"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "setupFilesAfterEnv": [
+    "jest-extended/all"
+  ],
   "rootDir": "../../../",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
@@ -21,6 +27,7 @@
     "^@app/r2(|/.*)$": "<rootDir>/libs/r2/src/$1",
     "^@app/openai(|/.*)$": "<rootDir>/libs/openai/src/$1",
     "^@app/brevo(|/.*)$": "<rootDir>/libs/brevo/src/$1",
-    "^@app/gemini(|/.*)$": "<rootDir>/libs/gemini/src/$1"
+    "^@app/gemini(|/.*)$": "<rootDir>/libs/gemini/src/$1",
+    "^@app/observability(|/.*)$": "<rootDir>/libs/observability/src/$1"
   }
 }

@@ -3,6 +3,7 @@ import { DeviceCredential, ManagementClient } from 'auth0';
 import Redis from 'ioredis';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService } from '../interfaces';
+import { FieldTransformer } from '../../../../apps/api-server/src/shared/utils/helpers';
 
 @Injectable()
 export class Auth0ManagementService extends ManagementClient implements IManagementService {
@@ -29,8 +30,12 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
   private async getCachedUser(auth0Id: string): Promise<any> {
     try {
       const cacheKey = `auth0:user:${auth0Id}`;
-      const cached = await this.redisClient.get(cacheKey);
-      return cached ? JSON.parse(cached) : null;
+      const encryptedData = await this.redisClient.get(cacheKey);
+      if (!encryptedData) return null;
+      
+      // Decrypt the cached data
+      const decryptedData = FieldTransformer.from(encryptedData);
+      return JSON.parse(decryptedData);
     } catch (error) {
       console.error('Failed to get cached user:', error);
       return null;
@@ -40,8 +45,11 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
   private async setCachedUser(auth0Id: string, userData: any): Promise<void> {
     try {
       const cacheKey = `auth0:user:${auth0Id}`;
+      // Encrypt the user data before storing in Redis
+      const jsonData = JSON.stringify(userData);
+      const encryptedData = FieldTransformer.to(jsonData);
       // Cache for 1 hour (3600 seconds)
-      await this.redisClient.setex(cacheKey, 3600, JSON.stringify(userData));
+      await this.redisClient.setex(cacheKey, 3600, encryptedData);
     } catch (error) {
       console.error('Failed to cache user:', error);
     }
@@ -80,9 +88,10 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     try {
       // Try to get cached users first
       const cacheKey = `auth0:users:email:${email}`;
-      const cached = await this.redisClient.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
+      const encryptedData = await this.redisClient.get(cacheKey);
+      if (encryptedData) {
+        const decryptedData = FieldTransformer.from(encryptedData);
+        return JSON.parse(decryptedData);
       }
 
       // Fetch from Auth0 if not cached
@@ -90,7 +99,9 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
       // Cache the results for future requests (shorter cache time for email searches)
       if (usersMatchingEmail) {
-        await this.redisClient.setex(cacheKey, 1800, JSON.stringify(usersMatchingEmail)); // 30 minutes
+        const jsonData = JSON.stringify(usersMatchingEmail);
+        const encryptedUserData = FieldTransformer.to(jsonData);
+        await this.redisClient.setex(cacheKey, 1800, encryptedUserData); // 30 minutes
       }
       return usersMatchingEmail;
     } catch (error) {

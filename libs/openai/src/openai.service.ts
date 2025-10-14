@@ -452,10 +452,12 @@ export class OpenAIService {
   }
 
   addHttpsProtocol(url: string): string {
-    if (!url.startsWith('https://')) {
-      return `https://${url}`;
+    // If URL already has http:// or https://, return as is (axios will handle HTTP->HTTPS redirect)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
     }
-    return url;
+    // Otherwise add https://
+    return `https://${url}`;
   }
 
   addHttpsProtocolAndWWW(url: string): string {

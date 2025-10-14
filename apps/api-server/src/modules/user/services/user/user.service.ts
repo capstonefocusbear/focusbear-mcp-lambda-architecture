@@ -38,6 +38,8 @@ import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/
 import { UserTypes } from '../../domain/user-types.enum';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-mode.service';
+import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
@@ -84,6 +86,8 @@ export class UserService {
     private readonly stripeService: StripeService,
     private readonly habitPackRepository: HabitPackRepository,
     private readonly focusModeTemplateRepository: FocusModeTemplatesRepository,
+    @Inject(forwardRef(() => FocusModeService))
+    private readonly focusModeService: FocusModeService,
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
@@ -542,6 +546,25 @@ export class UserService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       return await this.completedActivityRepository.getWeekSummary(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getUserFocusModes(user_id: string): Promise<FocusMode[]> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Fetching user focus modes',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      return await this.focusModeService.fetchUserFocusModes(user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

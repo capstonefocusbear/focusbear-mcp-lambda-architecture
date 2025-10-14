@@ -29,9 +29,7 @@ async function runNoProgressEmailsCronJob() {
     while (true) {
       const batch = await userRepository.getUsersForNoProgressEmailsBatch(skip, BATCH_SIZE, 7);
       if (batch.length === 0) break;
-      console.log(
-        `Processing batch ${batchNum} (${batch.length} users)`,
-      );
+      console.log(`Processing batch ${batchNum} (${batch.length} users)`);
 
       const emailPromises = batch.map(async (user) => {
         try {
@@ -82,7 +80,7 @@ async function runNoProgressEmailsCronJob() {
       await Promise.all(emailPromises);
 
       // Delay between batches
-       if (batch.length === BATCH_SIZE) {
+      if (batch.length === BATCH_SIZE) {
         console.log('Waiting 1 second before processing next batch...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }

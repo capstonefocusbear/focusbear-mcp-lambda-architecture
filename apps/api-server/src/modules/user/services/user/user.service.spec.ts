@@ -18,6 +18,7 @@ import {
   auth0UserDummy,
   dummyAuth0Client,
   dummyUninstallApplicationQueryDto,
+  FocusModeDummy,
   focusModeTemplateDBResponseDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -42,6 +43,7 @@ import {
   DeviceRepositoryMock,
   SendGridServiceMock,
   CompletedActivitySequenceServiceMock,
+  FocusModeServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -53,6 +55,7 @@ import { CompletedActivityRepository } from '../../../activity/repositories/comp
 import { routineHabitPackDBResponseDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-mode.service';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
@@ -98,6 +101,7 @@ describe('UserService', () => {
         DeviceService,
         DeviceRepository,
         SendGridService,
+        FocusModeService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -145,6 +149,8 @@ describe('UserService', () => {
       .useValue(DeviceRepositoryMock)
       .overrideProvider(SendGridService)
       .useValue(SendGridServiceMock)
+      .overrideProvider(FocusModeService)
+      .useValue(FocusModeServiceMock)
       .overrideProvider(CompletedActivitySequenceService)
       .useValue(CompletedActivitySequenceServiceMock)
       .compile();
@@ -749,6 +755,35 @@ describe('UserService', () => {
       await userService.getCompletedActivitySummary(userDummy.id);
 
       expect(CompletedActivityRepositoryMock.getWeekSummary).toHaveBeenCalledWith(userDummy.id);
+    });
+  });
+
+  describe('getUserFocusModes', () => {
+    it('positive: should return focus modes for the user', async () => {
+      const focusModes = [FocusModeDummy];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeServiceMock.fetchUserFocusModes.mockResolvedValueOnce(focusModes);
+
+      const result = await userService.getUserFocusModes(userDummy.id);
+
+      expect(FocusModeServiceMock.fetchUserFocusModes).toHaveBeenCalledWith(userDummy.id);
+      expect(result).toEqual(focusModes);
+    });
+
+    it('negative: should throw if the user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      let exception: any;
+
+      try {
+        await userService.getUserFocusModes(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(`User with id: ${userDummy.id} does not exist!`);
+      expect(FocusModeServiceMock.fetchUserFocusModes).not.toHaveBeenCalled();
     });
   });
 

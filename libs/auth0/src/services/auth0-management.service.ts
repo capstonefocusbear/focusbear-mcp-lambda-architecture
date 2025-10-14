@@ -32,7 +32,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       const cacheKey = `auth0:user:${auth0Id}`;
       const encryptedData = await this.redisClient.get(cacheKey);
       if (!encryptedData) return null;
-      
+
       // Decrypt the cached data
       const decryptedData = FieldTransformer.from(encryptedData);
       return JSON.parse(decryptedData);

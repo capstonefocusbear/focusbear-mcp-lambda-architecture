@@ -342,30 +342,7 @@ export class UserService {
     }
   }
 
-  async getUserCurrentActivityProps(
-    userId: string,
-    options: { bypassCache?: boolean } = {},
-  ): Promise<CurrentActivityProps> {
-    const useCache = process.env.DISABLE_CAP_CACHE !== '1' && process.env.NODE_ENV !== 'test' && !options.bypassCache; // cache toggle (toggled off in unit test as cache breaks expected side-effects)
-
-    const cacheKey = cacheKeyForCap(userId);
-    const nowInMilliseconds = Date.now();
-
-    // Read-through cache
-    if (useCache) {
-      const cacheEntry = capCache.get(cacheKey) as { exp: number; val: CurrentActivityProps } | undefined;
-      if (cacheEntry) {
-        const expirationEpochMilliseconds = cacheEntry.exp;
-        const cachedValue = cacheEntry.val;
-
-        if (expirationEpochMilliseconds <= nowInMilliseconds) {
-          capCache.delete(cacheKey); // drop expired cache entries
-        } else {
-          return cachedValue;
-        }
-      }
-    }
-
+  async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -374,6 +351,7 @@ export class UserService {
         data: { user_id: userId },
       });
 
+      // fetch minimal user state
       let partialUser = await this.seg('userRepository.getUserCurrentActivityProps', () =>
         this.userRepository.getUserCurrentActivityProps(userId),
       );
@@ -384,8 +362,6 @@ export class UserService {
       const initialCurrentActivity = partialUser.current_activity_id;
       let currentSequenceCompletedActivityIds: string[] = [];
 
-      // Start an independent I/O call *now* and await it later to overlap.
-      // Runs in parallel with recalc + completed-IDs fetch below.
       const todayRoutineProgressPromise = this.seg('completedActivitySequenceService.getRoutinesProgress', () =>
         this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
       );
@@ -411,19 +387,6 @@ export class UserService {
         current_sequence_completed_activities: currentSequenceCompletedActivityIds,
         today_routine_progress: todayRoutineProgress,
       });
-
-      // Write-through cache
-      if (useCache) {
-        const CACHE_TIME_TO_LIVE_MILLISECONDS = 10_000;
-        const CACHE_JITTER_MILLISECONDS = 2_000;
-        const timeToLiveMilliseconds =
-          CACHE_TIME_TO_LIVE_MILLISECONDS - Math.floor(Math.random() * CACHE_JITTER_MILLISECONDS);
-
-        capCache.set(cacheKey, {
-          exp: nowInMilliseconds + timeToLiveMilliseconds,
-          val: currentActivityProps,
-        });
-      }
 
       if (userId === JEREMYS_USER_ID) {
         // eslint-disable-next-line no-console

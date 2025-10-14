@@ -198,7 +198,6 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
-      .leftJoinAndSelect('focus_modes.tags', 'tags')
       .leftJoin('users.teamToAdmin', 'teamToAdmin')
       .addSelect(['teamToAdmin.id'])
       .leftJoin('teamToAdmin.team', 'team')

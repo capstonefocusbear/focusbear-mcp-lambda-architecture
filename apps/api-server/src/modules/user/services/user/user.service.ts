@@ -296,10 +296,13 @@ export class UserService {
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const email = auth0User?.email || '';
-      const { focus_modes, teamToAdmin, ...rest } = userDetails;
-      const userDetailsWithoutDeprecated = { ...rest };
-      delete (userDetailsWithoutDeprecated as any).local_device_settings;
-      delete (userDetailsWithoutDeprecated as any).onboarding_progress;
+      const {
+        focus_modes,
+        teamToAdmin,
+        local_device_settings: _localDeviceSettings,
+        onboarding_progress: _onboardingProgress,
+        ...userDetailsWithoutDeprecated
+      } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
         if (focusMode.focus_mode_template_id === null) {

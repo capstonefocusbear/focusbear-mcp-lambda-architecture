@@ -71,13 +71,6 @@ import { CompletedActivitySequenceService } from '../../../activity/services/com
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
-type CacheEntry<T> = { exp: number; val: T };
-export const capCache = new Map<string, CacheEntry<CurrentActivityProps>>();
-export function cacheKeyForCap(userId: string, localDay?: string) {
-  const day = localDay ?? new Date().toISOString().slice(0, 10);
-  return `cap:${userId}:${day}`;
-}
-
 @Injectable()
 export class UserService {
   constructor(

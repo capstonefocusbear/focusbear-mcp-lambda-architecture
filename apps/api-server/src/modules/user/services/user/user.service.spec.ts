@@ -45,7 +45,7 @@ import {
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
-import { UserService, capCache, cacheKeyForCap } from './user.service';
+import { UserService } from './user.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';

@@ -206,6 +206,26 @@ export class UserRepository extends BaseRepository<User> {
       .getOne();
   }
 
+  async getUserSummary(id: string): Promise<User> {
+    return this.orm
+      .createQueryBuilder('users')
+      .select([
+        'users.id',
+        'users.auth0_id',
+        'users.stripe_customer_id',
+        'users.username',
+        'users.language',
+        'users.has_consented_to_terms_of_service',
+        'users.user_type',
+      ])
+      .leftJoin('users.teamToAdmin', 'teamToAdmin')
+      .addSelect(['teamToAdmin.id'])
+      .leftJoin('teamToAdmin.team', 'team')
+      .addSelect(['team.id', 'team.name'])
+      .where('users.id = :id', { id })
+      .getOne();
+  }
+
   async getUserCurrentActivityProps(id: string): Promise<Partial<User>> {
     const user = await this.orm
       .createQueryBuilder('users')

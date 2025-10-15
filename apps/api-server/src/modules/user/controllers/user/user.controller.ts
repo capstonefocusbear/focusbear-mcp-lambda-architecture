@@ -29,6 +29,8 @@ import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
+import { GetUserSummaryQueryDto } from '../../dto/get-user-summary-query.dto';
+import { UserSummaryResponseDto } from '../../dto/user-summary-response.dto';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
@@ -75,6 +77,16 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserDetails(@AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserDetails(user.id);
+  }
+
+  @Get('/details/summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserSummary(
+    @Query() { from }: GetUserSummaryQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<UserSummaryResponseDto> {
+    return this.userService.getUserSummary(user.id, from);
   }
 
   @Get('/details/current-activity-props')

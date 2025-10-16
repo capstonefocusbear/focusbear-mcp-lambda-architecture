@@ -12,7 +12,7 @@ import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { openAiConfig } from '../../apps/api-server/src/config';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -286,7 +286,7 @@ async function publishToUsersByLanguage(
   translationData: TranslationDataType,
 ) {
   const userIDs = users.map((user) => user.id);
-  if (userIDs.length === 0) return;
+  if (userIDs.length === 0) return 0;
 
   const { title, message } = translationData[language][routine];
   const publishRequest = new BeamsPublishRequest({
@@ -298,6 +298,8 @@ async function publishToUsersByLanguage(
   for (let i = 0; i < userIDs.length; i += chunkSize) {
     await beamsClient.publishToUsers(userIDs.slice(i, i + chunkSize), publishRequest);
   }
+
+  return userIDs.length;
 }
 
 function createFileName(routine: string, language: string) {
@@ -307,6 +309,7 @@ function createFileName(routine: string, language: string) {
 async function runRoutineNotificationsCronJob() {
   await CronJobDataSource.initialize();
   const translationData: TranslationDataType = {};
+  let notificationsDispatched = 0;
 
   for await (const language of LANGUAGES) {
     const morningMessage = await getMessage(
@@ -326,17 +329,30 @@ async function runRoutineNotificationsCronJob() {
     const startupUsers = await getUsersForStartup(language);
     const shutdownUsers = await getUsersForShutdown(language);
 
-    await publishToUsersByLanguage(startupUsers, language, ActivityType.morning, translationData);
-    await publishToUsersByLanguage(shutdownUsers, language, ActivityType.evening, translationData);
+    notificationsDispatched += await publishToUsersByLanguage(
+      startupUsers,
+      language,
+      ActivityType.morning,
+      translationData,
+    );
+    notificationsDispatched += await publishToUsersByLanguage(
+      shutdownUsers,
+      language,
+      ActivityType.evening,
+      translationData,
+    );
 
     await Promise.all([
       updateUsersMorningRoutineNotification(startupUsers),
       updateUsersEveningRoutineNotification(shutdownUsers),
     ]);
   }
-  process.exit();
+  return { notificationsDispatched };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry(
+    'routine-notifications-cron',
+    () => withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS),
+  );
 }

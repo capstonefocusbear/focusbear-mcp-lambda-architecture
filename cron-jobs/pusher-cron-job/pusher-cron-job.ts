@@ -1,6 +1,6 @@
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
-import { withSentry } from '../sentry';
+import { runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
@@ -64,20 +64,26 @@ async function runPusherCronJob() {
   const notificationsToSend = await fetchNotifications();
   // eslint-disable-next-line no-console
   console.log(`Ran for ${notificationsToSend.length} notification(s).`);
-  if (notificationsToSend.length === 0) process.exit();
-  notificationsToSend.forEach(async (notification) => {
-    const { id, summary, description, event_begins, event_ends } = notification;
-    await sendBeamsPushNotification(notification.user_id, {
-      id,
-      summary,
-      description,
-      event_begins,
-      event_ends,
-    });
-  });
-  process.exit();
+  if (notificationsToSend.length === 0) {
+    return { notificationsSent: 0 };
+  }
+
+  await Promise.all(
+    notificationsToSend.map(async (notification) => {
+      const { id, summary, description, event_begins, event_ends } = notification;
+      await sendBeamsPushNotification(notification.user_id, {
+        id,
+        summary,
+        description,
+        event_begins,
+        event_ends,
+      });
+    }),
+  );
+
+  return { notificationsSent: notificationsToSend.length };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runPusherCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('pusher-cron', () => withTimeout(runPusherCronJob(), CRON_JOB_TIMEOUT_MS));
 }

@@ -249,6 +249,44 @@ describe('UserSettingsService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('positive: should clear current activity pointers when the activity is removed and no current sequence exists', async () => {
+      const removedActivityId = randomUUID();
+      const userWithCurrentActivity = new User(
+        {
+          ...userDummy,
+          current_activity_id: removedActivityId,
+          current_activity_sequence_id: null,
+          current_completing_sequence_log_id: null,
+        },
+        { generateId: false },
+      );
+
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({
+        isVerboseLoggingAllowed: true,
+        user: userWithCurrentActivity,
+      });
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true, {
+        is_onboarding: false,
+      });
+
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          current_activity_id: null,
+          current_activity_sequence_id: null,
+          current_completing_sequence_log_id: null,
+        }),
+      );
+    });
+
     it('positive: consistentlyUpdateUserSettings should be called', async () => {
       const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
       const updatedUser = new User({

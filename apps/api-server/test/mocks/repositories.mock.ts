@@ -21,6 +21,7 @@ export const UserRepositoryMock = {
   ...BaseRepositoryMock,
   getUserSettings: jest.fn(),
   getUserDetails: jest.fn(),
+  getUserSummary: jest.fn(),
   getUsersList: jest.fn(),
   getUserCurrentActivityProps: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),

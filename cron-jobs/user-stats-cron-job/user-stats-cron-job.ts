@@ -11,7 +11,7 @@ import { DailySequenceDurations } from '../../apps/api-server/src/modules/activi
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
 import { Activity } from '../../apps/api-server/src/modules/activity/entities/activity.entity';
 import { DAYS_OF_WEEK } from './constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
@@ -262,9 +262,9 @@ async function runUserStatsCronJob() {
   }
   // eslint-disable-next-line no-console
   console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
-  process.exit();
+  return { usersUpdated: usersWhoseStatsAreOutOfDate.length };
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runUserStatsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('user-stats-cron', () => withTimeout(runUserStatsCronJob(), CRON_JOB_TIMEOUT_MS));
 }

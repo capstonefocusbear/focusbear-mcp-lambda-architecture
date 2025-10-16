@@ -185,6 +185,7 @@ export const FocusModeServiceMock = {
   create: jest.fn(),
   saveFocusModeTags: jest.fn(),
   createFocusMode: jest.fn(),
+  fetchUserFocusModes: jest.fn(),
 };
 
 export const R2ServiceMock = {

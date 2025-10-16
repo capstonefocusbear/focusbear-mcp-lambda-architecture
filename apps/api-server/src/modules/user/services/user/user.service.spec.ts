@@ -18,6 +18,7 @@ import {
   auth0UserDummy,
   dummyAuth0Client,
   dummyUninstallApplicationQueryDto,
+  FocusModeDummy,
   focusModeTemplateDBResponseDummy,
   userDummy,
 } from '../../../../../test/dummies';
@@ -42,6 +43,7 @@ import {
   DeviceRepositoryMock,
   SendGridServiceMock,
   CompletedActivitySequenceServiceMock,
+  FocusModeServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -53,6 +55,7 @@ import { CompletedActivityRepository } from '../../../activity/repositories/comp
 import { routineHabitPackDBResponseDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-mode.service';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
@@ -98,6 +101,7 @@ describe('UserService', () => {
         DeviceService,
         DeviceRepository,
         SendGridService,
+        FocusModeService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -145,6 +149,8 @@ describe('UserService', () => {
       .useValue(DeviceRepositoryMock)
       .overrideProvider(SendGridService)
       .useValue(SendGridServiceMock)
+      .overrideProvider(FocusModeService)
+      .useValue(FocusModeServiceMock)
       .overrideProvider(CompletedActivitySequenceService)
       .useValue(CompletedActivitySequenceServiceMock)
       .compile();
@@ -277,6 +283,27 @@ describe('UserService', () => {
       expect(UserRepositoryMock.getUserDetails).toHaveBeenCalledWith(id);
     });
 
+    it('positive: response excludes local device settings and onboarding progress', async () => {
+      const localDeviceSettings = { windows: { version: '1.0.0' } };
+      const onboardingProgress = { has_completed_setup: true };
+      UserRepositoryMock.getUserDetails.mockResolvedValueOnce({
+        ...userDummy,
+        focus_modes: [],
+        teamToAdmin: [],
+        local_device_settings: localDeviceSettings,
+        onboarding_progress: onboardingProgress,
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        email: auth0UserDummy.email,
+        email_verified: true,
+      });
+
+      const response = await userService.getUserDetails(id);
+
+      expect(response).not.toHaveProperty('local_device_settings');
+      expect(response).not.toHaveProperty('onboarding_progress');
+    });
+
     it('negative: if user account does not exist, throw the NotFoundException', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(null);
       const errorMessage = `User with id: ${id} does not exist!`;
@@ -289,6 +316,56 @@ describe('UserService', () => {
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual(errorMessage);
+    });
+  });
+
+  describe('getUserSummary', () => {
+    const id = randomUUID();
+
+    it('positive: returns minimal user details and admin teams', async () => {
+      const team = { id: randomUUID(), name: 'Bear Tamers' };
+      UserRepositoryMock.getUserSummary.mockResolvedValueOnce({
+        id,
+        stripe_customer_id: 'cus_summary123',
+        username: 'summary-user',
+        language: 'en',
+        has_consented_to_terms_of_service: true,
+        user_type: UserTypes.STANDARD,
+        teamToAdmin: [{ team }],
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        email: auth0UserDummy.email,
+        email_verified: auth0UserDummy.email_verified,
+      });
+
+      const response = await userService.getUserSummary(id, 'dashboard');
+
+      expect(UserRepositoryMock.getUserSummary).toHaveBeenCalledWith(id);
+      expect(response).toStrictEqual({
+        id,
+        stripe_customer_id: 'cus_summary123',
+        email: auth0UserDummy.email,
+        email_verified: auth0UserDummy.email_verified,
+        username: 'summary-user',
+        language: 'en',
+        adminForTeams: [team],
+        has_consented_to_terms_of_service: true,
+        user_type: UserTypes.STANDARD,
+      });
+    });
+
+    it('negative: throws NotFoundException when repository misses user', async () => {
+      UserRepositoryMock.getUserSummary.mockResolvedValueOnce(null);
+      let exception: any;
+
+      try {
+        await userService.getUserSummary(id, undefined);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception?.message).toBe(`User with id: ${id} does not exist!`);
     });
   });
 
@@ -749,6 +826,35 @@ describe('UserService', () => {
       await userService.getCompletedActivitySummary(userDummy.id);
 
       expect(CompletedActivityRepositoryMock.getWeekSummary).toHaveBeenCalledWith(userDummy.id);
+    });
+  });
+
+  describe('getUserFocusModes', () => {
+    it('positive: should return focus modes for the user', async () => {
+      const focusModes = [FocusModeDummy];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      FocusModeServiceMock.fetchUserFocusModes.mockResolvedValueOnce(focusModes);
+
+      const result = await userService.getUserFocusModes(userDummy.id);
+
+      expect(FocusModeServiceMock.fetchUserFocusModes).toHaveBeenCalledWith(userDummy.id);
+      expect(result).toEqual(focusModes);
+    });
+
+    it('negative: should throw if the user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+      let exception: any;
+
+      try {
+        await userService.getUserFocusModes(userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(`User with id: ${userDummy.id} does not exist!`);
+      expect(FocusModeServiceMock.fetchUserFocusModes).not.toHaveBeenCalled();
     });
   });
 

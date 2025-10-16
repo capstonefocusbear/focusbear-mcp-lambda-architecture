@@ -7,6 +7,7 @@ import { SentryModule } from '@ntegral/nestjs-sentry';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
@@ -42,6 +43,7 @@ import { EmailModule } from './modules/email/email.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
+import { ObservabilityModule } from './observability/observability.module';
 
 @Module({
   imports: [
@@ -73,6 +75,7 @@ import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
       },
       resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
     }),
+    ScheduleModule.forRoot(),
     BullModule.forRoot({
       connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
       defaultJobOptions: {
@@ -109,6 +112,7 @@ import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
     EmailModule,
     AsyncTaskModule,
     ZohoDeskModule,
+    ObservabilityModule,
   ],
   controllers: [AppController],
 })

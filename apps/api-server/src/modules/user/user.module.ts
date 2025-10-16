@@ -31,6 +31,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { UserLocalDeviceSettingsController } from './controllers/user-local-device-settings/user-local-device-settings.controller';
 import { HabitPackModule } from '../habit-pack/habit-pack.module';
 import { FocusModeTemplatesModule } from '../focus-mode-template/focus-mode-templates.module';
+import { FocusModeModule } from '../focus-mode/focus-mode.module';
 import { UserConsentService } from './services/user-consent/user-consent.service';
 import { UserConsentRepository } from './repositories/user-consent.repository';
 import { UserDailyStatsService } from './services/user-daily-stats/user-daily-stats.service';
@@ -197,6 +198,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     SubscriptionModule,
     HabitPackModule,
     FocusModeTemplatesModule,
+    forwardRef(() => FocusModeModule),
     forwardRef(() => DeviceModule),
     HelperModule,
     BrevoModule,

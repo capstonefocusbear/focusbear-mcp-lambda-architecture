@@ -29,6 +29,7 @@ import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
+import { UserSummaryResponseDto } from '../../dto/user-summary-response.dto';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -38,6 +39,8 @@ import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/
 import { UserTypes } from '../../domain/user-types.enum';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
+import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-mode.service';
+import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
@@ -84,6 +87,8 @@ export class UserService {
     private readonly stripeService: StripeService,
     private readonly habitPackRepository: HabitPackRepository,
     private readonly focusModeTemplateRepository: FocusModeTemplatesRepository,
+    @Inject(forwardRef(() => FocusModeService))
+    private readonly focusModeService: FocusModeService,
     private readonly config: ConfigService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userDailyStatsService: UserDailyStatsService,
@@ -291,7 +296,13 @@ export class UserService {
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const email = auth0User?.email || '';
-      const { focus_modes, teamToAdmin, ...rest } = userDetails;
+      const {
+        focus_modes,
+        teamToAdmin,
+        local_device_settings: _localDeviceSettings,
+        onboarding_progress: _onboardingProgress,
+        ...userDetailsWithoutDeprecated
+      } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
         if (focusMode.focus_mode_template_id === null) {
@@ -303,11 +314,56 @@ export class UserService {
       const adminForTeams = teamToAdmin?.map(({ team }) => team);
 
       return {
-        ...rest,
+        ...userDetailsWithoutDeprecated,
         email,
         focus_modes: formattedFocusModes,
         email_verified: auth0User.email_verified,
         adminForTeams,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getUserSummary(id: string, from?: string): Promise<UserSummaryResponseDto> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting user summary',
+        data: {
+          user_id: id,
+          from,
+        },
+      });
+      const userSummary = await this.userRepository.getUserSummary(id);
+      if (!userSummary) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      const auth0User = await this.auth0ManagementService.getAuth0User(userSummary.auth0_id);
+      const {
+        teamToAdmin,
+        id: userId,
+        stripe_customer_id,
+        username,
+        language,
+        has_consented_to_terms_of_service,
+        user_type,
+      } = userSummary;
+      const adminForTeams =
+        teamToAdmin
+          ?.map(({ team }) => (team ? { id: team.id, name: team.name } : null))
+          .filter((team): team is { id: string; name: string } => Boolean(team)) ?? [];
+
+      return {
+        id: userId,
+        stripe_customer_id,
+        email: auth0User?.email ?? '',
+        email_verified: auth0User?.email_verified ?? false,
+        username,
+        language,
+        adminForTeams,
+        has_consented_to_terms_of_service,
+        user_type,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -511,6 +567,25 @@ export class UserService {
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
       return await this.completedActivityRepository.getWeekSummary(user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getUserFocusModes(user_id: string): Promise<FocusMode[]> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Fetching user focus modes',
+        data: {
+          user_id,
+        },
+      });
+      const user = await this.userRepository.orm.findOneBy({ id: user_id });
+      if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+      return await this.focusModeService.fetchUserFocusModes(user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

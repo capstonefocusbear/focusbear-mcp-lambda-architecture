@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import * as dotenv from 'dotenv';
+import { emitCronMetrics } from '@app/observability';
 dotenv.config();
 
 export function initializeSentry() {
@@ -39,6 +40,67 @@ export async function withSentry<T>(
       // Exit with appropriate code after resources have been flushed
       // eslint-disable-next-line no-process-exit
       process.exit(succeeded ? 0 : 1);
+    }
+  }
+}
+
+function extractNumericCounts(result: any): Record<string, number> | undefined {
+  if (!result || typeof result !== 'object') {
+    return undefined;
+  }
+
+  return Object.entries(result).reduce<Record<string, number>>((acc, [key, value]) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+}
+
+export async function runCronWithTelemetry<T extends Record<string, any> | void>(
+  jobName: string,
+  job: () => Promise<T>,
+  options: { exitOnFinish?: boolean } = {},
+): Promise<T> {
+  const { exitOnFinish = true } = options;
+  const startedAt = Date.now();
+  let exitCode = 1;
+  let itemCounts: Record<string, number> | undefined;
+
+  try {
+    const result = await withSentry(async () => {
+      const output = await job();
+      itemCounts = extractNumericCounts(output);
+      exitCode = 0;
+      return output;
+    }, { exitOnFinish: false });
+    return result;
+  } catch (error) {
+    throw error;
+  } finally {
+    const environment = process.env.APP_ENV || process.env.SENTRY_ENV || process.env.NODE_ENV || 'development';
+    const service = process.env.CRON_METRICS_SERVICE || 'cron';
+    const namespace = process.env.CRON_METRICS_NAMESPACE || 'FocusBear/Cron';
+
+    try {
+      const processedCount = itemCounts ? Object.values(itemCounts).reduce((total, count) => total + count, 0) : undefined;
+      await emitCronMetrics({
+        namespace,
+        environment,
+        service,
+        jobName,
+        durationMs: Date.now() - startedAt,
+        succeeded: exitCode === 0,
+        processedCount,
+        itemCounts,
+      });
+    } catch (error) {
+      console.error('Failed to emit cron metrics', error);
+    }
+
+    if (exitOnFinish) {
+      // eslint-disable-next-line no-process-exit
+      process.exit(exitCode);
     }
   }
 }

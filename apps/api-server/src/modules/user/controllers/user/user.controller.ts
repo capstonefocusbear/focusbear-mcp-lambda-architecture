@@ -12,6 +12,7 @@ import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { HasAuth0ActionSecret } from '../../../auth/guards/has-auth0-action-secret/has-auth0-action-secret.guard';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
 import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
+import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import {
   HasSubscription,
@@ -28,6 +29,8 @@ import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
+import { GetUserSummaryQueryDto } from '../../dto/get-user-summary-query.dto';
+import { UserSummaryResponseDto } from '../../dto/user-summary-response.dto';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
@@ -76,6 +79,16 @@ export class UserController {
     return this.userService.getUserDetails(user.id);
   }
 
+  @Get('/details/summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserSummary(
+    @Query() { from }: GetUserSummaryQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<UserSummaryResponseDto> {
+    return this.userService.getUserSummary(user.id, from);
+  }
+
   @Get('/details/current-activity-props')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
@@ -103,6 +116,13 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserCompletedActivitySummary(@AuthContext() { user }: Passport): Promise<CompletedActivity[]> {
     return this.userService.getCompletedActivitySummary(user.id);
+  }
+
+  @Get('focus-modes')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserFocusModes(@AuthContext() { user }: Passport): Promise<FocusMode[]> {
+    return this.userService.getUserFocusModes(user.id);
   }
 
   @Get('/user-list')

@@ -198,7 +198,26 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
-      .leftJoinAndSelect('focus_modes.tags', 'tags')
+      .leftJoin('users.teamToAdmin', 'teamToAdmin')
+      .addSelect(['teamToAdmin.id'])
+      .leftJoin('teamToAdmin.team', 'team')
+      .addSelect(['team.id', 'team.name'])
+      .where('users.id = :id', { id })
+      .getOne();
+  }
+
+  async getUserSummary(id: string): Promise<User> {
+    return this.orm
+      .createQueryBuilder('users')
+      .select([
+        'users.id',
+        'users.auth0_id',
+        'users.stripe_customer_id',
+        'users.username',
+        'users.language',
+        'users.has_consented_to_terms_of_service',
+        'users.user_type',
+      ])
       .leftJoin('users.teamToAdmin', 'teamToAdmin')
       .addSelect(['teamToAdmin.id'])
       .leftJoin('teamToAdmin.team', 'team')
@@ -478,7 +497,7 @@ export class UserRepository extends BaseRepository<User> {
     return result[0] || null;
   }
 
-  async getUsersForWeeklyEmails(): Promise<User[]> {
+  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
     return this.orm.find({
       where: {
         email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
@@ -499,16 +518,21 @@ export class UserRepository extends BaseRepository<User> {
         'email_frequency',
       ],
       relations: [
-        'activitySequences',
-        'activitySequences.activities',
-        'completedActivitySequences',
-        'completedActivities',
-        'completedFocusBlocks',
+        'activity_sequences',
+        'activity_sequences.activities',
+        'completed_activity_sequences',
+        'completed_activities',
+        'completed_focus_blocks',
       ],
+      order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
     });
   }
 
-  async getUsersForDailyEmails(): Promise<User[]> {
+  async getUsersForDailyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
     return this.orm.find({
       where: {
         email_frequency: EmailFrequency.DAILY,
@@ -528,7 +552,12 @@ export class UserRepository extends BaseRepository<User> {
         'metadata',
         'email_frequency',
       ],
-      relations: ['activitySequences', 'completedActivities', 'completedFocusBlocks'],
+      relations: ['activity_sequences', 'completed_activities', 'completed_focus_blocks'],
+      order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
     });
   }
 
@@ -539,7 +568,42 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async getUsersForNoProgressEmails(daysThreshold = 7): Promise<User[]> {
+  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
+    return this.orm.find({
+      where: {
+        email_frequency: In([EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
+      },
+      select: [
+        'id',
+        'auth0_id',
+        'username',
+        'language',
+        'timezone',
+        'created_at',
+        'updated_at',
+        'last_completed_sequence_at',
+        'last_completed_focus_mode_at',
+        'last_completed_sequence_started_at',
+        'last_time_stats_updated',
+        'metadata',
+        'email_frequency',
+      ],
+      relations: [
+        'activity_sequences',
+        'activity_sequences.activities',
+        'completed_activity_sequences',
+        'completed_activities',
+        'completed_focus_blocks',
+      ],
+      order: {
+        id: 'ASC',
+      },
+      skip,
+      take,
+    });
+  }
+
+  async getUsersForNoProgressEmailsBatch(skip = 0, take = 30, daysThreshold = 7): Promise<User[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
@@ -569,6 +633,9 @@ export class UserRepository extends BaseRepository<User> {
       .andWhere('(user.last_completed_focus_mode_at IS NULL OR user.last_completed_focus_mode_at < :threshold)', {
         threshold: thresholdDate,
       })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
       .getMany();
   }
 

@@ -31,6 +31,23 @@ jest.mock('auth0', () => {
   };
 });
 
+// Mock Redis
+jest.mock('ioredis', () => {
+  const mockRedis = jest.fn().mockImplementation(() => ({
+    get: jest.fn(),
+    setex: jest.fn(),
+  }));
+  return { default: mockRedis };
+});
+
+// Mock FieldTransformer
+jest.mock('../../../../apps/api-server/src/shared/utils/helpers', () => ({
+  FieldTransformer: {
+    to: jest.fn((data) => `encrypted_${data}`),
+    from: jest.fn((data) => data.replace('encrypted_', '')),
+  },
+}));
+
 describe('Auth0ManagementService', () => {
   let service: Auth0ManagementService;
 
@@ -51,6 +68,11 @@ describe('Auth0ManagementService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+
+    // Mock Redis environment variables
+    process.env.REDIS_HOSTNAME = 'localhost';
+    process.env.REDIS_PORT = '6379';
+    process.env.FIELD_TRANSFORMER_ENCRYPTION_KEY = 'test-encryption-key-32-chars-long';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -257,6 +279,48 @@ describe('Auth0ManagementService', () => {
       await expect(service.updatePassword(auth0Id, newPassword)).rejects.toThrow(
         new HttpException('Failed to update password in Auth0', HttpStatus.BAD_REQUEST),
       );
+    });
+  });
+
+  describe('Redis Caching with Encryption', () => {
+    const auth0Id = 'auth0|123456';
+    let mockRedisClient: any;
+
+    beforeEach(() => {
+      // Get the mocked Redis client instance
+      mockRedisClient = (service as any).redisClient;
+    });
+
+    it('should encrypt data before storing in Redis', async () => {
+      const getUserSpy = jest.spyOn(service.users, 'get').mockResolvedValue({ data: mockUser } as any);
+      const setexSpy = jest.spyOn(mockRedisClient, 'setex').mockResolvedValue('OK');
+
+      await service.getAuth0User(auth0Id);
+
+      expect(getUserSpy).toHaveBeenCalledWith({ id: auth0Id });
+      expect(setexSpy).toHaveBeenCalledWith(`auth0:user:${auth0Id}`, 3600, expect.stringMatching(/^encrypted_/));
+    });
+
+    it('should decrypt data when retrieving from Redis', async () => {
+      const getSpy = jest.spyOn(mockRedisClient, 'get').mockResolvedValue(`encrypted_${JSON.stringify(mockUser)}`);
+
+      const result = await service.getAuth0User(auth0Id);
+
+      expect(result).toEqual(mockUser);
+      expect(getSpy).toHaveBeenCalledWith(`auth0:user:${auth0Id}`);
+    });
+
+    it('should handle Redis cache miss gracefully', async () => {
+      const getSpy = jest.spyOn(mockRedisClient, 'get').mockResolvedValue(null);
+      const getUserSpy = jest.spyOn(service.users, 'get').mockResolvedValue({ data: mockUser } as any);
+      const setexSpy = jest.spyOn(mockRedisClient, 'setex').mockResolvedValue('OK');
+
+      const result = await service.getAuth0User(auth0Id);
+
+      expect(result).toEqual(mockUser);
+      expect(getSpy).toHaveBeenCalledWith(`auth0:user:${auth0Id}`);
+      expect(getUserSpy).toHaveBeenCalledWith({ id: auth0Id });
+      expect(setexSpy).toHaveBeenCalled();
     });
   });
 });

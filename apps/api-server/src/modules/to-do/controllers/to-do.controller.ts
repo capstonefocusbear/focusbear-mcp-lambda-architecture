@@ -3,6 +3,7 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { R2Service } from '@app/r2';
+import { OpenAIService } from '@app/openai';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -27,6 +28,7 @@ export class TodoController {
   constructor(
     private readonly toDoService: ToDoService,
     private readonly r2Service: R2Service,
+    private readonly openAIService: OpenAIService,
     @InjectQueue(BullQueues.TODO_IMAGE) private todoImageQueue: Queue,
     @InjectQueue(BullQueues.TODO_AUDIO) private todoAudioQueue: Queue,
     private readonly asyncTaskService: AsyncTaskService,
@@ -110,8 +112,11 @@ export class TodoController {
   }
 
   @Post('generate-upload-audio-url')
-  async generateUploadAudioUrl(@AuthContext() { user }: Passport): Promise<{ uploadUrl: string; audioKey: string }> {
-    const audioKey = `${user.id}-${Date.now()}-todo-audio.mp3`;
+  async generateUploadAudioUrl(
+    @AuthContext() { user }: Passport,
+    @Body() { fileExtension }: { fileExtension: string },
+  ): Promise<{ uploadUrl: string; audioKey: string }> {
+    const audioKey = `${user.id}-${Date.now()}-todo-audio.${fileExtension}`;
     const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_TODO_AUDIOS, audioKey, 'audio/mpeg');
     return { uploadUrl, audioKey };
   }

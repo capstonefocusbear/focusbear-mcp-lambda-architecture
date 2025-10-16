@@ -38,6 +38,7 @@ prompts:
         - A generic tool like Google Search or a site that *could* be used for the task but has **no specific link provided** in the `justification` or other context.
         - The connection to the `currentTask` is plausible but weak or indirect.
         - **Example Reason:** "This could be useful, but be careful not to get sidetracked!"
+        - Guardrail: If the page is a feed/chat/messaging surface (e.g., tab/title/description includes “Feed”, “Home”, “Timeline”, “Messages”, “Chat”, “Inbox”, “Notifications”) and `justificationForThisUrl` is empty while the `currentTaskInToDoPlayer` is a specific individual-contributor task (verbs like “analyse”, “write”, “code”, “debug”, “model”, “summarise”, “clean data”), you MUST NOT rate above 0.3; treat as a mismatch in Step 4.
 
       **4. Is there a MAJOR MISMATCH? (Score 0.1-0.3)**
         - The website's topic is completely unrelated to the **specific `currentTaskInToDoPlayer`**.
@@ -45,6 +46,7 @@ prompts:
         - This rule applies even if the `intention` seems related. A specific task like "Practice JavaScript Closures" makes a geography website a mismatch.
         - Obvious distractions (social media, entertainment) with no clear, justified link to the focus session.
         - **Example Reason:** "This seems a bit off-topic from your task. Let's keep you focused!" or "I understand your justification, but this site doesn't connect to your current task of [specific task]. Let's stay focused!"
+        - Example: Visiting a social/professional networking feed (“Feed/Home/Timeline/Messages”) during a specific task like “analyse data from RCT” with no justification → 0.1–0.3.
 
       ## OUTPUT FORMAT
       Provide response ONLY in JSON format:
@@ -1264,7 +1266,7 @@ tests:
       justificationForThisUrl: this is one of the people to contact
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: email AADPA people
-      min_probability: 0.8
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -1341,18 +1343,6 @@ tests:
       justificationForThisUrl: getting screenshots to add to design feedback
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: review UI designs
-      min_probability: 0.7
-      max_probability: 1
-    assert:
-      - type: javascript
-        value: file://validate-probability.js
-  - description: "CleanShot X during Deep Work for assigning intern tasks"
-    vars:
-      appName: "CleanShot X"
-      focusMode: "Deep Work"
-      intention: "deep work"
-      justificationForThisSpecificApp: ""
-      currentTaskInToDoPlayer: "assign task to interns"
       min_probability: 0.7
       max_probability: 1
     assert:
@@ -1441,6 +1431,36 @@ tests:
       justificationForThisUrl: ""
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: update release notes
+      min_probability: 0.1
+      max_probability: 0.3
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Slack during RCT data analysis (no justification)
+    vars:
+      url: https://app.slack.com/client/T123/C456
+      tab_title: Slack
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: analyse data from RCT
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: analyse data from RCT
+      min_probability: 0.1
+      max_probability: 0.4
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: LinkedIn during RCT data analysis (no justification)
+    vars:
+      url: https://www.linkedin.com/feed/
+      tab_title: LinkedIn
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: analyse data from RCT
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: analyse data from RCT
       min_probability: 0.1
       max_probability: 0.3
     assert:

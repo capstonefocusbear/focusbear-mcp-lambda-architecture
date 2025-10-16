@@ -14,6 +14,7 @@ import { FocusModeTemplate } from '../apps/api-server/src/modules/focus-mode-tem
 import { InstalledFocusModeTemplate } from '../apps/api-server/src/modules/focus-mode-template/entities/installed-focus-mode_templates.entity';
 import { CompletedFocusBlock } from '../apps/api-server/src/modules/focus-mode/entities/completed-focus-block.entity';
 import { FocusMode } from '../apps/api-server/src/modules/focus-mode/entities/focus-mode.entity';
+import { BlockingSchedule } from '../apps/api-server/src/modules/focus-mode/entities/blocking-schedule.entity';
 import { HabitPack } from '../apps/api-server/src/modules/habit-pack/entity/habit-pack.entity';
 import { InstalledPack } from '../apps/api-server/src/modules/habit-pack/entity/installed-pack.entity';
 import { LessonCompletion } from '../apps/api-server/src/modules/lesson/entities/lesson-completion.entity';
@@ -66,6 +67,7 @@ export const CronJobDataSource = new DataSource({
     Device,
     CompletedActivitySequence,
     FocusMode,
+    BlockingSchedule,
     CompletedFocusBlock,
     Team,
     HabitPack,

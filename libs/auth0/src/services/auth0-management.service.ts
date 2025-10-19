@@ -2,7 +2,7 @@ import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/c
 import { DeviceCredential, ManagementClient } from 'auth0';
 import Redis from 'ioredis';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
-import { IAuth0Options, IManagementService } from '../interfaces';
+import { IAuth0Options, IManagementService, Auth0User } from '../interfaces';
 import { FieldTransformer } from '../../../../apps/api-server/src/shared/utils/helpers';
 
 @Injectable()
@@ -55,7 +55,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     }
   }
 
-  async getAuth0User(auth0Id: string): Promise<any> {
+  async getAuth0User(auth0Id: string): Promise<Auth0User | null> {
     try {
       // Try to get cached user first
       const cachedUser = await this.getCachedUser(auth0Id);
@@ -70,7 +70,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       if (user) {
         await this.setCachedUser(auth0Id, user);
       }
-      return user;
+      return user as Auth0User;
     } catch (error) {
       if (error.message.includes('does not exist')) {
         return null;

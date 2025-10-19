@@ -746,6 +746,76 @@ describe('UserSettingsService', () => {
     });
   });
 
+  describe('mergeById', () => {
+    type TestItem = { id?: string; name?: string; extra?: string };
+
+    it('returns incoming when existing is empty and assigns uuid for items without id', () => {
+      const incoming: TestItem[] = [{ name: 'A' }, { id: '1', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>([], incoming);
+      expect(result).toHaveLength(2);
+      const [first, second] = result;
+      expect(first.id).toBeDefined();
+      expect(typeof first.id).toBe('string');
+      expect(second.id).toBe('1');
+    });
+
+    it('returns existing when incoming is empty (copy, not same reference)', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, []);
+      expect(result).toEqual(existing);
+      expect(result).not.toBe(existing);
+    });
+
+    it('appends unique incoming items by id', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '2', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(2);
+      expect(result.map((i) => i.id)).toEqual(['1', '2']);
+    });
+
+    it('skips duplicates when incoming has same id and same name', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1', name: 'A' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(existing[0]);
+    });
+
+    it('treats same id but different name as distinct, generating a new uuid', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(2);
+      const [ex, inc] = result;
+      expect(ex.id).toBe('1');
+      expect(inc.name).toBe('B');
+      expect(inc.id).toBeDefined();
+      expect(inc.id).not.toBe('1');
+    });
+
+    it('skips duplicate when incoming has same id but unknown name', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(existing[0]);
+    });
+
+    it('preserves order: existing first, then unique incoming in order', () => {
+      const existing: TestItem[] = [
+        { id: '1', name: 'A' },
+        { id: '2', name: 'B' },
+      ];
+      const incoming: TestItem[] = [{ id: '2', name: 'B' }, { id: '3', name: 'C' }, { name: 'D' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result[0].id).toBe('1');
+      expect(result[1].id).toBe('2');
+      expect(result[2].id).toBe('3');
+      expect(result[3].id).toBeDefined();
+    });
+  });
+
   describe('hasCutoffTimeBeenReached', () => {
     beforeEach(() => {
       // Reset Luxon's current time

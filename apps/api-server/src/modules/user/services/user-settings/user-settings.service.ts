@@ -135,13 +135,6 @@ export class UserSettingsService {
     should_update_has_edited_settings: boolean,
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ) {
-    function mergeActivities(existing = [], incoming = []) {
-      const existingMap = new Map(existing.map((a) => [a.id, a]));
-      for (const a of incoming) {
-        if (!existingMap.has(a.id)) existingMap.set(a.id, a);
-      }
-      return Array.from(existingMap.values());
-    }
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -175,11 +168,10 @@ export class UserSettingsService {
 
       let mergedSettingsData = updateSettingsData;
       if (is_onboarding) {
-        const userDetails = await this.userRepository.getUserDetails(user_id);
         let isFirstLogin = false;
-        if (userDetails?.auth0_id) {
-          const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
-          isFirstLogin = !!auth0User?.first_login;
+        if (user?.auth0_id) {
+          const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+          isFirstLogin = (auth0User?.logins_count ?? 0) <= 1;
         }
         if (!isFirstLogin) {
           let currentSettings: UpdateUserSettingsDto | null = null;
@@ -192,22 +184,20 @@ export class UserSettingsService {
           const hasExistingRoutines =
             !!currentSettings?.morning_activities?.length ||
             !!currentSettings?.evening_activities?.length ||
-            !!currentSettings?.break_activities?.length ||
-            !!currentSettings?.custom_routines?.length;
+            !!currentSettings?.break_activities?.length;
 
           if (hasExistingRoutines) {
             mergedSettingsData = {
               ...updateSettingsData,
-              morning_activities: mergeActivities(
+              morning_activities: this.mergeById(
                 currentSettings?.morning_activities,
                 updateSettingsData.morning_activities,
               ),
-              evening_activities: mergeActivities(
+              evening_activities: this.mergeById(
                 currentSettings?.evening_activities,
                 updateSettingsData.evening_activities,
               ),
-              break_activities: mergeActivities(currentSettings?.break_activities, updateSettingsData.break_activities),
-              custom_routines: mergeActivities(currentSettings?.custom_routines, updateSettingsData.custom_routines),
+              break_activities: this.mergeById(currentSettings?.break_activities, updateSettingsData.break_activities),
             };
           }
         }
@@ -300,6 +290,19 @@ export class UserSettingsService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private mergeById<T extends { id?: string }>(existing: T[] = [], incoming: T[] = []): T[] {
+    const result: T[] = [...(existing ?? [])];
+    const existingIds = new Set<string>((existing ?? []).map((item) => item?.id).filter(Boolean) as string[]);
+    for (const item of incoming ?? []) {
+      const id = item?.id as string | undefined;
+      if (!id || !existingIds.has(id)) {
+        result.push(item);
+        if (id) existingIds.add(id);
+      }
+    }
+    return result;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

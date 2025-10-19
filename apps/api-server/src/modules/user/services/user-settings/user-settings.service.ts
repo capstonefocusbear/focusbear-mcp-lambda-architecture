@@ -17,6 +17,7 @@ import { PusherService } from '@app/pusher';
 import { I18nService } from 'nestjs-i18n';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
+import { Auth0ManagementService } from '@app/auth0';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -59,6 +60,7 @@ export class UserSettingsService {
     private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
     private readonly customRoutineRepository: CustomRoutineRepository,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -164,6 +166,43 @@ export class UserSettingsService {
         this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
       }
 
+      let mergedSettingsData = updateSettingsData;
+      if (is_onboarding) {
+        let isFirstLogin = false;
+        if (user?.auth0_id) {
+          const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+          isFirstLogin = (auth0User?.logins_count ?? 0) <= 1;
+        }
+        if (!isFirstLogin) {
+          let currentSettings: UpdateUserSettingsDto | null = null;
+          try {
+            currentSettings = await this.getSettings({ user_id });
+          } catch {
+            currentSettings = null;
+          }
+
+          const hasExistingRoutines =
+            !!currentSettings?.morning_activities?.length ||
+            !!currentSettings?.evening_activities?.length ||
+            !!currentSettings?.break_activities?.length;
+
+          if (hasExistingRoutines) {
+            mergedSettingsData = {
+              ...updateSettingsData,
+              morning_activities: this.mergeById(
+                currentSettings?.morning_activities,
+                updateSettingsData.morning_activities,
+              ),
+              evening_activities: this.mergeById(
+                currentSettings?.evening_activities,
+                updateSettingsData.evening_activities,
+              ),
+              break_activities: this.mergeById(currentSettings?.break_activities, updateSettingsData.break_activities),
+            };
+          }
+        }
+      }
+
       const {
         startup_time,
         shutdown_time,
@@ -172,10 +211,10 @@ export class UserSettingsService {
         morning_activities,
         break_activities,
         custom_routines,
-      } = updateSettingsData;
+      } = mergedSettingsData;
 
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
-        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+        await this.updateUserIfCurrentActivityDeleted(mergedSettingsData, user);
 
       const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
@@ -185,7 +224,7 @@ export class UserSettingsService {
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
-        updateSettingsData,
+        mergedSettingsData,
         user,
         is_onboarding,
       );
@@ -251,6 +290,19 @@ export class UserSettingsService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private mergeById<T extends { id?: string }>(existing: T[] = [], incoming: T[] = []): T[] {
+    const result: T[] = [...(existing ?? [])];
+    const existingIds = new Set<string>((existing ?? []).map((item) => item?.id).filter(Boolean) as string[]);
+    for (const item of incoming ?? []) {
+      const id = item?.id as string | undefined;
+      if (!id || !existingIds.has(id)) {
+        result.push(item);
+        if (id) existingIds.add(id);
+      }
+    }
+    return result;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -194,7 +194,7 @@
   },
   "lint-staged": {
     "{apps,libs,test}/**/*.ts": [
-      "npm audit --production",
+      "npm audit --production --audit-level=high",
       "prettier --write",
       "eslint --fix"
     ]

@@ -292,17 +292,55 @@ export class UserSettingsService {
     }
   }
 
-  private mergeById<T extends { id?: string }>(existing: T[] = [], incoming: T[] = []): T[] {
-    const result: T[] = [...(existing ?? [])];
-    const existingIds = new Set<string>((existing ?? []).map((item) => item?.id).filter(Boolean) as string[]);
-    for (const item of incoming ?? []) {
-      const id = item?.id as string | undefined;
-      if (!id || !existingIds.has(id)) {
-        result.push(item);
-        if (id) existingIds.add(id);
+  mergeById<T extends { id?: string }>(existing: T[] = [], incoming: T[] = []): T[] {
+    const safeExisting = existing ?? [];
+    const safeIncoming = incoming ?? [];
+    if (safeExisting.length === 0) {
+      // Ensure items without id get a new UUID to avoid later collisions
+      return safeIncoming.map((item) => {
+        if (!item?.id) return { ...(item as any), id: randomUUID() } as T;
+        return item;
+      });
+    }
+    if (safeIncoming.length === 0) return [...safeExisting];
+
+    const existingIds = new Set<string>(safeExisting.map((item) => item?.id).filter(Boolean) as string[]);
+    const idToName = new Map<string, string | undefined>(
+      safeExisting.map((item) => [item?.id as string, (item as any)?.name] as const).filter(([id]) => Boolean(id)),
+    );
+
+    const merged: T[] = [...safeExisting];
+    const seenIds = new Set(existingIds);
+
+    for (const item of safeIncoming) {
+      const currentId = (item?.id as string | undefined) || undefined;
+      const currentName = (item as any)?.name as string | undefined;
+
+      let itemToAppend: T | null = null;
+
+      if (!currentId) {
+        // No id → always append with a fresh UUID
+        itemToAppend = { ...(item as any), id: randomUUID() } as T;
+      } else if (seenIds.has(currentId)) {
+        const existingName = idToName.get(currentId);
+        if (existingName && currentName && existingName !== currentName) {
+          // Same id but different name → treat as distinct; assign new UUID
+          itemToAppend = { ...(item as any), id: randomUUID() } as T;
+        }
+        // else same id and same (or unknown) name → skip as duplicate
+      } else {
+        // New id → append and record
+        itemToAppend = item as T;
+        seenIds.add(currentId);
+        idToName.set(currentId, currentName);
+      }
+
+      if (itemToAppend) {
+        merged.push(itemToAppend);
       }
     }
-    return result;
+
+    return merged;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

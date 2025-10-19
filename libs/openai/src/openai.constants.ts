@@ -16,6 +16,7 @@ export const MAX_WORD_LENGTH = {
   metadata: 500,
 };
 export const INPUT_WRAPPER = '%%%';
+export const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
 
 export enum OpenAIKeyType {
   GENERAL = 'general',
@@ -30,6 +31,7 @@ export enum OpenAIKeyType {
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
   HABIT_ADJUSTMENT = 'habitAdjustment',
   TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
+  ROUTINE_SUGGESTION_EMBEDDING = 'routineSuggestionEmbedding',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';

@@ -25,6 +25,7 @@ import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-u
 import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import {
+  DEFAULT_EMBEDDING_MODEL,
   INPUT_WRAPPER,
   MAX_WORD_LENGTH,
   OPENAI_MODULE_OPTIONS,
@@ -54,6 +55,7 @@ export class OpenAIService {
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
     [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -778,6 +780,26 @@ export class OpenAIService {
       },
       { stream: true },
     );
+  }
+
+  async createEmbedding(
+    input: string | string[],
+    {
+      model = DEFAULT_EMBEDDING_MODEL,
+      type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
+    }: { model?: string; type?: OpenAIKeyType } = {},
+  ): Promise<number[]> {
+    try {
+      const openai = this.getOpenAIInstance(type);
+      const response = await openai.embeddings.create({
+        input,
+        model,
+      });
+      return response.data?.[0]?.embedding ?? [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      return [];
+    }
   }
 
   isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {

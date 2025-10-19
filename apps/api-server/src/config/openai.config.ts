@@ -34,4 +34,7 @@ export const openAiConfig = registerAs('openai', () => ({
   todosTranscriptAnalysis: {
     apiKey: process.env.OPENAI_TODOS_TRANSCRIPT_ANALYSIS_API_KEY || process.env.OPENAI_API_KEY,
   },
+  routineSuggestionEmbedding: {
+    apiKey: process.env.OPENAI_ROUTINE_SUGGESTION_EMBEDDING_API_KEY || process.env.OPENAI_API_KEY,
+  },
 }));

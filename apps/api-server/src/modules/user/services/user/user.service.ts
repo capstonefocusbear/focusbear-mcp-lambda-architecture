@@ -326,32 +326,30 @@ export class UserService {
     }
   }
 
-  // timing helper to measure getUserCurrentActivityProps
-  private static readonly SLOW_SEGMENT_THRESHOLD_MILLISECONDS = 200;
-
-  private async measureSegment<T>(segmentLabel: string, operation: () => Promise<T>): Promise<T> {
-    const startTimeNanoseconds = process.hrtime.bigint();
-    try {
-      return await operation();
-    } finally {
-      const elapsedMilliseconds = Number(process.hrtime.bigint() - startTimeNanoseconds) / 1e6;
-
-      const logMessage = `[segment] ${segmentLabel} ${elapsedMilliseconds.toFixed(1)} milliseconds`;
-
-      const sentry = this.sentryService.instance();
-      sentry.addBreadcrumb({
-        category: 'performance',
-        level: elapsedMilliseconds > UserService.SLOW_SEGMENT_THRESHOLD_MILLISECONDS ? 'warning' : 'info',
-        message: segmentLabel,
-        data: { milliseconds: Number(elapsedMilliseconds.toFixed(1)) },
-      });
-
-      if (elapsedMilliseconds > UserService.SLOW_SEGMENT_THRESHOLD_MILLISECONDS) {
-        console.warn(logMessage);
-      } else {
-        console.log(logMessage);
-      }
-    }
+  // helper for logging CloudWatch errors
+  private logCloudWatchError(endpoint: string, error: unknown, context: Record<string, unknown> = {}): void {
+    const err = error as Error;
+    const payload = {
+      _aws: {
+        Timestamp: Date.now(),
+        CloudWatchMetrics: [
+          {
+            Namespace: 'FocusBear/Backend',
+            Dimensions: [['Service', 'Endpoint', 'ErrorName']],
+            Metrics: [{ Name: 'Errors', Unit: 'Count' }],
+          },
+        ],
+      },
+      Service: 'UserService',
+      Endpoint: endpoint,
+      ErrorName: err?.name ?? 'UnknownError',
+      Errors: 1,
+      message: err?.message ?? String(error),
+      stack: err?.stack,
+      ...context,
+    };
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify(payload));
   }
 
   async getUserSummary(id: string, from?: string): Promise<UserSummaryResponseDto> {
@@ -401,17 +399,8 @@ export class UserService {
 
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Getting user current activity properties',
-        data: { user_id: userId },
-      });
-
       // fetch minimal user state
-      let partialUser = await this.measureSegment('userRepository.getUserCurrentActivityProps', () =>
-        this.userRepository.getUserCurrentActivityProps(userId),
-      );
+      let partialUser = await this.userRepository.getUserCurrentActivityProps(userId);
       if (!partialUser) {
         throw new NotFoundException(`User with id: ${userId} does not exist!`);
       }
@@ -419,24 +408,20 @@ export class UserService {
       const initialCurrentActivity = partialUser.current_activity_id;
       let currentSequenceCompletedActivityIds: string[] = [];
 
-      const todayRoutineProgressPromise = this.measureSegment(
-        'completedActivitySequenceService.getRoutinesProgress',
-        () => this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
+      // kick off in parallel
+      const todayRoutineProgressPromise = this.completedActivitySequenceService.getRoutinesProgress(
+        partialUser.id,
+        partialUser.timezone,
       );
 
       if (partialUser.current_activity) {
-        partialUser = await this.measureSegment('recalculateActivityProps', () =>
-          this.recalculateActivityProps(partialUser),
-        );
+        partialUser = await this.recalculateActivityProps(partialUser);
 
         if (partialUser.current_completing_sequence_log_id) {
-          currentSequenceCompletedActivityIds = await this.measureSegment(
-            'completedActivityService.getCurrentSequenceCompletedActivityIds',
-            () =>
-              this.completedActivityService.getCurrentSequenceCompletedActivityIds(
-                partialUser.current_completing_sequence_log_id,
-              ),
-          );
+          currentSequenceCompletedActivityIds =
+            await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
+              partialUser.current_completing_sequence_log_id,
+            );
         }
       }
 
@@ -459,7 +444,7 @@ export class UserService {
 
       return currentActivityProps;
     } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
+      this.logCloudWatchError('getUserCurrentActivityProps', error, { user_id: userId });
       throw error;
     }
   }

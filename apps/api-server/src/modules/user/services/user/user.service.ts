@@ -326,33 +326,6 @@ export class UserService {
     }
   }
 
-<<<<<<< HEAD
-  // helper for logging CloudWatch errors
-  private logCloudWatchError(endpoint: string, error: unknown, context: Record<string, unknown> = {}): void {
-    const err = error as Error;
-    const payload = {
-      _aws: {
-        Timestamp: Date.now(),
-        CloudWatchMetrics: [
-          {
-            Namespace: 'FocusBear/Backend',
-            Dimensions: [['Service', 'Endpoint', 'ErrorName']],
-            Metrics: [{ Name: 'Errors', Unit: 'Count' }],
-          },
-        ],
-      },
-      Service: 'UserService',
-      Endpoint: endpoint,
-      ErrorName: err?.name ?? 'UnknownError',
-      Errors: 1,
-      message: err?.message ?? String(error),
-      stack: err?.stack,
-      ...context,
-    };
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify(payload));
-  }
-
   async getUserSummary(id: string, from?: string): Promise<UserSummaryResponseDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -398,8 +371,6 @@ export class UserService {
     }
   }
 
-=======
->>>>>>> 7e579c8f (chore: removed cloudwatch functionality + helper function)
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
       // fetch minimal user state

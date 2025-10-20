@@ -261,6 +261,35 @@ describe('UserService', () => {
 
       expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(emailPayload);
     });
+
+    it('does not overwrite username for existing users on sync', async () => {
+      const stripeCustomerId = randomUUID();
+      const existing = { ...userDummy, username: 'Zoë' };
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existing);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(existing);
+      UserRepositoryMock.update.mockResolvedValueOnce(existing);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
+      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+      RevenueCatServiceMock.checkSubscriptionStatus.mockResolvedValueOnce({ status: 'active' });
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          stripe_customer_id: stripeCustomerId,
+        }),
+      );
+      expect(UserRepositoryMock.update).not.toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          username: expect.anything(),
+        }),
+      );
+    });
   });
 
   describe('getUserDetails', () => {
@@ -775,6 +804,24 @@ describe('UserService', () => {
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
+    });
+  });
+
+  describe('updateUsername Unicode handling', () => {
+    it('saves Unicode names, trims and normalizes NFC', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const decomposed = ' wants e\u0308 ';
+      const expected = 'wants ë';
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await userService.updateUsername(userDummy.id, { username: decomposed });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          username: expected,
+        }),
+      );
     });
   });
 

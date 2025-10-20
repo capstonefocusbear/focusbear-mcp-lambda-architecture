@@ -126,7 +126,12 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       query.andWhere('to_do.synced_project_id = :synced_project_id', { synced_project_id });
     }
 
-    return query.getManyAndCount();
+    const { entities, raw } = await query.getRawAndEntities();
+    const resultsWithTopScore = entities.map((entity, index) => ({
+      ...entity,
+      top_score: raw[index]?.top_score,
+    }));
+    return [resultsWithTopScore, raw.length];
   }
 
   async searchUserToDos({ title, take }: SearchToDosDto, userId: string) {

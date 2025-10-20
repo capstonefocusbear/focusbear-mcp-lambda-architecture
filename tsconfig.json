@@ -12,40 +12,108 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "types": [
+      "jest",
+      "node"
+    ],
     "skipLibCheck": true,
     "paths": {
-      "@app/fastify-content-types": ["libs/fastify-content-types/src"],
-      "@app/fastify-content-types/*": ["libs/fastify-content-types/src/*"],
-      "@app/crypto": ["libs/crypto/src"],
-      "@app/crypto/*": ["libs/crypto/src/*"],
-      "@app/dynamic-module": ["libs/dynamic-module/src"],
-      "@app/dynamic-module/*": ["libs/dynamic-module/src/*"],
-      "@app/auth0": ["libs/auth0/src"],
-      "@app/auth0/*": ["libs/auth0/src/*"],
-      "@app/pusher": ["libs/pusher/src"],
-      "@app/pusher/*": ["libs/pusher/src/*"],
-      "@app/pusher-beams": ["libs/pusher-beams/src"],
-      "@app/pusher-beams/*": ["libs/pusher-beams/src/*"],
-      "@app/revenue-cat": ["libs/revenue-cat/src"],
-      "@app/revenue-cat/*": ["libs/revenue-cat/src/*"],
-      "@app/stripe": ["libs/stripe/src"],
-      "@app/stripe/*": ["libs/stripe/src/*"],
-      "@app/r2": ["libs/r2/src"],
-      "@app/r2/*": ["libs/r2/src/*"],
-      "@app/openai": ["libs/openai/src"],
-      "@app/openai/*": ["libs/openai/src/*"],
-      "@app/send-grid": ["libs/send-grid/src"],
-      "@app/send-grid/*": ["libs/send-grid/src/*"],
-      "@app/jwt": ["libs/jwt/src"],
-      "@app/jwt/*": ["libs/jwt/src/*"],
-      "@app/brevo": ["libs/brevo/src"],
-      "@app/brevo/*": ["libs/brevo/src/*"],
-      "@api-server/*": ["apps/api-server/src/*"],
-      "@api-server": ["apps/api-server/src"],
-      "@app/gemini": ["libs/gemini/src"],
-      "@app/gemini/*": ["libs/gemini/src/*"],
-      "@app/observability": ["libs/observability/src"],
-      "@app/observability/*": ["libs/observability/src/*"]
+      "@app/fastify-content-types": [
+        "libs/fastify-content-types/src"
+      ],
+      "@app/fastify-content-types/*": [
+        "libs/fastify-content-types/src/*"
+      ],
+      "@app/crypto": [
+        "libs/crypto/src"
+      ],
+      "@app/crypto/*": [
+        "libs/crypto/src/*"
+      ],
+      "@app/dynamic-module": [
+        "libs/dynamic-module/src"
+      ],
+      "@app/dynamic-module/*": [
+        "libs/dynamic-module/src/*"
+      ],
+      "@app/auth0": [
+        "libs/auth0/src"
+      ],
+      "@app/auth0/*": [
+        "libs/auth0/src/*"
+      ],
+      "@app/pusher": [
+        "libs/pusher/src"
+      ],
+      "@app/pusher/*": [
+        "libs/pusher/src/*"
+      ],
+      "@app/pusher-beams": [
+        "libs/pusher-beams/src"
+      ],
+      "@app/pusher-beams/*": [
+        "libs/pusher-beams/src/*"
+      ],
+      "@app/revenue-cat": [
+        "libs/revenue-cat/src"
+      ],
+      "@app/revenue-cat/*": [
+        "libs/revenue-cat/src/*"
+      ],
+      "@app/stripe": [
+        "libs/stripe/src"
+      ],
+      "@app/stripe/*": [
+        "libs/stripe/src/*"
+      ],
+      "@app/r2": [
+        "libs/r2/src"
+      ],
+      "@app/r2/*": [
+        "libs/r2/src/*"
+      ],
+      "@app/openai": [
+        "libs/openai/src"
+      ],
+      "@app/openai/*": [
+        "libs/openai/src/*"
+      ],
+      "@app/send-grid": [
+        "libs/send-grid/src"
+      ],
+      "@app/send-grid/*": [
+        "libs/send-grid/src/*"
+      ],
+      "@app/jwt": [
+        "libs/jwt/src"
+      ],
+      "@app/jwt/*": [
+        "libs/jwt/src/*"
+      ],
+      "@app/brevo": [
+        "libs/brevo/src"
+      ],
+      "@app/brevo/*": [
+        "libs/brevo/src/*"
+      ],
+      "@api-server/*": [
+        "apps/api-server/src/*"
+      ],
+      "@api-server": [
+        "apps/api-server/src"
+      ],
+      "@app/gemini": [
+        "libs/gemini/src"
+      ],
+      "@app/gemini/*": [
+        "libs/gemini/src/*"
+      ],
+      "@app/observability": [
+        "libs/observability/src"
+      ],
+      "@app/observability/*": [
+        "libs/observability/src/*"
+      ]
     }
   }
 }

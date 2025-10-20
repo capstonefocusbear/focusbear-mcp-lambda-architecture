@@ -326,6 +326,7 @@ export class UserService {
     }
   }
 
+<<<<<<< HEAD
   // helper for logging CloudWatch errors
   private logCloudWatchError(endpoint: string, error: unknown, context: Record<string, unknown> = {}): void {
     const err = error as Error;
@@ -397,6 +398,8 @@ export class UserService {
     }
   }
 
+=======
+>>>>>>> 7e579c8f (chore: removed cloudwatch functionality + helper function)
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
       // fetch minimal user state
@@ -444,7 +447,18 @@ export class UserService {
 
       return currentActivityProps;
     } catch (error) {
-      this.logCloudWatchError('getUserCurrentActivityProps', error, { user_id: userId });
+      // stdout (not CloudWatch EMF)
+      const e = error as Error;
+      console.log(
+        JSON.stringify({
+          level: 'error',
+          event: 'getUserCurrentActivityProps_failed',
+          user_id: userId,
+          name: e?.name ?? 'Error',
+          message: e?.message ?? String(error),
+          stack: e?.stack,
+        }),
+      );
       throw error;
     }
   }

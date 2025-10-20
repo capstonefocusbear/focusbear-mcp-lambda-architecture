@@ -326,23 +326,31 @@ export class UserService {
     }
   }
 
-  private async seg<T>(label: string, fn: () => Promise<T>): Promise<T> {
-    const t0 = process.hrtime.bigint();
+  // timing helper to measure getUserCurrentActivityProps
+  private static readonly SLOW_SEGMENT_THRESHOLD_MILLISECONDS = 200;
+
+  private async measureSegment<T>(segmentLabel: string, operation: () => Promise<T>): Promise<T> {
+    const startTimeNanoseconds = process.hrtime.bigint();
     try {
-      return await fn();
+      return await operation();
     } finally {
-      const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-      const line = `[seg] ${label} ${ms.toFixed(1)}ms`;
-      // log + breadcrumb to Sentry
+      const elapsedMilliseconds = Number(process.hrtime.bigint() - startTimeNanoseconds) / 1e6;
+
+      const logMessage = `[segment] ${segmentLabel} ${elapsedMilliseconds.toFixed(1)} milliseconds`;
+
       const sentry = this.sentryService.instance();
       sentry.addBreadcrumb({
-        category: 'perf',
-        level: ms > 200 ? 'warning' : 'info',
-        message: label,
-        data: { ms: Number(ms.toFixed(1)) },
+        category: 'performance',
+        level: elapsedMilliseconds > UserService.SLOW_SEGMENT_THRESHOLD_MILLISECONDS ? 'warning' : 'info',
+        message: segmentLabel,
+        data: { milliseconds: Number(elapsedMilliseconds.toFixed(1)) },
       });
-      if (ms > 200) console.warn(line);
-      else console.log(line);
+
+      if (elapsedMilliseconds > UserService.SLOW_SEGMENT_THRESHOLD_MILLISECONDS) {
+        console.warn(logMessage);
+      } else {
+        console.log(logMessage);
+      }
     }
   }
 
@@ -401,7 +409,7 @@ export class UserService {
       });
 
       // fetch minimal user state
-      let partialUser = await this.seg('userRepository.getUserCurrentActivityProps', () =>
+      let partialUser = await this.measureSegment('userRepository.getUserCurrentActivityProps', () =>
         this.userRepository.getUserCurrentActivityProps(userId),
       );
       if (!partialUser) {
@@ -411,15 +419,18 @@ export class UserService {
       const initialCurrentActivity = partialUser.current_activity_id;
       let currentSequenceCompletedActivityIds: string[] = [];
 
-      const todayRoutineProgressPromise = this.seg('completedActivitySequenceService.getRoutinesProgress', () =>
-        this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
+      const todayRoutineProgressPromise = this.measureSegment(
+        'completedActivitySequenceService.getRoutinesProgress',
+        () => this.completedActivitySequenceService.getRoutinesProgress(partialUser.id, partialUser.timezone),
       );
 
       if (partialUser.current_activity) {
-        partialUser = await this.seg('recalculateActivityProps', () => this.recalculateActivityProps(partialUser));
+        partialUser = await this.measureSegment('recalculateActivityProps', () =>
+          this.recalculateActivityProps(partialUser),
+        );
 
         if (partialUser.current_completing_sequence_log_id) {
-          currentSequenceCompletedActivityIds = await this.seg(
+          currentSequenceCompletedActivityIds = await this.measureSegment(
             'completedActivityService.getCurrentSequenceCompletedActivityIds',
             () =>
               this.completedActivityService.getCurrentSequenceCompletedActivityIds(

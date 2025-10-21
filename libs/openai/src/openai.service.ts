@@ -56,6 +56,7 @@ export class OpenAIService {
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
     [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
     [OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -800,6 +801,20 @@ export class OpenAIService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       return [];
     }
+  }
+
+  async createChatCompletion(
+    messages: ChatCompletionMessageParam[],
+    {
+      type = OpenAIKeyType.ROUTINE_SUGGESTION,
+      params = {},
+    }: { type?: OpenAIKeyType; params?: Partial<OpenAI.Chat.ChatCompletionCreateParamsNonStreaming> } = {},
+  ) {
+    const baseParams = {
+      ...(OPENAI_PARAMS.routineSuggestions as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+      ...params,
+    };
+    return this.getOpenAIChatCompletionsNonStreaming(messages, type, baseParams);
   }
 
   isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {

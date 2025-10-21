@@ -1,0 +1,74 @@
+prompts:
+  - id: routine-suggestions
+    raw: |
+      You are Focus Bear, an assistant that selects the best habits from a provided list to help a user achieve their routine goal. Only choose from the supplied habits. Return **only** a JSON array where each item has the fields `habitId` (string), `justification` (<= 120 characters), and `matchScore` (0-1).
+
+      User goal: {{goal}}
+
+      Habit options:
+      {{habits}}
+
+providers:
+  - id: openai:gpt-4.1-mini
+    config:
+      temperature: 0.2
+      max_tokens: 512
+      apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
+
+tests:
+  - description: Select strength habits for "Get buffed"
+    vars:
+      goal: Get buffed
+      habits: |
+        Habit 1:
+          habitId: strength-training-1
+          name: Strength Training
+          description: Guided bodyweight strength session focusing on major muscle groups.
+          routineType: morning
+          tags: fitness, strength, resistance
+          similarity: 0.92
+
+        Habit 2:
+          habitId: cardio-boost-1
+          name: Cardio Boost
+          description: Moderate intensity cardio to improve stamina.
+          routineType: morning
+          tags: cardio, stamina
+          similarity: 0.71
+
+        Habit 3:
+          habitId: mindfulness-reset-1
+          name: Mindfulness Reset
+          description: Short breathing exercise to reset focus.
+          routineType: evening
+          tags: calm, mindset
+          similarity: 0.55
+    assert:
+      - type: javascript
+        value: file://validate-suggestions-nonempty.js
+
+  - description: Return empty array when no habits fit
+    vars:
+      goal: Learn Japanese calligraphy
+      habits: |
+        Habit 1:
+          habitId: strength-training-1
+          name: Strength Training
+          description: Guided bodyweight strength session focusing on major muscle groups.
+          routineType: morning
+          tags: fitness, strength, resistance
+          similarity: 0.32
+
+        Habit 2:
+          habitId: cardio-boost-1
+          name: Cardio Boost
+          description: Moderate intensity cardio to improve stamina.
+          routineType: morning
+          tags: cardio, stamina
+          similarity: 0.28
+    assert:
+      - type: javascript
+        value: file://validate-suggestions-empty.js
+
+output:
+  - json

@@ -15,6 +15,7 @@ import { ActivityTemplateEmbeddingRepository } from './repository/activity-templ
 import { ActivityTemplateGoalEmbeddingService } from './services/activity-template-goal-embedding.service';
 import { ActivityTemplateRetrieverService } from './services/activity-template-retriever.service';
 import { ActivityTemplateEmbeddingSyncService } from './services/activity-template-embedding-sync.service';
+import { RoutineSuggestionGeneratorService } from './services/routine-suggestion-generator.service';
 import { OpenAIModule } from '../../../../../libs/openai/src';
 
 @Module({
@@ -28,6 +29,7 @@ import { OpenAIModule } from '../../../../../libs/openai/src';
     ActivityTemplateGoalEmbeddingService,
     ActivityTemplateRetrieverService,
     ActivityTemplateEmbeddingSyncService,
+    RoutineSuggestionGeneratorService,
   ],
   exports: [
     ActivityTemplateParserService,
@@ -38,6 +40,7 @@ import { OpenAIModule } from '../../../../../libs/openai/src';
     ActivityTemplateGoalEmbeddingService,
     ActivityTemplateRetrieverService,
     ActivityTemplateEmbeddingSyncService,
+    RoutineSuggestionGeneratorService,
   ],
   controllers: [ActivityLibraryController],
   imports: [

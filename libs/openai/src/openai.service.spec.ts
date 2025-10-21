@@ -160,6 +160,33 @@ describe('OpenAIService', () => {
     });
   });
 
+  describe('createChatCompletion', () => {
+    it('uses routine suggestion defaults and returns OpenAI response', async () => {
+      const expectedResponse = {
+        choices: [
+          {
+            message: {
+              content: '[]',
+            },
+          },
+        ],
+      };
+      mockChatCompletionsCreate.mockResolvedValueOnce(expectedResponse);
+
+      const messages = [{ role: 'user', content: 'Test prompt' }];
+
+      const response = await service.createChatCompletion(messages);
+
+      expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.any(String),
+          messages: expect.arrayContaining(messages),
+        }),
+      );
+      expect(response).toEqual(expectedResponse);
+    });
+  });
+
   describe('checkIfUrlIsSafeToUse', () => {
     it('should return fallback response if retries fail (English)', async () => {
       const isUrlSafeDto = {

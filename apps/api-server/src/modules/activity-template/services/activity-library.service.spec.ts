@@ -18,6 +18,8 @@ import {
   ActivityTemplateParserServiceMock,
   ActivityTemplateRepositoryMock,
   OpenAIServiceMock,
+  ActivityTemplateRetrieverServiceMock,
+  RoutineSuggestionGeneratorServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks';
@@ -29,6 +31,8 @@ import { ActivityRepository } from '../../activity/repositories/activity.reposit
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
+import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';
+import { RoutineSuggestionGeneratorService } from './routine-suggestion-generator.service';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
@@ -46,6 +50,14 @@ describe('ActivityLibraryService', () => {
           useValue: OpenAIServiceMock,
         },
         {
+          provide: ActivityTemplateRetrieverService,
+          useValue: ActivityTemplateRetrieverServiceMock,
+        },
+        {
+          provide: RoutineSuggestionGeneratorService,
+          useValue: RoutineSuggestionGeneratorServiceMock,
+        },
+        {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
         },
@@ -57,6 +69,10 @@ describe('ActivityLibraryService', () => {
       .useValue(UserRepositoryMock)
       .overrideProvider(ActivityRepository)
       .useValue(ActivityRepositoryMock)
+      .overrideProvider(ActivityTemplateRetrieverService)
+      .useValue(ActivityTemplateRetrieverServiceMock)
+      .overrideProvider(RoutineSuggestionGeneratorService)
+      .useValue(RoutineSuggestionGeneratorServiceMock)
       .compile();
 
     activityLibraryService = moduleRef.get<ActivityLibraryService>(ActivityLibraryService);
@@ -64,6 +80,10 @@ describe('ActivityLibraryService', () => {
 
   it('should be defined', () => {
     expect(activityLibraryService).toBeDefined();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('getLibraryActivities', () => {
@@ -175,11 +195,11 @@ describe('ActivityLibraryService', () => {
       )) as ActivityTemplate[];
 
       const expectedWithoutIds = expectedActivityWithUserDuration20.map((activity) => {
-        const { id, tags, ...rest } = activity;
+        const { id, tags, original_template_id, ai_justification, ai_match_score, ai_goals, ...rest } = activity as any;
         return rest;
       });
       const responseWithoutIds = response.map((activity) => {
-        const { id, tags, ...rest } = activity;
+        const { id, tags, original_template_id, ai_justification, ai_match_score, ai_goals, ...rest } = activity as any;
         return rest;
       });
 
@@ -234,6 +254,37 @@ describe('ActivityLibraryService', () => {
       expect(response).toEqual([]);
     });
 
+    it('falls back to RAG pipeline when direct matches are empty', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      const template = dummyActivityTemplatesWithTags[0];
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: template.id, similarity: 0.92 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([template]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce([
+        {
+          habitId: template.id,
+          justification: 'Supports strength goals.',
+          matchScore: 0.9,
+          template,
+        },
+      ]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: ['Get buffed'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 10);
+      expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalled();
+      expect(response).toHaveLength(1);
+      expect(response[0]).toHaveProperty('ai_justification', 'Supports strength goals.');
+      expect(response[0]).toHaveProperty('original_template_id', template.id);
+    });
+
     it('positive: should return unique activity templates grouped by goals, matching user goals and within routine duration', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 
@@ -244,13 +295,7 @@ describe('ActivityLibraryService', () => {
       const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto, groupByGoals: true },
         userDummy.id,
-      )) as Record<
-        string,
-        Omit<ActivityTemplate, 'tags'> &
-          {
-            tags: string[];
-          }[]
-      >;
+      )) as Record<string, any[]>;
 
       for (const [goal, templates] of Object.entries(response)) {
         expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
@@ -266,20 +311,11 @@ describe('ActivityLibraryService', () => {
       );
 
       const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
-        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
+        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1, groupByGoals: true },
         userDummy.id,
-      )) as Record<
-        string,
-        Omit<ActivityTemplate, 'tags'> &
-          {
-            tags: string[];
-          }[]
-      >;
+      )) as Record<string, any[]>;
 
-      for (const [goal, templates] of Object.entries(response)) {
-        expect(dummyGetRoutineSuggestionsDto.user_goals).toContain(goal);
-        expect(templates).toBe([]);
-      }
+      expect(response).toEqual({});
     });
   });
 });

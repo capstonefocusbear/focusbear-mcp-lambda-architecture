@@ -11,6 +11,7 @@ export interface IOpenAIOptions {
   brainDumpConversion?: OpenAI.ClientOptions;
   habitAdjustment?: OpenAI.ClientOptions;
   routineSuggestionEmbedding?: OpenAI.ClientOptions;
+  routineSuggestion?: OpenAI.ClientOptions;
   // Backward compatibility
   apiKey?: string;
 }

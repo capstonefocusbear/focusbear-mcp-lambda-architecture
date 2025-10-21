@@ -32,6 +32,7 @@ export enum OpenAIKeyType {
   HABIT_ADJUSTMENT = 'habitAdjustment',
   TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
   ROUTINE_SUGGESTION_EMBEDDING = 'routineSuggestionEmbedding',
+  ROUTINE_SUGGESTION = 'routineSuggestion',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
@@ -157,5 +158,11 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },
+  },
+  routineSuggestions: {
+    model: GPT_4_1_MINI,
+    temperature: 0.2,
+    n: 1,
+    messages: null,
   },
 };

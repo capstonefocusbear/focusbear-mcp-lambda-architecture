@@ -894,8 +894,12 @@ export class UserService {
     if (!normalizedUsername) {
       throw new BadRequestException('Username cannot be empty');
     }
+
+    // Escape underscores to prevent SQL wildcard matching
+    const escapedUsername = normalizedUsername.replace(/_/g, '\\_');
+
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
-      where: { username: ILike(normalizedUsername) },
+      where: { username: ILike(escapedUsername) },
     });
     if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
       throw new ConflictException(
@@ -919,7 +923,7 @@ export class UserService {
       throw new BadRequestException(`Username: ${normalizedUsername} not accepted because it is deemed offensive`);
     }
     await this.userRepository.update(user_id, {
-      username: normalizedUsername,
+      username: normalizedUsername.toLowerCase(),
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });

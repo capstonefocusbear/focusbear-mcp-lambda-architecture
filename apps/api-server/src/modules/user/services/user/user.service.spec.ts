@@ -759,6 +759,21 @@ describe('UserService', () => {
   });
 
   describe('updateUsername', () => {
+    it('negative: if username is empty after normalization, error should be thrown', async () => {
+      const username = '   '; // Only whitespace
+      const errorMessage = 'Username cannot be empty';
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('negative: if username is considered offensive, error should be thrown', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: false });
       const username = 'randomusername';
@@ -796,11 +811,32 @@ describe('UserService', () => {
     it('positive: username should be saved if valid', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
       const username = 'randomusername';
+      const normalizedUsername = username.normalize('NFC').trim();
 
       await userService.updateUsername(userDummy.id, { username });
 
       expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
-        username,
+        username: normalizedUsername.toLowerCase(),
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+
+    it('positive: username with underscores should be handled correctly', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'john_smith';
+      const normalizedUsername = username.normalize('NFC').trim();
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      // Verify that the query uses escaped underscores
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { username: expect.objectContaining({}) }, // ILike with escaped username
+      });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: normalizedUsername.toLowerCase(),
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });

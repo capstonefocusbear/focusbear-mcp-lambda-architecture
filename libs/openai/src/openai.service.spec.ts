@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { Stream } from 'stream';
 import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -173,7 +174,7 @@ describe('OpenAIService', () => {
       };
       mockChatCompletionsCreate.mockResolvedValueOnce(expectedResponse);
 
-      const messages = [{ role: 'user', content: 'Test prompt' }];
+      const messages = [{ role: 'user', content: 'Test prompt' } as ChatCompletionMessageParam];
 
       const response = await service.createChatCompletion(messages);
 

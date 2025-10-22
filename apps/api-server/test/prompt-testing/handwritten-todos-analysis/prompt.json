@@ -1,6 +1,6 @@
 [
   {
-    "role": "user",
+    "role": "system",
     "content": [
       {
         "type": "text",
@@ -37,7 +37,12 @@
       {
         "type": "text",
         "text": "## EXAMPLES\nAssume {{current_datetime}} = 2024-06-12T09:30:00.000-04:00\n\n**Input:** \"Buy groceries - milk, bread, eggs\"\n**Output:** {\n  \"tasks\": [\n    {\n      \"title\": \"Buy groceries\",\n      \"due_date\": \"2024-06-12T09:30:00.000-04:00\",\n      \"perspiration_level\": 2,\n      \"outcome\": 2\n    }\n  ]\n}\n\n**Input:** \"Call mom tomorrow at 3pm\"\n**Output:** {\n  \"tasks\": [\n    {\n      \"title\": \"Call mom\",\n      \"due_date\": \"2024-06-13T15:00:00.000-04:00\",\n      \"perspiration_level\": 1,\n      \"outcome\": 2\n    }\n  ]\n}\n\n**Input:** \"Review quarterly report (this week)\"\n**Output:** {\n  \"tasks\": [\n    {\n      \"title\": \"Review quarterly report\",\n      \"due_date\": \"2024-06-14T09:30:00.000-04:00\",\n      \"perspiration_level\": 4,\n      \"outcome\": 4\n    }\n  ]\n}\n\n**Input (Spanish):** \"Comprar leche y pan\"\n**Output:** {\n  \"tasks\": [\n    {\n      \"title\": \"Comprar leche y pan\",\n      \"due_date\": \"2024-06-12T09:30:00.000-04:00\",\n      \"perspiration_level\": 2,\n      \"outcome\": 2\n    }\n  ]\n}\n\n**Input (French):** \"Appeler maman demain\"\n**Output:** {\n  \"tasks\": [\n    {\n      \"title\": \"Appeler maman\",\n      \"due_date\": \"2024-06-13T09:30:00.000-04:00\",\n      \"perspiration_level\": 1,\n      \"outcome\": 2\n    }\n  ]\n}\n\n**Input:** \"Plan birthday party - Book venue, Send invitations, Order cake\"\n**Output:** {\n  \"tasks\": [\n    {            \n      \"title\": \"Prepare research report\",            \n      \"due_date\": \"2024-06-14T09:30:00.000-04:00\",            \n      \"perspiration_level\": 6,            \n      \"outcome\": 4            \n      \"subtasks\": [            \n        { \"name\": \"Gather data\", \"is_completed\": false },            \n        { \"name\": \"Analyze results\", \"is_completed\": false },            \n        { \"name\": \"Write summary\", \"is_completed\": false }            \n      ]            \n    }        \n  ]    \n}"
-      },
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": [
       {
         "type": "image_url",
         "image_url": {

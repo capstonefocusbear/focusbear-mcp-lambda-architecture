@@ -25,7 +25,8 @@ prompts:
 
       4. **EXPLAIN DISAGREEMENTS:** If you assign a low probability (0.1–0.3), briefly explain **why the app is mismatched** with the `currentTaskInToDoPlayer`. Be specific about the disconnect.
 
-      5. **EVALUATE AND RESPOND:** Follow the flow below and output **JSON only**.
+      5. **EVALUATE AND RESPOND:** Follow the flow below and output comprehensive analysis in **JSON format**.
+      6. **PROVIDE DETAILED REASONING:** Always explain your decision-making process thoroughly. Include analysis of each signal, reasoning steps, and both supporting factors and potential concerns.
 
       ## CATEGORY HINTS (Use these liberally)
       - **Direct task apps:** IDEs, office suites, design tools, DAWs, compilers, research browsers, **learning platforms (e.g., YouTube, Coursera, Udemy, edX, Khan Academy, Skillshare)** when the current task is to complete a course, follow tutorials, or watch lectures.
@@ -97,11 +98,71 @@ prompts:
       - General browser when the task is confined to a specific app and no research is implied.
       - **Example Reason:** "Might help, but easy to drift. Keep it short and return to your task."
 
+      ## DETAILED ANALYSIS REQUIREMENTS
+      For each decision, provide comprehensive analysis in the following sections:
+
+      **signal_analysis:**
+      - **current_task_relevance**: Explain how the app relates to the currentTaskInToDoPlayer (direct tool, supporting utility, or unrelated)
+      - **justification_strength**: Assess the quality and logic of the user's justification (strong, weak, missing, or suspicious)
+      - **app_category_fit**: Determine if this is a direct task app, supporting utility, communication tool, or potential distraction
+      - **intention_alignment**: Compare the app's purpose with the user's stated intention
+
+      **evaluation_category**: State which category this falls into (DIRECT, SUPPORTING, MISMATCH, AMBIGUOUS)
+
+      **reasoning_steps**: List 3-5 logical steps that led to your decision
+
+      **confidence_factors**: List factors that support your decision (e.g., "App directly supports task", "Clear user justification", "Standard utility for this type of work")
+
+      **potential_concerns**: List any concerns or risks (e.g., "Could lead to distraction", "No clear connection to task", "Conflicts with focus mode")
+
+      ## EXAMPLE DETAILED ANALYSIS
+      For VS Code with task "implement user authentication" and justification "writing the auth code":
+      ```json
+      {
+        "allowed_probability": 1.0,
+        "reason": "Perfect match for your task. You'll get this done faster here.",
+        "detailed_analysis": {
+          "signal_analysis": {
+            "current_task_relevance": "Direct tool - VS Code is the primary IDE for implementing code features",
+            "justification_strength": "Strong - user explicitly states they're writing the authentication code",
+            "app_category_fit": "Direct task app - VS Code is specifically designed for coding tasks",
+            "intention_alignment": "Perfect alignment - coding intention matches IDE purpose"
+          },
+          "evaluation_category": "DIRECT",
+          "reasoning_steps": [
+            "User has a specific coding task (implement user authentication)",
+            "VS Code is a standard IDE for development work",
+            "User provided clear justification about writing code",
+            "No alternative tools would be more appropriate for this task"
+          ],
+          "confidence_factors": [
+            "App directly supports the stated task",
+            "Clear user justification",
+            "VS Code is standard tool for coding",
+            "No potential for distraction from core work"
+          ],
+          "potential_concerns": []
+        }
+      }
+      ```
+
       ## OUTPUT FORMAT
-      Respond **only** in JSON:
+      Respond **only** in JSON with detailed explanations:
       {
         "allowed_probability": number (0 to 1),
-        "reason": string
+        "reason": string,
+        "detailed_analysis": {
+          "signal_analysis": {
+            "current_task_relevance": string,
+            "justification_strength": string,
+            "app_category_fit": string,
+            "intention_alignment": string
+          },
+          "evaluation_category": string,
+          "reasoning_steps": [string],
+          "confidence_factors": [string],
+          "potential_concerns": [string]
+        }
       }
 
       ---
@@ -334,12 +395,102 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
+  - description: "iTerm for Kris Kringle app development with ignored justification"
+    vars:
+      appName: "iTerm"
+      focusMode: "Deep Work"
+      intention: "launchhub slides + kris kringle + MAA"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "kris kringle app on heroku"
+      min_probability: 0.3
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "iTerm for app deployment with DBeaver justification context"
+    vars:
+      appName: "iTerm"
+      focusMode: "Deep Work"
+      intention: "deploy kris kringle app"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: ""
+      lastFiveJustificationsInThisFocusSession: '[{"app": "DBeaver", "justification": "need db to deploy app"}]'
+      min_probability: 0.3
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Zoom for meeting with clear intention and task"
+    vars:
+      appName: "zoom.us"
+      focusMode: "Deep Work"
+      intention: "meeting"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "meeting"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "DBeaver for checking app usage in database"
+    vars:
+      appName: "DBeaver"
+      focusMode: "Deep Work"
+      intention: "meetings. emails"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "check app usage in DB"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "DBeaver for checking usage with admin work intention"
+    vars:
+      appName: "DBeaver"
+      focusMode: "Deep Work"
+      intention: "admin work"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "check usage"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.3
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Safe FB Team Comms for checking Keyur feedback"
+    vars:
+      appName: "Safe FB Team Comms"
+      focusMode: "Deep Work"
+      intention: "meetings. emails"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "check Keyur feedback"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.3
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Safe FB Team Comms for helping Keyur with justification"
+    vars:
+      appName: "Safe FB Team Comms"
+      focusMode: "Deep Work"
+      intention: "admin"
+      justificationForThisSpecificApp: "keyur has a question"
+      currentTaskInToDoPlayer: "help keyur"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.3
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
 providers:
   - id: openai:gpt-4.1-mini
     config:
       temperature: 0
       max_tokens: 1024
-      apiKeyEnvar: $OPENAI_APP_SAFETY_API_KEY
+      apiKeyEnvar: OPENAI_APP_SAFETY_API_KEY
 
 output:
   - debug

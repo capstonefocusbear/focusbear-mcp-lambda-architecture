@@ -167,39 +167,34 @@ export class UserSettingsService {
       }
 
       let mergedSettingsData = updateSettingsData;
-      if (is_onboarding) {
-        let isFirstLogin = false;
-        if (user?.auth0_id) {
-          const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
-          isFirstLogin = (auth0User?.logins_count ?? 0) <= 1;
+      let isFirstLogin = false;
+      if (user?.auth0_id) {
+        const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
+      }
+      if (is_onboarding && !isFirstLogin) {
+        let currentSettings: UpdateUserSettingsDto | null = null;
+        try {
+          currentSettings = await this.getSettings({ user_id });
+        } catch {
+          currentSettings = null;
         }
-        if (!isFirstLogin) {
-          let currentSettings: UpdateUserSettingsDto | null = null;
-          try {
-            currentSettings = await this.getSettings({ user_id });
-          } catch {
-            currentSettings = null;
-          }
 
-          const hasExistingRoutines =
-            !!currentSettings?.morning_activities?.length ||
-            !!currentSettings?.evening_activities?.length ||
-            !!currentSettings?.break_activities?.length;
+        const hasExistingRoutines =
+          !!currentSettings?.morning_activities?.length || !!currentSettings?.evening_activities?.length;
 
-          if (hasExistingRoutines) {
-            mergedSettingsData = {
-              ...updateSettingsData,
-              morning_activities: this.mergeById(
-                currentSettings?.morning_activities,
-                updateSettingsData.morning_activities,
-              ),
-              evening_activities: this.mergeById(
-                currentSettings?.evening_activities,
-                updateSettingsData.evening_activities,
-              ),
-              break_activities: this.mergeById(currentSettings?.break_activities, updateSettingsData.break_activities),
-            };
-          }
+        if (hasExistingRoutines) {
+          mergedSettingsData = {
+            ...updateSettingsData,
+            morning_activities: this.mergeById(
+              currentSettings?.morning_activities,
+              updateSettingsData?.morning_activities,
+            ),
+            evening_activities: this.mergeById(
+              currentSettings?.evening_activities,
+              updateSettingsData?.evening_activities,
+            ),
+          };
         }
       }
 

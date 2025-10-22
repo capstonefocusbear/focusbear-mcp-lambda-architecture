@@ -1,6 +1,6 @@
 prompts:   
-  - id: handwritten-todos-analysis
-    file: prompt.json
+  - id: file://prompt.json
+    label: handwritten-todos-analysis
 
 providers:
   - id: openai:gpt-4.1

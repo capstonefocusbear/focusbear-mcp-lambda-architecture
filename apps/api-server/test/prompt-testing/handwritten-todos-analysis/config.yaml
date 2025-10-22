@@ -1,4 +1,4 @@
-prompts:
+prompts:   
   - id: handwritten-todos-analysis
     file: prompt.json
 
@@ -16,7 +16,7 @@ output:
 tests:
   - description: "Simple grocery list"
     vars:
-      image_description: "Handwritten note: Buy groceries - milk, bread, eggs, cheese"
+      url: https://i.ibb.co/G3v6dY78/grocery-list.jpg
       min_tasks: 1
       max_tasks: 1
       expected_task_names: ["Buy groceries"]
@@ -28,7 +28,7 @@ tests:
 
   - description: "Multiple independent tasks"
     vars:
-      image_description: "Handwritten note: Call mom, Review quarterly report, Schedule dentist appointment"
+      url: https://i.ibb.co/V0ZHJ6Z6/independent-tasks.jpg
       min_tasks: 3
       max_tasks: 3
       expected_task_names: ["Call mom", "Review quarterly report", "Schedule dentist appointment"]
@@ -40,8 +40,7 @@ tests:
 
   - description: "Complex task with subtasks"
     vars:
-      image_description: "Handwritten note: Prepare presentation - research topic, create slides, practice delivery"
-      min_tasks: 1
+      url: https://i.ibb.co/kVc23D0h/task-with-subtasks.jpg
       max_tasks: 1
       expected_task_names: ["Prepare presentation"]
       min_subtasks: 2
@@ -54,7 +53,7 @@ tests:
 
   - description: "Mixed format tasks"
     vars:
-      image_description: "Handwritten note: [ ] Buy groceries, - Call mom, Review project docs, [ ] Schedule meeting"
+      url: https://i.ibb.co/S40yvHwL/mixed-format-tasks.jpg
       min_tasks: 3
       max_tasks: 4
       expected_task_names: ["Buy groceries", "Call mom", "Review project docs", "Schedule meeting"]
@@ -66,7 +65,7 @@ tests:
 
   - description: "Work-related tasks"
     vars:
-      image_description: "Handwritten note: Send follow-up emails, Update project timeline, Prepare for team meeting"
+      url: https://i.ibb.co/hxgkQNcB/work-tasks.jpg
       min_tasks: 3
       max_tasks: 3
       expected_task_names: ["Send follow-up emails", "Update project timeline", "Prepare for team meeting"]
@@ -78,7 +77,7 @@ tests:
 
   - description: "Study tasks"
     vars:
-      image_description: "Handwritten note: Read chapter 5, Complete practice problems, Review notes for exam"
+      url: https://i.ibb.co/jZzJrgH9/study-tasks.jpg
       min_tasks: 3
       max_tasks: 3
       expected_task_names: ["Read chapter 5", "Complete practice problems", "Review notes for exam"]
@@ -90,7 +89,7 @@ tests:
 
   - description: "Personal tasks"
     vars:
-      image_description: "Handwritten note: Pay bills, Clean kitchen, Walk dog, Call insurance company"
+      url: https://i.ibb.co/Gv5Mhbwv/personal-tasks.jpg
       min_tasks: 4
       max_tasks: 4
       expected_task_names: ["Pay bills", "Clean kitchen", "Walk dog", "Call insurance company"]
@@ -102,10 +101,10 @@ tests:
 
   - description: "Task with subtasks should nest correctly"
     vars:
-      image_description: "Handwritten note: [ ] Plan birthday party - [ ] Book venue - [ ] Send invitations - [ ] Order cake"
-      min_tasks: 1
-      max_tasks: 1
-      expected_task_names: ["Plan birthday party"]
+      url: "https://i.ibb.co/5hfhcWcR/task-subtask-nest.jpg"
+      min_tasks: 3
+      max_tasks: 3
+      expected_task_names: ["Clean house", "Prepare lunch", "Plan birthday party"]
       min_subtasks: 2
       max_subtasks: 4
       min_estimated_time: 60
@@ -116,7 +115,7 @@ tests:
 
   - description: "Exclude completed tasks from fresh tasks"
     vars:
-      image_description: "Handwritten note: [✓] Submit tax forms, [✓] Renew gym membership, [ ] Schedule dentist appointment, [ ] Buy groceries"
+      url: https://i.ibb.co/tPLR4X3V/exclude-completed-tasks.jpg
       min_tasks: 2
       max_tasks: 2
       expected_task_names: ["Schedule dentist appointment", "Buy groceries"]

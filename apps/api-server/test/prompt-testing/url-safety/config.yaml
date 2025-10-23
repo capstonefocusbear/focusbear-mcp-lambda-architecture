@@ -10,7 +10,6 @@ prompts:
       3.  **TRUST THE USER'S NARRATIVE:** Your main job is to help, not to police. If the user's justification creates a plausible, logical link to the task, lean towards allowing it. Assume the user has context you don't.
       4.  **EXPLAIN DISAGREEMENTS:** If you disagree with a user's justification and assign a low probability (0.1-0.3), you MUST explain why their justification doesn't align with the current task or context. Be specific about the disconnect.
       5.  **EVALUATE AND RESPOND:** First, think through your reasoning step-by-step based on the hierarchy and evaluation flow. Then, provide your final response with comprehensive analysis in the specified JSON format.
-      6.  **PROVIDE DETAILED REASONING:** Always explain your decision-making process thoroughly. Include analysis of each signal, reasoning steps, and both supporting factors and potential concerns.
 
       ## SIGNAL HIERARCHY
       When evaluating the URL, you MUST prioritize information in this order of importance:
@@ -49,71 +48,12 @@ prompts:
         - **Example Reason:** "This seems a bit off-topic from your task. Let's keep you focused!" or "I understand your justification, but this site doesn't connect to your current task of [specific task]. Let's stay focused!"
         - Example: Visiting a social/professional networking feed (“Feed/Home/Timeline/Messages”) during a specific task like “analyse data from RCT” with no justification → 0.1–0.3.
 
-      ## DETAILED ANALYSIS REQUIREMENTS
-      For each decision, provide comprehensive analysis in the following sections:
-
-      **signal_analysis:**
-      - **current_task_relevance**: Explain how the URL relates to the currentTaskInToDoPlayer (direct, indirect, or unrelated)
-      - **justification_strength**: Assess the quality and logic of the user's justification (strong, weak, missing, or suspicious)
-      - **workflow_context**: Analyze how this fits into the user's recent workflow from lastFiveJustificationsInThisFocusSession
-      - **intention_alignment**: Compare the URL's purpose with the user's stated intention
-
-      **evaluation_category**: State which category this falls into (DIRECT, HELPFUL, GENERAL, MISMATCH)
-
-      **reasoning_steps**: List 3-5 logical steps that led to your decision
-
-      **confidence_factors**: List factors that support your decision (e.g., "Clear task-URL alignment", "Strong user justification")
-
-      **potential_concerns**: List any concerns or risks (e.g., "Could lead to distraction", "No clear connection to task")
-
-      ## EXAMPLE DETAILED ANALYSIS
-      For a StackOverflow URL with task "debug Python error" and justification "need help fixing bug":
-      ```json
-      {
-        "allowed_probability": 0.9,
-        "reason": "Perfect! StackOverflow is exactly what you need to debug that Python error. You'll find the solution quickly here.",
-        "detailed_analysis": {
-          "signal_analysis": {
-            "current_task_relevance": "Direct connection - StackOverflow is a primary resource for debugging programming issues",
-            "justification_strength": "Strong - user clearly states they need help fixing a bug, which directly aligns with the debugging task",
-            "workflow_context": "No previous context provided, but this is a logical first step for debugging",
-            "intention_alignment": "Perfect alignment - debugging intention matches the site's purpose"
-          },
-          "evaluation_category": "DIRECT",
-          "reasoning_steps": [
-            "User has a specific debugging task",
-            "StackOverflow is a well-known programming help resource",
-            "User provided clear justification about needing bug help",
-            "No conflicting signals or concerns identified"
-          ],
-          "confidence_factors": [
-            "Clear task-URL alignment",
-            "Strong user justification",
-            "StackOverflow is standard tool for programming help",
-            "No potential for distraction from core task"
-          ],
-          "potential_concerns": []
-        }
-      }
-      ```
 
       ## OUTPUT FORMAT
-      Provide response ONLY in JSON format with detailed explanations:
+      Provide response ONLY in JSON format:
       {
         "allowed_probability": number (0 to 1),
-        "reason": string,
-        "detailed_analysis": {
-          "signal_analysis": {
-            "current_task_relevance": string,
-            "justification_strength": string,
-            "workflow_context": string,
-            "intention_alignment": string
-          },
-          "evaluation_category": string,
-          "reasoning_steps": [string],
-          "confidence_factors": [string],
-          "potential_concerns": [string]
-        }
+        "reason": string
       }
       ---
       # EVALUATION DATA
@@ -171,7 +111,7 @@ tests:
       lastFiveJustificationsInThisFocusSession: '[''Quick break'', ''Lunch break'']'
       currentTaskInToDoPlayer: Plan Sprint Tasks
       min_probability: 0
-      max_probability: 0.7
+      max_probability: 0.3
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -605,7 +545,7 @@ tests:
       intention: process emails
       justificationForThisUrl: ''
       lastFiveJustificationsInThisFocusSession: []
-      min_probability: 0.3
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -650,7 +590,7 @@ tests:
       meta_description: Access Google Docs with a personal Google account or Google Workspace account (for business use).
       tab_title: 'Google Docs: Sign-in'
       lastFiveJustificationsInThisFocusSession: []
-      min_probability: 0.3
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -891,7 +831,7 @@ tests:
       intention: admin
       justificationForThisUrl: reply to LinkedIn messages
       lastFiveJustificationsInThisFocusSession: []
-      min_probability: 0.3
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -906,7 +846,7 @@ tests:
       intention: intern comms
       justificationForThisUrl: ''
       lastFiveJustificationsInThisFocusSession: []
-      min_probability: 0.3
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -1058,7 +998,7 @@ tests:
       intention: deep work
       justificationForThisUrl: autoresponder is zoho desk related
       lastFiveJustificationsInThisFocusSession: []
-      min_probability: 0.3
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -1614,6 +1554,38 @@ tests:
       currentTaskInToDoPlayer: Write down notes from Analysing Popular Music in Obsidian
       min_probability: 0.7
       max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "LinkedIn Messaging for Angel Investor Contact (Ignored Justification)"
+    vars:
+      url: "linkedin.com/messaging/thread/2-MDYwNTBmNDktYTQ2Zi00MjY0LTllMmEtNDYzMDQ4YTJlMTdkXzAxMA==/"
+      tab_title: "(1) messaging | linkedin"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      intention: "contact angel investors"
+      justificationForThisUrl: "contacting them on LI"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: ""
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Koyeb for Code Deployment (Ignored Justification)"
+    vars:
+      url: "app.koyeb.com/"
+      tab_title: "koyeb"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      intention: "kris kringle code"
+      justificationForThisUrl: "deploying code to koyeb"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: ""
+      min_probability: 0.7
+      max_probability: 1.0
     assert:
       - type: javascript
         value: file://validate-probability.js

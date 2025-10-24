@@ -92,14 +92,26 @@ export class PromptCacheService implements OnModuleInit {
         });
       }
 
-      // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
+      // Load handwritten todos prompt
       this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
       try {
         const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');
-        const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent)[0];
+        const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent);
+
+        // Find the system message and concatenate all text blocks
+        const systemMsg = handwrittenTodosPrompt.find((msg) => msg.role === 'system');
+        const systemText = (systemMsg.content || [])
+          .filter((block) => block.type === 'text' && block.text)
+          .map((block) => block.text)
+          .join('\n\n');
+
+        if (!systemText) {
+          throw new Error('handwritten todos prompt missing system text');
+        }
+
         allPrompts.push({
           id: 'handwritten-todos-analysis',
-          raw: handwrittenTodosPrompt.content[0].text,
+          raw: systemText,
         });
         this.logger.log('Loaded handwritten todos prompt');
       } catch (error) {
@@ -111,7 +123,6 @@ export class PromptCacheService implements OnModuleInit {
           },
         });
       }
-
       // Load todos transcript prompt (audio flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading todos transcript prompt from ${TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
       try {

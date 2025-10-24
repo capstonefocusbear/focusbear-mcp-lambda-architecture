@@ -92,7 +92,7 @@ export class PromptCacheService implements OnModuleInit {
         });
       }
 
-      // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
+      // Load handwritten todos prompt
       this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
       try {
         const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');
@@ -104,6 +104,10 @@ export class PromptCacheService implements OnModuleInit {
           .filter((block) => block.type === 'text' && block.text)
           .map((block) => block.text)
           .join('\n\n');
+
+        if (!systemText) {
+          throw new Error('handwritten todos prompt missing system text');
+        }
 
         allPrompts.push({
           id: 'handwritten-todos-analysis',

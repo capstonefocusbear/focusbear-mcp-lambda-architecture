@@ -53,7 +53,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     service = module.get<RoutineSuggestionGeneratorService>(RoutineSuggestionGeneratorService);
   });
 
-  it('returns parsed suggestions when OpenAI response contains valid JSON', async () => {
+  it('returns parsed suggestions with AI-provided name when OpenAI response contains valid JSON', async () => {
     const template = buildTemplate();
     const candidate = buildCandidate(template, 0.92);
     const openAIResponse = {
@@ -63,6 +63,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
             content: JSON.stringify([
               {
                 habitId: template.id,
+                name: 'Goal-Aligned Morning Stretch',
                 justification: 'Supports muscle growth.',
                 matchScore: 0.91,
               },
@@ -80,11 +81,37 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result).toEqual([
       {
         habitId: template.id,
+        name: 'Goal-Aligned Morning Stretch',
+        description: template.activity_data?.text_instructions,
         justification: 'Supports muscle growth.',
         matchScore: 0.91,
         template,
       },
     ]);
+  });
+
+  it('filters out suggestions with match scores below 0.7', async () => {
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.9);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Weak alignment.',
+                matchScore: 0.62,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Get buffed', [candidate]);
+
+    expect(result).toEqual([]);
   });
 
   it('falls back to similarity ranking when OpenAI response is invalid JSON', async () => {
@@ -99,9 +126,48 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result).toEqual([
       {
         habitId: template.id,
+        name: template.activity_data?.name,
+        description: template.activity_data?.text_instructions,
         justification: expect.stringContaining('High semantic match'),
         matchScore: 0.88,
         template,
+      },
+    ]);
+  });
+
+  it('generates brand new habits when no candidates are available', async () => {
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                name: 'Buff Morning Circuit',
+                description: 'Strength routine tailored to building muscle.',
+                routineType: ActivityType.morning,
+                durationMinutes: 20,
+                justification: 'Directly builds strength for the goal.',
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateNewHabits('Get buffed', {
+      limit: 1,
+      routineType: ActivityType.morning,
+      routineDurationSeconds: 1200,
+    });
+
+    expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        name: 'Buff Morning Circuit',
+        description: 'Strength routine tailored to building muscle.',
+        routineType: ActivityType.morning,
+        durationMinutes: 20,
+        justification: 'Directly builds strength for the goal.',
       },
     ]);
   });

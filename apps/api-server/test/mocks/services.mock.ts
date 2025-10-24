@@ -37,6 +37,7 @@ export const ActivityTemplateRetrieverServiceMock = {
 
 export const RoutineSuggestionGeneratorServiceMock = {
   generateSuggestions: jest.fn(),
+  generateNewHabits: jest.fn(),
 };
 
 export const ConfigServiceMock = {

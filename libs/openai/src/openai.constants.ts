@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { GPT_4_1, GPT_4_1_MINI } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4_1, GPT_4_1_MINI, GPT_5_MINI } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
@@ -160,7 +160,7 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     response_format: { type: 'json_object' },
   },
   routineSuggestions: {
-    model: GPT_4_1_MINI,
+    model: GPT_5_MINI,
     temperature: 0.2,
     n: 1,
     messages: null,

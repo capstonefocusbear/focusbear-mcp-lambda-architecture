@@ -15,7 +15,11 @@ import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
 import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
 import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';
-import { RoutineSuggestionGeneratorService, RoutineSuggestionResult } from './routine-suggestion-generator.service';
+import {
+  RoutineSuggestionGeneratorService,
+  RoutineSuggestionResult,
+  GeneratedHabitSuggestion,
+} from './routine-suggestion-generator.service';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -154,7 +158,10 @@ export class ActivityLibraryService {
   userDesiredRoutineDurationSeconds(
     activityTemplates: ActivityTemplate[],
     userRoutineDurationSeconds: number,
-    metadataMap: Map<string, { justification: string; matchScore: number; goals: string[] }> = new Map(),
+    metadataMap: Map<
+      string,
+      { justification: string; matchScore: number; goals: string[]; name?: string; description?: string }
+    > = new Map(),
   ) {
     const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
     const routineLength = {
@@ -193,19 +200,29 @@ export class ActivityLibraryService {
           routineDuration[activityTemplate.activity_type] += template_duration;
           const { activity_data, ...rest } = activityTemplate;
           const metadata = metadataMap.get(activityTemplate.id);
-          allValidActivities.push({
+          const baseActivity: any = {
             ...rest,
             ...activity_data,
             id: randomUUID(),
             original_template_id: activityTemplate.id,
-            ...(metadata
-              ? {
-                  ai_justification: metadata.justification,
-                  ai_match_score: Number(metadata.matchScore.toFixed(2)),
-                  ai_goals: metadata.goals,
-                }
-              : {}),
-          });
+            ai_generated: false,
+            ai_justification: metadata?.justification ?? '',
+            ai_match_score: typeof metadata?.matchScore === 'number' ? Number(metadata.matchScore.toFixed(2)) : null,
+            ai_goals: metadata?.goals ?? [],
+          };
+          const overrideName = metadata?.name ?? baseActivity.name;
+          if (overrideName) {
+            baseActivity.name = overrideName;
+          }
+          const overrideDescription = metadata?.description ?? baseActivity.text_instructions;
+          if (overrideDescription) {
+            baseActivity.text_instructions = overrideDescription;
+            baseActivity.description = overrideDescription;
+          }
+          if (!baseActivity.description && baseActivity.text_instructions) {
+            baseActivity.description = baseActivity.text_instructions;
+          }
+          allValidActivities.push(baseActivity);
           routineLength[activityTemplate.activity_type] += 1;
         }
         return false;
@@ -224,10 +241,16 @@ export class ActivityLibraryService {
 
     const goalResults = await Promise.all(
       goals.map(async (goal) => {
+        const options = {
+          limit: 10,
+          routineType: getRoutineSuggestionsDto.routine,
+          routineDurationSeconds,
+        };
         try {
           const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, 10);
           if (!matches.length) {
-            return { goal, suggestions: [] as RoutineSuggestionResult[] };
+            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
           const matchedIds = matches.map((match) => match.activityTemplateId);
@@ -250,56 +273,83 @@ export class ActivityLibraryService {
             .filter((candidate): candidate is { template: ActivityTemplate; similarity: number } => !!candidate);
 
           if (!candidates.length) {
-            return { goal, suggestions: [] as RoutineSuggestionResult[] };
+            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
           const suggestions = await this.routineSuggestionGeneratorService.generateSuggestions(goal, candidates);
-          return { goal, suggestions };
+          if (!suggestions.length) {
+            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+            return { goal, suggestions: [], generated };
+          }
+
+          return { goal, suggestions, generated: [] as GeneratedHabitSuggestion[] };
         } catch (error) {
           this.sentryService.instance().captureException(error, {
             level: 'error',
             extra: { goal },
           });
-          return { goal, suggestions: [] as RoutineSuggestionResult[] };
+          return { goal, suggestions: [] as RoutineSuggestionResult[], generated: [] as GeneratedHabitSuggestion[] };
         }
       }),
     );
 
-    const metadataAccumulator = new Map<string, { justification: string; matchScore: number; goals: string[] }>();
+    const metadataAccumulator = new Map<
+      string,
+      { justification: string; matchScore: number; goals: string[]; name?: string; description?: string }
+    >();
     const templatesAccumulator = new Map<string, ActivityTemplate>();
     const suggestionsByGoal: Record<string, RoutineSuggestionResult[]> = {};
+    const generatedByGoal: Record<string, GeneratedHabitSuggestion[]> = {};
 
-    goalResults.forEach(({ goal, suggestions }) => {
+    goalResults.forEach(({ goal, suggestions, generated }) => {
       suggestionsByGoal[goal] = suggestions;
+      if (generated?.length) {
+        generatedByGoal[goal] = generated;
+      }
 
       suggestions.forEach((suggestion) => {
         templatesAccumulator.set(suggestion.habitId, suggestion.template);
         const existing = metadataAccumulator.get(suggestion.habitId);
+        const suggestionName = suggestion.name || suggestion.template.activity_data?.name;
+        const suggestionDescription = suggestion.description || suggestion.template.activity_data?.text_instructions;
         if (existing) {
           if (suggestion.justification) {
             existing.justification = `${existing.justification} ${suggestion.justification}`.trim();
           }
-          existing.matchScore = Math.max(existing.matchScore, suggestion.matchScore ?? 0);
+          if (typeof suggestion.matchScore === 'number') {
+            existing.matchScore = Math.max(existing.matchScore, suggestion.matchScore);
+          }
           existing.goals = Array.from(new Set([...existing.goals, goal]));
+          if (suggestionName) {
+            existing.name = suggestionName;
+          }
+          if (suggestionDescription) {
+            existing.description = suggestionDescription;
+          }
         } else {
           metadataAccumulator.set(suggestion.habitId, {
             justification: suggestion.justification || '',
             matchScore: suggestion.matchScore ?? 0,
             goals: [goal],
+            name: suggestionName,
+            description: suggestionDescription,
           });
         }
       });
     });
 
     const aggregatedTemplates = Array.from(templatesAccumulator.values());
-    if (!aggregatedTemplates.length) {
-      return { templates: [], groupedByGoal: {} };
-    }
-
     const finalTemplates = this.userDesiredRoutineDurationSeconds(
       aggregatedTemplates,
       routineDurationSeconds,
       metadataAccumulator,
+    );
+
+    const generatedActivities = this.buildGeneratedActivities(
+      generatedByGoal,
+      routineDurationSeconds,
+      getRoutineSuggestionsDto.routine,
     );
 
     const templatesByOriginalId = new Map(
@@ -312,17 +362,69 @@ export class ActivityLibraryService {
     if (getRoutineSuggestionsDto.groupByGoals) {
       groupedByGoal = {};
       for (const goal of goals) {
-        const suggestions = suggestionsByGoal[goal] ?? [];
-        groupedByGoal[goal] = suggestions
+        const suggestionEntries = (suggestionsByGoal[goal] ?? [])
           .map((suggestion) => templatesByOriginalId.get(suggestion.habitId))
           .filter((template): template is ActivityTemplate => !!template);
+        const generatedEntries = generatedActivities.byGoal[goal] ?? [];
+        groupedByGoal[goal] = [...suggestionEntries, ...generatedEntries];
       }
     }
 
+    const combinedTemplates = [...finalTemplates, ...generatedActivities.flat];
+    if (!combinedTemplates.length) {
+      return {
+        templates: [],
+        groupedByGoal: groupedByGoal ?? {},
+      };
+    }
+
     return {
-      templates: finalTemplates,
+      templates: combinedTemplates,
       groupedByGoal,
     };
+  }
+
+  private buildGeneratedActivities(
+    generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
+    routineDurationSeconds: number,
+    fallbackRoutineType?: ActivityType | string,
+  ): { byGoal: Record<string, ActivityTemplate[]>; flat: ActivityTemplate[] } {
+    const byGoal: Record<string, ActivityTemplate[]> = {};
+    const flat: ActivityTemplate[] = [];
+    const fallbackDurationMinutes = routineDurationSeconds
+      ? Math.max(1, Math.round(routineDurationSeconds / ONE_MINUTE_SECONDS))
+      : 10;
+
+    Object.entries(generatedByGoal).forEach(([goal, habits]) => {
+      byGoal[goal] = [];
+      habits.forEach((habit) => {
+        const durationMinutes = habit.durationMinutes ?? fallbackDurationMinutes;
+        const activityType =
+          typeof habit.routineType === 'string'
+            ? (habit.routineType.toLowerCase() as ActivityType)
+            : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
+        const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
+        const description = habit.description ?? '';
+
+        const generatedActivity: any = {
+          id: randomUUID(),
+          name: habit.name,
+          text_instructions: description,
+          description,
+          duration_seconds: durationSeconds,
+          activity_type: activityType,
+          ai_generated: true,
+          ai_justification: habit.justification ?? '',
+          ai_match_score: null,
+          ai_goals: [goal],
+        };
+
+        byGoal[goal].push(generatedActivity);
+        flat.push(generatedActivity);
+      });
+    });
+
+    return { byGoal, flat };
   }
 
   isValidTemplateDuration(template_duration: number, routine_duration: number, user_routine_duration: number) {

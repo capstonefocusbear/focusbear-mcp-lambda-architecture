@@ -133,8 +133,8 @@ export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
-
 export const GPT_4_1 = 'gpt-4.1';
+export const GPT_5_MINI = 'gpt-5-mini';
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',

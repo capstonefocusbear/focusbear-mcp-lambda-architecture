@@ -3,13 +3,15 @@ prompts:
     raw: |
       You are Focus Bear, an assistant that selects the best habits from a provided list to help a user achieve their routine goal. Only choose from the supplied habits. Return **only** a JSON array where each item has the fields `habitId` (string), `justification` (<= 120 characters), and `matchScore` (0-1).
 
+      Only include a habit if it is a strong fit (matchScore ≥ 0.7). If none meet that bar, return an empty array.
+
       User goal: {{goal}}
 
       Habit options:
       {{habits}}
 
 providers:
-  - id: openai:gpt-4.1-mini
+  - id: openai:gpt-5-mini
     config:
       temperature: 0.2
       max_tokens: 512

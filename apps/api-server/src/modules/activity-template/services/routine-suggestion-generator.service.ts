@@ -5,6 +5,14 @@ import { OpenAIService } from '@app/openai';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 
+const MAX_CONTEXT_CANDIDATES = 10;
+const DEFAULT_GENERATED_LIMIT = 3;
+const DEFAULT_MINUTES_FALLBACK = 10;
+const DEFAULT_MIN_MATCH_SCORE = 0.7;
+const DEFAULT_SUGGESTION_LIMIT = 5;
+const SELECTION_TEMPERATURE = 0.2;
+const GENERATION_TEMPERATURE = 1;
+
 export interface RoutineSuggestionCandidate {
   template: ActivityTemplate;
   similarity: number;
@@ -41,20 +49,12 @@ export interface GenerateSuggestionsResponse {
 
 @Injectable()
 export class RoutineSuggestionGeneratorService {
-  private static readonly MAX_CONTEXT_CANDIDATES = 10;
-
-  private static readonly DEFAULT_GENERATED_LIMIT = 3;
-
-  private static readonly MINUTES_FALLBACK = 10;
-
-  private static readonly DEFAULT_MIN_MATCH_SCORE = 0.5;
-
   constructor(private readonly openAIService: OpenAIService, @InjectSentry() private readonly sentry: SentryService) {}
 
   async generateSuggestions(
     goal: string,
     candidates: RoutineSuggestionCandidate[],
-    { limit = 5, minMatchScore }: GenerateSuggestionsOptions = {},
+    { limit = DEFAULT_SUGGESTION_LIMIT, minMatchScore }: GenerateSuggestionsOptions = {},
   ): Promise<GenerateSuggestionsResponse> {
     if (!candidates.length) {
       return {
@@ -68,21 +68,23 @@ export class RoutineSuggestionGeneratorService {
     const normalizedLimit = Math.max(1, limit);
     const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
     const sortedCandidates = [...candidates].sort((a, b) => b.similarity - a.similarity);
-    const promptContext = this.buildContext(
-      sortedCandidates.slice(0, RoutineSuggestionGeneratorService.MAX_CONTEXT_CANDIDATES),
-    );
+    const promptContext = this.buildContext(sortedCandidates.slice(0, MAX_CONTEXT_CANDIDATES));
 
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: `You are an assistant that selects habits from a provided list to help a user reach their goal.
-Only use the supplied habits. For each selected habit, return an object containing:
+        content: `You are an assistant that analyses a user's stated goal, identifies the core skills, behaviours, or routines required, and then selects the MOST relevant habits from the provided list.
+Only use the supplied habits. Evaluate each habit for direct alignment with the goal (not just generic wellness benefits). Skip habits that do not clearly advance the goal.
+For every habit you decide to include, return an object containing:
 - habitId (string from the supplied list)
 - name (string, goal-aligned rename of the habit; keep it under 60 characters)
 - description (string, <= 120 characters explaining the habit's focus)
 - justification (string, <= 120 characters explaining why it helps with the goal)
 - matchScore (number between 0 and 1)
-If the goal is already well represented by the habits, pick the best matches. If none fit, return an empty array.`,
+Guidance:
+- Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
+- Penalise generic movement/meditation/breathing exercises unless the goal text clearly frames them as necessary.
+- If no habit is strong enough, return an empty array so downstream logic can generate new ones.`,
       },
       {
         role: 'user',
@@ -92,7 +94,7 @@ If the goal is already well represented by the habits, pick the best matches. If
 
     try {
       const response = await this.openAIService.createChatCompletion(messages, {
-        params: { temperature: 1.0 },
+        params: { temperature: SELECTION_TEMPERATURE },
       });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       const { accepted, rejectedCount, parsedCount } = this.parseResponse(
@@ -125,7 +127,7 @@ If the goal is already well represented by the habits, pick the best matches. If
     if (typeof override === 'number' && Number.isFinite(override)) {
       return override;
     }
-    return RoutineSuggestionGeneratorService.DEFAULT_MIN_MATCH_SCORE;
+    return DEFAULT_MIN_MATCH_SCORE;
   }
 
   private buildContext(candidates: RoutineSuggestionCandidate[]): string {
@@ -221,7 +223,7 @@ If the goal is already well represented by the habits, pick the best matches. If
   async generateNewHabits(
     goal: string,
     {
-      limit = RoutineSuggestionGeneratorService.DEFAULT_GENERATED_LIMIT,
+      limit = DEFAULT_GENERATED_LIMIT,
       routineType,
       routineDurationSeconds,
     }: { limit?: number; routineType?: ActivityType | string; routineDurationSeconds?: number } = {},
@@ -230,18 +232,23 @@ If the goal is already well represented by the habits, pick the best matches. If
     const preferredRoutineType = routineType ?? 'any';
     const preferredDurationMinutes = routineDurationSeconds
       ? Math.max(1, Math.round(routineDurationSeconds / 60))
-      : RoutineSuggestionGeneratorService.MINUTES_FALLBACK;
+      : DEFAULT_MINUTES_FALLBACK;
 
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: `You design helpful habits for Focus Bear users. Generate up to ${normalizedLimit} habits that move the user toward their goal.
+        content: `You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
+Analyse the goal text to understand the desired outcome, key skills, and relevant contexts. Generate up to ${normalizedLimit} habits that directly advance those needs (avoid generic wellness tips unless they are explicitly required by the goal).
 Return ONLY a JSON array. Each habit must include:
 - name (string, concise and goal-aligned)
 - description (string, what the user does)
 - routineType ("morning" or "evening")
 - durationMinutes (integer, >= 1)
-- justification (<=120 characters summarising why it helps)`,
+- justification (<=120 characters summarising why it helps)
+Guidance:
+- Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
+- Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
+- Prefer measurable, repeatable actions over vague advice.`,
       },
       {
         role: 'user',
@@ -253,7 +260,7 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
 
     try {
       const response = await this.openAIService.createChatCompletion(messages, {
-        params: { temperature: 0.3 },
+        params: { temperature: GENERATION_TEMPERATURE },
       });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       const parsed = this.parseGeneratedHabits(content, normalizedLimit);

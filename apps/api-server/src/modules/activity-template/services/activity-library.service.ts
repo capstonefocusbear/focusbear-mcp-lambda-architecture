@@ -21,6 +21,10 @@ import {
   GeneratedHabitSuggestion,
 } from './routine-suggestion-generator.service';
 
+const MAX_ROUTINE_HABITS_PER_TYPE = 5;
+const RAG_RETRIEVAL_LIMIT = 10;
+const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
+
 @Injectable()
 export class ActivityLibraryService {
   constructor(
@@ -163,7 +167,6 @@ export class ActivityLibraryService {
       { justification: string; matchScore: number; goals: string[]; name?: string; description?: string }
     > = new Map(),
   ) {
-    const MAX_NUMBER_OF_ROUTINE_HABITS = 5;
     const routineLength = {
       [ActivityType.morning]: 0,
       [ActivityType.evening]: 0,
@@ -186,8 +189,8 @@ export class ActivityLibraryService {
         if (
           (routineDuration[ActivityType.morning] >= userRoutineDurationSeconds &&
             routineDuration[ActivityType.evening] >= userRoutineDurationSeconds) ||
-          (routineLength[ActivityType.morning] >= MAX_NUMBER_OF_ROUTINE_HABITS &&
-            routineLength[ActivityType.evening] >= MAX_NUMBER_OF_ROUTINE_HABITS)
+          (routineLength[ActivityType.morning] >= MAX_ROUTINE_HABITS_PER_TYPE &&
+            routineLength[ActivityType.evening] >= MAX_ROUTINE_HABITS_PER_TYPE)
         ) {
           return true;
         }
@@ -242,12 +245,12 @@ export class ActivityLibraryService {
     const goalResults = await Promise.all(
       goals.map(async (goal) => {
         const options = {
-          limit: 10,
+          limit: RAG_RETRIEVAL_LIMIT,
           routineType: getRoutineSuggestionsDto.routine,
           routineDurationSeconds,
         };
         try {
-          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, 10);
+          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, RAG_RETRIEVAL_LIMIT);
           if (!matches.length) {
             const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
             return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
@@ -303,7 +306,7 @@ export class ActivityLibraryService {
           const similarityFallback = this.buildSimilarityFallback(
             goal,
             candidates,
-            options.limit ?? 5,
+            options.limit ?? RAG_RETRIEVAL_LIMIT,
             suggestionResult.minScoreApplied,
           );
           if (similarityFallback.length) {
@@ -420,7 +423,7 @@ export class ActivityLibraryService {
     const flat: ActivityTemplate[] = [];
     const fallbackDurationMinutes = routineDurationSeconds
       ? Math.max(1, Math.round(routineDurationSeconds / ONE_MINUTE_SECONDS))
-      : 10;
+      : DEFAULT_GENERATED_ACTIVITY_MINUTES;
 
     Object.entries(generatedByGoal).forEach(([goal, habits]) => {
       byGoal[goal] = [];

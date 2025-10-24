@@ -14,6 +14,7 @@ import { User } from '../modules/user/entities/user.entity';
 import { HabitPack } from '../modules/habit-pack/entity/habit-pack.entity';
 import { InstalledPack } from '../modules/habit-pack/entity/installed-pack.entity';
 import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
+import { ActivityTemplateEmbedding } from '../modules/activity-template/entity/activity-template-embedding.entity';
 import { Notification } from '../modules/notification/entities/notification.entity';
 import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata.entity';
 import { Track } from '../modules/tracks/entities/track.entity';
@@ -82,6 +83,7 @@ export const typeormConfig = registerAs(
       HabitPack,
       InstalledPack,
       ActivityTemplate,
+      ActivityTemplateEmbedding,
       Notification,
       VideoMetadata,
       Track,

@@ -78,19 +78,24 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     const result = await service.generateSuggestions('Get buffed', [candidate]);
 
     expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalled();
-    expect(result).toEqual([
-      {
-        habitId: template.id,
-        name: 'Goal-Aligned Morning Stretch',
-        description: template.activity_data?.text_instructions,
-        justification: 'Supports muscle growth.',
-        matchScore: 0.91,
-        template,
-      },
-    ]);
+    expect(result).toEqual({
+      accepted: [
+        {
+          habitId: template.id,
+          name: 'Goal-Aligned Morning Stretch',
+          description: template.activity_data?.text_instructions,
+          justification: 'Supports muscle growth.',
+          matchScore: 0.91,
+          template,
+        },
+      ],
+      rejectedCount: 0,
+      parsedCount: 1,
+      minScoreApplied: 0.5,
+    });
   });
 
-  it('filters out suggestions with match scores below 0.7', async () => {
+  it('filters out suggestions with match scores below the configured minimum', async () => {
     const template = buildTemplate();
     const candidate = buildCandidate(template, 0.9);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
@@ -109,9 +114,76 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
     });
 
-    const result = await service.generateSuggestions('Get buffed', [candidate]);
+    const result = await service.generateSuggestions('Get buffed', [candidate], { limit: 5, minMatchScore: 0.7 });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({
+      accepted: [],
+      rejectedCount: 1,
+      parsedCount: 1,
+      minScoreApplied: 0.7,
+    });
+  });
+
+  it('returns metadata when suggestions were parsed but rejected due to low score', async () => {
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.9);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Weak alignment.',
+                matchScore: 0.65,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Get buffed', [candidate], {
+      limit: 5,
+      minMatchScore: 0.7,
+    });
+
+    expect(result).toEqual({
+      accepted: [],
+      rejectedCount: 1,
+      parsedCount: 1,
+      minScoreApplied: 0.7,
+    });
+  });
+
+  it('uses the default minimum score when no override is provided', async () => {
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.6);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Moderate alignment.',
+                matchScore: 0.55,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Improve mobility', [candidate]);
+
+    expect(result.accepted).toHaveLength(1);
+    expect(result.accepted[0]).toMatchObject({
+      habitId: template.id,
+      justification: 'Moderate alignment.',
+      matchScore: 0.55,
+    });
+    expect(result.minScoreApplied).toBe(0.5);
   });
 
   it('falls back to similarity ranking when OpenAI response is invalid JSON', async () => {
@@ -123,16 +195,21 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
     const result = await service.generateSuggestions('Get buffed', [candidate]);
 
-    expect(result).toEqual([
-      {
-        habitId: template.id,
-        name: template.activity_data?.name,
-        description: template.activity_data?.text_instructions,
-        justification: expect.stringContaining('High semantic match'),
-        matchScore: 0.88,
-        template,
-      },
-    ]);
+    expect(result).toEqual({
+      accepted: [
+        {
+          habitId: template.id,
+          name: template.activity_data?.name,
+          description: template.activity_data?.text_instructions,
+          justification: expect.stringContaining('High semantic match'),
+          matchScore: 0.88,
+          template,
+        },
+      ],
+      rejectedCount: 0,
+      parsedCount: 0,
+      minScoreApplied: 0.5,
+    });
   });
 
   it('generates brand new habits when no candidates are available', async () => {

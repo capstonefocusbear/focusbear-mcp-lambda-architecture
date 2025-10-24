@@ -27,6 +27,18 @@ export interface GeneratedHabitSuggestion {
   justification?: string;
 }
 
+export interface GenerateSuggestionsOptions {
+  limit?: number;
+  minMatchScore?: number;
+}
+
+export interface GenerateSuggestionsResponse {
+  accepted: RoutineSuggestionResult[];
+  rejectedCount: number;
+  parsedCount: number;
+  minScoreApplied: number;
+}
+
 @Injectable()
 export class RoutineSuggestionGeneratorService {
   private static readonly MAX_CONTEXT_CANDIDATES = 10;
@@ -35,20 +47,26 @@ export class RoutineSuggestionGeneratorService {
 
   private static readonly MINUTES_FALLBACK = 10;
 
-  private static readonly MIN_MATCH_SCORE = 0.7;
+  private static readonly DEFAULT_MIN_MATCH_SCORE = 0.5;
 
   constructor(private readonly openAIService: OpenAIService, @InjectSentry() private readonly sentry: SentryService) {}
 
   async generateSuggestions(
     goal: string,
     candidates: RoutineSuggestionCandidate[],
-    { limit = 5 }: { limit?: number } = {},
-  ): Promise<RoutineSuggestionResult[]> {
+    { limit = 5, minMatchScore }: GenerateSuggestionsOptions = {},
+  ): Promise<GenerateSuggestionsResponse> {
     if (!candidates.length) {
-      return [];
+      return {
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: this.resolveMinMatchScore(minMatchScore),
+      };
     }
 
     const normalizedLimit = Math.max(1, limit);
+    const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
     const sortedCandidates = [...candidates].sort((a, b) => b.similarity - a.similarity);
     const promptContext = this.buildContext(
       sortedCandidates.slice(0, RoutineSuggestionGeneratorService.MAX_CONTEXT_CANDIDATES),
@@ -74,20 +92,20 @@ If the goal is already well represented by the habits, pick the best matches. If
 
     try {
       const response = await this.openAIService.createChatCompletion(messages, {
-        params: { temperature: 0.2 },
+        params: { temperature: 1.0 },
       });
       const content = response.choices?.[0]?.message?.content ?? '[]';
-      const { results: parsedResults, parsedCount } = this.parseResponse(
+      const { accepted, rejectedCount, parsedCount } = this.parseResponse(
         content,
         sortedCandidates,
         normalizedLimit,
-        RoutineSuggestionGeneratorService.MIN_MATCH_SCORE,
+        scoreThreshold,
       );
-      if (parsedResults.length) {
-        return parsedResults;
+      if (accepted.length) {
+        return { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
       if (parsedCount > 0) {
-        return [];
+        return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
     } catch (error) {
       this.sentry.instance().captureException(error, {
@@ -96,16 +114,18 @@ If the goal is already well represented by the habits, pick the best matches. If
       });
     }
 
-    const fallback = this.buildFallbackSuggestions(
-      sortedCandidates,
-      goal,
-      normalizedLimit,
-      RoutineSuggestionGeneratorService.MIN_MATCH_SCORE,
-    );
+    const fallback = this.buildFallbackSuggestions(sortedCandidates, goal, normalizedLimit, scoreThreshold);
     if (fallback.length) {
-      return fallback;
+      return { accepted: fallback, rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
     }
-    return [];
+    return { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
+  }
+
+  private resolveMinMatchScore(override?: number): number {
+    if (typeof override === 'number' && Number.isFinite(override)) {
+      return override;
+    }
+    return RoutineSuggestionGeneratorService.DEFAULT_MIN_MATCH_SCORE;
   }
 
   private buildContext(candidates: RoutineSuggestionCandidate[]): string {
@@ -128,16 +148,17 @@ If the goal is already well represented by the habits, pick the best matches. If
     candidates: RoutineSuggestionCandidate[],
     limit: number,
     minMatchScore: number,
-  ): { results: RoutineSuggestionResult[]; parsedCount: number } {
+  ): { accepted: RoutineSuggestionResult[]; rejectedCount: number; parsedCount: number } {
     try {
       const parsed = JSON.parse(content);
       if (!Array.isArray(parsed)) {
-        return { results: [], parsedCount: 0 };
+        return { accepted: [], rejectedCount: 0, parsedCount: 0 };
       }
 
       const candidateMap = new Map(candidates.map((candidate) => [candidate.template.id, candidate]));
 
       const results: RoutineSuggestionResult[] = [];
+      let rejectedCount = 0;
       parsed.forEach((item) => {
         const habitId = item?.habitId || item?.templateId || item?.id;
         if (!habitId) {
@@ -152,6 +173,7 @@ If the goal is already well represented by the habits, pick the best matches. If
           ? Math.min(1, Math.max(0, Number(rawScore)))
           : candidate.similarity;
         if (normalizedScore < minMatchScore) {
+          rejectedCount += 1;
           return;
         }
         const justification = typeof item.justification === 'string' ? item.justification : '';
@@ -169,13 +191,13 @@ If the goal is already well represented by the habits, pick the best matches. If
         });
       });
       const limited = results.slice(0, limit);
-      return { results: limited, parsedCount: parsed.length };
+      return { accepted: limited, rejectedCount, parsedCount: parsed.length };
     } catch (error) {
       this.sentry.instance().captureException(error, {
         level: 'warning',
         extra: { rawContent: content },
       });
-      return { results: [], parsedCount: 0 };
+      return { accepted: [], rejectedCount: 0, parsedCount: 0 };
     }
   }
 
@@ -234,7 +256,14 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
         params: { temperature: 0.3 },
       });
       const content = response.choices?.[0]?.message?.content ?? '[]';
-      return this.parseGeneratedHabits(content, normalizedLimit);
+      const parsed = this.parseGeneratedHabits(content, normalizedLimit);
+      if (!parsed.length) {
+        this.sentry.instance().captureMessage('RoutineSuggestion: no habits generated by OpenAI', {
+          level: 'warning',
+          extra: { goal, limit: normalizedLimit, routineType: preferredRoutineType },
+        });
+      }
+      return parsed;
     } catch (error) {
       this.sentry.instance().captureException(error, {
         level: 'error',

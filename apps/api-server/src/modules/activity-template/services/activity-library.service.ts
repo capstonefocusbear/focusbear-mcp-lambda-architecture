@@ -277,13 +277,40 @@ export class ActivityLibraryService {
             return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
-          const suggestions = await this.routineSuggestionGeneratorService.generateSuggestions(goal, candidates);
-          if (!suggestions.length) {
-            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
-            return { goal, suggestions: [], generated };
+          const suggestionResult = await this.routineSuggestionGeneratorService.generateSuggestions(goal, candidates, {
+            limit: options.limit,
+          });
+          if (suggestionResult.accepted.length) {
+            return { goal, suggestions: suggestionResult.accepted, generated: [] as GeneratedHabitSuggestion[] };
           }
 
-          return { goal, suggestions, generated: [] as GeneratedHabitSuggestion[] };
+          this.sentryService.instance().addBreadcrumb({
+            category: 'RoutineSuggestion',
+            level: 'info',
+            message: 'Falling back to generated habits',
+            data: { goal, candidateCount: candidates.length, rejectedCount: suggestionResult.rejectedCount },
+          });
+          const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+          if (generated.length) {
+            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
+          }
+
+          this.sentryService.instance().captureMessage('RoutineSuggestion: generated habits fallback returned empty', {
+            level: 'warning',
+            extra: { goal, candidateCount: candidates.length, rejectedCount: suggestionResult.rejectedCount },
+          });
+
+          const similarityFallback = this.buildSimilarityFallback(
+            goal,
+            candidates,
+            options.limit ?? 5,
+            suggestionResult.minScoreApplied,
+          );
+          if (similarityFallback.length) {
+            return { goal, suggestions: similarityFallback, generated: [] as GeneratedHabitSuggestion[] };
+          }
+
+          return { goal, suggestions: [] as RoutineSuggestionResult[], generated: [] as GeneratedHabitSuggestion[] };
         } catch (error) {
           this.sentryService.instance().captureException(error, {
             level: 'error',
@@ -425,6 +452,26 @@ export class ActivityLibraryService {
     });
 
     return { byGoal, flat };
+  }
+
+  private buildSimilarityFallback(
+    goal: string,
+    candidates: { template: ActivityTemplate; similarity: number }[],
+    limit: number,
+    minScore: number,
+  ): RoutineSuggestionResult[] {
+    const normalizedLimit = Math.max(1, limit);
+    return candidates
+      .filter(({ similarity }) => similarity >= minScore)
+      .slice(0, normalizedLimit)
+      .map(({ template, similarity }) => ({
+        habitId: template.id,
+        name: template.activity_data?.name,
+        description: template.activity_data?.text_instructions,
+        justification: `Closest available habit for "${goal}" based on embedding similarity.`,
+        matchScore: Number(similarity.toFixed(2)),
+        template,
+      }));
   }
 
   isValidTemplateDuration(template_duration: number, routine_duration: number, user_routine_duration: number) {

@@ -332,6 +332,7 @@ describe('UserService', () => {
         has_consented_to_terms_of_service: true,
         user_type: UserTypes.STANDARD,
         teamToAdmin: [{ team }],
+        has_consented_to_privacy_policy: true,
       });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
         email: auth0UserDummy.email,
@@ -351,6 +352,7 @@ describe('UserService', () => {
         adminForTeams: [team],
         has_consented_to_terms_of_service: true,
         user_type: UserTypes.STANDARD,
+        has_consented_to_privacy_policy: true,
       });
     });
 

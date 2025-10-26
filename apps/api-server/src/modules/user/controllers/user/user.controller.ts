@@ -164,8 +164,8 @@ export class UserController {
   @Put('consent')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
-    return this.userConsentService.upsertUserConsent(userConsent, user.id);
+  async upsertUserConsent(@Body() consents: UpdateUserConsentDto[], @AuthContext() { user }: Passport) {
+    return this.userConsentService.upsertUserConsents(consents, user.id);
   }
 
   @Get('stats/onboarding')

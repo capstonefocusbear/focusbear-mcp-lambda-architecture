@@ -29,4 +29,7 @@ export class UserSummaryResponseDto {
 
   @ApiPropertyOptional({ enum: UserTypes })
   user_type?: UserTypes;
+
+  @ApiPropertyOptional()
+  has_consented_to_privacy_policy?: boolean;
 }

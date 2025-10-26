@@ -387,6 +387,16 @@ export class User extends BaseEntity {
   has_consented_to_terms_of_service?: boolean;
 
   @Column({
+    type: 'boolean',
+    nullable: true,
+    transformer: {
+      to: (value: boolean | null | undefined) => value,
+      from: (value: boolean | null) => !!value,
+    },
+  })
+  has_consented_to_privacy_policy?: boolean;
+
+  @Column({
     type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('long_term_goals'),

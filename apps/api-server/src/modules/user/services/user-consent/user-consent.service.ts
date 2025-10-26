@@ -12,32 +12,6 @@ export class UserConsentService {
     private readonly userConsentRepository: UserConsentRepository,
   ) {}
 
-  async upsertUserConsent(userConsent: UpdateUserConsentDto, user_id: string) {
-    const user = await this.userRepository.orm.findOneBy({ id: user_id });
-    if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    const { consent_type, consent_status } = userConsent;
-    const existingConsentRecord = await this.userConsentRepository.orm.findOneBy({ consent_type, user_id });
-    if (consent_type === UserConsentTypes.TERMS_OF_SERVICE) {
-      await this.userRepository.orm.update(
-        { id: user_id },
-        {
-          has_consented_to_terms_of_service: !!consent_status,
-          updated_at: new Date().toISOString(),
-          has_received_inactivity_warning: false,
-        },
-      );
-    }
-    if (existingConsentRecord) {
-      // if user is revoking consent, update withdrawal date
-      if (existingConsentRecord.consent_status && !userConsent.consent_status) {
-        existingConsentRecord.withdrawal_date = DateTime.local({ zone: 'UTC' }).toJSDate();
-      }
-      await this.userConsentRepository.orm.save({ ...existingConsentRecord, ...userConsent });
-      return;
-    }
-    await this.userConsentRepository.upsert({ ...userConsent, user_id }, ['id']);
-  }
-
   async upsertUserConsents(consents: UpdateUserConsentDto[], user_id: string) {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
@@ -53,6 +27,16 @@ export class UserConsentService {
               has_consented_to_terms_of_service: !!consent_status,
               updated_at: new Date().toISOString(),
               has_received_inactivity_warning: false,
+            },
+          );
+        }
+
+        if (consent_type === UserConsentTypes.PRIVACY_POLICY) {
+          await this.userRepository.orm.update(
+            { id: user_id },
+            {
+              has_consented_to_privacy_policy: !!consent_status,
+              updated_at: new Date().toISOString(),
             },
           );
         }

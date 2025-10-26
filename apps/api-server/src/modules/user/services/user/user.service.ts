@@ -348,6 +348,7 @@ export class UserService {
         language,
         has_consented_to_terms_of_service,
         user_type,
+        has_consented_to_privacy_policy,
       } = userSummary;
       const adminForTeams =
         teamToAdmin
@@ -364,6 +365,7 @@ export class UserService {
         adminForTeams,
         has_consented_to_terms_of_service,
         user_type,
+        has_consented_to_privacy_policy,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

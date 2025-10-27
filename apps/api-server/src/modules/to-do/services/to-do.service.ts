@@ -45,8 +45,6 @@ export class ToDoService {
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
     if (existingToDo) {
-      // CRITICAL SECURITY CHECK: Verify that the todo belongs to the authenticated user
-      // This prevents IDOR (Insecure Direct Object Reference) attacks
       if (existingToDo.user_id !== userId) {
         // Log potential IDOR attack attempt
         this.sentryService
@@ -68,19 +66,15 @@ export class ToDoService {
   async upsertToDo(userId: string, updatedToDo: CreateToDoDto) {
     let toDoFromDB: ToDo = null;
     if (updatedToDo.id) {
-      // Validate that user owns this todo before allowing update
       toDoFromDB = await this.validateUpdatingToDo(userId, updatedToDo);
     }
     const DEFAULT_STATUSES: string[] = [ToDoStatus.NOT_STARTED, ToDoStatus.IN_PROGRESS, ToDoStatus.COMPLETED];
     const tags = updatedToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id: userId }));
     if (DEFAULT_STATUSES.includes(updatedToDo.status)) {
-      // CRITICAL SECURITY: Always set user_id to the authenticated userId to prevent IDOR attacks
-      // This explicit assignment ensures user_id cannot be manipulated by the client
       const newToDo = new ToDo({ ...updatedToDo, user_id: userId, updated_at: new Date().toISOString(), tags });
       return this.toDoRepository.orm.save(newToDo);
     }
     let status: ToDoStatus = ToDoStatus.NOT_STARTED;
-    // External status is used, check whether status should mark task as completed
     if (toDoFromDB?.synced_project_id) {
       const external_status = await this.syncedProjectsRepository.orm.findOneBy({
         id: toDoFromDB?.synced_project_id,
@@ -91,8 +85,6 @@ export class ToDoService {
       status = selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : (selectedStatus.label as ToDoStatus);
     }
 
-    // CRITICAL SECURITY: Always set user_id to the authenticated userId to prevent IDOR attacks
-    // This explicit assignment ensures user_id cannot be manipulated by the client
     const newToDo = new ToDo({
       ...updatedToDo,
       user_id: userId,

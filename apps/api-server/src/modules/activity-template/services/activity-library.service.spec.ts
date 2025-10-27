@@ -34,9 +34,13 @@ import { OpenAIService } from '../../../../../../libs/openai/src/openai.service'
 import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';
 import { RoutineSuggestionGeneratorService } from './routine-suggestion-generator.service';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
+  const habitLibraryRequestRepositoryMock = {
+    logRequests: jest.fn(),
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -62,6 +66,10 @@ describe('ActivityLibraryService', () => {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
         },
+        {
+          provide: HabitLibraryRequestRepository,
+          useValue: habitLibraryRequestRepositoryMock,
+        },
       ],
     })
       .overrideProvider(ActivityTemplateRepository)
@@ -74,6 +82,8 @@ describe('ActivityLibraryService', () => {
       .useValue(ActivityTemplateRetrieverServiceMock)
       .overrideProvider(RoutineSuggestionGeneratorService)
       .useValue(RoutineSuggestionGeneratorServiceMock)
+      .overrideProvider(HabitLibraryRequestRepository)
+      .useValue(habitLibraryRequestRepositoryMock)
       .compile();
 
     activityLibraryService = moduleRef.get<ActivityLibraryService>(ActivityLibraryService);
@@ -425,6 +435,60 @@ describe('ActivityLibraryService', () => {
       expect(response[0].ai_generated).toBe(false);
       expect(response[0].ai_match_score).toBeCloseTo(0.6, 2);
       expect(response[0].ai_justification).toContain('Closest available habit');
+    });
+
+    it('logs generated habits for later review', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([]);
+      const generatedHabit = {
+        name: 'AI Buff Builder',
+        description: 'Strength routine generated for the user goal.',
+        routineType: ActivityType.morning,
+        durationMinutes: 18,
+        justification: 'Aligns with muscle gain objective.',
+      };
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([generatedHabit]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_id: userDummy.id,
+        user_goals: ['Get buffed'],
+      };
+
+      await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+
+      expect(habitLibraryRequestRepositoryMock.logRequests).toHaveBeenCalledWith([
+        expect.objectContaining({
+          userId: userDummy.id,
+          goal: 'Get buffed',
+          habitName: generatedHabit.name,
+          habitDescription: generatedHabit.description,
+          routineType: ActivityType.morning,
+          durationMinutes: generatedHabit.durationMinutes,
+          justification: generatedHabit.justification,
+        }),
+      ]);
+    });
+
+    it('does not log when only library templates are returned', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const matched_activities = activityLibraryService.userDesiredRoutineDurationSeconds(
+        dummyActivityTemplatesWithTags,
+        dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
+      );
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(matched_activities);
+
+      await activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id);
+
+      expect(habitLibraryRequestRepositoryMock.logRequests).not.toHaveBeenCalled();
     });
 
     it('positive: should return unique activity templates grouped by goals, matching user goals and within routine duration', async () => {

@@ -17,6 +17,8 @@ import { ActivityTemplateRetrieverService } from './services/activity-template-r
 import { ActivityTemplateEmbeddingSyncService } from './services/activity-template-embedding-sync.service';
 import { RoutineSuggestionGeneratorService } from './services/routine-suggestion-generator.service';
 import { OpenAIModule } from '../../../../../libs/openai/src';
+import { HabitLibraryRequest } from './entity/habit-library-request.entity';
+import { HabitLibraryRequestRepository } from './repository/habit-library-request.repository';
 
 @Module({
   providers: [
@@ -30,6 +32,7 @@ import { OpenAIModule } from '../../../../../libs/openai/src';
     ActivityTemplateRetrieverService,
     ActivityTemplateEmbeddingSyncService,
     RoutineSuggestionGeneratorService,
+    HabitLibraryRequestRepository,
   ],
   exports: [
     ActivityTemplateParserService,
@@ -41,10 +44,11 @@ import { OpenAIModule } from '../../../../../libs/openai/src';
     ActivityTemplateRetrieverService,
     ActivityTemplateEmbeddingSyncService,
     RoutineSuggestionGeneratorService,
+    HabitLibraryRequestRepository,
   ],
   controllers: [ActivityLibraryController],
   imports: [
-    TypeOrmModule.forFeature([ActivityTemplate, ActivityTemplateEmbedding]),
+    TypeOrmModule.forFeature([ActivityTemplate, ActivityTemplateEmbedding, HabitLibraryRequest]),
     forwardRef(() => UserModule),
     ActivityModule,
     OpenAIModule.registerAsync({

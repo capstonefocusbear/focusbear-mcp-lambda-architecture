@@ -20,6 +20,7 @@ import {
   RoutineSuggestionResult,
   GeneratedHabitSuggestion,
 } from './routine-suggestion-generator.service';
+import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 
 const MAX_ROUTINE_HABITS_PER_TYPE = 5;
 const RAG_RETRIEVAL_LIMIT = 10;
@@ -34,6 +35,7 @@ export class ActivityLibraryService {
     private readonly userRepository: UserRepository,
     private readonly activityTemplateRetrieverService: ActivityTemplateRetrieverService,
     private readonly routineSuggestionGeneratorService: RoutineSuggestionGeneratorService,
+    private readonly habitLibraryRequestRepository: HabitLibraryRequestRepository,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly openAIService: OpenAIService,
   ) {}
@@ -142,7 +144,7 @@ export class ActivityLibraryService {
         return directTemplates;
       }
 
-      const ragResult = await this.getActivitiesFromRag(getRoutineSuggestionsDto, routineDurationSeconds);
+      const ragResult = await this.getActivitiesFromRag(getRoutineSuggestionsDto, routineDurationSeconds, user_id);
       if (getRoutineSuggestionsDto.groupByGoals) {
         return ragResult.groupedByGoal ?? {};
       }
@@ -236,6 +238,7 @@ export class ActivityLibraryService {
   private async getActivitiesFromRag(
     getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     routineDurationSeconds: number,
+    userId?: string,
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
     const goals = getRoutineSuggestionsDto.user_goals ?? [];
     if (!goals.length) {
@@ -382,6 +385,13 @@ export class ActivityLibraryService {
       getRoutineSuggestionsDto.routine,
     );
 
+    await this.persistGeneratedHabits(
+      userId,
+      generatedByGoal,
+      getRoutineSuggestionsDto,
+      generatedActivities.flat.length > 0,
+    );
+
     const templatesByOriginalId = new Map(
       finalTemplates
         .filter((template: any) => template.original_template_id)
@@ -455,6 +465,48 @@ export class ActivityLibraryService {
     });
 
     return { byGoal, flat };
+  }
+
+  private async persistGeneratedHabits(
+    userId: string | undefined,
+    generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
+    request: GetRoutineSuggestionsDto,
+    hasGeneratedHabits: boolean,
+  ): Promise<void> {
+    if (!hasGeneratedHabits) {
+      return;
+    }
+    const entries = Object.entries(generatedByGoal).flatMap(([goal, habits]) =>
+      habits.map((habit) => ({
+        userId: userId ?? null,
+        goal,
+        habitName: habit.name,
+        habitDescription: habit.description ?? null,
+        routineType: (habit.routineType as string | undefined) ?? request.routine ?? null,
+        durationMinutes: habit.durationMinutes ?? request.routine_duration ?? DEFAULT_GENERATED_ACTIVITY_MINUTES,
+        justification: habit.justification ?? null,
+        requestMetadata: {
+          routine: request.routine ?? null,
+          routineDurationMinutes: request.routine_duration ?? null,
+          groupByGoals: request.groupByGoals ?? false,
+          goalCount: request.user_goals?.length ?? 0,
+          source: 'rag_generation',
+        },
+      })),
+    );
+
+    if (!entries.length) {
+      return;
+    }
+
+    try {
+      await this.habitLibraryRequestRepository.logRequests(entries);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        extra: { userId, goalCount: entries.length },
+      });
+    }
   }
 
   private buildSimilarityFallback(

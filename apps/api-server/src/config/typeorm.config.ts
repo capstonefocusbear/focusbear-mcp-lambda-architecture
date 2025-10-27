@@ -49,6 +49,7 @@ import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../modules/activity-template/entity/activity-template-tag.entity';
+import { HabitLibraryRequest } from '../modules/activity-template/entity/habit-library-request.entity';
 import { CustomRoutine } from '../modules/user/entities/custom-routine';
 import { StudyParticipant } from '../modules/user/entities/study-participant.entity';
 import { UsageData } from '../modules/user/entities/usage-data.entity';
@@ -84,6 +85,7 @@ export const typeormConfig = registerAs(
       InstalledPack,
       ActivityTemplate,
       ActivityTemplateEmbedding,
+      HabitLibraryRequest,
       Notification,
       VideoMetadata,
       Track,

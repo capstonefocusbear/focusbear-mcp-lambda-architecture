@@ -15,6 +15,8 @@ import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
 import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
 
+const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Component}\uFE0F\u200D]/gu;
+
 @Injectable()
 export class ActivityLibraryService {
   constructor(
@@ -94,17 +96,18 @@ export class ActivityLibraryService {
 
   async getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto: GetRoutineSuggestionsDto, user_id: string) {
     try {
+      const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'get activities related to user goals',
-        data: { ...getRoutineSuggestionsDto, user_id },
+        data: { ...normalizedRoutineSuggestionsDto, user_id },
       });
 
       await this.validateUser(user_id);
 
       const activityTemplates = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(
-        getRoutineSuggestionsDto,
+        normalizedRoutineSuggestionsDto,
       );
       const updateActivityTemplates = activityTemplates.sort(
         (activityTemplateA, activityTemplateB) =>
@@ -112,13 +115,13 @@ export class ActivityLibraryService {
       );
       const templates: ActivityTemplate[] = this.userDesiredRoutineDurationSeconds(
         updateActivityTemplates,
-        getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
+        normalizedRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS,
       );
 
       if (!templates.length) {
         return [];
       }
-      if (getRoutineSuggestionsDto.groupByGoals) {
+      if (normalizedRoutineSuggestionsDto.groupByGoals) {
         const groupedByGoal: Record<
           string,
           Omit<ActivityTemplate, 'tags'> &
@@ -126,7 +129,7 @@ export class ActivityLibraryService {
               tags: string[];
             }[]
         > = {};
-        for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
+        for (const goal of normalizedRoutineSuggestionsDto.user_goals ?? []) {
           groupedByGoal[goal] = templates
             .filter((template: ActivityTemplate) => {
               return template.tags?.some((tag) => tag.tags.includes(goal));
@@ -141,6 +144,30 @@ export class ActivityLibraryService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private normalizeRoutineSuggestionsDto(dto: GetRoutineSuggestionsDto): GetRoutineSuggestionsDto {
+    const normalizedGoals = this.normalizeUserGoals(dto.user_goals);
+    return {
+      ...dto,
+      user_goals: normalizedGoals,
+    };
+  }
+
+  private normalizeUserGoals(userGoals?: string[]): string[] {
+    if (!userGoals?.length) {
+      return [];
+    }
+
+    return userGoals.map((goal) => this.normalizeGoal(goal)).filter((goal) => goal.length > 0);
+  }
+
+  private normalizeGoal(goal: string): string {
+    if (!goal) {
+      return '';
+    }
+    const withoutEmojis = goal.replace(EMOJI_REGEX, '');
+    return withoutEmojis.replace(/\s+/g, ' ').trim();
   }
 
   /**

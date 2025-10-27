@@ -45,23 +45,37 @@ export class ToDoService {
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
     if (existingToDo) {
+      // CRITICAL SECURITY CHECK: Verify that the todo belongs to the authenticated user
+      // This prevents IDOR (Insecure Direct Object Reference) attacks
       if (existingToDo.user_id !== userId) {
+        // Log potential IDOR attack attempt
+        this.sentryService
+          .instance()
+          .captureMessage(
+            `SECURITY: Unauthorized todo update attempt - User ${userId} tried to update todo ${existingToDo.id} owned by ${existingToDo.user_id}`,
+            'warning',
+          );
         throw new UnauthorizedException(
           `User with ID: ${userId} is not allowed to edit todo with ID: ${existingToDo.id}!`,
         );
       }
       return existingToDo;
     }
+    // If todo doesn't exist, that's fine - it will be created as a new todo with the authenticated user's ID
+    return null;
   }
 
   async upsertToDo(userId: string, updatedToDo: CreateToDoDto) {
     let toDoFromDB: ToDo = null;
     if (updatedToDo.id) {
+      // Validate that user owns this todo before allowing update
       toDoFromDB = await this.validateUpdatingToDo(userId, updatedToDo);
     }
     const DEFAULT_STATUSES: string[] = [ToDoStatus.NOT_STARTED, ToDoStatus.IN_PROGRESS, ToDoStatus.COMPLETED];
     const tags = updatedToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id: userId }));
     if (DEFAULT_STATUSES.includes(updatedToDo.status)) {
+      // CRITICAL SECURITY: Always set user_id to the authenticated userId to prevent IDOR attacks
+      // This explicit assignment ensures user_id cannot be manipulated by the client
       const newToDo = new ToDo({ ...updatedToDo, user_id: userId, updated_at: new Date().toISOString(), tags });
       return this.toDoRepository.orm.save(newToDo);
     }
@@ -77,6 +91,8 @@ export class ToDoService {
       status = selectedStatus?.should_complete_task ? ToDoStatus.COMPLETED : (selectedStatus.label as ToDoStatus);
     }
 
+    // CRITICAL SECURITY: Always set user_id to the authenticated userId to prevent IDOR attacks
+    // This explicit assignment ensures user_id cannot be manipulated by the client
     const newToDo = new ToDo({
       ...updatedToDo,
       user_id: userId,
@@ -216,7 +232,35 @@ export class ToDoService {
   }
 
   async deleteToDo(user_id: string, toDoId: string) {
-    await this.toDoRepository.orm.delete({ user_id, id: toDoId });
+    // CRITICAL SECURITY CHECK: Verify ownership before deletion to prevent IDOR attacks
+    const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: toDoId } });
+
+    if (existingToDo && existingToDo.user_id !== user_id) {
+      // Verify that the todo belongs to the authenticated user
+      // Log potential IDOR attack attempt
+      this.sentryService
+        .instance()
+        .captureMessage(
+          `SECURITY: Unauthorized todo deletion attempt - User ${user_id} tried to delete todo ${toDoId} owned by ${existingToDo.user_id}`,
+          'warning',
+        );
+      throw new UnauthorizedException(`User with ID: ${user_id} is not allowed to delete todo with ID: ${toDoId}!`);
+    }
+
+    // Use explicit where clause with both user_id and id to ensure only the owner can delete
+    // This is a defense-in-depth measure - even if the above check is bypassed, the database query will fail
+    const deleteResult = await this.toDoRepository.orm.delete({ user_id, id: toDoId });
+
+    // Log successful deletion for audit trail
+    if (deleteResult?.affected > 0) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'todo',
+        message: `User ${user_id} deleted todo ${toDoId}`,
+        level: 'info',
+      });
+    }
+
+    return deleteResult;
   }
 
   async updateTasksStatuses(tasks: ToDoTimeLogDto[]) {

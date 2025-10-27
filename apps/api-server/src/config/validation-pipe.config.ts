@@ -8,6 +8,8 @@ export const validationPipeConfig = registerAs(
     transformOptions: {
       enableImplicitConversion: true,
     },
+    whitelist: true, // Strip properties that don't have decorators - prevents property injection attacks
+    forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present - prevents IDOR attacks
     forbidUnknownValues: false,
     exceptionFactory(errors: ValidationError[]) {
       return new BadRequestException(errors);

@@ -112,11 +112,42 @@ describe('toDoService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: should log security warning when unauthorized update is attempted', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      try {
+        await toDoService.upsertToDo(userDummy.id, { ...toDoDummy, id: toDoId });
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(SentryServiceMock.instance().captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('SECURITY: Unauthorized todo update attempt'),
+        'warning',
+      );
+    });
+
     it('positive: should save new incoming to do', async () => {
       await toDoService.upsertToDo(userDummy.id, toDoDummy);
 
       expect(ToDoRepositoryMock.orm.save).toBeCalledWith(
         new ToDo({ user_id: userDummy.id, ...toDoDummy, updated_at: expect.toBeDateString() }),
+      );
+    });
+
+    it('positive: should always set user_id to authenticated user regardless of input', async () => {
+      const maliciousUserId = randomUUID();
+      // Even if client sends a different user_id, it should be overwritten
+      const maliciousToDo = { ...toDoDummy, user_id: maliciousUserId };
+
+      await toDoService.upsertToDo(userDummy.id, maliciousToDo as any);
+
+      expect(ToDoRepositoryMock.orm.save).toBeCalledWith(
+        expect.objectContaining({
+          user_id: userDummy.id, // Should be the authenticated user, not the malicious one
+        }),
       );
     });
   });
@@ -258,8 +289,59 @@ describe('toDoService', () => {
   });
 
   describe('deleteToDo', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     it('positive: should delete users to do from DB', async () => {
       const toDoId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: userDummy.id });
+      ToDoRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+      await toDoService.deleteToDo(userDummy.id, toDoId);
+
+      expect(ToDoRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: toDoId });
+    });
+
+    it('negative: should throw UnauthorizedException when user tries to delete another users todo', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      let exception;
+      try {
+        await toDoService.deleteToDo(userDummy.id, toDoId);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toContain('not allowed to delete todo');
+      expect(ToDoRepositoryMock.orm.delete).not.toHaveBeenCalled();
+    });
+
+    it('negative: should log security warning when unauthorized deletion is attempted', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      try {
+        await toDoService.deleteToDo(userDummy.id, toDoId);
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(SentryServiceMock.instance().captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('SECURITY: Unauthorized todo deletion attempt'),
+        'warning',
+      );
+    });
+
+    it('positive: should handle deletion of non-existent todo gracefully', async () => {
+      const toDoId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ToDoRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
       await toDoService.deleteToDo(userDummy.id, toDoId);
 
       expect(ToDoRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: toDoId });

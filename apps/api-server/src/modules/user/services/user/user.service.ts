@@ -888,6 +888,18 @@ export class UserService {
     return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 
+  // Centralized function to log messages only if the user has verbose logging enabled
+  async logVerboselyIfUserHasVerboseLoggingEnabled(user_id: string, logFunction: () => void): Promise<void> {
+    try {
+      const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(user_id);
+      if (isVerboseLoggingAllowed) {
+        logFunction();
+      }
+    } catch (error) {
+      // Silently fail if we can't check verbose logging status
+    }
+  }
+
   async updateUsername(user_id: string, { username }: UpdateUsernameDto) {
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
       where: { username: username.toLowerCase() },

@@ -52,6 +52,7 @@ export const UserServiceMock = {
   getUserLocalDeviceSettings: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),
   isVerboseLoggingAllowed: jest.fn(),
+  logVerboselyIfUserHasVerboseLoggingEnabled: jest.fn(),
   // rest can be added if needed
 };
 

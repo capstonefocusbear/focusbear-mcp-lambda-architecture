@@ -996,6 +996,46 @@ describe('UserService', () => {
     });
   });
 
+  describe('logVerboselyIfUserHasVerboseLoggingEnabled', () => {
+    it('positive: should execute log function when verbose logging is enabled', async () => {
+      const logFunction = jest.fn();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+
+      expect(logFunction).toHaveBeenCalledTimes(1);
+    });
+
+    it('positive: should not execute log function when verbose logging is disabled', async () => {
+      const logFunction = jest.fn();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: false });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+
+      expect(logFunction).not.toHaveBeenCalled();
+    });
+
+    it('positive: should not execute log function when user is not found', async () => {
+      const logFunction = jest.fn();
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+
+      expect(logFunction).not.toHaveBeenCalled();
+    });
+
+    it('positive: should not throw error when database query fails', async () => {
+      const logFunction = jest.fn();
+      UserRepositoryMock.orm.findOneBy.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(
+        userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction),
+      ).resolves.not.toThrow();
+
+      expect(logFunction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('isValidUrl', () => {
     it('negative: should return false for empty string', () => {
       const isUrl = userService.isValidURL('');

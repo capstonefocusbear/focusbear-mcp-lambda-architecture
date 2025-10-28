@@ -1373,9 +1373,9 @@ export class CompletedActivityService implements OnModuleInit {
     activity: Activity,
     language: string,
   ): Promise<void> {
-    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
-
-    if (isVerboseLoggingAllowed) {
+    // Verbose logging for broadcast start
+    await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+      // eslint-disable-next-line no-console
       console.log('Broadcasting completion event for user:', {
         user_id,
         completed_activity_id,
@@ -1384,25 +1384,27 @@ export class CompletedActivityService implements OnModuleInit {
         language,
         timestamp: new Date().toISOString(),
       });
-    }
+    });
 
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
 
     // Pusher Channels broadcast with error handling
     try {
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.log('Triggering Pusher Channels event:', {
           channel: `private-${user_id}`,
           event: 'activity-completed',
           pushData,
         });
-      }
+      });
 
       await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
 
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.log('Pusher Channels trigger successful for user:', user_id);
-      }
+      });
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
@@ -1417,7 +1419,8 @@ export class CompletedActivityService implements OnModuleInit {
         },
       });
 
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.error('Pusher Channels trigger failed:', {
           user_id,
           error: error.message,
@@ -1425,7 +1428,7 @@ export class CompletedActivityService implements OnModuleInit {
           channel: `private-${user_id}`,
           event: 'activity-completed',
         });
-      }
+      });
     }
 
     // Pusher Beams notification with error handling
@@ -1443,21 +1446,24 @@ export class CompletedActivityService implements OnModuleInit {
         should_send_only_data_for_android: true,
       });
 
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.log('Publishing Pusher Beams notification:', {
           user_id,
           title,
           body,
           publishRequest: JSON.stringify(publishRequest),
         });
-      }
+      });
 
+      // eslint-disable-next-line no-console
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeams.publishToUsers([user_id], publishRequest);
 
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.log('Pusher Beams notification published successfully for user:', user_id);
-      }
+      });
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
@@ -1475,14 +1481,15 @@ export class CompletedActivityService implements OnModuleInit {
         },
       });
 
-      if (isVerboseLoggingAllowed) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
+        // eslint-disable-next-line no-console
         console.error('Pusher Beams notification failed:', {
           user_id,
           error: error.message,
           stack: error.stack,
           activity_name: activity.activity_data.name,
         });
-      }
+      });
     }
 
     this.sentryService.instance().addBreadcrumb({

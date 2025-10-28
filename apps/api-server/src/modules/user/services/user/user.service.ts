@@ -389,7 +389,7 @@ export class UserService {
       const initialCurrentActivity = partialUser.current_activity_id;
       let currentSequenceCompletedActivityIds: string[] = [];
 
-      // kick off in parallel
+      // start in parallel
       const todayRoutineProgressPromise = this.completedActivitySequenceService.getRoutinesProgress(
         partialUser.id,
         partialUser.timezone,
@@ -414,7 +414,6 @@ export class UserService {
         today_routine_progress: todayRoutineProgress,
       });
 
-      // breadcrumb restored
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -428,7 +427,6 @@ export class UserService {
 
       return currentActivityProps;
     } catch (error) {
-      // another sentry breadcrumb
       this.sentryService.instance().captureException(error, {
         level: 'error',
       });

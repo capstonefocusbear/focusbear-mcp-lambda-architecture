@@ -373,6 +373,13 @@ export class UserService {
 
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'getUserCurrentActivityProps:start',
+        data: { user_id: userId },
+      });
+
       // fetch minimal user state
       let partialUser = await this.userRepository.getUserCurrentActivityProps(userId);
       if (!partialUser) {
@@ -407,29 +414,24 @@ export class UserService {
         today_routine_progress: todayRoutineProgress,
       });
 
-      if (userId === JEREMYS_USER_ID) {
-        // eslint-disable-next-line no-console
-        console.log('Jeremy current user state', {
+      // breadcrumb restored
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'getUserCurrentActivityProps:success',
+        data: {
+          user_id: userId,
           initialCurrentActivity,
-          updatedActivityProps: currentActivityProps,
-          originalActivityProps: partialUser,
-        });
-      }
+          current_activity_id: currentActivityProps.current_activity,
+        },
+      });
 
       return currentActivityProps;
     } catch (error) {
-      // stdout (not CloudWatch EMF)
-      const e = error as Error;
-      console.log(
-        JSON.stringify({
-          level: 'error',
-          event: 'getUserCurrentActivityProps_failed',
-          user_id: userId,
-          name: e?.name ?? 'Error',
-          message: e?.message ?? String(error),
-          stack: e?.stack,
-        }),
-      );
+      // another sentry breadcrumb
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+      });
       throw error;
     }
   }

@@ -251,8 +251,6 @@ export class ToDoService {
         level: 'info',
       });
     }
-
-    return deleteResult;
   }
 
   async updateTasksStatuses(tasks: ToDoTimeLogDto[]) {

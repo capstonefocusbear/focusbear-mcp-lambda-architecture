@@ -9,7 +9,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ILike } from 'typeorm';
+import { Raw } from 'typeorm';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
@@ -895,11 +895,12 @@ export class UserService {
       throw new BadRequestException('Username cannot be empty');
     }
 
-    // Escape underscores to prevent SQL wildcard matching
-    const escapedUsername = normalizedUsername.replace(/_/g, '\\_');
-
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
-      where: { username: ILike(escapedUsername) },
+      where: {
+        username: Raw((alias) => `LOWER(${alias}) = LOWER(:username)`, {
+          username: normalizedUsername,
+        }),
+      },
     });
     if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
       throw new ConflictException(
@@ -923,7 +924,7 @@ export class UserService {
       throw new BadRequestException(`Username: ${normalizedUsername} not accepted because it is deemed offensive`);
     }
     await this.userRepository.update(user_id, {
-      username: normalizedUsername.toLowerCase(),
+      username: normalizedUsername,
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });

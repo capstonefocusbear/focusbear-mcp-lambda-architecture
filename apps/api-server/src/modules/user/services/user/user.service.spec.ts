@@ -816,7 +816,7 @@ describe('UserService', () => {
       await userService.updateUsername(userDummy.id, { username });
 
       expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
-        username: normalizedUsername.toLowerCase(),
+        username: normalizedUsername,
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
@@ -830,13 +830,17 @@ describe('UserService', () => {
 
       await userService.updateUsername(userDummy.id, { username });
 
-      // Verify that the query uses escaped underscores
+      // Verify that the query uses Raw with case-insensitive comparison
       expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({
-        where: { username: expect.objectContaining({}) }, // ILike with escaped username
+        where: {
+          username: expect.objectContaining({
+            _type: 'raw',
+          }),
+        },
       });
 
       expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
-        username: normalizedUsername.toLowerCase(),
+        username: normalizedUsername,
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
@@ -858,6 +862,40 @@ describe('UserService', () => {
           username: expected,
         }),
       );
+    });
+  });
+
+  describe('updateUsername case-insensitive handling', () => {
+    it('should detect case-insensitive username conflicts', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const existingUser = { ...userDummy, id: randomUUID(), username: 'JohnDoe' };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existingUser);
+      const username = 'johndoe'; // Different case
+
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(ConflictException);
+      expect(exception.message).toEqual(`Username: ${username} already taken by user with ID: ${existingUser.id}`);
+    });
+
+    it('should preserve original case when saving username', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'JohnDoe'; // Mixed case
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: 'JohnDoe', // Should preserve original case
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
     });
   });
 

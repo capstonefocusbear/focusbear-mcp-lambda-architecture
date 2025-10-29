@@ -54,4 +54,26 @@ describe('IsValidCutoffTime', () => {
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0].constraints?.isValidCutoffTime).toBe(invalid_cutoff_time_message);
   });
+
+  it('positive: should auto-adjust cutoff when it matches shutdown time', async () => {
+    const instance = createTestInstance({
+      shutdown_time: '22:00',
+      cutoff_time_for_non_high_priority_activities: '22:00',
+    });
+
+    const errors = await validate(instance);
+    expect(errors.length).toBe(0);
+    expect(instance.cutoff_time_for_non_high_priority_activities).toBe('22:01');
+  });
+
+  it('positive: should wrap cutoff to midnight when shutdown time is 23:59', async () => {
+    const instance = createTestInstance({
+      shutdown_time: '23:59',
+      cutoff_time_for_non_high_priority_activities: '23:59',
+    });
+
+    const errors = await validate(instance);
+    expect(errors.length).toBe(0);
+    expect(instance.cutoff_time_for_non_high_priority_activities).toBe('00:00');
+  });
 });

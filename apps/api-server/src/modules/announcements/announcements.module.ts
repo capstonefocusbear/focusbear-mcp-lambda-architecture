@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-// import { Controller } from './controller/.controller';
 import { AnnouncementsController } from './controller/announcements.controller';
 import { AnnouncementsService } from './services/announcements.service';
 import { AnnouncementEntity } from './entities/announcements.entity';
+import { AnnouncementViewEntity } from './entities/announcement-view.entity';
+import { AnnouncementsRepository } from './repositories/announcements.repository';
+import { AnnouncementViewsRepository } from './repositories/announcement-views.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AnnouncementEntity])],
+  imports: [TypeOrmModule.forFeature([AnnouncementEntity, AnnouncementViewEntity])],
   controllers: [AnnouncementsController],
-  providers: [AnnouncementsService],
+  providers: [AnnouncementsService, AnnouncementsRepository, AnnouncementViewsRepository],
+  exports: [AnnouncementsRepository, AnnouncementViewsRepository],
 })
 export class AnnouncementsModule {}

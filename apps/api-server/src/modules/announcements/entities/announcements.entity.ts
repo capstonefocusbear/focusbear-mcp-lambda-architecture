@@ -13,12 +13,12 @@ export enum AnnouncementPriority {
   HIGH = 'high',
   CRITICAL = 'critical',
 }
-
-export interface AnnouncementAudience {
-  os?: string[];
-  min_version_code?: number;
-  locales?: string[];
-  [key: string]: any;
+export enum OperatingSystem {
+  ALL = 'all',
+  IOS = 'ios',
+  ANDRIOD = 'android',
+  MAC = 'mac',
+  WINDOW = 'windows',
 }
 
 @Entity('announcements')
@@ -38,6 +38,9 @@ export class AnnouncementEntity {
   @Column('text')
   details: string;
 
+  @Column({ name: 'details_url', type: 'varchar', nullable: true })
+  detailsUrl?: string;
+
   @Column({ name: 'expiry_date', type: 'timestamp', nullable: true })
   expiryDate: Date;
 
@@ -48,8 +51,13 @@ export class AnnouncementEntity {
   })
   priority: AnnouncementPriority;
 
-  @Column('jsonb', { nullable: true })
-  audience: AnnouncementAudience;
+  @Column({
+    type: 'enum',
+    enum: OperatingSystem,
+    name: 'operating_system',
+    default: OperatingSystem.ALL,
+  })
+  operatingSystem: OperatingSystem;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AnnouncementViewEntity, ViewAction } from '../entities/announcement-view.entity';
+import { AnnouncementViewEntity, ViewAction } from '../entities/announcement-views.entity';
 
 @Injectable()
 export class AnnouncementViewsRepository {

@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnnouncementsController } from './controller/announcements.controller';
 import { AnnouncementsService } from './services/announcements.service';
 import { AnnouncementEntity } from './entities/announcements.entity';
-import { AnnouncementViewEntity } from './entities/announcement-view.entity';
+import { AnnouncementViewEntity } from './entities/announcement-views.entity';
 import { AppVersionEntity } from './entities/app-versions.entity';
 import { AnnouncementsRepository } from './repositories/announcements.repository';
 import { AnnouncementViewsRepository } from './repositories/announcement-views.repository';

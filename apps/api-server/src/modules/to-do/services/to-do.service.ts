@@ -46,12 +46,21 @@ export class ToDoService {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
     if (existingToDo) {
       if (existingToDo.user_id !== userId) {
+        // Log potential IDOR attack attempt
+        this.sentryService
+          .instance()
+          .captureMessage(
+            `SECURITY: Unauthorized todo update attempt - User ${userId} tried to update todo ${existingToDo.id} owned by ${existingToDo.user_id}`,
+            'warning',
+          );
         throw new UnauthorizedException(
           `User with ID: ${userId} is not allowed to edit todo with ID: ${existingToDo.id}!`,
         );
       }
       return existingToDo;
     }
+    // If todo doesn't exist, that's fine - it will be created as a new todo with the authenticated user's ID
+    return null;
   }
 
   async upsertToDo(userId: string, updatedToDo: CreateToDoDto) {
@@ -66,7 +75,6 @@ export class ToDoService {
       return this.toDoRepository.orm.save(newToDo);
     }
     let status: ToDoStatus = ToDoStatus.NOT_STARTED;
-    // External status is used, check whether status should mark task as completed
     if (toDoFromDB?.synced_project_id) {
       const external_status = await this.syncedProjectsRepository.orm.findOneBy({
         id: toDoFromDB?.synced_project_id,
@@ -216,7 +224,33 @@ export class ToDoService {
   }
 
   async deleteToDo(user_id: string, toDoId: string) {
-    await this.toDoRepository.orm.delete({ user_id, id: toDoId });
+    // CRITICAL SECURITY CHECK: Verify ownership before deletion to prevent IDOR attacks
+    const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: toDoId } });
+
+    if (existingToDo && existingToDo.user_id !== user_id) {
+      // Verify that the todo belongs to the authenticated user
+      // Log potential IDOR attack attempt
+      this.sentryService
+        .instance()
+        .captureMessage(
+          `SECURITY: Unauthorized todo deletion attempt - User ${user_id} tried to delete todo ${toDoId} owned by ${existingToDo.user_id}`,
+          'warning',
+        );
+      throw new UnauthorizedException(`User with ID: ${user_id} is not allowed to delete todo with ID: ${toDoId}!`);
+    }
+
+    // Use explicit where clause with both user_id and id to ensure only the owner can delete
+    // This is a defense-in-depth measure - even if the above check is bypassed, the database query will fail
+    const deleteResult = await this.toDoRepository.orm.delete({ user_id, id: toDoId });
+
+    // Log successful deletion for audit trail
+    if (deleteResult?.affected > 0) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'todo',
+        message: `User ${user_id} deleted todo ${toDoId}`,
+        level: 'info',
+      });
+    }
   }
 
   async updateTasksStatuses(tasks: ToDoTimeLogDto[]) {

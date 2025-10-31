@@ -126,12 +126,35 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       query.andWhere('to_do.synced_project_id = :synced_project_id', { synced_project_id });
     }
 
-    const { entities, raw } = await query.getRawAndEntities();
-    const resultsWithTopScore = entities.map((entity, index) => ({
-      ...entity,
-      top_score: raw[index]?.top_score,
+    const { entities: todos, raw: rows } = await query.getRawAndEntities();
+
+    // Aggregate top_score by todo id from raw rows (avoid relying on array index alignment)
+    const ALIAS_TODO_ID = 'to_do_id';
+    const ALIAS_TOP_SCORE = 'top_score';
+    const topScoreByTodoId = new Map<string, number>();
+    for (const row of rows as any[]) {
+      const id = String((row as any)[ALIAS_TODO_ID]);
+      const score = (row as any)[ALIAS_TOP_SCORE];
+      if (id && score != null && !topScoreByTodoId.has(id)) {
+        topScoreByTodoId.set(id, Number(score));
+      }
+    }
+
+    const resultsWithTopScore = todos.map((todo) => ({
+      ...todo,
+      top_score: topScoreByTodoId.get(String((todo as any).id)) ?? null,
     }));
-    return [resultsWithTopScore, raw.length];
+
+    // Count: keep joins, just make it distinct + unpaginated + unordered
+    const totalCount = await query
+      .select('to_do.id')
+      .distinct(true)
+      .orderBy()
+      .skip(undefined)
+      .take(undefined)
+      .getCount();
+
+    return [resultsWithTopScore, totalCount];
   }
 
   async searchUserToDos({ title, take }: SearchToDosDto, userId: string) {

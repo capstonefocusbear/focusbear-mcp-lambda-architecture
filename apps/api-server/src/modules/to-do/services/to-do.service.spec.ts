@@ -198,6 +198,93 @@ describe('toDoService', () => {
       );
     });
 
+    it('positive: should return correct pagination metadata for multiple pages', async () => {
+      // Mock 25 todos with total count of 25
+      const mockTodos = Array.from({ length: 10 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata
+      expect(response.meta).toEqual({
+        page: 1,
+        take: 10,
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: false, // page 1
+        hasNextPage: true, // page 1 < pageCount 3
+      });
+    });
+
+    it('positive: should return correct pagination metadata for last page', async () => {
+      // Mock 5 todos for last page with total count of 25
+      const mockTodos = Array.from({ length: 5 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 3, // Last page
+        take: 10,
+        skip: 20, // (3-1) * 10
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata for last page
+      expect(response.meta).toEqual({
+        page: 3,
+        take: 10,
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: true, // page 3 > 1
+        hasNextPage: false, // page 3 = pageCount 3
+      });
+    });
+
+    it('positive: should return correct pagination metadata for middle page', async () => {
+      // Mock 10 todos for middle page with total count of 25
+      const mockTodos = Array.from({ length: 10 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 2, // Middle page
+        take: 10,
+        skip: 10, // (2-1) * 10
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata for middle page
+      expect(response.meta).toEqual({
+        page: 2,
+        take: 10,
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: true, // page 2 > 1
+        hasNextPage: true, // page 2 < pageCount 3
+      });
+    });
+
     it('positive: should map top_score from repo result to PaginationDto', async () => {
       const mockToDos = [
         {

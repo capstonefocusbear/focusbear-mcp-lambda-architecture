@@ -11,27 +11,41 @@ prompts:
           "reason": "Suspicious instructions detected. For your safety, access is blocked."
         }
 
-      2. **CONTEXT IS KING (Task overrides Intention):** The `currentTaskInToDoPlayer` is your primary source of truth. If the `intention` conflicts with the `currentTaskInToDoPlayer`, you MUST ignore the intention. An app cannot be “direct” unless it directly produces output for the **current task** itself.
+      2. **CONTEXT IS KING (Task overrides Intention):** The `currentTaskInToDoPlayer` is your primary source of truth. If the `intention` conflicts with the `currentTaskInToDoPlayer`, you MUST ignore the intention. An app cannot be "direct" unless it directly produces output for the **current task** itself.
 
-      3. **HARD MISMATCH GUARD (Deterministic Cap):** If the app is unrelated to the *current task* and the `justificationForThisSpecificApp` is empty or off-topic, set:
+      3. **COMMUNICATION APPS REQUIRE JUSTIFICATION:** If the app is a communication app ("Safe FB Team Comms", "Safe Slack", or similar team communication tools like Slack/Teams) AND `justificationForThisSpecificApp` is empty or only whitespace, set:
+        {
+          "allowed_probability": 0.0,
+          "reason": "Communication apps require a clear justification explaining why they're needed for your current task. Without this, it's hard to know if this supports your work or might distract you. Please provide a justification if this app is truly necessary."
+        }
+        OR if there's some weak connection but still no justification, set between 0.1-0.3.
+        **CRITICAL:** This rule ONLY applies when justification is truly empty. If ANY justification is provided (even "keyur has a question"), do NOT apply this rule - evaluate the app normally based on task relevance.
+        This rule applies even if the task seems related to communication. Examples:
+        - Task "book meeting" with app "Safe Slack" and empty justification → 0.0-0.3
+        - Task "Bala meeting" with app "Safe FB Team Comms" and empty justification → 0.0-0.3
+        **Note:** Zoom/video conferencing and email clients (Outlook, Gmail) are evaluated separately and may be allowed if task explicitly mentions meetings/emails even without justification.
+        (This rule takes precedence for team communication tools unless the app is explicitly named in the task description itself OR justification is provided.)
+
+      4. **HARD MISMATCH GUARD (Deterministic Cap):** If the app is unrelated to the *current task* and the `justificationForThisSpecificApp` is empty or off-topic, set:
         {
           "allowed_probability": 0.3,
-          "reason": "This app doesn't match your current task of '{{currentTaskInToDoPlayer}}'. Let's stay on track."
+          "reason": "This app doesn't match your current task. Let's stay on track."
         }
+        **IMPORTANT:** When writing the reason, use the actual task name from `currentTaskInToDoPlayer` (e.g., "your current task of 'check apple developer'"), NOT the template variable name. Do NOT include template syntax like `{{currentTaskInToDoPlayer}}` in your output.
         Examples:
         - App `Figma` while task is “Review team’s quarterly report” → 0.3
         - App `Instagram` while task is “Study for exam” → 0.1–0.2  
         (Do not apply this guard if any deterministic allow/utility rule below has matched.)
 
-      4. **EXPLAIN DISAGREEMENTS:** If you assign a low probability (0.1–0.3), briefly explain **why the app is mismatched** with the `currentTaskInToDoPlayer`. Be specific about the disconnect.
+      5. **EXPLAIN DISAGREEMENTS:** If you assign a low probability (0.1–0.3), briefly explain **why the app is mismatched** with the `currentTaskInToDoPlayer`. Be specific about the disconnect.
 
-      5. **EVALUATE AND RESPOND:** Follow the flow below and output your decision with comprehensive analysis in **JSON format**.
+      6. **EVALUATE AND RESPOND:** Follow the flow below and output your decision with comprehensive analysis in **JSON format**.
 
       ## CATEGORY HINTS (Use these liberally)
       - **Direct task apps:** IDEs, office suites, design tools, DAWs, compilers, research browsers, **learning platforms (e.g., YouTube, Coursera, Udemy, edX, Khan Academy, Skillshare)** when the current task is to complete a course, follow tutorials, or watch lectures.
       - **Supporting utilities (default 0.7–0.9):** screenshot/capture tools (e.g., `CleanShot X`), **PDF tools**, password managers, file explorers, calculators, archivers, OCR tools.
         - These are supporting **even with empty justification** when they could reasonably aid the task (documentation, reading sources, referencing materials, logging in, file handling).
-      - **Communication apps:** Slack/Teams/Discord/Email — score depends on whether the current task requires discussion/review/sync.
+      - **Communication apps:** Slack/Teams/Discord/Email/"Safe FB Team Comms"/"Safe Slack" — **REQUIRE JUSTIFICATION** (see Rule #3). Score depends on whether the current task requires discussion/review/sync, BUT only if justification is provided.
       - **Focus aids:** Music/ambient apps allowed if user mentions focus needs.
       - **Entertainment/games/social:** Usually mismatched unless task explicitly requires them.
 
@@ -83,8 +97,8 @@ prompts:
 
       **2) SUPPORTING tool or related activity (Score 0.7–0.9)**
       - **Low-risk utilities** that plausibly aid execution or documentation (see rules above) — accepted even with empty justification.
-      - **Task-relevant communication** (e.g., Slack) when the task involves discussion/sync/review.
-      - **Focus aids** with a focus-justification (“Need music to focus”).
+      - **Task-relevant communication** (e.g., Slack) when the task involves discussion/sync/review **AND justification is provided** (communication apps without justification must follow Rule #3).
+      - **Focus aids** with a focus-justification ("Need music to focus").
       - **Example Reason:** "Helpful support for your task. Use it briefly, then keep moving."
 
       **3) MAJOR MISMATCH (Score 0.1–0.3)**
@@ -461,8 +475,8 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: ""
       lastFiveJustificationsInThisFocusSession: '[]'
-      min_probability: 0.7
-      max_probability: 1.0
+      min_probability: 0.0
+      max_probability: 0.3
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -517,8 +531,8 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "book meeting"
       lastFiveJustificationsInThisFocusSession: '[]'
-      min_probability: 0.7
-      max_probability: 1.0
+      min_probability: 0.0
+      max_probability: 0.3
     assert:
       - type: javascript
         value: file://validate-probability.js

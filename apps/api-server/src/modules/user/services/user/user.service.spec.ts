@@ -997,42 +997,106 @@ describe('UserService', () => {
   });
 
   describe('logVerboselyIfUserHasVerboseLoggingEnabled', () => {
-    it('positive: should execute log function when verbose logging is enabled', async () => {
-      const logFunction = jest.fn();
+    let consoleLogSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      // Clear cache before each test
+      userService.clearVerboseLoggingCache(userDummy.id);
+    });
+
+    afterEach(() => {
+      consoleLogSpy.mockRestore();
+      // Clear cache after each test
+      userService.clearVerboseLoggingCache(userDummy.id);
+    });
+
+    it('positive: should execute console.log when verbose logging is enabled', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
 
-      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(logFunction).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs);
     });
 
-    it('positive: should not execute log function when verbose logging is disabled', async () => {
-      const logFunction = jest.fn();
+    it('positive: should not execute console.log when verbose logging is disabled', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: false });
 
-      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(logFunction).not.toHaveBeenCalled();
+      expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 
-    it('positive: should not execute log function when user is not found', async () => {
-      const logFunction = jest.fn();
+    it('positive: should not execute console.log when user is not found', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
 
-      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction);
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(logFunction).not.toHaveBeenCalled();
+      expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 
     it('positive: should not throw error when database query fails', async () => {
-      const logFunction = jest.fn();
+      const logArgs = ['Test message:', { key: 'value' }];
       UserRepositoryMock.orm.findOneBy.mockRejectedValueOnce(new Error('Database error'));
 
       await expect(
-        userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logFunction),
+        userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs),
       ).resolves.not.toThrow();
 
-      expect(logFunction).not.toHaveBeenCalled();
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it('positive: should cache verbose logging value and not call DB on second request', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      // First call - should hit DB
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+
+      // Second call - should use cache, no DB call
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, not 2
+      expect(consoleLogSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('positive: should use cache after first call with different logArgs', async () => {
+      const logArgs1 = ['First message:', { key: 'value1' }];
+      const logArgs2 = ['Second message:', { key: 'value2' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs1);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs2);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, cached
+      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs1);
+      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs2);
+    });
+
+    it('positive: should clear cache when clearVerboseLoggingCache is called', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce({ ...userDummy, verbose_logging: true })
+        .mockResolvedValueOnce({ ...userDummy, verbose_logging: false });
+
+      // First call - caches true
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+
+      // Clear cache
+      userService.clearVerboseLoggingCache(userDummy.id);
+
+      // Second call - should hit DB again and cache false
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(2);
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1); // Not called because verbose_logging is now false
     });
   });
 

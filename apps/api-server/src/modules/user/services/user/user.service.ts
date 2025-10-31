@@ -76,6 +76,8 @@ const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private verboseLogCache = new Map<string, boolean>();
+
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -888,12 +890,30 @@ export class UserService {
     return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 
+  private async getVerboseLoggingCached(userId: string): Promise<boolean> {
+    const cached = this.verboseLogCache.get(userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(userId);
+    const value = isVerboseLoggingAllowed || false;
+    this.verboseLogCache.set(userId, value);
+    return value;
+  }
+
+  // Clear cache for a user when verbose_logging setting is updated
+  clearVerboseLoggingCache(userId: string): void {
+    this.verboseLogCache.delete(userId);
+  }
+
   // Centralized function to log messages only if the user has verbose logging enabled
-  async logVerboselyIfUserHasVerboseLoggingEnabled(user_id: string, logFunction: () => void): Promise<void> {
+  async logVerboselyIfUserHasVerboseLoggingEnabled(user_id: string, logArgs: any[]): Promise<void> {
     try {
-      const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(user_id);
+      const isVerboseLoggingAllowed = await this.getVerboseLoggingCached(user_id);
       if (isVerboseLoggingAllowed) {
-        logFunction();
+        // eslint-disable-next-line no-console
+        console.log(...logArgs);
       }
     } catch (error) {
       // Silently fail if we can't check verbose logging status

@@ -110,16 +110,16 @@ export class FocusModeManagerService {
       await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
 
       // Verbose logging for push notification
-      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-        // eslint-disable-next-line no-console
-        console.log('Publishing Pusher Beams notification for focus mode start (verbose logging enabled):', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Publishing Pusher Beams notification for focus mode start (verbose logging enabled):',
+        {
           user_id,
           title: pushNotificationTitle,
           body: pushNotificationBody,
           notificationData,
           publishRequest: JSON.stringify(publishRequest),
-        });
-      });
+        },
+      ]);
 
       // eslint-disable-next-line no-console
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
@@ -127,20 +127,20 @@ export class FocusModeManagerService {
       try {
         await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
 
-        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-          // eslint-disable-next-line no-console
-          console.log('Pusher Beams notification published successfully for focus mode start:', user_id);
-        });
+        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+          'Pusher Beams notification published successfully for focus mode start:',
+          user_id,
+        ]);
       } catch (error) {
-        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-          // eslint-disable-next-line no-console
-          console.error('Pusher Beams notification failed for focus mode start:', {
+        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+          'Pusher Beams notification failed for focus mode start:',
+          {
             user_id,
-            error: error.message,
-            stack: error.stack,
+            error: (error as Error).message,
+            stack: (error as Error).stack,
             focus_mode_name: name,
-          });
-        });
+          },
+        ]);
         throw error;
       }
     } catch (error) {
@@ -338,34 +338,34 @@ export class FocusModeManagerService {
     await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', notificationData);
 
     // Verbose logging for push notification
-    await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-      // eslint-disable-next-line no-console
-      console.log('Publishing Pusher Beams notification for focus mode completion (verbose logging enabled):', {
+    await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Publishing Pusher Beams notification for focus mode completion (verbose logging enabled):',
+      {
         user_id,
         title: pushNotificationTitle,
         body: pushNotificationBody,
         notificationData,
         publishRequest: JSON.stringify(publishRequest),
-      });
-    });
+      },
+    ]);
 
     try {
       await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
 
-      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-        // eslint-disable-next-line no-console
-        console.log('Pusher Beams notification published successfully for focus mode completion:', user_id);
-      });
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification published successfully for focus mode completion:',
+        user_id,
+      ]);
     } catch (error) {
-      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-        // eslint-disable-next-line no-console
-        console.error('Pusher Beams notification failed for focus mode completion:', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification failed for focus mode completion:',
+        {
           user_id,
-          error: error.message,
-          stack: error.stack,
+          error: (error as Error).message,
+          stack: (error as Error).stack,
           intention,
-        });
-      });
+        },
+      ]);
       throw error;
     }
   }

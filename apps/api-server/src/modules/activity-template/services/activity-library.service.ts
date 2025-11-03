@@ -22,6 +22,8 @@ import {
 } from './routine-suggestion-generator.service';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 
+const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Component}\uFE0F\u200D]/gu;
+
 const MAX_ROUTINE_HABITS_PER_TYPE = 10;
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
@@ -122,11 +124,12 @@ export class ActivityLibraryService {
     options?: { asyncTaskId?: string; requestHash?: string },
   ) {
     try {
+      const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'get activities related to user goals',
-        data: { ...getRoutineSuggestionsDto, user_id },
+        data: { ...normalizedRoutineSuggestionsDto, user_id },
       });
 
       this.logger.debug(
@@ -206,6 +209,30 @@ export class ActivityLibraryService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private normalizeRoutineSuggestionsDto(dto: GetRoutineSuggestionsDto): GetRoutineSuggestionsDto {
+    const normalizedGoals = this.normalizeUserGoals(dto.user_goals);
+    return {
+      ...dto,
+      user_goals: normalizedGoals,
+    };
+  }
+
+  private normalizeUserGoals(userGoals?: string[]): string[] {
+    if (!userGoals?.length) {
+      return [];
+    }
+
+    return userGoals.map((goal) => this.normalizeGoal(goal)).filter((goal) => goal.length > 0);
+  }
+
+  private normalizeGoal(goal: string): string {
+    if (!goal) {
+      return '';
+    }
+    const withoutEmojis = goal.replace(EMOJI_REGEX, '');
+    return withoutEmojis.replace(/\s+/g, ' ').trim();
   }
 
   /**

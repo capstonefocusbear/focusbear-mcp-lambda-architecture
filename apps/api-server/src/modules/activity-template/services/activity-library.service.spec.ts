@@ -237,6 +237,35 @@ describe('ActivityLibraryService', () => {
       expect(uniqueIds.size).toBe(responseIds.length);
     });
 
+    it('positive: strips emoji characters from user goals before querying templates', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const dtoWithEmojiGoals = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: [
+          '🧘 Improve mental well-being',
+          '🚀 Boost productivity',
+          '🏋️‍♂️ Focus on health & fitness',
+          '❤️ Strengthen relationships',
+        ],
+      };
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
+        dummyActivityTemplatesForBuildHealthyHabits,
+      );
+
+      await activityLibraryService.getActivitiesRelatedToUserGoals(dtoWithEmojiGoals, userDummy.id);
+
+      expect(ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_goals: expect.arrayContaining([
+            'Improve mental well-being',
+            'Boost productivity',
+            'Focus on health & fitness',
+            'Strengthen relationships',
+          ]),
+        }),
+      );
+    });
+
     it('positive: should return array of activity tags matched user_goals & duration less than equal to routine_duration for all routines, activity ids should also be unique', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 

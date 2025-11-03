@@ -164,8 +164,13 @@ export class UserController {
   @Put('consent')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
-    return this.userConsentService.upsertUserConsent(userConsent, user.id);
+  async upsertUserConsent(
+    @Body() body: UpdateUserConsentDto | UpdateUserConsentDto[],
+    @AuthContext() { user }: Passport,
+  ) {
+    // DEPRECATED: single-object payload support; will be removed soon
+    const consents = Array.isArray(body) ? body : [body];
+    return this.userConsentService.upsertUserConsents(consents, user.id);
   }
 
   @Get('stats/onboarding')

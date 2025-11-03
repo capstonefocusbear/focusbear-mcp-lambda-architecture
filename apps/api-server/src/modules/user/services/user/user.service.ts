@@ -348,6 +348,7 @@ export class UserService {
         language,
         has_consented_to_terms_of_service,
         user_type,
+        has_consented_to_privacy_policy,
       } = userSummary;
       const adminForTeams =
         teamToAdmin
@@ -364,6 +365,7 @@ export class UserService {
         adminForTeams,
         has_consented_to_terms_of_service,
         user_type,
+        has_consented_to_privacy_policy,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -371,53 +373,65 @@ export class UserService {
     }
   }
 
-  async getUserCurrentActivityProps(id: string): Promise<CurrentActivityProps> {
+  async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
-        level: 'debug',
-        message: 'Getting user current activity props',
-        data: {
-          user_id: id,
-        },
+        level: 'info',
+        message: 'getUserCurrentActivityProps:start',
+        data: { user_id: userId },
       });
-      let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
 
-      if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      // fetch minimal user state
+      let partialUser = await this.userRepository.getUserCurrentActivityProps(userId);
+      if (!partialUser) {
+        throw new NotFoundException(`User with id: ${userId} does not exist!`);
+      }
+
       const initialCurrentActivity = partialUser.current_activity_id;
-      let current_sequence_completed_activities = [];
+      let currentSequenceCompletedActivityIds: string[] = [];
+
+      // start in parallel
+      const todayRoutineProgressPromise = this.completedActivitySequenceService.getRoutinesProgress(
+        partialUser.id,
+        partialUser.timezone,
+      );
+
       if (partialUser.current_activity) {
-        const updatedPartialUser = await this.recalculateActivityProps(partialUser);
-        partialUser = updatedPartialUser;
+        partialUser = await this.recalculateActivityProps(partialUser);
+
         if (partialUser.current_completing_sequence_log_id) {
-          current_sequence_completed_activities =
+          currentSequenceCompletedActivityIds =
             await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
               partialUser.current_completing_sequence_log_id,
             );
         }
       }
 
-      const todayRoutineProgress = await this.completedActivitySequenceService.getRoutinesProgress(
-        partialUser.id,
-        partialUser.timezone,
-      );
+      const todayRoutineProgress = await todayRoutineProgressPromise;
 
       const currentActivityProps = new CurrentActivityProps({
         ...partialUser,
-        current_sequence_completed_activities,
+        current_sequence_completed_activities: currentSequenceCompletedActivityIds,
         today_routine_progress: todayRoutineProgress,
       });
-      if (id === JEREMYS_USER_ID) {
-        // eslint-disable-next-line no-console
-        console.log('Jeremy current user state', {
+
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'getUserCurrentActivityProps:success',
+        data: {
+          user_id: userId,
           initialCurrentActivity,
-          updatedActivityProps: currentActivityProps,
-          originalActivityProps: partialUser,
-        });
-      }
+          current_activity_id: currentActivityProps.current_activity,
+        },
+      });
+
       return currentActivityProps;
     } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+      });
       throw error;
     }
   }

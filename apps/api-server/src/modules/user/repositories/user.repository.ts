@@ -217,6 +217,7 @@ export class UserRepository extends BaseRepository<User> {
         'users.language',
         'users.has_consented_to_terms_of_service',
         'users.user_type',
+        'users.has_consented_to_privacy_policy',
       ])
       .leftJoin('users.teamToAdmin', 'teamToAdmin')
       .addSelect(['teamToAdmin.id'])

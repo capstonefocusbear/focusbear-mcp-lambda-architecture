@@ -2,7 +2,7 @@ import { registerDecorator, ValidationOptions, ValidationArguments } from 'class
 import { DateTime } from 'luxon';
 
 export function IsValidCutoffTime(validationOptions?: ValidationOptions) {
-  return function (object: Record<string, any>, propertyName: string) {
+  function registerIsValidCutoffTimeDecorator(object: Record<string, any>, propertyName: string) {
     registerDecorator({
       name: 'isValidCutoffTime',
       target: object.constructor,
@@ -24,6 +24,14 @@ export function IsValidCutoffTime(validationOptions?: ValidationOptions) {
             return false;
           }
 
+          if (cutoff.equals(shutdown)) {
+            const adjustedCutoff = shutdown.plus({ minutes: 1 });
+            const formattedAdjustedCutoff = adjustedCutoff.toFormat('HH:mm');
+            const target = args.object as Record<string, any>;
+            Object.assign(target, { [propertyName]: formattedAdjustedCutoff });
+            return true;
+          }
+
           return (cutoff < startup && cutoff < shutdown) || cutoff > shutdown;
         },
         defaultMessage() {
@@ -34,5 +42,7 @@ export function IsValidCutoffTime(validationOptions?: ValidationOptions) {
         },
       },
     });
-  };
+  }
+
+  return registerIsValidCutoffTimeDecorator;
 }

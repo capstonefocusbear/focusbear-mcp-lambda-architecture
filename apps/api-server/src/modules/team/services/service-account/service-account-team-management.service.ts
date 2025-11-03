@@ -51,7 +51,7 @@ export class ServiceAccountTeamManagementService {
       return {
         id: member.member_id,
         email: member.email,
-        last_active_date: member?.updated_at,
+        last_active_date: userDetail?.updated_at,
         first_name: member?.first_name,
         last_name: member?.last_name,
         member_expiry_date: member?.member_expiry_date,

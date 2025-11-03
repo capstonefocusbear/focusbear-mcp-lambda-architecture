@@ -25,8 +25,16 @@ export class ActivityTemplateEmbeddingRepository extends BaseRepository<Activity
       return [];
     }
 
+    const sanitizedEmbedding = embedding.map((value) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) {
+        throw new Error('Invalid embedding vector: contains non-finite values');
+      }
+      return num;
+    });
+
     const sanitizedLimit = limit && limit > 0 ? limit : DEFAULT_LIMIT;
-    const vectorLiteral = `[${embedding.join(',')}]`;
+    const vectorLiteral = `[${sanitizedEmbedding.join(',')}]`;
 
     const rawEmbeddings = await this.orm
       .createQueryBuilder('embedding')

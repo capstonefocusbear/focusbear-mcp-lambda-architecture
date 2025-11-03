@@ -7,6 +7,6 @@ import { PromptCacheService } from './prompt-cache.service';
 
 @Module({
   providers: [OpenAIService, PromptCacheService],
-  exports: [OpenAIService],
+  exports: [OpenAIService, PromptCacheService],
 })
 export class OpenAIModule extends DynamicModuleFactory<IOpenAIOptions>(OPENAI_MODULE_OPTIONS) {}

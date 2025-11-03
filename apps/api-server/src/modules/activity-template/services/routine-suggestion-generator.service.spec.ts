@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { OpenAIService } from '@app/openai';
+import { OpenAIService, PromptCacheService } from '@app/openai';
 import { RoutineSuggestionGeneratorService, RoutineSuggestionCandidate } from './routine-suggestion-generator.service';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
@@ -8,6 +8,9 @@ import { OpenAIServiceMock, SentryServiceMock } from '../../../../test/mocks';
 
 describe(RoutineSuggestionGeneratorService.name, () => {
   let service: RoutineSuggestionGeneratorService;
+  const promptCacheServiceMock = {
+    getPrompt: jest.fn(),
+  } as unknown as jest.Mocked<PromptCacheService>;
 
   const buildTemplate = (overrides: Partial<ActivityTemplate> = {}): ActivityTemplate =>
     ({
@@ -33,8 +36,39 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     similarity,
   });
 
+  it('rejects suggestions when the LLM score falls below the dynamic threshold', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.52);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Too generic.',
+                matchScore: 0.48,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Light cardio', [candidate]);
+
+    expect(result).toEqual({
+      accepted: [],
+      rejectedCount: 1,
+      parsedCount: 1,
+      minScoreApplied: 0.5,
+    });
+  });
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    promptCacheServiceMock.getPrompt.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -42,6 +76,10 @@ describe(RoutineSuggestionGeneratorService.name, () => {
         {
           provide: OpenAIService,
           useValue: OpenAIServiceMock,
+        },
+        {
+          provide: PromptCacheService,
+          useValue: promptCacheServiceMock,
         },
         {
           provide: SENTRY_TOKEN,
@@ -54,6 +92,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   });
 
   it('returns parsed suggestions with AI-provided name when OpenAI response contains valid JSON', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate();
     const candidate = buildCandidate(template, 0.92);
     const openAIResponse = {
@@ -95,9 +134,89 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     });
   });
 
-  it('filters out suggestions with match scores below the configured minimum', async () => {
+  it('builds chat completion messages using the shared prompt template when available', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.9);
+    const candidate = buildCandidate(template, 0.95);
+    promptCacheServiceMock.getPrompt.mockReturnValue('Prompt header\nUser goal: {{goal}}\nHabit options:\n{{habits}}');
+
+    const openAIResponse = {
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                name: 'Refined Habit',
+                justification: 'Strong alignment.',
+                matchScore: 0.92,
+              },
+            ]),
+          },
+        },
+      ],
+    };
+
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue(openAIResponse);
+
+    const result = await service.generateSuggestions('Sharpen focus', [candidate]);
+
+    expect(result.accepted).toHaveLength(1);
+
+    const messages = OpenAIServiceMock.createChatCompletion.mock.calls[0][0] as any[];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].role).toBe('system');
+    expect(messages[0].content).toContain('Sharpen focus');
+    expect(messages[0].content).toContain('Habit 1');
+    expect(messages[0].content).not.toMatch(/{{\s*goal\s*}}/);
+    expect(messages[0].content).not.toMatch(/{{\s*habits\s*}}/);
+  });
+
+  it('lowers the minimum match score when the top similarity is below the default threshold', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.6);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Solid alignment.',
+                matchScore: 0.59,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Improve cardio', [candidate]);
+
+    expect(result).toEqual({
+      accepted: [
+        {
+          habitId: template.id,
+          name: template.activity_data?.name,
+          description: template.activity_data?.text_instructions,
+          justification: 'Solid alignment.',
+          matchScore: 0.59,
+          template,
+        },
+      ],
+      rejectedCount: 0,
+      parsedCount: 1,
+      minScoreApplied: 0.55,
+    });
+
+    const messages = OpenAIServiceMock.createChatCompletion.mock.calls[0][0] as any[];
+    expect(messages[0].content).toContain('0.55');
+  });
+
+  it('filters out suggestions with match scores below the configured minimum', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.6);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -125,8 +244,9 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   });
 
   it('returns metadata when suggestions were parsed but rejected due to low score', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.9);
+    const candidate = buildCandidate(template, 0.52);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -135,7 +255,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
               {
                 habitId: template.id,
                 justification: 'Weak alignment.',
-                matchScore: 0.65,
+                matchScore: 0.48,
               },
             ]),
           },

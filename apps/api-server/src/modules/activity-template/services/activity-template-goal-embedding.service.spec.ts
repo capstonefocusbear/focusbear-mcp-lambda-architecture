@@ -33,6 +33,22 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
     expect(result).toEqual(expectedEmbedding);
   });
 
+  it('adds routine and tags context when provided', async () => {
+    const expectedEmbedding = [0.3, 0.4];
+    openAIServiceMock.createEmbedding.mockResolvedValue(expectedEmbedding);
+
+    const result = await service.generateEmbedding('Evening Brain Dump', {
+      description: 'Capture thoughts before sleep.',
+      tags: ['focus', 'reflection'],
+      routineType: 'evening',
+    });
+
+    expect(openAIServiceMock.createEmbedding).toHaveBeenCalledWith(
+      'Evening Brain Dump\nCapture thoughts before sleep.\nTags: focus, reflection\nRoutine: evening',
+    );
+    expect(result).toEqual(expectedEmbedding);
+  });
+
   it('returns empty embedding when goal is blank', async () => {
     const result = await service.generateEmbedding('   ');
 

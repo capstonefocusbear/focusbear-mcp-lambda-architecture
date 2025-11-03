@@ -32,7 +32,8 @@ export class ActivityTemplateEmbeddingSyncService {
       templates.map(async (template) => {
         try {
           const textSource = this.buildTextSource(template);
-          const embedding = await this.goalEmbeddingService.generateEmbedding(textSource);
+          const activityName = template.activity_data?.name?.trim() || '';
+          const embedding = await this.goalEmbeddingService.generateEmbedding(activityName);
 
           if (!embedding.length) {
             return 'skipped' as const;

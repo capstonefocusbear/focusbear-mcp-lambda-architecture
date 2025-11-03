@@ -73,7 +73,10 @@ describe(ActivityTemplateEmbeddingSyncService.name, () => {
     const result = await service.syncAll();
 
     expect(activityTemplateRepositoryMock.getTemplatesForEmbeddingSync).toHaveBeenCalled();
-    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith(expect.stringContaining('Morning Stretch'));
+    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith(
+      expect.stringContaining('Morning Stretch'),
+      expect.objectContaining({ rawText: expect.stringContaining('Morning Stretch') }),
+    );
     expect(activityTemplateEmbeddingRepositoryMock.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         activity_template_id: 'template-1',
@@ -101,6 +104,10 @@ describe(ActivityTemplateEmbeddingSyncService.name, () => {
 
     const result = await service.syncAll();
 
+    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith(
+      expect.stringContaining('Morning Stretch'),
+      expect.objectContaining({ rawText: expect.any(String) }),
+    );
     expect(activityTemplateEmbeddingRepositoryMock.upsert).not.toHaveBeenCalled();
     expect(result).toEqual({
       processed: 1,

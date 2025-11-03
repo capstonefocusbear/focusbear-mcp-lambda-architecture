@@ -57,6 +57,7 @@ describe(ActivityTemplateRetrieverService.name, () => {
 
     const result = await service.retrieveByGoal('unknown goal', 3);
 
+    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('unknown goal');
     expect(embeddingRepositoryMock.findNearestByEmbedding).not.toHaveBeenCalled();
     expect(result).toEqual([]);
   });

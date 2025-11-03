@@ -28,6 +28,12 @@ module.exports = (output) => {
       if (!item.habitId || typeof item.habitId !== 'string') {
         return { pass: false, score: 0, reason: `Suggestion at index ${index} is missing habitId` };
       }
+      if (!item.name || typeof item.name !== 'string') {
+        return { pass: false, score: 0, reason: `Suggestion at index ${index} is missing name` };
+      }
+      if (!item.description || typeof item.description !== 'string') {
+        return { pass: false, score: 0, reason: `Suggestion at index ${index} is missing description` };
+      }
       if (!item.justification || typeof item.justification !== 'string') {
         return { pass: false, score: 0, reason: `Suggestion at index ${index} is missing justification` };
       }

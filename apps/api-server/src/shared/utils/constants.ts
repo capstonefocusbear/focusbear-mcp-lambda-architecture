@@ -9,6 +9,9 @@ import { OnboardFlowTimeUI } from '../../modules/user/domain/onboarding/onboardi
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
+export const SECONDS_TO_MINUTES = 60;
+export const DYNAMIC_SCORE_ADJUSTMENT = 0.05;
+export const FALLBACK_MINIMUM_SCORE = 0.5;
 export const TRIAL_DURATION_DAYS = 7;
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
 export const STRIPE_API_VERSION = '2022-08-01';
@@ -153,6 +156,7 @@ export enum BullQueues {
   COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
+  ROUTINE_SUGGESTIONS = 'routine-suggestions',
 }
 
 export enum BullWorkers {
@@ -173,6 +177,7 @@ export enum BullWorkers {
   SYNC_USAGE_DATA = 'sync-usage-data',
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
   PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
+  PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
 }
 
 export const createActivityFunction = {

@@ -82,4 +82,22 @@ describe('ActivityTemplateEmbeddingRepository', () => {
 
     expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
   });
+
+  it('throws error when embedding contains non-finite values', async () => {
+    await expect(repository.findNearestByEmbedding([0.1, NaN, 0.3], 5)).rejects.toThrow(
+      'Invalid embedding vector: contains non-finite values',
+    );
+  });
+
+  it('throws error when embedding contains Infinity', async () => {
+    await expect(repository.findNearestByEmbedding([0.1, Infinity, 0.3], 5)).rejects.toThrow(
+      'Invalid embedding vector: contains non-finite values',
+    );
+  });
+
+  it('throws error when embedding contains non-numeric values', async () => {
+    await expect(repository.findNearestByEmbedding([0.1, 'malicious' as any, 0.3], 5)).rejects.toThrow(
+      'Invalid embedding vector: contains non-finite values',
+    );
+  });
 });

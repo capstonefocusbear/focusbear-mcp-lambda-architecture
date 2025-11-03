@@ -1,17 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { OpenAIService } from '@app/openai';
+import { OpenAIService, PromptCacheService } from '@app/openai';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 
-const MAX_CONTEXT_CANDIDATES = 10;
+const MAX_CONTEXT_CANDIDATES = 5;
 const DEFAULT_GENERATED_LIMIT = 3;
 const DEFAULT_MINUTES_FALLBACK = 10;
 const DEFAULT_MIN_MATCH_SCORE = 0.7;
 const DEFAULT_SUGGESTION_LIMIT = 5;
-const SELECTION_TEMPERATURE = 0.2;
-const GENERATION_TEMPERATURE = 1;
 
 export interface RoutineSuggestionCandidate {
   template: ActivityTemplate;
@@ -49,7 +47,13 @@ export interface GenerateSuggestionsResponse {
 
 @Injectable()
 export class RoutineSuggestionGeneratorService {
-  constructor(private readonly openAIService: OpenAIService, @InjectSentry() private readonly sentry: SentryService) {}
+  private readonly logger = new Logger(RoutineSuggestionGeneratorService.name);
+
+  constructor(
+    private readonly openAIService: OpenAIService,
+    @InjectSentry() private readonly sentry: SentryService,
+    private readonly promptCacheService: PromptCacheService,
+  ) {}
 
   async generateSuggestions(
     goal: string,
@@ -66,43 +70,75 @@ export class RoutineSuggestionGeneratorService {
     }
 
     const normalizedLimit = Math.max(1, limit);
-    const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
     const sortedCandidates = [...candidates].sort((a, b) => b.similarity - a.similarity);
+    const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
     const promptContext = this.buildContext(sortedCandidates.slice(0, MAX_CONTEXT_CANDIDATES));
 
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: `You are an assistant that analyses a user's stated goal, identifies the core skills, behaviours, or routines required, and then selects the MOST relevant habits from the provided list.
-Only use the supplied habits. Evaluate each habit for direct alignment with the goal (not just generic wellness benefits). Skip habits that do not clearly advance the goal.
-For every habit you decide to include, return an object containing:
-- habitId (string from the supplied list)
-- name (string, goal-aligned rename of the habit; keep it under 60 characters)
-- description (string, <= 120 characters explaining the habit's focus)
-- justification (string, <= 120 characters explaining why it helps with the goal)
-- matchScore (number between 0 and 1)
-Guidance:
-- Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
-- Penalise generic movement/meditation/breathing exercises unless the goal text clearly frames them as necessary.
-- If no habit is strong enough, return an empty array so downstream logic can generate new ones.`,
+    this.logger.debug(
+      `RoutineSuggestions:candidates ${JSON.stringify({
+        goal,
+        minMatchScore: scoreThreshold,
+        candidateCount: sortedCandidates.length,
+        topCandidates: sortedCandidates.slice(0, 5).map((candidate) => ({
+          templateId: candidate.template.id,
+          similarity: Number(candidate.similarity.toFixed(4)),
+          activityType: candidate.template.activity_type,
+          name: candidate.template.activity_data?.name,
+        })),
+      })}`,
+    );
+
+    this.sentry.instance().addBreadcrumb({
+      category: 'RoutineSuggestion',
+      level: 'info',
+      message: 'Evaluating RAG candidates',
+      data: {
+        goal,
+        minMatchScore: scoreThreshold,
+        topCandidates: sortedCandidates.slice(0, 5).map((candidate) => ({
+          templateId: candidate.template.id,
+          similarity: Number(candidate.similarity.toFixed(4)),
+          activityType: candidate.template.activity_type,
+          name: candidate.template.activity_data?.name,
+        })),
       },
-      {
-        role: 'user',
-        content: `User goal: ${goal}\n\nHabit options:\n${promptContext}`,
-      },
-    ];
+    });
+
+    const messages = this.buildMessages(goal, promptContext, scoreThreshold);
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages, {
-        params: { temperature: SELECTION_TEMPERATURE },
-      });
+      const response = await this.openAIService.createChatCompletion(messages);
       const content = response.choices?.[0]?.message?.content ?? '[]';
+      this.logger.debug(
+        `RoutineSuggestions:llmResponse ${JSON.stringify({
+          goal,
+          responseLength: content.length,
+          preview: content.substring(0, 200),
+        })}`,
+      );
       const { accepted, rejectedCount, parsedCount } = this.parseResponse(
         content,
         sortedCandidates,
         normalizedLimit,
         scoreThreshold,
       );
+
+      this.logger.debug(
+        `RoutineSuggestions:parseResult ${JSON.stringify({
+          goal,
+          parsedCount,
+          rejectedCount,
+          acceptedCount: accepted.length,
+          limit: normalizedLimit,
+          minMatchScore: scoreThreshold,
+          acceptedHabits: accepted.map((a) => ({
+            habitId: a.habitId,
+            matchScore: a.matchScore,
+            name: a.name,
+          })),
+        })}`,
+      );
+
       if (accepted.length) {
         return { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
@@ -110,9 +146,19 @@ Guidance:
         return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
     } catch (error) {
+      this.logger.error(
+        `RoutineSuggestions:generateSuggestions failed for goal "${goal}": ${error.message}`,
+        error.stack,
+      );
       this.sentry.instance().captureException(error, {
         level: 'error',
-        extra: { goal },
+        extra: {
+          goal,
+          operation: 'generateSuggestions',
+          candidateCount: candidates.length,
+          errorType: error.constructor?.name,
+          errorMessage: error.message,
+        },
       });
     }
 
@@ -123,10 +169,13 @@ Guidance:
     return { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
   }
 
-  private resolveMinMatchScore(override?: number): number {
+  private resolveMinMatchScore(override: number | undefined): number {
     if (typeof override === 'number' && Number.isFinite(override)) {
-      return override;
+      return this.normalizeScore(override);
     }
+
+    // Always use the default threshold (0.7) - no dynamic lowering
+    // If nothing meets this threshold, we'll generate new habits instead
     return DEFAULT_MIN_MATCH_SCORE;
   }
 
@@ -143,6 +192,58 @@ Guidance:
         }\n- similarity: ${similarity.toFixed(2)}`;
       })
       .join('\n\n');
+  }
+
+  private buildMessages(goal: string, promptContext: string, minMatchScore: number): ChatCompletionMessageParam[] {
+    const template = this.promptCacheService.getPrompt('routine-suggestions');
+    if (template && template.trim()) {
+      const content = this.interpolateTemplate(template, goal, promptContext, minMatchScore);
+      return [
+        {
+          role: 'system',
+          content,
+        },
+      ];
+    }
+
+    return [
+      {
+        role: 'system',
+        content: `You are an assistant that analyses a user's stated goal, identifies the core skills, behaviours, or routines required, and then selects the MOST relevant habits from the provided list.
+Only use the supplied habits. Evaluate each habit for direct alignment with the goal (not just generic wellness benefits). Skip habits that do not clearly advance the goal.
+For every habit you decide to include, return an object containing:
+- habitId (string from the supplied list)
+- name (string, goal-aligned rename of the habit; keep it under 60 characters)
+- description (string, <= 120 characters explaining the habit's focus)
+- justification (string, <= 120 characters explaining why it helps with the goal)
+- matchScore (number between 0 and 1)
+Guidance:
+- Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
+- Penalise generic movement/meditation/breathing exercises unless the goal text clearly frames them as necessary.
+- For matchScore: evaluate semantic relevance between the goal and habit (0-1 scale). The provided similarity is just a starting point - you should adjust based on your understanding of how well the habit supports the goal.
+- Reject and omit any habit with matchScore below ${minMatchScore.toFixed(
+          2,
+        )}. If none qualify, return an empty array so downstream logic can act.`,
+      },
+      {
+        role: 'user',
+        content: `User goal: ${goal}\n\nHabit options:\n${promptContext}`,
+      },
+    ];
+  }
+
+  private interpolateTemplate(template: string, goal: string, promptContext: string, minMatchScore: number): string {
+    return template
+      .replace(/{{\s*goal\s*}}/gi, goal)
+      .replace(/{{\s*habits\s*}}/gi, promptContext)
+      .replace(/{{\s*minimumMatchScore\s*}}/gi, minMatchScore.toFixed(2));
+  }
+
+  private normalizeScore(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.min(1, Math.max(0, Number(value)));
   }
 
   private parseResponse(
@@ -170,10 +271,11 @@ Guidance:
         if (!candidate) {
           return;
         }
-        const rawScore = typeof item.matchScore === 'number' ? item.matchScore : candidate.similarity;
-        const normalizedScore = Number.isFinite(rawScore)
-          ? Math.min(1, Math.max(0, Number(rawScore)))
-          : candidate.similarity;
+
+        const llmScore = Number.isFinite(item?.matchScore) ? Number(item.matchScore) : undefined;
+        const candidateSimilarity = this.normalizeScore(candidate.similarity);
+        const normalizedScore = llmScore ? this.normalizeScore(llmScore) : candidateSimilarity;
+
         if (normalizedScore < minMatchScore) {
           rejectedCount += 1;
           return;
@@ -209,13 +311,13 @@ Guidance:
     limit: number,
     minMatchScore: number,
   ): RoutineSuggestionResult[] {
-    const qualified = candidates.filter((candidate) => candidate.similarity >= minMatchScore);
+    const qualified = candidates.filter((candidate) => this.normalizeScore(candidate.similarity) >= minMatchScore);
     return qualified.slice(0, limit).map((candidate) => ({
       habitId: candidate.template.id,
       name: candidate.template.activity_data?.name,
       description: candidate.template.activity_data?.text_instructions,
       justification: `High semantic match with goal "${goal}" based on embedding similarity.`,
-      matchScore: Number(Math.min(1, Math.max(0, candidate.similarity)).toFixed(2)),
+      matchScore: Number(this.normalizeScore(candidate.similarity).toFixed(2)),
       template: candidate.template,
     }));
   }
@@ -259,9 +361,7 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
     ];
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages, {
-        params: { temperature: GENERATION_TEMPERATURE },
-      });
+      const response = await this.openAIService.createChatCompletion(messages);
       const content = response.choices?.[0]?.message?.content ?? '[]';
       const parsed = this.parseGeneratedHabits(content, normalizedLimit);
       if (!parsed.length) {
@@ -272,9 +372,20 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
       }
       return parsed;
     } catch (error) {
+      this.logger.error(
+        `RoutineSuggestions:generateNewHabits failed for goal "${goal}": ${error.message}`,
+        error.stack,
+      );
       this.sentry.instance().captureException(error, {
         level: 'error',
-        extra: { goal, preferredRoutineType },
+        extra: {
+          goal,
+          operation: 'generateNewHabits',
+          preferredRoutineType,
+          limit: normalizedLimit,
+          errorType: error.constructor?.name,
+          errorMessage: error.message,
+        },
       });
       return [];
     }

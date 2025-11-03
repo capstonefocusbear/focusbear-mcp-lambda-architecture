@@ -44,6 +44,8 @@ export const HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/handwritten-todos-analysis/prompt.json';
 export const TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/todos-transcript-analysis/prompt.json';
+export const ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/routine-suggestions/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
@@ -161,8 +163,10 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   routineSuggestions: {
     model: GPT_5_MINI,
-    temperature: 0.2,
+    temperature: 1,
     n: 1,
+    max_tokens: 1024,
+    response_format: { type: 'json_object' },
     messages: null,
   },
 };

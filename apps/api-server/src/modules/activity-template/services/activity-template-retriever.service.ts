@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ActivityTemplateGoalEmbeddingService } from './activity-template-goal-embedding.service';
 import {
   ActivityTemplateEmbeddingMatch,
@@ -7,16 +7,36 @@ import {
 
 @Injectable()
 export class ActivityTemplateRetrieverService {
+  private readonly logger = new Logger(ActivityTemplateRetrieverService.name);
+
   constructor(
     private readonly goalEmbeddingService: ActivityTemplateGoalEmbeddingService,
     private readonly embeddingRepository: ActivityTemplateEmbeddingRepository,
   ) {}
 
   async retrieveByGoal(goal: string, limit = 10): Promise<ActivityTemplateEmbeddingMatch[]> {
+    const startedAt = Date.now();
     const embedding = await this.goalEmbeddingService.generateEmbedding(goal);
+    const elapsedMs = Date.now() - startedAt;
+    this.logger.debug(
+      `RoutineSuggestions:retrieveByGoal ${JSON.stringify({
+        goal,
+        elapsedMs,
+        embeddingPresent: embedding.length > 0,
+        limit,
+      })}`,
+    );
     if (!embedding.length) {
       return [];
     }
-    return this.embeddingRepository.findNearestByEmbedding(embedding, limit);
+    const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit);
+    this.logger.debug(
+      `RoutineSuggestions:embeddingMatches ${JSON.stringify({
+        goal,
+        matchCount: matches.length,
+        topSimilarities: matches.slice(0, 5).map((match) => Number(match.similarity.toFixed(4))),
+      })}`,
+    );
+    return matches;
   }
 }

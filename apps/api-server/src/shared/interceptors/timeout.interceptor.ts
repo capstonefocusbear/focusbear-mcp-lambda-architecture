@@ -13,7 +13,7 @@ import { catchError, timeout } from 'rxjs/operators';
 export class TimeoutInterceptor implements NestInterceptor {
   private readonly logger = new Logger(TimeoutInterceptor.name);
 
-  private readonly exemptPaths = ['/activity-library/routine-suggestions'];
+  private readonly exemptPaths: string[] = [];
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const startedAt = Date.now();

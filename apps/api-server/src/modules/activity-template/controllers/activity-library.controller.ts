@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { Passport } from '../../auth/domain/passport.model';
@@ -8,13 +9,17 @@ import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityLibraryService } from '../services/activity-library.service';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
+import { RoutineSuggestionsAsyncService } from '../services/routine-suggestions-async.service';
 
 @Controller('activity-library')
 @ApiTags('activity-library')
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class ActivityLibraryController {
-  constructor(private readonly activityLibraryService: ActivityLibraryService) {}
+  constructor(
+    private readonly activityLibraryService: ActivityLibraryService,
+    private readonly routineSuggestionsAsyncService: RoutineSuggestionsAsyncService,
+  ) {}
 
   @Get()
   async getLibraryActivities(@AuthContext() { user }: Passport): Promise<UpdateActivityDto[]> {
@@ -30,11 +35,33 @@ export class ActivityLibraryController {
   }
 
   @Post('/routine-suggestions')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Get routine suggestions based on user goals' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   async getRoutineSuggestions(
     @Body() getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     @AuthContext() { user }: Passport,
   ) {
     return this.activityLibraryService.getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto, user.id);
+  }
+
+  @Post('/routine-suggestions/async')
+  @ApiOperation({ summary: 'Request routine suggestions asynchronously' })
+  @ApiResponse({ status: 202, description: 'Routine suggestion task accepted' })
+  @HttpCode(202)
+  async getRoutineSuggestionsAsync(
+    @Body() getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
+    @AuthContext() { user }: Passport,
+  ) {
+    const { asyncTaskId } = await this.routineSuggestionsAsyncService.enqueueRoutineSuggestions(
+      getRoutineSuggestionsDto,
+      user.id,
+      'api',
+    );
+
+    return {
+      asyncTaskId,
+    };
   }
 
   @Post('/adjust-habits-with-ai')

@@ -261,6 +261,35 @@ describe('UserService', () => {
 
       expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(emailPayload);
     });
+
+    it('does not overwrite username for existing users on sync', async () => {
+      const stripeCustomerId = randomUUID();
+      const existing = { ...userDummy, username: 'Zoë' };
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existing);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(existing);
+      UserRepositoryMock.update.mockResolvedValueOnce(existing);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
+      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+      RevenueCatServiceMock.checkSubscriptionStatus.mockResolvedValueOnce({ status: 'active' });
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          stripe_customer_id: stripeCustomerId,
+        }),
+      );
+      expect(UserRepositoryMock.update).not.toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          username: expect.anything(),
+        }),
+      );
+    });
   });
 
   describe('getUserDetails', () => {
@@ -732,6 +761,21 @@ describe('UserService', () => {
   });
 
   describe('updateUsername', () => {
+    it('negative: if username is empty after normalization, error should be thrown', async () => {
+      const username = '   '; // Only whitespace
+      const errorMessage = 'Username cannot be empty';
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('negative: if username is considered offensive, error should be thrown', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: false });
       const username = 'randomusername';
@@ -769,11 +813,88 @@ describe('UserService', () => {
     it('positive: username should be saved if valid', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
       const username = 'randomusername';
+      const normalizedUsername = username.normalize('NFC').trim();
 
       await userService.updateUsername(userDummy.id, { username });
 
       expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
-        username,
+        username: normalizedUsername,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+
+    it('positive: username with underscores should be handled correctly', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'john_smith';
+      const normalizedUsername = username.normalize('NFC').trim();
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      // Verify that the query uses Raw with case-insensitive comparison
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: {
+          username: expect.objectContaining({
+            _type: 'raw',
+          }),
+        },
+      });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: normalizedUsername,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+  });
+
+  describe('updateUsername Unicode handling', () => {
+    it('saves Unicode names, trims and normalizes NFC', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const decomposed = ' wants e\u0308 ';
+      const expected = 'wants ë';
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await userService.updateUsername(userDummy.id, { username: decomposed });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          username: expected,
+        }),
+      );
+    });
+  });
+
+  describe('updateUsername case-insensitive handling', () => {
+    it('should detect case-insensitive username conflicts', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const existingUser = { ...userDummy, id: randomUUID(), username: 'JohnDoe' };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existingUser);
+      const username = 'johndoe'; // Different case
+
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(ConflictException);
+      expect(exception.message).toEqual(`Username: ${username} already taken by user with ID: ${existingUser.id}`);
+    });
+
+    it('should preserve original case when saving username', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'JohnDoe'; // Mixed case
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: 'JohnDoe', // Should preserve original case
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });

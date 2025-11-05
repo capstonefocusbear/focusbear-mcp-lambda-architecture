@@ -9,6 +9,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Raw } from 'typeorm';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
@@ -903,8 +904,17 @@ export class UserService {
   }
 
   async updateUsername(user_id: string, { username }: UpdateUsernameDto) {
+    const normalizedUsername = username?.normalize('NFC').trim();
+    if (!normalizedUsername) {
+      throw new BadRequestException('Username cannot be empty');
+    }
+
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
-      where: { username: username.toLowerCase() },
+      where: {
+        username: Raw((alias) => `LOWER(${alias}) = LOWER(:username)`, {
+          username: normalizedUsername,
+        }),
+      },
     });
     if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
       throw new ConflictException(
@@ -920,15 +930,15 @@ export class UserService {
         resolve({ allowed: true });
       }, USERNAME_VALIDATION_TIMEOUT);
     });
-    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(username);
+    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(normalizedUsername);
     // Check if username is allowed or default to true after 15 seconds
     const { allowed } = await Promise.race([usernameIsValidPromise, timeoutPromise]);
     clearTimeout(timeoutId); // Clear the timeout if usernameIsValidPromise has resolved
     if (!allowed) {
-      throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
+      throw new BadRequestException(`Username: ${normalizedUsername} not accepted because it is deemed offensive`);
     }
     await this.userRepository.update(user_id, {
-      username: username.toLowerCase(),
+      username: normalizedUsername,
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });

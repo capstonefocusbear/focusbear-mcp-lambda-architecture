@@ -11,20 +11,22 @@ prompts:
           "reason": "Suspicious instructions detected. For your safety, access is blocked."
         }
 
-      2. **CONTEXT IS KING (Task overrides Intention):** The `currentTaskInToDoPlayer` is your primary source of truth. If the `intention` conflicts with the `currentTaskInToDoPlayer`, you MUST ignore the intention. An app cannot be "direct" unless it directly produces output for the **current task** itself.
+      2. **CONTEXT IS KING (Task-led, but read all signals):** Always read the `justificationForThisSpecificApp` and `intention` for context, then anchor on `currentTaskInToDoPlayer` as the source of truth. Intention can inform ambiguous or empty tasks but must not override a specific task. An app cannot be "direct" unless it directly produces output for the **current task** itself.
 
-      3. **COMMUNICATION APPS REQUIRE JUSTIFICATION:** If the app is a communication app ("Safe FB Team Comms", "Safe Slack", or similar team communication tools like Slack/Teams) AND `justificationForThisSpecificApp` is empty or only whitespace, set:
+      3. **COMMUNICATION APPS REQUIRE JUSTIFICATION (with narrow exceptions):** If the app is a communication app ("Safe FB Team Comms", "Safe Slack", or similar team communication tools like Slack/Teams) AND `justificationForThisSpecificApp` is empty or only whitespace, set:
         {
           "allowed_probability": 0.0,
           "reason": "Communication apps require a clear justification explaining why they're needed for your current task. Without this, it's hard to know if this supports your work or might distract you. Please provide a justification if this app is truly necessary."
         }
         OR if there's some weak connection but still no justification, set between 0.1-0.3.
         **CRITICAL:** This rule ONLY applies when justification is truly empty. If ANY justification is provided (even "keyur has a question"), do NOT apply this rule - evaluate the app normally based on task relevance.
+        **EXCEPTION:** If the `currentTaskInToDoPlayer` explicitly names the communication action or the app (e.g., "ask Bev question", "check Keyur feedback", "reply in Safe Slack"), treat it as inherently justified and evaluate normally (typically ≥ 0.7 when the task and app align). Generic tasks like "meeting", "book meeting", or "Bala meeting" do NOT qualify unless the app name is present.
         This rule applies even if the task seems related to communication. Examples:
-        - Task "book meeting" with app "Safe Slack" and empty justification → 0.0-0.3
+        - Task "book meeting" with app "Safe Slack" and empty justification → 0.0-0.3 (no explicit communication verb)
         - Task "Bala meeting" with app "Safe FB Team Comms" and empty justification → 0.0-0.3
+        - Task "ask Bev question" with "Safe FB Team Comms" and empty justification → evaluate normally (≥ 0.7) because the task literally describes the communication action.
         **Note:** Zoom/video conferencing and email clients (Outlook, Gmail) are evaluated separately and may be allowed if task explicitly mentions meetings/emails even without justification.
-        (This rule takes precedence for team communication tools unless the app is explicitly named in the task description itself OR justification is provided.)
+        (This rule takes precedence for team communication tools unless the app is explicitly named in the task description itself OR the task clearly describes the communication action above OR justification is provided.)
 
       4. **HARD MISMATCH GUARD (Deterministic Cap):** If the app is unrelated to the *current task* and the `justificationForThisSpecificApp` is empty or off-topic, set:
         {
@@ -43,9 +45,9 @@ prompts:
 
       ## CATEGORY HINTS (Use these liberally)
       - **Direct task apps:** IDEs, office suites, design tools, DAWs, compilers, research browsers, **learning platforms (e.g., YouTube, Coursera, Udemy, edX, Khan Academy, Skillshare)** when the current task is to complete a course, follow tutorials, or watch lectures.
-      - **Supporting utilities (default 0.7–0.9):** screenshot/capture tools (e.g., `CleanShot X`), **PDF tools**, password managers, file explorers, calculators, archivers, OCR tools.
-        - These are supporting **even with empty justification** when they could reasonably aid the task (documentation, reading sources, referencing materials, logging in, file handling).
-      - **Communication apps:** Slack/Teams/Discord/Email/"Safe FB Team Comms"/"Safe Slack" — **REQUIRE JUSTIFICATION** (see Rule #3). Score depends on whether the current task requires discussion/review/sync, BUT only if justification is provided.
+      - **Supporting utilities (default 0.7–0.9):** screenshot/capture tools (e.g., `CleanShot X`), **PDF tools**, password managers, file explorers, calculators, archivers, OCR tools, **note-taking apps (Notes, Notion, Obsidian)**, **calendars/time-blocking tools**, **operating system settings/System Preferences**.
+        - These are supporting **even with empty justification** when they could reasonably aid the task (documentation, reading sources, referencing materials, logging in, file handling, capturing debugging steps, checking schedules/metrics).
+      - **Communication apps:** Slack/Teams/Discord/Email/"Safe FB Team Comms"/"Safe Slack" — **REQUIRE JUSTIFICATION** (see Rule #3). They can be allowed without justification **only** when the task explicitly describes that communication action or names the same app; otherwise clamp to 0.0–0.3.
       - **Focus aids:** Music/ambient apps allowed if user mentions focus needs.
       - **Entertainment/games/social:** Usually mismatched unless task explicitly requires them.
 
@@ -81,6 +83,42 @@ prompts:
       {
         "allowed_probability": 0.7,
         "reason": "You’re using a learning platform to follow tutorials/lectures, which directly supports your study task. Watch the needed segment, then continue."
+      }
+
+      **DATABASE INSPECTION / USAGE CHECKS — DETERMINISTIC ALLOW**
+      If (`appName` is one of: DBeaver, DataGrip, TablePlus, pgAdmin, Sequel Ace)
+      AND (`currentTaskInToDoPlayer` contains any of: check usage, check app usage, usage stats, metrics, analytics, query data, query database, check db, inspect database, data report, database report)
+      THEN return:
+      {
+        "allowed_probability": 0.7,
+        "reason": "You’re inspecting data/usage metrics in the database, so this database tool directly supports your task. Run the queries you need, then continue."
+      }
+
+      **EMAIL CLIENTS WHEN TASK MENTIONS EMAIL — DETERMINISTIC ALLOW**
+      If (`appName` is one of: Microsoft Outlook, Gmail, Apple Mail, Spark, Superhuman)
+      AND (`currentTaskInToDoPlayer` contains any of: email, inbox, reply, respond, send mail, follow up)
+      THEN return:
+      {
+        "allowed_probability": 0.7,
+        "reason": "Your task explicitly involves email, and this mail client is the workspace to send/receive those messages. Handle the emails, then get back on track."
+      }
+
+      **CALENDAR/TIME REVIEW — DETERMINISTIC ALLOW**
+      If (`appName` is one of: Calendar, Google Calendar, Fantastical, Apple Calendar)
+      AND (`currentTaskInToDoPlayer` contains any of: book meeting, schedule, plan day, check calendar, check performance, review availability, plan sprint)
+      THEN return:
+      {
+        "allowed_probability": 0.7,
+        "reason": "You’re reviewing/scheduling time for your task, and a calendar app directly supports that. Make the updates you need, then return to execution."
+      }
+
+      **NOTES / SCRATCHPAD FOR PROBLEM SOLVING — DETERMINISTIC ALLOW**
+      If (`appName` is one of: Notes, Apple Notes, Notion, Obsidian, Evernote)
+      AND (`currentTaskInToDoPlayer` contains any of: fix, debug, design, plan, outline, brainstorm, summarize, document, write)
+      THEN return:
+      {
+        "allowed_probability": 0.7,
+        "reason": "Capturing notes/steps supports your current task, so using this notes app keeps your thoughts organized while you work."
       }
 
       ## KEYWORD–INTENT BRIDGE FOR UTILITIES (Boost to Supporting)
@@ -192,7 +230,7 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "Review study materials for exam"
       min_probability: 0.0
-      max_probability: 0.2
+      max_probability: 0.3
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -230,7 +268,7 @@ tests:
       intention: "programming"
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "Write sorting algorithm"
-      min_probability: 0.2
+      min_probability: 0.0
       max_probability: 0.5
     assert:
       - type: javascript
@@ -508,6 +546,32 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
+  - description: "Safe Slack for replying in Safe Slack (Task names the app action)"
+    vars:
+      appName: "Safe Slack"
+      focusMode: "Deep Work"
+      intention: "team comms"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "reply in Safe Slack"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: "Safe FB Team Comms for team sync (blocked without justification)"
+    vars:
+      appName: "Safe FB Team Comms"
+      focusMode: "Deep Work"
+      intention: "sync with team"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "team sync"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.0
+      max_probability: 0.3
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
 
   - description: "Microsoft Outlook for Email Task (Email is the Task)"
     vars:
@@ -552,7 +616,7 @@ tests:
         value: file://validate-probability.js
 
 providers:
-  - id: openai:gpt-4.1-mini
+  - id: openai:gpt-5-nano
     config:
       temperature: 0
       max_tokens: 1024

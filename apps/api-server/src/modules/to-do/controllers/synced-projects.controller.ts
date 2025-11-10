@@ -25,10 +25,10 @@ export class SyncedProjectsController {
 
   @Get()
   async getUserSyncedProjectsByPlatform(
-    @Query() q: GetSyncedProjectsQueryDto,
+    @Query() query: GetSyncedProjectsQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<SyncedProjectDto[]> {
-    const { platform } = q;
+    const { platform } = query;
     return this.syncedProjectsService.getUserSyncedProjects(user.id, { platform });
   }
 
@@ -39,8 +39,8 @@ export class SyncedProjectsController {
   }
 
   @Delete()
-  async unSyncProject(@Query() q: UnSyncProjectQueryDto, @AuthContext() { user }: Passport) {
-    const { project_id } = q;
+  async unSyncProject(@Query() query: UnSyncProjectQueryDto, @AuthContext() { user }: Passport) {
+    const { project_id } = query;
     return this.syncedProjectsService.unSyncProject(user.id, project_id);
   }
 }

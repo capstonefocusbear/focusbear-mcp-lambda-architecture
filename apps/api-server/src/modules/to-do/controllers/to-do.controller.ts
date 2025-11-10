@@ -51,8 +51,8 @@ export class TodoController {
   }
 
   @Delete()
-  async deleteToDo(@Query() q: DeleteToDoQuery, @AuthContext() { user }: Passport) {
-    const { todo_id } = q;
+  async deleteToDo(@Query() query: DeleteToDoQuery, @AuthContext() { user }: Passport) {
+    const { todo_id } = query;
     return this.toDoService.deleteToDo(user.id, todo_id);
   }
 

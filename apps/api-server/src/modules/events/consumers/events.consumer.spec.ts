@@ -302,4 +302,144 @@ describe('EventConsumer', () => {
       );
     });
   });
+
+  describe('sendResumeHabitsNotification', () => {
+    it('positive: should send push notification for postponed habits', async () => {
+      i18nServiceMock.t.mockImplementation((key: string) => {
+        if (key === 'common.resume_habits_title') return 'Resume your habits';
+        if (key === 'common.resume_habits_body') return 'Time to continue your routine';
+        return '';
+      });
+
+      const mockPublishRequest = { notification: { title: 'test', body: 'test' } };
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockReturnValue(mockPublishRequest);
+
+      const job = {
+        data: {
+          user_id: userDummy.id,
+          event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
+          language: 'en',
+        },
+      } as Job;
+
+      await eventsConsumer.sendResumeHabitsNotification(job);
+
+      expect(PusherBeamsServiceMock.createBeamsPublishRequest).toHaveBeenCalledWith({
+        title: expect.any(String),
+        body: expect.any(String),
+        pushData: {
+          id: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
+        },
+      });
+
+      expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([userDummy.id], expect.any(Object));
+    });
+
+    it('positive: should send push notification for postponed focus mode', async () => {
+      i18nServiceMock.t.mockImplementation((key: string) => {
+        if (key === 'common.resume_focus_mode_title') return 'Resume focus mode';
+        if (key === 'common.resume_focus_mode_body') return 'Time to focus again';
+        return '';
+      });
+
+      const mockPublishRequest = { notification: { title: 'test', body: 'test' } };
+      PusherBeamsServiceMock.createBeamsPublishRequest.mockReturnValue(mockPublishRequest);
+
+      const job = {
+        data: {
+          user_id: userDummy.id,
+          event_type: EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE,
+          language: 'es',
+        },
+      } as Job;
+
+      await eventsConsumer.sendResumeHabitsNotification(job);
+
+      expect(PusherBeamsServiceMock.createBeamsPublishRequest).toHaveBeenCalledWith({
+        title: expect.any(String),
+        body: expect.any(String),
+        pushData: {
+          id: EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE,
+        },
+      });
+
+      expect(PusherBeamsServiceMock.publishToUsers).toHaveBeenCalledWith([userDummy.id], expect.any(Object));
+    });
+
+    it('negative: should handle errors gracefully and log to Sentry', async () => {
+      const job = {
+        data: {
+          user_id: userDummy.id,
+          event_type: EventTypes.POSTPONE_HABITS_FROM_MOBILE,
+          language: 'en',
+        },
+      } as Job;
+
+      const error = new Error('Push notification failed');
+      PusherBeamsServiceMock.publishToUsers.mockRejectedValueOnce(error);
+
+      await eventsConsumer.sendResumeHabitsNotification(job);
+
+      expect(SentryServiceMock.instance().captureException).toHaveBeenCalledWith(error, { level: 'error' });
+    });
+  });
+
+  describe('getNotificationTitleAndBody', () => {
+    it('positive: should return correct title and body for postponed habits', () => {
+      i18nServiceMock.t.mockImplementation((key: string) => {
+        if (key === 'common.resume_habits_title') return 'Resume your habits';
+        if (key === 'common.resume_habits_body') return 'Time to continue your routine';
+        return '';
+      });
+
+      const result = eventsConsumer.getNotificationTitleAndBody('en', EventTypes.POSTPONE_HABITS_FROM_MOBILE);
+
+      expect(result).toEqual({
+        title: 'Resume your habits',
+        body: 'Time to continue your routine',
+      });
+      expect(i18nServiceMock.t).toHaveBeenCalledWith('common.resume_habits_title', { lang: 'en' });
+      expect(i18nServiceMock.t).toHaveBeenCalledWith('common.resume_habits_body', { lang: 'en' });
+    });
+
+    it('positive: should return correct title and body for postponed focus mode', () => {
+      i18nServiceMock.t.mockImplementation((key: string) => {
+        if (key === 'common.resume_focus_mode_title') return 'Resume focus mode';
+        if (key === 'common.resume_focus_mode_body') return 'Time to focus again';
+        return '';
+      });
+
+      const result = eventsConsumer.getNotificationTitleAndBody('es', EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE);
+
+      expect(result).toEqual({
+        title: 'Resume focus mode',
+        body: 'Time to focus again',
+      });
+      expect(i18nServiceMock.t).toHaveBeenCalledWith('common.resume_focus_mode_title', { lang: 'es' });
+      expect(i18nServiceMock.t).toHaveBeenCalledWith('common.resume_focus_mode_body', { lang: 'es' });
+    });
+  });
+
+  describe('findEmail', () => {
+    beforeEach(async () => {
+      await (eventsConsumer as unknown as { redisClient: { flushall: () => Promise<void> } }).redisClient.flushall();
+    });
+
+    it('positive: should fetch email from Auth0 when not in cache', async () => {
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
+
+      const result = await eventsConsumer.findEmail(userDummy.id, userDummy.auth0_id);
+
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('positive: should use default email if Auth0 user has no email', async () => {
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({ ...auth0UserDummy, email: null });
+
+      const result = await eventsConsumer.findEmail(userDummy.id, userDummy.auth0_id);
+
+      expect(result).toBe('some@email.com');
+    });
+  });
 });

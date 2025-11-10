@@ -13,7 +13,7 @@ export class CreateToDoDto {
 
   @IsOptional()
   @IsString()
-  details: string;
+  details?: string;
 
   @IsOptional()
   @IsDate()

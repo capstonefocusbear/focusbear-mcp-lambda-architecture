@@ -213,6 +213,9 @@ export const OpenAIServiceMock = {
   checkIfAppIsSafeToUse: jest.fn(),
   generateEmojiForActivity: jest.fn(),
   adjustHabitsWithAi: jest.fn(),
+  transcribeAudioToText: jest.fn(),
+  createDraftTodosFromTranscript: jest.fn(),
+  extractTodosFromImage: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {
@@ -235,6 +238,8 @@ export const ServiceMock = {
   getAllUserTasks: jest.fn(),
   getAllUserProjects: jest.fn(),
   syncProjectAndChildTasks: jest.fn(),
+  addTimeEntry: jest.fn(),
+  updateTaskStatus: jest.fn(),
 };
 
 export const IntegrationFactoryMock = {

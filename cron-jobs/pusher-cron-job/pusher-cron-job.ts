@@ -44,10 +44,18 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
+const verboseLoggingCache = new Map<string, boolean>();
+
 const checkUserVerboseLogging = async (user_id: string): Promise<boolean> => {
   try {
+    if (verboseLoggingCache.has(user_id)) {
+      return verboseLoggingCache.get(user_id) as boolean;
+    }
+
     const user = await CronJobDataSource.getRepository(User).findOneBy({ id: user_id });
-    return user?.verbose_logging || false;
+    const isVerboseLoggingAllowed = user?.verbose_logging || false;
+    verboseLoggingCache.set(user_id, isVerboseLoggingAllowed);
+    return isVerboseLoggingAllowed;
   } catch (error) {
     console.error('Error checking verbose logging for user:', user_id, error);
     return false;
@@ -113,7 +121,9 @@ const sendBeamsPushNotification = async (user_id: string, notificationData: Noti
 
 async function runPusherCronJob() {
   // Initialize data source for user verbose logging checks
-  await CronJobDataSource.initialize();
+  if (!CronJobDataSource.isInitialized) {
+    await CronJobDataSource.initialize();
+  }
 
   const notificationsToSend = await fetchNotifications();
   // eslint-disable-next-line no-console

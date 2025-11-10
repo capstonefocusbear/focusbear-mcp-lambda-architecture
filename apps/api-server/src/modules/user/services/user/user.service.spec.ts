@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -997,16 +1003,16 @@ describe('UserService', () => {
   });
 
   describe('logVerboselyIfUserHasVerboseLoggingEnabled', () => {
-    let consoleLogSpy: jest.SpyInstance;
+    let loggerSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
       // Clear cache before each test
       userService.clearVerboseLoggingCache(userDummy.id);
     });
 
     afterEach(() => {
-      consoleLogSpy.mockRestore();
+      loggerSpy.mockRestore();
       // Clear cache after each test
       userService.clearVerboseLoggingCache(userDummy.id);
     });
@@ -1017,8 +1023,8 @@ describe('UserService', () => {
 
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs);
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs);
     });
 
     it('positive: should not execute console.log when verbose logging is disabled', async () => {
@@ -1027,7 +1033,7 @@ describe('UserService', () => {
 
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(loggerSpy).not.toHaveBeenCalled();
     });
 
     it('positive: should not execute console.log when user is not found', async () => {
@@ -1036,7 +1042,7 @@ describe('UserService', () => {
 
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
 
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(loggerSpy).not.toHaveBeenCalled();
     });
 
     it('positive: should not throw error when database query fails', async () => {
@@ -1047,7 +1053,7 @@ describe('UserService', () => {
         userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs),
       ).resolves.not.toThrow();
 
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(loggerSpy).not.toHaveBeenCalled();
     });
 
     it('positive: should cache verbose logging value and not call DB on second request', async () => {
@@ -1057,12 +1063,12 @@ describe('UserService', () => {
       // First call - should hit DB
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
       expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
 
       // Second call - should use cache, no DB call
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
       expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, not 2
-      expect(consoleLogSpy).toHaveBeenCalledTimes(2);
+      expect(loggerSpy).toHaveBeenCalledTimes(2);
     });
 
     it('positive: should use cache after first call with different logArgs', async () => {
@@ -1075,8 +1081,8 @@ describe('UserService', () => {
 
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs2);
       expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, cached
-      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs1);
-      expect(consoleLogSpy).toHaveBeenCalledWith(...logArgs2);
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs1);
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs2);
     });
 
     it('positive: should clear cache when clearVerboseLoggingCache is called', async () => {
@@ -1088,7 +1094,7 @@ describe('UserService', () => {
       // First call - caches true
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
       expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
 
       // Clear cache
       userService.clearVerboseLoggingCache(userDummy.id);
@@ -1096,7 +1102,7 @@ describe('UserService', () => {
       // Second call - should hit DB again and cache false
       await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
       expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(2);
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1); // Not called because verbose_logging is now false
+      expect(loggerSpy).toHaveBeenCalledTimes(1); // Not called because verbose_logging is now false
     });
   });
 

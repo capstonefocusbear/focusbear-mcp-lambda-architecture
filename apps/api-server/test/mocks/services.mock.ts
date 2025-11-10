@@ -53,6 +53,7 @@ export const UserServiceMock = {
   consistentlyUpdateUserSettings: jest.fn(),
   isVerboseLoggingAllowed: jest.fn(),
   logVerboselyIfUserHasVerboseLoggingEnabled: jest.fn(),
+  clearVerboseLoggingCache: jest.fn(),
   // rest can be added if needed
 };
 

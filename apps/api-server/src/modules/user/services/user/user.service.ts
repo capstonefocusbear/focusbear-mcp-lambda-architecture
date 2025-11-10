@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   forwardRef,
@@ -76,6 +77,8 @@ const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private readonly verboseLogger = new Logger(UserService.name);
+
   private verboseLogCache = new Map<string, boolean>();
 
   constructor(
@@ -912,8 +915,12 @@ export class UserService {
     try {
       const isVerboseLoggingAllowed = await this.getVerboseLoggingCached(user_id);
       if (isVerboseLoggingAllowed) {
-        // eslint-disable-next-line no-console
-        console.log(...logArgs);
+        if (!logArgs?.length) {
+          this.verboseLogger.log('');
+          return;
+        }
+        const [firstArg, ...restArgs] = logArgs;
+        this.verboseLogger.log(firstArg, ...restArgs);
       }
     } catch (error) {
       // Silently fail if we can't check verbose logging status

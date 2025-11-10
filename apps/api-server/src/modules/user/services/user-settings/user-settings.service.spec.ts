@@ -287,6 +287,25 @@ describe('UserSettingsService', () => {
       );
     });
 
+    it('positive: should clear verbose logging cache when verbose_logging setting is provided', async () => {
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+
+      await userSettingsService.updateSettings(
+        { user_id: userDummy.id },
+        { ...userSettingsDummy, verbose_logging: true },
+        true,
+        { is_onboarding: false },
+      );
+
+      expect(UserServiceMock.clearVerboseLoggingCache).toHaveBeenCalledWith(userDummy.id);
+    });
+
     it('positive: consistentlyUpdateUserSettings should be called', async () => {
       const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
       const updatedUser = new User({

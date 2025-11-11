@@ -4,7 +4,9 @@ import { runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
+import {
+  logVerboselyIfUserHasVerboseLoggingEnabled,
+} from '../utils/verbose-logging';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Pool } = require('pg');
@@ -44,35 +46,6 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
-const verboseLoggingCache = new Map<string, boolean>();
-
-const checkUserVerboseLogging = async (user_id: string): Promise<boolean> => {
-  try {
-    if (verboseLoggingCache.has(user_id)) {
-      return verboseLoggingCache.get(user_id) as boolean;
-    }
-
-    const user = await CronJobDataSource.getRepository(User).findOneBy({ id: user_id });
-    const isVerboseLoggingAllowed = user?.verbose_logging || false;
-    verboseLoggingCache.set(user_id, isVerboseLoggingAllowed);
-    return isVerboseLoggingAllowed;
-  } catch (error) {
-    console.error('Error checking verbose logging for user:', user_id, error);
-    return false;
-  }
-};
-
-const logVerboselyIfUserHasVerboseLoggingEnabled = async (user_id: string, logFunction: () => void): Promise<void> => {
-  try {
-    const isVerboseLoggingAllowed = await checkUserVerboseLogging(user_id);
-    if (isVerboseLoggingAllowed) {
-      logFunction();
-    }
-  } catch (error) {
-    // Silently fail if we can't check verbose logging status
-  }
-};
-
 const sendBeamsPushNotification = async (user_id: string, notificationData: Notification) => {
   const publishRequest: BeamsPublishRequest = {
     apns: {
@@ -89,32 +62,32 @@ const sendBeamsPushNotification = async (user_id: string, notificationData: Noti
   };
 
   // Verbose logging for push notification
-  await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-    // eslint-disable-next-line no-console
-    console.log('Publishing Pusher Beams notification for scheduled notification (verbose logging enabled):', {
+  await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+    'Publishing Pusher Beams notification for scheduled notification (verbose logging enabled):',
+    {
       user_id,
       notificationData,
       publishRequest: JSON.stringify(publishRequest),
-    });
-  });
+    },
+  ]);
 
   try {
     await beamsClient.publishToUsers([user_id], publishRequest);
 
-    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-      // eslint-disable-next-line no-console
-      console.log('Pusher Beams notification published successfully for scheduled notification:', user_id);
-    });
+    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Pusher Beams notification published successfully for scheduled notification:',
+      user_id,
+    ]);
   } catch (error) {
-    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, () => {
-      // eslint-disable-next-line no-console
-      console.error('Pusher Beams notification failed for scheduled notification:', {
+    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Pusher Beams notification failed for scheduled notification:',
+      {
         user_id,
-        error: error.message,
-        stack: error.stack,
+        error: (error as Error).message,
+        stack: (error as Error).stack,
         notificationData,
-      });
-    });
+      },
+    ]);
     throw error;
   }
 };

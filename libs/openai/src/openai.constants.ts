@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { GPT_4_1, GPT_4_1_MINI } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4_1, GPT_4_1_MINI, GPT_5_MINI } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
@@ -88,13 +88,14 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4_1,
-    temperature: 0,
+    model: GPT_4_1_MINI,
+    reasoning_effort: 'low',
     n: 1,
     messages: null,
+    response_format: { type: 'json_object' },
   },
   convertBrainDumpToTasks: {
-    model: GPT_4_1_MINI,
+    model: GPT_5_MINI,
     temperature: 0,
     n: 1,
     messages: null,
@@ -115,9 +116,9 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   checkURL: {
     model: GPT_4_1_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
+    response_format: { type: 'json_object' },
   },
 
   chatReply: {

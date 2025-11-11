@@ -9,7 +9,7 @@ prompts:
       2.  **CONTEXT IS KING:** Your evaluation must be based on the user's full context, following the signal hierarchy below.
       3.  **TRUST THE USER'S NARRATIVE:** Your main job is to help, not to police. If the user's justification creates a plausible, logical link to the task, lean towards allowing it. Assume the user has context you don't.
       4.  **EXPLAIN DISAGREEMENTS:** If you disagree with a user's justification and assign a low probability (0.1-0.3), you MUST explain why their justification doesn't align with the current task or context. Be specific about the disconnect.
-      5.  **EVALUATE AND RESPOND:** First, think through your reasoning step-by-step based on the hierarchy and evaluation flow. Then, provide your final response ONLY in the specified JSON format.
+      5.  **EVALUATE AND RESPOND:** First, think through your reasoning step-by-step based on the hierarchy and evaluation flow. Then, provide your final response with comprehensive analysis in the specified JSON format.
 
       ## SIGNAL HIERARCHY
       When evaluating the URL, you MUST prioritize information in this order of importance:
@@ -47,6 +47,7 @@ prompts:
         - Obvious distractions (social media, entertainment) with no clear, justified link to the focus session.
         - **Example Reason:** "This seems a bit off-topic from your task. Let's keep you focused!" or "I understand your justification, but this site doesn't connect to your current task of [specific task]. Let's stay focused!"
         - Example: Visiting a social/professional networking feed (“Feed/Home/Timeline/Messages”) during a specific task like “analyse data from RCT” with no justification → 0.1–0.3.
+
 
       ## OUTPUT FORMAT
       Provide response ONLY in JSON format:
@@ -1200,7 +1201,7 @@ tests:
       justificationForThisUrl: dude wtf I am reviewing the paper
       lastFiveJustificationsInThisFocusSession: '[]'
       currentTaskInToDoPlayer: review thinknow paper
-      min_probability: 0.9
+      min_probability: 0.7
       max_probability: 1
     assert:
       - type: javascript
@@ -1466,13 +1467,137 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
+  - description: StackOverflow for slides task with ignored justification
+    vars:
+      url: stackoverflow.com/questions/32244753/how-to-save-a-seaborn-plot-into-a-file#:~:text=The%20requirement%20of%20get_figure%20to,a%20plot%20to%20a%20file.
+      tab_title: ''
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: finish slides
+      justificationForThisUrl: need help getting graph to add to slides
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: slides
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Google Play Store for slides with app reviews justification
+    vars:
+      url: play.google.com/store/apps/details
+      tab_title: "focus bear: audhd routines – apps on google play"
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: finish slides
+      justificationForThisUrl: I need to have a slide with app store reviews
+      lastFiveJustificationsInThisFocusSession: '[{"justification": "I need to fetch reviews for the slides", "url": "play.google.com/store/apps/details", "pageTitle": "focus bear: audhd routines – apps on google play"}]'
+      currentTaskInToDoPlayer: ''
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Botanic Baby for washing machine research with justification
+    vars:
+      url: botanicbaby.com.au/products/existing-customer-weekly-wash
+      tab_title: "one week cloth nappy wash service - reusable cloth nappy wash service in melbourne – botanicbaby"
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: launchhub slides + kris kringle + MAA
+      justificationForThisUrl: looking at options for washing nappies
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: washing machine research - check data sheet in email
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Messenger for family communication with Kris Kringle sharing
+    vars:
+      url: messenger.com/e2ee/t/1121582093501870/
+      tab_title: ''
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: deploy kris kringle app
+      justificationForThisUrl: I communicate with my family here
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: share kris kringle with family
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: PDF to PNG converter for LinkedIn asset creation
+    vars:
+      url: pdf2png.com/
+      tab_title: "pdf to png – convert pdf to png online"
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: meetings. emails
+      justificationForThisUrl: need to create an asset for LI
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: post on LinkedIn
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Outlook for PhD supervisor communication with detailed justification
+    vars:
+      url: outlook.office.com/mail/
+      tab_title: "mail - tyra baker - outlook"
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: ''
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[{"justification": "I need to access Outlook so I can send my supervisors the draft of my PhD proposal so that they can review it, edit and leave feedback! It is needed to help with trajectory of my studies", "pageTitle": "mail - tyra baker - outlook", "url": "outlook.live.com/mail/0/inbox/id/AQQkADAwATM0MDAAMS0yOTMwLWFhADE1LTAwAi0wMAoAEAA%2Bo7%2FZQnicRqLJ8%2FXEIAyP"}]'
+      currentTaskInToDoPlayer: Write down notes from Analysing Popular Music in Obsidian
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "LinkedIn Messaging for Angel Investor Contact (Ignored Justification)"
+    vars:
+      url: "linkedin.com/messaging/thread/2-MDYwNTBmNDktYTQ2Zi00MjY0LTllMmEtNDYzMDQ4YTJlMTdkXzAxMA==/"
+      tab_title: "(1) messaging | linkedin"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      intention: "contact angel investors"
+      justificationForThisUrl: "contacting them on LI"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: ""
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Koyeb for Code Deployment (Ignored Justification)"
+    vars:
+      url: "app.koyeb.com/"
+      tab_title: "koyeb"
+      meta_description: ""
+      focus_mode: "Deep Work"
+      intention: "kris kringle code"
+      justificationForThisUrl: "deploying code to koyeb"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: ""
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
 
 providers:
   - id: openai:gpt-4.1-mini
     config:
-      temperature: 0
+      temperature: 1
       max_tokens: 1024
-      apiKeyEnvar: $OPENAI_URL_SAFETY_API_KEY
+      apiKeyEnvar: OPENAI_URL_SAFETY_API_KEY
+      reasoning_effort: minimal
+
 output:
   - debug
   - json

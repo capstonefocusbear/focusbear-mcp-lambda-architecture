@@ -45,6 +45,7 @@ import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 
 @Module({
   imports: [
@@ -115,6 +116,7 @@ import { AnnouncementsModule } from './modules/announcements/announcements.modul
     ZohoDeskModule,
     ObservabilityModule,
     AnnouncementsModule,
+    AppVersionsModule,
   ],
   controllers: [AppController],
 })

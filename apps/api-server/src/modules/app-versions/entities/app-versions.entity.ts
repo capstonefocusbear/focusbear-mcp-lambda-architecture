@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 @Entity('app_versions')
-@Index(['operatingSystem', 'semverString'], { unique: true })
+@Index(['operating_system', 'semver_string'], { unique: true })
 export class AppVersionEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -13,14 +13,14 @@ export class AppVersionEntity {
     enum: OperatingSystem,
     nullable: false,
   })
-  operatingSystem: OperatingSystem;
+  operating_system: OperatingSystem;
 
   @Column({
     type: 'varchar',
     length: 50,
     nullable: false,
   })
-  semverString: string;
+  semver_string: string;
 
   @Index()
   @Column({
@@ -28,24 +28,24 @@ export class AppVersionEntity {
     default: false,
     nullable: false,
   })
-  isSupported: boolean;
+  is_supported: boolean;
 
   @Column({
     type: 'boolean',
     default: false,
     nullable: false,
   })
-  isBetaOnly: boolean;
+  is_beta_only: boolean;
 
   @Column({
     type: 'text',
     nullable: true,
   })
-  releaseNotes?: string;
+  release_notes?: string;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
-  updatedAt: Date;
+  updated_at: Date;
 }

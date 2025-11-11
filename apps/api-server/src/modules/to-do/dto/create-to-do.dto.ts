@@ -36,6 +36,7 @@ export class CreateToDoDto {
   @IsArray()
   tags?: CreateFocusModeTagDto[];
 
+  @IsOptional()
   subtasks?: SubtaskDto[];
 
   @IsOptional()

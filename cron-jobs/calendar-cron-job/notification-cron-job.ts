@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
 import { Notification } from '../../apps/api-server/src/modules/notification/entities/notification.entity';
 import { CronJobDataSource } from '../data-source';
+import { logVerboselyIfUserHasVerboseLoggingEnabled } from '../utils/verbose-logging';
 import { CalendarExcludedKeyword } from '../../apps/api-server/src/modules/calendar/entities/calendar-excluded-keywords.entity';
 import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/calendar.entity';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
@@ -14,8 +15,6 @@ import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/cons
 const dotenv = require('dotenv');
 
 dotenv.config();
-const JEREMY_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
-
 async function fetchEvents() {
   const currentTime = DateTime.now().toJSDate();
   const timeInFiveMinutes = DateTime.now().plus({ minutes: 5 }).toJSDate();
@@ -41,7 +40,8 @@ async function fetchEvents() {
       language: event.user.language,
     };
   });
-  const eventsToSend = eventsWithUserLanguage.filter(async (event) => {
+  const eventsToSend: typeof eventsWithUserLanguage = [];
+  for (const event of eventsWithUserLanguage) {
     const excludedKeywords = allExcludedKeywords.filter((keyword) => {
       return keyword.user_id === event.user_id && keyword.platform === event.platform;
     });
@@ -54,29 +54,50 @@ async function fetchEvents() {
       );
     });
     if (userCalendars.length === 0) {
-      if (event.user_id === JEREMY_USER_ID) {
-        console.log('Not triggering event because userCalendars.length is 0 ');
-      }
-      return false;
+      await logVerboselyIfUserHasVerboseLoggingEnabled(event.user_id, [
+        'Skipping calendar notification because no calendars were selected',
+        {
+          notification_id: event.id,
+          platform: event.platform,
+          calendar_id: event.calendar_id,
+        },
+      ]);
+      continue;
     }
-    if (excludedKeywords.length === 0) return true;
+
     let canNotify = true;
-    excludedKeywords.forEach((element) => {
-      if (element.intitle && event.summary.includes(element.keyword)) {
-        if (event.user_id === JEREMY_USER_ID) {
-          console.log('Not triggering event because of excluded keyword title ', element.keyword);
+    if (excludedKeywords.length > 0) {
+      for (const element of excludedKeywords) {
+        if (element.intitle && event.summary.includes(element.keyword)) {
+          canNotify = false;
+          await logVerboselyIfUserHasVerboseLoggingEnabled(event.user_id, [
+            'Skipping calendar notification because of excluded title keyword',
+            {
+              notification_id: event.id,
+              keyword: element.keyword,
+            },
+          ]);
+          break;
         }
-        canNotify = false;
-      }
-      if (element.indescription && event.description.includes(element.keyword)) {
-        canNotify = false;
-        if (event.user_id === JEREMY_USER_ID) {
-          console.log('Not triggering event because of excluded keyword description', element.keyword);
+
+        if (element.indescription && event.description.includes(element.keyword)) {
+          canNotify = false;
+          await logVerboselyIfUserHasVerboseLoggingEnabled(event.user_id, [
+            'Skipping calendar notification because of excluded description keyword',
+            {
+              notification_id: event.id,
+              keyword: element.keyword,
+            },
+          ]);
+          break;
         }
       }
-    });
-    return canNotify;
-  });
+    }
+
+    if (canNotify) {
+      eventsToSend.push(event);
+    }
+  }
   return eventsToSend;
 }
 
@@ -91,9 +112,14 @@ const NOTIFICATION_TITLES = {
 };
 
 const sendBeamsPushNotification = async (userId: string, language: string, notificationData: Notification) => {
-  if (userId === JEREMY_USER_ID) {
-    console.log('Sending Notification to User, ', userId, JSON.stringify(notificationData));
-  }
+  await logVerboselyIfUserHasVerboseLoggingEnabled(userId, [
+    'Publishing calendar notification (verbose logging enabled)',
+    {
+      user_id: userId,
+      notificationId: notificationData.id,
+      summary: notificationData.summary,
+    },
+  ]);
 
   try {
     const publishRequest: BeamsPublishRequest = {
@@ -114,6 +140,15 @@ const sendBeamsPushNotification = async (userId: string, language: string, notif
     };
     await beamsClient.publishToUsers([userId], publishRequest);
   } catch (error) {
+    await logVerboselyIfUserHasVerboseLoggingEnabled(userId, [
+      'Calendar notification Beams publish failed',
+      {
+        user_id: userId,
+        error: (error as Error).message,
+        stack: (error as Error).stack,
+        notificationId: notificationData.id,
+      },
+    ]);
     captureErrorWithContext(error, {
       operation: 'sendBeamsPushNotification',
       cronJob: 'calendar-notification',
@@ -124,7 +159,15 @@ const sendBeamsPushNotification = async (userId: string, language: string, notif
         summary: notificationData.summary,
       },
     });
+    return;
   }
+  await logVerboselyIfUserHasVerboseLoggingEnabled(userId, [
+    'Calendar notification Beams publish succeeded',
+    {
+      user_id: userId,
+      notificationId: notificationData.id,
+    },
+  ]);
 };
 
 const updateNotificationStatus = async (id: string) => {

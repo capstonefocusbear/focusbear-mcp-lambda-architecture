@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsMilitaryTime,
@@ -96,4 +97,9 @@ export class UpdateUserSettingsDto {
   @Type(() => UpdateCustomRoutineDto)
   @ApiProperty({ isArray: true, type: UpdateCustomRoutineDto })
   custom_routines?: UpdateCustomRoutineDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({ required: false, type: Boolean })
+  verbose_logging?: boolean;
 }

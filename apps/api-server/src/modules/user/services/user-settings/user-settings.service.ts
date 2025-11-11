@@ -206,6 +206,7 @@ export class UserSettingsService {
         morning_activities,
         break_activities,
         custom_routines,
+        verbose_logging,
       } = mergedSettingsData;
 
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
@@ -242,6 +243,7 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
         is_relax_activity_generated,
+        ...(typeof verbose_logging === 'boolean' && { verbose_logging }),
       });
 
       let customRoutines = [];
@@ -274,6 +276,9 @@ export class UserSettingsService {
         tutorials,
         customRoutines,
       );
+      if (typeof verbose_logging === 'boolean') {
+        this.userService.clearVerboseLoggingCache(user_id);
+      }
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),

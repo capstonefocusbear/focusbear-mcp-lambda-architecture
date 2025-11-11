@@ -25,6 +25,7 @@ import {
   FocusModeServiceMock,
   ToDoRepositoryMock,
   ToDoServiceMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -42,6 +43,7 @@ import { ToDo } from '../../../to-do/entities/to-do.entity';
 import { ToDoTimeLogDto } from '../../../to-do/dto/to-do-time-log.dto.ts';
 import { ToDoStatus } from '../../../to-do/domain/to-do-status.enum';
 import { ToDoService } from '../../../to-do/services/to-do.service';
+import { UserService } from '../../../user/services/user/user.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -60,6 +62,7 @@ describe('FocusModeManagerService', () => {
         FocusModeService,
         ToDoRepository,
         ToDoService,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -88,6 +91,8 @@ describe('FocusModeManagerService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(ToDoService)
       .useValue(ToDoServiceMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);

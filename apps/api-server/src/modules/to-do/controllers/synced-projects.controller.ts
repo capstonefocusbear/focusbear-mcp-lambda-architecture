@@ -34,7 +34,6 @@ export class SyncedProjectsController {
 
   @Post()
   async syncProject(@Body() syncProjectData: SyncProjectDto, @AuthContext() { user }: Passport) {
-    // This one was already fine (no destructuring)
     return this.syncedProjectsService.syncProject(user.id, syncProjectData);
   }
 

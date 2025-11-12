@@ -3,6 +3,7 @@ import { FieldTransformer } from '../../../shared/utils/helpers';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
+import { NotificationType } from '../../../shared/domain/notification-type.enum';
 
 @Entity('notifications')
 export class Notification extends BaseEntity {
@@ -101,4 +102,34 @@ export class Notification extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('external_metadata'),
   })
   external_metadata?: any;
+
+  @Index()
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    default: NotificationType.CALENDAR_EVENT,
+  })
+  notification_type?: NotificationType;
+
+  @Column({
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  action_url?: string;
+
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  related_entity_id?: string;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  related_entity_type?: string;
 }

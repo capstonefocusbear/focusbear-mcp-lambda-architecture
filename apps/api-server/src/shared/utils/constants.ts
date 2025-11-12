@@ -22,6 +22,9 @@ export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
   VERIFY_EMAIL: '', // TODO: generate template
   REQUEST_PASSWORD_RESET: '', // TODO: generate template
+  ACCOUNTABILITY_BUDDY_INVITATION: '', // TODO: generate template
+  UNLOCK_REQUEST_RECEIVED: '', // TODO: generate template
+  UNLOCK_REQUEST_APPROVED: '', // TODO: generate template
 };
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
@@ -131,6 +134,12 @@ export const WORDS_TO_LOG_FOR = ['broken', 'annoying', 'dañado', 'molesto'];
 export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
+
+export const ACCOUNTABILITY_BUDDY = {
+  MAX_BUDDIES_PER_USER: 5,
+  UNLOCK_REQUEST_COOLDOWN_HOURS: 1,
+  INVITATION_EXPIRATION_DAYS: 1,
+} as const;
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 export const GPT_5_MINI = 'gpt-5-mini';

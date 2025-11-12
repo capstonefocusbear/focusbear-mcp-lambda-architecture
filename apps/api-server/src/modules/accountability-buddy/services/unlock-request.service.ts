@@ -1,0 +1,276 @@
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { Auth0ManagementService } from '@app/auth0';
+import { UnlockRequestRepository } from '../repositories/unlock-request.repository';
+import { AccountabilityBuddyRepository } from '../repositories/accountability-buddy.repository';
+import { UnlockRequest } from '../entities/unlock-request.entity';
+import { UnlockRequestStatus } from '../domain/unlock-request-status.enum';
+import { InvitationStatus } from '../domain/invitation-status.enum';
+import { AccountabilityTokenService } from './accountability-token.service';
+import { AccountabilityEmailService } from './accountability-email.service';
+import { AccountabilityNotificationService } from './accountability-notification.service';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { User } from '../../user/entities/user.entity';
+import { ACCOUNTABILITY_BUDDY } from '../../../shared/utils/constants';
+import { UnlockRequestApprovalPayload } from '../domain/unlock-request-approval-payload.model';
+import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
+
+@Injectable()
+export class UnlockRequestService {
+  constructor(
+    private readonly unlockRequestRepository: UnlockRequestRepository,
+    private readonly accountabilityBuddyRepository: AccountabilityBuddyRepository,
+    private readonly userRepository: UserRepository,
+    private readonly auth0ManagementService: Auth0ManagementService,
+    private readonly tokenService: AccountabilityTokenService,
+    private readonly emailService: AccountabilityEmailService,
+    private readonly notificationService: AccountabilityNotificationService,
+    @InjectSentry() private readonly sentryService: SentryService,
+  ) {}
+
+  async createUnlockRequest(
+    userId: string,
+    createUnlockRequestDto: CreateUnlockRequestDto,
+    origin?: string,
+  ): Promise<UnlockRequest> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Creating unlock request',
+        data: { userId, ...createUnlockRequestDto },
+      });
+
+      const accountabilityBuddy = await this.accountabilityBuddyRepository.findByUserIdAndBuddyUserId(
+        userId,
+        createUnlockRequestDto.accountability_buddy_user_id,
+      );
+
+      if (!accountabilityBuddy) {
+        throw new NotFoundException('Accountability buddy relationship not found');
+      }
+
+      if (accountabilityBuddy.invitation_status !== InvitationStatus.ACCEPTED) {
+        throw new BadRequestException('Accountability buddy invitation must be accepted first');
+      }
+
+      if (!accountabilityBuddy.buddy_user_id) {
+        throw new BadRequestException('Buddy user ID is missing');
+      }
+
+      const recentRequest = await this.unlockRequestRepository.findMostRecentByUserId(userId);
+
+      if (recentRequest) {
+        const hoursSinceLastRequest = (Date.now() - new Date(recentRequest.created_at).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastRequest < ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS) {
+          const remainingMinutes = Math.ceil(
+            (ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS - hoursSinceLastRequest) * 60,
+          );
+          throw new BadRequestException(
+            `Please wait ${remainingMinutes} more minutes before creating another unlock request`,
+          );
+        }
+      }
+
+      const unlockRequest = new UnlockRequest({
+        user_id: userId,
+        accountability_buddy_id: accountabilityBuddy.id,
+        reason: createUnlockRequestDto.reason || '',
+        status: UnlockRequestStatus.PENDING,
+      });
+
+      const savedRequest = await this.unlockRequestRepository.create(unlockRequest);
+
+      const buddyUser = await this.validateUser(accountabilityBuddy.buddy_user_id);
+      const buddyAuth0 = await this.auth0ManagementService.getAuth0User(buddyUser.auth0_id);
+      const requesterUser = await this.validateUser(userId);
+      const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
+
+      const token = await this.tokenService.generateApprovalToken({
+        unlock_request_id: savedRequest.id,
+        user_id: userId,
+        buddy_user_id: accountabilityBuddy.buddy_user_id,
+      });
+
+      const baseUrl = this.emailService.getFrontendBaseUrl(origin);
+      const approvalUrl = `${baseUrl}/accountability-buddy/unlock-request/approve?token=${token}`;
+
+      await Promise.all([
+        this.emailService.sendUnlockRequestEmail(
+          buddyAuth0.email,
+          approvalUrl,
+          requesterAuth0?.name || requesterAuth0?.email,
+          createUnlockRequestDto.reason,
+        ),
+        this.notificationService.createUnlockRequestNotification(
+          accountabilityBuddy.buddy_user_id,
+          savedRequest.id,
+          approvalUrl,
+          `${requesterAuth0?.name || requesterAuth0?.email} is requesting device unlock`,
+        ),
+      ]);
+
+      return savedRequest;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async rejectUnlockRequest(token: string, buddyUserId: string): Promise<UnlockRequest> {
+    try {
+      let payload: UnlockRequestApprovalPayload;
+      try {
+        payload = await this.tokenService.verifyApprovalToken(token);
+      } catch (error) {
+        throw new UnauthorizedException('Invalid or expired approval token');
+      }
+
+      if (payload.buddy_user_id !== buddyUserId) {
+        throw new UnauthorizedException('This request is not for your account');
+      }
+
+      const unlockRequest = await this.unlockRequestRepository.findById(payload.unlock_request_id);
+
+      if (!unlockRequest) {
+        throw new NotFoundException('Unlock request not found');
+      }
+
+      if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
+        throw new BadRequestException(`Unlock request is already ${unlockRequest.status}`);
+      }
+
+      unlockRequest.status = UnlockRequestStatus.REJECTED;
+
+      const updatedRequest = await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+
+      await this.notificationService.createUnlockRequestRejectedNotification(
+        payload.user_id,
+        unlockRequest.id,
+        'Your unlock request was rejected',
+        'Your accountability buddy rejected your unlock request',
+      );
+
+      return updatedRequest;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getUnlockRequests(userId: string, asBuddy = false): Promise<UnlockRequest[]> {
+    try {
+      if (asBuddy) {
+        const buddies = await this.accountabilityBuddyRepository.findByBuddyUserIdAndStatus(
+          userId,
+          InvitationStatus.ACCEPTED,
+        );
+
+        if (buddies.length === 0) {
+          return [];
+        }
+
+        const buddyIds = buddies.map((b) => b.id);
+        const requests = await this.unlockRequestRepository.findByAccountabilityBuddyIds(
+          buddyIds,
+          UnlockRequestStatus.PENDING,
+        );
+
+        return requests;
+      }
+      const requests = await this.unlockRequestRepository.findByUserId(userId);
+
+      return requests;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getApprovedUnlockRequests(userId: string): Promise<UnlockRequest[]> {
+    try {
+      const requests = await this.unlockRequestRepository.findApprovedByUserId(userId);
+
+      return requests;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async approveUnlockRequestById(requestId: string, buddyUserId: string): Promise<UnlockRequest> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Approving unlock request by ID',
+        data: { requestId, buddyUserId },
+      });
+
+      const unlockRequest = await this.unlockRequestRepository.findByIdWithRelations(requestId);
+
+      if (!unlockRequest) {
+        throw new NotFoundException('Unlock request not found');
+      }
+
+      if (unlockRequest.accountability_buddy?.buddy_user_id !== buddyUserId) {
+        throw new UnauthorizedException('You are not authorized to approve this unlock request');
+      }
+
+      if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
+        throw new BadRequestException(`Unlock request is already ${unlockRequest.status}`);
+      }
+
+      unlockRequest.status = UnlockRequestStatus.APPROVED;
+      unlockRequest.approved_at = new Date();
+
+      const updatedRequest = await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+
+      const requesterUser = await this.validateUser(unlockRequest.user_id);
+      const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
+
+      await Promise.all([
+        this.emailService.sendUnlockRequestApprovedEmail(requesterAuth0.email),
+        this.notificationService.createUnlockRequestApprovedNotification(
+          unlockRequest.user_id,
+          unlockRequest.id,
+          'Your accountability buddy approved your unlock request',
+        ),
+      ]);
+
+      return updatedRequest;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async markUnlockRequestAsUsed(requestId: string, userId: string): Promise<UnlockRequest> {
+    try {
+      const unlockRequest = await this.unlockRequestRepository.findByIdAndUserId(requestId, userId);
+
+      if (!unlockRequest) {
+        throw new NotFoundException('Unlock request not found');
+      }
+
+      if (unlockRequest.status !== UnlockRequestStatus.APPROVED) {
+        throw new BadRequestException('Only approved unlock requests can be marked as used');
+      }
+
+      unlockRequest.status = UnlockRequestStatus.USED;
+
+      return await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  private async validateUser(userId: string): Promise<User> {
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with ID: ${userId} does not exist`);
+    }
+    return user;
+  }
+}

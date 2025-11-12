@@ -1,5 +1,6 @@
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class GetLatestAppVersionQueryDto {
   @IsString()
@@ -30,12 +31,14 @@ export class GetLatestAppVersionQueryDto {
   // is_beta?: boolean;
 
   // Version 2
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty({
-    type: Boolean,
-    required: false,
-    description: 'Include beta versions',
-  })
-  is_beta?: boolean;
+  // @IsBoolean()
+  // @IsOptional()
+  // @ApiProperty({
+  //   type: Boolean,
+  //   required: false,
+  //   description: 'Include beta versions',
+  // })
+  // is_beta?: boolean;
+
+  is_beta?: boolean; // Working
 }

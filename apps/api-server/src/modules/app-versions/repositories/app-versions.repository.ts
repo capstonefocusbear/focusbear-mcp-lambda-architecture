@@ -70,7 +70,9 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
      * - If includeBeta = true  → include all builds (no extra filter)
      */
     if (includeBeta) {
-      queryBuilder.orWhere('app_version.is_beta_only = :includeBeta', { includeBeta });
+      queryBuilder
+        .orWhere('app_version.is_beta_only = :includeBeta', { includeBeta })
+        .andWhere('app_version.operating_system = :os', { os });
     }
 
     /**

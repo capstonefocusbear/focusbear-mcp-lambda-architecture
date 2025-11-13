@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SendGridService } from '@app/send-grid';
-import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { ACCOUNTABILITY_BUDDY, EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
 
 @Injectable()
 export class AccountabilityEmailService {
@@ -33,7 +33,7 @@ export class AccountabilityEmailService {
       dynamicTemplateData: {
         approval_url: approvalUrl,
         user_name: userName,
-        reason: reason || '',
+        reason: reason || ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_DEFAULT_REASON,
       },
       bcc: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
     });

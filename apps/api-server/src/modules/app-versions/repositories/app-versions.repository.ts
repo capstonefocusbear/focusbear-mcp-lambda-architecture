@@ -4,14 +4,7 @@ import * as semver from 'semver';
 import { AppVersionEntity } from '../entities/app-versions.entity';
 import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
-
-export interface CreateAppVersionDto {
-  operating_system: OperatingSystem;
-  semver_string: string;
-  is_supported?: boolean;
-  is_beta_only?: boolean;
-  release_notes?: string;
-}
+import { CreateAppVersionDto } from '../dto/create-app-version.dto';
 
 @Injectable()
 export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {

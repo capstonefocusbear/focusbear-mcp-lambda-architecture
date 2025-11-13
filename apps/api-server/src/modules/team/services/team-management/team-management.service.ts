@@ -943,4 +943,165 @@ export class TeamManagementService {
     }
     return { user, auth0User };
   }
+
+  // @Description: This method is used to add bulk students to a team (dev use only)
+  /* eslint-disable */
+  async addBulkStudents(adminId: string, addBulkStudentsDto: { team_id: string; students: string[] }) {
+    const { team_id, students } = addBulkStudentsDto;
+    try {
+      const team = await this.validateTeam(team_id);
+
+      const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+
+      this.validateMemberAction(admins, adminId);
+
+      let studentInfo: { firstName: string; lastName: string; email: string; userId: string }[] = [];
+
+      // Helper function to parse name from email (e.g., "sergio.garcia@catolica.edu.sv" -> firstName: "sergio", lastName: "garcia")
+      const parseNameFromEmail = (email: string): { firstName: string; lastName: string } => {
+        const emailPrefix = email.split('@')[0];
+        const parts = emailPrefix.split('.');
+        if (parts.length >= 2) {
+          return {
+            firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+            lastName: parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase(),
+          };
+        }
+        // Fallback if email doesn't follow expected pattern
+        return {
+          firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+          lastName: '',
+        };
+      };
+
+      // Process students in batches to avoid rate limits
+      const BATCH_SIZE = 10; // Process 10 at a time
+      const BATCH_DELAY = 500; // 500ms delay between batches
+
+      for (let i = 0; i < students.length; i += BATCH_SIZE) {
+        const batch = students.slice(i, i + BATCH_SIZE);
+
+        const batchPromises = batch.map(async (email) => {
+          try {
+            let userId = '';
+            const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+            if (auth0User) {
+              const user = await this.userRepository.orm.findOne({ where: { auth0_id: auth0User?.user_id } });
+              userId = user?.id || '';
+              if (!userId) {
+                console.log(`Student ${email} is not registered in the system`);
+              }
+            }
+            const parsedName = parseNameFromEmail(email);
+            return {
+              firstName: auth0User?.given_name || parsedName.firstName,
+              lastName: auth0User?.family_name || parsedName.lastName,
+              email: auth0User?.email || email,
+              userId: userId,
+            };
+          } catch (error) {
+            console.error(`Failed to fetch user for email ${email}:`, error);
+            // Fallback to parsed name if Auth0 fetch fails
+            const parsedName = parseNameFromEmail(email);
+            return {
+              firstName: parsedName.firstName,
+              lastName: parsedName.lastName,
+              email: email,
+              userId: '',
+            };
+          }
+        });
+
+        const batchResults = await Promise.allSettled(batchPromises);
+
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            studentInfo.push(result.value);
+          }
+        });
+
+        // Add delay between batches (except for the last batch)
+        if (i + BATCH_SIZE < students.length) {
+          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
+        }
+      }
+
+      studentInfo = studentInfo.filter((student) => student.userId);
+
+      // Batch processing for validation
+      const VALIDATION_BATCH_SIZE = 10;
+      const VALIDATION_BATCH_DELAY = 200; // Smaller delay for validation
+      const validatedStudents: typeof studentInfo = [];
+
+      for (let i = 0; i < studentInfo.length; i += VALIDATION_BATCH_SIZE) {
+        const validationBatch = studentInfo.slice(i, i + VALIDATION_BATCH_SIZE);
+
+        const validationResults = await Promise.allSettled(
+          validationBatch.map(async (student) => {
+            try {
+              await this.validateMembership(student.userId, team.id, team, members);
+              return student;
+            } catch (error) {
+              console.error(`Failed to validate membership for ${student.email}:`, error);
+              return null;
+            }
+          }),
+        );
+
+        // Collect successfully validated students
+        validationResults.forEach((result) => {
+          if (result.status === 'fulfilled' && result.value) {
+            validatedStudents.push(result.value);
+          }
+        });
+
+        // Add delay between validation batches (except for the last batch)
+        if (i + VALIDATION_BATCH_SIZE < studentInfo.length) {
+          await new Promise((resolve) => setTimeout(resolve, VALIDATION_BATCH_DELAY));
+        }
+      }
+
+      // Process member creation sequentially to avoid race condition with team size
+      // Track current team size to pass correct value to grantMembershipAndUpdateTeam
+      let currentTeamSize = members.length;
+
+      for (const student of validatedStudents) {
+        const memberId = student.userId;
+        const first_name = student.firstName;
+        const last_name = student.lastName;
+        const email = student.email;
+
+        try {
+          await Promise.allSettled([
+            this.ensureTeamMemberRecord(
+              team.id,
+              memberId,
+              email,
+              first_name,
+              last_name,
+              team.expires_date as Date,
+              true,
+            ),
+            this.grantMembershipAndUpdateTeam(team, currentTeamSize, memberId),
+          ]);
+
+          // Increment team size for next iteration
+          currentTeamSize++;
+        } catch (error) {
+          console.error(`Failed to add member ${email}:`, error);
+          // Continue processing other members even if one fails
+        }
+      }
+
+      return {
+        totalProcessed: students.length,
+        successfullyAdded: validatedStudents.length,
+        students: validatedStudents,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+  /* eslint-enable */
 }

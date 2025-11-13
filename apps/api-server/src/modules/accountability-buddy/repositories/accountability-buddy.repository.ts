@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, FindOptionsWhere } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
 import { InvitationStatus } from '../domain/invitation-status.enum';
@@ -10,46 +10,45 @@ export class AccountabilityBuddyRepository extends BaseRepository<Accountability
     super(dataSource, AccountabilityBuddy);
   }
 
-  async findByUserId(userId: string): Promise<AccountabilityBuddy[]> {
+  async findBuddiesByUserId(userId: string, status?: InvitationStatus): Promise<AccountabilityBuddy[]> {
+    const where: FindOptionsWhere<AccountabilityBuddy> = { user_id: userId };
+    if (status) {
+      where.invitation_status = status;
+    }
     return this.orm.find({
-      where: { user_id: userId },
+      where,
       order: { created_at: 'DESC' },
     });
   }
 
-  async findByIdAndUserId(buddyId: string, userId: string): Promise<AccountabilityBuddy | null> {
-    return this.orm.findOne({
-      where: { id: buddyId, user_id: userId },
-    });
-  }
-
-  async findById(id: string): Promise<AccountabilityBuddy | null> {
+  async findBuddyById(id: string): Promise<AccountabilityBuddy | null> {
     return this.orm.findOne({
       where: { id },
     });
   }
 
-  async findPendingInvitations(): Promise<AccountabilityBuddy[]> {
+  async findBuddiesPendingInvitations(buddyUserId?: string): Promise<AccountabilityBuddy[]> {
     return this.orm.find({
       where: {
         invitation_status: InvitationStatus.PENDING,
+        buddy_user_id: buddyUserId,
       },
     });
   }
 
-  async deleteById(id: string): Promise<void> {
+  async deleteBuddyById(id: string): Promise<void> {
     await this.orm.delete(id);
   }
 
-  async findByUserIdAndBuddyUserId(userId: string, buddyUserId: string): Promise<AccountabilityBuddy | null> {
+  async findUserBuddy(userId: string, buddyUserId: string): Promise<AccountabilityBuddy | null> {
     return this.orm.findOne({
       where: { user_id: userId, buddy_user_id: buddyUserId },
     });
   }
 
-  async findByBuddyUserIdAndStatus(buddyUserId: string, status: InvitationStatus): Promise<AccountabilityBuddy[]> {
+  async findBuddiesByUserIdAndStatus(userId: string, status: InvitationStatus): Promise<AccountabilityBuddy[]> {
     return this.orm.find({
-      where: { buddy_user_id: buddyUserId, invitation_status: status },
+      where: { user_id: userId, invitation_status: status },
     });
   }
 }

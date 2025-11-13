@@ -18,6 +18,7 @@ export class CreateTableUnlockRequests1762952938024 implements MigrationInterfac
               "reason" text,
               "status" "unlock_request_status_enum" NOT NULL DEFAULT 'pending',
               "approved_at" TIMESTAMP WITH TIME ZONE,
+              "unlock_duration_minutes" integer,
               CONSTRAINT "PK_unlock_requests" PRIMARY KEY ("id")
             )
           `);

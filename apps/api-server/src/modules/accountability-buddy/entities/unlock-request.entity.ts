@@ -47,6 +47,12 @@ export class UnlockRequest extends BaseEntity {
   })
   approved_at?: Date;
 
+  @Column({
+    type: 'integer',
+    nullable: true,
+  })
+  unlock_duration_minutes?: number;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

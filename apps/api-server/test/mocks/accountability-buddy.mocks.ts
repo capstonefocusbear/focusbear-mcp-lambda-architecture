@@ -2,13 +2,11 @@ import { BaseRepositoryMock } from './repositories.mock';
 
 export const AccountabilityBuddyRepositoryMock = {
   ...BaseRepositoryMock,
-  findByUserId: jest.fn(),
-  findByIdAndUserId: jest.fn(),
-  findById: jest.fn(),
-  findPendingInvitations: jest.fn(),
-  deleteById: jest.fn(),
-  findByUserIdAndBuddyUserId: jest.fn(),
-  findByBuddyUserIdAndStatus: jest.fn(),
+  findBuddiesByUserId: jest.fn(),
+  findBuddyById: jest.fn(),
+  findUserBuddy: jest.fn(),
+  findBuddiesPendingInvitations: jest.fn(),
+  deleteBuddyById: jest.fn(),
 };
 
 export const UnlockRequestRepositoryMock = {

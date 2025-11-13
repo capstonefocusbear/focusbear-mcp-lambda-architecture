@@ -33,7 +33,7 @@ export class AccountabilityEmailService {
       dynamicTemplateData: {
         approval_url: approvalUrl,
         user_name: userName,
-        reason: reason || 'No reason provided',
+        reason: reason || '',
       },
       bcc: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
     });

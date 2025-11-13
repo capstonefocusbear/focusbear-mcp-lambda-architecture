@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import { Auth0ManagementService } from '@app/auth0';
 import { UnlockRequestService } from './unlock-request.service';
 import { UnlockRequestRepository } from '../repositories/unlock-request.repository';
@@ -89,6 +90,7 @@ describe('UnlockRequestService', () => {
         AccountabilityEmailService,
         AccountabilityNotificationService,
         ConfigService,
+        I18nService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -117,6 +119,12 @@ describe('UnlockRequestService', () => {
           return undefined;
         }),
       })
+      .overrideProvider(I18nService)
+      .useValue({
+        t: jest.fn((key: string) => {
+          return key;
+        }),
+      })
       .compile();
 
     service = moduleRef.get<UnlockRequestService>(UnlockRequestService);
@@ -137,7 +145,7 @@ describe('UnlockRequestService', () => {
     };
 
     it('should throw NotFoundException when accountability buddy relationship not found', async () => {
-      AccountabilityBuddyRepositoryMock.findByUserIdAndBuddyUserId.mockResolvedValueOnce(null);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(null);
 
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(NotFoundException);
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(
@@ -151,7 +159,7 @@ describe('UnlockRequestService', () => {
         invitation_status: InvitationStatus.PENDING,
       });
 
-      AccountabilityBuddyRepositoryMock.findByUserIdAndBuddyUserId.mockResolvedValue(pendingBuddy);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValue(pendingBuddy);
 
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(BadRequestException);
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(
@@ -165,7 +173,7 @@ describe('UnlockRequestService', () => {
         buddy_user_id: undefined,
       });
 
-      AccountabilityBuddyRepositoryMock.findByUserIdAndBuddyUserId.mockResolvedValue(buddyWithoutUserId);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValue(buddyWithoutUserId);
 
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(BadRequestException);
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow('Buddy user ID is missing');
@@ -177,7 +185,7 @@ describe('UnlockRequestService', () => {
         created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
       });
 
-      AccountabilityBuddyRepositoryMock.findByUserIdAndBuddyUserId.mockResolvedValue(mockAccountabilityBuddy);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValue(mockAccountabilityBuddy);
       UnlockRequestRepositoryMock.findMostRecentByUserId.mockResolvedValue(recentRequest);
 
       await expect(service.createUnlockRequest(userId, createDto)).rejects.toThrow(BadRequestException);
@@ -190,7 +198,7 @@ describe('UnlockRequestService', () => {
         id: unlockRequestId,
       });
 
-      AccountabilityBuddyRepositoryMock.findByUserIdAndBuddyUserId.mockResolvedValueOnce(mockAccountabilityBuddy);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(mockAccountabilityBuddy);
       UnlockRequestRepositoryMock.findMostRecentByUserId.mockResolvedValueOnce(null);
       UnlockRequestRepositoryMock.create.mockResolvedValueOnce(savedRequest);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockBuddyUser);
@@ -281,7 +289,7 @@ describe('UnlockRequestService', () => {
 
   describe('getUnlockRequests', () => {
     it('should return empty array when user has no buddies (asBuddy=true)', async () => {
-      AccountabilityBuddyRepositoryMock.findByBuddyUserIdAndStatus.mockResolvedValueOnce([]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce([]);
 
       const result = await service.getUnlockRequests(userId, true);
 
@@ -292,7 +300,7 @@ describe('UnlockRequestService', () => {
       const buddies = [mockAccountabilityBuddy];
       const requests = [mockUnlockRequest];
 
-      AccountabilityBuddyRepositoryMock.findByBuddyUserIdAndStatus.mockResolvedValueOnce(buddies);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce(buddies);
       UnlockRequestRepositoryMock.findByAccountabilityBuddyIds.mockResolvedValueOnce(requests);
 
       const result = await service.getUnlockRequests(userId, true);

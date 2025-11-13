@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { I18nService } from 'nestjs-i18n';
 import { Auth0ManagementService } from '@app/auth0';
 import { UnlockRequestRepository } from '../repositories/unlock-request.repository';
 import { AccountabilityBuddyRepository } from '../repositories/accountability-buddy.repository';
@@ -14,6 +15,7 @@ import { User } from '../../user/entities/user.entity';
 import { ACCOUNTABILITY_BUDDY } from '../../../shared/utils/constants';
 import { UnlockRequestApprovalPayload } from '../domain/unlock-request-approval-payload.model';
 import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
+import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
 
 @Injectable()
 export class UnlockRequestService {
@@ -25,6 +27,7 @@ export class UnlockRequestService {
     private readonly tokenService: AccountabilityTokenService,
     private readonly emailService: AccountabilityEmailService,
     private readonly notificationService: AccountabilityNotificationService,
+    private readonly i18nService: I18nService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -41,41 +44,16 @@ export class UnlockRequestService {
         data: { userId, ...createUnlockRequestDto },
       });
 
-      const accountabilityBuddy = await this.accountabilityBuddyRepository.findByUserIdAndBuddyUserId(
+      const accountabilityBuddy = await this.validateUnlockRequestCreation(
         userId,
         createUnlockRequestDto.accountability_buddy_user_id,
       );
-
-      if (!accountabilityBuddy) {
-        throw new NotFoundException('Accountability buddy relationship not found');
-      }
-
-      if (accountabilityBuddy.invitation_status !== InvitationStatus.ACCEPTED) {
-        throw new BadRequestException('Accountability buddy invitation must be accepted first');
-      }
-
-      if (!accountabilityBuddy.buddy_user_id) {
-        throw new BadRequestException('Buddy user ID is missing');
-      }
-
-      const recentRequest = await this.unlockRequestRepository.findMostRecentByUserId(userId);
-
-      if (recentRequest) {
-        const hoursSinceLastRequest = (Date.now() - new Date(recentRequest.created_at).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLastRequest < ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS) {
-          const remainingMinutes = Math.ceil(
-            (ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS - hoursSinceLastRequest) * 60,
-          );
-          throw new BadRequestException(
-            `Please wait ${remainingMinutes} more minutes before creating another unlock request`,
-          );
-        }
-      }
 
       const unlockRequest = new UnlockRequest({
         user_id: userId,
         accountability_buddy_id: accountabilityBuddy.id,
         reason: createUnlockRequestDto.reason || '',
+        unlock_duration_minutes: createUnlockRequestDto.unlock_duration_minutes,
         status: UnlockRequestStatus.PENDING,
       });
 
@@ -86,6 +64,8 @@ export class UnlockRequestService {
       const requesterUser = await this.validateUser(userId);
       const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
 
+      const buddyLang = buddyUser.language || 'en';
+
       const token = await this.tokenService.generateApprovalToken({
         unlock_request_id: savedRequest.id,
         user_id: userId,
@@ -94,6 +74,11 @@ export class UnlockRequestService {
 
       const baseUrl = this.emailService.getFrontendBaseUrl(origin);
       const approvalUrl = `${baseUrl}/accountability-buddy/unlock-request/approve?token=${token}`;
+
+      const unlockRequestTitle = this.i18nService.t('common.accountability_buddy_unlock_request_title', {
+        lang: buddyLang,
+        args: { userName: requesterAuth0?.name || requesterAuth0?.email },
+      });
 
       await Promise.all([
         this.emailService.sendUnlockRequestEmail(
@@ -106,7 +91,7 @@ export class UnlockRequestService {
           accountabilityBuddy.buddy_user_id,
           savedRequest.id,
           approvalUrl,
-          `${requesterAuth0?.name || requesterAuth0?.email} is requesting device unlock`,
+          unlockRequestTitle,
         ),
       ]);
 
@@ -144,11 +129,21 @@ export class UnlockRequestService {
 
       const updatedRequest = await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
 
+      const requesterUser = await this.userRepository.orm.findOneBy({ id: payload.user_id });
+      const requesterLang = requesterUser?.language || 'en';
+
+      const rejectedTitle = this.i18nService.t('common.accountability_buddy_unlock_rejected_title', {
+        lang: requesterLang,
+      });
+      const rejectedDescription = this.i18nService.t('common.accountability_buddy_unlock_rejected_description', {
+        lang: requesterLang,
+      });
+
       await this.notificationService.createUnlockRequestRejectedNotification(
         payload.user_id,
         unlockRequest.id,
-        'Your unlock request was rejected',
-        'Your accountability buddy rejected your unlock request',
+        rejectedTitle,
+        rejectedDescription,
       );
 
       return updatedRequest;
@@ -161,10 +156,7 @@ export class UnlockRequestService {
   async getUnlockRequests(userId: string, asBuddy = false): Promise<UnlockRequest[]> {
     try {
       if (asBuddy) {
-        const buddies = await this.accountabilityBuddyRepository.findByBuddyUserIdAndStatus(
-          userId,
-          InvitationStatus.ACCEPTED,
-        );
+        const buddies = await this.accountabilityBuddyRepository.findBuddiesByUserId(userId, InvitationStatus.ACCEPTED);
 
         if (buddies.length === 0) {
           return [];
@@ -228,13 +220,18 @@ export class UnlockRequestService {
 
       const requesterUser = await this.validateUser(unlockRequest.user_id);
       const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
+      const requesterLang = requesterUser.language || 'en';
+
+      const approvedTitle = this.i18nService.t('common.accountability_buddy_unlock_approved_title', {
+        lang: requesterLang,
+      });
 
       await Promise.all([
         this.emailService.sendUnlockRequestApprovedEmail(requesterAuth0.email),
         this.notificationService.createUnlockRequestApprovedNotification(
           unlockRequest.user_id,
           unlockRequest.id,
-          'Your accountability buddy approved your unlock request',
+          approvedTitle,
         ),
       ]);
 
@@ -272,5 +269,37 @@ export class UnlockRequestService {
       throw new NotFoundException(`User with ID: ${userId} does not exist`);
     }
     return user;
+  }
+
+  private async validateUnlockRequestCreation(userId: string, buddyUserId: string): Promise<AccountabilityBuddy> {
+    const accountabilityBuddy = await this.accountabilityBuddyRepository.findUserBuddy(userId, buddyUserId);
+
+    if (!accountabilityBuddy) {
+      throw new NotFoundException('Accountability buddy relationship not found');
+    }
+
+    if (accountabilityBuddy.invitation_status !== InvitationStatus.ACCEPTED) {
+      throw new BadRequestException('Accountability buddy invitation must be accepted first');
+    }
+
+    if (!accountabilityBuddy.buddy_user_id) {
+      throw new BadRequestException('Buddy user ID is missing');
+    }
+
+    const recentRequest = await this.unlockRequestRepository.findMostRecentByUserId(userId);
+
+    if (recentRequest) {
+      const hoursSinceLastRequest = (Date.now() - new Date(recentRequest.created_at).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastRequest < ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS) {
+        const remainingMinutes = Math.ceil(
+          (ACCOUNTABILITY_BUDDY.UNLOCK_REQUEST_COOLDOWN_HOURS - hoursSinceLastRequest) * 60,
+        );
+        throw new BadRequestException(
+          `Please wait ${remainingMinutes} more minutes before creating another unlock request`,
+        );
+      }
+    }
+
+    return accountabilityBuddy;
   }
 }

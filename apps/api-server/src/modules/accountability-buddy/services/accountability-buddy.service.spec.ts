@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import { Auth0ManagementService } from '@app/auth0';
 import { AccountabilityBuddyService } from './accountability-buddy.service';
 import { AccountabilityBuddyRepository } from '../repositories/accountability-buddy.repository';
@@ -76,6 +77,7 @@ describe('AccountabilityBuddyService', () => {
         AccountabilityEmailService,
         AccountabilityNotificationService,
         ConfigService,
+        I18nService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -100,6 +102,12 @@ describe('AccountabilityBuddyService', () => {
           if (key === 'server.frontEndUrl') return 'https://app.example.com';
           if (key === 'server.devFrontendUrl') return 'https://dev.example.com';
           return undefined;
+        }),
+      })
+      .overrideProvider(I18nService)
+      .useValue({
+        t: jest.fn((key: string) => {
+          return key;
         }),
       })
       .compile();
@@ -137,16 +145,17 @@ describe('AccountabilityBuddyService', () => {
     });
 
     it('should throw BadRequestException when user has reached max buddies limit', async () => {
-      const maxBuddies = Array(5)
+      const maxBuddies = Array(10)
         .fill(null)
         .map(() => new AccountabilityBuddy({}));
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValue(maxBuddies);
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([mockBuddyAuth0User]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValue(maxBuddies);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(
-        'Maximum 5 accountability buddies allowed per user',
+        'Maximum 10 accountability buddies allowed per user',
       );
     });
 
@@ -159,7 +168,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValue([existingBuddy]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValue([existingBuddy]);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow('This invitation is already pending');
@@ -175,7 +184,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValue([existingBuddy]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValue([existingBuddy]);
       AccountabilityBuddyRepositoryMock.update.mockResolvedValue(existingBuddy);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
@@ -193,7 +202,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValue([existingBuddy]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValue([existingBuddy]);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(
@@ -209,7 +218,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValueOnce([]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce([]);
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValueOnce([mockBuddyAuth0User]);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(mockBuddyUser);
       AccountabilityBuddyRepositoryMock.create.mockResolvedValueOnce(savedBuddy);
@@ -235,7 +244,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValueOnce([]);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce([]);
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValueOnce([]);
       AccountabilityBuddyRepositoryMock.create.mockResolvedValueOnce(savedBuddy);
       AccountabilityTokenServiceMock.generateInvitationToken.mockResolvedValueOnce('invitation-token');
@@ -269,7 +278,7 @@ describe('AccountabilityBuddyService', () => {
     it('should throw NotFoundException when accountability buddy not found', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
       AccountabilityTokenServiceMock.verifyInvitationToken.mockResolvedValue(payload);
-      AccountabilityBuddyRepositoryMock.findById.mockResolvedValue(null);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(null);
 
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(NotFoundException);
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(
@@ -285,7 +294,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
       AccountabilityTokenServiceMock.verifyInvitationToken.mockResolvedValue(payload);
-      AccountabilityBuddyRepositoryMock.findById.mockResolvedValue(wrongBuddy);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(wrongBuddy);
 
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(UnauthorizedException);
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(
@@ -301,7 +310,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
       AccountabilityTokenServiceMock.verifyInvitationToken.mockResolvedValue(payload);
-      AccountabilityBuddyRepositoryMock.findById.mockResolvedValue(acceptedBuddy);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(acceptedBuddy);
 
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(BadRequestException);
       await expect(service.acceptInvitation(token, buddyUserId)).rejects.toThrow(
@@ -319,7 +328,7 @@ describe('AccountabilityBuddyService', () => {
 
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockBuddyUser);
       AccountabilityTokenServiceMock.verifyInvitationToken.mockResolvedValueOnce(payload);
-      AccountabilityBuddyRepositoryMock.findById.mockResolvedValueOnce(mockAccountabilityBuddy);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValueOnce(mockAccountabilityBuddy);
       AccountabilityBuddyRepositoryMock.update.mockResolvedValueOnce(updatedBuddy);
       // Note: Service calls getAuth0User with buddyUserId (user_id), not auth0_id
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
@@ -336,18 +345,18 @@ describe('AccountabilityBuddyService', () => {
   describe('getBuddies', () => {
     it('should return list of buddies for a user', async () => {
       const buddies = [mockAccountabilityBuddy];
-      AccountabilityBuddyRepositoryMock.findByUserId.mockResolvedValueOnce(buddies);
+      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce(buddies);
 
       const result = await service.getBuddies(userId);
 
       expect(result).toEqual(buddies);
-      expect(AccountabilityBuddyRepositoryMock.findByUserId).toHaveBeenCalledWith(userId);
+      expect(AccountabilityBuddyRepositoryMock.findBuddiesByUserId).toHaveBeenCalledWith(userId);
     });
   });
 
   describe('removeBuddy', () => {
     it('should throw NotFoundException when buddy relationship not found', async () => {
-      AccountabilityBuddyRepositoryMock.findByIdAndUserId.mockResolvedValueOnce(null);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(null);
 
       await expect(service.removeBuddy(userId, accountabilityBuddyId)).rejects.toThrow(NotFoundException);
       await expect(service.removeBuddy(userId, accountabilityBuddyId)).rejects.toThrow(
@@ -356,18 +365,18 @@ describe('AccountabilityBuddyService', () => {
     });
 
     it('should successfully remove a buddy', async () => {
-      AccountabilityBuddyRepositoryMock.findByIdAndUserId.mockResolvedValueOnce(mockAccountabilityBuddy);
-      AccountabilityBuddyRepositoryMock.deleteById.mockResolvedValueOnce(undefined);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(mockAccountabilityBuddy);
+      AccountabilityBuddyRepositoryMock.deleteBuddyById.mockResolvedValueOnce(undefined);
 
       await service.removeBuddy(userId, accountabilityBuddyId);
 
-      expect(AccountabilityBuddyRepositoryMock.deleteById).toHaveBeenCalledWith(accountabilityBuddyId);
+      expect(AccountabilityBuddyRepositoryMock.deleteBuddyById).toHaveBeenCalledWith(accountabilityBuddyId);
     });
   });
 
   describe('getBuddyById', () => {
     it('should throw NotFoundException when buddy not found', async () => {
-      AccountabilityBuddyRepositoryMock.findByIdAndUserId.mockResolvedValueOnce(null);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(null);
 
       await expect(service.getBuddyById(accountabilityBuddyId, userId)).rejects.toThrow(NotFoundException);
       await expect(service.getBuddyById(accountabilityBuddyId, userId)).rejects.toThrow(
@@ -376,12 +385,12 @@ describe('AccountabilityBuddyService', () => {
     });
 
     it('should return buddy when found', async () => {
-      AccountabilityBuddyRepositoryMock.findByIdAndUserId.mockResolvedValueOnce(mockAccountabilityBuddy);
+      AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(mockAccountabilityBuddy);
 
       const result = await service.getBuddyById(accountabilityBuddyId, userId);
 
       expect(result).toEqual(mockAccountabilityBuddy);
-      expect(AccountabilityBuddyRepositoryMock.findByIdAndUserId).toHaveBeenCalledWith(accountabilityBuddyId, userId);
+      expect(AccountabilityBuddyRepositoryMock.findUserBuddy).toHaveBeenCalledWith(userId, accountabilityBuddyId);
     });
   });
 
@@ -393,12 +402,12 @@ describe('AccountabilityBuddyService', () => {
         invitation_status: InvitationStatus.PENDING,
       });
 
-      AccountabilityBuddyRepositoryMock.findPendingInvitations.mockResolvedValueOnce([pendingInvitation]);
+      AccountabilityBuddyRepositoryMock.findBuddiesPendingInvitations.mockResolvedValueOnce([pendingInvitation]);
       AccountabilityBuddyRepositoryMock.update.mockResolvedValueOnce(pendingInvitation);
 
       await service.linkPendingInvitationsForNewUser(buddyUserId, buddyEmail);
 
-      expect(AccountabilityBuddyRepositoryMock.findPendingInvitations).toHaveBeenCalled();
+      expect(AccountabilityBuddyRepositoryMock.findBuddiesPendingInvitations).toHaveBeenCalled();
       expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalledWith(pendingInvitation.id, {
         buddy_user_id: buddyUserId,
       });
@@ -411,16 +420,18 @@ describe('AccountabilityBuddyService', () => {
         invitation_status: InvitationStatus.PENDING,
       });
 
-      AccountabilityBuddyRepositoryMock.findPendingInvitations.mockResolvedValueOnce([pendingInvitation]);
+      AccountabilityBuddyRepositoryMock.findBuddiesPendingInvitations.mockResolvedValueOnce([pendingInvitation]);
 
       await service.linkPendingInvitationsForNewUser(buddyUserId, buddyEmail);
 
-      expect(AccountabilityBuddyRepositoryMock.findPendingInvitations).toHaveBeenCalled();
+      expect(AccountabilityBuddyRepositoryMock.findBuddiesPendingInvitations).toHaveBeenCalled();
       expect(AccountabilityBuddyRepositoryMock.update).not.toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
-      AccountabilityBuddyRepositoryMock.findPendingInvitations.mockRejectedValueOnce(new Error('Database error'));
+      AccountabilityBuddyRepositoryMock.findBuddiesPendingInvitations.mockRejectedValueOnce(
+        new Error('Database error'),
+      );
 
       await expect(service.linkPendingInvitationsForNewUser(buddyUserId, buddyEmail)).resolves.not.toThrow();
     });

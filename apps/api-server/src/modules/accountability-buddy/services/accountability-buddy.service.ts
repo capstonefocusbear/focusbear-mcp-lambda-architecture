@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { I18nService } from 'nestjs-i18n';
 import { Auth0ManagementService } from '@app/auth0';
 import { AccountabilityBuddyRepository } from '../repositories/accountability-buddy.repository';
 import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
@@ -22,6 +23,7 @@ export class AccountabilityBuddyService {
     private readonly tokenService: AccountabilityTokenService,
     private readonly emailService: AccountabilityEmailService,
     private readonly notificationService: AccountabilityNotificationService,
+    private readonly i18nService: I18nService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -45,7 +47,7 @@ export class AccountabilityBuddyService {
         throw new BadRequestException('You cannot invite yourself as an accountability buddy');
       }
 
-      const existingBuddies = await this.accountabilityBuddyRepository.findByUserId(userId);
+      const existingBuddies = await this.accountabilityBuddyRepository.findBuddiesByUserId(userId);
 
       if (existingBuddies.length >= ACCOUNTABILITY_BUDDY.MAX_BUDDIES_PER_USER) {
         throw new BadRequestException(
@@ -76,16 +78,33 @@ export class AccountabilityBuddyService {
 
       const inviteUrl = await this.generateInvitationUrl(userId, buddyEmail, savedBuddy.id, origin);
 
-      await Promise.all([
-        this.emailService.sendBuddyInvitationEmail(buddyEmail, inviteUrl, auth0User?.name),
-        this.notificationService.createBuddyInvitationNotification(
-          buddyUserId || userId, // If buddy is registered, notify them; otherwise notify requester
+      // Get buddy user language if registered
+      let buddyLang = 'en';
+      if (buddyUserId) {
+        const buddyUser = await this.userRepository.orm.findOneBy({ id: buddyUserId });
+        buddyLang = buddyUser?.language || 'en';
+      }
+
+      const invitationTitle = this.i18nService.t('common.accountability_buddy_invitation_title', {
+        lang: buddyLang,
+        args: { userName: auth0User?.name || 'A user', appName: EMAIL_SENDER_NAME },
+      });
+      const invitationDescription = this.i18nService.t('common.accountability_buddy_invitation_description', {
+        lang: buddyLang,
+      });
+
+      await this.emailService.sendBuddyInvitationEmail(buddyEmail, inviteUrl, auth0User?.name);
+
+      // If buddy is registered, notify them
+      if (buddyUserId) {
+        await this.notificationService.createBuddyInvitationNotification(
+          buddyUserId,
           savedBuddy.id,
           inviteUrl,
-          `${auth0User?.name || 'A user'} wants you to be their accountability buddy in ${EMAIL_SENDER_NAME}`,
-          'Click the link to accept the invitation',
-        ),
-      ]);
+          invitationTitle,
+          invitationDescription,
+        );
+      }
 
       return savedBuddy;
     } catch (error) {
@@ -103,7 +122,6 @@ export class AccountabilityBuddyService {
         data: { buddyUserId },
       });
 
-      // check if buddy user exists because if not, it should register first
       await this.validateUser(buddyUserId);
 
       let payload: BuddyInvitationPayload;
@@ -122,11 +140,22 @@ export class AccountabilityBuddyService {
       const updatedBuddy = await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
 
       const buddyAuth0 = await this.auth0ManagementService.getAuth0User(buddyUserId);
+      const requesterUser = await this.userRepository.orm.findOneBy({ id: payload.user_id });
+      const requesterLang = requesterUser?.language || 'en';
+
+      const acceptedTitle = this.i18nService.t('common.accountability_buddy_invitation_accepted_title', {
+        lang: requesterLang,
+        args: { buddyName: buddyAuth0?.name || buddyAuth0?.email },
+      });
+      const acceptedDescription = this.i18nService.t('common.accountability_buddy_invitation_accepted_description', {
+        lang: requesterLang,
+      });
+
       await this.notificationService.createInvitationAcceptedNotification(
         payload.user_id,
         accountabilityBuddy.id,
-        `${buddyAuth0?.name || buddyAuth0?.email} accepted your accountability buddy invitation`,
-        'You can now request device unlocks from this buddy',
+        acceptedTitle,
+        acceptedDescription,
       );
 
       return updatedBuddy;
@@ -138,7 +167,7 @@ export class AccountabilityBuddyService {
 
   async getBuddies(userId: string): Promise<AccountabilityBuddy[]> {
     try {
-      return await this.accountabilityBuddyRepository.findByUserId(userId);
+      return await this.accountabilityBuddyRepository.findBuddiesByUserId(userId);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -154,13 +183,13 @@ export class AccountabilityBuddyService {
         data: { userId, buddyId },
       });
 
-      const accountabilityBuddy = await this.accountabilityBuddyRepository.findByIdAndUserId(buddyId, userId);
+      const accountabilityBuddy = await this.accountabilityBuddyRepository.findUserBuddy(userId, buddyId);
 
       if (!accountabilityBuddy) {
         throw new NotFoundException('Accountability buddy relationship not found');
       }
 
-      await this.accountabilityBuddyRepository.deleteById(buddyId);
+      await this.accountabilityBuddyRepository.deleteBuddyById(buddyId);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -168,7 +197,7 @@ export class AccountabilityBuddyService {
   }
 
   async getBuddyById(buddyId: string, userId: string): Promise<AccountabilityBuddy> {
-    const buddy = await this.accountabilityBuddyRepository.findByIdAndUserId(buddyId, userId);
+    const buddy = await this.accountabilityBuddyRepository.findUserBuddy(userId, buddyId);
 
     if (!buddy) {
       throw new NotFoundException('Accountability buddy not found');
@@ -177,6 +206,15 @@ export class AccountabilityBuddyService {
     return buddy;
   }
 
+  /**
+   * Links pending accountability buddy invitations to a newly registered user.
+   * When a user registers with an email that was previously invited as an accountability buddy,
+   * this method finds all pending invitations for that email and links them to the new user's ID.
+   * The invitation status remains PENDING, requiring the user to explicitly accept the invitation.
+   *
+   * @param userId - The ID of the newly registered user
+   * @param email - The email address of the newly registered user (used to match pending invitations)
+   */
   async linkPendingInvitationsForNewUser(userId: string, email: string): Promise<void> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -186,17 +224,13 @@ export class AccountabilityBuddyService {
         data: { userId, email },
       });
 
-      // Find all pending invitations (can't query encrypted email directly, so fetch all and filter)
-      const allPendingInvitations = await this.accountabilityBuddyRepository.findPendingInvitations();
+      const allPendingInvitations = await this.accountabilityBuddyRepository.findBuddiesPendingInvitations(userId);
 
-      // Filter by email in memory (email is encrypted in DB, so we need to decrypt and compare)
-      const matchingInvitations = allPendingInvitations.filter(
-        (invitation) => invitation.buddy_email?.toLowerCase() === email.toLowerCase(),
-      );
+      const invitationsToUpdate = allPendingInvitations
+        .filter((invitation) => invitation.buddy_email?.toLowerCase() === email.toLowerCase())
+        .filter((invitation) => !invitation.buddy_user_id);
 
-      // Link the user_id to pending invitations (but keep status as PENDING - requires explicit acceptance)
-      const invitationsToUpdate = matchingInvitations.filter((invitation) => !invitation.buddy_user_id);
-      await Promise.all(
+      await Promise.allSettled(
         invitationsToUpdate.map((invitation) =>
           this.accountabilityBuddyRepository.update(invitation.id, {
             buddy_user_id: userId,
@@ -252,13 +286,12 @@ export class AccountabilityBuddyService {
   }
 
   private async validateAccountabilityBuddyAndEmail(payload: BuddyInvitationPayload): Promise<AccountabilityBuddy> {
-    const accountabilityBuddy = await this.accountabilityBuddyRepository.findById(payload.accountability_buddy_id);
+    const accountabilityBuddy = await this.accountabilityBuddyRepository.findBuddyById(payload.accountability_buddy_id);
 
     if (!accountabilityBuddy) {
       throw new NotFoundException('Accountability buddy invitation not found');
     }
 
-    // Verify user_id and buddy_email matches
     if (
       accountabilityBuddy.user_id !== payload.user_id ||
       accountabilityBuddy.buddy_email?.toLowerCase() !== payload.buddy_email.toLowerCase()

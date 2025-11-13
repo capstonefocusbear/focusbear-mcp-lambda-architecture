@@ -73,6 +73,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -108,6 +109,8 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
+    @Inject(forwardRef(() => AccountabilityBuddyService))
+    private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -124,7 +127,12 @@ export class UserService {
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       const user = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
-      if (!registeredUser) await this.handleInitialRegistration(user.id);
+      if (!registeredUser) {
+        await Promise.allSettled([
+          this.handleInitialRegistration(user.id),
+          this.accountabilityBuddyService.linkPendingInvitationsForNewUser(user.id, email), // Link pending accountability buddy invitations for the newly registered user
+        ]);
+      }
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);

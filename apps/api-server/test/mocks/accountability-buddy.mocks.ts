@@ -42,3 +42,7 @@ export const AccountabilityNotificationServiceMock = {
   createUnlockRequestApprovedNotification: jest.fn(),
   createUnlockRequestRejectedNotification: jest.fn(),
 };
+
+export const AccountabilityBuddyServiceMock = {
+  linkPendingInvitationsForNewUser: jest.fn(),
+};

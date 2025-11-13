@@ -21,18 +21,14 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
 
   /**
    * Find all versions for a given OS, optionally including beta versions
+   * @param os Operating system
+   * @returns All versions exists for given OS
    */
-  async findAllByOS(os: OperatingSystem, includeBeta: boolean): Promise<AppVersionEntity[]> {
-    const queryBuilder = this.orm
+  async findAllByOS(os: OperatingSystem): Promise<AppVersionEntity[]> {
+    const versions = await this.orm
       .createQueryBuilder('app_versions')
-      .where('app_versions.operating_system = :os', { os });
-
-    // Only include non-beta versions when includeBeta is false
-    if (!includeBeta) {
-      queryBuilder.andWhere('app_versions.is_beta_only = :includeBeta', { includeBeta });
-    }
-
-    const versions = await queryBuilder.getMany();
+      .where('app_versions.operating_system = :os', { os })
+      .getMany();
 
     // Sort by SemVer descending (newest first)
     return versions.sort((a, b) => semver.rcompare(a.semver_string, b.semver_string));
@@ -44,60 +40,27 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
    * @param includeBeta Whether to include beta-only versions
    * @returns Latest version or null if none found
    */
-  // async findLatest(os: OperatingSystem, includeBeta: boolean): Promise<AppVersionEntity | null> {
-  //   const queryBuilder = this.orm
-  //     .createQueryBuilder('app_version')
-  //     .where('app_version.operating_system = :os', { os })
-  //     .andWhere('app_version.is_supported = :isSupported', { isSupported: true })
-  //     .andWhere('app_version.is_beta_only = :is_beta_only', { is_beta_only: includeBeta });
-
-  //   if (!queryBuilder) return null;
-  //   return queryBuilder.orderBy('app_version.created_at', 'DESC').getOne();
-  // }
-
   async findLatest(os: OperatingSystem, includeBeta: boolean): Promise<AppVersionEntity | null> {
     const queryBuilder = this.orm
+      // Query for no beta
       .createQueryBuilder('app_version')
       .where('app_version.operating_system = :os', { os })
       .andWhere('app_version.is_supported = true');
-    // .orWhere('app_version.is_beta_only = :includeBeta', { includeBeta })
-    // .orderBy('app_version.semver_string', 'DESC');
 
-    /**
-     * ✅ Handle beta inclusion logic
-     *
-     * - If includeBeta = false → exclude beta-only builds
-     * - If includeBeta = true  → include all builds (no extra filter)
-     */
+    // Query for include beta
     if (includeBeta) {
       queryBuilder
         .orWhere('app_version.is_beta_only = :includeBeta', { includeBeta })
         .andWhere('app_version.operating_system = :os', { os });
     }
 
-    /**
-     * ⚙️ Optional: filter only supported versions
-     * Uncomment if your rule says "latest must be supported"
-     *
-     * queryBuilder.andWhere('app_version.is_supported = :isSupported', { isSupported: true });
-     */
+    const versions = await queryBuilder.getMany();
 
-    /**
-     * 🕒 Order newest first
-     * - Using created_at DESC is fine if you always insert newer versions later.
-     * - For more accuracy, use semver sorting in JS after fetching.
-     */
-    queryBuilder.orderBy('app_version.semver_string', 'DESC');
-
-    // Execute query — get the first (newest) matching version
-    const latestVersion = await queryBuilder.getOne();
-
-    // If no version found, return null
-    if (!latestVersion) {
+    if (versions.length === 0) {
       return null;
     }
-
-    return latestVersion;
+    // Sort by SemVer descending (newest first)
+    return versions.sort((a, b) => semver.rcompare(a.semver_string, b.semver_string))[0];
   }
 
   /**
@@ -106,21 +69,15 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
    * @returns Minimum supported version or null if none found
    */
   async findMinSupported(os: OperatingSystem): Promise<AppVersionEntity | null> {
-    const versions = await this.orm.find({
-      where: {
-        operating_system: os,
-        is_supported: true,
-      },
-    });
+    const queryBuilder = await this.orm
+      .createQueryBuilder('app_version')
+      .where('app_version.operating_system = :os', { os })
+      .andWhere('app_version.is_supported = true');
 
-    if (versions.length === 0) {
-      return null;
-    }
+    const versions = await queryBuilder.getMany();
 
     // Sort by SemVer ascending (oldest first)
-    const sortedVersions = versions.sort((a, b) => semver.compare(a.semver_string, b.semver_string));
-
-    return sortedVersions[0];
+    return versions.sort((a, b) => semver.compare(a.semver_string, b.semver_string))[0];
   }
 
   /**

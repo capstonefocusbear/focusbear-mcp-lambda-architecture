@@ -11,34 +11,20 @@ export class GetLatestAppVersionQueryDto {
   })
   os_name: string;
 
-  // Version 1
-  // @IsBoolean()
-  // @IsOptional()
-  // @Transform(({ value }) => {
-  //   if (value === undefined || value === null) return false;
-  //   if (typeof value === 'boolean') return value;
-  //   if (typeof value === 'string') {
-  //     return value.toLowerCase() === 'true';
-  //   }
-  //   return false;
-  // })
-  // @ApiProperty({
-  //   type: Boolean,
-  //   required: false,
-  //   default: false,
-  //   description: 'Include beta versions',
-  // })
-  // is_beta?: boolean;
-
-  // Version 2
-  // @IsBoolean()
-  // @IsOptional()
-  // @ApiProperty({
-  //   type: Boolean,
-  //   required: false,
-  //   description: 'Include beta versions',
-  // })
-  // is_beta?: boolean;
-
-  is_beta?: boolean; // Working
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ obj, key }) => {
+    const value = obj[key];
+    if (typeof value === 'string') {
+      return obj[key] === 'true';
+    }
+    return value;
+  })
+  @ApiProperty({
+    type: Boolean,
+    required: false,
+    default: false,
+    description: 'Include beta versions',
+  })
+  is_beta?: boolean;
 }

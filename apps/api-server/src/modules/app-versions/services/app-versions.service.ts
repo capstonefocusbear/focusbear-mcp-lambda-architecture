@@ -9,9 +9,6 @@ import { LatestAppVersionResponseDto } from '../dto/latest-app-version-response.
 export class AppVersionsService {
   constructor(private readonly appVersionsRepository: AppVersionsRepository) {}
 
-  /**
-   * Get latest app version information for a given OS
-   */
   async getLatestVersion(os: OperatingSystem, includeBeta = false): Promise<LatestAppVersionResponseDto> {
     const [latest, minSupported] = await Promise.all([
       this.appVersionsRepository.findLatest(os, includeBeta),
@@ -25,9 +22,6 @@ export class AppVersionsService {
     };
   }
 
-  /**
-   * Create a new app version (used by CI/CD)
-   */
   async createVersion(dto: CreateAppVersionDto) {
     // Validate semver format
     if (!semver.valid(dto.semver_string)) {
@@ -35,7 +29,7 @@ export class AppVersionsService {
     }
 
     // Check if version already exists for this OS
-    const existing = await this.appVersionsRepository.findAllByOS(dto.operating_system, true);
+    const existing = await this.appVersionsRepository.findAllByOS(dto.operating_system);
     const duplicate = existing.find((v) => v.semver_string === dto.semver_string);
 
     if (duplicate) {

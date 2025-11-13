@@ -38,14 +38,11 @@ export class AppVersionsController {
       );
     }
 
-    console.log('OS:', query.os_name);
-    console.log('is_beta type:', typeof query.is_beta, 'value:', query.is_beta);
-
     return this.appVersionsService.getLatestVersion(os, query.is_beta);
   }
 
-  @Post('internal/app-versions')
-  @ApiOperation({ summary: 'Create new app version (CI/CD only)' })
+  @Post('create-version')
+  @ApiOperation({ summary: 'Create new app version (CI/CD)' })
   @ApiResponse({ status: 201, description: 'Version created successfully' })
   async createAppVersion(@Body() createAppVersionDto: CreateAppVersionDto) {
     return this.appVersionsService.createVersion(createAppVersionDto);

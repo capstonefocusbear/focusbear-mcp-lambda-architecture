@@ -9,7 +9,7 @@ const baseUrl = isDist ? path.resolve(__dirname, '..') : path.resolve(__dirname,
 
 const normalize = (value) => {
   const stripped = value.replace(/^\.\//, '');
-  return path.join('dist', stripped);
+  return isDist ? stripped : path.join('dist', stripped);
 };
 
 const distPaths = Object.entries(tsConfig.compilerOptions.paths || {}).reduce((acc, [alias, values]) => {

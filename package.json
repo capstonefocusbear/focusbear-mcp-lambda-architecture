@@ -7,9 +7,10 @@
   "license": "UNLICENSED",
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build && npm run build:cron && npm run build:cron-support",
+    "build": "nest build && npm run build:cron && npm run build:cron-support && npm run build:assets",
     "build:cron": "tsc -p tsconfig.cron.json",
     "build:cron-support": "mkdir -p dist/cron-jobs && cp cron-jobs/register-dist-paths.js dist/cron-jobs/register-dist-paths.js",
+    "build:assets": "mkdir -p dist/apps/api-server/src/shared && cp -R apps/api-server/src/shared/i18n dist/apps/api-server/src/shared/i18n && mkdir -p dist/apps/api-server/src/modules/email && cp -R apps/api-server/src/modules/email/templates dist/apps/api-server/src/modules/email/templates",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "prestart": "npm run migration:up",
     "start:dev": "nest start --watch",

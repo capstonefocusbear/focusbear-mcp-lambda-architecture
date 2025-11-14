@@ -1048,7 +1048,6 @@ export class TeamManagementService {
           }),
         );
 
-        // Collect successfully validated students
         validationResults.forEach((result) => {
           if (result.status === 'fulfilled' && result.value) {
             validatedStudents.push(result.value);
@@ -1064,6 +1063,8 @@ export class TeamManagementService {
       // Process member creation sequentially to avoid race condition with team size
       // Track current team size to pass correct value to grantMembershipAndUpdateTeam
       let currentTeamSize = members.length;
+      const successfullyAddedStudents: typeof validatedStudents = [];
+      const failedStudents: Array<{ student: (typeof validatedStudents)[0]; reason: string }> = [];
 
       for (const student of validatedStudents) {
         const memberId = student.userId;
@@ -1072,7 +1073,7 @@ export class TeamManagementService {
         const email = student.email;
 
         try {
-          await Promise.allSettled([
+          const [memberRecordResult, membershipResult] = await Promise.allSettled([
             this.ensureTeamMemberRecord(
               team.id,
               memberId,
@@ -1085,22 +1086,62 @@ export class TeamManagementService {
             this.grantMembershipAndUpdateTeam(team, currentTeamSize, memberId),
           ]);
 
-          // Increment team size for next iteration
-          currentTeamSize++;
+          if (memberRecordResult.status === 'fulfilled' && membershipResult.status === 'fulfilled') {
+            currentTeamSize++;
+            successfullyAddedStudents.push(student);
+          } else {
+            // Handle partial failure: if a NEW member record was created but membership failed, rollback the record
+            if (memberRecordResult.status === 'fulfilled' && membershipResult.status === 'rejected') {
+              try {
+                // Rollback: delete the member record that was just created
+                const memberIdentifier = memberId ? { member_id: memberId } : { email };
+                await this.teamToMemberRepository.orm.delete({ team_id: team.id, ...memberIdentifier });
+                console.log(`Rolled back newly created member record for ${email} after membership grant failure`);
+              } catch (rollbackError) {
+                console.error(`Failed to rollback member record for ${email}:`, rollbackError);
+              }
+            }
+
+            // Track which operation failed
+            let failureReason = '';
+            if (memberRecordResult.status === 'rejected') {
+              failureReason = `Failed to create team member record: ${memberRecordResult.reason}`;
+              console.error(`Failed to create team member record for ${email}:`, memberRecordResult.reason);
+            }
+            if (membershipResult.status === 'rejected') {
+              failureReason = failureReason
+                ? `${failureReason}; Failed to grant membership: ${membershipResult.reason}`
+                : `Failed to grant membership: ${membershipResult.reason}`;
+              console.error(`Failed to grant membership for ${email}:`, membershipResult.reason);
+            }
+            failedStudents.push({ student, reason: failureReason });
+          }
         } catch (error) {
           console.error(`Failed to add member ${email}:`, error);
+          failedStudents.push({ student, reason: `Unexpected error: ${error}` });
           // Continue processing other members even if one fails
         }
       }
 
+      // Calculate students that couldn't be processed (no userId, validation failed, etc.)
+      const studentsWithoutUserId = students.length - studentInfo.length;
+      const validationFailed = studentInfo.length - validatedStudents.length;
+      const additionFailed = failedStudents.length;
+
       return {
-        totalProcessed: students.length,
-        successfullyAdded: validatedStudents.length,
-        students: validatedStudents,
+        totalRequested: students.length,
+        successfullyAdded: successfullyAddedStudents.length,
+        failed: {
+          noUserId: studentsWithoutUserId,
+          validationFailed: validationFailed,
+          additionFailed: additionFailed,
+          total: studentsWithoutUserId + validationFailed + additionFailed,
+        },
+        added: successfullyAddedStudents,
+        failedDetails: failedStudents,
       };
     } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
+      console.error(`Failed to add bulk students:`, error);
     }
   }
   /* eslint-enable */

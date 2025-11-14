@@ -24,6 +24,7 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
+import { emitUserActivityMetric } from '@app/observability';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
@@ -73,6 +74,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { MetricsConfig } from '../../../../config/metrics.config';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -380,6 +382,7 @@ export class UserService {
   }
 
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
+    const startTimeMs = Date.now();
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -433,8 +436,16 @@ export class UserService {
         },
       });
 
+      const elapsedMs = Date.now() - startTimeMs;
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, true);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, true);
+
       return currentActivityProps;
     } catch (error) {
+      const elapsedMs = Date.now() - startTimeMs;
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, false, normalizedError);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, false, normalizedError);
       this.sentryService.instance().captureException(error, {
         level: 'error',
       });
@@ -1074,5 +1085,72 @@ export class UserService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private async emitCurrentActivityPropsMetric(
+    userId: string,
+    durationMs: number,
+    success: boolean,
+    error?: Error,
+  ): Promise<void> {
+    const metrics = this.getMetricsConfig();
+    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+
+    if (!shouldEmitMetrics) {
+      return;
+    }
+
+    try {
+      await emitUserActivityMetric({
+        namespace: metrics.namespace,
+        environment: metrics.environment,
+        service: metrics.service,
+        operation: 'getUserCurrentActivityProps',
+        durationMs,
+        success,
+        userId,
+        errorName: error?.name,
+        errorMessage: error?.message,
+      });
+    } catch (emitError) {
+      this.verboseLogger.warn(
+        'Failed to emit getUserCurrentActivityProps metric',
+        emitError instanceof Error ? emitError.message : undefined,
+      );
+    }
+  }
+
+  private logCurrentActivityPropsLatency(userId: string, durationMs: number, success: boolean, error?: Error): void {
+    const payload = {
+      event: success ? 'GetUserCurrentActivityPropsLatency' : 'GetUserCurrentActivityPropsError',
+      user_id: userId,
+      durationMs,
+      success,
+      error_name: error?.name,
+      error_message: error?.message,
+    };
+    const serializedPayload = JSON.stringify(payload);
+
+    if (success) {
+      this.verboseLogger.log(serializedPayload);
+      return;
+    }
+
+    const trace = error?.stack || error?.message;
+    this.verboseLogger.error(serializedPayload, trace);
+  }
+
+  private getMetricsConfig(): MetricsConfig {
+    return (
+      this.config.get<MetricsConfig>('metrics') || {
+        emitQueueMetrics: true,
+        emitUserActivityMetrics: true,
+        pollIntervalMs: 60_000,
+        namespace: 'FocusBear/Queues',
+        service: 'api',
+        environment: 'prod',
+        logQueueFailures: true,
+      }
+    );
   }
 }

@@ -158,6 +158,7 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
     return (
       this.configService.get<MetricsConfig>('metrics') || {
         emitQueueMetrics: true,
+        emitUserActivityMetrics: true,
         pollIntervalMs: 60_000,
         namespace: 'FocusBear/Queues',
         service: 'api',

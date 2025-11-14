@@ -1,8 +1,11 @@
 const path = require('path');
 const { register } = require('tsconfig-paths');
-const tsConfig = require('../tsconfig.json');
+const isDist = __dirname.includes(`${path.sep}dist${path.sep}`);
+const projectRoot = isDist ? path.resolve(__dirname, '..', '..') : path.resolve(__dirname, '..');
+const tsConfigPath = path.join(projectRoot, 'tsconfig.json');
+const tsConfig = require(tsConfigPath);
 
-const baseUrl = path.resolve(__dirname, '..');
+const baseUrl = isDist ? path.resolve(__dirname, '..') : path.resolve(__dirname, '..');
 
 const normalize = (value) => {
   const stripped = value.replace(/^\.\//, '');

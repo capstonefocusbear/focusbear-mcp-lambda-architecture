@@ -140,6 +140,7 @@ describe('EmailProcessor', () => {
       mockJobData.user,
       mockJobData.metrics,
       mockJobData.unsubscribe_token,
+      { variant: 'weekly' },
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
@@ -207,6 +208,7 @@ describe('EmailProcessor', () => {
       mockJobData.user,
       mockJobData.metrics,
       expect.anything(),
+      { variant: 'weekly' },
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',

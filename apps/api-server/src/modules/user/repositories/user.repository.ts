@@ -15,6 +15,22 @@ import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
+  private static readonly EMAIL_USER_SELECT_FIELDS = [
+    'user.id',
+    'user.auth0_id',
+    'user.username',
+    'user.language',
+    'user.timezone',
+    'user.created_at',
+    'user.updated_at',
+    'user.last_completed_sequence_at',
+    'user.last_completed_focus_mode_at',
+    'user.last_completed_sequence_started_at',
+    'user.last_time_stats_updated',
+    'user.metadata',
+    'user.email_frequency',
+  ];
+
   constructor(private readonly dataSource: DataSource) {
     super(dataSource, User);
   }
@@ -498,68 +514,28 @@ export class UserRepository extends BaseRepository<User> {
     return result[0] || null;
   }
 
+  private buildEmailUserQuery() {
+    return this.orm.createQueryBuilder('user').select(UserRepository.EMAIL_USER_SELECT_FIELDS);
+  }
+
   async getUsersForWeeklyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: [
-        'activity_sequences',
-        'activity_sequences.activities',
-        'completed_activity_sequences',
-        'completed_activities',
-        'completed_focus_blocks',
-      ],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
   }
 
   async getUsersForDailyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: EmailFrequency.DAILY,
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: ['activity_sequences', 'completed_activities', 'completed_focus_blocks'],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
   }
 
   async updateEmailFrequency(userId: string, frequency: EmailFrequency): Promise<void> {
@@ -570,61 +546,21 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async getUsersForMonthlyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: In([EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: [
-        'activity_sequences',
-        'activity_sequences.activities',
-        'completed_activity_sequences',
-        'completed_activities',
-        'completed_focus_blocks',
-      ],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
   }
 
   async getUsersForNoProgressEmailsBatch(skip = 0, take = 30, daysThreshold = 7): Promise<User[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
-    return this.orm
-      .createQueryBuilder('user')
-      .select([
-        'user.id',
-        'user.auth0_id',
-        'user.username',
-        'user.language',
-        'user.timezone',
-        'user.created_at',
-        'user.updated_at',
-        'user.last_completed_sequence_at',
-        'user.last_completed_focus_mode_at',
-        'user.last_completed_sequence_started_at',
-        'user.last_time_stats_updated',
-        'user.metadata',
-        'user.email_frequency',
-      ])
+    return this.buildEmailUserQuery()
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })

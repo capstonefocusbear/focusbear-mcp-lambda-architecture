@@ -78,7 +78,12 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
   } catch (error) {
     throw error;
   } finally {
-    const environment = process.env.APP_ENV || process.env.SENTRY_ENV || process.env.NODE_ENV || 'development';
+    const environment =
+      process.env.METRICS_ENVIRONMENT ||
+      process.env.APP_ENV ||
+      process.env.SENTRY_ENV ||
+      process.env.NODE_ENV ||
+      'prod';
     const service = process.env.CRON_METRICS_SERVICE || 'cron';
     const namespace = process.env.CRON_METRICS_NAMESPACE || 'FocusBear/Cron';
 

@@ -23,6 +23,7 @@ async function runDailyProgressEmailsCronJob() {
 
   let emailsQueued = 0;
   let usersConsidered = 0;
+  let failedEmails = 0;
   try {
     console.log('Starting daily progress emails cron job...');
 
@@ -36,6 +37,7 @@ async function runDailyProgressEmailsCronJob() {
     while (true) {
       const batch = await userRepository.getUsersForDailyEmailsBatch(skip, BATCH_SIZE);
       if (batch.length === 0) break;
+      usersConsidered += batch.length;
       const batchMemory = process.memoryUsage();
       console.log(
          `Processing batch ${batchNum} (${batch.length} users) - Memory: ${Math.round(batchMemory.heapUsed / 1024 / 1024)}MB heap`
@@ -47,11 +49,7 @@ async function runDailyProgressEmailsCronJob() {
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
           const userWithEmail = { ...user, email };
 
-          // For daily emails, calculate "weekly" progress for the past 7 days
-          const weekStart = new Date();
-          weekStart.setDate(weekStart.getDate() - 7);
-
-          const metrics = await userProgressMetricsService.calculateWeeklyProgress(user, weekStart);
+          const metrics = await userProgressMetricsService.calculateDailyProgress(user);
 
           // Get unsubscribe token
           const { unsubscribe_token } = await userEmailPreferencesService.getEmailPreferences(user.id);
@@ -63,6 +61,7 @@ async function runDailyProgressEmailsCronJob() {
               user: userWithEmail,
               metrics,
               unsubscribe_token,
+              emailType: 'daily',
             },
             {
               attempts: 3,
@@ -77,6 +76,7 @@ async function runDailyProgressEmailsCronJob() {
 
           console.log(`Queued daily progress email for user ${user.id}`);
           emailsQueued += 1;
+          return { success: true };
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -96,7 +96,8 @@ async function runDailyProgressEmailsCronJob() {
         }
       });
 
-      await Promise.all(emailPromises);
+      const results = await Promise.all(emailPromises);
+      failedEmails += results.filter((result) => !result.success).length;
 
       // Delay between batches
       if (batch.length === BATCH_SIZE) {
@@ -111,6 +112,7 @@ async function runDailyProgressEmailsCronJob() {
     return {
       emailsQueued,
       usersConsidered,
+      failedEmails,
     };
   } catch (error) {
     captureErrorWithContext(

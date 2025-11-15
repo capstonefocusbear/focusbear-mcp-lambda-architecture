@@ -17,6 +17,7 @@ import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
 import axios from 'axios';
+import { emitUserActivityMetric } from '@app/observability';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -81,6 +82,11 @@ import { AccountabilityBuddyService } from '../../../accountability-buddy/servic
 
 // Mock axios and set the type
 jest.mock('axios');
+jest.mock('@app/observability', () => ({
+  emitQueueMetrics: jest.fn(),
+  emitCronMetrics: jest.fn(),
+  emitUserActivityMetric: jest.fn(),
+}));
 
 describe('UserService', () => {
   let userService: UserService;
@@ -412,8 +418,13 @@ describe('UserService', () => {
   });
 
   describe('getUserCurrentActivityProps', () => {
+    let emitMetricMock: jest.MockedFunction<typeof emitUserActivityMetric>;
+
     beforeEach(() => {
       jest.clearAllMocks();
+      emitMetricMock = emitUserActivityMetric as jest.MockedFunction<typeof emitUserActivityMetric>;
+      emitMetricMock.mockReset();
+      emitMetricMock.mockResolvedValue(undefined);
     });
 
     it('negative: if there is no user throw NotFoundExcaption', async () => {
@@ -492,6 +503,47 @@ describe('UserService', () => {
       const response = await userService.getUserCurrentActivityProps(userDummy.id);
 
       expect(response.current_activity).toBe(ActivityDummy);
+    });
+
+    it('positive: emits latency metric metadata on success', async () => {
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        ...userDummy,
+        current_activity: null,
+      });
+
+      await userService.getUserCurrentActivityProps(userDummy.id);
+
+      expect(emitMetricMock).toHaveBeenCalledTimes(1);
+      expect(emitMetricMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'getUserCurrentActivityProps',
+          success: true,
+          durationMs: expect.any(Number),
+        }),
+      );
+    });
+
+    it('negative: emits failure metric and logs structured error metadata', async () => {
+      const error = new Error('db unavailable');
+      UserRepositoryMock.getUserCurrentActivityProps.mockRejectedValueOnce(error);
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+      await expect(userService.getUserCurrentActivityProps(userDummy.id)).rejects.toThrow('db unavailable');
+
+      expect(emitMetricMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'getUserCurrentActivityProps',
+          success: false,
+          durationMs: expect.any(Number),
+          errorMessage: error.message,
+          errorName: error.name,
+        }),
+      );
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('GetUserCurrentActivityPropsError'),
+        expect.stringContaining(error.message),
+      );
+      loggerSpy.mockRestore();
     });
   });
 

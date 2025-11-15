@@ -5,7 +5,7 @@ export class CreateTableUnlockRequests1762952938024 implements MigrationInterfac
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-             CREATE TYPE "unlock_request_status_enum" AS ENUM('pending', 'approved', 'rejected', 'used')
+             CREATE TYPE "unlock_request_status_enum" AS ENUM('pending', 'approved', 'rejected', 'expired')
           `);
 
     await queryRunner.query(`

@@ -7,6 +7,7 @@ export const AccountabilityBuddyRepositoryMock = {
   findUserBuddy: jest.fn(),
   findBuddiesPendingInvitations: jest.fn(),
   deleteBuddyById: jest.fn(),
+  findByBuddyUserId: jest.fn(),
 };
 
 export const UnlockRequestRepositoryMock = {
@@ -18,7 +19,7 @@ export const UnlockRequestRepositoryMock = {
   findByIdAndUserId: jest.fn(),
   findByAccountabilityBuddyIds: jest.fn(),
   findByUserId: jest.fn(),
-  findApprovedByUserId: jest.fn(),
+  findCombinedUnlockRequests: jest.fn(),
 };
 
 export const AccountabilityTokenServiceMock = {

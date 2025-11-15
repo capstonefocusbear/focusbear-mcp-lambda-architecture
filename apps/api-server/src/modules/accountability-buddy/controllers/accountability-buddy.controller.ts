@@ -9,6 +9,8 @@ import { InviteBuddyDto } from '../dto/invite-buddy.dto';
 import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
 import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
 import { GetUnlockRequestsQueryDto } from '../dto/get-unlock-requests-query.dto';
+import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
+import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
 
 @Controller('accountability-buddy')
 @ApiTags('accountability-buddy')
@@ -70,39 +72,24 @@ export class AccountabilityBuddyController {
     @Query() query: GetUnlockRequestsQueryDto,
     @AuthContext() { user: { id: userId } }: Passport,
   ) {
-    if (query.approved_only) {
-      return this.unlockRequestService.getApprovedUnlockRequests(userId);
-    }
-    return this.unlockRequestService.getUnlockRequests(userId, query.as_buddy || false);
+    return this.unlockRequestService.getUnlockRequests(userId, query);
   }
 
   @Post('unlock-request/:id/approve')
   @ApiResponse({ status: 200, description: 'Unlock request approved by ID (authenticated user)' })
-  async approveUnlockRequestById(
-    @Param('id') requestId: string,
-    @AuthContext() { user: { id: buddyUserId } }: Passport,
+  async approveUnlockRequest(
+    @Param() approveUnlockRequestParamDto: ApproveUnlockRequestParamDto,
+    @AuthContext() { user: { id: userId } }: Passport,
   ) {
-    return this.unlockRequestService.approveUnlockRequestById(requestId, buddyUserId);
+    return this.unlockRequestService.approveUnlockRequest(approveUnlockRequestParamDto, userId);
   }
 
   @Post('unlock-request/reject')
   @ApiResponse({ status: 200, description: 'Unlock request rejected successfully' })
   async rejectUnlockRequest(
-    @Body() { token }: { token: string },
-    @AuthContext() { user: { id: buddyUserId } }: Passport,
+    @Body() rejectUnlockRequestDto: RejectUnlockRequestDto,
+    @AuthContext() { user: { id: userId } }: Passport,
   ) {
-    return this.unlockRequestService.rejectUnlockRequest(token, buddyUserId);
-  }
-
-  @Get('unlock-requests/status')
-  @ApiResponse({ status: 200, description: 'Status of approved unlock requests for client polling' })
-  async getUnlockRequestStatus(@AuthContext() { user: { id: userId } }: Passport) {
-    return this.unlockRequestService.getApprovedUnlockRequests(userId);
-  }
-
-  @Post('unlock-request/:id/mark-used')
-  @ApiResponse({ status: 200, description: 'Unlock request marked as used' })
-  async markUnlockRequestAsUsed(@Param('id') requestId: string, @AuthContext() { user: { id: userId } }: Passport) {
-    return this.unlockRequestService.markUnlockRequestAsUsed(requestId, userId);
+    return this.unlockRequestService.rejectUnlockRequest(rejectUnlockRequestDto, userId);
   }
 }

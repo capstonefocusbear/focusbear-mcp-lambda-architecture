@@ -17,7 +17,10 @@ import { InvitationStatus } from '../domain/invitation-status.enum';
 import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
 import { User } from '../../user/entities/user.entity';
 import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
+import { GetUnlockRequestsQueryDto } from '../dto/get-unlock-requests-query.dto';
 import { UnlockRequestApprovalPayload } from '../domain/unlock-request-approval-payload.model';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
 import {
   UnlockRequestRepositoryMock,
   AccountabilityBuddyRepositoryMock,
@@ -230,8 +233,8 @@ describe('UnlockRequestService', () => {
     it('should throw UnauthorizedException for invalid token', async () => {
       AccountabilityTokenServiceMock.verifyApprovalToken.mockRejectedValue(new Error('Invalid token'));
 
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow(UnauthorizedException);
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow(
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(UnauthorizedException);
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(
         'Invalid or expired approval token',
       );
     });
@@ -239,8 +242,8 @@ describe('UnlockRequestService', () => {
     it('should throw UnauthorizedException when request is not for the user', async () => {
       AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
 
-      await expect(service.rejectUnlockRequest(token, 'different-user-id')).rejects.toThrow(UnauthorizedException);
-      await expect(service.rejectUnlockRequest(token, 'different-user-id')).rejects.toThrow(
+      await expect(service.rejectUnlockRequest({ token }, 'different-user-id')).rejects.toThrow(UnauthorizedException);
+      await expect(service.rejectUnlockRequest({ token }, 'different-user-id')).rejects.toThrow(
         'This request is not for your account',
       );
     });
@@ -249,8 +252,8 @@ describe('UnlockRequestService', () => {
       AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
       UnlockRequestRepositoryMock.findById.mockResolvedValue(null);
 
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow(NotFoundException);
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow('Unlock request not found');
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(NotFoundException);
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow('Unlock request not found');
     });
 
     it('should throw BadRequestException when request is not pending', async () => {
@@ -262,8 +265,8 @@ describe('UnlockRequestService', () => {
       AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
       UnlockRequestRepositoryMock.findById.mockResolvedValue(approvedRequest);
 
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow(BadRequestException);
-      await expect(service.rejectUnlockRequest(token, buddyUserId)).rejects.toThrow(
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(BadRequestException);
+      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(
         'Unlock request is already approved',
       );
     });
@@ -279,7 +282,7 @@ describe('UnlockRequestService', () => {
       UnlockRequestRepositoryMock.update.mockResolvedValueOnce(rejectedRequest);
       AccountabilityNotificationServiceMock.createUnlockRequestRejectedNotification.mockResolvedValueOnce({} as any);
 
-      const result = await service.rejectUnlockRequest(token, buddyUserId);
+      const result = await service.rejectUnlockRequest({ token }, buddyUserId);
 
       expect(result).toEqual(rejectedRequest);
       expect(UnlockRequestRepositoryMock.update).toHaveBeenCalled();
@@ -288,54 +291,158 @@ describe('UnlockRequestService', () => {
   });
 
   describe('getUnlockRequests', () => {
-    it('should return empty array when user has no buddies (asBuddy=true)', async () => {
-      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce([]);
+    const createQuery = (overrides?: Partial<GetUnlockRequestsQueryDto>): GetUnlockRequestsQueryDto => {
+      const query = Object.assign(new GetUnlockRequestsQueryDto(), {
+        page: 1,
+        take: 10,
+        order: PageOrder.DESC,
+        ...overrides,
+      });
+      return query;
+    };
 
-      const result = await service.getUnlockRequests(userId, true);
+    it('should return both sent and received requests', async () => {
+      const relationships = [mockAccountabilityBuddy];
+      const allRequests = [
+        mockUnlockRequest,
+        new UnlockRequest({
+          ...mockUnlockRequest,
+          id: 'received-request-id',
+          user_id: buddyUserId,
+        }),
+      ];
 
-      expect(result).toEqual([]);
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+
+      const query = createQuery();
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result).toBeInstanceOf(PaginationDto);
+      expect(result.data.length).toBe(2);
+      expect(result.meta.itemCount).toBe(2);
+      expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
+        userId,
+        InvitationStatus.ACCEPTED,
+      );
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [mockAccountabilityBuddy.id],
+        expect.objectContaining({}),
+        expect.objectContaining({
+          skip: 0,
+          take: 10,
+          order: PageOrder.DESC,
+        }),
+      );
     });
 
-    it('should return unlock requests for buddies (asBuddy=true)', async () => {
-      const buddies = [mockAccountabilityBuddy];
-      const requests = [mockUnlockRequest];
-
-      AccountabilityBuddyRepositoryMock.findBuddiesByUserId.mockResolvedValueOnce(buddies);
-      UnlockRequestRepositoryMock.findByAccountabilityBuddyIds.mockResolvedValueOnce(requests);
-
-      const result = await service.getUnlockRequests(userId, true);
-
-      expect(result).toEqual(requests);
-    });
-
-    it('should return unlock requests for user (asBuddy=false)', async () => {
-      const requests = [mockUnlockRequest];
-
-      UnlockRequestRepositoryMock.findByUserId.mockResolvedValueOnce(requests);
-
-      const result = await service.getUnlockRequests(userId, false);
-
-      expect(result).toEqual(requests);
-    });
-  });
-
-  describe('getApprovedUnlockRequests', () => {
-    it('should return approved unlock requests for user', async () => {
+    it('should filter by status', async () => {
       const approvedRequest = new UnlockRequest({
         ...mockUnlockRequest,
         status: UnlockRequestStatus.APPROVED,
       });
 
-      UnlockRequestRepositoryMock.findApprovedByUserId.mockResolvedValueOnce([approvedRequest]);
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[approvedRequest], 1]);
 
-      const result = await service.getApprovedUnlockRequests(userId);
+      const query = createQuery({ status: UnlockRequestStatus.APPROVED });
+      const result = await service.getUnlockRequests(userId, query);
 
-      expect(result).toEqual([approvedRequest]);
-      expect(UnlockRequestRepositoryMock.findApprovedByUserId).toHaveBeenCalledWith(userId);
+      expect(result.data[0].status).toBe(UnlockRequestStatus.APPROVED);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [],
+        expect.objectContaining({ status: UnlockRequestStatus.APPROVED }),
+        expect.any(Object),
+      );
+    });
+
+    it('should filter by date range', async () => {
+      const requests = [mockUnlockRequest];
+      const createdFrom = new Date('2024-01-01').toISOString();
+      const createdTo = new Date('2024-12-31').toISOString();
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([requests, 1]);
+
+      const query = createQuery({ created_from: createdFrom, created_to: createdTo });
+      await service.getUnlockRequests(userId, query);
+
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [],
+        expect.objectContaining({ created_from: createdFrom, created_to: createdTo }),
+        expect.any(Object),
+      );
+    });
+
+    it('should return only sent requests when user has no relationships', async () => {
+      const sentRequests = [mockUnlockRequest];
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([sentRequests, 1]);
+
+      const query = createQuery();
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data).toEqual(sentRequests);
+      expect(result.meta.itemCount).toBe(1);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [],
+        expect.any(Object),
+        expect.any(Object),
+      );
+    });
+
+    it('should apply pagination', async () => {
+      const relationships = [mockAccountabilityBuddy];
+      const paginatedRequests = [mockUnlockRequest];
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([paginatedRequests, 10]);
+
+      const query = createQuery({ page: 2, take: 5 });
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.meta.page).toBe(2);
+      expect(result.meta.take).toBe(5);
+      // Pagination is now applied at database level
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [mockAccountabilityBuddy.id],
+        expect.any(Object),
+        expect.objectContaining({
+          skip: 5, // (page 2 - 1) * take 5
+          take: 5,
+          order: PageOrder.DESC,
+        }),
+      );
+    });
+
+    it('should combine and deduplicate when fetching both sent and received', async () => {
+      const allRequests = [
+        mockUnlockRequest,
+        new UnlockRequest({
+          ...mockUnlockRequest,
+          id: 'different-id',
+        }),
+      ];
+      const relationships = [mockAccountabilityBuddy];
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+
+      const query = createQuery();
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(2);
+      expect(result.meta.itemCount).toBe(2);
     });
   });
 
-  describe('approveUnlockRequestById', () => {
+  describe('approveUnlockRequest', () => {
     const requestWithBuddy = new UnlockRequest({
       ...mockUnlockRequest,
       accountability_buddy: mockAccountabilityBuddy,
@@ -344,8 +451,10 @@ describe('UnlockRequestService', () => {
     it('should throw NotFoundException when unlock request not found', async () => {
       UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(null);
 
-      await expect(service.approveUnlockRequestById(unlockRequestId, buddyUserId)).rejects.toThrow(NotFoundException);
-      await expect(service.approveUnlockRequestById(unlockRequestId, buddyUserId)).rejects.toThrow(
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
         'Unlock request not found',
       );
     });
@@ -353,10 +462,10 @@ describe('UnlockRequestService', () => {
     it('should throw UnauthorizedException when user is not authorized', async () => {
       UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(requestWithBuddy);
 
-      await expect(service.approveUnlockRequestById(unlockRequestId, 'different-user-id')).rejects.toThrow(
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, 'different-user-id')).rejects.toThrow(
         UnauthorizedException,
       );
-      await expect(service.approveUnlockRequestById(unlockRequestId, 'different-user-id')).rejects.toThrow(
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, 'different-user-id')).rejects.toThrow(
         'You are not authorized to approve this unlock request',
       );
     });
@@ -369,8 +478,10 @@ describe('UnlockRequestService', () => {
 
       UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(approvedRequest);
 
-      await expect(service.approveUnlockRequestById(unlockRequestId, buddyUserId)).rejects.toThrow(BadRequestException);
-      await expect(service.approveUnlockRequestById(unlockRequestId, buddyUserId)).rejects.toThrow(
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
         'Unlock request is already approved',
       );
     });
@@ -389,53 +500,13 @@ describe('UnlockRequestService', () => {
       AccountabilityEmailServiceMock.sendUnlockRequestApprovedEmail.mockResolvedValueOnce(undefined);
       AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification.mockResolvedValueOnce({} as any);
 
-      const result = await service.approveUnlockRequestById(unlockRequestId, buddyUserId);
+      const result = await service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId);
 
       expect(result.status).toBe(UnlockRequestStatus.APPROVED);
       expect(result.approved_at).toBeDefined();
       expect(UnlockRequestRepositoryMock.update).toHaveBeenCalled();
       expect(AccountabilityEmailServiceMock.sendUnlockRequestApprovedEmail).toHaveBeenCalledWith(mockAuth0User.email);
       expect(AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification).toHaveBeenCalled();
-    });
-  });
-
-  describe('markUnlockRequestAsUsed', () => {
-    it('should throw NotFoundException when unlock request not found', async () => {
-      UnlockRequestRepositoryMock.findByIdAndUserId.mockResolvedValue(null);
-
-      await expect(service.markUnlockRequestAsUsed(unlockRequestId, userId)).rejects.toThrow(NotFoundException);
-      await expect(service.markUnlockRequestAsUsed(unlockRequestId, userId)).rejects.toThrow(
-        'Unlock request not found',
-      );
-    });
-
-    it('should throw BadRequestException when request is not approved', async () => {
-      UnlockRequestRepositoryMock.findByIdAndUserId.mockResolvedValue(mockUnlockRequest);
-
-      await expect(service.markUnlockRequestAsUsed(unlockRequestId, userId)).rejects.toThrow(BadRequestException);
-      await expect(service.markUnlockRequestAsUsed(unlockRequestId, userId)).rejects.toThrow(
-        'Only approved unlock requests can be marked as used',
-      );
-    });
-
-    it('should successfully mark an unlock request as used', async () => {
-      const approvedRequest = new UnlockRequest({
-        ...mockUnlockRequest,
-        status: UnlockRequestStatus.APPROVED,
-      });
-
-      const usedRequest = new UnlockRequest({
-        ...approvedRequest,
-        status: UnlockRequestStatus.USED,
-      });
-
-      UnlockRequestRepositoryMock.findByIdAndUserId.mockResolvedValueOnce(approvedRequest);
-      UnlockRequestRepositoryMock.update.mockResolvedValueOnce(usedRequest);
-
-      const result = await service.markUnlockRequestAsUsed(unlockRequestId, userId);
-
-      expect(result.status).toBe(UnlockRequestStatus.USED);
-      expect(UnlockRequestRepositoryMock.update).toHaveBeenCalled();
     });
   });
 });

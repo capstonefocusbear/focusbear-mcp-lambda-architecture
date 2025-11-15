@@ -15,7 +15,13 @@ import { User } from '../../user/entities/user.entity';
 import { ACCOUNTABILITY_BUDDY } from '../../../shared/utils/constants';
 import { UnlockRequestApprovalPayload } from '../domain/unlock-request-approval-payload.model';
 import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
+import { GetUnlockRequestsQueryDto } from '../dto/get-unlock-requests-query.dto';
 import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
+import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
+import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
 
 @Injectable()
 export class UnlockRequestService {
@@ -102,16 +108,23 @@ export class UnlockRequestService {
     }
   }
 
-  async rejectUnlockRequest(token: string, buddyUserId: string): Promise<UnlockRequest> {
+  async rejectUnlockRequest(rejectUnlockRequestDto: RejectUnlockRequestDto, userId: string): Promise<UnlockRequest> {
     try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Rejecting unlock request',
+        data: { userId, ...rejectUnlockRequestDto },
+      });
+
       let payload: UnlockRequestApprovalPayload;
       try {
-        payload = await this.tokenService.verifyApprovalToken(token);
+        payload = await this.tokenService.verifyApprovalToken(rejectUnlockRequestDto.token);
       } catch (error) {
         throw new UnauthorizedException('Invalid or expired approval token');
       }
 
-      if (payload.buddy_user_id !== buddyUserId) {
+      if (payload.buddy_user_id !== userId) {
         throw new UnauthorizedException('This request is not for your account');
       }
 
@@ -153,59 +166,69 @@ export class UnlockRequestService {
     }
   }
 
-  async getUnlockRequests(userId: string, asBuddy = false): Promise<UnlockRequest[]> {
+  async getUnlockRequests(userId: string, query: GetUnlockRequestsQueryDto): Promise<PaginationDto<UnlockRequest>> {
     try {
-      if (asBuddy) {
-        const buddies = await this.accountabilityBuddyRepository.findBuddiesByUserId(userId, InvitationStatus.ACCEPTED);
+      const filters = {
+        status: query.status,
+        created_from: query.created_from,
+        created_to: query.created_to,
+      };
 
-        if (buddies.length === 0) {
-          return [];
-        }
+      // Find relationships where the user is the buddy (where buddy_user_id = userId)
+      const relationships = await this.accountabilityBuddyRepository.findByBuddyUserId(
+        userId,
+        InvitationStatus.ACCEPTED,
+      );
 
-        const buddyIds = buddies.map((b) => b.id);
-        const requests = await this.unlockRequestRepository.findByAccountabilityBuddyIds(
-          buddyIds,
-          UnlockRequestStatus.PENDING,
-        );
+      const relationshipIds = relationships.map((r) => r.id);
 
-        return requests;
-      }
-      const requests = await this.unlockRequestRepository.findByUserId(userId);
+      const [allRequests, totalCount] = await this.unlockRequestRepository.findCombinedUnlockRequests(
+        userId,
+        relationshipIds,
+        filters,
+        {
+          skip: query.skip || 0,
+          take: query.take || 10,
+          order: query.order || PageOrder.DESC,
+        },
+      );
 
-      return requests;
+      const meta = new PaginationMetaDto({
+        paginationOptionsDto: {
+          page: query.page || 1,
+          take: query.take || 10,
+          order: query.order || PageOrder.DESC,
+          skip: query.skip || 0,
+        },
+        itemCount: totalCount,
+      });
+
+      return new PaginationDto(allRequests, meta);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
   }
 
-  async getApprovedUnlockRequests(userId: string): Promise<UnlockRequest[]> {
-    try {
-      const requests = await this.unlockRequestRepository.findApprovedByUserId(userId);
-
-      return requests;
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
-    }
-  }
-
-  async approveUnlockRequestById(requestId: string, buddyUserId: string): Promise<UnlockRequest> {
+  async approveUnlockRequest(
+    approveUnlockRequestParamDto: ApproveUnlockRequestParamDto,
+    userId: string,
+  ): Promise<UnlockRequest> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Approving unlock request by ID',
-        data: { requestId, buddyUserId },
+        data: { userId, ...approveUnlockRequestParamDto },
       });
 
-      const unlockRequest = await this.unlockRequestRepository.findByIdWithRelations(requestId);
+      const unlockRequest = await this.unlockRequestRepository.findByIdWithRelations(approveUnlockRequestParamDto.id);
 
       if (!unlockRequest) {
         throw new NotFoundException('Unlock request not found');
       }
 
-      if (unlockRequest.accountability_buddy?.buddy_user_id !== buddyUserId) {
+      if (unlockRequest.accountability_buddy?.buddy_user_id !== userId) {
         throw new UnauthorizedException('You are not authorized to approve this unlock request');
       }
 
@@ -236,27 +259,6 @@ export class UnlockRequestService {
       ]);
 
       return updatedRequest;
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
-      throw error;
-    }
-  }
-
-  async markUnlockRequestAsUsed(requestId: string, userId: string): Promise<UnlockRequest> {
-    try {
-      const unlockRequest = await this.unlockRequestRepository.findByIdAndUserId(requestId, userId);
-
-      if (!unlockRequest) {
-        throw new NotFoundException('Unlock request not found');
-      }
-
-      if (unlockRequest.status !== UnlockRequestStatus.APPROVED) {
-        throw new BadRequestException('Only approved unlock requests can be marked as used');
-      }
-
-      unlockRequest.status = UnlockRequestStatus.USED;
-
-      return await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

@@ -51,4 +51,15 @@ export class AccountabilityBuddyRepository extends BaseRepository<Accountability
       where: { user_id: userId, invitation_status: status },
     });
   }
+
+  async findByBuddyUserId(buddyUserId: string, status?: InvitationStatus): Promise<AccountabilityBuddy[]> {
+    const where: FindOptionsWhere<AccountabilityBuddy> = { buddy_user_id: buddyUserId };
+    if (status) {
+      where.invitation_status = status;
+    }
+    return this.orm.find({
+      where,
+      order: { created_at: 'DESC' },
+    });
+  }
 }

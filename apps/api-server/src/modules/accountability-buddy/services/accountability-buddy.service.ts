@@ -13,6 +13,7 @@ import { User } from '../../user/entities/user.entity';
 import { ACCOUNTABILITY_BUDDY, EMAIL_SENDER_NAME } from '../../../shared/utils/constants';
 import { BuddyInvitationPayload } from '../domain/buddy-invitation-payload.model';
 import { isValidEmail } from '../../../shared/utils/helpers';
+import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
 
 @Injectable()
 export class AccountabilityBuddyService {
@@ -168,6 +169,22 @@ export class AccountabilityBuddyService {
   async getBuddies(userId: string): Promise<AccountabilityBuddy[]> {
     try {
       return await this.accountabilityBuddyRepository.findBuddiesByUserId(userId);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getReceivedInvitations(userId: string, query: GetInvitationsQueryDto): Promise<AccountabilityBuddy[]> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting received invitations',
+        data: { userId, ...query },
+      });
+
+      return await this.accountabilityBuddyRepository.findByBuddyUserId(userId, query.status);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

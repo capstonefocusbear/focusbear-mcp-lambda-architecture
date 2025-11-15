@@ -354,6 +354,70 @@ describe('AccountabilityBuddyService', () => {
     });
   });
 
+  describe('getReceivedInvitations', () => {
+    const receivedInvitation = new AccountabilityBuddy({
+      ...mockAccountabilityBuddy,
+      user_id: 'other-user-id',
+      buddy_user_id: userId,
+      invitation_status: InvitationStatus.PENDING,
+    });
+
+    it('should return all received invitations when no status filter is provided', async () => {
+      const invitations = [receivedInvitation];
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(invitations);
+
+      const result = await service.getReceivedInvitations(userId, {});
+
+      expect(result).toEqual(invitations);
+      expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(userId, undefined);
+    });
+
+    it('should return received invitations filtered by status', async () => {
+      const pendingInvitations = [receivedInvitation];
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(pendingInvitations);
+
+      const result = await service.getReceivedInvitations(userId, { status: InvitationStatus.PENDING });
+
+      expect(result).toEqual(pendingInvitations);
+      expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
+        userId,
+        InvitationStatus.PENDING,
+      );
+    });
+
+    it('should return accepted invitations when status filter is accepted', async () => {
+      const acceptedInvitation = new AccountabilityBuddy({
+        ...receivedInvitation,
+        invitation_status: InvitationStatus.ACCEPTED,
+      });
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([acceptedInvitation]);
+
+      const result = await service.getReceivedInvitations(userId, { status: InvitationStatus.ACCEPTED });
+
+      expect(result).toEqual([acceptedInvitation]);
+      expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
+        userId,
+        InvitationStatus.ACCEPTED,
+      );
+    });
+
+    it('should return empty array when no invitations are found', async () => {
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+
+      const result = await service.getReceivedInvitations(userId, {});
+
+      expect(result).toEqual([]);
+      expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(userId, undefined);
+    });
+
+    it('should handle errors and rethrow them', async () => {
+      const error = new Error('Database error');
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockRejectedValueOnce(error);
+
+      await expect(service.getReceivedInvitations(userId, {})).rejects.toThrow('Database error');
+    });
+  });
+
   describe('removeBuddy', () => {
     it('should throw NotFoundException when buddy relationship not found', async () => {
       AccountabilityBuddyRepositoryMock.findUserBuddy.mockResolvedValueOnce(null);

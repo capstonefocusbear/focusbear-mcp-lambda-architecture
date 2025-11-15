@@ -13,6 +13,7 @@ interface CompiledTemplate {
 
 interface TemplateData {
   userName: string;
+  variant?: string;
   headerTitle: string;
   headerSubtitle: string;
   footerText: string;
@@ -352,8 +353,16 @@ export class EmailTemplateCompilerService {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailSubject(templateType: string, data: TemplateData): string {
+    if (templateType === 'weekly-progress') {
+      if (data.variant === 'daily') {
+        return '🐻 Your Daily Progress Report at Focus Bear';
+      }
+      if (data.variant === 'weekly' || !data.variant) {
+        return '🐻 Your Weekly Progress Report at Focus Bear';
+      }
+    }
+
     const subjects = {
-      'weekly-progress': '🐻 Your Weekly Progress Report at Focus Bear',
       'monthly-progress': '🐻 Your Monthly Progress Report at Focus Bear',
       'no-progress': '🐻 We miss you at Focus Bear!',
       'inactivity-warning': '⚠️ Important: Your Focus Bear account will be deleted soon',

@@ -41,6 +41,7 @@ export class ProgressEmailTemplateService {
 
     const templateData = {
       userName,
+      variant,
       headerTitle:
         this.i18nService.t(
           isDaily ? 'common.email_daily_progress_header_title' : 'common.email_weekly_progress_header_title',

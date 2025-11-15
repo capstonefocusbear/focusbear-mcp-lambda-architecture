@@ -30,6 +30,7 @@ import {
   userDummy,
 } from '../../../../../test/dummies';
 import {
+  AccountabilityBuddyServiceMock,
   Auth0ManagementServiceMock,
   CompletedActivityRepositoryMock,
   CompletedFocusBlockRepositoryMock,
@@ -77,6 +78,7 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { maskEmail } from '../../../../shared/utils/helpers';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 // Mock axios and set the type
 jest.mock('axios');
@@ -123,8 +125,11 @@ describe('UserService', () => {
           useValue: QueueMock,
         },
         CompletedActivitySequenceService,
+        AccountabilityBuddyService,
       ],
     })
+      .overrideProvider(AccountabilityBuddyService)
+      .useValue(AccountabilityBuddyServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .overrideProvider(RevenueCatService)

@@ -20,4 +20,16 @@ export const tokensConfig = registerAs('tokens', (): { [key: string]: IJwtOption
       expiresIn: '7 days',
     },
   },
+  accountability_buddy_invitation: {
+    secret: process.env.ACCOUNTABILITY_BUDDY_INVITATION_SECRET,
+    signOptions: {
+      expiresIn: '7 days',
+    },
+  },
+  unlock_request_approval: {
+    secret: process.env.UNLOCK_REQUEST_APPROVAL_SECRET,
+    signOptions: {
+      expiresIn: '24 hours',
+    },
+  },
 }));

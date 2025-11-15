@@ -62,5 +62,13 @@
   "email_complete_one_habit": "Completa solo un pequeño hábito",
   "email_small_step_forward": "Eso es todo. ¡Un pequeño paso adelante sigue siendo un paso adelante! 🧸",
   "email_get_back_on_track": "Volver al Buen Camino",
-  "email_we_believe_in_you": "¡Creemos en ti!"
+  "email_we_believe_in_you": "¡Creemos en ti!",
+  "accountability_buddy_invitation_title": "{userName} quiere que seas su compañero de responsabilidad en {appName}",
+  "accountability_buddy_invitation_description": "Haz clic en el enlace para aceptar la invitación",
+  "accountability_buddy_invitation_accepted_title": "{buddyName} aceptó tu invitación de compañero de responsabilidad",
+  "accountability_buddy_invitation_accepted_description": "Ahora puedes solicitar desbloqueos de dispositivo a este compañero",
+  "accountability_buddy_unlock_request_title": "{userName} está solicitando desbloqueo de dispositivo",
+  "accountability_buddy_unlock_rejected_title": "Tu solicitud de desbloqueo fue rechazada",
+  "accountability_buddy_unlock_rejected_description": "Tu compañero de responsabilidad rechazó tu solicitud de desbloqueo",
+  "accountability_buddy_unlock_approved_title": "Tu compañero de responsabilidad aprobó tu solicitud de desbloqueo"
 }

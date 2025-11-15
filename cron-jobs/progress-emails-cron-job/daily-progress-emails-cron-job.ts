@@ -49,11 +49,7 @@ async function runDailyProgressEmailsCronJob() {
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
           const userWithEmail = { ...user, email };
 
-          // For daily emails, calculate "weekly" progress for the past 7 days
-          const weekStart = new Date();
-          weekStart.setDate(weekStart.getDate() - 7);
-
-          const metrics = await userProgressMetricsService.calculateWeeklyProgress(user, weekStart);
+          const metrics = await userProgressMetricsService.calculateDailyProgress(user);
 
           // Get unsubscribe token
           const { unsubscribe_token } = await userEmailPreferencesService.getEmailPreferences(user.id);
@@ -65,6 +61,7 @@ async function runDailyProgressEmailsCronJob() {
               user: userWithEmail,
               metrics,
               unsubscribe_token,
+              emailType: 'daily',
             },
             {
               attempts: 3,

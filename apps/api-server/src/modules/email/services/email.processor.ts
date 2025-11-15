@@ -32,13 +32,15 @@ export class EmailProcessor {
   @Process('send-progress-email')
   async handleProgressEmail(job: Job) {
     try {
-      const { user, metrics, unsubscribe_token } = job.data;
+      const { user, metrics, unsubscribe_token, emailType } = job.data;
+      const variant = emailType === 'daily' ? 'daily' : 'weekly';
 
       // Generate email content
       const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
         user,
         metrics,
         unsubscribe_token,
+        { variant },
       );
 
       // Send email via SendGrid

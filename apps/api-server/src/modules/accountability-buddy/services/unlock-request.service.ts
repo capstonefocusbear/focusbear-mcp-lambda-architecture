@@ -168,6 +168,13 @@ export class UnlockRequestService {
 
   async getUnlockRequests(userId: string, query: GetUnlockRequestsQueryDto): Promise<PaginationDto<UnlockRequest>> {
     try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting unlock requests',
+        data: { userId, ...query },
+      });
+
       const filters = {
         status: query.status,
         created_from: query.created_from,

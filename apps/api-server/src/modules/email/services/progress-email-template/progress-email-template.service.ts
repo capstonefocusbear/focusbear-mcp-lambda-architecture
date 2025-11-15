@@ -47,7 +47,9 @@ export class ProgressEmailTemplateService {
       footerText:
         this.i18nService.t('common.email_weekly_progress_footer_text', { lang: userLang }) || 'Keep up the great work!',
       unsubscribeText:
-        this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Manage email preferences',
+        this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Unsubscribe from these emails',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
       apiUrl: process.env.API_URL || '',
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,

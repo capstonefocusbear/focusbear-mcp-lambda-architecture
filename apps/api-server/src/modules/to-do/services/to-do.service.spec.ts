@@ -251,6 +251,7 @@ describe('toDoService', () => {
       expect(response.meta).toEqual({
         page: 1,
         take: 10,
+        order: 'ASC',
         itemCount: 25,
         pageCount: 3, // Math.ceil(25/10) = 3
         hasPreviousPage: false, // page 1
@@ -280,6 +281,7 @@ describe('toDoService', () => {
       expect(response.meta).toEqual({
         page: 3,
         take: 10,
+        order: 'ASC',
         itemCount: 25,
         pageCount: 3, // Math.ceil(25/10) = 3
         hasPreviousPage: true, // page 3 > 1
@@ -309,6 +311,7 @@ describe('toDoService', () => {
       expect(response.meta).toEqual({
         page: 2,
         take: 10,
+        order: 'ASC',
         itemCount: 25,
         pageCount: 3, // Math.ceil(25/10) = 3
         hasPreviousPage: true, // page 2 > 1

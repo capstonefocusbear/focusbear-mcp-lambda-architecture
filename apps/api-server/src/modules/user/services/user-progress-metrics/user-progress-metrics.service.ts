@@ -28,7 +28,9 @@ export class UserProgressMetricsService {
       const startOfWeek = (weekStart ? DateTime.fromJSDate(weekStart).setZone(timezone) : now.startOf('week')).startOf(
         'day',
       );
-      const endOfWeek = startOfWeek.endOf('week');
+
+      // If weekStart is provided (e.g., daily emails for a rolling 7-day window), cap at a 7-day range.
+      const endOfWeek = weekStart ? startOfWeek.plus({ days: 6 }).endOf('day') : startOfWeek.endOf('week');
 
       const weeklyStats = await this.dailyStatsRepository.orm.find({
         where: {

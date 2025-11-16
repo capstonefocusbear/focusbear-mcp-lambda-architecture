@@ -202,6 +202,7 @@ export class UnlockRequestService {
 
       const filters = {
         status: query.status,
+        role: query.role,
         created_from: query.created_from,
         created_to: query.created_to,
       };

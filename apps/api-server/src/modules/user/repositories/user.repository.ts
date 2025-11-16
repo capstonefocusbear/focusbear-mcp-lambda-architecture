@@ -62,25 +62,62 @@ export class UserRepository extends BaseRepository<User> {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      // Batch upsert activity sequences and collect activities for deletion
+      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
+      const sequenceIdsToKeep = sequencesToUpsert.map((seq) => seq.id).filter((seqId) => !!seqId);
+
       await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
-      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id);
-      await queryRunner.manager.delete(CustomRoutine, {
-        user_id: id,
-        id: Not(In(customRoutinesIdsToKeep)),
-      });
+      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id).filter((routineId) => !!routineId);
+
+      // Delete activity sequences that belong to custom routines being deleted
+      // This must happen before deleting the custom routines to avoid orphaned sequences
+      // Only delete sequences that are NOT in the sequencesToUpsert (i.e., sequences for deleted custom routines)
+      if (customRoutinesIdsToKeep.length > 0) {
+        // Get custom routine IDs from sequences that are being kept
+        const keptCustomRoutineIds = new Set(
+          sequencesToUpsert.map((seq) => seq.custom_routine_id).filter((customRoutineId) => !!customRoutineId),
+        );
+
+        // Delete sequences for custom routines that are being removed
+        // Only delete if the sequence is not being kept AND the custom_routine_id is not in the kept list
+        if (keptCustomRoutineIds.size > 0) {
+          await queryRunner.manager.delete(ActivitySequence, {
+            user_id: id,
+            custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
+            id: Not(In(sequenceIdsToKeep)),
+          });
+        } else {
+          // If no custom routine sequences are being kept, delete all sequences with custom_routine_id
+          await queryRunner.manager.delete(ActivitySequence, {
+            user_id: id,
+            custom_routine_id: Not(IsNull()),
+            id: Not(In(sequenceIdsToKeep)),
+          });
+        }
+
+        await queryRunner.manager.delete(CustomRoutine, {
+          user_id: id,
+          id: Not(In(customRoutinesIdsToKeep)),
+        });
+      } else {
+        await queryRunner.manager.delete(ActivitySequence, {
+          user_id: id,
+          custom_routine_id: Not(IsNull()),
+        });
+
+        await queryRunner.manager.delete(CustomRoutine, {
+          user_id: id,
+        });
+      }
 
       await queryRunner.manager.update(User, { id }, { ...updateData });
 
-      // Batch upsert activity sequences and collect activities for deletion
-      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
       // Collect all activity IDs to keep
       const allActivityIds = activitiesData.flatMap(({ activities }) => activities.map((activity) => activity.id));
       const allActivityIdsToKeep = new Set<string>(allActivityIds);
 
-      // Batch upsert all sequences
       await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
 
-      // Batch delete activities
       await queryRunner.manager.delete(Activity, {
         user_id: id,
         id: Not(In(Array.from(allActivityIdsToKeep))),

@@ -249,12 +249,28 @@ export class UserSettingsService {
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
       if (custom_routines?.length) {
-        customRoutines = custom_routines?.map(({ standalone_activities, activity_sequence_id, ...rest }) => ({
-          ...rest,
-          user_id,
-        }));
+        // First, ensure all custom routines have IDs (generate if missing)
+        const customRoutinesWithIds = custom_routines.map((routine) => {
+          if (!routine.id) {
+            return { ...routine, id: randomUUID() };
+          }
+          return routine;
+        });
+
+        // Create CustomRoutine instances for saving (without standalone_activities)
+        customRoutines = customRoutinesWithIds.map(({ standalone_activities, activity_sequence_id, ...rest }) => {
+          return new CustomRoutine(
+            {
+              ...rest,
+              user_id,
+            },
+            { generateId: false }, // ID already set above
+          );
+        });
+
+        // Use the DTOs with IDs for deserializing activities
         deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
-          custom_routines,
+          customRoutinesWithIds,
           user_id,
         );
       }

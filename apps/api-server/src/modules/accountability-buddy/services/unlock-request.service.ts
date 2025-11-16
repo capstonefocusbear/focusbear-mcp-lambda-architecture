@@ -23,6 +23,15 @@ import { PageOrder } from '../../../shared/domain/page-order.enum';
 import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
 import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
 
+/**
+ * Service for managing unlock requests between accountability buddies.
+ *
+ * Note on notification error handling:
+ * Notification and email operations are wrapped in try-catch blocks to ensure core operations
+ * (e.g., creating/approving/rejecting unlock requests) succeed even if notification/email services fail.
+ * This prevents users from being unable to complete critical actions due to transient
+ * notification service issues. Notification failures are logged to Sentry as warnings for monitoring.
+ */
 @Injectable()
 export class UnlockRequestService {
   constructor(
@@ -86,20 +95,28 @@ export class UnlockRequestService {
         args: { userName: requesterAuth0?.name || requesterAuth0?.email },
       });
 
-      await Promise.all([
-        this.emailService.sendUnlockRequestEmail(
-          buddyAuth0.email,
-          approvalUrl,
-          requesterAuth0?.name || requesterAuth0?.email,
-          createUnlockRequestDto.reason,
-        ),
-        this.notificationService.createUnlockRequestNotification(
-          accountabilityBuddy.buddy_user_id,
-          savedRequest.id,
-          approvalUrl,
-          unlockRequestTitle,
-        ),
-      ]);
+      try {
+        await Promise.allSettled([
+          this.emailService.sendUnlockRequestEmail(
+            buddyAuth0.email,
+            approvalUrl,
+            requesterAuth0?.name || requesterAuth0?.email,
+            createUnlockRequestDto.reason,
+          ),
+          this.notificationService.createUnlockRequestNotification(
+            accountabilityBuddy.buddy_user_id,
+            savedRequest.id,
+            approvalUrl,
+            unlockRequestTitle,
+          ),
+        ]);
+      } catch (notificationError) {
+        // Log notification/email failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'create_unlock_request_notification' },
+        });
+      }
 
       return savedRequest;
     } catch (error) {
@@ -152,12 +169,20 @@ export class UnlockRequestService {
         lang: requesterLang,
       });
 
-      await this.notificationService.createUnlockRequestRejectedNotification(
-        payload.user_id,
-        unlockRequest.id,
-        rejectedTitle,
-        rejectedDescription,
-      );
+      try {
+        await this.notificationService.createUnlockRequestRejectedNotification(
+          payload.user_id,
+          unlockRequest.id,
+          rejectedTitle,
+          rejectedDescription,
+        );
+      } catch (notificationError) {
+        // Log notification failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'reject_unlock_request_notification' },
+        });
+      }
 
       return updatedRequest;
     } catch (error) {
@@ -256,14 +281,22 @@ export class UnlockRequestService {
         lang: requesterLang,
       });
 
-      await Promise.all([
-        this.emailService.sendUnlockRequestApprovedEmail(requesterAuth0.email),
-        this.notificationService.createUnlockRequestApprovedNotification(
-          unlockRequest.user_id,
-          unlockRequest.id,
-          approvedTitle,
-        ),
-      ]);
+      try {
+        await Promise.all([
+          this.emailService.sendUnlockRequestApprovedEmail(requesterAuth0.email),
+          this.notificationService.createUnlockRequestApprovedNotification(
+            unlockRequest.user_id,
+            unlockRequest.id,
+            approvedTitle,
+          ),
+        ]);
+      } catch (notificationError) {
+        // Log notification/email failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'approve_unlock_request_notification' },
+        });
+      }
 
       return updatedRequest;
     } catch (error) {

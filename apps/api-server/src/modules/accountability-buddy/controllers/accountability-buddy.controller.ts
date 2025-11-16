@@ -7,6 +7,8 @@ import { AccountabilityBuddyService } from '../services/accountability-buddy.ser
 import { UnlockRequestService } from '../services/unlock-request.service';
 import { InviteBuddyDto } from '../dto/invite-buddy.dto';
 import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
+import { AcceptInvitationByIdDto } from '../dto/accept-invitation-by-id.dto';
+import { RejectInvitationByIdDto } from '../dto/reject-invitation-by-id.dto';
 import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
 import { GetUnlockRequestsQueryDto } from '../dto/get-unlock-requests-query.dto';
 import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
@@ -56,6 +58,30 @@ export class AccountabilityBuddyController {
     @AuthContext() { user: { id: buddyUserId } }: Passport,
   ) {
     return this.accountabilityBuddyService.acceptInvitation(acceptInvitationDto.token, buddyUserId);
+  }
+
+  @Post('invitations/accept')
+  @ApiResponse({ status: 200, description: 'Invitation accepted successfully by ID' })
+  async acceptInvitationById(
+    @Body() acceptInvitationByIdDto: AcceptInvitationByIdDto,
+    @AuthContext() { user: { id: buddyUserId } }: Passport,
+  ) {
+    return this.accountabilityBuddyService.acceptInvitationById(
+      acceptInvitationByIdDto.accountability_buddy_id,
+      buddyUserId,
+    );
+  }
+
+  @Post('invitations/reject')
+  @ApiResponse({ status: 200, description: 'Invitation rejected successfully' })
+  async rejectInvitationById(
+    @Body() rejectInvitationByIdDto: RejectInvitationByIdDto,
+    @AuthContext() { user: { id: buddyUserId } }: Passport,
+  ) {
+    return this.accountabilityBuddyService.rejectInvitationById(
+      rejectInvitationByIdDto.accountability_buddy_id,
+      buddyUserId,
+    );
   }
 
   @Delete(':id')

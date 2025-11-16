@@ -15,6 +15,15 @@ import { BuddyInvitationPayload } from '../domain/buddy-invitation-payload.model
 import { isValidEmail } from '../../../shared/utils/helpers';
 import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
 
+/**
+ * Service for managing accountability buddy relationships and invitations.
+ *
+ * Note on notification error handling:
+ * Notification and email operations are wrapped in try-catch blocks to ensure core operations
+ * (e.g., accepting/rejecting invitations) succeed even if notification/email services fail.
+ * This prevents users from being unable to complete critical actions due to transient
+ * notification service issues. Notification failures are logged to Sentry as warnings for monitoring.
+ */
 @Injectable()
 export class AccountabilityBuddyService {
   constructor(
@@ -94,17 +103,24 @@ export class AccountabilityBuddyService {
         lang: buddyLang,
       });
 
-      await this.emailService.sendBuddyInvitationEmail(buddyEmail, inviteUrl, auth0User?.name);
-
-      // If buddy is registered, notify them
-      if (buddyUserId) {
-        await this.notificationService.createBuddyInvitationNotification(
-          buddyUserId,
-          savedBuddy.id,
-          inviteUrl,
-          invitationTitle,
-          invitationDescription,
-        );
+      try {
+        await this.emailService.sendBuddyInvitationEmail(buddyEmail, inviteUrl, auth0User?.name);
+        // If buddy is registered, notify them
+        if (buddyUserId) {
+          await this.notificationService.createBuddyInvitationNotification(
+            buddyUserId,
+            savedBuddy.id,
+            inviteUrl,
+            invitationTitle,
+            invitationDescription,
+          );
+        }
+      } catch (notificationError) {
+        // Log notification/email failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'invite_buddy_notification' },
+        });
       }
 
       return savedBuddy;
@@ -140,24 +156,32 @@ export class AccountabilityBuddyService {
 
       const updatedBuddy = await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
 
-      const buddyAuth0 = await this.auth0ManagementService.getAuth0User(buddyUserId);
-      const requesterUser = await this.userRepository.orm.findOneBy({ id: payload.user_id });
-      const requesterLang = requesterUser?.language || 'en';
+      try {
+        const buddyAuth0 = await this.auth0ManagementService.getAuth0User(buddyUserId);
+        const requesterUser = await this.userRepository.orm.findOneBy({ id: payload.user_id });
+        const requesterLang = requesterUser?.language || 'en';
 
-      const acceptedTitle = this.i18nService.t('common.accountability_buddy_invitation_accepted_title', {
-        lang: requesterLang,
-        args: { buddyName: buddyAuth0?.name || buddyAuth0?.email },
-      });
-      const acceptedDescription = this.i18nService.t('common.accountability_buddy_invitation_accepted_description', {
-        lang: requesterLang,
-      });
+        const acceptedTitle = this.i18nService.t('common.accountability_buddy_invitation_accepted_title', {
+          lang: requesterLang,
+          args: { buddyName: buddyAuth0?.name || buddyAuth0?.email },
+        });
+        const acceptedDescription = this.i18nService.t('common.accountability_buddy_invitation_accepted_description', {
+          lang: requesterLang,
+        });
 
-      await this.notificationService.createInvitationAcceptedNotification(
-        payload.user_id,
-        accountabilityBuddy.id,
-        acceptedTitle,
-        acceptedDescription,
-      );
+        await this.notificationService.createInvitationAcceptedNotification(
+          payload.user_id,
+          accountabilityBuddy.id,
+          acceptedTitle,
+          acceptedDescription,
+        );
+      } catch (notificationError) {
+        // Log notification failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'accept_invitation_notification' },
+        });
+      }
 
       return updatedBuddy;
     } catch (error) {
@@ -334,6 +358,182 @@ export class AccountabilityBuddyService {
 
     if (exceptionMessage) {
       throw new BadRequestException(exceptionMessage);
+    }
+
+    return accountabilityBuddy;
+  }
+
+  async acceptInvitationById(accountabilityBuddyId: string, buddyUserId: string): Promise<AccountabilityBuddy> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Accepting accountability buddy invitation by ID',
+        data: { accountabilityBuddyId, buddyUserId },
+      });
+
+      const accountabilityBuddy = await this.validateInvitationForUser(
+        accountabilityBuddyId,
+        buddyUserId,
+        true, // requirePending
+      );
+
+      // Check expiration for accept
+      if (accountabilityBuddy.invitation_sent_at) {
+        const daysSinceInvitation =
+          (Date.now() - new Date(accountabilityBuddy.invitation_sent_at).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceInvitation >= ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS) {
+          throw new BadRequestException('This invitation has expired');
+        }
+      }
+
+      // Update buddy_user_id if null
+      if (!accountabilityBuddy.buddy_user_id) {
+        accountabilityBuddy.buddy_user_id = buddyUserId;
+      }
+
+      accountabilityBuddy.invitation_status = InvitationStatus.ACCEPTED;
+      accountabilityBuddy.invitation_responded_at = new Date();
+
+      const updatedBuddy = await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
+
+      try {
+        const buddyAuth0 = await this.auth0ManagementService.getAuth0User(buddyUserId);
+        const requesterUser = await this.userRepository.orm.findOneBy({ id: accountabilityBuddy.user_id });
+        const requesterLang = requesterUser?.language || 'en';
+
+        const acceptedTitle = this.i18nService.t('common.accountability_buddy_invitation_accepted_title', {
+          lang: requesterLang,
+          args: { buddyName: buddyAuth0?.name || buddyAuth0?.email },
+        });
+        const acceptedDescription = this.i18nService.t('common.accountability_buddy_invitation_accepted_description', {
+          lang: requesterLang,
+        });
+
+        await this.notificationService.createInvitationAcceptedNotification(
+          accountabilityBuddy.user_id,
+          accountabilityBuddy.id,
+          acceptedTitle,
+          acceptedDescription,
+        );
+      } catch (notificationError) {
+        // Log notification failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'accept_invitation_notification' },
+        });
+      }
+
+      return updatedBuddy;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async rejectInvitationById(accountabilityBuddyId: string, buddyUserId: string): Promise<AccountabilityBuddy> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Rejecting accountability buddy invitation by ID',
+        data: { accountabilityBuddyId, buddyUserId },
+      });
+
+      // For reject, we allow expired invitations, so requirePending is false
+      const accountabilityBuddy = await this.validateInvitationForUser(
+        accountabilityBuddyId,
+        buddyUserId,
+        false, // requirePending - allow rejecting expired invitations
+      );
+
+      // Update buddy_user_id if null
+      if (!accountabilityBuddy.buddy_user_id) {
+        accountabilityBuddy.buddy_user_id = buddyUserId;
+      }
+
+      accountabilityBuddy.invitation_status = InvitationStatus.REJECTED;
+      accountabilityBuddy.invitation_responded_at = new Date();
+
+      const updatedBuddy = await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
+
+      return updatedBuddy;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  private async validateInvitationForUser(
+    accountabilityBuddyId: string,
+    buddyUserId: string,
+    requirePending: boolean,
+  ): Promise<AccountabilityBuddy> {
+    // Find invitation by ID
+    const accountabilityBuddy = await this.accountabilityBuddyRepository.findBuddyById(accountabilityBuddyId);
+
+    if (!accountabilityBuddy) {
+      throw new NotFoundException('Accountability buddy invitation not found');
+    }
+
+    // Validate user exists
+    await this.validateUser(buddyUserId);
+
+    // Check authorization
+    let isAuthorized = false;
+
+    // Primary check: buddy_user_id matches
+    if (accountabilityBuddy.buddy_user_id === buddyUserId) {
+      isAuthorized = true;
+    } else if (!accountabilityBuddy.buddy_user_id) {
+      // Fallback: if buddy_user_id is null, check email match
+      const user = await this.userRepository.orm.findOneBy({ id: buddyUserId });
+      if (user) {
+        const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        if (
+          auth0User?.email &&
+          accountabilityBuddy.buddy_email &&
+          auth0User.email.toLowerCase() === accountabilityBuddy.buddy_email.toLowerCase()
+        ) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new UnauthorizedException('You are not authorized to accept/reject this invitation');
+    }
+
+    // Prevent user from acting on invitations they sent
+    if (accountabilityBuddy.user_id === buddyUserId) {
+      throw new BadRequestException('You cannot accept/reject invitations you sent');
+    }
+
+    // Validate status
+    if (requirePending && accountabilityBuddy.invitation_status !== InvitationStatus.PENDING) {
+      let exceptionMessage = '';
+      switch (accountabilityBuddy.invitation_status) {
+        case InvitationStatus.ACCEPTED:
+          exceptionMessage = 'This invitation has already been accepted';
+          break;
+        case InvitationStatus.REJECTED:
+          exceptionMessage = 'This invitation has been rejected';
+          break;
+        case InvitationStatus.EXPIRED:
+          exceptionMessage = 'This invitation has expired';
+          break;
+        default:
+          exceptionMessage = 'This invitation is no longer pending';
+      }
+      throw new BadRequestException(exceptionMessage);
+    } else if (!requirePending) {
+      // For reject, we allow PENDING and EXPIRED, but not ACCEPTED or REJECTED
+      if (accountabilityBuddy.invitation_status === InvitationStatus.ACCEPTED) {
+        throw new BadRequestException('This invitation has already been accepted');
+      }
+      if (accountabilityBuddy.invitation_status === InvitationStatus.REJECTED) {
+        throw new BadRequestException('This invitation has been rejected');
+      }
     }
 
     return accountabilityBuddy;

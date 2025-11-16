@@ -909,6 +909,7 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
+      OPENAI_PARAMS.activityEmojiGeneration as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
     );
 
     const newMessage = completions.choices[0].message;

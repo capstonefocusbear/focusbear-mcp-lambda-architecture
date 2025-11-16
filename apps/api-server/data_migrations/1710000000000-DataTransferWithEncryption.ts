@@ -51,6 +51,8 @@ import { StudyParticipant } from '../src/modules/user/entities/study-participant
 import { FlankerTest } from '../src/modules/user/entities/flanker-test.entity';
 import { HealthMetrics } from '../src/modules/user/entities/health-metrics.entity';
 import { UsageData } from '../src/modules/user/entities/usage-data.entity';
+import { AccountabilityBuddy } from '../src/modules/accountability-buddy/entities/accountability-buddy.entity';
+import { UnlockRequest } from '../src/modules/accountability-buddy/entities/unlock-request.entity';
 
 interface EntityConfig {
   entity: any;
@@ -249,6 +251,12 @@ export class DataTransferWithEncryption1710000000000 implements MigrationInterfa
     { entity: FlankerTest, order: 49 },
     { entity: HealthMetrics, order: 50 },
     { entity: UsageData, order: 51 },
+    {
+      entity: AccountabilityBuddy,
+      order: 52,
+      encryptedFields: [{ field: 'buddy_email', salt: 'buddy_email', type: 'string' }],
+    },
+    { entity: UnlockRequest, order: 53 },
   ];
 
   private async processEntity(config: EntityConfig): Promise<void> {

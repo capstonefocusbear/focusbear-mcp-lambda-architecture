@@ -35,7 +35,7 @@ async function runDailyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForDailyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForDailyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
       usersConsidered += batch.length;
       const batchMemory = process.memoryUsage();

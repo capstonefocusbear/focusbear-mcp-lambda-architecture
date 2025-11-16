@@ -36,7 +36,7 @@ async function runMonthlyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForMonthlyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForMonthlyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
       usersConsidered += batch.length;
       // Log memory usage for this batch

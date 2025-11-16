@@ -33,7 +33,7 @@ async function runWeeklyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
       usersConsidered += batch.length;
       console.log(

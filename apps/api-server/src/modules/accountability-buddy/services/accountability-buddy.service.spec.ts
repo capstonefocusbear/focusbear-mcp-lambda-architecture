@@ -500,4 +500,391 @@ describe('AccountabilityBuddyService', () => {
       await expect(service.linkPendingInvitationsForNewUser(buddyUserId, buddyEmail)).resolves.not.toThrow();
     });
   });
+
+  describe('acceptInvitationById', () => {
+    it('should successfully accept invitation when buddy_user_id is set', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago (not expired)
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValueOnce(invitation);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValueOnce(updatedInvitation);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
+      AccountabilityNotificationServiceMock.createInvitationAcceptedNotification.mockResolvedValueOnce({} as any);
+
+      const result = await service.acceptInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+      expect(AccountabilityBuddyRepositoryMock.findBuddyById).toHaveBeenCalledWith(accountabilityBuddyId);
+      expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalled();
+      expect(AccountabilityNotificationServiceMock.createInvitationAcceptedNotification).toHaveBeenCalled();
+    });
+
+    it('should successfully accept invitation and update buddy_user_id when null', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: undefined,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago (not expired)
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        buddy_user_id: buddyUserId,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValueOnce(invitation);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValueOnce(updatedInvitation);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
+      AccountabilityNotificationServiceMock.createInvitationAcceptedNotification.mockResolvedValueOnce({} as any);
+
+      const result = await service.acceptInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+      expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalledWith(
+        accountabilityBuddyId,
+        expect.objectContaining({
+          buddy_user_id: buddyUserId,
+          invitation_status: InvitationStatus.ACCEPTED,
+        }),
+      );
+    });
+
+    it('should accept invitation when buddy_user_id is null but email matches', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: undefined,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago (not expired)
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        buddy_user_id: buddyUserId,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(mockBuddyUser) // validateUser
+        .mockResolvedValueOnce(mockBuddyUser); // email fallback check
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValueOnce(invitation);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValueOnce(updatedInvitation);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
+      AccountabilityNotificationServiceMock.createInvitationAcceptedNotification.mockResolvedValueOnce({} as any);
+
+      const result = await service.acceptInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+    });
+
+    it('should throw NotFoundException when invitation not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(null);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(NotFoundException);
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'Accountability buddy invitation not found',
+      );
+    });
+
+    it('should throw UnauthorizedException when buddy_user_id does not match', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: 'different-user-id',
+        invitation_status: InvitationStatus.PENDING,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'You are not authorized to accept/reject this invitation',
+      );
+    });
+
+    it('should throw UnauthorizedException when email does not match and buddy_user_id is null', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: undefined,
+        buddy_email: 'different@example.com',
+        invitation_status: InvitationStatus.PENDING,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockBuddyAuth0User);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'You are not authorized to accept/reject this invitation',
+      );
+    });
+
+    it('should throw BadRequestException when user tries to accept invitation they sent', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        user_id: buddyUserId, // User sent this invitation
+        invitation_status: InvitationStatus.PENDING,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'You cannot accept/reject invitations you sent',
+      );
+    });
+
+    it('should throw BadRequestException when invitation is already accepted', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.ACCEPTED,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'This invitation has already been accepted',
+      );
+    });
+
+    it('should throw BadRequestException when invitation is already rejected', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.REJECTED,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'This invitation has been rejected',
+      );
+    });
+
+    it('should throw BadRequestException when invitation is expired', async () => {
+      const expiredDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2); // 2 days ago
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: expiredDate,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'This invitation has expired',
+      );
+    });
+
+    it('should throw NotFoundException when user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
+
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(NotFoundException);
+      await expect(service.acceptInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        `User with ID: ${buddyUserId} does not exist`,
+      );
+    });
+  });
+
+  describe('rejectInvitationById', () => {
+    it('should successfully reject invitation when buddy_user_id is set', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        invitation_status: InvitationStatus.REJECTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValue(updatedInvitation);
+
+      const result = await service.rejectInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+      expect(AccountabilityBuddyRepositoryMock.findBuddyById).toHaveBeenCalledWith(accountabilityBuddyId);
+      expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalledWith(
+        accountabilityBuddyId,
+        expect.objectContaining({
+          invitation_status: InvitationStatus.REJECTED,
+        }),
+      );
+    });
+
+    it('should successfully reject invitation and update buddy_user_id when null', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: undefined,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        buddy_user_id: buddyUserId,
+        invitation_status: InvitationStatus.REJECTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValue(updatedInvitation);
+
+      const result = await service.rejectInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+      expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalledWith(
+        accountabilityBuddyId,
+        expect.objectContaining({
+          buddy_user_id: buddyUserId,
+          invitation_status: InvitationStatus.REJECTED,
+        }),
+      );
+    });
+
+    it('should allow rejecting expired invitation', async () => {
+      const expiredDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2); // 2 days ago
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.PENDING,
+        invitation_sent_at: expiredDate,
+      });
+
+      const updatedInvitation = new AccountabilityBuddy({
+        ...invitation,
+        invitation_status: InvitationStatus.REJECTED,
+        invitation_responded_at: new Date(),
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+      AccountabilityBuddyRepositoryMock.update.mockResolvedValue(updatedInvitation);
+
+      const result = await service.rejectInvitationById(accountabilityBuddyId, buddyUserId);
+
+      expect(result).toEqual(updatedInvitation);
+      expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when invitation not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(null);
+
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(NotFoundException);
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'Accountability buddy invitation not found',
+      );
+    });
+
+    it('should throw UnauthorizedException when buddy_user_id does not match', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        buddy_user_id: 'different-user-id',
+        invitation_status: InvitationStatus.PENDING,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'You are not authorized to accept/reject this invitation',
+      );
+    });
+
+    it('should throw BadRequestException when user tries to reject invitation they sent', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        user_id: buddyUserId, // User sent this invitation
+        invitation_status: InvitationStatus.PENDING,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'You cannot accept/reject invitations you sent',
+      );
+    });
+
+    it('should throw BadRequestException when invitation is already accepted', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.ACCEPTED,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'This invitation has already been accepted',
+      );
+    });
+
+    it('should throw BadRequestException when invitation is already rejected', async () => {
+      const invitation = new AccountabilityBuddy({
+        ...mockAccountabilityBuddy,
+        invitation_status: InvitationStatus.REJECTED,
+      });
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValue(mockBuddyUser);
+      AccountabilityBuddyRepositoryMock.findBuddyById.mockResolvedValue(invitation);
+
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.rejectInvitationById(accountabilityBuddyId, buddyUserId)).rejects.toThrow(
+        'This invitation has been rejected',
+      );
+    });
+  });
 });

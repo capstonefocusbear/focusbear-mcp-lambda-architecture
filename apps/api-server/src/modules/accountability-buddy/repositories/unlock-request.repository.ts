@@ -3,6 +3,7 @@ import { DataSource, In, FindOptionsWhere } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { UnlockRequest } from '../entities/unlock-request.entity';
 import { UnlockRequestStatus } from '../domain/unlock-request-status.enum';
+import { UnlockRequestRole } from '../domain/unlock-request-role.enum';
 import { PageOrder } from '../../../shared/domain/page-order.enum';
 
 @Injectable()
@@ -71,6 +72,7 @@ export class UnlockRequestRepository extends BaseRepository<UnlockRequest> {
     relationshipIds: string[],
     filters: {
       status?: UnlockRequestStatus;
+      role?: UnlockRequestRole;
       created_from?: string;
       created_to?: string;
     },
@@ -82,14 +84,28 @@ export class UnlockRequestRepository extends BaseRepository<UnlockRequest> {
   ): Promise<[UnlockRequest[], number]> {
     const queryBuilder = this.orm.createQueryBuilder('unlock_request');
 
-    // Build WHERE clause: user_id = userId OR accountability_buddy_id IN relationshipIds
-    if (relationshipIds.length > 0) {
+    // Build WHERE clause based on role filter
+    if (filters.role === UnlockRequestRole.SENT) {
+      // Only fetch requests sent by the user
+      queryBuilder.where('unlock_request.user_id = :userId', { userId });
+    } else if (filters.role === UnlockRequestRole.RECEIVED) {
+      // Only fetch requests received by the user
+      if (relationshipIds.length > 0) {
+        queryBuilder.where('unlock_request.accountability_buddy_id IN (:...relationshipIds)', {
+          relationshipIds,
+        });
+      } else {
+        // If no relationships, return empty result
+        queryBuilder.where('1 = 0');
+      }
+    } else if (relationshipIds.length > 0) {
+      // No role filter: fetch both sent and received (default behavior)
       queryBuilder.where(
         '(unlock_request.user_id = :userId OR unlock_request.accountability_buddy_id IN (:...relationshipIds))',
         { userId, relationshipIds },
       );
     } else {
-      // If no relationships, only fetch sent requests
+      // No role filter and no relationships: only fetch sent requests
       queryBuilder.where('unlock_request.user_id = :userId', { userId });
     }
 

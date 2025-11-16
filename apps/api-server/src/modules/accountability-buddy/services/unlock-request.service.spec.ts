@@ -13,6 +13,7 @@ import { AccountabilityEmailService } from './accountability-email.service';
 import { AccountabilityNotificationService } from './accountability-notification.service';
 import { UnlockRequest } from '../entities/unlock-request.entity';
 import { UnlockRequestStatus } from '../domain/unlock-request-status.enum';
+import { UnlockRequestRole } from '../domain/unlock-request-role.enum';
 import { InvitationStatus } from '../domain/invitation-status.enum';
 import { AccountabilityBuddy } from '../entities/accountability-buddy.entity';
 import { User } from '../../user/entities/user.entity';
@@ -439,6 +440,126 @@ describe('UnlockRequestService', () => {
 
       expect(result.data.length).toBe(2);
       expect(result.meta.itemCount).toBe(2);
+    });
+
+    it('should filter by role=SENT to return only sent requests', async () => {
+      const sentRequest = mockUnlockRequest;
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[sentRequest], 1]);
+
+      const query = createQuery({ role: UnlockRequestRole.SENT });
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].user_id).toBe(userId);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [],
+        expect.objectContaining({ role: UnlockRequestRole.SENT }),
+        expect.any(Object),
+      );
+    });
+
+    it('should filter by role=RECEIVED to return only received requests', async () => {
+      const relationships = [mockAccountabilityBuddy];
+      const receivedRequest = new UnlockRequest({
+        ...mockUnlockRequest,
+        id: 'received-request-id',
+        user_id: buddyUserId, // Request sent by buddy
+        accountability_buddy_id: accountabilityBuddyId, // User is the accountability buddy
+      });
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[receivedRequest], 1]);
+
+      const query = createQuery({ role: UnlockRequestRole.RECEIVED });
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].user_id).toBe(buddyUserId); // Should be from buddy
+      expect(result.data[0].accountability_buddy_id).toBe(accountabilityBuddyId);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [mockAccountabilityBuddy.id],
+        expect.objectContaining({ role: UnlockRequestRole.RECEIVED }),
+        expect.any(Object),
+      );
+    });
+
+    it('should return empty list when role=RECEIVED and user has no relationships', async () => {
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[], 0]);
+
+      const query = createQuery({ role: UnlockRequestRole.RECEIVED });
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(0);
+      expect(result.meta.itemCount).toBe(0);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [],
+        expect.objectContaining({ role: UnlockRequestRole.RECEIVED }),
+        expect.any(Object),
+      );
+    });
+
+    it('should return both sent and received when role is not provided', async () => {
+      const relationships = [mockAccountabilityBuddy];
+      const allRequests = [
+        mockUnlockRequest, // Sent request
+        new UnlockRequest({
+          ...mockUnlockRequest,
+          id: 'received-request-id',
+          user_id: buddyUserId, // Received request
+        }),
+      ];
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+
+      const query = createQuery(); // No role parameter
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(2);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [mockAccountabilityBuddy.id],
+        expect.objectContaining({ role: undefined }),
+        expect.any(Object),
+      );
+    });
+
+    it('should combine role filter with status filter', async () => {
+      const relationships = [mockAccountabilityBuddy];
+      const approvedReceivedRequest = new UnlockRequest({
+        ...mockUnlockRequest,
+        id: 'approved-received-id',
+        user_id: buddyUserId,
+        status: UnlockRequestStatus.APPROVED,
+      });
+
+      AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
+      UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[approvedReceivedRequest], 1]);
+
+      const query = createQuery({
+        role: UnlockRequestRole.RECEIVED,
+        status: UnlockRequestStatus.APPROVED,
+      });
+      const result = await service.getUnlockRequests(userId, query);
+
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].status).toBe(UnlockRequestStatus.APPROVED);
+      expect(result.data[0].user_id).toBe(buddyUserId);
+      expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
+        userId,
+        [mockAccountabilityBuddy.id],
+        expect.objectContaining({
+          role: UnlockRequestRole.RECEIVED,
+          status: UnlockRequestStatus.APPROVED,
+        }),
+        expect.any(Object),
+      );
     });
   });
 

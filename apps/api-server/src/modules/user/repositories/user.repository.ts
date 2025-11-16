@@ -518,10 +518,16 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm.createQueryBuilder('user').select(UserRepository.EMAIL_USER_SELECT_FIELDS);
   }
 
-  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
+  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
     return this.buildEmailUserQuery()
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
       })
       .orderBy('user.id', 'ASC')
       .skip(skip)
@@ -529,9 +535,15 @@ export class UserRepository extends BaseRepository<User> {
       .getMany();
   }
 
-  async getUsersForDailyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
+  async getUsersForDailyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
     return this.buildEmailUserQuery()
       .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
+      })
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)
@@ -545,10 +557,16 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
+  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
     return this.buildEmailUserQuery()
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
       })
       .orderBy('user.id', 'ASC')
       .skip(skip)

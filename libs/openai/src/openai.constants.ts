@@ -93,6 +93,12 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     messages: null,
     response_format: { type: 'json_object' },
   },
+  activityEmojiGeneration: {
+    model: GPT_4_1_MINI,
+    temperature: 0,
+    n: 1,
+    messages: null,
+  },
   convertBrainDumpToTasks: {
     model: GPT_5_MINI,
     temperature: 0,

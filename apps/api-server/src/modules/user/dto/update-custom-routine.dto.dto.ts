@@ -113,6 +113,7 @@ export class UpdateCustomRoutineDto {
   @ApiProperty({ isArray: true, type: UpdateActivityDto })
   standalone_activities?: UpdateActivityDto[];
 
+  @IsOptional()
   @IsNotEmpty()
   @IsString()
   @IsUUID()

@@ -170,7 +170,8 @@
     "undici": "6.21.3",
     "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
-    "tmp": "0.2.4"
+    "tmp": "0.2.4",
+    "glob": "11.1.0"
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -187,7 +188,8 @@
     "undici": "6.21.3",
     "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
-    "tmp": "0.2.4"
+    "tmp": "0.2.4",
+    "glob": "11.1.0"
   },
   "husky": {
     "hooks": {

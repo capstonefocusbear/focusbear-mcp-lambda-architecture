@@ -75,7 +75,7 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockHealthMetricsRepository.findOne).toBeCalledWith({
+      expect(mockHealthMetricsRepository.findOne).toHaveBeenCalledWith({
         where: {
           userId,
           metricType: HealthMetricType.HOURS_OF_SLEEP,
@@ -83,11 +83,11 @@ describe('HealthMetricsService', () => {
         },
       });
 
-      expect(mockHealthMetricsRepository.update).toBeCalledWith(existingMetric.id, {
+      expect(mockHealthMetricsRepository.update).toHaveBeenCalledWith(existingMetric.id, {
         metricValue: 8,
       });
 
-      expect(mockHealthMetricsRepository.save).not.toBeCalled();
+      expect(mockHealthMetricsRepository.save).not.toHaveBeenCalled();
     });
 
     it('positive: should successfully create new health metrics when none exist', async () => {
@@ -106,14 +106,14 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockHealthMetricsRepository.save).toBeCalledWith({
+      expect(mockHealthMetricsRepository.save).toHaveBeenCalledWith({
         userId,
         metricType: HealthMetricType.MINUTES_OF_MOVEMENT,
         dayOfTracking: today,
         metricValue: 45,
       });
 
-      expect(mockHealthMetricsRepository.update).not.toBeCalled();
+      expect(mockHealthMetricsRepository.update).not.toHaveBeenCalled();
     });
 
     it('positive: should update study participant healthDataLastReceived when participant exists', async () => {
@@ -139,7 +139,7 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockStudyParticipantRepository.update).toBeCalledWith(studyParticipant.id, {
+      expect(mockStudyParticipantRepository.update).toHaveBeenCalledWith(studyParticipant.id, {
         healthDataLastReceived: expect.toBeDate(),
       });
     });
@@ -210,7 +210,7 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockStudyParticipantRepository.update).not.toBeCalled();
+      expect(mockStudyParticipantRepository.update).not.toHaveBeenCalled();
     });
 
     it('positive: should handle empty healthMetrics array', async () => {
@@ -222,9 +222,9 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockHealthMetricsRepository.findOne).not.toBeCalled();
-      expect(mockHealthMetricsRepository.update).not.toBeCalled();
-      expect(mockHealthMetricsRepository.save).not.toBeCalled();
+      expect(mockHealthMetricsRepository.findOne).not.toHaveBeenCalled();
+      expect(mockHealthMetricsRepository.update).not.toHaveBeenCalled();
+      expect(mockHealthMetricsRepository.save).not.toHaveBeenCalled();
     });
 
     it('positive: should handle mixed scenarios where some metrics exist and some do not', async () => {
@@ -256,11 +256,11 @@ describe('HealthMetricsService', () => {
 
       await service.syncHealthMetrics(userId, syncDto);
 
-      expect(mockHealthMetricsRepository.update).toBeCalledWith(existingMetric.id, {
+      expect(mockHealthMetricsRepository.update).toHaveBeenCalledWith(existingMetric.id, {
         metricValue: 8,
       });
 
-      expect(mockHealthMetricsRepository.save).toBeCalledWith({
+      expect(mockHealthMetricsRepository.save).toHaveBeenCalledWith({
         userId,
         metricType: HealthMetricType.MINUTES_OF_MOVEMENT,
         dayOfTracking: today,

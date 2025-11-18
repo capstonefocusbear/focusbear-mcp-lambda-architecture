@@ -109,7 +109,7 @@ describe('UserConsentService', () => {
         userDummy.id,
       );
 
-      expect(UserConsentRepositoryMock.orm.save).toBeCalledWith({
+      expect(UserConsentRepositoryMock.orm.save).toHaveBeenCalledWith({
         consent_type: UserConsentTypes.PRIVACY_POLICY,
         consent_status: false,
         withdrawal_date: DateTime.local({ zone: 'UTC' }).toJSDate(),

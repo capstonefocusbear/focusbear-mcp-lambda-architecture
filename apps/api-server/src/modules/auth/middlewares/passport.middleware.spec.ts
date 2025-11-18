@@ -49,7 +49,7 @@ describe('PassportMiddleware', () => {
       expect(passportProps.value).toBeObject();
       expect(passportProps.writable).toBeFalse();
       expect(passportProps.configurable).toBeFalse();
-      expect(next).toBeCalled();
+      expect(next).toHaveBeenCalled();
     });
 
     it('positive: req.passport should be immutable', async () => {
@@ -70,7 +70,7 @@ describe('PassportMiddleware', () => {
 
       expect(cannotReassign).toBeDefined();
       expect(cannotDelete).toBeDefined();
-      expect(next).toBeCalled();
+      expect(next).toHaveBeenCalled();
     });
 
     it('negative: in case of any error, next() should be called with UnauthorizedException as a param', async () => {
@@ -80,7 +80,7 @@ describe('PassportMiddleware', () => {
 
       await middleware.use(req, res, next);
 
-      expect(next).toBeCalledWith(exception);
+      expect(next).toHaveBeenCalledWith(exception);
     });
   });
 });

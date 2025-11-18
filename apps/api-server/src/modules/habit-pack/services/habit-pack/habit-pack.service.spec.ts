@@ -125,8 +125,8 @@ describe('HabitPackService', () => {
         marketplace_approval_status: true,
       });
 
-      expect(ActivityTemplateParserServiceMock.serialize).toBeCalled();
-      expect(HabitPackRepositoryMock.fetchPacksByFilter).toBeCalledWith({
+      expect(ActivityTemplateParserServiceMock.serialize).toHaveBeenCalled();
+      expect(HabitPackRepositoryMock.fetchPacksByFilter).toHaveBeenCalledWith({
         is_featured: false,
         marketplace_approval_status: true,
       });
@@ -282,7 +282,7 @@ describe('HabitPackService', () => {
 
       await habitPackService.upsertHabitPack(userDummy.id, standaloneHabitPackDummy);
 
-      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toHaveBeenCalledWith(
         newPack,
         activityIds,
         deserializedStandaloneActivitiesDummy,
@@ -325,7 +325,7 @@ describe('HabitPackService', () => {
 
       await habitPackService.upsertHabitPack(userDummy.id, routineHabitPackDummy);
 
-      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toHaveBeenCalledWith(
         newPack,
         activityIds,
         deserializedRoutineActivitiesDummy,
@@ -368,7 +368,7 @@ describe('HabitPackService', () => {
         creator_name: userDummy.username,
       });
 
-      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toHaveBeenCalledWith(
         {
           ...newPack,
           marketplace_approval_status: false,
@@ -421,7 +421,7 @@ describe('HabitPackService', () => {
         creator_name: adminUserDummy.username,
       });
 
-      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toHaveBeenCalledWith(
         {
           ...newPack,
           marketplace_approval_status: true,
@@ -477,7 +477,7 @@ describe('HabitPackService', () => {
         evening_activities: [],
       });
 
-      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toBeCalledWith(
+      expect(HabitPackRepositoryMock.consistentlyUpdateHabitPack).toHaveBeenCalledWith(
         newPack,
         activityIds,
         breaksOnlyDeserializedRoutineActivitiesDummy,

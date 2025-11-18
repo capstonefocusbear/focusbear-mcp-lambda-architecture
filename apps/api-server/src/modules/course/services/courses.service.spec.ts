@@ -76,7 +76,7 @@ describe('CoursesService', () => {
     it('positive: should create course contents', async () => {
       CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
       await coursesService.createCourse(DummyCreateCourseDto, userDummy.id);
-      expect(CoursesRepositoryMock.createCourseContent).toBeCalledWith(
+      expect(CoursesRepositoryMock.createCourseContent).toHaveBeenCalledWith(
         {
           ...DummyCreateCourseDto,
         },

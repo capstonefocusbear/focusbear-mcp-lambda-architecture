@@ -80,7 +80,7 @@ describe('MicrosfotService', () => {
         code: 'code',
       });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.MICROSOFT,
         {

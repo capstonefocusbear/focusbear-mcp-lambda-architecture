@@ -74,7 +74,7 @@ describe('TrelloAuthService', () => {
 
       await trelloAuthService.authorize(userDummy.id, { code });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.TRELLO,
         {

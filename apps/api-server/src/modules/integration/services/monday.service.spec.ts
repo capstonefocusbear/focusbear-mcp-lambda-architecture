@@ -80,7 +80,7 @@ describe('mondayService', () => {
     it('positive: user should be fetched from DB', async () => {
       await mondayService.getUser(userDummy.id);
 
-      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: userDummy.id });
     });
   });
 
@@ -243,7 +243,7 @@ describe('mondayService', () => {
 
         await mondayService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
 
-        expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
+        expect(SyncedProjectsRepositoryMock.orm.save).toHaveBeenCalledWith(
           new SyncedProject({
             ...syncedProjectDBResponseDummy,
           }),
@@ -273,7 +273,7 @@ describe('mondayService', () => {
 
         await mondayService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
 
-        expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
+        expect(SyncedProjectsRepositoryMock.orm.save).toHaveBeenCalledWith(
           new SyncedProject({
             ...syncedProjectDBResponseDummy,
             available_statuses: [

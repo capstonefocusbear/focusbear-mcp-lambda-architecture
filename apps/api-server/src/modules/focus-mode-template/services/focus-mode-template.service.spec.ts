@@ -137,7 +137,7 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.upsertFocusModeTemplate(focusModeTemplateDtoDummy, userDummy.id);
 
-      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...focusModeTemplateDtoDummy,
         author_id: userDummy.id,
         author_name: userDummy.username,
@@ -163,7 +163,7 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith(
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusModeTemplate({
           ...focusModeTemplateDtoDummy,
           author_id: userDummy.id,
@@ -195,7 +195,7 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTemplatesRepositoryMock.orm.save).toBeCalledWith({
+      expect(FocusModeTemplatesRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...focusModeTemplateDtoDummy,
         author_id: userDummy.id,
         author_name: userDummy.username,
@@ -216,7 +216,7 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({
+      expect(FocusModeTagRepositoryMock.orm.delete).toHaveBeenCalledWith({
         id: focusModeTemplateDBResponseDummy.tags[1].id,
         user_id: userDummy.id,
       });
@@ -287,7 +287,7 @@ describe('FocusModeTemplatesService', () => {
         userDummy.id,
       );
 
-      expect(FocusModeTemplatesRepositoryMock.orm.softDelete).toBeCalledWith({
+      expect(FocusModeTemplatesRepositoryMock.orm.softDelete).toHaveBeenCalledWith({
         id: focusModeTemplateDBResponseDummy.id,
       });
       expect(response).toBeInstanceOf(ResponseMessage);
@@ -357,7 +357,7 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.installFocusModeForUser(focusModeTemplateDBResponseDummy.id, userDummy.id);
 
-      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusMode({
           allowed_apps: [],
           allowed_urls: [],
@@ -381,7 +381,7 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.installFocusModeForUser(focusModeTemplateDBResponseDummy.id, userDummy.id);
 
-      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toBeCalledWith(installedRecord.id, {
+      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledWith(installedRecord.id, {
         installation_status: true,
       });
     });
@@ -393,7 +393,7 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.installFocusModeForUser(focusModeTemplateDBResponseDummy.id, userDummy.id);
 
-      expect(InstalledFocusModeTemplatesRepositoryMock.create).toBeCalledWith({
+      expect(InstalledFocusModeTemplatesRepositoryMock.create).toHaveBeenCalledWith({
         user_id: userDummy.id,
         focus_mode_template_id: focusModeTemplateDBResponseDummy.id,
         installation_status: true,
@@ -426,7 +426,7 @@ describe('FocusModeTemplatesService', () => {
         marketplace_approval_status: true,
       });
 
-      expect(FocusModeTemplatesRepositoryMock.fetchTemplatesByFilter).toBeCalledWith({
+      expect(FocusModeTemplatesRepositoryMock.fetchTemplatesByFilter).toHaveBeenCalledWith({
         is_featured: true,
         marketplace_approval_status: true,
       });
@@ -445,7 +445,7 @@ describe('FocusModeTemplatesService', () => {
 
       await focusModeTemplateService.getUserInstalledTemplates(userDummy.id);
 
-      expect(FocusModeTemplatesRepositoryMock.orm.find).toBeCalledWith({
+      expect(FocusModeTemplatesRepositoryMock.orm.find).toHaveBeenCalledWith({
         where: { id: In([installRecordDummyOne.focus_mode_template_id, installRecordDummyTwo.focus_mode_template_id]) },
       });
     });

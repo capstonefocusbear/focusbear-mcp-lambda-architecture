@@ -92,7 +92,7 @@ describe('ZohoService', () => {
 
       await zohoAuthService.authorize(userDummy.id, { location: locationDummy, 'accounts-server': accountServerDummy });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         {

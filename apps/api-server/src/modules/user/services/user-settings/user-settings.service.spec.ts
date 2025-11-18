@@ -333,7 +333,7 @@ describe('UserSettingsService', () => {
         is_onboarding: false,
       });
 
-      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toHaveBeenCalledWith(
         {
           ...updatedUser,
           last_time_user_settings_modified: expect.toBeDateString(),
@@ -373,7 +373,7 @@ describe('UserSettingsService', () => {
         { is_onboarding: true },
       );
 
-      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(
+      expect(ActivityParserServiceMock.deserialize).toHaveBeenCalledWith(
         {
           morning_activities: [],
           evening_activities: [
@@ -413,7 +413,7 @@ describe('UserSettingsService', () => {
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'America/New_York' });
 
       // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
       Settings.now = () => new Date().valueOf();
     });
 
@@ -421,21 +421,21 @@ describe('UserSettingsService', () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC-2' });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
     });
 
     it('positive: should update user timezone in UTC offset format receiving positive UTC offset zone format', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC+2' });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
     });
 
     it('positive: if only language is passed in timezone should not be updated', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { language: LanguageOptions.SPANISH });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { language: 'es' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { language: 'es' });
     });
   });
 
@@ -475,7 +475,7 @@ describe('UserSettingsService', () => {
         current_activity_id: null,
         current_activity_sequence_id: null,
       });
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         userWithCurrentActivity.completing_sequence_log.id,
         userWithCurrentActivity.id,
       );
@@ -681,7 +681,7 @@ describe('UserSettingsService', () => {
 
       await userSettingsService.addActivityToRoutine(userDummy.id, activityDataDummy);
 
-      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalled();
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toHaveBeenCalled();
     });
   });
 

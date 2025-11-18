@@ -79,7 +79,7 @@ describe('NotificationService', () => {
 
       await notificationService.updateOrCreateCalendarEvent(createCalendarEventDummy, userDummy.id, account);
 
-      expect(NotificationRepositoryMock.create).toBeCalledWith(newNotification);
+      expect(NotificationRepositoryMock.create).toHaveBeenCalledWith(newNotification);
     });
 
     it('positive: should call update on NotificationRepository', async () => {
@@ -100,14 +100,14 @@ describe('NotificationService', () => {
 
       await notificationService.updateOrCreateCalendarEvent(updateCalendarEventDummy, userDummy.id, account);
 
-      expect(NotificationRepositoryMock.update).toBeCalledWith(updateCalendarEventDummy.id, updatedNotification);
+      expect(NotificationRepositoryMock.update).toHaveBeenCalledWith(updateCalendarEventDummy.id, updatedNotification);
     });
   });
 
   describe('deleteCalendarEvent', () => {
     it('positive: should delete notification', async () => {
       await notificationService.deleteCalendarEvent(notificationDBResponseDummy.external_id);
-      expect(NotificationRepositoryMock.orm.delete).toBeCalledWith({
+      expect(NotificationRepositoryMock.orm.delete).toHaveBeenCalledWith({
         external_id: notificationDBResponseDummy.external_id,
       });
     });

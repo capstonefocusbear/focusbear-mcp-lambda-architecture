@@ -96,7 +96,7 @@ describe('UserFeedbackService', () => {
 
       await service.saveUserFeedback(userDummy.id, userFeedbackDummy, dummyHeaders);
 
-      expect(UserFeedbackRepositoryMock.orm.save).toBeCalledWith(
+      expect(UserFeedbackRepositoryMock.orm.save).toHaveBeenCalledWith(
         new UserFeedback({
           user_id: userDummy.id,
           feedback: userFeedbackDummy.feedback,
@@ -109,9 +109,11 @@ describe('UserFeedbackService', () => {
           },
         }),
       );
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { last_date_gave_feedback: expect.toBeDate() });
-      expect(mockedAxios.post).toBeCalled();
-      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        last_date_gave_feedback: expect.toBeDate(),
+      });
+      expect(mockedAxios.post).toHaveBeenCalled();
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({
         to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,

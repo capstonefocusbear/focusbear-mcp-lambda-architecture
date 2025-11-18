@@ -152,7 +152,10 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, { channel: 'channel', message });
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        channel: 'channel',
+        message,
+      });
     });
 
     it('positive: if event is of type postpone_habits_from_mobile, event should be added to queue to send push notification to user', async () => {
@@ -176,7 +179,7 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(QueueMock.add).toBeCalledWith(
+      expect(QueueMock.add).toHaveBeenCalledWith(
         BullWorkers.RESUME_NOTIFICATION,
         {
           user_id: userDummy.id,
@@ -207,7 +210,7 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(EventsRepositoryMock.orm.save).toBeCalledWith(
+      expect(EventsRepositoryMock.orm.save).toHaveBeenCalledWith(
         new ImpactEvent({
           user_id: userDummy.id,
           quantity: 5,
@@ -231,7 +234,10 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(UserDailyStatsServiceMock.updateDistractionBlockCount).toBeCalledWith(userDummy.id, userDummy.timezone);
+      expect(UserDailyStatsServiceMock.updateDistractionBlockCount).toHaveBeenCalledWith(
+        userDummy.id,
+        userDummy.timezone,
+      );
     });
 
     it('positive: if event type is app-quit and feedback is sent, email should be sent to customer support channel', async () => {
@@ -256,7 +262,7 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({
         to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
         from: FOCUS_BEAR_EMAILS.SUPPORT,
         replyTo: auth0UserDummy.email,
@@ -291,7 +297,7 @@ describe('EventConsumer', () => {
 
       await eventsConsumer.readOperationJob(job);
 
-      expect(TrackEventRepositoryMock.orm.save).toBeCalledWith(
+      expect(TrackEventRepositoryMock.orm.save).toHaveBeenCalledWith(
         new TrackEvent({
           user_id: userDummy.id,
           event_data: dummyEvent.event_data,

@@ -132,7 +132,7 @@ describe('toDoService', () => {
     it('positive: should save new incoming to do', async () => {
       await toDoService.upsertToDo(userDummy.id, toDoDummy);
 
-      expect(ToDoRepositoryMock.orm.save).toBeCalledWith(
+      expect(ToDoRepositoryMock.orm.save).toHaveBeenCalledWith(
         new ToDo({ user_id: userDummy.id, ...toDoDummy, updated_at: expect.toBeDateString() }),
       );
     });
@@ -144,7 +144,7 @@ describe('toDoService', () => {
 
       await toDoService.upsertToDo(userDummy.id, maliciousToDo as any);
 
-      expect(ToDoRepositoryMock.orm.save).toBeCalledWith(
+      expect(ToDoRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: userDummy.id, // Should be the authenticated user, not the malicious one
         }),
@@ -390,7 +390,7 @@ describe('toDoService', () => {
 
       await toDoService.deleteToDo(userDummy.id, toDoId);
 
-      expect(ToDoRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: toDoId });
+      expect(ToDoRepositoryMock.orm.delete).toHaveBeenCalledWith({ user_id: userDummy.id, id: toDoId });
     });
 
     it('negative: should throw UnauthorizedException when user tries to delete another users todo', async () => {
@@ -434,7 +434,7 @@ describe('toDoService', () => {
 
       await toDoService.deleteToDo(userDummy.id, toDoId);
 
-      expect(ToDoRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: toDoId });
+      expect(ToDoRepositoryMock.orm.delete).toHaveBeenCalledWith({ user_id: userDummy.id, id: toDoId });
     });
   });
 
@@ -461,8 +461,8 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(ToDoRepositoryMock.update).toBeCalledWith(toDoId, { status: ToDoStatus.COMPLETED });
-      expect(TaskTimeLogsRepositoryMock.orm.save).toBeCalledWith([
+      expect(ToDoRepositoryMock.update).toHaveBeenCalledWith(toDoId, { status: ToDoStatus.COMPLETED });
+      expect(TaskTimeLogsRepositoryMock.orm.save).toHaveBeenCalledWith([
         new TaskTimeLog({
           user_id: userDummy.id,
           task_id: toDoId,
@@ -470,7 +470,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).toBeCalled();
+      expect(QueueMock.add).toHaveBeenCalled();
     });
 
     it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
@@ -486,8 +486,8 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(ToDoRepositoryMock.update).toBeCalledWith(toDoTimeLogDummy.id, { status: toDoTimeLogDummy.status });
-      expect(TaskTimeLogsRepositoryMock.orm.save).toBeCalledWith([
+      expect(ToDoRepositoryMock.update).toHaveBeenCalledWith(toDoTimeLogDummy.id, { status: toDoTimeLogDummy.status });
+      expect(TaskTimeLogsRepositoryMock.orm.save).toHaveBeenCalledWith([
         new TaskTimeLog({
           user_id: userDummy.id,
           duration_logged_seconds: 60,
@@ -495,7 +495,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).toBeCalledWith(BullWorkers.SAVE_TASK_TIME_LOG, {
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.SAVE_TASK_TIME_LOG, {
         userId: userDummy.id,
         toDoTimeLogs: [toDoTimeLogDummy],
         toDos: [ToDoDBResponseDummy],
@@ -519,7 +519,7 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(QueueMock.add).not.toBeCalled();
+      expect(QueueMock.add).not.toHaveBeenCalled();
     });
   });
 
@@ -531,7 +531,7 @@ describe('toDoService', () => {
       ToDoRepositoryMock.searchUserToDos.mockResolvedValueOnce(results);
       const response = await toDoService.searchToDos(dummySearchToDosDto, userDummy.id);
 
-      expect(ToDoRepositoryMock.searchUserToDos).toBeCalledWith(dummySearchToDosDto, userDummy.id);
+      expect(ToDoRepositoryMock.searchUserToDos).toHaveBeenCalledWith(dummySearchToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummySearchToDosDto.take);
       expect(response).toEqual(results);
     });
@@ -549,7 +549,7 @@ describe('toDoService', () => {
       ToDoRepositoryMock.getUserRecentToDos.mockResolvedValueOnce(results);
       const response = await toDoService.getRecentToDos(dummyRecentToDosDto, userDummy.id);
 
-      expect(ToDoRepositoryMock.getUserRecentToDos).toBeCalledWith(dummyRecentToDosDto, userDummy.id);
+      expect(ToDoRepositoryMock.getUserRecentToDos).toHaveBeenCalledWith(dummyRecentToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummyRecentToDosDto.take);
       expect(response).toEqual(results);
     });

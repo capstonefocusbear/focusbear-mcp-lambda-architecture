@@ -487,7 +487,7 @@ describe('UserService', () => {
 
       await userService.getUserCurrentActivityProps(userDummy.id);
 
-      expect(UserRepositoryMock.getUserCurrentActivityProps).toBeCalledTimes(2);
+      expect(UserRepositoryMock.getUserCurrentActivityProps).toHaveBeenCalledTimes(2);
     });
 
     it('positive: if new activity is returned after recalculating current activity, it should be included in response as current_activity', async () => {
@@ -723,7 +723,7 @@ describe('UserService', () => {
 
       await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
     });
 
     it('positive: if user already has signed_up_via_focus_mode value, no update should occur', async () => {
@@ -734,7 +734,7 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
     });
 
     it("positive: user's signed_up_via_habit_pack property should be updated with incoming pack id", async () => {

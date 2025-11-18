@@ -103,7 +103,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         onboarding_progress: { ...mockOnboardingProgress, has_edited_focus_mode: true },
       });
     });
@@ -124,7 +124,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.EDIT_BLOCKED_URLS);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         onboarding_progress: { ...mockOnboardingProgress, has_edited_always_blocked_urls: true },
       });
     });
@@ -145,7 +145,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.EDIT_BLOCKED_URLS);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         onboarding_progress: { ...mockOnboardingProgress, has_edited_always_blocked_urls: true },
       });
     });
@@ -167,7 +167,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.CHAT_WITH_FOCUS_BEAR);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         onboarding_progress: { ...mockOnboardingProgress, has_chatted_with_focus_bear: true },
       });
     });
@@ -180,7 +180,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateUserOnboardingProgress(userDummy.id, UserProgressUpdateTypes.EDIT_SETTINGS);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         onboarding_progress: { ...BASE_ONBOARDING_PROGRESS, has_edited_settings: true },
       });
     });
@@ -414,7 +414,7 @@ describe('UserDailyStatsService', () => {
 
       await service.CalculateUserStatsResponse(userDummy.id);
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
         morning_routines_streak: 3,
         evening_routines_streak: 3,
         micro_breaks_streak: 0,
@@ -462,7 +462,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC', 100);
 
-      expect(DailyStatsRepositoryMock.create).toBeCalledWith({
+      expect(DailyStatsRepositoryMock.create).toHaveBeenCalledWith({
         user_id: userDummy.id,
         date_completed: startOfDate,
         focus_modes_completed: 1,
@@ -479,7 +479,7 @@ describe('UserDailyStatsService', () => {
 
       await service.updateDailyStatsFocusModesCompleted(userDummy.id, finishTime, 'UTC', 1200);
 
-      expect(DailyStatsRepositoryMock.orm.save).toBeCalledWith({
+      expect(DailyStatsRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...dailyStatDummy,
         focus_modes_completed: dailyStatDummy.focus_modes_completed + 1,
         seconds_spent_in_focus_sessions: 1200,
@@ -519,7 +519,7 @@ describe('UserDailyStatsService', () => {
         false,
       );
 
-      expect(QueueMock.add).toBeCalledWith(
+      expect(QueueMock.add).toHaveBeenCalledWith(
         BullWorkers.DAILY_STATS_ACTIVITY_COMPLETED,
         {
           user_id: userDummy.id,

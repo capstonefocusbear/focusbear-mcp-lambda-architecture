@@ -49,7 +49,7 @@ describe('PusherBeamsAuthService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       await pusherBeamsAuthService.unsubscribeFromBeams(userDummy.id);
 
-      expect(PusherBeamsServiceMock.deleteUser).toBeCalledWith(userDummy.id);
+      expect(PusherBeamsServiceMock.deleteUser).toHaveBeenCalledWith(userDummy.id);
     });
   });
 });

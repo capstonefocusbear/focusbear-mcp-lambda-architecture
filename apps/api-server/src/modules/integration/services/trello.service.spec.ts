@@ -80,7 +80,7 @@ describe('trelloService', () => {
     it('positive: user should be fetched from DB', async () => {
       await trelloService.getUser(userDummy.id);
 
-      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: userDummy.id });
     });
   });
 
@@ -286,7 +286,7 @@ describe('trelloService', () => {
 
       await trelloService.upsertSyncedProjectRecord(userDummy.id, portalId, projectId);
 
-      expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith(
+      expect(SyncedProjectsRepositoryMock.orm.save).toHaveBeenCalledWith(
         new SyncedProject({
           ...syncedProjectDBResponseDummy,
         }),

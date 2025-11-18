@@ -103,10 +103,13 @@ describe('HabitPackManagerService', () => {
       const user_id = userDummy.id;
 
       expect(response.message).toMatch(responseMessage);
-      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
-      expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
-      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
+      expect(UserSettingsServiceMock.getSettings).toHaveBeenCalledWith({ user_id });
+      expect(HabitPackServiceMock.getHabitPack).toHaveBeenCalledWith(routineHabitPackDummy.id);
+      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toHaveBeenCalledWith(
+        userDummy.id,
+        routineHabitPackDummy.id,
+      );
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
   });
 
@@ -120,13 +123,13 @@ describe('HabitPackManagerService', () => {
       const user_id = userDummy.id;
 
       expect(response.message).toMatch(responseMessage);
-      expect(ActivityTemplateRepositoryMock.getActivityTemplateIds).toBeCalledWith(routineHabitPackDummy.id);
-      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
-      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toBeCalledWith(
+      expect(ActivityTemplateRepositoryMock.getActivityTemplateIds).toHaveBeenCalledWith(routineHabitPackDummy.id);
+      expect(UserSettingsServiceMock.getSettings).toHaveBeenCalledWith({ user_id });
+      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toHaveBeenCalledWith(
         userDummy.id,
         routineHabitPackDummy.id,
       );
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
   });
 
@@ -205,10 +208,13 @@ describe('HabitPackManagerService', () => {
       const response = await habitPackManagerService.installHabitPack(userDummy.id, routineHabitPackDummy.id);
 
       expect(response.message).toMatch(responseMessage);
-      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
-      expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
-      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
+      expect(UserSettingsServiceMock.getSettings).toHaveBeenCalledWith({ user_id });
+      expect(HabitPackServiceMock.getHabitPack).toHaveBeenCalledWith(routineHabitPackDummy.id);
+      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toHaveBeenCalledWith(
+        userDummy.id,
+        routineHabitPackDummy.id,
+      );
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
 
     it('positive: should return that the standalone pack was installed for user', async () => {
@@ -222,12 +228,12 @@ describe('HabitPackManagerService', () => {
       const response = await habitPackManagerService.installHabitPack(userDummy.id, standaloneHabitPackDummy.id);
 
       expect(response.message).toMatch(responseMessage);
-      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(
+      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toHaveBeenCalledWith(
         userDummy.id,
         standaloneHabitPackDummy.id,
         deserializedActivitiesDummy[0].sequence.id,
       );
-      expect(HabitPackRepositoryMock.consistentlyInstallStandaloneHabitPack).toBeCalled();
+      expect(HabitPackRepositoryMock.consistentlyInstallStandaloneHabitPack).toHaveBeenCalled();
     });
   });
 
@@ -288,8 +294,8 @@ describe('HabitPackManagerService', () => {
       const response = await habitPackManagerService.uninstallHabitPack(userDummy.id, routineHabitPackDummy.id);
 
       expect(response.message).toMatch(responseMessage);
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
-      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toBeCalled();
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
+      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toHaveBeenCalled();
     });
 
     it('positive: should return a successful uninstall response for standalone habit pack', async () => {
@@ -301,8 +307,10 @@ describe('HabitPackManagerService', () => {
       const response = await habitPackManagerService.uninstallHabitPack(userDummy.id, standaloneHabitPackDummy.id);
 
       expect(response.message).toMatch(responseMessage);
-      expect(ActivitySequenceRepositoryMock.orm.delete).toBeCalledWith(installedPackRecordDummy.activity_sequence_id);
-      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toBeCalledWith(
+      expect(ActivitySequenceRepositoryMock.orm.delete).toHaveBeenCalledWith(
+        installedPackRecordDummy.activity_sequence_id,
+      );
+      expect(InstalledPackServiceMock.setPackAsUninstalledForUser).toHaveBeenCalledWith(
         userDummy.id,
         standaloneHabitPackDummy.id,
       );
@@ -353,11 +361,14 @@ describe('HabitPackManagerService', () => {
         routineHabitPackDummy.id,
       );
       expect(response).toBe(userSettingsDummy);
-      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id });
-      expect(HabitPackServiceMock.getHabitPack).toBeCalledWith(routineHabitPackDummy.id);
-      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toBeCalledWith(userDummy.id, routineHabitPackDummy.id);
-      expect(UserSettingsServiceMock.updateSettings).toBeCalled();
-      expect(UserSettingsServiceMock.getSettings).toBeCalledWith({ user_id: userDummy.id });
+      expect(UserSettingsServiceMock.getSettings).toHaveBeenCalledWith({ user_id });
+      expect(HabitPackServiceMock.getHabitPack).toHaveBeenCalledWith(routineHabitPackDummy.id);
+      expect(InstalledPackServiceMock.setPackAsInstalledForUser).toHaveBeenCalledWith(
+        userDummy.id,
+        routineHabitPackDummy.id,
+      );
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
+      expect(UserSettingsServiceMock.getSettings).toHaveBeenCalledWith({ user_id: userDummy.id });
     });
   });
 
@@ -385,7 +396,7 @@ describe('HabitPackManagerService', () => {
 
       const result = await habitPackManagerService.getUserInstalledPacks(userDummy.id);
 
-      expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toBeCalledWith(userDummy.id);
+      expect(InstalledPackRepositoryMock.fetchUserInstalledPackIds).toHaveBeenCalledWith(userDummy.id);
       expect(result).toMatchSnapshot();
     });
   });

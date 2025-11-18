@@ -693,7 +693,7 @@ describe('OpenAIService', () => {
         promptCacheServiceMock as any,
       );
 
-      expect(() => (invalidService as any).getOpenAIInstance('URL_SAFETY')).toThrowError(
+      expect(() => (invalidService as any).getOpenAIInstance('URL_SAFETY')).toThrow(
         'No OpenAI configuration found for type: URL_SAFETY and no general fallback available',
       );
     });

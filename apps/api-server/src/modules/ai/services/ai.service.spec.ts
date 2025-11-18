@@ -98,7 +98,7 @@ describe('AiService', () => {
       };
       await service.createActivity(userDummy.id, activityDataDummy);
 
-      expect(UserSettingsServiceMock.addActivityToRoutine).toBeCalledWith(userDummy.id, activityDataDummy);
+      expect(UserSettingsServiceMock.addActivityToRoutine).toHaveBeenCalledWith(userDummy.id, activityDataDummy);
     });
   });
 
@@ -108,7 +108,7 @@ describe('AiService', () => {
 
       await service.createFocusMode(userDummy.id, focusModeData);
 
-      expect(FocusModeServiceMock.createFocusMode).toBeCalledWith(userDummy.id, {
+      expect(FocusModeServiceMock.createFocusMode).toHaveBeenCalledWith(userDummy.id, {
         id: expect.toBeString(),
         name: focusModeData.name,
         allowed_apps: focusModeData.allowed_apps,

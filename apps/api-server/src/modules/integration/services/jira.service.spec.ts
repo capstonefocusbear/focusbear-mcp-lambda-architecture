@@ -80,7 +80,7 @@ describe('jiraService', () => {
 
       await jiraService.getUser(userDummy.id);
 
-      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: userDummy.id });
     });
   });
 
@@ -408,7 +408,7 @@ describe('jiraService', () => {
       expect(result).toEqual(response.data);
 
       const url = `https://api.atlassian.com/ex/jira/${portalId}/rest/api/3/issue/${taskId}/worklog`;
-      expect(mockedAxios.post).toBeCalledWith(url, data, {
+      expect(mockedAxios.post).toHaveBeenCalledWith(url, data, {
         headers: {
           Authorization: `Bearer ${jiraData.access_token}`,
           'Content-Type': 'application/json',

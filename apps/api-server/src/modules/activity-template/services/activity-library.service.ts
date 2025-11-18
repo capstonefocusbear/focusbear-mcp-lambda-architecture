@@ -188,12 +188,18 @@ export class ActivityLibraryService {
       [ActivityType.evening]: 0,
     }; // @Description: unit of duration is seconds
 
-    const morningAndEveningActivityTemplates = activityTemplates.filter(
-      (activityTemplate) =>
-        activityTemplate.activity_type === ActivityType.morning ||
-        activityTemplate.activity_type === ActivityType.evening,
-    );
-    morningAndEveningActivityTemplates
+    const normalizedTemplates = activityTemplates
+      .map((activityTemplate) => ({
+        ...activityTemplate,
+        activity_type: this.normalizeActivityType(activityTemplate.activity_type),
+      }))
+      .filter(
+        (activityTemplate) =>
+          activityTemplate.activity_type === ActivityType.morning ||
+          activityTemplate.activity_type === ActivityType.evening,
+      );
+
+    normalizedTemplates
       ?.sort((templateA, templateB) => templateA.duration_seconds - templateB.duration_seconds)
       ?.some((activityTemplate) => {
         const template_duration = parseInt(activityTemplate.duration_seconds?.toString(), 10);
@@ -256,5 +262,19 @@ export class ActivityLibraryService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private normalizeActivityType(activity_type?: string) {
+    const normalized = activity_type?.toLowerCase?.() ?? '';
+    if (normalized.startsWith(ActivityType.morning)) {
+      return ActivityType.morning;
+    }
+    if (normalized.startsWith(ActivityType.evening)) {
+      return ActivityType.evening;
+    }
+    if (normalized.startsWith('break')) {
+      return ActivityType.break;
+    }
+    return activity_type;
   }
 }

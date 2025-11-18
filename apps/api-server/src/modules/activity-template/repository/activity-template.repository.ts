@@ -60,26 +60,46 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
 
   async getActivityTemplatesWithGoalsMatched({ routine_duration, user_goals, routine }: GetRoutineSuggestionsDto) {
     const duration_seconds = convertMinutesToSeconds(routine_duration);
-    const allowed_routines = [ActivityType.morning, ActivityType.evening];
-    const goals = user_goals.map((goal) => goal.toLowerCase());
+    // Support legacy activity_type values (e.g. morning_activity/evening_activity) as well as canonical enum values.
+    const allowed_routines = [
+      ActivityType.morning,
+      ActivityType.evening,
+      `${ActivityType.morning}_activity`,
+      `${ActivityType.evening}_activity`,
+    ];
+    const goals = (user_goals ?? []).map((goal) => goal.toLowerCase()).filter(Boolean);
 
     const query = this.orm
       .createQueryBuilder('activity_templates')
       .leftJoinAndSelect('activity_templates.tags', 'template_tags')
-      .where(
-        'EXISTS (SELECT 1 FROM jsonb_array_elements_text(template_tags.tags) as tag WHERE LOWER(tag) = ANY (:goals))  ',
-      )
-      .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
-      .andWhere('activity_templates.duration_seconds <= :duration_seconds')
-      .setParameters({
-        goals,
-        allowed_routines,
-        duration_seconds,
-      })
       .select(['activity_templates', 'template_tags']);
 
+    if (goals.length) {
+      query
+        .where(
+          'EXISTS (SELECT 1 FROM jsonb_array_elements_text(template_tags.tags) as tag WHERE LOWER(tag) = ANY (:goals))',
+        )
+        .andWhere('activity_templates.activity_type IN (:...allowed_routines)')
+        .andWhere('activity_templates.duration_seconds <= :duration_seconds')
+        .setParameters({
+          goals,
+          allowed_routines,
+          duration_seconds,
+        });
+    } else {
+      // No goals: return all eligible routines within duration bounds so onboarding can proceed.
+      query
+        .where('activity_templates.activity_type IN (:...allowed_routines)')
+        .andWhere('activity_templates.duration_seconds <= :duration_seconds')
+        .setParameters({
+          allowed_routines,
+          duration_seconds,
+        });
+    }
+
     if (routine) {
-      query.andWhere('activity_templates.activity_type = :activity_type', { activity_type: routine });
+      const routineVariants = [routine.toLowerCase(), `${routine.toLowerCase()}_activity`];
+      query.andWhere('activity_templates.activity_type IN (:...routineVariants)', { routineVariants });
     }
 
     return query.getMany();

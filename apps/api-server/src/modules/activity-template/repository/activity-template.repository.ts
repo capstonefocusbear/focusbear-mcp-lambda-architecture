@@ -60,13 +60,7 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
 
   async getActivityTemplatesWithGoalsMatched({ routine_duration, user_goals, routine }: GetRoutineSuggestionsDto) {
     const duration_seconds = convertMinutesToSeconds(routine_duration);
-    // Support legacy activity_type values (e.g. morning_activity/evening_activity) as well as canonical enum values.
-    const allowed_routines = [
-      ActivityType.morning,
-      ActivityType.evening,
-      `${ActivityType.morning}_activity`,
-      `${ActivityType.evening}_activity`,
-    ];
+    const allowed_routines = [ActivityType.morning, ActivityType.evening];
     const goals = (user_goals ?? []).map((goal) => goal.toLowerCase()).filter(Boolean);
 
     const query = this.orm
@@ -98,8 +92,8 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     }
 
     if (routine) {
-      const routineVariants = [routine.toLowerCase(), `${routine.toLowerCase()}_activity`];
-      query.andWhere('activity_templates.activity_type IN (:...routineVariants)', { routineVariants });
+      const normalizedRoutine = routine.toLowerCase().replace(/_activity$/, '');
+      query.andWhere('activity_templates.activity_type = :routineVariant', { routineVariant: normalizedRoutine });
     }
 
     return query.getMany();

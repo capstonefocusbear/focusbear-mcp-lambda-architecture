@@ -140,7 +140,8 @@ describe('HabitPackService', () => {
       ActivityTemplateParserServiceMock.serialize.mockResolvedValue(serializedStandaloneActivityDummy);
       const result = habitPackService.serializeHabitPack({ activity_templates, pack_type, ...restOfPackData });
 
-      expect(result).toMatchSnapshot();
+      const serializedResult = JSON.parse(JSON.stringify(result));
+      expect(serializedResult).toMatchSnapshot();
     });
   });
 

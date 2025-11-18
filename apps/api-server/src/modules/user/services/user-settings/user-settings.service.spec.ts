@@ -154,7 +154,8 @@ describe('UserSettingsService', () => {
 
       const result = await userSettingsService.getSettings({ user_id });
 
-      expect(result).toMatchSnapshot();
+      const serializedResult = JSON.parse(JSON.stringify(result));
+      expect(serializedResult).toMatchSnapshot();
     });
 
     it("positive: if cutoff_time_for_non_high_priority_activities is not null it should be returned along with rest of user's settings", async () => {

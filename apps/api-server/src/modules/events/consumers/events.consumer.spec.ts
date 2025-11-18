@@ -58,6 +58,8 @@ const MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK = 'some-url?zapikey=key';
 describe('EventConsumer', () => {
   let eventsConsumer: EventsConsumer;
   const i18nServiceMock = mockDeep<I18nService>();
+  const setTranslations = (translations: Record<string, string>) =>
+    (i18nServiceMock.t as jest.MockedFunction<any>).mockImplementation((key: string) => translations[key] ?? '');
   const headersDummy = { app_version: '1.0.0', device_id: randomUUID() };
 
   beforeEach(async () => {
@@ -311,10 +313,9 @@ describe('EventConsumer', () => {
 
   describe('sendResumeHabitsNotification', () => {
     it('positive: should send push notification for postponed habits', async () => {
-      i18nServiceMock.t.mockImplementation((key: string) => {
-        if (key === 'common.resume_habits_title') return 'Resume your habits';
-        if (key === 'common.resume_habits_body') return 'Time to continue your routine';
-        return '';
+      setTranslations({
+        'common.resume_habits_title': 'Resume your habits',
+        'common.resume_habits_body': 'Time to continue your routine',
       });
 
       const mockPublishRequest = { notification: { title: 'test', body: 'test' } };
@@ -342,10 +343,9 @@ describe('EventConsumer', () => {
     });
 
     it('positive: should send push notification for postponed focus mode', async () => {
-      i18nServiceMock.t.mockImplementation((key: string) => {
-        if (key === 'common.resume_focus_mode_title') return 'Resume focus mode';
-        if (key === 'common.resume_focus_mode_body') return 'Time to focus again';
-        return '';
+      setTranslations({
+        'common.resume_focus_mode_title': 'Resume focus mode',
+        'common.resume_focus_mode_body': 'Time to focus again',
       });
 
       const mockPublishRequest = { notification: { title: 'test', body: 'test' } };
@@ -392,10 +392,9 @@ describe('EventConsumer', () => {
 
   describe('getNotificationTitleAndBody', () => {
     it('positive: should return correct title and body for postponed habits', () => {
-      i18nServiceMock.t.mockImplementation((key: string) => {
-        if (key === 'common.resume_habits_title') return 'Resume your habits';
-        if (key === 'common.resume_habits_body') return 'Time to continue your routine';
-        return '';
+      setTranslations({
+        'common.resume_habits_title': 'Resume your habits',
+        'common.resume_habits_body': 'Time to continue your routine',
       });
 
       const result = eventsConsumer.getNotificationTitleAndBody('en', EventTypes.POSTPONE_HABITS_FROM_MOBILE);
@@ -409,10 +408,9 @@ describe('EventConsumer', () => {
     });
 
     it('positive: should return correct title and body for postponed focus mode', () => {
-      i18nServiceMock.t.mockImplementation((key: string) => {
-        if (key === 'common.resume_focus_mode_title') return 'Resume focus mode';
-        if (key === 'common.resume_focus_mode_body') return 'Time to focus again';
-        return '';
+      setTranslations({
+        'common.resume_focus_mode_title': 'Resume focus mode',
+        'common.resume_focus_mode_body': 'Time to focus again',
       });
 
       const result = eventsConsumer.getNotificationTitleAndBody('es', EventTypes.POSTPONE_FOCUS_MODE_FROM_MOBILE);

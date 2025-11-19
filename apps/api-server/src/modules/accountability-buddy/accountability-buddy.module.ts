@@ -7,7 +7,6 @@ import { Auth0Module } from '@app/auth0';
 import { UserModule } from '../user/user.module';
 import { NotificationModule } from '../notification/notification.module';
 import { AccountabilityBuddyController } from './controllers/accountability-buddy.controller';
-import { AccountabilityBuddyPublicController } from './controllers/accountability-buddy-public.controller';
 import { AccountabilityBuddyRepository } from './repositories/accountability-buddy.repository';
 import { UnlockRequestRepository } from './repositories/unlock-request.repository';
 import { AccountabilityBuddyService } from './services/accountability-buddy.service';
@@ -27,7 +26,7 @@ import { AccountabilityNotificationService } from './services/accountability-not
     AccountabilityNotificationService,
   ],
   exports: [AccountabilityBuddyRepository, UnlockRequestRepository, AccountabilityBuddyService, UnlockRequestService],
-  controllers: [AccountabilityBuddyController, AccountabilityBuddyPublicController],
+  controllers: [AccountabilityBuddyController],
   imports: [
     forwardRef(() => UserModule),
     forwardRef(() => NotificationModule),

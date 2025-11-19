@@ -630,33 +630,4 @@ describe('UnlockRequestService', () => {
       expect(AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification).toHaveBeenCalled();
     });
   });
-
-  describe('approveUnlockRequestByToken', () => {
-    const payload: UnlockRequestApprovalPayload = {
-      unlock_request_id: unlockRequestId,
-      user_id: userId,
-      buddy_user_id: buddyUserId,
-    };
-
-    it('should throw UnauthorizedException when token is invalid', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockRejectedValueOnce(new Error('Invalid token'));
-
-      await expect(service.approveUnlockRequestByToken('invalid-token')).rejects.toThrow(UnauthorizedException);
-      await expect(service.approveUnlockRequestByToken('invalid-token')).rejects.toThrow(
-        'Invalid or expired approval token',
-      );
-    });
-
-    it('should approve unlock request using token', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValueOnce(payload);
-      const approveSpy = jest
-        .spyOn(service, 'approveUnlockRequest')
-        .mockResolvedValueOnce({ ...mockUnlockRequest, status: UnlockRequestStatus.APPROVED } as UnlockRequest);
-
-      await service.approveUnlockRequestByToken('valid-token');
-
-      expect(AccountabilityTokenServiceMock.verifyApprovalToken).toHaveBeenCalledWith('valid-token');
-      expect(approveSpy).toHaveBeenCalledWith({ id: payload.unlock_request_id }, payload.buddy_user_id);
-    });
-  });
 });

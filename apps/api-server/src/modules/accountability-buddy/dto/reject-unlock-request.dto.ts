@@ -1,12 +1,12 @@
-import { IsJWT, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RejectUnlockRequestDto {
   @ApiProperty({
-    description: 'JWT token for unlock request approval',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'Unlock request ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsNotEmpty()
-  @IsJWT()
-  token: string;
+  @IsUUID()
+  id: string;
 }

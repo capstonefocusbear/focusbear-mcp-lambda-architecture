@@ -8,5 +8,5 @@ export class AcceptInvitationByIdDto {
   })
   @IsNotEmpty()
   @IsUUID()
-  accountability_buddy_id: string;
+  id: string;
 }

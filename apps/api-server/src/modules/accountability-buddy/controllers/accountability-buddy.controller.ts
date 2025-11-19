@@ -13,6 +13,7 @@ import { CreateUnlockRequestDto } from '../dto/create-unlock-request.dto';
 import { GetUnlockRequestsQueryDto } from '../dto/get-unlock-requests-query.dto';
 import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
 import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
+import { ApproveUnlockRequestByTokenDto } from '../dto/approve-unlock-request-by-token.dto';
 import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
 
 @Controller('accountability-buddy')
@@ -120,8 +121,14 @@ export class AccountabilityBuddyController {
     return this.unlockRequestService.approveUnlockRequest(approveUnlockRequestParamDto, userId);
   }
 
-  @Post('unlock-request/reject')
-  @ApiResponse({ status: 200, description: 'Unlock request rejected successfully' })
+  @Post('unlock-request/approve-by-token')
+  @ApiResponse({ status: 200, description: 'Unlock request approved by token from email link' })
+  async approveUnlockRequestByToken(@Body() approveUnlockRequestByTokenDto: ApproveUnlockRequestByTokenDto) {
+    return this.unlockRequestService.approveUnlockRequestByToken(approveUnlockRequestByTokenDto);
+  }
+
+  @Post('unlock-request/:id/reject')
+  @ApiResponse({ status: 200, description: 'Unlock request rejected successfully by ID' })
   async rejectUnlockRequest(
     @Body() rejectUnlockRequestDto: RejectUnlockRequestDto,
     @AuthContext() { user: { id: userId } }: Passport,

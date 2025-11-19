@@ -224,66 +224,61 @@ describe('UnlockRequestService', () => {
   });
 
   describe('rejectUnlockRequest', () => {
-    const token = 'valid-approval-token';
-    const payload: UnlockRequestApprovalPayload = {
-      unlock_request_id: unlockRequestId,
-      user_id: userId,
-      buddy_user_id: buddyUserId,
-    };
-
-    it('should throw UnauthorizedException for invalid token', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockRejectedValue(new Error('Invalid token'));
-
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(UnauthorizedException);
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(
-        'Invalid or expired approval token',
-      );
-    });
-
-    it('should throw UnauthorizedException when request is not for the user', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
-
-      await expect(service.rejectUnlockRequest({ token }, 'different-user-id')).rejects.toThrow(UnauthorizedException);
-      await expect(service.rejectUnlockRequest({ token }, 'different-user-id')).rejects.toThrow(
-        'This request is not for your account',
-      );
+    const requestWithBuddy = new UnlockRequest({
+      ...mockUnlockRequest,
+      accountability_buddy: mockAccountabilityBuddy,
     });
 
     it('should throw NotFoundException when unlock request not found', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
-      UnlockRequestRepositoryMock.findById.mockResolvedValue(null);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(null);
 
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(NotFoundException);
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow('Unlock request not found');
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
+        'Unlock request not found',
+      );
+    });
+
+    it('should throw UnauthorizedException when user is not authorized', async () => {
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(requestWithBuddy);
+
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, 'different-user-id')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, 'different-user-id')).rejects.toThrow(
+        'You are not authorized to reject this unlock request',
+      );
     });
 
     it('should throw BadRequestException when request is not pending', async () => {
       const approvedRequest = new UnlockRequest({
-        ...mockUnlockRequest,
+        ...requestWithBuddy,
         status: UnlockRequestStatus.APPROVED,
       });
 
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
-      UnlockRequestRepositoryMock.findById.mockResolvedValue(approvedRequest);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(approvedRequest);
 
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(BadRequestException);
-      await expect(service.rejectUnlockRequest({ token }, buddyUserId)).rejects.toThrow(
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.rejectUnlockRequest({ id: unlockRequestId }, buddyUserId)).rejects.toThrow(
         'Unlock request is already approved',
       );
     });
 
     it('should successfully reject an unlock request', async () => {
       const rejectedRequest = new UnlockRequest({
-        ...mockUnlockRequest,
+        ...requestWithBuddy,
         status: UnlockRequestStatus.REJECTED,
       });
 
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValueOnce(payload);
-      UnlockRequestRepositoryMock.findById.mockResolvedValueOnce(mockUnlockRequest);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValueOnce(requestWithBuddy);
       UnlockRequestRepositoryMock.update.mockResolvedValueOnce(rejectedRequest);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
       AccountabilityNotificationServiceMock.createUnlockRequestRejectedNotification.mockResolvedValueOnce({} as any);
 
-      const result = await service.rejectUnlockRequest({ token }, buddyUserId);
+      const result = await service.rejectUnlockRequest({ id: unlockRequestId }, buddyUserId);
 
       expect(result).toEqual(rejectedRequest);
       expect(UnlockRequestRepositoryMock.update).toHaveBeenCalled();
@@ -622,6 +617,89 @@ describe('UnlockRequestService', () => {
       AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification.mockResolvedValueOnce({} as any);
 
       const result = await service.approveUnlockRequest({ id: unlockRequestId }, buddyUserId);
+
+      expect(result.status).toBe(UnlockRequestStatus.APPROVED);
+      expect(result.approved_at).toBeDefined();
+      expect(UnlockRequestRepositoryMock.update).toHaveBeenCalled();
+      expect(AccountabilityEmailServiceMock.sendUnlockRequestApprovedEmail).toHaveBeenCalledWith(mockAuth0User.email);
+      expect(AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification).toHaveBeenCalled();
+    });
+  });
+
+  describe('approveUnlockRequestByToken', () => {
+    const token = 'valid-approval-token';
+    const payload: UnlockRequestApprovalPayload = {
+      unlock_request_id: unlockRequestId,
+      user_id: userId,
+      buddy_user_id: buddyUserId,
+    };
+    const requestWithBuddy = new UnlockRequest({
+      ...mockUnlockRequest,
+      accountability_buddy: mockAccountabilityBuddy,
+    });
+
+    it('should throw UnauthorizedException for invalid token', async () => {
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockRejectedValue(new Error('Invalid token'));
+
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(UnauthorizedException);
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow('Invalid or expired approval token');
+    });
+
+    it('should throw NotFoundException when unlock request not found', async () => {
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(null);
+
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(NotFoundException);
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow('Unlock request not found');
+    });
+
+    it('should throw UnauthorizedException when buddy_user_id does not match', async () => {
+      const wrongPayload: UnlockRequestApprovalPayload = {
+        unlock_request_id: unlockRequestId,
+        user_id: userId,
+        buddy_user_id: 'different-buddy-id',
+      };
+
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(wrongPayload);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(requestWithBuddy);
+
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(UnauthorizedException);
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(
+        'You are not authorized to approve this unlock request',
+      );
+    });
+
+    it('should throw BadRequestException when request is not pending', async () => {
+      const approvedRequest = new UnlockRequest({
+        ...requestWithBuddy,
+        status: UnlockRequestStatus.APPROVED,
+      });
+
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValue(payload);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValue(approvedRequest);
+
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(BadRequestException);
+      await expect(service.approveUnlockRequestByToken({ token })).rejects.toThrow(
+        'Unlock request is already approved',
+      );
+    });
+
+    it('should successfully approve an unlock request by token', async () => {
+      const approvedRequest = new UnlockRequest({
+        ...requestWithBuddy,
+        status: UnlockRequestStatus.APPROVED,
+        approved_at: new Date(),
+      });
+
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockResolvedValueOnce(payload);
+      UnlockRequestRepositoryMock.findByIdWithRelations.mockResolvedValueOnce(requestWithBuddy);
+      UnlockRequestRepositoryMock.update.mockResolvedValueOnce(approvedRequest);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(mockUser);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
+      AccountabilityEmailServiceMock.sendUnlockRequestApprovedEmail.mockResolvedValueOnce(undefined);
+      AccountabilityNotificationServiceMock.createUnlockRequestApprovedNotification.mockResolvedValueOnce({} as any);
+
+      const result = await service.approveUnlockRequestByToken({ token });
 
       expect(result.status).toBe(UnlockRequestStatus.APPROVED);
       expect(result.approved_at).toBeDefined();

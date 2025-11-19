@@ -22,6 +22,7 @@ import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dt
 import { PageOrder } from '../../../shared/domain/page-order.enum';
 import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
 import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
+import { ApproveUnlockRequestByTokenDto } from '../dto/approve-unlock-request-by-token.dto';
 
 /**
  * Service for managing unlock requests between accountability buddies.
@@ -130,25 +131,18 @@ export class UnlockRequestService {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Rejecting unlock request',
+        message: 'Rejecting unlock request by ID',
         data: { userId, ...rejectUnlockRequestDto },
       });
 
-      let payload: UnlockRequestApprovalPayload;
-      try {
-        payload = await this.tokenService.verifyApprovalToken(rejectUnlockRequestDto.token);
-      } catch (error) {
-        throw new UnauthorizedException('Invalid or expired approval token');
-      }
-
-      if (payload.buddy_user_id !== userId) {
-        throw new UnauthorizedException('This request is not for your account');
-      }
-
-      const unlockRequest = await this.unlockRequestRepository.findById(payload.unlock_request_id);
+      const unlockRequest = await this.unlockRequestRepository.findByIdWithRelations(rejectUnlockRequestDto.id);
 
       if (!unlockRequest) {
         throw new NotFoundException('Unlock request not found');
+      }
+
+      if (unlockRequest.accountability_buddy?.buddy_user_id !== userId) {
+        throw new UnauthorizedException('You are not authorized to reject this unlock request');
       }
 
       if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
@@ -159,8 +153,8 @@ export class UnlockRequestService {
 
       const updatedRequest = await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
 
-      const requesterUser = await this.userRepository.orm.findOneBy({ id: payload.user_id });
-      const requesterLang = requesterUser?.language || 'en';
+      const requesterUser = await this.validateUser(unlockRequest.user_id);
+      const requesterLang = requesterUser.language || 'en';
 
       const rejectedTitle = this.i18nService.t('common.accountability_buddy_unlock_rejected_title', {
         lang: requesterLang,
@@ -171,7 +165,7 @@ export class UnlockRequestService {
 
       try {
         await this.notificationService.createUnlockRequestRejectedNotification(
-          payload.user_id,
+          unlockRequest.user_id,
           unlockRequest.id,
           rejectedTitle,
           rejectedDescription,
@@ -296,6 +290,75 @@ export class UnlockRequestService {
         this.sentryService.instance().captureException(notificationError, {
           level: 'warning',
           tags: { operation: 'approve_unlock_request_notification' },
+        });
+      }
+
+      return updatedRequest;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async approveUnlockRequestByToken(
+    approveUnlockRequestByTokenDto: ApproveUnlockRequestByTokenDto,
+  ): Promise<UnlockRequest> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Approving unlock request by token',
+        data: { token: `${approveUnlockRequestByTokenDto.token.substring(0, 20)}...` },
+      });
+
+      let payload: UnlockRequestApprovalPayload;
+      try {
+        payload = await this.tokenService.verifyApprovalToken(approveUnlockRequestByTokenDto.token);
+      } catch (error) {
+        throw new UnauthorizedException('Invalid or expired approval token');
+      }
+
+      const unlockRequest = await this.unlockRequestRepository.findByIdWithRelations(payload.unlock_request_id);
+
+      if (!unlockRequest) {
+        throw new NotFoundException('Unlock request not found');
+      }
+
+      if (unlockRequest.accountability_buddy?.buddy_user_id !== payload.buddy_user_id) {
+        throw new UnauthorizedException('You are not authorized to approve this unlock request');
+      }
+
+      if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
+        throw new BadRequestException(`Unlock request is already ${unlockRequest.status}`);
+      }
+
+      unlockRequest.status = UnlockRequestStatus.APPROVED;
+      unlockRequest.approved_at = new Date();
+
+      const updatedRequest = await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+
+      const requesterUser = await this.validateUser(unlockRequest.user_id);
+      const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
+      const requesterLang = requesterUser.language || 'en';
+
+      const approvedTitle = this.i18nService.t('common.accountability_buddy_unlock_approved_title', {
+        lang: requesterLang,
+      });
+
+      try {
+        await Promise.all([
+          this.emailService.sendUnlockRequestApprovedEmail(requesterAuth0.email),
+          this.notificationService.createUnlockRequestApprovedNotification(
+            unlockRequest.user_id,
+            unlockRequest.id,
+            approvedTitle,
+          ),
+        ]);
+      } catch (notificationError) {
+        // Log notification/email failure but don't fail the operation
+        this.sentryService.instance().captureException(notificationError, {
+          level: 'warning',
+          tags: { operation: 'approve_unlock_request_by_token_notification' },
         });
       }
 

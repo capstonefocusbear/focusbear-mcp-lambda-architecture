@@ -306,6 +306,29 @@ export class UnlockRequestService {
     }
   }
 
+  async approveUnlockRequestByToken(token: string): Promise<UnlockRequest> {
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Approving unlock request by token',
+      });
+
+      let payload: UnlockRequestApprovalPayload;
+
+      try {
+        payload = await this.tokenService.verifyApprovalToken(token);
+      } catch (error) {
+        throw new UnauthorizedException('Invalid or expired approval token');
+      }
+
+      return await this.approveUnlockRequest({ id: payload.unlock_request_id }, payload.buddy_user_id);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
   private async validateUser(userId: string): Promise<User> {
     const user = await this.userRepository.orm.findOneBy({ id: userId });
     if (!user) {

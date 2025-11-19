@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -52,7 +52,7 @@ export class AccountabilityBuddyController {
     return this.accountabilityBuddyService.getReceivedInvitations(userId, query);
   }
 
-  @Post('accept-invitation')
+  @Post('invitations/accept')
   @ApiResponse({ status: 200, description: 'Invitation accepted successfully' })
   async acceptInvitation(
     @Body() acceptInvitationDto: AcceptInvitationDto,
@@ -61,28 +61,22 @@ export class AccountabilityBuddyController {
     return this.accountabilityBuddyService.acceptInvitation(acceptInvitationDto.token, buddyUserId);
   }
 
-  @Post('invitations/accept')
+  @Patch('invitations/:id/accept')
   @ApiResponse({ status: 200, description: 'Invitation accepted successfully by ID' })
   async acceptInvitationById(
-    @Body() acceptInvitationByIdDto: AcceptInvitationByIdDto,
+    @Param() acceptInvitationByIdDto: AcceptInvitationByIdDto,
     @AuthContext() { user: { id: buddyUserId } }: Passport,
   ) {
-    return this.accountabilityBuddyService.acceptInvitationById(
-      acceptInvitationByIdDto.accountability_buddy_id,
-      buddyUserId,
-    );
+    return this.accountabilityBuddyService.acceptInvitationById(acceptInvitationByIdDto.id, buddyUserId);
   }
 
-  @Post('invitations/reject')
+  @Patch('invitations/:id/reject')
   @ApiResponse({ status: 200, description: 'Invitation rejected successfully' })
   async rejectInvitationById(
-    @Body() rejectInvitationByIdDto: RejectInvitationByIdDto,
+    @Param() rejectInvitationByIdDto: RejectInvitationByIdDto,
     @AuthContext() { user: { id: buddyUserId } }: Passport,
   ) {
-    return this.accountabilityBuddyService.rejectInvitationById(
-      rejectInvitationByIdDto.accountability_buddy_id,
-      buddyUserId,
-    );
+    return this.accountabilityBuddyService.rejectInvitationById(rejectInvitationByIdDto.id, buddyUserId);
   }
 
   @Delete(':id')
@@ -112,7 +106,13 @@ export class AccountabilityBuddyController {
     return this.unlockRequestService.getUnlockRequests(userId, query);
   }
 
-  @Post('unlock-request/:id/approve')
+  @Post('unlock-request/approve')
+  @ApiResponse({ status: 200, description: 'Unlock request approved by token from email link' })
+  async approveUnlockRequestByToken(@Body() approveUnlockRequestByTokenDto: ApproveUnlockRequestByTokenDto) {
+    return this.unlockRequestService.approveUnlockRequestByToken(approveUnlockRequestByTokenDto);
+  }
+
+  @Patch('unlock-request/:id/approve')
   @ApiResponse({ status: 200, description: 'Unlock request approved by ID (authenticated user)' })
   async approveUnlockRequest(
     @Param() approveUnlockRequestParamDto: ApproveUnlockRequestParamDto,
@@ -121,16 +121,10 @@ export class AccountabilityBuddyController {
     return this.unlockRequestService.approveUnlockRequest(approveUnlockRequestParamDto, userId);
   }
 
-  @Post('unlock-request/approve-by-token')
-  @ApiResponse({ status: 200, description: 'Unlock request approved by token from email link' })
-  async approveUnlockRequestByToken(@Body() approveUnlockRequestByTokenDto: ApproveUnlockRequestByTokenDto) {
-    return this.unlockRequestService.approveUnlockRequestByToken(approveUnlockRequestByTokenDto);
-  }
-
-  @Post('unlock-request/:id/reject')
+  @Patch('unlock-request/:id/reject')
   @ApiResponse({ status: 200, description: 'Unlock request rejected successfully by ID' })
   async rejectUnlockRequest(
-    @Body() rejectUnlockRequestDto: RejectUnlockRequestDto,
+    @Param() rejectUnlockRequestDto: RejectUnlockRequestDto,
     @AuthContext() { user: { id: userId } }: Passport,
   ) {
     return this.unlockRequestService.rejectUnlockRequest(rejectUnlockRequestDto, userId);

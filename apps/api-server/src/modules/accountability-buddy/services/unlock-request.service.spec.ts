@@ -639,14 +639,12 @@ describe('UnlockRequestService', () => {
     };
 
     it('should throw UnauthorizedException when token is invalid', async () => {
-      AccountabilityTokenServiceMock.verifyApprovalToken.mockImplementationOnce(() => {
-        throw new Error('Invalid token');
-      });
+      AccountabilityTokenServiceMock.verifyApprovalToken.mockRejectedValueOnce(new Error('Invalid token'));
 
-      const promise = service.approveUnlockRequestByToken('invalid-token');
-
-      await expect(promise).rejects.toThrow(UnauthorizedException);
-      await expect(promise).rejects.toThrow('Invalid or expired approval token');
+      await expect(service.approveUnlockRequestByToken('invalid-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.approveUnlockRequestByToken('invalid-token')).rejects.toThrow(
+        'Invalid or expired approval token',
+      );
     });
 
     it('should approve unlock request using token', async () => {

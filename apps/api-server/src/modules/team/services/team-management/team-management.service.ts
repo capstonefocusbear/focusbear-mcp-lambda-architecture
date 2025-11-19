@@ -1066,11 +1066,26 @@ export class TeamManagementService {
       const successfullyAddedStudents: typeof validatedStudents = [];
       const failedStudents: Array<{ student: (typeof validatedStudents)[0]; reason: string }> = [];
 
+      // Track added ids within this run to prevent duplicates in the input list
+      const addedIds = new Set<string>();
+
       for (const student of validatedStudents) {
         const memberId = student.userId;
         const first_name = student.firstName;
         const last_name = student.lastName;
         const email = student.email;
+
+        // enforce offline capacity using currentTeamSize
+        if (team.payment_type === PaymentType.OFFLINE && currentTeamSize >= (team.team_size_limit || Infinity)) {
+          failedStudents.push({ student, reason: 'Team capacity reached' });
+          continue;
+        }
+
+        // avoid adding duplicate ids within this run
+        if (memberId && addedIds.has(memberId)) {
+          failedStudents.push({ student, reason: 'Duplicate in input' });
+          continue;
+        }
 
         try {
           const [memberRecordResult, membershipResult] = await Promise.allSettled([
@@ -1088,6 +1103,7 @@ export class TeamManagementService {
 
           if (memberRecordResult.status === 'fulfilled' && membershipResult.status === 'fulfilled') {
             currentTeamSize++;
+            if (memberId) addedIds.add(memberId);
             successfullyAddedStudents.push(student);
           } else {
             // Handle partial failure: if a NEW member record was created but membership failed, rollback the record

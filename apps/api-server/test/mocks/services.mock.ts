@@ -61,6 +61,8 @@ export const UserServiceMock = {
   getUserLocalDeviceSettings: jest.fn(),
   consistentlyUpdateUserSettings: jest.fn(),
   isVerboseLoggingAllowed: jest.fn(),
+  logVerboselyIfUserHasVerboseLoggingEnabled: jest.fn(),
+  clearVerboseLoggingCache: jest.fn(),
   // rest can be added if needed
 };
 
@@ -224,6 +226,9 @@ export const OpenAIServiceMock = {
   adjustHabitsWithAi: jest.fn(),
   createChatCompletion: jest.fn(),
   createEmbedding: jest.fn(),
+  transcribeAudioToText: jest.fn(),
+  createDraftTodosFromTranscript: jest.fn(),
+  extractTodosFromImage: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {
@@ -246,6 +251,8 @@ export const ServiceMock = {
   getAllUserTasks: jest.fn(),
   getAllUserProjects: jest.fn(),
   syncProjectAndChildTasks: jest.fn(),
+  addTimeEntry: jest.fn(),
+  updateTaskStatus: jest.fn(),
 };
 
 export const IntegrationFactoryMock = {

@@ -56,6 +56,8 @@ import { UsageData } from '../modules/user/entities/usage-data.entity';
 import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
 import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
 import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
+import { AccountabilityBuddy } from '../modules/accountability-buddy/entities/accountability-buddy.entity';
+import { UnlockRequest } from '../modules/accountability-buddy/entities/unlock-request.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -70,6 +72,7 @@ export const typeormConfig = registerAs(
     logging: ['error', 'warn'],
     maxQueryExecutionTime: 200,
     ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+    migrationsTransactionMode: 'none',
     entities: [
       User,
       Activity,
@@ -128,6 +131,8 @@ export const typeormConfig = registerAs(
       HealthMetrics,
       FlankerTest,
       AsyncTask,
+      AccountabilityBuddy,
+      UnlockRequest,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

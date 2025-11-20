@@ -53,7 +53,9 @@ describe('ActivityTemplateService', () => {
       HabitPackRepositoryMock.orm.findOne.mockResolvedValueOnce(standaloneHabitPackDummy);
       await activityTemplateService.bulkDeleteActivityTemplates(standaloneHabitPackDummy.id);
 
-      expect(ActivityTemplateRepositoryMock.orm.softDelete).toBeCalledWith({ pack_id: standaloneHabitPackDummy.id });
+      expect(ActivityTemplateRepositoryMock.orm.softDelete).toHaveBeenCalledWith({
+        pack_id: standaloneHabitPackDummy.id,
+      });
     });
   });
 });

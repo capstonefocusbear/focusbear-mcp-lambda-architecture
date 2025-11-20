@@ -245,6 +245,36 @@ describe('OpenAIService', () => {
       const result = await service.checkIfUrlIsSafeToUse(isUrlSafeDto, 'en');
       expect(result.allowed_probability).toBe(TEST_CONSTANTS.ZERO_PROBABILITY);
     });
+
+    it('should replace repeated placeholders in the URL safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(
+        () => 'Task: {{currentTaskInToDoPlayer}} :: {{currentTaskInToDoPlayer}}',
+      );
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        url: 'http://example.com',
+        meta_description: '',
+        tab_title: '',
+        focus_mode: 'work',
+        intention: 'focus',
+        currentTaskInToDoPlayer: 'Write the summary',
+        language: 'en',
+      };
+
+      await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).not.toContain('{{currentTaskInToDoPlayer}}');
+      const occurrences = (promptContent.match(/Write the summary/g) || []).length;
+      expect(occurrences).toBe(2);
+      completionsSpy.mockRestore();
+    });
   });
 
   describe('addHttpsProtocol', () => {
@@ -690,6 +720,38 @@ describe('OpenAIService', () => {
         expect(error.message).toBe('Invalid input');
       });
     });
+
+    it('should replace repeated placeholders in the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(
+        () => 'App {{appName}} + {{appName}} task {{currentTaskInToDoPlayer}} {{currentTaskInToDoPlayer}}',
+      );
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Ghostty',
+        justificationForThisSpecificApp: 'Need terminal',
+        currentTaskInToDoPlayer: 'Implement API client',
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).not.toContain('{{appName}}');
+      expect(promptContent).not.toContain('{{currentTaskInToDoPlayer}}');
+      const appOccurrences = (promptContent.match(/Ghostty/g) || []).length;
+      const taskOccurrences = (promptContent.match(/Implement API client/g) || []).length;
+      expect(appOccurrences).toBe(2);
+      expect(taskOccurrences).toBe(2);
+      completionsSpy.mockRestore();
+    });
   }); // Properly closing checkIfAppIsSafeToUse describe block
 
   describe('getOpenAIInstance', () => {
@@ -713,7 +775,7 @@ describe('OpenAIService', () => {
         promptCacheServiceMock as any,
       );
 
-      expect(() => (invalidService as any).getOpenAIInstance('URL_SAFETY')).toThrowError(
+      expect(() => (invalidService as any).getOpenAIInstance('URL_SAFETY')).toThrow(
         'No OpenAI configuration found for type: URL_SAFETY and no general fallback available',
       );
     });

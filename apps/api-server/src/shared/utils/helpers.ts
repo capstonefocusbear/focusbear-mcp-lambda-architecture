@@ -284,3 +284,8 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage =
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(timeoutMessage)), ms)),
   ]);
 }
+
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}

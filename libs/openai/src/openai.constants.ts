@@ -93,13 +93,19 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4_1,
+    model: GPT_4_1_MINI,
+    n: 1,
+    messages: null,
+    response_format: { type: 'json_object' },
+  },
+  activityEmojiGeneration: {
+    model: GPT_4_1_MINI,
     temperature: 0,
     n: 1,
     messages: null,
   },
   convertBrainDumpToTasks: {
-    model: GPT_4_1_MINI,
+    model: GPT_5_MINI,
     temperature: 0,
     n: 1,
     messages: null,
@@ -120,9 +126,9 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   checkURL: {
     model: GPT_4_1_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
+    response_format: { type: 'json_object' },
   },
 
   chatReply: {

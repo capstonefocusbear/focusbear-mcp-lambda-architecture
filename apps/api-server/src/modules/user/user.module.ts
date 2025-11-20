@@ -50,6 +50,7 @@ import { UserFeedbackController } from './controllers/user-feedback/user-feedbac
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
 import { ToDoModule } from '../to-do/to-do.module';
 import { PlatformIntegrationsModule } from '../platform-integrations/platform-integrations.module';
+import { AccountabilityBuddyModule } from '../accountability-buddy/accountability-buddy.module';
 import { BullQueues } from '../../shared/utils/constants';
 import { EventsModule } from '../events/events.module';
 import { CustomRoutineRepository } from './repositories/custom-routine.repository';
@@ -206,6 +207,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     PlatformIntegrationsModule,
     EventsModule,
     AsyncTaskModule,
+    forwardRef(() => AccountabilityBuddyModule),
   ],
   controllers: [
     UserSettingsController,

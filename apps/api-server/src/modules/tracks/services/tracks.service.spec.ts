@@ -83,7 +83,7 @@ describe('TracksService', () => {
     it('Positive: should call upsert on tracksRepository with track DTO', async () => {
       await tracksService.upsertTrack(trackDtoDummy);
 
-      expect(TracksRepositoryMock.upsert).toBeCalledWith(trackDtoDummy, ['id']);
+      expect(TracksRepositoryMock.upsert).toHaveBeenCalledWith(trackDtoDummy, ['id']);
     });
   });
 });

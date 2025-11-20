@@ -173,17 +173,20 @@ describe('TeamManagementService', () => {
         dummyTeam.owner_id,
       );
 
-      expect(TeamToMemberRepositoryMock.orm.delete).toBeCalledWith({
+      expect(TeamToMemberRepositoryMock.orm.delete).toHaveBeenCalledWith({
         team_id: teamId,
         member_id: memberToDelete.member_id,
       });
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberToDelete.id, Entitlement.team_member);
-      expect(StripeServiceMock.updateSubscription).toBeCalledWith(
+      expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(
+        memberToDelete.id,
+        Entitlement.team_member,
+      );
+      expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(
         TeamWithMembersDummy.stripe_data.subscriptionId,
         TeamWithMembersDummy.stripe_data.subscriptionItemId,
         1,
       );
-      expect(TeamRepositoryMock.update).toBeCalledWith(teamId, { team_size: 1 });
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(teamId, { team_size: 1 });
     });
   });
 
@@ -505,10 +508,10 @@ describe('TeamManagementService', () => {
         adminId,
       );
 
-      expect(TeamToAdminRepositoryMock.orm.save).toBeCalledWith(
+      expect(TeamToAdminRepositoryMock.orm.save).toHaveBeenCalledWith(
         new TeamToAdmin({ team_id: TeamWithMembersDummy.id, admin_id: TeamMemberDummy.member_id }),
       );
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
         TeamMemberDummy.member_id,
         Entitlement.team_admin,
         TeamMemberDummy.member_expiry_date,
@@ -793,7 +796,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.registerTeam(createSubscriptionPayloadDummy);
 
-      expect(UserRepositoryMock.orm.save).toBeCalled();
+      expect(UserRepositoryMock.orm.save).toHaveBeenCalled();
     });
   });
 
@@ -849,7 +852,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.updateTeamSize(adminId, TeamWithMembersDummy.id, 3);
 
-      expect(StripeServiceMock.updateSubscription).toBeCalledWith(subscriptionId, subscriptionItemId, 3);
+      expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(subscriptionId, subscriptionItemId, 3);
     });
   });
 
@@ -1209,7 +1212,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.revokeTeamMembersEntitlements('sub_1234');
 
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(memberTwoId, Entitlement.team_member);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(memberTwoId, Entitlement.team_member);
     });
   });
 
@@ -1253,7 +1256,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.revokeOwnerEntitlement('sub_1234');
 
-      expect(RevenueCatServiceMock.revokeTeamMembership).toBeCalledWith(ownerId, Entitlement.team_owner);
+      expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(ownerId, Entitlement.team_owner);
     });
 
     it("positive: should NOT revoke owner of team's team_owner entitlement in revenue cat if member is owner of multiple teams", async () => {
@@ -1266,7 +1269,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.revokeOwnerEntitlement('sub_1234');
 
-      expect(RevenueCatServiceMock.revokeTeamMembership).not.toBeCalled();
+      expect(RevenueCatServiceMock.revokeTeamMembership).not.toHaveBeenCalled();
     });
   });
 
@@ -1277,12 +1280,12 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.reassignTeamMembersEntitlements('sub_1234');
 
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
         TeamMemberDummy.id,
         Entitlement.team_member,
         TeamWithMembersDummy.expires_date,
       );
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
         TeamMemberFake.id,
         Entitlement.team_member,
         TeamWithMembersDummy.expires_date,
@@ -1314,7 +1317,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.handleTeamResubscription(TeamWithMembersDummy.id, createSubscriptionPayloadDummy);
 
-      expect(TeamRepositoryMock.orm.save).toBeCalledWith(
+      expect(TeamRepositoryMock.orm.save).toHaveBeenCalledWith(
         new Team({
           ...TeamWithMembersDummy,
           is_active: true,
@@ -1340,7 +1343,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.handleTeamSubscriptionCancelled('sub_123');
 
-      expect(TeamRepositoryMock.orm.save).toBeCalledWith(
+      expect(TeamRepositoryMock.orm.save).toHaveBeenCalledWith(
         new Team({ ...TeamWithMembersDummy, is_active: false, stripe_subscription_id: null, stripe_data: null }),
       );
     });
@@ -1371,8 +1374,8 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.deleteTeam(userDummy.id, TeamWithMembersDummy.id);
 
-      expect(TeamRepositoryMock.orm.delete).toBeCalledWith({ id: TeamWithMembersDummy.id });
-      expect(StripeServiceMock.cancelSubscription).toBeCalledWith(TeamWithMembersDummy.stripe_subscription_id);
+      expect(TeamRepositoryMock.orm.delete).toHaveBeenCalledWith({ id: TeamWithMembersDummy.id });
+      expect(StripeServiceMock.cancelSubscription).toHaveBeenCalledWith(TeamWithMembersDummy.stripe_subscription_id);
     });
   });
 
@@ -1623,7 +1626,7 @@ describe('TeamManagementService', () => {
 
       await teamManagementService.addTeamMemberManually(adminId, addTeamManuallyDtoDummy);
 
-      expect(TeamToMemberRepositoryMock.orm.save).toBeCalledWith({
+      expect(TeamToMemberRepositoryMock.orm.save).toHaveBeenCalledWith({
         member_id: newMember.id,
         team_id: TeamWithMembersDummy.id,
         first_name: auth0UserDummy.given_name,
@@ -1635,7 +1638,7 @@ describe('TeamManagementService', () => {
         invitation_send_count: 1,
         member_expiry_date: TeamWithMembersDummy.expires_date as Date,
       });
-      expect(RevenueCatServiceMock.grantTeamMembership).toBeCalledWith(
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
         newMember.id,
         Entitlement.team_member,
         TeamWithMembersDummy.expires_date,

@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`ActivityLibraryService getLibraryActivities positive: should fetch activity templates from the DB and format them as activity DTOs before returning them as response 1`] = `
 [

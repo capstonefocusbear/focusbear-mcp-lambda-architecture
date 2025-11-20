@@ -170,7 +170,7 @@ describe('ActivityLibraryService', () => {
 
       await activityLibraryService.upsertLibraryActivities([upsertActiivtyTemplateDummy], userDummy.id);
 
-      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toBeCalledWith(
+      expect(ActivityTemplateRepositoryMock.consistentlyUpdateLibraryActivities).toHaveBeenCalledWith(
         [],
         [],
         userDummy.id,

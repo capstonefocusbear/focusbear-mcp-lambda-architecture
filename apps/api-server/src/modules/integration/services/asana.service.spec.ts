@@ -77,7 +77,7 @@ describe('asanaService', () => {
     it('positive: user should be fetched from DB', async () => {
       await asanaService.getUser(userDummy.id);
 
-      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: userDummy.id });
     });
   });
 

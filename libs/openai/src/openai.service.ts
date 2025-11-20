@@ -328,18 +328,16 @@ export class OpenAIService {
         };
       }
 
-      const filledPromptContent = promptContent
-        .replace('{{url}}', sanitizedUrl)
-        .replace('{{tab_title}}', finalTitle)
-        .replace('{{meta_description}}', finalDescription)
-        .replace('{{focus_mode}}', focus_mode || '')
-        .replace('{{intention}}', intention || '')
-        .replace('{{justificationForThisUrl}}', justificationForThisUrl || '')
-        .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '')
-        .replace(
-          '{{lastFiveJustificationsInThisFocusSession}}',
-          JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
-        );
+      const filledPromptContent = this.fillPrompt(promptContent, {
+        url: sanitizedUrl,
+        tab_title: finalTitle,
+        meta_description: finalDescription,
+        focus_mode: focus_mode || '',
+        intention: intention || '',
+        justificationForThisUrl: justificationForThisUrl || '',
+        currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+        lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+      });
 
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
@@ -416,12 +414,13 @@ export class OpenAIService {
     }
 
     // Fill in the prompt template with actual values
-    const filledPromptContent = promptContent
-      .replace('{{appName}}', appName)
-      .replace('{{focusMode}}', focusMode)
-      .replace('{{intention}}', intention || '')
-      .replace('{{justificationForThisSpecificApp}}', justificationForThisSpecificApp || '')
-      .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '');
+    const filledPromptContent = this.fillPrompt(promptContent, {
+      appName,
+      focusMode,
+      intention: intention || '',
+      justificationForThisSpecificApp: justificationForThisSpecificApp || '',
+      currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+    });
 
     const basePrompt: ChatCompletionMessageParam = {
       role: 'system',
@@ -868,6 +867,17 @@ export class OpenAIService {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
   }
 
+  private fillPrompt(
+    template: string | null | undefined,
+    replacements: Record<string, string | undefined | null>,
+  ): string {
+    return Object.entries(replacements).reduce<string>((acc, [key, value]) => {
+      const safeValue = value ?? '';
+      const placeholder = `{{${key}}}`;
+      return acc.split(placeholder).join(safeValue);
+    }, template ?? '');
+  }
+
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
@@ -897,7 +907,9 @@ export class OpenAIService {
     try {
       const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
 
-      const filledPrompt = (prompt || '').replace('{{current_datetime}}', new Date().toISOString());
+      const filledPrompt = this.fillPrompt(prompt, {
+        current_datetime: new Date().toISOString(),
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -934,6 +946,7 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
+      OPENAI_PARAMS.activityEmojiGeneration as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
     );
 
     const newMessage = completions.choices[0].message;
@@ -1052,10 +1065,9 @@ export class OpenAIService {
     try {
       const prompt = this.promptCacheService.getPrompt('handwritten-todos-analysis');
 
-      const filledPrompt = (prompt || '').replace(
-        '{{current_datetime}}',
-        currentDatetimeIso || new Date().toISOString(),
-      );
+      const filledPrompt = this.fillPrompt(prompt, {
+        current_datetime: currentDatetimeIso || new Date().toISOString(),
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1109,9 +1121,10 @@ export class OpenAIService {
 
       const currentDatetimeIso = new Date().toISOString();
       const prompt = this.promptCacheService.getPrompt('todos-transcript-analysis') || '';
-      const filledPrompt = prompt
-        .replace('{{transcript}}', transcript)
-        .replace('{{current_datetime}}', currentDatetimeIso);
+      const filledPrompt = this.fillPrompt(prompt, {
+        transcript,
+        current_datetime: currentDatetimeIso,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {

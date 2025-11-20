@@ -4,11 +4,13 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Raw } from 'typeorm';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
@@ -22,6 +24,7 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
+import { emitUserActivityMetric } from '@app/observability';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
@@ -71,11 +74,17 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { MetricsConfig } from '../../../../config/metrics.config';
+import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private readonly verboseLogger = new Logger(UserService.name);
+
+  private verboseLogCache = new Map<string, boolean>();
+
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -102,6 +111,8 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
+    @Inject(forwardRef(() => AccountabilityBuddyService))
+    private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -118,7 +129,12 @@ export class UserService {
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       const user = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
-      if (!registeredUser) await this.handleInitialRegistration(user.id);
+      if (!registeredUser) {
+        await Promise.allSettled([
+          this.handleInitialRegistration(user.id),
+          this.accountabilityBuddyService.linkPendingInvitationsForNewUser(user.id, email), // Link pending accountability buddy invitations for the newly registered user
+        ]);
+      }
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
@@ -374,6 +390,7 @@ export class UserService {
   }
 
   async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
+    const startTimeMs = Date.now();
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -427,8 +444,16 @@ export class UserService {
         },
       });
 
+      const elapsedMs = Date.now() - startTimeMs;
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, true);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, true);
+
       return currentActivityProps;
     } catch (error) {
+      const elapsedMs = Date.now() - startTimeMs;
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, false, normalizedError);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, false, normalizedError);
       this.sentryService.instance().captureException(error, {
         level: 'error',
       });
@@ -902,9 +927,52 @@ export class UserService {
     return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 
+  private async getVerboseLoggingCached(userId: string): Promise<boolean> {
+    const cached = this.verboseLogCache.get(userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(userId);
+    const value = isVerboseLoggingAllowed || false;
+    this.verboseLogCache.set(userId, value);
+    return value;
+  }
+
+  // Clear cache for a user when verbose_logging setting is updated
+  clearVerboseLoggingCache(userId: string): void {
+    this.verboseLogCache.delete(userId);
+  }
+
+  // Centralized function to log messages only if the user has verbose logging enabled
+  async logVerboselyIfUserHasVerboseLoggingEnabled(user_id: string, logArgs: any[]): Promise<void> {
+    try {
+      const isVerboseLoggingAllowed = await this.getVerboseLoggingCached(user_id);
+      if (isVerboseLoggingAllowed) {
+        if (!logArgs?.length) {
+          this.verboseLogger.log('');
+          return;
+        }
+        const [firstArg, ...restArgs] = logArgs;
+        this.verboseLogger.log(firstArg, ...restArgs);
+      }
+    } catch (error) {
+      // Silently fail if we can't check verbose logging status
+    }
+  }
+
   async updateUsername(user_id: string, { username }: UpdateUsernameDto) {
+    const normalizedUsername = username?.normalize('NFC').trim();
+    if (!normalizedUsername) {
+      throw new BadRequestException('Username cannot be empty');
+    }
+
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
-      where: { username: username.toLowerCase() },
+      where: {
+        username: Raw((alias) => `LOWER(${alias}) = LOWER(:username)`, {
+          username: normalizedUsername,
+        }),
+      },
     });
     if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
       throw new ConflictException(
@@ -920,15 +988,15 @@ export class UserService {
         resolve({ allowed: true });
       }, USERNAME_VALIDATION_TIMEOUT);
     });
-    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(username);
+    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(normalizedUsername);
     // Check if username is allowed or default to true after 15 seconds
     const { allowed } = await Promise.race([usernameIsValidPromise, timeoutPromise]);
     clearTimeout(timeoutId); // Clear the timeout if usernameIsValidPromise has resolved
     if (!allowed) {
-      throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
+      throw new BadRequestException(`Username: ${normalizedUsername} not accepted because it is deemed offensive`);
     }
     await this.userRepository.update(user_id, {
-      username: username.toLowerCase(),
+      username: normalizedUsername,
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
@@ -1025,5 +1093,72 @@ export class UserService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private async emitCurrentActivityPropsMetric(
+    userId: string,
+    durationMs: number,
+    success: boolean,
+    error?: Error,
+  ): Promise<void> {
+    const metrics = this.getMetricsConfig();
+    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+
+    if (!shouldEmitMetrics) {
+      return;
+    }
+
+    try {
+      await emitUserActivityMetric({
+        namespace: metrics.namespace,
+        environment: metrics.environment,
+        service: metrics.service,
+        operation: 'getUserCurrentActivityProps',
+        durationMs,
+        success,
+        userId,
+        errorName: error?.name,
+        errorMessage: error?.message,
+      });
+    } catch (emitError) {
+      this.verboseLogger.warn(
+        'Failed to emit getUserCurrentActivityProps metric',
+        emitError instanceof Error ? emitError.message : undefined,
+      );
+    }
+  }
+
+  private logCurrentActivityPropsLatency(userId: string, durationMs: number, success: boolean, error?: Error): void {
+    const payload = {
+      event: success ? 'GetUserCurrentActivityPropsLatency' : 'GetUserCurrentActivityPropsError',
+      user_id: userId,
+      durationMs,
+      success,
+      error_name: error?.name,
+      error_message: error?.message,
+    };
+    const serializedPayload = JSON.stringify(payload);
+
+    if (success) {
+      this.verboseLogger.log(serializedPayload);
+      return;
+    }
+
+    const trace = error?.stack || error?.message;
+    this.verboseLogger.error(serializedPayload, trace);
+  }
+
+  private getMetricsConfig(): MetricsConfig {
+    return (
+      this.config.get<MetricsConfig>('metrics') || {
+        emitQueueMetrics: true,
+        emitUserActivityMetrics: true,
+        pollIntervalMs: 60_000,
+        namespace: 'FocusBear/Queues',
+        service: 'api',
+        environment: 'prod',
+        logQueueFailures: true,
+      }
+    );
   }
 }

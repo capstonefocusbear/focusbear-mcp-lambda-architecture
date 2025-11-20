@@ -42,6 +42,7 @@ import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
+import { AccountabilityBuddyModule } from './modules/accountability-buddy/accountability-buddy.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 
@@ -113,6 +114,7 @@ import { ObservabilityModule } from './observability/observability.module';
     AsyncTaskModule,
     ZohoDeskModule,
     ObservabilityModule,
+    AccountabilityBuddyModule,
   ],
   controllers: [AppController],
 })

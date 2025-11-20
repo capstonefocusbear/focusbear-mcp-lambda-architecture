@@ -140,10 +140,12 @@ describe('EmailProcessor', () => {
       mockJobData.user,
       mockJobData.metrics,
       mockJobData.unsubscribe_token,
+      { variant: 'weekly' },
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
-      from: 'noreply@focusbear.io',
+      from: 'support@focusbear.io',
+      replyTo: 'support@focusbear.io',
       subject: 'Test Progress Email',
       html: '<html>Test HTML</html>',
       text: 'Test text content',
@@ -177,7 +179,8 @@ describe('EmailProcessor', () => {
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
-      from: 'noreply@focusbear.io',
+      from: 'support@focusbear.io',
+      replyTo: 'support@focusbear.io',
       subject: 'Test No Progress Email',
       html: '<html>No Progress HTML</html>',
       text: 'No progress text content',
@@ -207,10 +210,12 @@ describe('EmailProcessor', () => {
       mockJobData.user,
       mockJobData.metrics,
       expect.anything(),
+      { variant: 'weekly' },
     );
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
       to: 'test@example.com',
-      from: 'noreply@focusbear.io',
+      from: 'support@focusbear.io',
+      replyTo: 'support@focusbear.io',
       subject: 'Test Progress Email',
       html: '<html>Test HTML</html>',
       text: 'Test text content',

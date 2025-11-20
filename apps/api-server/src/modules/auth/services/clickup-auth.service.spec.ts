@@ -84,7 +84,7 @@ describe('ClickUpService', () => {
         code: 'code',
       });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.CLICK_UP,
         {

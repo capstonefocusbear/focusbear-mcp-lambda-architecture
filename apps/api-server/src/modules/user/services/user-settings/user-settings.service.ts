@@ -206,6 +206,7 @@ export class UserSettingsService {
         morning_activities,
         break_activities,
         custom_routines,
+        verbose_logging,
       } = mergedSettingsData;
 
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
@@ -242,17 +243,34 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
         is_relax_activity_generated,
+        ...(typeof verbose_logging === 'boolean' && { verbose_logging }),
       });
 
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
       if (custom_routines?.length) {
-        customRoutines = custom_routines?.map(({ standalone_activities, activity_sequence_id, ...rest }) => ({
-          ...rest,
-          user_id,
-        }));
+        // First, ensure all custom routines have IDs (generate if missing)
+        const customRoutinesWithIds = custom_routines.map((routine) => {
+          if (!routine.id) {
+            return { ...routine, id: randomUUID() };
+          }
+          return routine;
+        });
+
+        // Create CustomRoutine instances for saving (without standalone_activities)
+        customRoutines = customRoutinesWithIds.map(({ standalone_activities, activity_sequence_id, ...rest }) => {
+          return new CustomRoutine(
+            {
+              ...rest,
+              user_id,
+            },
+            { generateId: false }, // ID already set above
+          );
+        });
+
+        // Use the DTOs with IDs for deserializing activities
         deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
-          custom_routines,
+          customRoutinesWithIds,
           user_id,
         );
       }
@@ -274,6 +292,9 @@ export class UserSettingsService {
         tutorials,
         customRoutines,
       );
+      if (typeof verbose_logging === 'boolean') {
+        this.userService.clearVerboseLoggingCache(user_id);
+      }
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),

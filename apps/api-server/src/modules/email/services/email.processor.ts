@@ -32,19 +32,24 @@ export class EmailProcessor {
   @Process('send-progress-email')
   async handleProgressEmail(job: Job) {
     try {
-      const { user, metrics, unsubscribe_token } = job.data;
+      const { user, metrics, unsubscribe_token, emailType } = job.data;
+      const variant = emailType === 'daily' ? 'daily' : 'weekly';
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content
       const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
         user,
         metrics,
         unsubscribe_token,
+        { variant },
       );
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
@@ -76,6 +81,8 @@ export class EmailProcessor {
   async handleMonthlyProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content using monthly template
       const emailContent = await this.progressEmailTemplateService.generateMonthlyProgressEmail(
@@ -87,7 +94,8 @@ export class EmailProcessor {
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
@@ -119,6 +127,8 @@ export class EmailProcessor {
   async handleNoProgressEmail(job: Job) {
     try {
       const { user, unsubscribe_token } = job.data;
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content
       const emailContent = await this.progressEmailTemplateService.generateNoProgressEmail(user, unsubscribe_token);
@@ -126,7 +136,8 @@ export class EmailProcessor {
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,

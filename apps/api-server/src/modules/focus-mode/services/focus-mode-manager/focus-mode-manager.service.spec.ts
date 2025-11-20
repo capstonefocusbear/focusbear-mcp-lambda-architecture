@@ -25,6 +25,7 @@ import {
   FocusModeServiceMock,
   ToDoRepositoryMock,
   ToDoServiceMock,
+  UserServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -42,6 +43,7 @@ import { ToDo } from '../../../to-do/entities/to-do.entity';
 import { ToDoTimeLogDto } from '../../../to-do/dto/to-do-time-log.dto.ts';
 import { ToDoStatus } from '../../../to-do/domain/to-do-status.enum';
 import { ToDoService } from '../../../to-do/services/to-do.service';
+import { UserService } from '../../../user/services/user/user.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -60,6 +62,7 @@ describe('FocusModeManagerService', () => {
         FocusModeService,
         ToDoRepository,
         ToDoService,
+        UserService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -88,6 +91,8 @@ describe('FocusModeManagerService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(ToDoService)
       .useValue(ToDoServiceMock)
+      .overrideProvider(UserService)
+      .useValue(UserServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);
@@ -135,7 +140,7 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
-      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith(
         new CompletedFocusBlock({
           start_time: startFocusModeDto.start_time,
           scheduled_finish_time: startFocusModeDto.finish_time,
@@ -154,7 +159,7 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         user_id,
         new CurrentFocusModeData({
           finish_time: startFocusModeDto.finish_time,
@@ -172,7 +177,7 @@ describe('FocusModeManagerService', () => {
 
       await focusModeManagerService.startCurrentFocusMode(startFocusModeDto, { focus_mode_id }, user_id, dummyHeaders);
 
-      expect(PusherServiceMock.trigger).toBeCalledWith(`private-${user_id}`, 'focus-mode-started', {
+      expect(PusherServiceMock.trigger).toHaveBeenCalledWith(`private-${user_id}`, 'focus-mode-started', {
         ...CompletedFocusBlockDummy,
         device_id: dummyHeaders.device_id,
       });
@@ -196,7 +201,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         userWithCurrentFocusMode.id,
         new CurrentFocusModeData({
           finish_time: null,
@@ -223,7 +228,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith(
         new CompletedFocusBlock({
           start_time: startFocusModeDto.start_time,
           scheduled_finish_time: startFocusModeDto.finish_time,
@@ -255,8 +260,10 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(ToDoRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userDummy.id, id: In([toDoDummy.id]) } });
-      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith(
+      expect(ToDoRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id, id: In([toDoDummy.id]) },
+      });
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith(
         new CompletedFocusBlock({
           start_time: startFocusModeDto.start_time,
           scheduled_finish_time: startFocusModeDto.finish_time,
@@ -344,7 +351,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         user_id,
         new CurrentFocusModeData({
           finish_time: null,
@@ -369,7 +376,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith({
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...CompletedFocusBlockDummy,
         ...finishFocusModeDto,
         tags: [],
@@ -393,7 +400,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(PusherServiceMock.trigger).toBeCalledWith(`private-${user_id}`, 'focus-mode-finished', {
+      expect(PusherServiceMock.trigger).toHaveBeenCalledWith(`private-${user_id}`, 'focus-mode-finished', {
         ...CompletedFocusBlockDummy,
         device_id: dummyHeaders.device_id,
       });
@@ -514,7 +521,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(user_id, {
         last_completed_focus_mode_at: DateTime.fromISO('2023-02-07T05:42:39.221Z').toJSDate(),
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
@@ -541,7 +548,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(CompletedFocusBlockRepositoryMock.orm.save).toBeCalledWith({
+      expect(CompletedFocusBlockRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...completedFocusBlock,
         ...finishedFocusModeData,
         focus_duration_seconds: 600,
@@ -565,7 +572,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(ToDoServiceMock.logToDosTime).toBeCalledWith(
+      expect(ToDoServiceMock.logToDosTime).toHaveBeenCalledWith(
         toDoTimeLogDummies,
         userDummy.id,
         CompletedFocusBlockDummy.id,
@@ -593,7 +600,7 @@ describe('FocusModeManagerService', () => {
         dummyHeaders,
       );
 
-      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toBeCalledWith(
+      expect(UserDailyStatsServiceMock.updateDailyStatsFocusModesCompleted).toHaveBeenCalledWith(
         user_id,
         finishTime,
         userDummy.timezone,

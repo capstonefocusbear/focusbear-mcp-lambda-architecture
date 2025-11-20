@@ -23,8 +23,11 @@ export const FOCUS_BEAR_EMAILS = {
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
-  VERIFY_EMAIL: '', // TODO: generate template
-  REQUEST_PASSWORD_RESET: '', // TODO: generate template
+  VERIFY_EMAIL: 'd-d6cff2b375e54523b86061abebb8dbdf',
+  REQUEST_PASSWORD_RESET: 'd-67cec7f121f04901814f6f41ec6e0122',
+  ACCOUNTABILITY_BUDDY_INVITATION: 'd-ffddae2b9fb040a79244c8a871cce582',
+  UNLOCK_REQUEST_RECEIVED: 'd-4b680eec43b84bf5b9f94bf2658ff738',
+  UNLOCK_REQUEST_APPROVED: 'd-af80a1ec861a4da1989b8132b82c7b82',
 };
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
@@ -135,9 +138,20 @@ export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
+export const ACCOUNTABILITY_BUDDY = {
+  MAX_BUDDIES_PER_USER: 10,
+  UNLOCK_REQUEST_COOLDOWN_HOURS: 1,
+  INVITATION_EXPIRATION_DAYS: 1,
+  UNLOCK_DURATION_MIN_MINUTES: 1,
+  UNLOCK_DURATION_MAX_MINUTES: 1440, // 24 hours
+  UNLOCK_REQUEST_REASON_MAX_LENGTH: 1000,
+  UNLOCK_REQUEST_DEFAULT_REASON: 'No reason provided',
+} as const;
+
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
-export const GPT_4_1 = 'gpt-4.1';
 export const GPT_5_MINI = 'gpt-5-mini';
+
+export const GPT_4_1 = 'gpt-4.1';
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',

@@ -40,12 +40,13 @@ jest.mock('ioredis', () => {
   return { default: mockRedis };
 });
 
-// Mock FieldTransformer
+// Mock FieldTransformer and callPromiseWithTimeout
 jest.mock('../../../../apps/api-server/src/shared/utils/helpers', () => ({
   FieldTransformer: {
     to: jest.fn((data) => `encrypted_${data}`),
     from: jest.fn((data) => data.replace('encrypted_', '')),
   },
+  callPromiseWithTimeout: jest.fn((promise: Promise<any>) => promise),
 }));
 
 describe('Auth0ManagementService', () => {

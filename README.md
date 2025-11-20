@@ -445,6 +445,8 @@ Example:
 $ npm run migration:create ./apps/api-server/migrations/create-table-users
 ```
 
+When writing PostgreSQL migrations that need `CREATE INDEX CONCURRENTLY` (for example, to enforce case-insensitive uniqueness), export `transaction = 'none'` from the migration file instead of calling `startTransaction()`/`commitTransaction()`. Audit existing rows for conflicts (e.g. usernames that differ only by case) before running the migration so the unique index can be created successfully.
+
 This will create a .ts file where both the UP and DOWN commands can be edited. Read more about this
 in the TypeORM documentation https://orkhan.gitbook.io/typeorm/docs/migrations
 

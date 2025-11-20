@@ -9,7 +9,7 @@ import { UserProgressMetricsService } from '../../apps/api-server/src/modules/us
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-import { withSentry, captureErrorWithContext } from '../sentry';
+import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 const BATCH_SIZE = 15; // Reduced batch size to prevent OOM issues
@@ -22,6 +22,9 @@ async function runMonthlyProgressEmailsCronJob() {
   const auth0ManagementService = app.get(Auth0ManagementService);
   const emailQueue: Queue = app.get(getQueueToken('emailQueue'));
 
+  let emailsQueued = 0;
+  let usersConsidered = 0;
+  let failedEmails = 0;
   try {
     console.log('Starting monthly progress emails cron job...');
 
@@ -33,8 +36,9 @@ async function runMonthlyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForMonthlyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForMonthlyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
+      usersConsidered += batch.length;
       // Log memory usage for this batch
       const batchMemory = process.memoryUsage();
       console.log(
@@ -99,8 +103,10 @@ async function runMonthlyProgressEmailsCronJob() {
       });
 
       const results = await Promise.all(emailPromises);
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
+      const successful = results.filter((r) => r.success).length;
+      const failed = results.filter((r) => !r.success).length;
+      emailsQueued += successful;
+      failedEmails += failed;
       console.log(`Batch ${batchNum} completed: ${successful} successful, ${failed} failed`);
 
       // Force garbage collection and connection cleanup between batches
@@ -118,6 +124,11 @@ async function runMonthlyProgressEmailsCronJob() {
     }
 
     console.log('Monthly progress emails cron job completed successfully.');
+    return {
+      emailsQueued,
+      usersConsidered,
+      failedEmails,
+    };
   } catch (error) {
     captureErrorWithContext(
       error,
@@ -131,10 +142,11 @@ async function runMonthlyProgressEmailsCronJob() {
     throw error;
   } finally {
     await app.close();
-    process.exit();
   }
 }
 
 if (require.main === module) {
-  withSentry(() => withTimeout(runMonthlyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('monthly-progress-emails-cron', () =>
+    withTimeout(runMonthlyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS),
+  );
 }

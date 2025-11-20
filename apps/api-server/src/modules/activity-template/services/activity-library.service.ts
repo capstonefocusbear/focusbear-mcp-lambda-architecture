@@ -125,33 +125,34 @@ export class ActivityLibraryService {
   ) {
     try {
       const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
+      const request = normalizedRoutineSuggestionsDto;
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'get activities related to user goals',
-        data: { ...normalizedRoutineSuggestionsDto, user_id },
+        data: { ...request, user_id },
       });
 
       this.logger.debug(
         `RoutineSuggestions:start ${JSON.stringify({
           userId: user_id,
-          goalCount: getRoutineSuggestionsDto.user_goals?.length ?? 0,
-          routine: getRoutineSuggestionsDto.routine,
-          durationMinutes: getRoutineSuggestionsDto.routine_duration,
+          goalCount: request.user_goals?.length ?? 0,
+          routine: request.routine,
+          durationMinutes: request.routine_duration,
         })}`,
       );
 
       await this.validateUser(user_id);
 
-      const routineDurationSeconds = getRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
+      const routineDurationSeconds = request.routine_duration * ONE_MINUTE_SECONDS;
 
       const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(
-        getRoutineSuggestionsDto,
+        request,
       );
       this.logger.debug(
         `RoutineSuggestions:dbDirectMatches ${JSON.stringify({
           userId: user_id,
-          goals: getRoutineSuggestionsDto.user_goals,
+          goals: request.user_goals,
           directMatchCount: directMatches.length,
         })}`,
       );
@@ -165,13 +166,13 @@ export class ActivityLibraryService {
         this.logger.debug(
           `RoutineSuggestions:directMatches ${JSON.stringify({
             userId: user_id,
-            goals: getRoutineSuggestionsDto.user_goals,
+            goals: request.user_goals,
             templateCount: directTemplates.length,
           })}`,
         );
-        if (getRoutineSuggestionsDto.groupByGoals) {
+        if (request.groupByGoals) {
           const groupedByGoal: Record<string, ActivityTemplate[]> = {};
-          for (const goal of getRoutineSuggestionsDto.user_goals ?? []) {
+          for (const goal of request.user_goals ?? []) {
             groupedByGoal[goal] = directTemplates
               .filter((template: ActivityTemplate) => template.tags?.some((tag) => tag.tags.includes(goal)))
               .map((template) => ({
@@ -185,7 +186,7 @@ export class ActivityLibraryService {
       }
 
       const ragResult = await this.getActivitiesFromRag(
-        getRoutineSuggestionsDto,
+        request,
         routineDurationSeconds,
         user_id,
         options,
@@ -194,14 +195,14 @@ export class ActivityLibraryService {
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
           userId: user_id,
-          goals: getRoutineSuggestionsDto.user_goals,
+          goals: request.user_goals,
           templateCount: ragResult.templates.length,
           generatedCount: ragResult.groupedByGoal
             ? Object.values(ragResult.groupedByGoal).reduce((acc, list) => acc + (list?.length ?? 0), 0)
             : ragResult.templates.length,
         })}`,
       );
-      if (getRoutineSuggestionsDto.groupByGoals) {
+      if (request.groupByGoals) {
         return ragResult.groupedByGoal ?? {};
       }
       return ragResult.templates;
@@ -520,13 +521,13 @@ export class ActivityLibraryService {
     const generatedActivities = this.buildGeneratedActivities(
       generatedByGoal,
       routineDurationSeconds,
-      getRoutineSuggestionsDto.routine,
+      request.routine,
     );
 
     await this.persistGeneratedHabits(
       userId,
       generatedByGoal,
-      getRoutineSuggestionsDto,
+      request,
       generatedActivities.flat.length > 0,
       options,
     );
@@ -538,7 +539,7 @@ export class ActivityLibraryService {
     );
 
     let groupedByGoal: Record<string, ActivityTemplate[]> | undefined;
-    if (getRoutineSuggestionsDto.groupByGoals) {
+    if (request.groupByGoals) {
       groupedByGoal = {};
       for (const goal of goals) {
         const suggestionEntries = (suggestionsByGoal[goal] ?? [])

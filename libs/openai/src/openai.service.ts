@@ -987,6 +987,7 @@ export class OpenAIService {
         const parsed = JSON.parse(response);
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
           const validGrouped: Record<string, ActivityTemplate[]> = {};
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
@@ -1025,7 +1026,8 @@ export class OpenAIService {
         // If groupByGoals is requested but AI did not group, group here
         if (groupByGoals) {
           const grouped: Record<string, ActivityTemplate[]> = {};
-          for (const goal of userGoals) {
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
+          for (const goal of normalizedGoals) {
             grouped[goal] = sanitizedAdjustedHabits.filter((adjustedHabit) => {
               return currentHabits.find((habit) => adjustedHabit.id === habit.id).tags?.includes(goal);
             });

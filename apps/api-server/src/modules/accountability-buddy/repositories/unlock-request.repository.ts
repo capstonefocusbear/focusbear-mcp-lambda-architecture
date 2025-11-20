@@ -84,12 +84,11 @@ export class UnlockRequestRepository extends BaseRepository<UnlockRequest> {
   ): Promise<[UnlockRequest[], number]> {
     const queryBuilder = this.orm.createQueryBuilder('unlock_request');
 
-    // Build WHERE clause based on role filter
+    queryBuilder.leftJoinAndSelect('unlock_request.user', 'user');
+
     if (filters.role === UnlockRequestRole.SENT) {
-      // Only fetch requests sent by the user
       queryBuilder.where('unlock_request.user_id = :userId', { userId });
     } else if (filters.role === UnlockRequestRole.RECEIVED) {
-      // Only fetch requests received by the user
       if (relationshipIds.length > 0) {
         queryBuilder.where('unlock_request.accountability_buddy_id IN (:...relationshipIds)', {
           relationshipIds,

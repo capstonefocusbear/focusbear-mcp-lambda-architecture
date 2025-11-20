@@ -15,6 +15,9 @@ import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-para
 import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
 import { ApproveUnlockRequestByTokenDto } from '../dto/approve-unlock-request-by-token.dto';
 import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
+import { AccountabilityBuddyResponseDto } from '../dto/accountability-buddy-response';
+import { UnlockRequestResponseDto } from '../dto/unlock-request-response';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 @Controller('accountability-buddy')
 @ApiTags('accountability-buddy')
@@ -44,11 +47,15 @@ export class AccountabilityBuddyController {
   }
 
   @Get('invitations')
-  @ApiResponse({ status: 200, description: 'List of received invitations' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of received invitations',
+    type: [AccountabilityBuddyResponseDto],
+  })
   async getReceivedInvitations(
     @Query() query: GetInvitationsQueryDto,
     @AuthContext() { user: { id: userId } }: Passport,
-  ) {
+  ): Promise<AccountabilityBuddyResponseDto[]> {
     return this.accountabilityBuddyService.getReceivedInvitations(userId, query);
   }
 
@@ -98,11 +105,15 @@ export class AccountabilityBuddyController {
   }
 
   @Get('unlock-requests')
-  @ApiResponse({ status: 200, description: 'List of unlock requests' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of unlock requests',
+    type: [UnlockRequestResponseDto],
+  })
   async getUnlockRequests(
     @Query() query: GetUnlockRequestsQueryDto,
     @AuthContext() { user: { id: userId } }: Passport,
-  ) {
+  ): Promise<PaginationDto<UnlockRequestResponseDto>> {
     return this.unlockRequestService.getUnlockRequests(userId, query);
   }
 

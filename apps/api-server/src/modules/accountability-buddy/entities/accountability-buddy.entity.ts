@@ -32,7 +32,7 @@ export class AccountabilityBuddy extends BaseEntity {
     nullable: true,
     transformer: BaseEntity.encryptField('buddy_email'),
   })
-  buddy_email?: string;
+  buddy_email: string;
 
   @Index()
   @Column({

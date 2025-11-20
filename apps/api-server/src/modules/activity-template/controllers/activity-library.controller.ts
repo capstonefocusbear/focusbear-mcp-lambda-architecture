@@ -10,6 +10,8 @@ import { ActivityLibraryService } from '../services/activity-library.service';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { AdjustHabitsWithAiDto } from '../dto/adjust-habits-with-ai.dto';
 import { RoutineSuggestionsAsyncService } from '../services/routine-suggestions-async.service';
+import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
+import { HabitCreationAsyncService } from '../services/habit-creation-async.service';
 
 @Controller('activity-library')
 @ApiTags('activity-library')
@@ -19,6 +21,7 @@ export class ActivityLibraryController {
   constructor(
     private readonly activityLibraryService: ActivityLibraryService,
     private readonly routineSuggestionsAsyncService: RoutineSuggestionsAsyncService,
+    private readonly habitCreationAsyncService: HabitCreationAsyncService,
   ) {}
 
   @Get()
@@ -71,5 +74,23 @@ export class ActivityLibraryController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async adjustHabitsWithAi(@Body() adjustHabitsWithAiDto: AdjustHabitsWithAiDto, @AuthContext() { user }: Passport) {
     return this.activityLibraryService.adjustHabitsWithAi(adjustHabitsWithAiDto, user.id);
+  }
+
+  @Post('/habits/ai')
+  @ApiOperation({ summary: 'Create habits using AI with RAG preference for library templates' })
+  async createHabitWithAi(@Body() createHabitWithAiDto: CreateHabitWithAiDto, @AuthContext() { user }: Passport) {
+    return this.activityLibraryService.createHabitWithAi(createHabitWithAiDto, user.id);
+  }
+
+  @Post('/habits/ai/async')
+  @ApiOperation({ summary: 'Create habits using AI asynchronously (RAG preferred)' })
+  @HttpCode(202)
+  async createHabitWithAiAsync(@Body() createHabitWithAiDto: CreateHabitWithAiDto, @AuthContext() { user }: Passport) {
+    const { asyncTaskId } = await this.habitCreationAsyncService.enqueueHabitCreation(
+      createHabitWithAiDto,
+      user.id,
+      'api',
+    );
+    return { asyncTaskId };
   }
 }

@@ -25,6 +25,7 @@ import { RoutineSuggestionsAsyncService } from './services/routine-suggestions-a
 import { RoutineSuggestionsConsumer } from './consumers/routine-suggestions.consumer';
 import { AsyncTaskModule } from '../async-task/async-task.module';
 import { BullQueues } from '../../shared/utils/constants';
+import { HabitCreationAsyncService } from './services/habit-creation-async.service';
 
 @Module({
   providers: [
@@ -40,6 +41,7 @@ import { BullQueues } from '../../shared/utils/constants';
     RoutineSuggestionGeneratorService,
     HabitLibraryRequestRepository,
     RoutineSuggestionsAsyncService,
+    HabitCreationAsyncService,
     RoutineSuggestionsConsumer,
   ],
   exports: [
@@ -54,6 +56,7 @@ import { BullQueues } from '../../shared/utils/constants';
     RoutineSuggestionGeneratorService,
     HabitLibraryRequestRepository,
     RoutineSuggestionsAsyncService,
+    HabitCreationAsyncService,
   ],
   controllers: [ActivityLibraryController],
   imports: [

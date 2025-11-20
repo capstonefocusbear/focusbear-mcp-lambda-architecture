@@ -1,0 +1,59 @@
+prompts:
+  - id: routine-suggestions-generate
+    raw: |
+      You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
+      Output ONLY a JSON array. Each habit must include:
+      - name (string, concise and goal-aligned)
+      - description (string, what the user does)
+      - routineType ("morning" or "evening")
+      - durationMinutes (integer, >= 1)
+      - justification (<=120 characters summarising why it helps)
+
+      Guidance:
+      - Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
+      - Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
+      - Prefer measurable, repeatable actions over vague advice.
+      - Generate up to {{limit}} habits.
+
+      User goal: {{goal}}
+      Preferred routine type: {{routineType}}
+      Target routine duration (minutes): {{durationMinutes}}
+
+providers:
+  - id: openai:gpt-5-mini
+    config:
+      max_tokens: 512
+      apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
+
+tests:
+  - description: Creates goal-aligned strength habits
+    vars:
+      goal: Build upper body strength
+      limit: 3
+      routineType: morning
+      durationMinutes: 20
+    assert:
+      - type: javascript
+        value: |
+          const habits = JSON.parse(output);
+          if (!Array.isArray(habits) || habits.length === 0) throw new Error('Expected non-empty habit array');
+          habits.forEach((h) => {
+            if (!h.name || !h.description) throw new Error('Missing name/description');
+            if (!['morning','evening'].includes(String(h.routineType || '').toLowerCase())) throw new Error('Invalid routineType');
+            if (!Number.isFinite(h.durationMinutes) || h.durationMinutes < 1) throw new Error('Invalid durationMinutes');
+          });
+
+  - description: Returns <= limit habits
+    vars:
+      goal: Improve sleep
+      limit: 2
+      routineType: evening
+      durationMinutes: 15
+    assert:
+      - type: javascript
+        value: |
+          const habits = JSON.parse(output);
+          if (habits.length > 2) throw new Error('Exceeded limit');
+
+output:
+  - json

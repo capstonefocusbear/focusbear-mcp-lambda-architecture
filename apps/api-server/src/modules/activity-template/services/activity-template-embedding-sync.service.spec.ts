@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DEFAULT_EMBEDDING_MODEL } from '@app/openai/openai.constants';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { ActivityTemplateEmbeddingSyncService } from './activity-template-embedding-sync.service';
+import {
+  ActivityTemplateEmbeddingSyncService,
+  EMBEDDING_SYNC_RESULT,
+} from './activity-template-embedding-sync.service';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateGoalEmbeddingService } from './activity-template-goal-embedding.service';
 import { ActivityTemplateEmbeddingRepository } from '../repository/activity-template-embedding.repository';
@@ -92,7 +95,7 @@ describe(ActivityTemplateEmbeddingSyncService.name, () => {
     );
     expect(result).toEqual({
       processed: 1,
-      upserted: 1,
+      upserted: EMBEDDING_SYNC_RESULT.UPSERTED === 'upserted' ? 1 : 0,
       skipped: 0,
       errors: 0,
     });
@@ -112,7 +115,7 @@ describe(ActivityTemplateEmbeddingSyncService.name, () => {
     expect(result).toEqual({
       processed: 1,
       upserted: 0,
-      skipped: 1,
+      skipped: EMBEDDING_SYNC_RESULT.SKIPPED === 'skipped' ? 1 : 0,
       errors: 0,
     });
   });
@@ -138,7 +141,7 @@ describe(ActivityTemplateEmbeddingSyncService.name, () => {
       processed: 2,
       upserted: 1,
       skipped: 0,
-      errors: 1,
+      errors: EMBEDDING_SYNC_RESULT.ERROR === 'error' ? 1 : 0,
     });
   });
 });

@@ -21,12 +21,14 @@ import {
   GeneratedHabitSuggestion,
 } from './routine-suggestion-generator.service';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
+import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
 
 const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Component}\uFE0F\u200D]/gu;
 
 const MAX_ROUTINE_HABITS_PER_TYPE = 10;
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
+const ADJUST_HABIT_MIN_SIMILARITY = 0.7;
 
 export interface ActivityMetadata {
   justification: string;
@@ -146,9 +148,7 @@ export class ActivityLibraryService {
 
       const routineDurationSeconds = request.routine_duration * ONE_MINUTE_SECONDS;
 
-      const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(
-        request,
-      );
+      const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(request);
       this.logger.debug(
         `RoutineSuggestions:dbDirectMatches ${JSON.stringify({
           userId: user_id,
@@ -185,12 +185,7 @@ export class ActivityLibraryService {
         return directTemplates;
       }
 
-      const ragResult = await this.getActivitiesFromRag(
-        request,
-        routineDurationSeconds,
-        user_id,
-        options,
-      );
+      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, options);
 
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
@@ -297,17 +292,12 @@ export class ActivityLibraryService {
         return true;
       }
 
-      // For morning/evening: check if that specific routine type is full
-      if (
-        (activityType === ActivityType.morning || activityType === ActivityType.evening) &&
-        (routineDuration[activityType] >= userRoutineDurationSeconds ||
-          routineLength[activityType] >= MAX_ROUTINE_HABITS_PER_TYPE)
-      ) {
-        // Skip this activity, but continue to check others
+      // Enforce per-type caps so break/library cannot crowd out morning/evening
+      if (routineLength[activityType] >= MAX_ROUTINE_HABITS_PER_TYPE) {
         return false;
       }
 
-      // For breaking/library activities: always allow if under total habit limit
+      // For morning/evening: also respect duration budget
       const isValidDuration = this.isValidTemplateDuration(
         template_duration,
         routineDuration[activityType],
@@ -353,7 +343,9 @@ export class ActivityLibraryService {
     userId?: string,
     options?: { asyncTaskId?: string; requestHash?: string },
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
-    const goals = getRoutineSuggestionsDto.user_goals ?? [];
+    // RAG flow documented in docs/rag-routine-suggestions-flow.md
+    const request = getRoutineSuggestionsDto;
+    const goals = request.user_goals ?? [];
     if (!goals.length) {
       return { templates: [], groupedByGoal: {} };
     }
@@ -362,7 +354,7 @@ export class ActivityLibraryService {
       goals.map(async (goal) => {
         const generationOptions = {
           limit: RAG_RETRIEVAL_LIMIT,
-          routineType: getRoutineSuggestionsDto.routine,
+          routineType: request.routine,
           routineDurationSeconds,
         };
         try {
@@ -426,6 +418,7 @@ export class ActivityLibraryService {
             suggestionResult.minScoreApplied,
           );
           if (similarityFallback.length) {
+            // Last-resort: if the LLM rejected everything or errored, surface top embedding matches with a disclaimer
             return { goal, suggestions: similarityFallback, generated: [] as GeneratedHabitSuggestion[] };
           }
 
@@ -518,19 +511,9 @@ export class ActivityLibraryService {
       })}`,
     );
 
-    const generatedActivities = this.buildGeneratedActivities(
-      generatedByGoal,
-      routineDurationSeconds,
-      request.routine,
-    );
+    const generatedActivities = this.buildGeneratedActivities(generatedByGoal, routineDurationSeconds, request.routine);
 
-    await this.persistGeneratedHabits(
-      userId,
-      generatedByGoal,
-      request,
-      generatedActivities.flat.length > 0,
-      options,
-    );
+    await this.persistGeneratedHabits(userId, generatedByGoal, request, generatedActivities.flat.length > 0, options);
 
     const templatesByOriginalId = new Map(
       finalTemplates
@@ -694,6 +677,11 @@ export class ActivityLibraryService {
 
       await this.validateUser(user_id);
 
+      const overrides = await this.buildLibraryOverridesForHabits(
+        adjustHabitsWithAiDto.current_habits,
+        adjustHabitsWithAiDto.user_feedback,
+      );
+
       const adjustedHabits = await this.openAIService.adjustHabitsWithAi(
         adjustHabitsWithAiDto.current_habits,
         adjustHabitsWithAiDto.user_feedback,
@@ -702,10 +690,208 @@ export class ActivityLibraryService {
         adjustHabitsWithAiDto.groupByGoals,
       );
 
-      return adjustedHabits;
+      const resolved = this.applyLibraryOverridesToAdjustedHabits(adjustedHabits, overrides);
+
+      await this.logAdjustedGeneratedHabits(resolved, user_id, adjustHabitsWithAiDto);
+
+      return resolved;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
+    }
+  }
+
+  async createHabitWithAi(createHabitWithAiDto: CreateHabitWithAiDto, user_id: string) {
+    const goals = this.normalizeUserGoals(
+      createHabitWithAiDto.user_goals?.length ? createHabitWithAiDto.user_goals : [createHabitWithAiDto.prompt],
+    );
+    const routineDuration = createHabitWithAiDto.routine_duration ?? DEFAULT_GENERATED_ACTIVITY_MINUTES;
+    const request: GetRoutineSuggestionsDto = {
+      user_goals: goals,
+      routine_duration: routineDuration,
+      routine: createHabitWithAiDto.routine,
+      groupByGoals: false,
+    };
+    const routineDurationSeconds = routineDuration * ONE_MINUTE_SECONDS;
+    const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, {
+      requestHash: null,
+    });
+
+    // Prioritize library / non-generated habits first
+    const libraryFirst = [
+      ...ragResult.templates.filter((t: any) => !t.ai_generated),
+      ...ragResult.templates.filter((t: any) => t.ai_generated),
+    ];
+    return libraryFirst;
+  }
+
+  private async buildLibraryOverridesForHabits(currentHabits: any[], userFeedback?: string) {
+    const overrides = new Map<
+      string,
+      { templateId: string; activityData: any; justification: string; similarity: number }
+    >();
+    const habits = Array.isArray(currentHabits) ? currentHabits : [];
+
+    const overrideEntries = await Promise.all(
+      habits.map(async (habit) => {
+        const query = [habit?.name, userFeedback].filter(Boolean).join(' - ').trim();
+        if (!query) {
+          return null;
+        }
+
+        const matches = await this.activityTemplateRetrieverService.retrieveByText(query, 3);
+        const [top] = matches;
+        if (!top || top.similarity < ADJUST_HABIT_MIN_SIMILARITY) {
+          return null;
+        }
+
+        const template = await this.activityTemplateRepository.orm.findOne({
+          where: { id: top.activityTemplateId },
+        });
+        if (!template?.activity_data) {
+          return null;
+        }
+
+        return {
+          habitId: String(habit.id),
+          templateId: template.id,
+          activityData: template.activity_data,
+          justification: `Reused assets from library habit "${template.activity_data?.name ?? ''}"`,
+          similarity: top.similarity,
+        };
+      }),
+    );
+
+    overrideEntries
+      .filter(
+        (
+          entry,
+        ): entry is {
+          habitId: string;
+          templateId: string;
+          activityData: any;
+          justification: string;
+          similarity: number;
+        } => !!entry,
+      )
+      .forEach((entry) => {
+        overrides.set(entry.habitId, {
+          templateId: entry.templateId,
+          activityData: entry.activityData,
+          justification: entry.justification,
+          similarity: entry.similarity,
+        });
+      });
+
+    return overrides;
+  }
+
+  private applyLibraryOverridesToAdjustedHabits(
+    adjustedHabits: any,
+    overrides: Map<string, { templateId: string; activityData: any; justification: string; similarity: number }>,
+  ) {
+    if (!overrides.size) {
+      return adjustedHabits;
+    }
+
+    const applyOverride = (habit: any) => {
+      const override = overrides.get(String(habit?.id));
+      if (!override) {
+        return habit;
+      }
+      const data = override.activityData;
+      const patched = {
+        ...habit,
+        original_template_id: override.templateId,
+      };
+      if (data?.video_urls?.length) patched.video_urls = data.video_urls;
+      if (data?.image_urls?.length) patched.image_urls = data.image_urls;
+      if (data?.allowed_urls?.length) patched.allowed_urls = data.allowed_urls;
+      if (data?.text_instructions) {
+        patched.text_instructions = data.text_instructions;
+        patched.description = patched.description ?? data.text_instructions;
+      }
+      if (data?.habit_icon && !patched.habit_icon) {
+        patched.habit_icon = data.habit_icon;
+      }
+      patched.ai_generated = false;
+      if (patched.ai_justification) {
+        patched.ai_justification = `${patched.ai_justification} ${override.justification}`.trim();
+      } else {
+        patched.ai_justification = override.justification;
+      }
+      if (typeof patched.ai_match_score !== 'number') {
+        patched.ai_match_score = Number(override.similarity.toFixed(2));
+      }
+      return patched;
+    };
+
+    if (Array.isArray(adjustedHabits)) {
+      return adjustedHabits.map(applyOverride);
+    }
+
+    if (adjustedHabits && typeof adjustedHabits === 'object') {
+      const result: Record<string, any[]> = {};
+      for (const [goal, habits] of Object.entries(adjustedHabits)) {
+        result[goal] = Array.isArray(habits) ? habits.map(applyOverride) : [];
+      }
+      return result;
+    }
+
+    return adjustedHabits;
+  }
+
+  private async logAdjustedGeneratedHabits(
+    adjustedHabits: any,
+    userId: string,
+    request: AdjustHabitsWithAiDto,
+  ): Promise<void> {
+    const entries: any[] = [];
+    const pushEntry = (habit: any) => {
+      if (!habit || (!habit.ai_generated && habit.original_template_id)) {
+        return;
+      }
+      entries.push({
+        userId,
+        goal: (request.user_goals ?? [])[0] ?? 'habit_adjustment',
+        habitName: habit.name ?? '',
+        habitDescription: habit.description ?? habit.text_instructions ?? null,
+        routineType: habit.activity_type ?? request.groupByGoals ? null : request.routine_duration ?? null,
+        durationMinutes:
+          typeof habit.duration_seconds === 'number'
+            ? Math.max(1, Math.round(habit.duration_seconds / ONE_MINUTE_SECONDS))
+            : request.routine_duration ?? DEFAULT_GENERATED_ACTIVITY_MINUTES,
+        justification: habit.ai_justification ?? null,
+        requestMetadata: {
+          source: 'habit_adjustment',
+          userFeedback: request.user_feedback ?? '',
+          goalCount: request.user_goals?.length ?? 0,
+          groupByGoals: request.groupByGoals ?? false,
+        },
+      });
+    };
+
+    if (Array.isArray(adjustedHabits)) {
+      adjustedHabits.forEach(pushEntry);
+    } else if (adjustedHabits && typeof adjustedHabits === 'object') {
+      Object.values(adjustedHabits).forEach((list: any) => {
+        if (Array.isArray(list)) {
+          list.forEach(pushEntry);
+        }
+      });
+    }
+
+    if (!entries.length) {
+      return;
+    }
+
+    try {
+      await this.habitLibraryRequestRepository.logRequests(entries);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        extra: { userId, entryCount: entries.length },
+      });
     }
   }
 }

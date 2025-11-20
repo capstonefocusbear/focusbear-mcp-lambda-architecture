@@ -171,8 +171,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     model: GPT_5_MINI,
     temperature: 1,
     n: 1,
-    max_tokens: 1024,
-    response_format: { type: 'json_object' },
     messages: null,
   },
 };

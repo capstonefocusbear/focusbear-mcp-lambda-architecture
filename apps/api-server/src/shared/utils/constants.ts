@@ -192,6 +192,7 @@ export enum BullWorkers {
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
   PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
   PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
+  PROCESS_HABIT_CREATION = 'process-habit-creation',
 }
 
 export const createActivityFunction = {

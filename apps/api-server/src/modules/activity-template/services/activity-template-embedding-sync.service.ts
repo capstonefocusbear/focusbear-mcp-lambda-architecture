@@ -14,6 +14,12 @@ export interface EmbeddingSyncSummary {
   errors: number;
 }
 
+export const EMBEDDING_SYNC_RESULT = {
+  UPSERTED: 'upserted' as const,
+  SKIPPED: 'skipped' as const,
+  ERROR: 'error' as const,
+};
+
 @Injectable()
 export class ActivityTemplateEmbeddingSyncService {
   private readonly logger = new Logger(ActivityTemplateEmbeddingSyncService.name);
@@ -40,7 +46,7 @@ export class ActivityTemplateEmbeddingSyncService {
           });
 
           if (!embedding.length) {
-            return 'skipped' as const;
+            return EMBEDDING_SYNC_RESULT.SKIPPED;
           }
 
           await this.activityTemplateEmbeddingRepository.upsert(
@@ -57,25 +63,25 @@ export class ActivityTemplateEmbeddingSyncService {
             ['activity_template_id'],
           );
 
-          return 'upserted' as const;
+          return EMBEDDING_SYNC_RESULT.UPSERTED;
         } catch (error) {
           this.logger.error(`Failed to sync embedding for template ${template.id}`, error.stack);
           this.sentryService.instance().captureException(error, {
             level: 'error',
             extra: { templateId: template.id },
           });
-          return 'error' as const;
+          return EMBEDDING_SYNC_RESULT.ERROR;
         }
       }),
     );
 
     const summary = results.reduce<EmbeddingSyncSummary>(
       (acc, result) => {
-        if (result === 'upserted') {
+        if (result === EMBEDDING_SYNC_RESULT.UPSERTED) {
           acc.upserted += 1;
-        } else if (result === 'skipped') {
+        } else if (result === EMBEDDING_SYNC_RESULT.SKIPPED) {
           acc.skipped += 1;
-        } else if (result === 'error') {
+        } else if (result === EMBEDDING_SYNC_RESULT.ERROR) {
           acc.errors += 1;
         }
         return acc;

@@ -8,7 +8,7 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 const MAX_CONTEXT_CANDIDATES = 5;
 const DEFAULT_GENERATED_LIMIT = 3;
 const DEFAULT_MINUTES_FALLBACK = 10;
-const DEFAULT_MIN_MATCH_SCORE = 0.7;
+const DEFAULT_MIN_MATCH_SCORE = 0.5;
 const DEFAULT_SUGGESTION_LIMIT = 5;
 
 export interface RoutineSuggestionCandidate {
@@ -174,8 +174,7 @@ export class RoutineSuggestionGeneratorService {
       return this.normalizeScore(override);
     }
 
-    // Always use the default threshold (0.7) - no dynamic lowering
-    // If nothing meets this threshold, we'll generate new habits instead
+    // Use the default threshold (0.5) – if nothing meets this, we generate instead
     return DEFAULT_MIN_MATCH_SCORE;
   }
 
@@ -336,29 +335,12 @@ Guidance:
       ? Math.max(1, Math.round(routineDurationSeconds / 60))
       : DEFAULT_MINUTES_FALLBACK;
 
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: `You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
-Analyse the goal text to understand the desired outcome, key skills, and relevant contexts. Generate up to ${normalizedLimit} habits that directly advance those needs (avoid generic wellness tips unless they are explicitly required by the goal).
-Return ONLY a JSON array. Each habit must include:
-- name (string, concise and goal-aligned)
-- description (string, what the user does)
-- routineType ("morning" or "evening")
-- durationMinutes (integer, >= 1)
-- justification (<=120 characters summarising why it helps)
-Guidance:
-- Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
-- Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
-- Prefer measurable, repeatable actions over vague advice.`,
-      },
-      {
-        role: 'user',
-        content: `User goal: ${goal}
-Preferred routine type: ${preferredRoutineType}
-Target routine duration (minutes): ${preferredDurationMinutes}`,
-      },
-    ];
+    const messages = this.buildGenerationMessages(
+      goal,
+      normalizedLimit,
+      preferredRoutineType,
+      preferredDurationMinutes,
+    );
 
     try {
       const response = await this.openAIService.createChatCompletion(messages);
@@ -389,6 +371,47 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
       });
       return [];
     }
+  }
+
+  private buildGenerationMessages(
+    goal: string,
+    limit: number,
+    preferredRoutineType: string,
+    preferredDurationMinutes: number,
+  ): ChatCompletionMessageParam[] {
+    const template = this.promptCacheService.getPrompt('routine-suggestions-generate');
+    if (template?.trim()) {
+      const content = template
+        .replace(/{{\s*goal\s*}}/gi, goal)
+        .replace(/{{\s*limit\s*}}/gi, String(limit))
+        .replace(/{{\s*routineType\s*}}/gi, preferredRoutineType)
+        .replace(/{{\s*durationMinutes\s*}}/gi, String(preferredDurationMinutes));
+      return [{ role: 'system', content }];
+    }
+
+    return [
+      {
+        role: 'system',
+        content: `You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
+Analyse the goal text to understand the desired outcome, key skills, and relevant contexts. Generate up to ${limit} habits that directly advance those needs (avoid generic wellness tips unless they are explicitly required by the goal).
+Return ONLY a JSON array. Each habit must include:
+- name (string, concise and goal-aligned)
+- description (string, what the user does)
+- routineType ("morning" or "evening")
+- durationMinutes (integer, >= 1)
+- justification (<=120 characters summarising why it helps)
+Guidance:
+- Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
+- Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
+- Prefer measurable, repeatable actions over vague advice.`,
+      },
+      {
+        role: 'user',
+        content: `User goal: ${goal}
+Preferred routine type: ${preferredRoutineType}
+Target routine duration (minutes): ${preferredDurationMinutes}`,
+      },
+    ];
   }
 
   private parseGeneratedHabits(content: string, limit: number): GeneratedHabitSuggestion[] {

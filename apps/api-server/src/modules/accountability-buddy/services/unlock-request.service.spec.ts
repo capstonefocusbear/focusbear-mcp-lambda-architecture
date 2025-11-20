@@ -58,12 +58,16 @@ describe('UnlockRequestService', () => {
     user_id: auth0Id,
     email: 'user@example.com',
     name: 'Test User',
+    given_name: 'Test',
+    family_name: 'User',
   };
 
   const mockBuddyAuth0User = {
     user_id: buddyAuth0Id,
     email: 'buddy@example.com',
     name: 'Buddy User',
+    given_name: 'Buddy',
+    family_name: 'User',
   };
 
   const mockAccountabilityBuddy: AccountabilityBuddy = new AccountabilityBuddy({
@@ -73,14 +77,16 @@ describe('UnlockRequestService', () => {
     invitation_status: InvitationStatus.ACCEPTED,
   });
 
-  const mockUnlockRequest: UnlockRequest = new UnlockRequest({
+  const mockUnlockRequest = new UnlockRequest({
     id: unlockRequestId,
     user_id: userId,
     accountability_buddy_id: accountabilityBuddyId,
     reason: 'Need to check urgent email',
     status: UnlockRequestStatus.PENDING,
+    user: mockUser,
     created_at: new Date().toISOString(),
-  });
+    updated_at: new Date().toISOString(),
+  } as any);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -132,6 +138,15 @@ describe('UnlockRequestService', () => {
       .compile();
 
     service = moduleRef.get<UnlockRequestService>(UnlockRequestService);
+  });
+
+  beforeEach(() => {
+    // Set up default mock implementation for user repository
+    UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+      if (criteria.id === userId) return Promise.resolve(mockUser);
+      if (criteria.id === buddyUserId) return Promise.resolve(mockBuddyUser);
+      return Promise.resolve(null);
+    });
   });
 
   afterEach(() => {
@@ -299,17 +314,26 @@ describe('UnlockRequestService', () => {
 
     it('should return both sent and received requests', async () => {
       const relationships = [mockAccountabilityBuddy];
-      const allRequests = [
-        mockUnlockRequest,
-        new UnlockRequest({
-          ...mockUnlockRequest,
-          id: 'received-request-id',
-          user_id: buddyUserId,
-        }),
-      ];
+      const receivedRequest = new UnlockRequest({
+        ...mockUnlockRequest,
+        id: 'received-request-id',
+        user_id: buddyUserId,
+        user: mockBuddyUser,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
+      const allRequests = [mockUnlockRequest, receivedRequest];
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+      // Mock user repository lookups - return user based on user_id
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        if (criteria.id === buddyUserId) return Promise.resolve(mockBuddyUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
 
       const query = createQuery();
       const result = await service.getUnlockRequests(userId, query);
@@ -317,6 +341,10 @@ describe('UnlockRequestService', () => {
       expect(result).toBeInstanceOf(PaginationDto);
       expect(result.data.length).toBe(2);
       expect(result.meta.itemCount).toBe(2);
+      expect(result.data[0].requester_info).toBeDefined();
+      expect(result.data[0].requester_info.id).toBe(userId);
+      expect(result.data[1].requester_info).toBeDefined();
+      expect(result.data[1].requester_info.id).toBe(buddyUserId);
       expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
         userId,
         InvitationStatus.ACCEPTED,
@@ -337,15 +365,25 @@ describe('UnlockRequestService', () => {
       const approvedRequest = new UnlockRequest({
         ...mockUnlockRequest,
         status: UnlockRequestStatus.APPROVED,
-      });
+        user: mockUser,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[approvedRequest], 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const query = createQuery({ status: UnlockRequestStatus.APPROVED });
       const result = await service.getUnlockRequests(userId, query);
 
+      expect(result.data.length).toBe(1);
       expect(result.data[0].status).toBe(UnlockRequestStatus.APPROVED);
+      expect(result.data[0].requester_info).toBeDefined();
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
         [],
@@ -361,6 +399,11 @@ describe('UnlockRequestService', () => {
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([requests, 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const query = createQuery({ created_from: createdFrom, created_to: createdTo });
       await service.getUnlockRequests(userId, query);
@@ -378,11 +421,19 @@ describe('UnlockRequestService', () => {
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([sentRequests, 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const query = createQuery();
       const result = await service.getUnlockRequests(userId, query);
 
-      expect(result.data).toEqual(sentRequests);
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].id).toBe(unlockRequestId);
+      expect(result.data[0].requester_info).toBeDefined();
+      expect(result.data[0].requester_info.id).toBe(userId);
       expect(result.meta.itemCount).toBe(1);
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
@@ -398,12 +449,19 @@ describe('UnlockRequestService', () => {
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([paginatedRequests, 10]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const query = createQuery({ page: 2, take: 5 });
       const result = await service.getUnlockRequests(userId, query);
 
       expect(result.meta.page).toBe(2);
       expect(result.meta.take).toBe(5);
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].requester_info).toBeDefined();
       // Pagination is now applied at database level
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
@@ -423,18 +481,28 @@ describe('UnlockRequestService', () => {
         new UnlockRequest({
           ...mockUnlockRequest,
           id: 'different-id',
-        }),
+          user: mockUser,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any),
       ];
       const relationships = [mockAccountabilityBuddy];
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(mockAuth0User);
 
       const query = createQuery();
       const result = await service.getUnlockRequests(userId, query);
 
       expect(result.data.length).toBe(2);
       expect(result.meta.itemCount).toBe(2);
+      expect(result.data[0].requester_info).toBeDefined();
+      expect(result.data[1].requester_info).toBeDefined();
     });
 
     it('should filter by role=SENT to return only sent requests', async () => {
@@ -442,12 +510,17 @@ describe('UnlockRequestService', () => {
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([]);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[sentRequest], 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const query = createQuery({ role: UnlockRequestRole.SENT });
       const result = await service.getUnlockRequests(userId, query);
 
       expect(result.data.length).toBe(1);
-      expect(result.data[0].user_id).toBe(userId);
+      expect(result.data[0].requester_info.id).toBe(userId);
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
         [],
@@ -463,17 +536,24 @@ describe('UnlockRequestService', () => {
         id: 'received-request-id',
         user_id: buddyUserId, // Request sent by buddy
         accountability_buddy_id: accountabilityBuddyId, // User is the accountability buddy
-      });
+        user: mockBuddyUser,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[receivedRequest], 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === buddyUserId) return Promise.resolve(mockBuddyUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
 
       const query = createQuery({ role: UnlockRequestRole.RECEIVED });
       const result = await service.getUnlockRequests(userId, query);
 
       expect(result.data.length).toBe(1);
-      expect(result.data[0].user_id).toBe(buddyUserId); // Should be from buddy
-      expect(result.data[0].accountability_buddy_id).toBe(accountabilityBuddyId);
+      expect(result.data[0].requester_info.id).toBe(buddyUserId); // Should be from buddy
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
         [mockAccountabilityBuddy.id],
@@ -501,22 +581,32 @@ describe('UnlockRequestService', () => {
 
     it('should return both sent and received when role is not provided', async () => {
       const relationships = [mockAccountabilityBuddy];
-      const allRequests = [
-        mockUnlockRequest, // Sent request
-        new UnlockRequest({
-          ...mockUnlockRequest,
-          id: 'received-request-id',
-          user_id: buddyUserId, // Received request
-        }),
-      ];
+      const receivedRequest = new UnlockRequest({
+        ...mockUnlockRequest,
+        id: 'received-request-id',
+        user_id: buddyUserId, // Received request
+        user: mockBuddyUser,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
+      const allRequests = [mockUnlockRequest, receivedRequest];
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([allRequests, 2]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === userId) return Promise.resolve(mockUser);
+        if (criteria.id === buddyUserId) return Promise.resolve(mockBuddyUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
 
       const query = createQuery(); // No role parameter
       const result = await service.getUnlockRequests(userId, query);
 
       expect(result.data.length).toBe(2);
+      expect(result.data[0].requester_info).toBeDefined();
+      expect(result.data[1].requester_info).toBeDefined();
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
         [mockAccountabilityBuddy.id],
@@ -532,10 +622,18 @@ describe('UnlockRequestService', () => {
         id: 'approved-received-id',
         user_id: buddyUserId,
         status: UnlockRequestStatus.APPROVED,
-      });
+        user: mockBuddyUser,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
 
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(relationships);
       UnlockRequestRepositoryMock.findCombinedUnlockRequests.mockResolvedValueOnce([[approvedReceivedRequest], 1]);
+      UserRepositoryMock.orm.findOneBy.mockImplementation((criteria: { id: string }) => {
+        if (criteria.id === buddyUserId) return Promise.resolve(mockBuddyUser);
+        return Promise.resolve(null);
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockBuddyAuth0User);
 
       const query = createQuery({
         role: UnlockRequestRole.RECEIVED,
@@ -545,7 +643,7 @@ describe('UnlockRequestService', () => {
 
       expect(result.data.length).toBe(1);
       expect(result.data[0].status).toBe(UnlockRequestStatus.APPROVED);
-      expect(result.data[0].user_id).toBe(buddyUserId);
+      expect(result.data[0].requester_info.id).toBe(buddyUserId);
       expect(UnlockRequestRepositoryMock.findCombinedUnlockRequests).toHaveBeenCalledWith(
         userId,
         [mockAccountabilityBuddy.id],

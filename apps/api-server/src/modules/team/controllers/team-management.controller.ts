@@ -144,4 +144,13 @@ export class TeamManagementController {
   async getMemberInsights(@Query() { team_id, member_id }: GetTeamInsightsQueryDto, @AuthContext() { user }: Passport) {
     return this.teamManagementService.getMemberInsights(user.id, team_id, member_id);
   }
+
+  // @Description: This method is used to add bulk students to a team (dev use only)
+  // @Post('/add-bulk-students')
+  async addBulkStudents(): Promise<any> {
+    const adminId = '1234567890'; // replace with team owner id
+    const team_id = '1234567890'; // replace with team id
+    const students = ['aa@aa.com', 'bb@bb.com', 'cc@cc.com']; // replace with students emails
+    return this.teamManagementService.addBulkStudents(adminId, { team_id, students });
+  }
 }

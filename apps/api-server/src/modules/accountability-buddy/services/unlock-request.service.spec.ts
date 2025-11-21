@@ -161,6 +161,7 @@ describe('UnlockRequestService', () => {
     const createDto: CreateUnlockRequestDto = {
       accountability_buddy_user_id: buddyUserId,
       reason: 'Need to check urgent email',
+      unlock_duration_minutes: 30,
     };
 
     it('should throw NotFoundException when accountability buddy relationship not found', async () => {

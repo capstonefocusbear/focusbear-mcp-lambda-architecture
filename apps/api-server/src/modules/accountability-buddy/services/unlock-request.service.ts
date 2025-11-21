@@ -25,6 +25,7 @@ import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-para
 import { ApproveUnlockRequestByTokenDto } from '../dto/approve-unlock-request-by-token.dto';
 import { UnlockRequestResponseDto } from '../dto/unlock-request-response';
 import { RequesterInfoDto } from '../dto/unlock-request-response/requester-info.dto';
+import { isUnlockRequestExpired } from '../utils/expiration.util';
 
 /**
  * Service for managing unlock requests between accountability buddies.
@@ -284,6 +285,13 @@ export class UnlockRequestService {
         throw new UnauthorizedException('You are not authorized to approve this unlock request');
       }
 
+      if (unlockRequest.status === UnlockRequestStatus.PENDING && isUnlockRequestExpired(unlockRequest)) {
+        unlockRequest.status = UnlockRequestStatus.EXPIRED;
+        unlockRequest.updated_at = new Date().toISOString();
+        await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+        throw new BadRequestException('This unlock request has expired');
+      }
+
       if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
         throw new BadRequestException(`Unlock request is already ${unlockRequest.status}`);
       }
@@ -351,6 +359,13 @@ export class UnlockRequestService {
 
       if (unlockRequest.accountability_buddy?.buddy_user_id !== payload.buddy_user_id) {
         throw new UnauthorizedException('You are not authorized to approve this unlock request');
+      }
+
+      if (unlockRequest.status === UnlockRequestStatus.PENDING && isUnlockRequestExpired(unlockRequest)) {
+        unlockRequest.status = UnlockRequestStatus.EXPIRED;
+        unlockRequest.updated_at = new Date().toISOString();
+        await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+        throw new BadRequestException('This unlock request has expired');
       }
 
       if (unlockRequest.status !== UnlockRequestStatus.PENDING) {

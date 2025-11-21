@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Equal, In, Not } from 'typeorm';
-import { AppDataSource } from '../../../../ormconfig';
+import { DataSource, Repository } from 'typeorm';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Course } from '../entities/course.entity';
 import { CourseEnrolment } from '../entities/course-enrolment.entity';
 import { CourseRating } from '../entities/course-rating.entity';
@@ -18,21 +18,28 @@ import { LessonCompletion } from '../../lesson/entities/lesson-completion.entity
 import { Platform } from '../../../shared/domain/platform.enum';
 
 @Injectable()
-export class CoursesRepository {
-  private readonly ormCourse = AppDataSource.getRepository(Course);
+export class CoursesRepository extends BaseRepository<Course> {
+  private readonly ormCourseEnrolment: Repository<CourseEnrolment>;
 
-  private readonly ormCourseEnrolment = AppDataSource.getRepository(CourseEnrolment);
+  private readonly ormCourseRating: Repository<CourseRating>;
 
-  private readonly ormCourseRating = AppDataSource.getRepository(CourseRating);
+  private readonly ormUser: Repository<User>;
 
-  private readonly ormUser = AppDataSource.getRepository(User);
+  private readonly ormLessons: Repository<Lesson>;
 
-  private readonly ormLessons = AppDataSource.getRepository(Lesson);
+  private readonly ormLessonCompletions: Repository<LessonCompletion>;
 
-  private readonly ormLessonCompletions = AppDataSource.getRepository(LessonCompletion);
+  constructor(private readonly dataSource: DataSource) {
+    super(dataSource, Course);
+    this.ormCourseEnrolment = this.dataSource.getRepository(CourseEnrolment);
+    this.ormCourseRating = this.dataSource.getRepository(CourseRating);
+    this.ormUser = this.dataSource.getRepository(User);
+    this.ormLessons = this.dataSource.getRepository(Lesson);
+    this.ormLessonCompletions = this.dataSource.getRepository(LessonCompletion);
+  }
 
   async getAllAuthorCourses({ hidden, deleted }: GetUserCoursesDto, user_id: string): Promise<Course[]> {
-    return this.ormCourse.find({
+    return this.orm.find({
       where: {
         author: {
           id: user_id,
@@ -45,33 +52,19 @@ export class CoursesRepository {
   }
 
   async getAllEnrolledCourses(user_id: string): Promise<Course[]> {
-    const courseEnrollments = await this.ormCourseEnrolment.find({
-      where: {
-        user: {
-          id: user_id,
-        },
-      },
-    });
-    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    const [courses, ratings, lessons, lessonCompletions, enrollments] = await Promise.all([
-      this.ormCourse.find({
-        where: { id: In(enrolledCoursesIds), deleted: false, is_hidden: false },
-      }),
-      this.ormCourseRating.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
-      this.ormLessons.find({ where: { course_id: In(enrolledCoursesIds) } }),
-      this.ormLessonCompletions.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
-      this.ormCourseEnrolment.find({ where: { course_id: In(enrolledCoursesIds), user_id } }),
-    ]);
-
-    const coursesWithRelations = courses.map((course) => ({
-      ...course,
-      ratings: ratings.filter((rating) => rating.course_id === course.id),
-      lessons: lessons.filter((lesson) => lesson.course_id === course.id),
-      lessonCompletions: lessonCompletions.filter((lessonCompletion) => lessonCompletion.course_id === course.id),
-      enrollments: enrollments.filter((enrollment) => enrollment.course_id === course.id),
-    }));
-
-    return coursesWithRelations;
+    // Use query builder for better performance with joins
+    return this.orm
+      .createQueryBuilder('course')
+      .leftJoinAndSelect('course.ratings', 'rating', 'rating.user_id = :userId', { userId: user_id })
+      .leftJoinAndSelect('course.lessons', 'lesson', 'lesson.deleted = false')
+      .leftJoinAndSelect('course.lessonCompletions', 'lessonCompletion', 'lessonCompletion.user_id = :userId', {
+        userId: user_id,
+      })
+      .leftJoinAndSelect('course.enrollments', 'enrollment', 'enrollment.user_id = :userId', { userId: user_id })
+      .innerJoin('course_enrolments', 'ce', 'ce.course_id = course.id AND ce.user_id = :userId', { userId: user_id })
+      .where('course.deleted = false')
+      .andWhere('course.is_hidden = false')
+      .getMany();
   }
 
   async getRatings(course_id: string): Promise<CourseRating[]> {
@@ -82,23 +75,23 @@ export class CoursesRepository {
     });
   }
 
-  async createCourseContent(createCourseDto: CreateCourseDto, author_id: string) {
+  async createCourseContent(createCourseDto: CreateCourseDto, author_id: string): Promise<Course> {
     const newCourse = new Course({ ...createCourseDto, author_id });
-    await this.ormCourse.save(newCourse);
+    return this.orm.save(newCourse);
   }
 
-  async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string) {
+  async createRatingContent(createCourseRatingDto: CreateCourseRatingDto, user_id: string): Promise<CourseRating> {
     const newRating = new CourseRating({ ...createCourseRatingDto, user_id });
-    await this.ormCourseRating.save(newRating);
+    return this.ormCourseRating.save(newRating);
   }
 
-  async createEnrolmentContent(course_id: string, user_id: string) {
+  async createEnrolmentContent(course_id: string, user_id: string): Promise<CourseEnrolment> {
     const newEnrolment = new CourseEnrolment({ course_id, user_id });
-    await this.ormCourseEnrolment.save(newEnrolment);
+    return this.ormCourseEnrolment.save(newEnrolment);
   }
 
-  async updateCourseContent({ name, description }: UpdateCourseDto, course_id: string) {
-    await this.ormCourse.update(
+  async updateCourseContent({ name, description }: UpdateCourseDto, course_id: string): Promise<void> {
+    await this.orm.update(
       {
         id: course_id,
       },
@@ -109,8 +102,8 @@ export class CoursesRepository {
     );
   }
 
-  async updateCourseDeleted(course_id: string, deleted: boolean) {
-    await this.ormCourse.update(
+  async updateCourseDeleted(course_id: string, deleted: boolean): Promise<void> {
+    await this.orm.update(
       {
         id: course_id,
       },
@@ -120,8 +113,8 @@ export class CoursesRepository {
     );
   }
 
-  async updateCourseHidden(course_id: string, is_hidden: boolean) {
-    await this.ormCourse.update(
+  async updateCourseHidden(course_id: string, is_hidden: boolean): Promise<void> {
+    await this.orm.update(
       {
         id: course_id,
       },
@@ -131,10 +124,11 @@ export class CoursesRepository {
     );
   }
 
-  async updateEnrolmentStatus({ course_id, finished }: UpdateCourseEnrolmentDto) {
+  async updateEnrolmentStatus({ course_id, finished }: UpdateCourseEnrolmentDto, user_id: string): Promise<void> {
     await this.ormCourseEnrolment.update(
       {
         course_id,
+        user_id,
       },
       {
         finished,
@@ -142,21 +136,19 @@ export class CoursesRepository {
     );
   }
 
-  async getCourseDetails(course_id: string) {
-    return this.ormCourse.findOne({
-      where: {
-        id: course_id,
-        deleted: false,
-        lessons: {
-          deleted: false,
-        },
-      },
-      relations: ['ratings', 'lessons', 'lessonCompletions'],
-    });
+  async getCourseDetails(course_id: string): Promise<Course | null> {
+    return this.orm
+      .createQueryBuilder('course')
+      .leftJoinAndSelect('course.ratings', 'rating')
+      .leftJoinAndSelect('course.lessons', 'lesson', 'lesson.deleted = false')
+      .leftJoinAndSelect('course.lessonCompletions', 'lessonCompletion')
+      .where('course.id = :courseId', { courseId: course_id })
+      .andWhere('course.deleted = false')
+      .getOne();
   }
 
-  async getUserCreatedTutorials(user_id: string) {
-    return this.ormCourse.find({
+  async getUserCreatedTutorials(user_id: string): Promise<Course[]> {
+    return this.orm.find({
       where: {
         author_id: user_id,
         deleted: false,
@@ -165,7 +157,7 @@ export class CoursesRepository {
     });
   }
 
-  async checkForeignKeyUserIdExist(user_id: string) {
+  async findUserById(user_id: string): Promise<User | null> {
     return this.ormUser.findOne({
       where: {
         id: user_id,
@@ -173,15 +165,15 @@ export class CoursesRepository {
     });
   }
 
-  async checkForeignKeyCourseIdExist(course_id: string) {
-    return this.ormCourse.findOne({
+  async findCourseById(course_id: string): Promise<Course | null> {
+    return this.orm.findOne({
       where: {
         id: course_id,
       },
     });
   }
 
-  async checkUserCourseEnrolment(user_id: string, course_id: string) {
+  async findEnrolmentByUserAndCourse(user_id: string, course_id: string): Promise<CourseEnrolment | null> {
     return this.ormCourseEnrolment.findOne({
       where: {
         course_id,
@@ -190,52 +182,67 @@ export class CoursesRepository {
     });
   }
 
-  async getAllCourses(paginationOptionsDto: PaginationOptionsDto) {
-    const entities = await this.ormCourse.find({
-      order: {
-        created_at: paginationOptionsDto.order,
-      },
-      skip: paginationOptionsDto.skip,
-      take: paginationOptionsDto.take,
-      relations: {
-        ratings: true,
-        author: true,
-      },
-      select: {
-        ratings: {
-          rating: true,
-          review: true,
-          user_id: true,
-          created_at: true,
-        },
-        author: {
-          username: true,
-        },
+  async findRatingByUserAndCourse(user_id: string, course_id: string): Promise<CourseRating | null> {
+    return this.ormCourseRating.findOne({
+      where: {
+        course_id,
+        user_id,
       },
     });
-    const paginationMetaDto = new PaginationMetaDto({ itemCount: entities.length, paginationOptionsDto });
+  }
+
+  async getAllCourses(paginationOptionsDto: PaginationOptionsDto): Promise<PaginationDto<Course>> {
+    const [entities, totalCount] = await Promise.all([
+      this.orm.find({
+        order: {
+          created_at: paginationOptionsDto.order,
+        },
+        skip: paginationOptionsDto.skip,
+        take: paginationOptionsDto.take,
+        relations: {
+          ratings: true,
+          author: true,
+        },
+        select: {
+          ratings: {
+            rating: true,
+            review: true,
+            user_id: true,
+            created_at: true,
+          },
+          author: {
+            username: true,
+          },
+        },
+      }),
+      this.orm.count(),
+    ]);
+    const paginationMetaDto = new PaginationMetaDto({ itemCount: totalCount, paginationOptionsDto });
     return new PaginationDto(entities, paginationMetaDto);
   }
 
   async getUserNotEnrolledCourses(user_id: string): Promise<Course[]> {
-    const courseEnrollments = await this.ormCourseEnrolment.find({
-      where: {
-        user: {
-          id: user_id,
-        },
-      },
-    });
-    const enrolledCoursesIds = courseEnrollments.map((enrolment) => enrolment.course_id);
-    return this.ormCourse.find({
-      where: { id: Not(In(enrolledCoursesIds)), author_id: Not(Equal(user_id)), deleted: false, is_hidden: false },
-      relations: ['ratings'],
-    });
+    return this.orm
+      .createQueryBuilder('course')
+      .leftJoinAndSelect('course.ratings', 'rating')
+      .where('course.deleted = false')
+      .andWhere('course.is_hidden = false')
+      .andWhere('course.author_id != :userId', { userId: user_id })
+      .andWhere(
+        `course.id NOT IN (
+        SELECT ce.course_id FROM course_enrolments ce WHERE ce.user_id = :userId
+      )`,
+        { userId: user_id },
+      )
+      .getMany();
   }
 
-  async getPlatformCourses(platform: Platform) {
-    return this.ormCourse.find({
+  async getPlatformCourses(platform: Platform): Promise<Course[]> {
+    return this.orm.find({
       where: {
         platform,
+        deleted: false,
+        is_hidden: false,
       },
     });
   }

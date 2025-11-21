@@ -210,9 +210,7 @@ describe('AccountabilityBuddyService', () => {
       AccountabilityBuddyRepositoryMock.update.mockResolvedValue(existingBuddy);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
-      await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(
-        'This invitation has expired. A new invitation has been sent.',
-      );
+      await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow('This invitation has expired');
       expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalled();
     });
 

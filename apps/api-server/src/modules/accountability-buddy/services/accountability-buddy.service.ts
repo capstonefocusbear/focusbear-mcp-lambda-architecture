@@ -340,7 +340,7 @@ export class AccountabilityBuddyService {
           invitation_status: InvitationStatus.EXPIRED,
           updated_at: new Date().toISOString(),
         });
-        throw new BadRequestException('This invitation has expired. A new invitation has been sent.');
+        throw new BadRequestException('This invitation has expired');
       }
       throw new BadRequestException('This invitation is already pending');
     } else if (existingBuddy.invitation_status === InvitationStatus.ACCEPTED) {

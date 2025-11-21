@@ -3,7 +3,7 @@ import { AccountabilityBuddy } from '../../apps/api-server/src/modules/accountab
 import { InvitationStatus } from '../../apps/api-server/src/modules/accountability-buddy/domain/invitation-status.enum';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
-import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
+import { CRON_JOB_TIMEOUT_MS, ACCOUNTABILITY_BUDDY } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -12,7 +12,9 @@ async function getExpiredPendingInvitations() {
     .createQueryBuilder(AccountabilityBuddy, 'accountability_buddy')
     .where('accountability_buddy.invitation_status = :status', { status: InvitationStatus.PENDING })
     .andWhere('accountability_buddy.invitation_sent_at IS NOT NULL')
-    .andWhere("accountability_buddy.invitation_sent_at + INTERVAL '1 day' < NOW()")
+    .andWhere(
+      `accountability_buddy.invitation_sent_at + INTERVAL '${ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS} day' < NOW()`,
+    )
     .getMany();
 
   return expiredInvitations;

@@ -51,7 +51,7 @@ export class CoursesService {
       if (!user) {
         throw new NotFoundException(`User with user_id ${user_id} couldn't be found in DB`);
       }
-      await this.coursesRepository.createCourseContent(createCourseDto, user_id);
+      return await this.coursesRepository.createCourseContent(createCourseDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -193,7 +193,7 @@ export class CoursesService {
       if (existingRating) {
         throw new ConflictException(`User has already rated course ${course_id}`);
       }
-      await this.coursesRepository.createRatingContent(createCourseRatingDto, user_id);
+      return await this.coursesRepository.createRatingContent(createCourseRatingDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -224,7 +224,7 @@ export class CoursesService {
       if (existingEnrolment) {
         throw new ConflictException(`User is already enrolled in course ${course_id}`);
       }
-      await this.coursesRepository.createEnrolmentContent(course_id, user_id);
+      return await this.coursesRepository.createEnrolmentContent(course_id, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -286,7 +286,7 @@ export class CoursesService {
         message: 'Getting User Created Courses',
         data: {
           user_id,
-          ...this.getUserCreatedTutorials,
+          ...getUserCoursesDto,
         },
       });
       return await this.coursesRepository.getAllAuthorCourses(getUserCoursesDto, user_id);

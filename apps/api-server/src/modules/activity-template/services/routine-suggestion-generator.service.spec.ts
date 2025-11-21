@@ -130,7 +130,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
       rejectedCount: 0,
       parsedCount: 1,
-      minScoreApplied: 0.7,
+      minScoreApplied: 0.5,
     });
   });
 
@@ -206,11 +206,11 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
       rejectedCount: 0,
       parsedCount: 1,
-      minScoreApplied: 0.55,
+      minScoreApplied: 0.5,
     });
 
     const messages = OpenAIServiceMock.createChatCompletion.mock.calls[0][0] as any[];
-    expect(messages[0].content).toContain('0.55');
+    expect(messages[0].content).toContain('0.50');
   });
 
   it('filters out suggestions with match scores below the configured minimum', async () => {
@@ -303,7 +303,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       justification: 'Strong alignment.',
       matchScore: 0.76,
     });
-    expect(result.minScoreApplied).toBe(0.7);
+    expect(result.minScoreApplied).toBe(0.5);
   });
 
   it('falls back to similarity ranking when OpenAI response is invalid JSON', async () => {
@@ -328,7 +328,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
       rejectedCount: 0,
       parsedCount: 0,
-      minScoreApplied: 0.7,
+      minScoreApplied: 0.5,
     });
   });
 

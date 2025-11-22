@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { SendGridService } from '@app/send-grid';
@@ -125,17 +125,16 @@ describe('AuthService', () => {
       expect(response).toEqual({ data: 'Verification email sent.', status: 200 });
     });
 
-    it('negative: should throw ConflictException, if user email is already verified', async () => {
+    it('positive: should return success response if user email is already verified', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
         { ...auth0UserDummy, email_verified: true },
       ]);
       Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
-      await expect(authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin)).rejects.toThrow(
-        ConflictException,
-      );
+      const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(response).toEqual({ data: 'Email is already verified.', status: 200 });
       expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
     });
 

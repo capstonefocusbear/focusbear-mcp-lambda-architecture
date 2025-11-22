@@ -45,6 +45,7 @@ export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
 export const ONE_DAY_SECONDS = 86400;
 export const ONE_SECOND_AS_MILLIS = 1000;
+export const TWO_SECONDS_AS_MILLIS = 2000;
 export const TEN_SECONDS_AS_MILLIS = 10000;
 export const TWENTY = 20;
 export const TRIAL_COST_CENTS = 0;
@@ -143,6 +144,11 @@ export const ACCOUNTABILITY_BUDDY = {
   UNLOCK_DURATION_MAX_MINUTES: 1440, // 24 hours
   UNLOCK_REQUEST_REASON_MAX_LENGTH: 1000,
   UNLOCK_REQUEST_DEFAULT_REASON: 'No reason provided',
+} as const;
+
+export const AUTH0_RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  BASE_DELAY_MS: TWO_SECONDS_AS_MILLIS, // 2000ms for exponential backoff (2s, 4s, 6s)
 } as const;
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';

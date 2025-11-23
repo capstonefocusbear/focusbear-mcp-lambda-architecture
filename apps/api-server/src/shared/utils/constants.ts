@@ -173,6 +173,7 @@ export enum BullQueues {
   COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
+  EMAIL_VERIFICATION = 'email-verification',
 }
 
 export enum BullWorkers {
@@ -193,6 +194,7 @@ export enum BullWorkers {
   SYNC_USAGE_DATA = 'sync-usage-data',
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
   PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
+  SEND_EMAIL_VERIFICATION = 'send-email-verification',
 }
 
 export const createActivityFunction = {

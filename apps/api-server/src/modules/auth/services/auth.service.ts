@@ -14,8 +14,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { SendGridService } from '@app/send-grid';
 import { I18nService } from 'nestjs-i18n';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import {
   AUTH0_RETRY_CONFIG,
+  BullQueues,
+  BullWorkers,
   EMAIL_SENDER_NAME,
   EMAIL_TEMPLATE_IDS,
   FOCUS_BEAR_EMAILS,
@@ -41,6 +45,8 @@ export class AuthService {
     private readonly emailJwtService: JwtService,
     @Inject('ResetPasswordJwtService')
     private readonly passwordResetJwtService: JwtService,
+    @InjectQueue(BullQueues.EMAIL_VERIFICATION)
+    private readonly emailVerificationQueue: Queue,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -218,50 +224,30 @@ export class AuthService {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Send Email Verification',
+        message: 'Enqueuing email verification job',
         data: { ...sendEmailVerificationDto, origin },
       });
 
       const { email } = sendEmailVerificationDto;
 
-      const auth0User = await this.validateAuth0User(undefined, email);
-
-      if (auth0User.email_verified) {
-        return {
-          data: 'Email is already verified.',
-          status: 200,
-        };
-      }
-
-      const secret = this.configService.get('tokens.email_verification.secret');
-      const expiresIn = this.configService.get('tokens.email_verification.signOptions.expiresIn') || '7 days';
-
-      const token = await this.passwordResetJwtService.signAsync(
+      await this.emailVerificationQueue.add(
+        BullWorkers.SEND_EMAIL_VERIFICATION,
         {
           email,
-          auth0_id: auth0User.user_id,
+          origin,
         },
         {
-          secret,
-          expiresIn,
+          attempts: AUTH0_RETRY_CONFIG.MAX_RETRIES,
+          backoff: {
+            type: 'exponential',
+            delay: AUTH0_RETRY_CONFIG.BASE_DELAY_MS,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
         },
       );
 
-      const baseUrl = this.getFrontendBaseUrl(origin);
-      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
-
-      await this.emailService.sendEmail({
-        to: auth0User.email,
-        from: {
-          name: EMAIL_SENDER_NAME,
-          email: FOCUS_BEAR_EMAILS.NOREPLY,
-        },
-        templateId: EMAIL_TEMPLATE_IDS.VERIFY_EMAIL,
-        dynamicTemplateData: {
-          verification_link: verificationLink,
-        },
-      });
-      return { data: 'Verification email sent.', status: 200 };
+      return { data: 'Email verification queued.', status: 202 };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -335,7 +321,6 @@ export class AuthService {
 
       return auth0User;
     } catch (error) {
-      // If it's a NotFoundException and we can retry, do so
       if (error instanceof NotFoundException && retryCount < AUTH0_RETRY_CONFIG.MAX_RETRIES - 1) {
         const delay = AUTH0_RETRY_CONFIG.BASE_DELAY_MS * (retryCount + 1);
         this.sentryService.instance().addBreadcrumb({

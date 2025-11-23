@@ -13,7 +13,7 @@ export class CreateUnlockRequestDto {
   })
   reason?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   @Min(ACCOUNTABILITY_BUDDY.UNLOCK_DURATION_MIN_MINUTES, {
     message: `Unlock duration must be at least ${ACCOUNTABILITY_BUDDY.UNLOCK_DURATION_MIN_MINUTES} minute`,
@@ -21,5 +21,5 @@ export class CreateUnlockRequestDto {
   @Max(ACCOUNTABILITY_BUDDY.UNLOCK_DURATION_MAX_MINUTES, {
     message: `Unlock duration must not exceed ${ACCOUNTABILITY_BUDDY.UNLOCK_DURATION_MAX_MINUTES} minutes (24 hours)`,
   })
-  unlock_duration_minutes?: number;
+  unlock_duration_minutes: number;
 }

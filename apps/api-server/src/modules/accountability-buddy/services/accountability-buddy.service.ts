@@ -17,6 +17,7 @@ import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
 import { AccountabilityBuddyResponseDto } from '../dto/accountability-buddy-response';
 import { BuddyInfoDto } from '../dto/accountability-buddy-response/buddy-info.dto';
 import { InviterInfoDto } from '../dto/accountability-buddy-response/inviter-info.dto';
+import { isInvitationExpired } from '../utils/expiration.util';
 
 /**
  * Service for managing accountability buddy relationships and invitations.
@@ -334,15 +335,12 @@ export class AccountabilityBuddyService {
 
   private async validateExistingBuddyStatus(existingBuddy: AccountabilityBuddy): Promise<void> {
     if (existingBuddy.invitation_status === InvitationStatus.PENDING) {
-      if (existingBuddy.invitation_sent_at) {
-        const daysSinceInvitation =
-          (Date.now() - new Date(existingBuddy.invitation_sent_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceInvitation >= ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS) {
-          await this.accountabilityBuddyRepository.update(existingBuddy.id, {
-            invitation_sent_at: new Date(),
-          });
-          throw new BadRequestException('This invitation has expired. A new invitation has been sent.');
-        }
+      if (existingBuddy.invitation_sent_at && isInvitationExpired(existingBuddy)) {
+        await this.accountabilityBuddyRepository.update(existingBuddy.id, {
+          invitation_status: InvitationStatus.EXPIRED,
+          updated_at: new Date().toISOString(),
+        });
+        throw new BadRequestException('This invitation has expired');
       }
       throw new BadRequestException('This invitation is already pending');
     } else if (existingBuddy.invitation_status === InvitationStatus.ACCEPTED) {
@@ -407,12 +405,11 @@ export class AccountabilityBuddyService {
       );
 
       // Check expiration for accept
-      if (accountabilityBuddy.invitation_sent_at) {
-        const daysSinceInvitation =
-          (Date.now() - new Date(accountabilityBuddy.invitation_sent_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceInvitation >= ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS) {
-          throw new BadRequestException('This invitation has expired');
-        }
+      if (isInvitationExpired(accountabilityBuddy)) {
+        accountabilityBuddy.invitation_status = InvitationStatus.EXPIRED;
+        accountabilityBuddy.updated_at = new Date().toISOString();
+        await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
+        throw new BadRequestException('This invitation has expired');
       }
 
       // Update buddy_user_id if null

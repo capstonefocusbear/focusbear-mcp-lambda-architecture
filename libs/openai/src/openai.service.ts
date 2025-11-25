@@ -280,6 +280,8 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
+      user_job_details,
+      user_typical_distractions,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -336,9 +338,24 @@ export class OpenAIService {
         lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
       });
 
+      // Append user context at the end to preserve prompt caching
+      let finalPromptContent = filledPromptContent;
+      if (user_job_details || user_typical_distractions) {
+        const contextParts: string[] = [];
+        if (user_job_details) {
+          contextParts.push(`The user provided this context about their job: ${user_job_details}`);
+        }
+        if (user_typical_distractions) {
+          contextParts.push(`And said that they normally get distracted by: ${user_typical_distractions}`);
+        }
+        if (contextParts.length > 0) {
+          finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+        }
+      }
+
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
-        content: filledPromptContent,
+        content: finalPromptContent,
       };
 
       let retryCount = 0;
@@ -380,7 +397,15 @@ export class OpenAIService {
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer } = isAppSafeDto;
+    const {
+      focusMode,
+      intention,
+      appName,
+      justificationForThisSpecificApp,
+      currentTaskInToDoPlayer,
+      user_job_details,
+      user_typical_distractions,
+    } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -419,9 +444,24 @@ export class OpenAIService {
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
     });
 
+    // Append user context at the end to preserve prompt caching
+    let finalPromptContent = filledPromptContent;
+    if (user_job_details || user_typical_distractions) {
+      const contextParts: string[] = [];
+      if (user_job_details) {
+        contextParts.push(`The user provided this context about their job: ${user_job_details}`);
+      }
+      if (user_typical_distractions) {
+        contextParts.push(`And said that they normally get distracted by: ${user_typical_distractions}`);
+      }
+      if (contextParts.length > 0) {
+        finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+      }
+    }
+
     const basePrompt: ChatCompletionMessageParam = {
       role: 'system',
-      content: filledPromptContent,
+      content: finalPromptContent,
     };
 
     let retryCount = 0;

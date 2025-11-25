@@ -670,6 +670,42 @@ describe('OpenAIService', () => {
       expect(taskOccurrences).toBe(2);
       completionsSpy.mockRestore();
     });
+
+    it('should append user context to the end of the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(() => 'Prompt body');
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Ghostty',
+        justificationForThisSpecificApp: 'Need terminal',
+        currentTaskInToDoPlayer: 'Implement API client',
+        user_job_details: 'Full-stack engineer at Focus Bear',
+        user_typical_distractions: 'Short-form social media clips',
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+
+      expect(promptContent.startsWith('Prompt body')).toBe(true);
+      expect(promptContent).toContain(
+        'The user provided this context about their job: Full-stack engineer at Focus Bear',
+      );
+      expect(promptContent).toContain('And said that they normally get distracted by: Short-form social media clips');
+      expect(
+        promptContent.endsWith('And said that they normally get distracted by: Short-form social media clips'),
+      ).toBe(true);
+
+      completionsSpy.mockRestore();
+    });
   }); // Properly closing checkIfAppIsSafeToUse describe block
 
   describe('getOpenAIInstance', () => {

@@ -1082,6 +1082,26 @@ describe('OpenAIService', () => {
       expect(mockCaptureException).toHaveBeenCalled();
     });
 
+    it('should return current habits when grouped response is not iterable', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ invalid: true }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+      const spy = jest.spyOn(SentryServiceMock.instance(), 'captureException');
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'feedback', ['goal'], undefined, true);
+
+      expect(result).toEqual(currentHabits);
+      expect(spy).toHaveBeenCalled();
+    });
+
     it('should include user goals and routine duration in prompt context', async () => {
       const mockResponse = {
         choices: [

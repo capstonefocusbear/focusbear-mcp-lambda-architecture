@@ -24,6 +24,8 @@ export const EMBEDDING_SYNC_RESULT = {
 export class ActivityTemplateEmbeddingSyncService {
   private readonly logger = new Logger(ActivityTemplateEmbeddingSyncService.name);
 
+  private static readonly BATCH_SIZE = 20;
+
   constructor(
     private readonly activityTemplateRepository: ActivityTemplateRepository,
     private readonly goalEmbeddingService: ActivityTemplateGoalEmbeddingService,
@@ -34,46 +36,53 @@ export class ActivityTemplateEmbeddingSyncService {
   async syncAll(): Promise<EmbeddingSyncSummary> {
     const templates = await this.activityTemplateRepository.getTemplatesForEmbeddingSync();
 
-    const results = await Promise.all(
-      templates.map(async (template) => {
-        try {
-          const textSource = this.buildTextSource(template);
-          const embedding = await this.goalEmbeddingService.generateEmbedding(textSource, {
-            rawText: textSource,
-            description: template.activity_data?.text_instructions ?? '',
-            tags: this.getTags(template),
-            routineType: template.activity_type ?? undefined,
-          });
+    const results: string[] = [];
+    for (let offset = 0; offset < templates.length; offset += ActivityTemplateEmbeddingSyncService.BATCH_SIZE) {
+      const batch = templates.slice(offset, offset + ActivityTemplateEmbeddingSyncService.BATCH_SIZE);
+      // Process each batch in parallel, but batches sequentially to respect external rate limits
+      // eslint-disable-next-line no-await-in-loop
+      const batchResults = await Promise.all(
+        batch.map(async (template) => {
+          try {
+            const textSource = this.buildTextSource(template);
+            const embedding = await this.goalEmbeddingService.generateEmbedding(textSource, {
+              rawText: textSource,
+              description: template.activity_data?.text_instructions ?? '',
+              tags: this.getTags(template),
+              routineType: template.activity_type ?? undefined,
+            });
 
-          if (!embedding.length) {
-            return EMBEDDING_SYNC_RESULT.SKIPPED;
+            if (!embedding.length) {
+              return EMBEDDING_SYNC_RESULT.SKIPPED;
+            }
+
+            await this.activityTemplateEmbeddingRepository.upsert(
+              new ActivityTemplateEmbedding(
+                {
+                  activity_template_id: template.id,
+                  embedding,
+                  text_source: textSource,
+                  metadata: this.buildMetadata(template),
+                  model_version: DEFAULT_EMBEDDING_MODEL,
+                },
+                { generateId: true },
+              ),
+              ['activity_template_id'],
+            );
+
+            return EMBEDDING_SYNC_RESULT.UPSERTED;
+          } catch (error) {
+            this.logger.error(`Failed to sync embedding for template ${template.id}`, error.stack);
+            this.sentryService.instance().captureException(error, {
+              level: 'error',
+              extra: { templateId: template.id },
+            });
+            return EMBEDDING_SYNC_RESULT.ERROR;
           }
-
-          await this.activityTemplateEmbeddingRepository.upsert(
-            new ActivityTemplateEmbedding(
-              {
-                activity_template_id: template.id,
-                embedding,
-                text_source: textSource,
-                metadata: this.buildMetadata(template),
-                model_version: DEFAULT_EMBEDDING_MODEL,
-              },
-              { generateId: true },
-            ),
-            ['activity_template_id'],
-          );
-
-          return EMBEDDING_SYNC_RESULT.UPSERTED;
-        } catch (error) {
-          this.logger.error(`Failed to sync embedding for template ${template.id}`, error.stack);
-          this.sentryService.instance().captureException(error, {
-            level: 'error',
-            extra: { templateId: template.id },
-          });
-          return EMBEDDING_SYNC_RESULT.ERROR;
-        }
-      }),
-    );
+        }),
+      );
+      results.push(...batchResults);
+    }
 
     const summary = results.reduce<EmbeddingSyncSummary>(
       (acc, result) => {

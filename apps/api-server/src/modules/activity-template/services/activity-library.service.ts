@@ -185,6 +185,7 @@ export class ActivityLibraryService {
         return directTemplates;
       }
 
+      // If we found matching templates but none fit the user's time budget, respect the duration contract
       const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, options);
 
       this.logger.debug(
@@ -557,11 +558,18 @@ export class ActivityLibraryService {
     const fallbackDurationMinutes = routineDurationSeconds
       ? Math.max(1, Math.round(routineDurationSeconds / ONE_MINUTE_SECONDS))
       : DEFAULT_GENERATED_ACTIVITY_MINUTES;
+    const maxDurationMinutes = routineDurationSeconds
+      ? Math.max(1, Math.floor(routineDurationSeconds / ONE_MINUTE_SECONDS))
+      : undefined;
 
     Object.entries(generatedByGoal).forEach(([goal, habits]) => {
       byGoal[goal] = [];
       habits.forEach((habit) => {
-        const durationMinutes = habit.durationMinutes ?? fallbackDurationMinutes;
+        const rawDurationMinutes = habit.durationMinutes ?? fallbackDurationMinutes;
+        const durationMinutes =
+          typeof maxDurationMinutes === 'number'
+            ? Math.min(rawDurationMinutes, maxDurationMinutes)
+            : rawDurationMinutes;
         const activityType =
           typeof habit.routineType === 'string'
             ? (habit.routineType.toLowerCase() as ActivityType)
@@ -856,7 +864,7 @@ export class ActivityLibraryService {
         goal: (request.user_goals ?? [])[0] ?? 'habit_adjustment',
         habitName: habit.name ?? '',
         habitDescription: habit.description ?? habit.text_instructions ?? null,
-        routineType: habit.activity_type ?? request.groupByGoals ? null : request.routine_duration ?? null,
+        routineType: habit.activity_type ?? (request.groupByGoals ? null : null),
         durationMinutes:
           typeof habit.duration_seconds === 'number'
             ? Math.max(1, Math.round(habit.duration_seconds / ONE_MINUTE_SECONDS))

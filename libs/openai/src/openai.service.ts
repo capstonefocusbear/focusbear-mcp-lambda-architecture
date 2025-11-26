@@ -1000,6 +1000,13 @@ export class OpenAIService {
         const parsed = JSON.parse(response);
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
+          if (!Array.isArray(parsed)) {
+            this.sentryService.instance().captureException(new Error('Grouped habits response is not iterable'), {
+              level: 'error',
+              extra: { response, currentHabits, userFeedback },
+            });
+            return currentHabits;
+          }
           const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
           const validGrouped: Record<string, ActivityTemplate[]> = {};
           for (const { goal, habits } of parsed) {

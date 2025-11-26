@@ -49,6 +49,7 @@ export class ActivityLibraryController {
   }
 
   @Post('/routine-suggestions/async')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Request routine suggestions asynchronously' })
   @ApiResponse({ status: 202, description: 'Routine suggestion task accepted' })
   @HttpCode(202)
@@ -77,12 +78,14 @@ export class ActivityLibraryController {
   }
 
   @Post('/habits/ai')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Create habits using AI with RAG preference for library templates' })
   async createHabitWithAi(@Body() createHabitWithAiDto: CreateHabitWithAiDto, @AuthContext() { user }: Passport) {
     return this.activityLibraryService.createHabitWithAi(createHabitWithAiDto, user.id);
   }
 
   @Post('/habits/ai/async')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Create habits using AI asynchronously (RAG preferred)' })
   @HttpCode(202)
   async createHabitWithAiAsync(@Body() createHabitWithAiDto: CreateHabitWithAiDto, @AuthContext() { user }: Passport) {

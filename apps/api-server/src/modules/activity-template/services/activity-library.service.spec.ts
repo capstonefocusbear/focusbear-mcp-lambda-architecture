@@ -297,6 +297,14 @@ describe('ActivityLibraryService', () => {
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce(
         dummyActivityTemplatesForBuildHealthyHabits,
       );
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValue([]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValue({
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValue([]);
 
       const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
         { ...dummyGetRoutineSuggestionsDto, routine_duration: 1 },
@@ -304,6 +312,68 @@ describe('ActivityLibraryService', () => {
       )) as ActivityTemplate[];
 
       expect(response).toEqual([]);
+    });
+
+    it('logs routineType from habit activity_type when recording generated habits', async () => {
+      const habit = {
+        name: 'AI Stretch',
+        description: 'Generated',
+        duration_seconds: 120,
+        activity_type: ActivityType.morning,
+        ai_generated: true,
+      };
+
+      await (activityLibraryService as any).logAdjustedGeneratedHabits([habit], userDummy.id, {
+        user_goals: ['mobility'],
+        routine_duration: 30,
+        groupByGoals: false,
+      });
+
+      expect(habitLibraryRequestRepositoryMock.logRequests).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            routineType: ActivityType.morning,
+          }),
+        ]),
+      );
+    });
+
+    it('falls back to RAG when matches exist but exceed duration budget', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const longTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        duration_seconds: 15 * ONE_MINUTE_SECONDS,
+      };
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([longTemplate]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: longTemplate.id, similarity: 0.9 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([longTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: longTemplate.id,
+            name: 'Shortened Habit',
+            justification: 'Adjusted to fit time budget',
+            matchScore: 0.9,
+            template: longTemplate,
+            description: 'desc',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        { ...dummyGetRoutineSuggestionsDto, routine_duration: 1, groupByGoals: true },
+        userDummy.id,
+      );
+
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalled();
+      expect(response).toEqual(
+        Object.fromEntries((dummyGetRoutineSuggestionsDto.user_goals ?? []).map((goal) => [goal, expect.any(Array)])),
+      );
     });
 
     it('falls back to RAG pipeline when direct matches are empty', async () => {

@@ -89,6 +89,7 @@ describe('RoutineSuggestionsAsyncService', () => {
         jobId: 'async-task-123',
         removeOnComplete: true,
         removeOnFail: false,
+        timeout: 120000,
       }),
     );
 

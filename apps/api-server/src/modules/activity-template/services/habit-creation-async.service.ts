@@ -52,6 +52,7 @@ export class HabitCreationAsyncService {
           jobId: asyncTask.id,
           removeOnComplete: true,
           removeOnFail: false,
+          timeout: 120000,
         },
       );
     } catch (error) {

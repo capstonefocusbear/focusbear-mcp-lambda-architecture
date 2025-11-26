@@ -54,6 +54,7 @@ export class RoutineSuggestionsAsyncService {
           jobId: asyncTask.id,
           removeOnComplete: true,
           removeOnFail: false,
+          timeout: 120000,
         },
       );
     } catch (error) {

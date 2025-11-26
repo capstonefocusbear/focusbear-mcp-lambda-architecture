@@ -13,6 +13,8 @@ import { catchError, timeout } from 'rxjs/operators';
 export class TimeoutInterceptor implements NestInterceptor {
   private readonly logger = new Logger(TimeoutInterceptor.name);
 
+  private readonly exemptPaths: string[] = [];
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const startedAt = Date.now();
     const httpContext = context.switchToHttp();
@@ -24,6 +26,10 @@ export class TimeoutInterceptor implements NestInterceptor {
       log?: any;
     }>();
     const requestLogger = request?.log;
+
+    if (request?.url && this.exemptPaths.some((path) => request.url.startsWith(path))) {
+      return next.handle();
+    }
 
     return next.handle().pipe(
       timeout(30000),

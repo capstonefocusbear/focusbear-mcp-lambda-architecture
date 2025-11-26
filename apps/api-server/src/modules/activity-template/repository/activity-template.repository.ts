@@ -98,4 +98,13 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
 
     return query.getMany();
   }
+
+  async getTemplatesForEmbeddingSync(): Promise<ActivityTemplate[]> {
+    const embeddingTypes = [ActivityType.morning, ActivityType.evening, ActivityType.library, ActivityType.break];
+    return this.orm.find({
+      where: { activity_type: In(embeddingTypes) },
+      relations: ['tags'],
+      withDeleted: false,
+    });
+  }
 }

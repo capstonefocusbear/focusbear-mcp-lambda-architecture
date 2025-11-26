@@ -6,12 +6,19 @@ import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { Stream } from 'stream';
+import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
 import { configsArray } from '../../../apps/api-server/src/config';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IOpenAIOptions } from './interfaces';
-import { OPENAI_MODULE_OPTIONS, TRANSLATION_KEYS, TEST_CONSTANTS, OpenAIKeyType } from './openai.constants';
+import {
+  DEFAULT_EMBEDDING_MODEL,
+  OPENAI_MODULE_OPTIONS,
+  TRANSLATION_KEYS,
+  TEST_CONSTANTS,
+  OpenAIKeyType,
+} from './openai.constants';
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 import { AiToneOptions } from './domain/ai-tones.enum';
@@ -49,9 +56,30 @@ const promptCacheServiceMock = {
 
 jest.mock('openai');
 jest.mock('sanitize-url');
+
+const mockEmbeddingsCreate = jest.fn();
+const mockChatCompletionsCreate = jest.fn().mockRejectedValue(new Error('mocked openai failure'));
+
+(OpenAI as unknown as jest.Mock).mockImplementation(() => ({
+  embeddings: {
+    create: mockEmbeddingsCreate,
+  },
+  chat: {
+    completions: {
+      create: mockChatCompletionsCreate,
+    },
+  },
+}));
+
 describe('OpenAIService', () => {
   let service: OpenAIService;
   let module: TestingModule;
+
+  beforeEach(() => {
+    mockEmbeddingsCreate.mockReset();
+    mockChatCompletionsCreate.mockReset();
+    mockChatCompletionsCreate.mockRejectedValue(new Error('mocked openai failure'));
+  });
 
   beforeAll(async () => {
     jest.clearAllMocks();
@@ -104,6 +132,60 @@ describe('OpenAIService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('createEmbedding', () => {
+    it('returns embedding vector using the routine suggestion embedding configuration by default', async () => {
+      const expectedEmbedding = [0.12, -0.34, 0.56];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [{ embedding: expectedEmbedding }],
+      });
+
+      const goal = 'Get buffed';
+
+      const result = await service.createEmbedding(goal);
+
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+        input: goal,
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual(expectedEmbedding);
+    });
+
+    it('returns empty array when OpenAI response contains no data', async () => {
+      mockEmbeddingsCreate.mockResolvedValueOnce({ data: [] });
+
+      const result = await service.createEmbedding('No result');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('createChatCompletion', () => {
+    it('uses routine suggestion defaults and returns OpenAI response', async () => {
+      const expectedResponse = {
+        choices: [
+          {
+            message: {
+              content: '[]',
+            },
+          },
+        ],
+      };
+      mockChatCompletionsCreate.mockResolvedValueOnce(expectedResponse);
+
+      const messages = [{ role: 'user', content: 'Test prompt' } as ChatCompletionMessageParam];
+
+      const response = await service.createChatCompletion(messages);
+
+      expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.any(String),
+          messages: expect.arrayContaining(messages),
+        }),
+      );
+      expect(response).toEqual(expectedResponse);
+    });
   });
 
   describe('checkIfUrlIsSafeToUse', () => {
@@ -998,6 +1080,26 @@ describe('OpenAIService', () => {
 
       expect(result).toEqual(currentHabits);
       expect(mockCaptureException).toHaveBeenCalled();
+    });
+
+    it('should return current habits when grouped response is not iterable', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ invalid: true }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+      const spy = jest.spyOn(SentryServiceMock.instance(), 'captureException');
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'feedback', ['goal'], undefined, true);
+
+      expect(result).toEqual(currentHabits);
+      expect(spy).toHaveBeenCalled();
     });
 
     it('should include user goals and routine duration in prompt context', async () => {

@@ -77,13 +77,6 @@ export class ActivityLibraryController {
     return this.activityLibraryService.adjustHabitsWithAi(adjustHabitsWithAiDto, user.id);
   }
 
-  @Post('/habits/ai')
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiOperation({ summary: 'Create habits using AI with RAG preference for library templates' })
-  async createHabitWithAi(@Body() createHabitWithAiDto: CreateHabitWithAiDto, @AuthContext() { user }: Passport) {
-    return this.activityLibraryService.createHabitWithAi(createHabitWithAiDto, user.id);
-  }
-
   @Post('/habits/ai/async')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Create habits using AI asynchronously (RAG preferred)' })

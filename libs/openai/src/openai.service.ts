@@ -38,6 +38,11 @@ import { BraindumpTaskDto } from './dto/braindump-task-response.dto';
 import { SubtasksDto } from './dto/subtasks-response.dto';
 import { PromptCacheService } from './prompt-cache.service';
 
+type SafetyUserContext = {
+  jobDetails?: string | null;
+  typicalDistractions?: string | null;
+};
+
 @Injectable()
 export class OpenAIService {
   // Store OpenAI instances for different functions
@@ -270,6 +275,7 @@ export class OpenAIService {
   async checkIfUrlIsSafeToUse(
     isUrlSafeDto: IsUrlSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
     const {
       url,
@@ -280,8 +286,6 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
-      user_job_details,
-      user_typical_distractions,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -340,13 +344,15 @@ export class OpenAIService {
 
       // Append user context at the end to preserve prompt caching
       let finalPromptContent = filledPromptContent;
-      if (user_job_details || user_typical_distractions) {
+      const jobDetails = userContext?.jobDetails?.trim();
+      const typicalDistractions = userContext?.typicalDistractions?.trim();
+      if (jobDetails || typicalDistractions) {
         const contextParts: string[] = [];
-        if (user_job_details) {
-          contextParts.push(`The user provided this context about their job: ${user_job_details}`);
+        if (jobDetails) {
+          contextParts.push(`The user provided this context about their job: ${jobDetails}`);
         }
-        if (user_typical_distractions) {
-          contextParts.push(`And said that they normally get distracted by: ${user_typical_distractions}`);
+        if (typicalDistractions) {
+          contextParts.push(`And said that they normally get distracted by: ${typicalDistractions}`);
         }
         if (contextParts.length > 0) {
           finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
@@ -396,16 +402,9 @@ export class OpenAIService {
   async checkIfAppIsSafeToUse(
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const {
-      focusMode,
-      intention,
-      appName,
-      justificationForThisSpecificApp,
-      currentTaskInToDoPlayer,
-      user_job_details,
-      user_typical_distractions,
-    } = isAppSafeDto;
+    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -446,13 +445,15 @@ export class OpenAIService {
 
     // Append user context at the end to preserve prompt caching
     let finalPromptContent = filledPromptContent;
-    if (user_job_details || user_typical_distractions) {
+    const jobDetails = userContext?.jobDetails?.trim();
+    const typicalDistractions = userContext?.typicalDistractions?.trim();
+    if (jobDetails || typicalDistractions) {
       const contextParts: string[] = [];
-      if (user_job_details) {
-        contextParts.push(`The user provided this context about their job: ${user_job_details}`);
+      if (jobDetails) {
+        contextParts.push(`The user provided this context about their job: ${jobDetails}`);
       }
-      if (user_typical_distractions) {
-        contextParts.push(`And said that they normally get distracted by: ${user_typical_distractions}`);
+      if (typicalDistractions) {
+        contextParts.push(`And said that they normally get distracted by: ${typicalDistractions}`);
       }
       if (contextParts.length > 0) {
         finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;

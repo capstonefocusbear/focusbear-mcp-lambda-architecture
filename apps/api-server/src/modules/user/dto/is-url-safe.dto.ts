@@ -41,12 +41,4 @@ export class IsUrlSafeDto {
   @IsOptional()
   @IsString()
   currentTaskInToDoPlayer?: string;
-
-  @IsOptional()
-  @IsString()
-  user_job_details?: string;
-
-  @IsOptional()
-  @IsString()
-  user_typical_distractions?: string;
 }

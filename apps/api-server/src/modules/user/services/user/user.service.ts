@@ -893,6 +893,10 @@ export class UserService {
         url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
       },
       user.language,
+      {
+        jobDetails: user.user_job_details,
+        typicalDistractions: user.user_typical_distractions,
+      },
     );
   }
 
@@ -902,7 +906,10 @@ export class UserService {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
 
-    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language);
+    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language, {
+      jobDetails: user.user_job_details,
+      typicalDistractions: user.user_typical_distractions,
+    });
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

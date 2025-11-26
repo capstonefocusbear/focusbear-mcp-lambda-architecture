@@ -685,12 +685,13 @@ describe('OpenAIService', () => {
         appName: 'Ghostty',
         justificationForThisSpecificApp: 'Need terminal',
         currentTaskInToDoPlayer: 'Implement API client',
-        user_job_details: 'Full-stack engineer at Focus Bear',
-        user_typical_distractions: 'Short-form social media clips',
         language: 'en',
       };
 
-      await service.checkIfAppIsSafeToUse(dto, 'en');
+      await service.checkIfAppIsSafeToUse(dto, 'en', {
+        jobDetails: 'Full-stack engineer at Focus Bear',
+        typicalDistractions: 'Short-form social media clips',
+      });
 
       const [messages] = completionsSpy.mock.calls[0];
       const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;

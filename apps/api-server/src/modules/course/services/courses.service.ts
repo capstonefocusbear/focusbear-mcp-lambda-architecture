@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { CreateCourseEnrolmentDto } from '../dto/create-course-enrolment.dto';
@@ -12,6 +12,7 @@ import { DeleteCourseDto } from '../dto/delete-course.dto';
 import { SyncPlatformCoursesDto } from '../dto/sync-platform-courses.dto';
 import { GetUserCoursesDto } from '../dto/get-user-courses.dto';
 import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
+import { COURSE } from '../constants/course.constants';
 
 @Injectable()
 export class CoursesService {
@@ -31,6 +32,7 @@ export class CoursesService {
       return await this.coursesRepository.getAllCourses(paginationOptionsDto);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
   }
 
@@ -45,11 +47,11 @@ export class CoursesService {
         },
       });
 
-      const user = await this.coursesRepository.checkForeignKeyUserIdExist(user_id);
+      const user = await this.coursesRepository.findUserById(user_id);
       if (!user) {
         throw new NotFoundException(`User with user_id ${user_id} couldn't be found in DB`);
       }
-      await this.coursesRepository.createCourseContent(createCourseDto, user_id);
+      return await this.coursesRepository.createCourseContent(createCourseDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -90,7 +92,7 @@ export class CoursesService {
           ...updateCourseDto,
         },
       });
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
+      const course = await this.coursesRepository.findCourseById(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
@@ -118,7 +120,7 @@ export class CoursesService {
       if (!roles.includes(UserTypes.ADMIN)) {
         throw new ForbiddenException('User not allowed to perform the operation');
       }
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
+      const course = await this.coursesRepository.findCourseById(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
@@ -143,7 +145,7 @@ export class CoursesService {
       if (!roles.includes(UserTypes.ADMIN)) {
         throw new ForbiddenException('User not allowed to perform the operation');
       }
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
+      const course = await this.coursesRepository.findCourseById(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
@@ -183,11 +185,15 @@ export class CoursesService {
         },
       });
       const { course_id } = createCourseRatingDto;
-      const courseEnrolment = await this.coursesRepository.checkUserCourseEnrolment(user_id, course_id);
+      const courseEnrolment = await this.coursesRepository.findEnrolmentByUserAndCourse(user_id, course_id);
       if (!courseEnrolment) {
         throw new NotFoundException(`Course enrolment with course_id ${course_id} couldn't be found`);
       }
-      await this.coursesRepository.createRatingContent(createCourseRatingDto, user_id);
+      const existingRating = await this.coursesRepository.findRatingByUserAndCourse(user_id, course_id);
+      if (existingRating) {
+        throw new ConflictException(`User has already rated course ${course_id}`);
+      }
+      return await this.coursesRepository.createRatingContent(createCourseRatingDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -206,15 +212,19 @@ export class CoursesService {
         },
       });
       const { course_id } = createCourseEnrolmentDto;
-      const user = await this.coursesRepository.checkForeignKeyUserIdExist(user_id);
+      const user = await this.coursesRepository.findUserById(user_id);
       if (!user) {
         throw new NotFoundException(`User with user_id ${user_id} couldn't be found in DB`);
       }
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
+      const course = await this.coursesRepository.findCourseById(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
-      await this.coursesRepository.createEnrolmentContent(course_id, user_id);
+      const existingEnrolment = await this.coursesRepository.findEnrolmentByUserAndCourse(user_id, course_id);
+      if (existingEnrolment) {
+        throw new ConflictException(`User is already enrolled in course ${course_id}`);
+      }
+      return await this.coursesRepository.createEnrolmentContent(course_id, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -233,19 +243,19 @@ export class CoursesService {
         },
       });
       const { course_id } = updateCourseEnrolmentDto;
-      const user = await this.coursesRepository.checkForeignKeyUserIdExist(user_id);
+      const user = await this.coursesRepository.findUserById(user_id);
       if (!user) {
         throw new NotFoundException(`User with user_id ${user_id} couldn't be found in DB`);
       }
-      const course = await this.coursesRepository.checkForeignKeyCourseIdExist(course_id);
+      const course = await this.coursesRepository.findCourseById(course_id);
       if (!course) {
         throw new NotFoundException(`Course with course_id ${course_id} couldn't be found`);
       }
-      const courseEnrolment = await this.coursesRepository.checkUserCourseEnrolment(user_id, course_id);
+      const courseEnrolment = await this.coursesRepository.findEnrolmentByUserAndCourse(user_id, course_id);
       if (!courseEnrolment) {
         throw new NotFoundException(`Course enrolment with course_id ${course_id} couldn't be found`);
       }
-      await this.coursesRepository.updateEnrolmentStatus(updateCourseEnrolmentDto);
+      await this.coursesRepository.updateEnrolmentStatus(updateCourseEnrolmentDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -276,12 +286,13 @@ export class CoursesService {
         message: 'Getting User Created Courses',
         data: {
           user_id,
-          ...this.getUserCreatedTutorials,
+          ...getUserCoursesDto,
         },
       });
       return await this.coursesRepository.getAllAuthorCourses(getUserCoursesDto, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
   }
 
@@ -298,6 +309,7 @@ export class CoursesService {
       return await this.coursesRepository.getUserNotEnrolledCourses(user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
   }
 
@@ -312,12 +324,47 @@ export class CoursesService {
           ...syncPlatformCoursesDto,
         },
       });
-      const platformCourses = this.coursesRepository.getPlatformCourses(syncPlatformCoursesDto.platform);
-      return await Promise.allSettled(
-        (await platformCourses).map((course) => this.coursesRepository.createEnrolmentContent(course.id, user_id)),
+      const platformCourses = await this.coursesRepository.getPlatformCourses(syncPlatformCoursesDto.platform);
+      const results = await Promise.allSettled(
+        platformCourses.map(async (course) => {
+          const existingEnrolment = await this.coursesRepository.findEnrolmentByUserAndCourse(user_id, course.id);
+          if (existingEnrolment) {
+            return {
+              skipped: true,
+              course_id: course.id,
+              reason: COURSE.SYNC_RESULTS.REASON_ALREADY_ENROLLED,
+            };
+          }
+          await this.coursesRepository.createEnrolmentContent(course.id, user_id);
+          return { success: true, course_id: course.id };
+        }),
       );
+
+      const processed = results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        return {
+          failed: true,
+          course_id: platformCourses[index]?.id,
+          error: result.reason?.message || 'Unknown error',
+        };
+      });
+
+      const successKey = COURSE.SYNC_RESULTS.KEY_SUCCESS;
+      const skippedKey = COURSE.SYNC_RESULTS.KEY_SKIPPED;
+      const failedKey = COURSE.SYNC_RESULTS.KEY_FAILED;
+
+      return {
+        total: platformCourses.length,
+        successful: processed.filter((p) => successKey in p && (p as any).success).length,
+        skipped: processed.filter((p) => skippedKey in p && (p as any).skipped).length,
+        failed: processed.filter((p) => failedKey in p && (p as any).failed).length,
+        results: processed,
+      };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
   }
 
@@ -334,6 +381,7 @@ export class CoursesService {
       return (await this.coursesRepository.getUserCreatedTutorials(user_id)).map(({ id, name }) => ({ id, name }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
     }
   }
 }

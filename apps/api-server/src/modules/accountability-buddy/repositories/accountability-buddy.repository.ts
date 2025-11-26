@@ -59,6 +59,7 @@ export class AccountabilityBuddyRepository extends BaseRepository<Accountability
     }
     return this.orm.find({
       where,
+      relations: ['user', 'buddy'],
       order: { created_at: 'DESC' },
     });
   }

@@ -14,6 +14,10 @@ import { ACCOUNTABILITY_BUDDY, EMAIL_SENDER_NAME } from '../../../shared/utils/c
 import { BuddyInvitationPayload } from '../domain/buddy-invitation-payload.model';
 import { isValidEmail } from '../../../shared/utils/helpers';
 import { GetInvitationsQueryDto } from '../dto/get-invitations-query.dto';
+import { AccountabilityBuddyResponseDto } from '../dto/accountability-buddy-response';
+import { BuddyInfoDto } from '../dto/accountability-buddy-response/buddy-info.dto';
+import { InviterInfoDto } from '../dto/accountability-buddy-response/inviter-info.dto';
+import { isInvitationExpired } from '../utils/expiration.util';
 
 /**
  * Service for managing accountability buddy relationships and invitations.
@@ -199,7 +203,10 @@ export class AccountabilityBuddyService {
     }
   }
 
-  async getReceivedInvitations(userId: string, query: GetInvitationsQueryDto): Promise<AccountabilityBuddy[]> {
+  async getReceivedInvitations(
+    userId: string,
+    query: GetInvitationsQueryDto,
+  ): Promise<AccountabilityBuddyResponseDto[]> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -208,7 +215,29 @@ export class AccountabilityBuddyService {
         data: { userId, ...query },
       });
 
-      return await this.accountabilityBuddyRepository.findByBuddyUserId(userId, query.status);
+      const invitations = await this.accountabilityBuddyRepository.findByBuddyUserId(userId, query.status);
+      const results = await Promise.allSettled(
+        invitations.map((invitation) => this.transformInvitationToResponse(invitation)),
+      );
+
+      const transformedInvitations = results
+        .map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          // Log unexpected errors (shouldn't happen since transformInvitationToResponse has error handling)
+          this.sentryService.instance().captureException(result.reason, {
+            level: 'error',
+            tags: {
+              operation: 'transform_invitation_to_response',
+              invitation_id: invitations[index]?.id,
+            },
+          });
+          return null;
+        })
+        .filter((invitation): invitation is AccountabilityBuddyResponseDto => invitation !== null);
+
+      return transformedInvitations;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -306,15 +335,12 @@ export class AccountabilityBuddyService {
 
   private async validateExistingBuddyStatus(existingBuddy: AccountabilityBuddy): Promise<void> {
     if (existingBuddy.invitation_status === InvitationStatus.PENDING) {
-      if (existingBuddy.invitation_sent_at) {
-        const daysSinceInvitation =
-          (Date.now() - new Date(existingBuddy.invitation_sent_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceInvitation >= ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS) {
-          await this.accountabilityBuddyRepository.update(existingBuddy.id, {
-            invitation_sent_at: new Date(),
-          });
-          throw new BadRequestException('This invitation has expired. A new invitation has been sent.');
-        }
+      if (existingBuddy.invitation_sent_at && isInvitationExpired(existingBuddy)) {
+        await this.accountabilityBuddyRepository.update(existingBuddy.id, {
+          invitation_status: InvitationStatus.EXPIRED,
+          updated_at: new Date().toISOString(),
+        });
+        throw new BadRequestException('This invitation has expired');
       }
       throw new BadRequestException('This invitation is already pending');
     } else if (existingBuddy.invitation_status === InvitationStatus.ACCEPTED) {
@@ -379,12 +405,11 @@ export class AccountabilityBuddyService {
       );
 
       // Check expiration for accept
-      if (accountabilityBuddy.invitation_sent_at) {
-        const daysSinceInvitation =
-          (Date.now() - new Date(accountabilityBuddy.invitation_sent_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceInvitation >= ACCOUNTABILITY_BUDDY.INVITATION_EXPIRATION_DAYS) {
-          throw new BadRequestException('This invitation has expired');
-        }
+      if (isInvitationExpired(accountabilityBuddy)) {
+        accountabilityBuddy.invitation_status = InvitationStatus.EXPIRED;
+        accountabilityBuddy.updated_at = new Date().toISOString();
+        await this.accountabilityBuddyRepository.update(accountabilityBuddy.id, accountabilityBuddy);
+        throw new BadRequestException('This invitation has expired');
       }
 
       // Update buddy_user_id if null
@@ -545,5 +570,102 @@ export class AccountabilityBuddyService {
       throw new NotFoundException(`User with ID: ${userId} does not exist`);
     }
     return user;
+  }
+
+  private async transformInvitationToResponse(
+    invitation: AccountabilityBuddy,
+  ): Promise<AccountabilityBuddyResponseDto> {
+    const [inviterInfoResult, buddyInfoResult] = await Promise.allSettled([
+      this.getInviterInfo(invitation.user),
+      this.getBuddyInfo(invitation),
+    ]);
+
+    const inviterInfo =
+      inviterInfoResult.status === 'fulfilled'
+        ? inviterInfoResult.value
+        : {
+            id: invitation.user_id,
+            email: '',
+            first_name: undefined,
+            last_name: undefined,
+          };
+
+    const buddyInfo =
+      buddyInfoResult.status === 'fulfilled'
+        ? buddyInfoResult.value
+        : {
+            id: invitation.buddy_user_id,
+            email: '',
+            first_name: undefined,
+            last_name: undefined,
+          };
+
+    return {
+      id: invitation.id,
+      created_at: invitation.created_at.toString(),
+      updated_at: invitation.updated_at.toString(),
+      invitation_status: invitation.invitation_status,
+      invitation_sent_at: invitation.invitation_sent_at?.toISOString(),
+      invitation_responded_at: invitation.invitation_responded_at?.toISOString() || null,
+      inviter_info: inviterInfo,
+      buddy_info: buddyInfo,
+    };
+  }
+
+  private async getInviterInfo(inviterUser: User | undefined): Promise<InviterInfoDto> {
+    try {
+      if (!inviterUser) {
+        throw new NotFoundException('Inviter user not found');
+      }
+      const inviterAuth0 = await this.auth0ManagementService.getAuth0User(inviterUser.auth0_id);
+      return {
+        id: inviterUser.id,
+        email: inviterAuth0?.email || '',
+        first_name: inviterAuth0?.given_name,
+        last_name: inviterAuth0?.family_name,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { operation: 'get_inviter_info' },
+      });
+      throw new NotFoundException('No inviter information found');
+    }
+  }
+
+  private async getBuddyInfo(invitation: AccountabilityBuddy): Promise<BuddyInfoDto> {
+    if (invitation.buddy_user_id) {
+      // Registered buddy
+      if (!invitation.buddy) {
+        throw new NotFoundException('Buddy user not found');
+      }
+
+      try {
+        const buddyAuth0 = await this.auth0ManagementService.getAuth0User(invitation.buddy.auth0_id);
+        return {
+          id: invitation.buddy_user_id,
+          email: buddyAuth0?.email || invitation.buddy_email || '',
+          first_name: buddyAuth0?.given_name,
+          last_name: buddyAuth0?.family_name,
+        };
+      } catch (error) {
+        this.sentryService.instance().captureException(error, {
+          level: 'warning',
+          tags: { operation: 'get_buddy_info' },
+        });
+        throw new NotFoundException('No buddy information found');
+      }
+    } else if (invitation.buddy_email) {
+      // Unregistered buddy - use email from invitation
+      return {
+        id: null,
+        email: invitation.buddy_email,
+        first_name: undefined,
+        last_name: undefined,
+      };
+    } else {
+      // No buddy info at all
+      throw new NotFoundException('No buddy information found');
+    }
   }
 }

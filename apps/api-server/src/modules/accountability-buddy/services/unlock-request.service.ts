@@ -23,6 +23,9 @@ import { PageOrder } from '../../../shared/domain/page-order.enum';
 import { RejectUnlockRequestDto } from '../dto/reject-unlock-request.dto';
 import { ApproveUnlockRequestParamDto } from '../dto/approve-unlock-request-param.dto';
 import { ApproveUnlockRequestByTokenDto } from '../dto/approve-unlock-request-by-token.dto';
+import { UnlockRequestResponseDto } from '../dto/unlock-request-response';
+import { RequesterInfoDto } from '../dto/unlock-request-response/requester-info.dto';
+import { isUnlockRequestExpired } from '../utils/expiration.util';
 
 /**
  * Service for managing unlock requests between accountability buddies.
@@ -185,7 +188,10 @@ export class UnlockRequestService {
     }
   }
 
-  async getUnlockRequests(userId: string, query: GetUnlockRequestsQueryDto): Promise<PaginationDto<UnlockRequest>> {
+  async getUnlockRequests(
+    userId: string,
+    query: GetUnlockRequestsQueryDto,
+  ): Promise<PaginationDto<UnlockRequestResponseDto>> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -201,7 +207,6 @@ export class UnlockRequestService {
         created_to: query.created_to,
       };
 
-      // Find relationships where the user is the buddy (where buddy_user_id = userId)
       const relationships = await this.accountabilityBuddyRepository.findByBuddyUserId(
         userId,
         InvitationStatus.ACCEPTED,
@@ -220,6 +225,27 @@ export class UnlockRequestService {
         },
       );
 
+      const results = await Promise.allSettled(
+        allRequests.map((request) => this.transformUnlockRequestToResponse(request)),
+      );
+
+      const transformedRequests = results
+        .map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          // Log unexpected errors (shouldn't happen since transformUnlockRequestToResponse has error handling)
+          this.sentryService.instance().captureException(result.reason, {
+            level: 'error',
+            tags: {
+              operation: 'transform_unlock_request_to_response',
+              unlock_request_id: allRequests[index]?.id,
+            },
+          });
+          return null;
+        })
+        .filter((request): request is UnlockRequestResponseDto => request !== null);
+
       const meta = new PaginationMetaDto({
         paginationOptionsDto: {
           page: query.page || 1,
@@ -230,7 +256,7 @@ export class UnlockRequestService {
         itemCount: totalCount,
       });
 
-      return new PaginationDto(allRequests, meta);
+      return new PaginationDto(transformedRequests, meta);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -257,6 +283,13 @@ export class UnlockRequestService {
 
       if (unlockRequest.accountability_buddy?.buddy_user_id !== userId) {
         throw new UnauthorizedException('You are not authorized to approve this unlock request');
+      }
+
+      if (unlockRequest.status === UnlockRequestStatus.PENDING && isUnlockRequestExpired(unlockRequest)) {
+        unlockRequest.status = UnlockRequestStatus.EXPIRED;
+        unlockRequest.updated_at = new Date().toISOString();
+        await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+        throw new BadRequestException('This unlock request has expired');
       }
 
       if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
@@ -326,6 +359,13 @@ export class UnlockRequestService {
 
       if (unlockRequest.accountability_buddy?.buddy_user_id !== payload.buddy_user_id) {
         throw new UnauthorizedException('You are not authorized to approve this unlock request');
+      }
+
+      if (unlockRequest.status === UnlockRequestStatus.PENDING && isUnlockRequestExpired(unlockRequest)) {
+        unlockRequest.status = UnlockRequestStatus.EXPIRED;
+        unlockRequest.updated_at = new Date().toISOString();
+        await this.unlockRequestRepository.update(unlockRequest.id, unlockRequest);
+        throw new BadRequestException('This unlock request has expired');
       }
 
       if (unlockRequest.status !== UnlockRequestStatus.PENDING) {
@@ -407,5 +447,48 @@ export class UnlockRequestService {
     }
 
     return accountabilityBuddy;
+  }
+
+  private async transformUnlockRequestToResponse(request: UnlockRequest): Promise<UnlockRequestResponseDto> {
+    const requesterUser = request.user || (await this.userRepository.orm.findOneBy({ id: request.user_id }));
+    if (!requesterUser) {
+      throw new NotFoundException(`Requester user with ID ${request.user_id} not found`);
+    }
+
+    const requesterInfo = await this.getRequesterInfo(requesterUser);
+
+    return {
+      id: request.id,
+      created_at: request.created_at.toString(),
+      updated_at: request.updated_at.toString(),
+      reason: request.reason || null,
+      status: request.status,
+      approved_at: request.approved_at?.toISOString() || null,
+      unlock_duration_minutes: request.unlock_duration_minutes || null,
+      requester_info: requesterInfo,
+    };
+  }
+
+  private async getRequesterInfo(requesterUser: User): Promise<RequesterInfoDto> {
+    try {
+      const requesterAuth0 = await this.auth0ManagementService.getAuth0User(requesterUser.auth0_id);
+      return {
+        id: requesterUser.id,
+        email: requesterAuth0?.email || '',
+        first_name: requesterAuth0?.given_name,
+        last_name: requesterAuth0?.family_name,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { operation: 'get_requester_info' },
+      });
+      return {
+        id: requesterUser.id,
+        email: '',
+        first_name: undefined,
+        last_name: undefined,
+      };
+    }
   }
 }

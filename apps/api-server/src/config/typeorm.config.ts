@@ -134,6 +134,6 @@ export const typeormConfig = registerAs(
       AccountabilityBuddy,
       UnlockRequest,
     ],
-    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
+    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),
 );

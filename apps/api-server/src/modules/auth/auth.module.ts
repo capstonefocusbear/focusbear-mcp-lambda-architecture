@@ -30,6 +30,7 @@ import { MicrosoftAuthService } from './services/microsoft-auth.service';
 import { CalendarModule } from '../calendar/calendar.module';
 import { BullQueues } from '../../shared/utils/constants';
 import { UserModule } from '../user/user.module';
+import { EmailVerificationConsumer } from './consumers/email-verification.consumer';
 
 @Module({
   providers: [
@@ -50,6 +51,7 @@ import { UserModule } from '../user/user.module';
     GoogleAuthService,
     MicrosoftAuthService,
     AuthServiceFactory,
+    EmailVerificationConsumer,
     {
       provide: 'EmailVerificationJwtService',
       useFactory: (config: ConfigService) => new JwtService(config.get('tokens.email_verification')),
@@ -114,6 +116,9 @@ import { UserModule } from '../user/user.module';
     }),
     BullModule.registerQueue({
       name: BullQueues.TIME_LOGS,
+    }),
+    BullModule.registerQueue({
+      name: BullQueues.EMAIL_VERIFICATION,
     }),
     UserModule,
   ],

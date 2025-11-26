@@ -49,12 +49,32 @@ describe('AccountabilityBuddyService', () => {
     user_id: auth0Id,
     email: 'user@example.com',
     name: 'Test User',
+    given_name: 'Test',
+    family_name: 'User',
   };
 
   const mockBuddyAuth0User = {
     user_id: buddyAuth0Id,
     email: buddyEmail,
     name: 'Buddy User',
+    given_name: 'Buddy',
+    family_name: 'User',
+  };
+
+  const otherUserId = 'other-user-id';
+  const otherUserAuth0Id = 'auth0-id-other';
+  const mockOtherUser: User = {
+    ...userDummy,
+    id: otherUserId,
+    auth0_id: otherUserAuth0Id,
+  } as User;
+
+  const mockOtherAuth0User = {
+    user_id: otherUserAuth0Id,
+    email: 'other@example.com',
+    name: 'Other User',
+    given_name: 'Other',
+    family_name: 'User',
   };
 
   const mockAccountabilityBuddy: AccountabilityBuddy = new AccountabilityBuddy({
@@ -64,7 +84,9 @@ describe('AccountabilityBuddyService', () => {
     buddy_user_id: buddyUserId,
     invitation_status: InvitationStatus.PENDING,
     invitation_sent_at: new Date(),
-  });
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as any);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -188,9 +210,7 @@ describe('AccountabilityBuddyService', () => {
       AccountabilityBuddyRepositoryMock.update.mockResolvedValue(existingBuddy);
 
       await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(BadRequestException);
-      await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow(
-        'This invitation has expired. A new invitation has been sent.',
-      );
+      await expect(service.inviteBuddy(userId, buddyEmail)).rejects.toThrow('This invitation has expired');
       expect(AccountabilityBuddyRepositoryMock.update).toHaveBeenCalled();
     });
 
@@ -357,28 +377,53 @@ describe('AccountabilityBuddyService', () => {
   describe('getReceivedInvitations', () => {
     const receivedInvitation = new AccountabilityBuddy({
       ...mockAccountabilityBuddy,
-      user_id: 'other-user-id',
+      user_id: otherUserId,
       buddy_user_id: userId,
       invitation_status: InvitationStatus.PENDING,
-    });
+      user: mockOtherUser,
+      buddy: mockUser,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any);
 
     it('should return all received invitations when no status filter is provided', async () => {
       const invitations = [receivedInvitation];
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(invitations);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockOtherAuth0User);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const result = await service.getReceivedInvitations(userId, {});
 
-      expect(result).toEqual(invitations);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: receivedInvitation.id,
+        invitation_status: InvitationStatus.PENDING,
+        inviter_info: {
+          id: otherUserId,
+          email: mockOtherAuth0User.email,
+          first_name: mockOtherAuth0User.given_name,
+          last_name: mockOtherAuth0User.family_name,
+        },
+        buddy_info: {
+          id: userId,
+          email: mockAuth0User.email,
+          first_name: mockAuth0User.given_name,
+          last_name: mockAuth0User.family_name,
+        },
+      });
       expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(userId, undefined);
     });
 
     it('should return received invitations filtered by status', async () => {
       const pendingInvitations = [receivedInvitation];
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce(pendingInvitations);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockOtherAuth0User);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const result = await service.getReceivedInvitations(userId, { status: InvitationStatus.PENDING });
 
-      expect(result).toEqual(pendingInvitations);
+      expect(result).toHaveLength(1);
+      expect(result[0].invitation_status).toBe(InvitationStatus.PENDING);
       expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
         userId,
         InvitationStatus.PENDING,
@@ -389,12 +434,16 @@ describe('AccountabilityBuddyService', () => {
       const acceptedInvitation = new AccountabilityBuddy({
         ...receivedInvitation,
         invitation_status: InvitationStatus.ACCEPTED,
-      });
+        invitation_responded_at: new Date(),
+      } as any);
       AccountabilityBuddyRepositoryMock.findByBuddyUserId.mockResolvedValueOnce([acceptedInvitation]);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockOtherAuth0User);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(mockAuth0User);
 
       const result = await service.getReceivedInvitations(userId, { status: InvitationStatus.ACCEPTED });
 
-      expect(result).toEqual([acceptedInvitation]);
+      expect(result).toHaveLength(1);
+      expect(result[0].invitation_status).toBe(InvitationStatus.ACCEPTED);
       expect(AccountabilityBuddyRepositoryMock.findByBuddyUserId).toHaveBeenCalledWith(
         userId,
         InvitationStatus.ACCEPTED,

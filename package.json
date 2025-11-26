@@ -22,6 +22,8 @@
     "cron:user-daily-stats": "ts-node -r tsconfig-paths/register ./cron-jobs/user-stats-cron-job/user-stats-cron-job.ts",
     "cron:events": "ts-node -r tsconfig-paths/register ./cron-jobs/calendar-cron-job/event-cron-job.ts",
     "cron:expired-team-members": "ts-node -r tsconfig-paths/register ./cron-jobs/expired-team-members/cron-job.ts",
+    "cron:expired-unlock-requests": "ts-node -r tsconfig-paths/register ./cron-jobs/expired-accountability-buddy/expired-unlock-requests-cron-job.ts",
+    "cron:expired-invitations": "ts-node -r tsconfig-paths/register ./cron-jobs/expired-accountability-buddy/expired-invitations-cron-job.ts",
     "cron:pusher": "ts-node -r tsconfig-paths/register ./cron-jobs/pusher-cron-job/pusher-cron-job.ts",
     "cron:data-sync-notification": "ts-node -r tsconfig-paths/register ./cron-jobs/data-sync-notification-cron-job/cron-job.ts",
     "cron:daily": "node -r ./dist/cron-jobs/register-dist-paths.js dist/cron-jobs/progress-emails-cron-job/daily-progress-emails-cron-job.js",

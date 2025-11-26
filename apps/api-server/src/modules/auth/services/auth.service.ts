@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   HttpException,
   HttpStatus,
   Inject,
@@ -15,7 +14,16 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { SendGridService } from '@app/send-grid';
 import { I18nService } from 'nestjs-i18n';
-import { EMAIL_SENDER_NAME, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import {
+  AUTH0_RETRY_CONFIG,
+  BullQueues,
+  BullWorkers,
+  EMAIL_SENDER_NAME,
+  EMAIL_TEMPLATE_IDS,
+  FOCUS_BEAR_EMAILS,
+} from '../../../shared/utils/constants';
 import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -37,6 +45,8 @@ export class AuthService {
     private readonly emailJwtService: JwtService,
     @Inject('ResetPasswordJwtService')
     private readonly passwordResetJwtService: JwtService,
+    @InjectQueue(BullQueues.EMAIL_VERIFICATION)
+    private readonly emailVerificationQueue: Queue,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -146,32 +156,15 @@ export class AuthService {
           name: EMAIL_SENDER_NAME,
           email: FOCUS_BEAR_EMAILS.NOREPLY,
         },
-        subject: this.i18nService.t('common.reset_your_password', {
-          lang,
-        }),
-        html: `
-        <!DOCTYPE html>
-        <html>
-          <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
-              <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
-              <h1 style="margin-bottom: 10px;">Focus Bear</h1>
-              <h2>Password Change Request</h2>
-              <p>We received a request to change the password for your account.</p>
-              <p><strong>Confirmation Link:</strong><br/>
-                <a href="${resetLink}">${resetLink}</a>
-              </p>
-              <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-top: 20px;">
-                Confirm Password Change
-              </a>
-              <p style="margin-top: 20px;">If you didn’t request this change, you can safely ignore this email.</p>
-              <p style="margin-top: 30px; font-size: 12px; color: #777;">
-                If you’re having any issues with your account, feel free to reply to this email for assistance.<br>Thanks!
-              </p>
-            </div>
-          </body>
-        </html>
-        `, // TODO: generate template EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET
+        templateId: EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET,
+        dynamicTemplateData: {
+          user_name:
+            auth0User.name ||
+            auth0User.given_name ||
+            auth0User.nickname ||
+            this.i18nService.t('common.user_name_fallback', { lang }),
+          reset_link: resetLink,
+        },
       });
 
       return { data: 'Password reset link sent.', status: 201 };
@@ -231,62 +224,30 @@ export class AuthService {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Send Email Verification',
+        message: 'Enqueuing email verification job',
         data: { ...sendEmailVerificationDto, origin },
       });
 
-      const { email, lang } = sendEmailVerificationDto;
-      const auth0User = await this.validateAuth0User(undefined, email);
+      const { email } = sendEmailVerificationDto;
 
-      const secret = this.configService.get('tokens.email_verification.secret');
-      const expiresIn = this.configService.get('tokens.email_verification.signOptions.expiresIn') || '7 days';
-
-      const token = await this.passwordResetJwtService.signAsync(
+      await this.emailVerificationQueue.add(
+        BullWorkers.SEND_EMAIL_VERIFICATION,
         {
           email,
-          auth0_id: auth0User.user_id,
+          origin,
         },
         {
-          secret,
-          expiresIn,
+          attempts: AUTH0_RETRY_CONFIG.MAX_RETRIES,
+          backoff: {
+            type: 'exponential',
+            delay: AUTH0_RETRY_CONFIG.BASE_DELAY_MS,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
         },
       );
 
-      const baseUrl = this.getFrontendBaseUrl(origin);
-      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
-
-      await this.emailService.sendEmail({
-        to: auth0User.email,
-        from: {
-          name: EMAIL_SENDER_NAME,
-          email: FOCUS_BEAR_EMAILS.NOREPLY,
-        },
-        subject: this.i18nService.t('common.verify_your_email', {
-          lang,
-        }),
-        html: `
-         <!DOCTYPE html>
-            <html>
-              <body style="font-family: Arial, sans-serif; background-color: #fff; padding: 20px;">
-                <div style="max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; text-align: center;">
-                  <img src="https://dashboard.focusbear.io/static/media/bear.1fc4f99ee19d85542874.png" alt="Focus Bear Logo" style="max-width: 100px; margin: 10px auto;" />
-                  <h1 style="margin-bottom: 10px;">Focus Bear</h1>
-                  <h2>Verify Your Account</h2>
-                  <p><strong>Verify Link:</strong><br/>
-                    <a href="${verificationLink}">${verificationLink}</a>
-                  </p>
-                  <a href="${verificationLink}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px; margin-top: 20px;">
-                    Verify Your Account
-                  </a>
-                  <p style="margin-top: 30px; font-size: 12px; color: #777;">
-                    If you are having any issues with your account, please don't hesitate to contact us by replying to this mail.<br>Thanks!
-                  </p>
-                </div>
-              </body>
-            </html>
-            `, // TODO: generate template EMAIL_TEMPLATE_IDS.VERIFY_EMAIL
-      });
-      return { data: 'Verification email sent.', status: 200 };
+      return { data: 'Email verification queued.', status: 202 };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -306,6 +267,11 @@ export class AuthService {
       const decoded: { email: string; auth0_id: string } = await this.emailJwtService.verifyAsync(token, secretKey);
 
       const auth0User = await this.validateAuth0User(decoded.auth0_id);
+
+      if (auth0User.email_verified) {
+        return { message: 'Email is already verified.' };
+      }
+
       return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -316,34 +282,64 @@ export class AuthService {
           error.name === 'JsonWebTokenError' ? 'Invalid verification token' : 'Failed to verify email token',
         );
       }
+      throw error;
     }
   }
 
-  private async validateAuth0User(auth0_id?: string, email?: string) {
+  private async validateAuth0User(auth0_id?: string, email?: string, retryCount = 0) {
     let auth0User = null;
 
-    if (auth0_id) {
-      auth0User = await this.auth0ManagementService.getAuth0User(auth0_id);
-    } else {
-      const [user] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
-      auth0User = user;
-    }
+    try {
+      if (auth0_id) {
+        auth0User = await this.auth0ManagementService.getAuth0User(auth0_id);
+      } else {
+        const [user] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+        auth0User = user;
+      }
 
-    if (!auth0User) {
-      throw new NotFoundException(
-        auth0_id ? `User with auth0_id ${auth0_id} couldn't be found` : `User with email ${email} couldn't be found`,
-      );
-    }
+      if (!auth0User) {
+        if (retryCount < AUTH0_RETRY_CONFIG.MAX_RETRIES - 1) {
+          const delay = AUTH0_RETRY_CONFIG.BASE_DELAY_MS * (retryCount + 1);
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Auth0 Retry',
+            level: 'warning',
+            message: `User not found, retrying in ${delay}ms (attempt ${retryCount + 1}/${
+              AUTH0_RETRY_CONFIG.MAX_RETRIES
+            })`,
+            data: auth0_id ? { auth0_id } : { email },
+          });
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return this.validateAuth0User(auth0_id, email, retryCount + 1);
+        }
 
-    if (auth0User.email_verified) {
-      throw new ConflictException('Email is already verified');
+        throw new NotFoundException(
+          auth0_id
+            ? `User with auth0_id ${auth0_id} couldn't be found after ${AUTH0_RETRY_CONFIG.MAX_RETRIES} retries`
+            : `User with email ${email} couldn't be found after ${AUTH0_RETRY_CONFIG.MAX_RETRIES} retries`,
+        );
+      }
+
+      return auth0User;
+    } catch (error) {
+      if (error instanceof NotFoundException && retryCount < AUTH0_RETRY_CONFIG.MAX_RETRIES - 1) {
+        const delay = AUTH0_RETRY_CONFIG.BASE_DELAY_MS * (retryCount + 1);
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Auth0 Retry',
+          level: 'warning',
+          message: `User not found (from error), retrying in ${delay}ms (attempt ${retryCount + 1}/${
+            AUTH0_RETRY_CONFIG.MAX_RETRIES
+          })`,
+          data: auth0_id ? { auth0_id } : { email },
+        });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return this.validateAuth0User(auth0_id, email, retryCount + 1);
+      }
+      throw error;
     }
-    return auth0User;
   }
 
   private getFrontendBaseUrl(origin: string) {
     const devFrontendUrl = this.configService.get('server.devFrontendUrl');
-
     return origin === devFrontendUrl ? devFrontendUrl : this.configService.get('server.frontEndUrl');
   }
 }

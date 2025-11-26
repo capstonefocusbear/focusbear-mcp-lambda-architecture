@@ -48,6 +48,7 @@ export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
 export const ONE_DAY_SECONDS = 86400;
 export const ONE_SECOND_AS_MILLIS = 1000;
+export const TWO_SECONDS_AS_MILLIS = 2000;
 export const TEN_SECONDS_AS_MILLIS = 10000;
 export const TWENTY = 20;
 export const TRIAL_COST_CENTS = 0;
@@ -148,6 +149,11 @@ export const ACCOUNTABILITY_BUDDY = {
   UNLOCK_REQUEST_DEFAULT_REASON: 'No reason provided',
 } as const;
 
+export const AUTH0_RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  BASE_DELAY_MS: TWO_SECONDS_AS_MILLIS, // 2000ms for exponential backoff (2s, 4s, 6s)
+} as const;
+
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 export const GPT_5_MINI = 'gpt-5-mini';
 
@@ -171,6 +177,7 @@ export enum BullQueues {
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
+  EMAIL_VERIFICATION = 'email-verification',
 }
 
 export enum BullWorkers {
@@ -193,6 +200,7 @@ export enum BullWorkers {
   PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
   PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
   PROCESS_HABIT_CREATION = 'process-habit-creation',
+  SEND_EMAIL_VERIFICATION = 'send-email-verification',
 }
 
 export const createActivityFunction = {

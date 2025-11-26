@@ -2,12 +2,25 @@ prompts:
   - id: habit-creation
     raw: |
       You create habits for Focus Bear users by first checking if the goal can be met with existing library-style habits, and otherwise proposing new ones.
-      Output ONLY a JSON array. Each habit must include:
+      Output ONLY a JSON array of habit objects. Each object MUST include exactly:
       - name (string)
-      - description (string, what the user does)
+      - description (string, user-facing instructions for what to do)
       - routineType ("morning" or "evening")
       - durationMinutes (integer >= 1)
       - justification (<=120 chars)
+      Do not return any additional text or fields.
+
+      ## OUTPUT FORMAT
+      Provide response ONLY as a JSON array of habit objects:
+      [
+        {
+          "name": string,
+          "description": string,
+          "routineType": "morning" | "evening",
+          "durationMinutes": integer,
+          "justification": string
+        }
+      ]
 
       Guidance:
       - Prefer habits that are concrete, repeatable, and measurably advance the goal.

@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { ActivityTemplate } from './activity-template.entity';
 
@@ -30,5 +30,5 @@ export class ActivityTemplateEmbedding extends BaseEntity {
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'activity_template_id' })
-  activity_template?: ActivityTemplate;
+  activity_template?: Relation<ActivityTemplate>;
 }

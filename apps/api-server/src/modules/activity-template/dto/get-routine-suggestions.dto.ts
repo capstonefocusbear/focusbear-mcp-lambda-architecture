@@ -1,6 +1,13 @@
+import { Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Matches } from 'class-validator';
 
 export class GetRoutineSuggestionsDto {
+  @Transform(({ value }) => {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+    return value.map((goal) => (typeof goal === 'string' ? goal.trim() : '')).filter((goal) => goal.length > 0);
+  })
   @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })

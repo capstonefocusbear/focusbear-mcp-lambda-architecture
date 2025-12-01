@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Put, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { R2Service } from '@app/r2';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { Passport } from '../../auth/domain/passport.model';
@@ -22,6 +23,7 @@ export class ActivityLibraryController {
     private readonly activityLibraryService: ActivityLibraryService,
     private readonly routineSuggestionsAsyncService: RoutineSuggestionsAsyncService,
     private readonly habitCreationAsyncService: HabitCreationAsyncService,
+    private readonly r2Service: R2Service,
   ) {}
 
   @Get()
@@ -45,7 +47,9 @@ export class ActivityLibraryController {
     @Body() getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     @AuthContext() { user }: Passport,
   ) {
-    return this.activityLibraryService.getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto, user.id);
+    return this.activityLibraryService.getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto, user.id, {
+      useRag: false,
+    });
   }
 
   @Post('/routine-suggestions/async')

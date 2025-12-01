@@ -45,7 +45,9 @@ export class ActivityLibraryController {
     @Body() getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     @AuthContext() { user }: Passport,
   ) {
-    return this.activityLibraryService.getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto, user.id);
+    return this.activityLibraryService.getActivitiesRelatedToUserGoals(getRoutineSuggestionsDto, user.id, {
+      useRag: false,
+    });
   }
 
   @Post('/routine-suggestions/async')

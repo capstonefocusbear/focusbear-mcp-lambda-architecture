@@ -414,6 +414,22 @@ describe('ActivityLibraryService', () => {
       expect(response[0].name).toBe('Goal-Aligned Strength Session');
     });
 
+    it('skips the RAG pipeline when explicitly disabled', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(
+        dummyGetRoutineSuggestionsDto,
+        userDummy.id,
+        { useRag: false },
+      );
+
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).not.toHaveBeenCalled();
+      expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).not.toHaveBeenCalled();
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).not.toHaveBeenCalled();
+      expect(response).toEqual([]);
+    });
+
     it('generates new habits via AI when no template suggestions exist', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);

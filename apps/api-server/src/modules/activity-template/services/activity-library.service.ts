@@ -30,6 +30,14 @@ const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
 const ADJUST_HABIT_MIN_SIMILARITY = 0.7;
 
+type RoutineSuggestionRequestOptions = {
+  asyncTaskId?: string;
+  requestHash?: string;
+  useRag?: boolean;
+};
+
+type RagRequestOptions = Omit<RoutineSuggestionRequestOptions, 'useRag'>;
+
 export interface ActivityMetadata {
   justification: string;
   matchScore: number;
@@ -123,9 +131,10 @@ export class ActivityLibraryService {
   async getActivitiesRelatedToUserGoals(
     getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     user_id: string,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RoutineSuggestionRequestOptions,
   ) {
     try {
+      const { useRag = true, ...ragOptions } = options ?? {};
       const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       const request = normalizedRoutineSuggestionsDto;
       this.sentryService.instance().addBreadcrumb({
@@ -186,7 +195,19 @@ export class ActivityLibraryService {
       }
 
       // If we found matching templates but none fit the user's time budget, respect the duration contract
-      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, options);
+      if (!useRag) {
+        this.logger.debug(
+          `RoutineSuggestions:ragSkipped ${JSON.stringify({
+            userId: user_id,
+            goalCount: request.user_goals?.length ?? 0,
+            routine: request.routine,
+            durationMinutes: request.routine_duration,
+          })}`,
+        );
+        return request.groupByGoals ? {} : [];
+      }
+
+      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, ragOptions);
 
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
@@ -342,7 +363,7 @@ export class ActivityLibraryService {
     getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     routineDurationSeconds: number,
     userId?: string,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RagRequestOptions,
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
     // RAG flow documented in docs/rag-routine-suggestions-flow.md
     const request = getRoutineSuggestionsDto;
@@ -603,7 +624,7 @@ export class ActivityLibraryService {
     generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
     request: GetRoutineSuggestionsDto,
     hasGeneratedHabits: boolean,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RagRequestOptions,
   ): Promise<void> {
     if (!hasGeneratedHabits) {
       return;

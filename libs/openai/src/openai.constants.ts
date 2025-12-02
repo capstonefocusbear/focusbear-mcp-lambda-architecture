@@ -149,11 +149,14 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
 
   analyzeImage: {
     model: GPT_4_1,
+    prompt_cache_retention: '24h',
+
     messages: null,
   },
 
   habitAdjustment: {
     model: GPT_4_1,
+    prompt_cache_retention: '24h',
     temperature: 0,
     n: 1,
     max_tokens: 1024,

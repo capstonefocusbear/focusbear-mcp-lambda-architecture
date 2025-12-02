@@ -12,7 +12,7 @@ import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/cons
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-const BATCH_SIZE = 15; // Reduced batch size to prevent OOM issues
+const BATCH_SIZE = 30; // Process users in batches
 
 async function runMonthlyProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);

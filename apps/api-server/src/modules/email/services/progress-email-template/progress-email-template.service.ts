@@ -18,6 +18,10 @@ export class ProgressEmailTemplateService {
     private readonly i18nService: I18nService,
   ) {}
 
+  private getApiBaseUrl(): string {
+    return process.env.API_URL || process.env.DASHBOARD_URL || 'https://api.focusbear.io';
+  }
+
   async generateWeeklyProgressEmail(
     user: User,
     metrics: WeeklyProgressMetricsDto,
@@ -65,12 +69,10 @@ export class ProgressEmailTemplateService {
         this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Unsubscribe from these emails',
       managePreferencesText:
         this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
 
       // Progress metrics
       focusUsagePercentage: this.calculateOverallUsage(metrics),
@@ -158,12 +160,12 @@ export class ProgressEmailTemplateService {
         'Keep up the great work!',
       unsubscribeText:
         this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
 
       // Progress metrics
       focusUsagePercentage: this.calculateOverallUsageMonthly(metrics),
@@ -243,11 +245,11 @@ export class ProgressEmailTemplateService {
         this.i18nService.t('common.email_no_progress_footer_text', { lang: userLang }) || 'We believe in you!',
       unsubscribeText:
         this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
       unsubscribeToken,
 
       // Translated labels for no-progress email

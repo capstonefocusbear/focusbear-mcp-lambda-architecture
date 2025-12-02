@@ -5,6 +5,7 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { SendGridService } from '@app/send-grid';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { EmailFrequency } from '../../user/entities/user.entity';
 
 @Processor('emailQueue')
 @Injectable()
@@ -33,6 +34,17 @@ export class EmailProcessor {
   async handleProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token, emailType } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending progress email: user unsubscribed', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id, emailType: emailType || 'weekly' },
+            tags: { email_action: 'skip_unsubscribed' },
+          });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
       const variant = emailType === 'daily' ? 'daily' : 'weekly';
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
@@ -81,6 +93,17 @@ export class EmailProcessor {
   async handleMonthlyProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending monthly progress email: user unsubscribed', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id },
+            tags: { email_action: 'skip_unsubscribed' },
+          });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
 
@@ -127,6 +150,17 @@ export class EmailProcessor {
   async handleNoProgressEmail(job: Job) {
     try {
       const { user, unsubscribe_token } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending no-progress email: user unsubscribed', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id },
+            tags: { email_action: 'skip_unsubscribed' },
+          });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
 
@@ -176,6 +210,20 @@ export class EmailProcessor {
         extra: { operation: 'updateLastEmailSent', userId },
         level: 'warning',
       });
+    }
+  }
+
+  private async isUserUnsubscribed(userId: string): Promise<boolean> {
+    try {
+      const record = await this.userRepository.orm.findOne({ where: { id: userId } });
+      return record?.email_frequency === EmailFrequency.UNSUBSCRIBED;
+    } catch (error) {
+      // If we cannot determine, be safe and do not block sending; log for visibility
+      this.sentryService.instance().captureException(error, {
+        extra: { operation: 'isUserUnsubscribed', userId },
+        level: 'warning',
+      });
+      return false;
     }
   }
 }

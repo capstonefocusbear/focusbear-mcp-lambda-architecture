@@ -562,19 +562,22 @@ export class ActivityLibraryService {
 
     // If duration filtering removed all suggestions, generate habits so the response is not empty
     if (!finalTemplates.length) {
-      for (const goal of goals) {
-        if ((generatedByGoal[goal]?.length ?? 0) > 0) {
-          continue;
-        }
-        const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, {
-          limit: RAG_RETRIEVAL_LIMIT,
-          routineDurationSeconds,
-          routineType: request.routine,
-        });
+      const goalsNeedingGeneration = goals.filter((goal) => (generatedByGoal[goal]?.length ?? 0) === 0);
+      const generatedResults = await Promise.all(
+        goalsNeedingGeneration.map((goal) =>
+          this.routineSuggestionGeneratorService.generateNewHabits(goal, {
+            limit: RAG_RETRIEVAL_LIMIT,
+            routineDurationSeconds,
+            routineType: request.routine,
+          }),
+        ),
+      );
+      goalsNeedingGeneration.forEach((goal, index) => {
+        const generated = generatedResults[index] ?? [];
         if (generated.length) {
           generatedByGoal[goal] = generated;
         }
-      }
+      });
     }
 
     const generatedActivities = this.buildGeneratedActivities(generatedByGoal, routineDurationSeconds, request.routine);
@@ -630,25 +633,25 @@ export class ActivityLibraryService {
     Object.entries(generatedByGoal).forEach(([goal, habits]) => {
       byGoal[goal] = [];
       habits.forEach((habit) => {
-      const rawDurationMinutes = habit.durationMinutes ?? fallbackDurationMinutes;
-      const durationMinutes =
-        typeof maxDurationMinutes === 'number'
-          ? Math.min(rawDurationMinutes, maxDurationMinutes)
-          : rawDurationMinutes;
-      const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
-      const activityType =
-        typeof habit.routineType === 'string'
-          ? (habit.routineType.toLowerCase() as ActivityType)
-          : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
-      const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
-      const rawDescription = habit.description ?? '';
-      const description = this.sanitizeDurationPhrases(rawDescription);
+        const rawDurationMinutes = habit.durationMinutes ?? fallbackDurationMinutes;
+        const durationMinutes =
+          typeof maxDurationMinutes === 'number'
+            ? Math.min(rawDurationMinutes, maxDurationMinutes)
+            : rawDurationMinutes;
+        const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
+        const activityType =
+          typeof habit.routineType === 'string'
+            ? (habit.routineType.toLowerCase() as ActivityType)
+            : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
+        const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
+        const rawDescription = habit.description ?? '';
+        const description = this.sanitizeDurationPhrases(rawDescription);
 
-      const generatedActivity: any = {
-        id: randomUUID(),
-        name: sanitizedName || habit.name,
-        text_instructions: description,
-        description,
+        const generatedActivity: any = {
+          id: randomUUID(),
+          name: sanitizedName || habit.name,
+          text_instructions: description,
+          description,
           duration_seconds: durationSeconds,
           activity_type: activityType,
           ai_generated: true,
@@ -672,7 +675,10 @@ export class ActivityLibraryService {
     if (!text) return '';
     const durationPattern =
       /\b\d+(?:\s*[–—-]\s*\d+)?\s*[–—-]?\s*(?:hours?|hrs?|hr|minutes?|minute|mins?|min|seconds?|second|secs?|sec|s)\b[:.,-]?\s*/gi;
-    const cleaned = text.replace(durationPattern, '').replace(/\s{2,}/g, ' ').trim();
+    const cleaned = text
+      .replace(durationPattern, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
     return cleaned;
   }
 

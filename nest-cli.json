@@ -6,11 +6,11 @@
   "compilerOptions": {
     "webpack": true,
     "tsConfigPath": "apps/api-server/tsconfig.app.json",
-    "plugins": [
-      {
-        "name": "@nestjs/swagger",
-        "options": {
-          "classValidatorShim": true,
+      "plugins": [
+        {
+          "name": "@nestjs/swagger",
+          "options": {
+            "classValidatorShim": true,
           "introspectComments": true,
           "dtoFileNameSuffix": [".dto.ts", ".entity.ts", ".model.ts"]
         }

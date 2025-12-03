@@ -698,12 +698,43 @@ describe('OpenAIService', () => {
 
       expect(promptContent.startsWith('Prompt body')).toBe(true);
       expect(promptContent).toContain(
-        'The user provided this context about their job: Full-stack engineer at Focus Bear',
+        'The user provided this context about their job: %%%Full-stack engineer at Focus Bear%%%',
       );
-      expect(promptContent).toContain('And said that they normally get distracted by: Short-form social media clips');
+      expect(promptContent).toContain('And said that they normally get distracted by: %%%Short-form social media clips%%%');
       expect(
-        promptContent.endsWith('And said that they normally get distracted by: Short-form social media clips'),
+        promptContent.endsWith('And said that they normally get distracted by: %%%Short-form social media clips%%%'),
       ).toBe(true);
+
+      completionsSpy.mockRestore();
+    });
+
+    it('should use correct phrasing when only distractions are provided (no jobDetails)', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(() => 'Prompt body');
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Ghostty',
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en', {
+        jobDetails: undefined,
+        typicalDistractions: 'Social media and YouTube',
+      });
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+
+      expect(promptContent.startsWith('Prompt body')).toBe(true);
+      expect(promptContent).toContain('The user said that they normally get distracted by: %%%Social media and YouTube%%%');
+      expect(promptContent).not.toContain('And said that they normally get distracted by:');
+      expect(promptContent.endsWith('The user said that they normally get distracted by: %%%Social media and YouTube%%%')).toBe(true);
 
       completionsSpy.mockRestore();
     });

@@ -349,10 +349,13 @@ export class OpenAIService {
       if (jobDetails || typicalDistractions) {
         const contextParts: string[] = [];
         if (jobDetails) {
-          contextParts.push(`The user provided this context about their job: ${jobDetails}`);
+          contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
         }
         if (typicalDistractions) {
-          contextParts.push(`And said that they normally get distracted by: ${typicalDistractions}`);
+          const distractionPhrase = jobDetails
+            ? 'And said that they normally get distracted by:'
+            : 'The user said that they normally get distracted by:';
+          contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
         }
         if (contextParts.length > 0) {
           finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
@@ -450,10 +453,13 @@ export class OpenAIService {
     if (jobDetails || typicalDistractions) {
       const contextParts: string[] = [];
       if (jobDetails) {
-        contextParts.push(`The user provided this context about their job: ${jobDetails}`);
+        contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
       }
       if (typicalDistractions) {
-        contextParts.push(`And said that they normally get distracted by: ${typicalDistractions}`);
+        const distractionPhrase = jobDetails
+          ? 'And said that they normally get distracted by:'
+          : 'The user said that they normally get distracted by:';
+        contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
       }
       if (contextParts.length > 0) {
         finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;

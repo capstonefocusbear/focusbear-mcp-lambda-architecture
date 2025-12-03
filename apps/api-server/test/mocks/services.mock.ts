@@ -31,6 +31,15 @@ export const ActivityParserServiceMock = {
   calculateSequenceDuration: jest.fn(),
 };
 
+export const ActivityTemplateRetrieverServiceMock = {
+  retrieveByGoal: jest.fn(),
+};
+
+export const RoutineSuggestionGeneratorServiceMock = {
+  generateSuggestions: jest.fn(),
+  generateNewHabits: jest.fn(),
+};
+
 export const ConfigServiceMock = {
   get: jest.fn(),
 };
@@ -215,6 +224,8 @@ export const OpenAIServiceMock = {
   checkIfAppIsSafeToUse: jest.fn(),
   generateEmojiForActivity: jest.fn(),
   adjustHabitsWithAi: jest.fn(),
+  createChatCompletion: jest.fn(),
+  createEmbedding: jest.fn(),
   transcribeAudioToText: jest.fn(),
   createDraftTodosFromTranscript: jest.fn(),
   extractTodosFromImage: jest.fn(),

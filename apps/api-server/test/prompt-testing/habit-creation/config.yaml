@@ -1,0 +1,74 @@
+prompts:
+  - id: habit-creation
+    raw: |
+      You create habits for Focus Bear users by first checking if the goal can be met with existing library-style habits, and otherwise proposing new ones.
+      Output ONLY a JSON array of habit objects. Each object MUST include exactly:
+      - name (string)
+      - description (string, user-facing instructions for what to do)
+      - routineType ("morning" or "evening")
+      - durationMinutes (integer >= 1)
+      - justification (<=120 chars)
+      Do not return any additional text or fields.
+
+      ## OUTPUT FORMAT
+      Provide response ONLY as a JSON array of habit objects:
+      [
+        {
+          "name": string,
+          "description": string,
+          "routineType": "morning" | "evening",
+          "durationMinutes": integer,
+          "justification": string
+        }
+      ]
+
+      Guidance:
+      - Prefer habits that are concrete, repeatable, and measurably advance the goal.
+      - Keep names concise and aligned to the user prompt.
+      - Generate up to {{limit}} habits.
+
+      User prompt: {{prompt}}
+      User goals: {{goals}}
+      Preferred routine type: {{routineType}}
+      Target routine duration (minutes): {{durationMinutes}}
+
+providers:
+  - id: openai:gpt-5-mini
+    config:
+      max_tokens: 512
+      apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
+
+tests:
+  - description: Creates focused habits for studying
+    vars:
+      prompt: Create study habits for calculus
+      goals: calculus, exam prep
+      limit: 3
+      routineType: morning
+      durationMinutes: 25
+    assert:
+      - type: javascript
+        value: |
+          const habits = JSON.parse(output);
+          if (!Array.isArray(habits) || habits.length === 0) throw new Error('Expected habits');
+          habits.forEach((h) => {
+            if (!h.name || !h.description) throw new Error('Missing fields');
+            if (!['morning','evening'].includes(String(h.routineType || '').toLowerCase())) throw new Error('Invalid routineType');
+            if (!Number.isFinite(h.durationMinutes) || h.durationMinutes < 1) throw new Error('Invalid duration');
+          });
+
+  - description: Respects limit
+    vars:
+      prompt: Gentle evening wind-down
+      goals: sleep, recovery
+      limit: 2
+      routineType: evening
+      durationMinutes: 10
+    assert:
+      - type: javascript
+        value: |
+          const habits = JSON.parse(output);
+          if (habits.length > 2) throw new Error('Exceeded limit');
+
+output:
+  - json

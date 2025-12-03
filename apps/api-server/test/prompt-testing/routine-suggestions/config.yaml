@@ -1,0 +1,104 @@
+prompts:
+  - id: routine-suggestions
+    raw: |
+      You are an assistant that analyses a user's stated goal, identifies the core skills, behaviours, or routines required, and then selects the most relevant habits from the provided list.
+      Rules:
+      - Only use the supplied habits; do not invent new ones.
+      - Evaluate each habit for direct alignment with the goal (not just generic wellness benefits).
+      - Skip habits that do not clearly advance the goal.
+      - Output **only** a JSON array. Each item must include exactly:
+        - habitId (string from the supplied list)
+        - name (string, goal-aligned rename of the habit; keep under 60 characters)
+      - description (string, <= 120 characters of user-facing instructions for the habit)
+      - justification (string, <= 120 characters explaining why it helps)
+      - matchScore (number between 0 and 1)
+      - Do not return any extra keys or any prose outside the JSON array.
+
+      ## OUTPUT FORMAT
+      Provide response ONLY as a JSON array of suggestion objects:
+      [
+        {
+          "habitId": string,
+          "name": string,
+          "description": string,
+          "justification": string,
+          "matchScore": number
+        }
+      ]
+
+      Guidance:
+      - Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
+      - Penalise generic movement/meditation/breathing exercises unless the goal text clearly frames them as necessary.
+      - For matchScore: evaluate semantic relevance between the goal and habit (0-1 scale). The provided similarity is just a starting point - you should adjust based on your understanding of how well the habit supports the goal.
+      - Reject and omit any habit with matchScore below {{minimumMatchScore}}. If none qualify, return an empty array so downstream logic can act.
+
+      User goal: {{goal}}
+
+      Habit options:
+      {{habits}}
+
+providers:
+  - id: openai:gpt-5-mini
+    config:
+      max_tokens: 512
+      apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
+
+tests:
+  - description: Select strength habits for "Get buffed"
+    vars:
+      goal: Get buffed
+      minimumMatchScore: 0.7
+      habits: |
+        Habit 1:
+          habitId: strength-training-1
+          name: Strength Training
+          description: Guided bodyweight strength session focusing on major muscle groups.
+          routineType: morning
+          tags: fitness, strength, resistance
+          similarity: 0.92
+
+        Habit 2:
+          habitId: cardio-boost-1
+          name: Cardio Boost
+          description: Moderate intensity cardio to improve stamina.
+          routineType: morning
+          tags: cardio, stamina
+          similarity: 0.71
+
+        Habit 3:
+          habitId: mindfulness-reset-1
+          name: Mindfulness Reset
+          description: Short breathing exercise to reset focus.
+          routineType: evening
+          tags: calm, mindset
+          similarity: 0.55
+    assert:
+      - type: javascript
+        value: file://validate-suggestions-nonempty.js
+
+  - description: Return empty array when no habits fit
+    vars:
+      goal: Learn Japanese calligraphy
+      minimumMatchScore: 0.7
+      habits: |
+        Habit 1:
+          habitId: strength-training-1
+          name: Strength Training
+          description: Guided bodyweight strength session focusing on major muscle groups.
+          routineType: morning
+          tags: fitness, strength, resistance
+          similarity: 0.32
+
+        Habit 2:
+          habitId: cardio-boost-1
+          name: Cardio Boost
+          description: Moderate intensity cardio to improve stamina.
+          routineType: morning
+          tags: cardio, stamina
+          similarity: 0.28
+    assert:
+      - type: javascript
+        value: file://validate-suggestions-empty.js
+
+output:
+  - json

@@ -207,6 +207,7 @@ describe('AsyncTaskService', () => {
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,
         metadata: updateDto.metadata,
+        updated_at: expect.any(String),
       });
       expect(result).toEqual(updatedTask);
       expect(mockAddBreadcrumb).toHaveBeenCalledWith({
@@ -248,6 +249,7 @@ describe('AsyncTaskService', () => {
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,
         metadata: existingTask.metadata,
+        updated_at: expect.any(String),
       });
       expect(result).toEqual(updatedTask);
     });

@@ -237,6 +237,35 @@ describe('ActivityLibraryService', () => {
       expect(uniqueIds.size).toBe(responseIds.length);
     });
 
+    it('skips habits that exceed the routine duration even if they are library activities', () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const routineDurationSeconds = dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
+      const libraryTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'library-template',
+        activity_type: ActivityType.library,
+        duration_seconds: routineDurationSeconds * 3,
+      };
+      const validTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'morning-template',
+        activity_type: ActivityType.morning,
+        duration_seconds: 600,
+      };
+
+      const matchedActivities = activityLibraryService.userDesiredRoutineDurationSeconds(
+        [libraryTemplate as any, validTemplate as any],
+        routineDurationSeconds,
+      );
+
+      expect(
+        matchedActivities.find((activity: any) => activity.original_template_id === libraryTemplate.id),
+      ).toBeUndefined();
+      expect(
+        matchedActivities.find((activity: any) => activity.original_template_id === validTemplate.id),
+      ).toBeDefined();
+    });
+
     it('positive: strips emoji characters from user goals before querying templates', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       const dtoWithEmojiGoals = {
@@ -405,6 +434,7 @@ describe('ActivityLibraryService', () => {
       };
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+      const list = Array.isArray(response) ? response : [];
 
       expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 10);
       expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalled();
@@ -550,6 +580,165 @@ describe('ActivityLibraryService', () => {
       expect(response[0].ai_generated).toBe(false);
       expect(response[0].ai_match_score).toBeCloseTo(0.6, 2);
       expect(response[0].ai_justification).toContain('Closest available habit');
+    });
+
+    it('fills short accepted suggestions with generated habits to approach duration target', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      const template = { ...dummyActivityTemplatesWithTags[0], duration_seconds: 300 };
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: template.id, similarity: 0.92 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([template]);
+      const suggestionResponse = {
+        accepted: [
+          {
+            habitId: template.id,
+            name: 'Goal-Aligned Practice',
+            justification: 'Supports skill goal.',
+            matchScore: 0.9,
+            template,
+            description: 'desc',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      };
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockImplementationOnce(async () => suggestionResponse);
+      const generatedHabit = {
+        name: 'Scales and picking drills',
+        description: '20 minutes of technique practice.',
+        routineType: ActivityType.morning,
+        durationMinutes: 20,
+        justification: 'Fills the remaining practice time.',
+      };
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([generatedHabit]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        routine_duration: 30,
+        user_goals: ['Become a guitarist'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+      const list = Array.isArray(response) ? response : [];
+
+      expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalledTimes(1);
+      expect(suggestionResponse.accepted).toHaveLength(1);
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalledTimes(1);
+      expect(list.length).toBeGreaterThanOrEqual(1);
+      expect(list.find((item: any) => item.ai_generated)).toBeDefined();
+    });
+
+    it('generates habits when all accepted suggestions are removed by duration filter', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      const longTemplate = { ...dummyActivityTemplatesWithTags[0], duration_seconds: 7200 };
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: longTemplate.id, similarity: 0.7 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([longTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: longTemplate.id,
+            name: 'Long Practice',
+            justification: 'Too long for user budget.',
+            matchScore: 0.7,
+            template: longTemplate,
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      const generatedHabit = {
+        name: 'Practice scales',
+        description: '15 minutes of scales.',
+        routineType: ActivityType.morning,
+        durationMinutes: 15,
+        justification: 'Fits the time budget.',
+      };
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([generatedHabit]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        routine_duration: 30,
+        user_goals: ['Become a guitarist'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+      const list = Array.isArray(response) ? response : [];
+
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalled();
+      expect(list.length).toBeGreaterThanOrEqual(1);
+      expect(list.find((item: any) => item.ai_generated)).toBeDefined();
+    });
+
+    it('strips duration phrases from generated descriptions', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
+        {
+          name: 'Guitar warmup',
+          description: '3-minute finger rolls and picking drills.',
+          routineType: ActivityType.morning,
+          durationMinutes: 5,
+          justification: 'Warm up quickly.',
+        },
+      ]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: ['Become a guitarist'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+      const generated = (Array.isArray(response) ? response : []).find((item: any) => item.ai_generated);
+
+      expect(generated?.description).not.toMatch(/\bminutes?\b/i);
+      expect(generated?.text_instructions).not.toMatch(/\bminutes?\b/i);
+      expect(generated?.description).not.toMatch(/^\d/);
+    });
+
+    it('strips duration phrases from generated names', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
+        {
+          name: '5 minute finger warmup',
+          description: 'Finger rolls and picking drills.',
+          routineType: ActivityType.morning,
+          durationMinutes: 5,
+          justification: 'Warm up quickly.',
+        },
+      ]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: ['Become a guitarist'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+      const generated = (Array.isArray(response) ? response : []).find((item: any) => item.ai_generated);
+
+      expect(generated?.name).not.toMatch(/\bminutes?\b/i);
+      expect(generated?.name).not.toMatch(/\bmin\b/i);
     });
 
     it('logs generated habits for later review', async () => {

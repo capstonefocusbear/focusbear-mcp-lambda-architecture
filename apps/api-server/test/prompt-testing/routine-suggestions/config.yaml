@@ -28,7 +28,8 @@ prompts:
 
       Guidance:
       - Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
-      - Penalise generic movement/meditation/breathing exercises unless the goal text clearly frames them as necessary.
+      - Reject generic movement/meditation/breathing habits unless the goal explicitly requires them for the skill (e.g., posture/hand mobility for guitar). If the link to the goal is weak, exclude the habit.
+      - Do not include duration or time wording in the habit name or description. Describe the action, not how long it takes.
       - For matchScore: evaluate semantic relevance between the goal and habit (0-1 scale). The provided similarity is just a starting point - you should adjust based on your understanding of how well the habit supports the goal.
       - Reject and omit any habit with matchScore below {{minimumMatchScore}}. If none qualify, return an empty array so downstream logic can act.
 

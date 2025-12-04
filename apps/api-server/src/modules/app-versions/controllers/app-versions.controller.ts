@@ -14,7 +14,7 @@ export class AppVersionsController {
   @Get('latest')
   @ApiOperation({
     summary: 'Get latest app version',
-    description: 'Retrieve lastest app version for specific operating system',
+    description: 'Retrieve latest app version for specific operating system',
   })
   @ApiResponse({ status: 200, description: 'Latest version information', type: LatestAppVersionResponseDto })
   async getLatestAppVersion(@Query() query: GetLatestAppVersionQueryDto): Promise<LatestAppVersionResponseDto> {

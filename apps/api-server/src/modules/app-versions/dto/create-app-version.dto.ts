@@ -18,7 +18,7 @@ export class CreateAppVersionDto {
     message: 'semver_string must be valid semantic version (e.g., 2.1.0 or 2.1.0-beta.1)',
   })
   @ApiProperty({
-    example: '2.1.0',
+    example: '2.9.0',
     description: 'Semantic version string',
   })
   semver_string: string;

@@ -7,17 +7,17 @@ export enum ViewAction {
 }
 
 @Entity('announcement_views')
-@Index(['userId', 'announcementId'], { unique: true }) // Unique constraint for idempotent operations
-@Index(['userId']) // Fast lookup for user's viewed announcements
+@Index(['user_id', 'announcement_id'], { unique: true }) // Unique constraint for idempotent operations
+@Index(['user_id']) // Fast lookup for user's viewed announcements
 export class AnnouncementViewEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  @Column({ type: 'uuid' })
+  user_id: string;
 
-  @Column({ name: 'announcement_id' })
-  announcementId: string;
+  @Column()
+  announcement_id: string;
 
   @Column({
     type: 'enum',
@@ -30,10 +30,10 @@ export class AnnouncementViewEntity {
   source: string;
 
   @Column({ name: 'read_at', type: 'timestamptz' })
-  readAt: Date;
+  read_at: Date;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  created_at: Date;
 
   // Relation to Announcement
   @ManyToOne(() => AnnouncementEntity)

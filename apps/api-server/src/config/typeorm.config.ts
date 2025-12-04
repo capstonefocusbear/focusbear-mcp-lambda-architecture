@@ -55,6 +55,8 @@ import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
 import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
 import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
 import { AppVersionEntity } from '../modules/app-versions/entities/app-versions.entity';
+import { AnnouncementEntity } from '../modules/announcements/entities/announcements.entity';
+import { AnnouncementViewEntity } from '../modules/announcements/entities/announcement-views.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -126,6 +128,8 @@ export const typeormConfig = registerAs(
       FlankerTest,
       AsyncTask,
       AppVersionEntity,
+      AnnouncementEntity,
+      AnnouncementViewEntity,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
   }),

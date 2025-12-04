@@ -1,98 +1,61 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Connection } from 'typeorm';
 import { AnnouncementViewEntity, ViewAction } from '../entities/announcement-views.entity';
+import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 
 @Injectable()
-export class AnnouncementViewsRepository {
-  constructor(
-    @InjectRepository(AnnouncementViewEntity)
-    private readonly repository: Repository<AnnouncementViewEntity>,
-  ) {}
+export class AnnouncementViewsRepository extends BaseRepository<AnnouncementViewEntity> {
+  constructor(private readonly connection: Connection) {
+    super(connection, AnnouncementViewEntity);
+  }
 
   /**
    * Find all announcement IDs that a user has already viewed/dismissed
    */
-  async findViewedAnnouncementIds(userId: string): Promise<string[]> {
-    const views = await this.repository.find({
-      where: { userId },
-      select: ['announcementId'],
-    });
+  async findViewedAnnouncement_ids(user_id: string): Promise<string[]> {
+    const views = await this.orm
+      .createQueryBuilder('view')
+      .select('view.announcement_id')
+      .where('view.user_id = :user_id', { user_id })
+      .getMany();
 
-    return views.map((view) => view.announcementId);
-  }
-
-  /**
-   * Check if a user has already viewed a specific announcement
-   */
-  async hasUserViewedAnnouncement(userId: string, announcementId: string): Promise<boolean> {
-    const view = await this.repository.findOne({
-      where: { userId, announcementId },
-    });
-
-    return !!view;
+    return views.map((view) => view.announcement_id);
   }
 
   /**
    * Record that a user has viewed/dismissed an announcement (idempotent)
    */
-  async recordView(
-    userId: string,
-    announcementId: string,
-    action: ViewAction = ViewAction.VIEWED,
-    source?: string,
-    readAt?: Date,
-  ): Promise<AnnouncementViewEntity> {
+  async recordView(data: {
+    user_id: string;
+    announcement_id: string;
+    action?: ViewAction;
+    source?: string;
+    read_at?: Date;
+  }): Promise<AnnouncementViewEntity> {
+    const { user_id, announcement_id, action = ViewAction.VIEWED, source, read_at } = data;
+
     // Try to find existing view first
-    let view = await this.repository.findOne({
-      where: { userId, announcementId },
-    });
+    const view = await this.orm
+      .createQueryBuilder('view')
+      .where('view.user_id = :user_id', { user_id })
+      .andWhere('view.announcement_id = :announcement_id', { announcement_id })
+      .getOne();
 
     if (view) {
-      // Update existing view (idempotent behavior)
       view.action = action;
-      view.readAt = readAt || new Date();
-      if (source) view.source = source;
-    } else {
-      // Create new view
-      view = this.repository.create({
-        userId,
-        announcementId,
-        action,
-        source,
-        readAt: readAt || new Date(),
-      });
+      view.read_at = read_at || new Date();
+      return this.orm.save(view);
     }
 
-    return this.repository.save(view);
-  }
-
-  /**
-   * Get all views for a specific user with announcement details
-   */
-  async findUserViews(userId: string): Promise<AnnouncementViewEntity[]> {
-    return this.repository.find({
-      where: { userId },
-      relations: ['announcement'],
-      order: { readAt: 'DESC' },
+    // Create new view
+    const newView = this.orm.create({
+      user_id,
+      announcement_id,
+      source,
+      action,
+      read_at: read_at || new Date(),
     });
-  }
 
-  /**
-   * Get analytics: count of views per announcement
-   */
-  async getViewCounts(announcementIds: string[]): Promise<{ announcementId: string; viewCount: number }[]> {
-    const result = await this.repository
-      .createQueryBuilder('view')
-      .select('view.announcementId', 'announcementId')
-      .addSelect('COUNT(*)', 'viewCount')
-      .where('view.announcementId IN (:...ids)', { ids: announcementIds })
-      .groupBy('view.announcementId')
-      .getRawMany();
-
-    return result.map((row) => ({
-      announcementId: row.announcementId,
-      viewCount: parseInt(row.viewCount, 10),
-    }));
+    return this.orm.save(newView);
   }
 }

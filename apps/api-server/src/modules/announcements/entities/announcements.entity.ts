@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 export enum AnnouncementType {
   RELEASE = 'release',
@@ -6,21 +7,12 @@ export enum AnnouncementType {
   SURVEY = 'survey',
   MAINTENANCE = 'maintenance',
 }
-
 export enum AnnouncementPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
   CRITICAL = 'critical',
 }
-export enum OperatingSystem {
-  ALL = 'all',
-  IOS = 'ios',
-  ANDRIOD = 'android',
-  MAC = 'mac',
-  WINDOW = 'windows',
-}
-
 @Entity('announcements')
 export class AnnouncementEntity {
   @PrimaryColumn('varchar')
@@ -38,11 +30,11 @@ export class AnnouncementEntity {
   @Column('text')
   details: string;
 
-  @Column({ name: 'details_url', type: 'varchar', nullable: true })
-  detailsUrl?: string;
+  @Column({ type: 'varchar', nullable: true })
+  details_url?: string;
 
-  @Column({ name: 'expiry_date', type: 'timestamp', nullable: true })
-  expiryDate: Date;
+  @Column({ type: 'timestamp' })
+  expiry_date: Date;
 
   @Column({
     type: 'enum',
@@ -54,14 +46,13 @@ export class AnnouncementEntity {
   @Column({
     type: 'enum',
     enum: OperatingSystem,
-    name: 'operating_system',
-    default: OperatingSystem.ALL,
+    default: OperatingSystem.Unknown,
   })
-  operatingSystem: OperatingSystem;
+  operating_system: OperatingSystem;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @CreateDateColumn()
+  created_at: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @UpdateDateColumn()
+  updated_at: Date;
 }

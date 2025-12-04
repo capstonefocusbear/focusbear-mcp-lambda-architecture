@@ -5,7 +5,7 @@ export class CreateAnnouncementTables1761146267493 implements MigrationInterface
     await queryRunner.query(`
       CREATE TYPE "announcement_type_enum" AS ENUM ('release', 'event', 'survey', 'maintenance');
       CREATE TYPE "announcement_priority_enum" AS ENUM ('low', 'medium', 'high', 'critical');
-      CREATE TYPE "announcement_operating_system_enum" AS ENUM ('all', 'ios', 'android', 'mac', 'windows');
+      CREATE TYPE "announcement_operating_system_enum" AS ENUM ('MacOS', 'Windows', 'Android', 'iOS', 'Web', 'Unknown');
       CREATE TYPE "view_action_enum" AS ENUM ('viewed', 'dismissed');
 
       CREATE TABLE "announcements" (
@@ -14,9 +14,9 @@ export class CreateAnnouncementTables1761146267493 implements MigrationInterface
         "heading" character varying NOT NULL,
         "details" text NOT NULL,
         "details_url" character varying,
-        "expiry_date" TIMESTAMP,
+        "expiry_date" TIMESTAMP NOT NULL,
         "priority" "announcement_priority_enum" NOT NULL DEFAULT 'medium',
-        "operating_system" "announcement_operating_system_enum" NOT NULL DEFAULT 'all',
+        "operating_system" "announcement_operating_system_enum" NOT NULL DEFAULT 'Unknown',
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_announcements_id" PRIMARY KEY ("id")

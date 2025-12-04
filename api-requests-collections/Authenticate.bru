@@ -32,6 +32,11 @@ body:form-urlencoded {
   ~connection: Username-Password-Authentication
 }
 
+vars:pre-request {
+  client_secret: OmzQ16TW9NrnHTPCHHXKJm7NvTwtgMpyQh5jnU3S_FGvERMF5PXJXiK4tetPNWWR
+  password: Passw0rd!
+}
+
 script:post-response {
   if(res.body.access_token) {
       bru.setEnvVar('access_token', res.body.access_token);

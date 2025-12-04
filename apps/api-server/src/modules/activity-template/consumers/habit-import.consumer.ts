@@ -57,7 +57,7 @@ export class HabitImportConsumer {
           responseType: 'arraybuffer',
           timeout: 120000,
         });
-        const contentTypeHeader = imageResponse.headers['content-type'] as string | undefined;
+        const contentTypeHeader = imageResponse.headers?.['content-type'] as string | undefined;
         const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
         const inferredMimeType = this.resolveImageMimeType(mediaKey, contentTypeHeader);
         const imageBuffer = `data:${inferredMimeType};base64,${base64}`;

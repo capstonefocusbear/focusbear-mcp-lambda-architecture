@@ -67,7 +67,7 @@
     <p>Are you sure you want to unsubscribe from Focus Bear progress emails?</p>
     <p>You'll miss out on your weekly progress reports and motivational updates.</p>
     
-    <form id="unsubscribeForm" method="POST" action="{{apiUrl}}/user/email-preferences/unsubscribe">
+    <form id="unsubscribeForm" method="POST" action="/user/email-preferences/unsubscribe">
       <input type="hidden" name="token" value="{{token}}" />
       <button type="submit" class="button">Yes, Unsubscribe</button>
       <button type="button" class="button cancel" onclick="window.close()">Cancel</button>
@@ -85,7 +85,7 @@
     document.getElementById('unsubscribeForm').addEventListener('submit', function(e) {
       e.preventDefault();
       
-      fetch('{{apiUrl}}/user/email-preferences/unsubscribe', {
+      fetch('/user/email-preferences/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: '{{token}}' })

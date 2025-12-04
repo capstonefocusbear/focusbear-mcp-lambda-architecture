@@ -30,6 +30,14 @@ const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
 const ADJUST_HABIT_MIN_SIMILARITY = 0.7;
 
+type RoutineSuggestionRequestOptions = {
+  asyncTaskId?: string;
+  requestHash?: string;
+  useRag?: boolean;
+};
+
+type RagRequestOptions = Omit<RoutineSuggestionRequestOptions, 'useRag'>;
+
 export interface ActivityMetadata {
   justification: string;
   matchScore: number;
@@ -123,9 +131,10 @@ export class ActivityLibraryService {
   async getActivitiesRelatedToUserGoals(
     getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     user_id: string,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RoutineSuggestionRequestOptions,
   ) {
     try {
+      const { useRag = true, ...ragOptions } = options ?? {};
       const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       const request = normalizedRoutineSuggestionsDto;
       this.sentryService.instance().addBreadcrumb({
@@ -186,7 +195,19 @@ export class ActivityLibraryService {
       }
 
       // If we found matching templates but none fit the user's time budget, respect the duration contract
-      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, options);
+      if (!useRag) {
+        this.logger.debug(
+          `RoutineSuggestions:ragSkipped ${JSON.stringify({
+            userId: user_id,
+            goalCount: request.user_goals?.length ?? 0,
+            routine: request.routine,
+            durationMinutes: request.routine_duration,
+          })}`,
+        );
+        return request.groupByGoals ? {} : [];
+      }
+
+      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, ragOptions);
 
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
@@ -298,41 +319,43 @@ export class ActivityLibraryService {
         return false;
       }
 
-      // For morning/evening: also respect duration budget
+      // Respect the user's duration budget for all activity types
       const isValidDuration = this.isValidTemplateDuration(
         template_duration,
         routineDuration[activityType],
         userRoutineDurationSeconds,
       );
-      if (isValidDuration || activityType === ActivityType.break || activityType === ActivityType.library) {
-        routineDuration[activityType] += template_duration;
-        const { activity_data, ...rest } = activityTemplate;
-        const metadata = metadataMap.get(activityTemplate.id);
-        const baseActivity: any = {
-          ...rest,
-          ...activity_data,
-          id: randomUUID(),
-          original_template_id: activityTemplate.id,
-          ai_generated: false,
-          ai_justification: metadata?.justification ?? '',
-          ai_match_score: typeof metadata?.matchScore === 'number' ? Number(metadata.matchScore.toFixed(2)) : null,
-          ai_goals: metadata?.goals ?? [],
-        };
-        const overrideName = metadata?.name ?? baseActivity.name;
-        if (overrideName) {
-          baseActivity.name = overrideName;
-        }
-        const overrideDescription = metadata?.description ?? baseActivity.text_instructions;
-        if (overrideDescription) {
-          baseActivity.text_instructions = overrideDescription;
-          baseActivity.description = overrideDescription;
-        }
-        if (!baseActivity.description && baseActivity.text_instructions) {
-          baseActivity.description = baseActivity.text_instructions;
-        }
-        allValidActivities.push(baseActivity);
-        routineLength[activityTemplate.activity_type] += 1;
+      if (!isValidDuration) {
+        return false;
       }
+
+      routineDuration[activityType] += template_duration;
+      const { activity_data, ...rest } = activityTemplate;
+      const metadata = metadataMap.get(activityTemplate.id);
+      const baseActivity: any = {
+        ...rest,
+        ...activity_data,
+        id: randomUUID(),
+        original_template_id: activityTemplate.id,
+        ai_generated: false,
+        ai_justification: metadata?.justification ?? '',
+        ai_match_score: typeof metadata?.matchScore === 'number' ? Number(metadata.matchScore.toFixed(2)) : null,
+        ai_goals: metadata?.goals ?? [],
+      };
+      const overrideName = metadata?.name ?? baseActivity.name;
+      if (overrideName) {
+        baseActivity.name = overrideName;
+      }
+      const overrideDescription = metadata?.description ?? baseActivity.text_instructions;
+      if (overrideDescription) {
+        baseActivity.text_instructions = overrideDescription;
+        baseActivity.description = overrideDescription;
+      }
+      if (!baseActivity.description && baseActivity.text_instructions) {
+        baseActivity.description = baseActivity.text_instructions;
+      }
+      allValidActivities.push(baseActivity);
+      routineLength[activityTemplate.activity_type] += 1;
       return false;
     });
     return allValidActivities;
@@ -342,7 +365,7 @@ export class ActivityLibraryService {
     getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
     routineDurationSeconds: number,
     userId?: string,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RagRequestOptions,
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
     // RAG flow documented in docs/rag-routine-suggestions-flow.md
     const request = getRoutineSuggestionsDto;
@@ -393,7 +416,32 @@ export class ActivityLibraryService {
             limit: generationOptions.limit,
           });
           if (suggestionResult.accepted.length) {
-            return { goal, suggestions: suggestionResult.accepted, generated: [] as GeneratedHabitSuggestion[] };
+            const acceptedDurationSeconds = suggestionResult.accepted.reduce(
+              (total, suggestion) => total + Number(suggestion.template?.duration_seconds ?? 0),
+              0,
+            );
+
+            if (acceptedDurationSeconds >= (generationOptions.routineDurationSeconds ?? 0)) {
+              return { goal, suggestions: suggestionResult.accepted, generated: [] as GeneratedHabitSuggestion[] };
+            }
+
+            const remainingSeconds = Math.max(
+              ONE_MINUTE_SECONDS,
+              (generationOptions.routineDurationSeconds ?? ONE_MINUTE_SECONDS) - acceptedDurationSeconds,
+            );
+            const remainingSlots = Math.max(
+              0,
+              (generationOptions.limit ?? RAG_RETRIEVAL_LIMIT) - suggestionResult.accepted.length,
+            );
+            const generated = remainingSlots
+              ? await this.routineSuggestionGeneratorService.generateNewHabits(goal, {
+                  ...generationOptions,
+                  routineDurationSeconds: remainingSeconds,
+                  limit: remainingSlots,
+                })
+              : [];
+
+            return { goal, suggestions: suggestionResult.accepted, generated };
           }
 
           this.sentryService.instance().addBreadcrumb({
@@ -512,6 +560,26 @@ export class ActivityLibraryService {
       })}`,
     );
 
+    // If duration filtering removed all suggestions, generate habits so the response is not empty
+    if (!finalTemplates.length) {
+      const goalsNeedingGeneration = goals.filter((goal) => (generatedByGoal[goal]?.length ?? 0) === 0);
+      const generatedResults = await Promise.all(
+        goalsNeedingGeneration.map((goal) =>
+          this.routineSuggestionGeneratorService.generateNewHabits(goal, {
+            limit: RAG_RETRIEVAL_LIMIT,
+            routineDurationSeconds,
+            routineType: request.routine,
+          }),
+        ),
+      );
+      goalsNeedingGeneration.forEach((goal, index) => {
+        const generated = generatedResults[index] ?? [];
+        if (generated.length) {
+          generatedByGoal[goal] = generated;
+        }
+      });
+    }
+
     const generatedActivities = this.buildGeneratedActivities(generatedByGoal, routineDurationSeconds, request.routine);
 
     await this.persistGeneratedHabits(userId, generatedByGoal, request, generatedActivities.flat.length > 0, options);
@@ -570,16 +638,18 @@ export class ActivityLibraryService {
           typeof maxDurationMinutes === 'number'
             ? Math.min(rawDurationMinutes, maxDurationMinutes)
             : rawDurationMinutes;
+        const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
         const activityType =
           typeof habit.routineType === 'string'
             ? (habit.routineType.toLowerCase() as ActivityType)
             : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
         const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
-        const description = habit.description ?? '';
+        const rawDescription = habit.description ?? '';
+        const description = this.sanitizeDurationPhrases(rawDescription);
 
         const generatedActivity: any = {
           id: randomUUID(),
-          name: habit.name,
+          name: sanitizedName || habit.name,
           text_instructions: description,
           description,
           duration_seconds: durationSeconds,
@@ -598,12 +668,26 @@ export class ActivityLibraryService {
     return { byGoal, flat };
   }
 
+  /**
+   * Removes explicit duration phrasing from generated descriptions so the UI doesn't double-announce time.
+   */
+  private sanitizeDurationPhrases(text: string): string {
+    if (!text) return '';
+    const durationPattern =
+      /\b\d+(?:\s*[–—-]\s*\d+)?\s*[–—-]?\s*(?:hours?|hrs?|hr|minutes?|minute|mins?|min|seconds?|second|secs?|sec|s)\b[:.,-]?\s*/gi;
+    const cleaned = text
+      .replace(durationPattern, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    return cleaned;
+  }
+
   private async persistGeneratedHabits(
     userId: string | undefined,
     generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
     request: GetRoutineSuggestionsDto,
     hasGeneratedHabits: boolean,
-    options?: { asyncTaskId?: string; requestHash?: string },
+    options?: RagRequestOptions,
   ): Promise<void> {
     if (!hasGeneratedHabits) {
       return;

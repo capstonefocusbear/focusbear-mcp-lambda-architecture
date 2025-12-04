@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { DailyStats } from '../apps/api-server/src/modules/user/entities/user-daily-stats.entity';
 import { Notification } from '../apps/api-server/src/modules/notification/entities/notification.entity';
 import { ActivityTemplate } from '../apps/api-server/src/modules/activity-template/entity/activity-template.entity';
+import { ActivityTemplateEmbedding } from '../apps/api-server/src/modules/activity-template/entity/activity-template-embedding.entity';
 import { ActivitySequence } from '../apps/api-server/src/modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../apps/api-server/src/modules/activity/entities/activity.entity';
 import { CompletedActivitySequence } from '../apps/api-server/src/modules/activity/entities/completed-activity-sequence.entity';
@@ -76,6 +77,7 @@ export const CronJobDataSource = new DataSource({
     HabitPack,
     InstalledPack,
     ActivityTemplate,
+    ActivityTemplateEmbedding,
     Notification,
     VideoMetadata,
     Track,

@@ -324,9 +324,7 @@ describe('HabitImportConsumer', () => {
       mockedAxios.get.mockResolvedValueOnce({
         data: Buffer.from('fake-image-data'),
       });
-      habitImportExtractionServiceMock.extractHabitsFromImage.mockRejectedValueOnce(
-        new Error('Vision API error'),
-      );
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockRejectedValueOnce(new Error('Vision API error'));
 
       await expect(consumer.processHabitImport(job)).rejects.toThrow('Vision API error');
 
@@ -349,9 +347,7 @@ describe('HabitImportConsumer', () => {
         data: Buffer.from('fake-image-data'),
       });
       habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce(mockExtractedHabits);
-      habitImportExtractionServiceMock.matchExtractedHabits.mockRejectedValueOnce(
-        new Error('RAG service error'),
-      );
+      habitImportExtractionServiceMock.matchExtractedHabits.mockRejectedValueOnce(new Error('RAG service error'));
 
       await expect(consumer.processHabitImport(job)).rejects.toThrow('RAG service error');
 

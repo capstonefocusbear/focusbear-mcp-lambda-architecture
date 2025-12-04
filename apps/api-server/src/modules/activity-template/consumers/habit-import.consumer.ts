@@ -24,7 +24,7 @@ export class HabitImportConsumer {
 
   @Process(BullWorkers.PROCESS_HABIT_IMPORT)
   async processHabitImport(job: Job<HabitImportJobData>) {
-    const { asyncTaskId, userId, mediaKey, mediaType, routineDurationMinutes, routineType } = job.data;
+    const { asyncTaskId, userId, mediaKey, mediaType, routineType } = job.data;
 
     const baseMetadata = {
       taskType: 'habit-import',

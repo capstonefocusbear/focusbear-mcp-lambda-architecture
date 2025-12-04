@@ -3,17 +3,13 @@ import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { In } from 'typeorm';
 import { OpenAIService } from '@app/openai';
 import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';
-import {
-  RoutineSuggestionGeneratorService,
-  RoutineSuggestionCandidate,
-} from './routine-suggestion-generator.service';
+import { RoutineSuggestionGeneratorService, RoutineSuggestionCandidate } from './routine-suggestion-generator.service';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import {
   HabitLibraryRequestRepository,
   HabitLibraryRequestRecord,
 } from '../repository/habit-library-request.repository';
 import { ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
-import { ActivityTemplate } from '../entity/activity-template.entity';
 
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5;
@@ -58,30 +54,23 @@ export class HabitImportExtractionService {
     } = {},
   ): Promise<HabitSuggestionResult[]> {
     const minMatchScore = options.minMatchScore ?? DEFAULT_MATCH_THRESHOLD;
-    const results: HabitSuggestionResult[] = [];
-
-    for (const habit of habits) {
-      try {
-        const result = await this.matchSingleHabit(habit, minMatchScore);
-        results.push(result);
-      } catch (error) {
-        this.logger.error(`Failed to match habit "${habit.name}": ${error.message}`, error.stack);
-        // Return the extracted habit as unmatched on error
-        results.push({
-          extractedHabit: habit,
-          matched: false,
-          suggestedHabit: habit,
-        });
-      }
-    }
-
-    return results;
+    return Promise.all(
+      habits.map(async (habit) => {
+        try {
+          return await this.matchSingleHabit(habit, minMatchScore);
+        } catch (error) {
+          this.logger.error(`Failed to match habit "${habit.name}": ${error.message}`, error.stack);
+          return {
+            extractedHabit: habit,
+            matched: false,
+            suggestedHabit: habit,
+          };
+        }
+      }),
+    );
   }
 
-  private async matchSingleHabit(
-    habit: ExtractedHabit,
-    minMatchScore: number,
-  ): Promise<HabitSuggestionResult> {
+  private async matchSingleHabit(habit: ExtractedHabit, minMatchScore: number): Promise<HabitSuggestionResult> {
     // Build search query from habit name and description
     const searchQuery = [habit.name, habit.description].filter(Boolean).join(' ');
 
@@ -93,10 +82,7 @@ export class HabitImportExtractionService {
     );
 
     // 1. RAG retrieval - get candidate matches
-    const matches = await this.activityTemplateRetrieverService.retrieveByText(
-      searchQuery,
-      RAG_RETRIEVAL_LIMIT,
-    );
+    const matches = await this.activityTemplateRetrieverService.retrieveByText(searchQuery, RAG_RETRIEVAL_LIMIT);
 
     if (!matches.length) {
       // No candidates found - return extracted habit for manual addition
@@ -140,11 +126,10 @@ export class HabitImportExtractionService {
     }
 
     // 2. LLM evaluation - evaluate candidates for semantic match
-    const { accepted } = await this.routineSuggestionGeneratorService.generateSuggestions(
-      habit.name,
-      candidates,
-      { limit: 1, minMatchScore },
-    );
+    const { accepted } = await this.routineSuggestionGeneratorService.generateSuggestions(habit.name, candidates, {
+      limit: 1,
+      minMatchScore,
+    });
 
     if (!accepted.length) {
       // LLM rejected all candidates - return extracted habit
@@ -210,9 +195,7 @@ export class HabitImportExtractionService {
 
     try {
       await this.habitLibraryRequestRepository.logRequests(records);
-      this.logger.debug(
-        `HabitImport:logged ${records.length} unmatched habits for user ${userId}`,
-      );
+      this.logger.debug(`HabitImport:logged ${records.length} unmatched habits for user ${userId}`);
     } catch (error) {
       this.logger.error(`Failed to log unmatched habits: ${error.message}`, error.stack);
       this.sentryService.instance().captureException(error, {

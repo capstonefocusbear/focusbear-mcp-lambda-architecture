@@ -1,15 +1,5 @@
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
-export class GenerateImportUploadUrlDto {
-  @IsNotEmpty()
-  @IsIn(['image', 'audio'])
-  mediaType!: 'image' | 'audio';
-
-  @IsNotEmpty()
-  @IsString()
-  fileExtension!: string;
-}
-
 export class HabitImportUploadedDto {
   @IsNotEmpty()
   @IsString()

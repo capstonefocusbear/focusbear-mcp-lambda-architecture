@@ -74,7 +74,12 @@ describe('HabitImportExtractionService', () => {
     it('should extract habits from image buffer', async () => {
       const imageBuffer = 'data:image/png;base64,abc123';
       const expectedHabits: ExtractedHabit[] = [
-        { name: 'Morning meditation', description: 'Meditate for 10 minutes', estimatedDurationMinutes: 10, category: 'meditation' },
+        {
+          name: 'Morning meditation',
+          description: 'Meditate for 10 minutes',
+          estimatedDurationMinutes: 10,
+          category: 'meditation',
+        },
         { name: 'Exercise', description: 'Morning workout', estimatedDurationMinutes: 30, category: 'exercise' },
       ];
 
@@ -101,8 +106,18 @@ describe('HabitImportExtractionService', () => {
     it('should extract habits from transcript', async () => {
       const transcript = 'I meditate for 10 minutes every morning and then exercise for 30 minutes';
       const expectedHabits: ExtractedHabit[] = [
-        { name: 'Morning meditation', description: 'Meditate for 10 minutes', estimatedDurationMinutes: 10, category: 'meditation' },
-        { name: 'Morning exercise', description: 'Exercise for 30 minutes', estimatedDurationMinutes: 30, category: 'exercise' },
+        {
+          name: 'Morning meditation',
+          description: 'Meditate for 10 minutes',
+          estimatedDurationMinutes: 10,
+          category: 'meditation',
+        },
+        {
+          name: 'Morning exercise',
+          description: 'Exercise for 30 minutes',
+          estimatedDurationMinutes: 30,
+          category: 'exercise',
+        },
       ];
 
       openAIServiceMock.extractHabitsFromTranscript.mockResolvedValueOnce(expectedHabits);
@@ -255,9 +270,19 @@ describe('HabitImportExtractionService', () => {
     it('should log unmatched habits to repository', async () => {
       const results: HabitSuggestionResult[] = [
         {
-          extractedHabit: { name: 'Custom habit', description: 'My custom habit', estimatedDurationMinutes: 15, category: 'other' },
+          extractedHabit: {
+            name: 'Custom habit',
+            description: 'My custom habit',
+            estimatedDurationMinutes: 15,
+            category: 'other',
+          },
           matched: false,
-          suggestedHabit: { name: 'Custom habit', description: 'My custom habit', estimatedDurationMinutes: 15, category: 'other' },
+          suggestedHabit: {
+            name: 'Custom habit',
+            description: 'My custom habit',
+            estimatedDurationMinutes: 15,
+            category: 'other',
+          },
         },
       ];
 

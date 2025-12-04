@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Put, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiSecurity, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { R2Service } from '@app/r2';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { Passport } from '../../auth/domain/passport.model';
@@ -13,8 +14,8 @@ import { RoutineSuggestionsAsyncService } from '../services/routine-suggestions-
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
 import { HabitCreationAsyncService } from '../services/habit-creation-async.service';
 import { HabitImportAsyncService } from '../services/habit-import-async.service';
-import { GenerateImportUploadUrlDto, HabitImportUploadedDto } from '../dto/import-habits-from-media.dto';
-import { R2Service } from '@app/r2';
+import { GenerateImportUploadUrlDto } from '../dto/generate-import-upload-url.dto';
+import { HabitImportUploadedDto } from '../dto/import-habits-from-media.dto';
 import { S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
 
 @Controller('activity-library')

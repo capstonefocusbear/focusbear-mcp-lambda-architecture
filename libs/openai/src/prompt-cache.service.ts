@@ -206,9 +206,7 @@ export class PromptCacheService implements OnModuleInit {
       }
 
       // Load habit import transcript prompts
-      this.logger.log(
-        `Loading habit import transcript prompts from ${HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH}`,
-      );
+      this.logger.log(`Loading habit import transcript prompts from ${HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
       try {
         const habitImportTranscriptContent = await fs.readFile(HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH, 'utf8');
         const habitImportTranscriptPrompts = yaml.load(habitImportTranscriptContent) as {

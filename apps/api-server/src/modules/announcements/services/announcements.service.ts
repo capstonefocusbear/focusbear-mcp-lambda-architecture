@@ -43,7 +43,7 @@ export class AnnouncementsService {
     }
 
     // Get announcement IDs the user has already viewed
-    const viewedIds = await this.announcementViewsRepository.findViewedAnnouncement_ids(user_id);
+    const viewedIds = await this.announcementViewsRepository.findViewedAnnouncementIds(user_id);
 
     // Fetch active announcements excluding viewed ones
     const announcements = await this.announcementsRepository.findActiveAnnouncements(viewedIds, os);

@@ -12,7 +12,7 @@ export class AnnouncementViewsRepository extends BaseRepository<AnnouncementView
   /**
    * Find all announcement IDs that a user has already viewed/dismissed
    */
-  async findViewedAnnouncement_ids(user_id: string): Promise<string[]> {
+  async findViewedAnnouncementIds(user_id: string): Promise<string[]> {
     const views = await this.orm
       .createQueryBuilder('view')
       .select('view.announcement_id')

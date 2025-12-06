@@ -1,6 +1,5 @@
 import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
-import { Transform } from 'class-transformer';
 
 export class IsAppSafeDto {
   @IsOptional()
@@ -18,9 +17,14 @@ export class IsAppSafeDto {
 
   @IsOptional()
   @IsString()
-  @Transform(({ value, obj }) => value ?? obj?.justification ?? undefined)
   @MaxLength(MAX_WORD_LENGTH.justification)
   justificationForThisSpecificApp?: string;
+
+  // Legacy/alias field used by some clients
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_WORD_LENGTH.justification)
+  justification?: string;
 
   @IsOptional()
   @IsString()

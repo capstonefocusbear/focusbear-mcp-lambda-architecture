@@ -1,9 +1,9 @@
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/nestjs';
 import * as sentryModule from './sentry';
 import { withTimeout } from '../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../apps/api-server/src/shared/utils/constants';
 
-jest.mock('@sentry/node');
+jest.mock('@sentry/nestjs');
 
 describe('Cron Job Wrapper Integration', () => {
   let originalProcessExit: any;

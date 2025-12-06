@@ -11,7 +11,10 @@ export interface SentryAsyncModuleOptions {
 @Global()
 @Module({})
 export class SentryModule {
-  static forRoot(): DynamicModule {
+  // Accept optional options for compatibility with existing usage patterns,
+  // but configuration is handled via Sentry.init in instrument.ts.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static forRoot(_options?: any): DynamicModule {
     return {
       module: SentryModule,
       providers: [
@@ -47,4 +50,3 @@ export class SentryModule {
     };
   }
 }
-

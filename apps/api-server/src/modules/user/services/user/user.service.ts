@@ -886,14 +886,22 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    // Normalise justification field so all clients (Mac, mobile, future) map into
+    // a single canonical property that the OpenAI service and prompts expect.
+    const normalisedDto: IsUrlSafeDto & { [key: string]: any } = {
+      ...isUrlSafeDto,
+      url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
+    };
 
-    return this.openAIService.checkIfUrlIsSafeToUse(
-      {
-        ...isUrlSafeDto,
-        url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
-      },
-      user.language,
-    );
+    normalisedDto.justificationForThisUrl =
+      isUrlSafeDto.justificationForThisUrl ??
+      // Generic alias used by some clients
+      isUrlSafeDto.justification ??
+      // Mac app "new intention" flow
+      isUrlSafeDto.extraJustificationForThisSite ??
+      undefined;
+
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -901,8 +909,12 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    const normalisedDto: IsAppSafeDto & { [key: string]: any } = { ...isAppSafeDto };
 
-    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language);
+    normalisedDto.justificationForThisSpecificApp =
+      isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
+
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

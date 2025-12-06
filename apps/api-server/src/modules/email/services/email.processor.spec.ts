@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SendGridService } from '@app/send-grid';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { Job } from 'bull';
 import { EmailProcessor } from './email.processor';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';

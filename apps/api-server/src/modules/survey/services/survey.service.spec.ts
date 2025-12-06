@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SurveyService } from './survey.service';
 import { SurveyRepository } from '../repositories/survey.repository';

@@ -1,6 +1,6 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { PusherService } from '@app/pusher';
 import { RoutineSuggestionsJobData } from '../services/routine-suggestions-async.service';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';

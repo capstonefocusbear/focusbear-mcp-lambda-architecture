@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Raw } from 'typeorm';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';

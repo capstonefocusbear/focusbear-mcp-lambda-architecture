@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { AccountabilityNotificationService } from './accountability-notification.service';
 import { NotificationRepository } from '../../notification/repository/notification.repository';
 import { Notification } from '../../notification/entities/notification.entity';

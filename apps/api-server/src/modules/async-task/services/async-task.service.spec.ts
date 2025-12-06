@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { NotFoundException } from '@nestjs/common';
 import { AsyncTaskService } from './async-task.service';
 import { AsyncTaskRepository } from '../repositories/async-task.repository';

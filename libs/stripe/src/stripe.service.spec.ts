@@ -5,7 +5,7 @@ import { BullModule, getQueueToken } from '@nestjs/bull';
 import { Queue, Job } from 'bull';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RevenueCatService } from '@app/revenue-cat';
-import { SentryService } from '@ntegral/nestjs-sentry';
+import { SentryService } from '@app/observability';
 import { Auth0ManagementService } from '@app/auth0';
 import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';

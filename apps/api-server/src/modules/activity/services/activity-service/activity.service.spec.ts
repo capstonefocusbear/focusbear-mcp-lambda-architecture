@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { randomUUID } from 'crypto';
 import { StripeService } from '@app/stripe';
 import { QueueMock, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';

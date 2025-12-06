@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability
 import { DEFAULT_EMBEDDING_MODEL } from '@app/openai/openai.constants';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateGoalEmbeddingService } from './activity-template-goal-embedding.service';

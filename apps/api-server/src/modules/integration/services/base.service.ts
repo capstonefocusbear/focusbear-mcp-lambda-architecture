@@ -2,7 +2,7 @@
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { BullWorkers, MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';

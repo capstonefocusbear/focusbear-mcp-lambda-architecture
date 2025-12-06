@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';
 import { CompletedFocusBlock } from '../../entities/completed-focus-block.entity';
 import { FocusModeDaySummaryItem } from '../../domain/focus-mode-day-summary-item.model';

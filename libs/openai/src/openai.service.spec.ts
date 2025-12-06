@@ -1,6 +1,6 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN, SentryModule, SentryService } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, SentryModule, SentryService } from '@app/observability';
 import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';

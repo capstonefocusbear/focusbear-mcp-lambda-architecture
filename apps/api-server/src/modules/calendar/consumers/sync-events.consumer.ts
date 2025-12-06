@@ -1,7 +1,7 @@
 /* eslint-disable linebreak-style */
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job, UnrecoverableError } from 'bullmq';
 import { In, MoreThan } from 'typeorm';
 import { DateTime } from 'luxon';

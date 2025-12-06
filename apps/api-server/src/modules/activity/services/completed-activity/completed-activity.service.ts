@@ -9,7 +9,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime, IANAZone } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';

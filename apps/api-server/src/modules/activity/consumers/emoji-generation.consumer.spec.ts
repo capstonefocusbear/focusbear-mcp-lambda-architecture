@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { Job } from 'bull';
 import { OpenAIService } from '@app/openai';
 import { R2Service } from '@app/r2';

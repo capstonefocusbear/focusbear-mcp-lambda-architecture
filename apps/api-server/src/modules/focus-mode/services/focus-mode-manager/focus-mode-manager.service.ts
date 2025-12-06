@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';

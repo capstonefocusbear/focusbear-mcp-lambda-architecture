@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { getQueueToken } from '@nestjs/bull';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { DataSource } from 'typeorm';
 import { UserEmailPreferencesService } from './user-email-preferences.service';
 import { UserRepository } from '../../repositories/user.repository';

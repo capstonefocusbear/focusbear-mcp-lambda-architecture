@@ -8,7 +8,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';

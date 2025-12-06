@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UpdateCalendarEventDto } from '../dto/updateCalendarEvent.dto';
 import { Notification } from '../entities/notification.entity';

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { Job } from 'bull';
 import { TimeLogsConsumer } from './time-logs.consumer';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';

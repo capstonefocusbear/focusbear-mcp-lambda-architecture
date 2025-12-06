@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { createHash } from 'crypto';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';

@@ -8,7 +8,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';

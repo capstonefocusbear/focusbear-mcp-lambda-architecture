@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { getQueueToken } from '@nestjs/bull';
 import {
   standaloneHabitPackDBResponseDummy,

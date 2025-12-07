@@ -180,20 +180,26 @@ describe('Time Pressure Score - Size-Aware Implementation', () => {
   describe('topScore', () => {
     it('should calculate top score correctly', () => {
       const dueDate = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
-      const score = topScore(dueDate, 5, 60);
-      expect(score).toBeGreaterThan(0);
+      const score = topScore(dueDate, 5, 4);
+      // outcome=5, perspiration=4 → effortMinutes=60
+      // timePressure ≈ 4.35, TOP score = (4.35 * 5) / 4 = 5.4375
+      expect(score).toBeCloseTo(5.4375, 2);
     });
 
     it('should handle zero effort minutes', () => {
       const dueDate = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
-      const score = topScore(dueDate, 5, 0);
-      expect(score).toBeGreaterThan(0);
+      const score = topScore(dueDate, 5, 1);
+      // outcome=5, perspiration=1 → effortMinutes=5
+      // timePressure ≈ 0.669, TOP score = (0.669 * 5) / 1 = 3.345
+      expect(score).toBeCloseTo(3.345, 2);
     });
 
     it('should calculate top score with perspiration level conversion', () => {
       const dueDate = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
-      const score = topScore(dueDate, 1, 240);
-      expect(score).toBeGreaterThan(0);
+      const score = topScore(dueDate, 1, 5);
+      // outcome=1, perspiration=5 → effortMinutes=240
+      // timePressure ≈ 6.96, TOP score = (6.96 * 1) / 5 = 1.392
+      expect(score).toBeCloseTo(1.392, 2);
     });
   });
 

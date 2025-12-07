@@ -6,7 +6,7 @@ export const SCORE_FLOOR = 0.1;
 
 const MS_PER_DAY = 86_400_000;
 const NUMERIC_STABILITY_EPS = 1e-9;
-const MIN_EFFORT_DIVISOR_MINUTES = 1;
+const MIN_PERSPIRATION_LEVEL = 1;
 
 // ---- Date helpers -----------------------------------------------------------
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -27,7 +27,13 @@ export const perspirationLevelToMinutes = (level: number): number => {
     9: 3360, // A week
     10: 3360, // A week
   };
-  return mapping[level] || 5; // Default to 5 minutes for unknown levels
+  const numLevel = Number(level);
+  if (Number.isNaN(numLevel) || numLevel < 1 || numLevel > 10) {
+    return 5; // Default to 5 minutes for unknown/invalid levels
+  }
+
+  const normalizedLevel = Math.floor(numLevel);
+  return mapping[normalizedLevel] ?? 5; // Default to 5 minutes if somehow not in mapping
 };
 
 // ---- Base urgency (logarithmic formula from original proposal) -------------------
@@ -37,7 +43,7 @@ export const baseUrgency = (days: number): number => {
 
 // ---- Workload factor (0..1): share of runway consumed by this effort --------
 export const workloadShareOfRunway = (effortMinutes: number, days: number): number => {
-  const minutes = Math.max(0, effortMinutes);
+  const minutes = Math.max(0, Number(effortMinutes) || 0);
   const runwayMinutes = Math.max(0, days) * EFFORT_MINUTES_PER_RUNWAY_DAY;
   return minutes / Math.max(NUMERIC_STABILITY_EPS, minutes + runwayMinutes);
 };
@@ -69,5 +75,19 @@ export const timePressureScore = (due: Date | string, effortMinutes = 0): number
 };
 
 // ---- TOP score (unchanged structure) ---------------------------------------
-export const topScore = (due: Date | string, outcome: number, effortMinutes: number): number =>
-  (timePressureScore(due, effortMinutes) * outcome) / Math.max(MIN_EFFORT_DIVISOR_MINUTES, effortMinutes);
+export const topScore = (due: Date | string, outcome: number, perspirationLevel: number): number => {
+  const numericOutcome = Number(outcome);
+  if (Number.isNaN(numericOutcome)) {
+    return 0;
+  }
+
+  const normalizedPerspiration = Math.max(
+    MIN_PERSPIRATION_LEVEL,
+    Math.min(10, Number(perspirationLevel) || MIN_PERSPIRATION_LEVEL),
+  );
+  const effortMinutes = perspirationLevelToMinutes(normalizedPerspiration);
+
+  const timePressure = timePressureScore(due, effortMinutes);
+  // Divide by perspiration level (1..10), not minutes
+  return (timePressure * numericOutcome) / Math.max(MIN_PERSPIRATION_LEVEL, normalizedPerspiration);
+};

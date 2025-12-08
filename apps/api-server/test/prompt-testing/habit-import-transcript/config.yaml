@@ -1,0 +1,103 @@
+prompts:
+  - id: habit-import-transcript
+    raw: |
+      ## ROLE
+      You are an AI assistant that extracts habits or routine activities from transcribed audio recordings. Users may describe their existing morning or evening routines from other apps. Your job is to identify discrete habits that could be added to the Focus Bear habit library.
+
+      ## EXTRACTION RULES
+      1. IDENTIFY HABITS: Look for recurring activities, routines, or practices mentioned in the transcript
+      2. NORMALIZE NAMES: Convert to clear, action-oriented names (e.g., 'Morning meditation' not 'I usually meditate')
+      3. INFER DURATION: Estimate reasonable duration in minutes when mentioned or implied
+      4. CATEGORIZE: Assign a category if discernible (exercise, meditation, journaling, reading, etc.)
+      5. BE COMPREHENSIVE: Extract all mentioned habits, even briefly mentioned ones
+      6. PRESERVE INTENT: Keep the core purpose of each habit clear
+      7. LANGUAGE: Output habit names in English
+
+      ## CATEGORY GUIDELINES
+      - exercise: Physical activities like workouts, yoga, stretching, walking, running
+      - meditation: Mindfulness, breathing exercises, contemplation
+      - journaling: Writing, reflection, gratitude logging, brain dumps
+      - reading: Books, articles, educational content
+      - learning: Study sessions, courses, skill practice
+      - health: Hydration, vitamins, skincare, hygiene routines
+      - productivity: Planning, reviewing, goal setting, inbox zero
+      - other: Anything that doesn't fit the above categories
+
+      ## DURATION ESTIMATION
+      - Quick habits (1-5 min): Drinking water, taking vitamins, quick stretch
+      - Short habits (5-15 min): Meditation, journaling, light exercise
+      - Medium habits (15-30 min): Reading, focused exercise, meal prep
+      - Long habits (30-60 min): Deep work, extensive workouts, study sessions
+      - When duration is mentioned, use it; when not mentioned, estimate based on habit type
+
+      ## OUTPUT FORMAT
+      Provide response ONLY in JSON format:
+      {
+        "habits": [
+          {
+            "name": "string (clear, action-oriented habit name)",
+            "description": "string (brief description of what the habit involves)",
+            "estimatedDurationMinutes": number (1-120, best estimate),
+            "category": "string (exercise|meditation|journaling|reading|learning|health|productivity|other)"
+          }
+        ]
+      }
+
+      If no habits can be identified, return: { "habits": [] }
+
+      ---
+      # TRANSCRIPT TO ANALYZE
+      Transcript:
+      {{transcript}}
+
+providers:
+  - id: openai:gpt-5.1
+    config:
+      temperature: 0
+      max_tokens: 2048
+      apiKeyEnvar: OPENAI_API_KEY
+
+output:
+  - debug
+  - json
+
+tests:
+  - description: "Audio transcript - morning routine description"
+    vars:
+      transcript: "So in the morning I usually wake up around 6 AM and do a 10 minute meditation. Then I drink some water and do some light stretching for about 5 minutes. After that I journal for about 15 minutes writing down my thoughts and gratitude. Then I exercise for 30 minutes, usually some cardio or strength training."
+      min_habits: 4
+      max_habits: 6
+      expected_categories: ["meditation", "exercise", "journaling", "health"]
+    assert:
+      - type: javascript
+        value: file://validate-extraction.js
+
+  - description: "Audio transcript - evening routine"
+    vars:
+      transcript: "My evening routine is pretty simple. I read for about 20 minutes before bed, usually fiction or self-improvement books. Then I do a quick 5 minute mindfulness session and write in my gratitude journal."
+      min_habits: 2
+      max_habits: 4
+      expected_categories: ["reading", "meditation", "journaling"]
+    assert:
+      - type: javascript
+        value: file://validate-extraction.js
+
+  - description: "Audio transcript - productivity focused"
+    vars:
+      transcript: "Every day I spend 15 minutes reviewing my goals and planning my tasks. I also do inbox zero in the morning which takes about 10 minutes. Throughout the day I take breaks to stretch and hydrate."
+      min_habits: 2
+      max_habits: 5
+      expected_categories: ["productivity", "health", "exercise"]
+    assert:
+      - type: javascript
+        value: file://validate-extraction.js
+
+  - description: "Audio transcript - minimal habits"
+    vars:
+      transcript: "I just meditate for 10 minutes every morning. That's pretty much my only habit right now."
+      min_habits: 1
+      max_habits: 2
+      expected_categories: ["meditation"]
+    assert:
+      - type: javascript
+        value: file://validate-extraction.js

@@ -156,6 +156,7 @@ export const AUTH0_RETRY_CONFIG = {
 
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 export const GPT_5_MINI = 'gpt-5-mini';
+export const GPT_5_1 = 'gpt-5.1';
 
 export const GPT_4_1 = 'gpt-4.1';
 
@@ -178,6 +179,7 @@ export enum BullQueues {
   TODO_AUDIO = 'todo-audio',
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
+  HABIT_IMPORT = 'habit-import',
 }
 
 export enum BullWorkers {
@@ -201,6 +203,7 @@ export enum BullWorkers {
   PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
   PROCESS_HABIT_CREATION = 'process-habit-creation',
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
+  PROCESS_HABIT_IMPORT = 'process-habit-import',
 }
 
 export const createActivityFunction = {
@@ -333,6 +336,7 @@ export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
 export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
 export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
+export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

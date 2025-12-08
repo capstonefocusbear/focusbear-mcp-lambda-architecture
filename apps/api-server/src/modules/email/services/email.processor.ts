@@ -36,13 +36,11 @@ export class EmailProcessor {
       const { user, metrics, unsubscribe_token, emailType } = job.data;
       // Safety check: skip if user is currently unsubscribed
       if (await this.isUserUnsubscribed(user.id)) {
-        this.sentryService
-          .instance()
-          .captureMessage('Skipped sending progress email: user unsubscribed', {
-            level: 'info',
-            extra: { jobId: job.id, userId: user.id, emailType: emailType || 'weekly' },
-            tags: { email_action: 'skip_unsubscribed' },
-          });
+        this.sentryService.instance().captureMessage('Skipped sending progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id, emailType: emailType || 'weekly' },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
       }
       const variant = emailType === 'daily' ? 'daily' : 'weekly';
@@ -95,13 +93,11 @@ export class EmailProcessor {
       const { user, metrics, unsubscribe_token } = job.data;
       // Safety check: skip if user is currently unsubscribed
       if (await this.isUserUnsubscribed(user.id)) {
-        this.sentryService
-          .instance()
-          .captureMessage('Skipped sending monthly progress email: user unsubscribed', {
-            level: 'info',
-            extra: { jobId: job.id, userId: user.id },
-            tags: { email_action: 'skip_unsubscribed' },
-          });
+        this.sentryService.instance().captureMessage('Skipped sending monthly progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
       }
       const fromEmail = 'support@focusbear.io';
@@ -152,13 +148,11 @@ export class EmailProcessor {
       const { user, unsubscribe_token } = job.data;
       // Safety check: skip if user is currently unsubscribed
       if (await this.isUserUnsubscribed(user.id)) {
-        this.sentryService
-          .instance()
-          .captureMessage('Skipped sending no-progress email: user unsubscribed', {
-            level: 'info',
-            extra: { jobId: job.id, userId: user.id },
-            tags: { email_action: 'skip_unsubscribed' },
-          });
+        this.sentryService.instance().captureMessage('Skipped sending no-progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
       }
       const fromEmail = 'support@focusbear.io';

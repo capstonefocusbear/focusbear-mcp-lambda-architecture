@@ -86,40 +86,10 @@ output:
 tests:
   - description: "Simple morning routine screenshot"
     vars:
-      url: https://i.ibb.co/placeholder/morning-routine.jpg
+      url: https://ibb.co/rfddRs2b
       min_habits: 3
-      max_habits: 6
-      expected_categories: ["meditation", "exercise", "journaling", "health"]
-    assert:
-      - type: javascript
-        value: file://validate-extraction.js
-
-  - description: "Habit tracker app screenshot"
-    vars:
-      url: https://i.ibb.co/placeholder/habit-tracker.jpg
-      min_habits: 2
-      max_habits: 10
-      expected_categories: ["exercise", "meditation", "reading", "health", "productivity"]
-    assert:
-      - type: javascript
-        value: file://validate-extraction.js
-
-  - description: "Evening routine screenshot"
-    vars:
-      url: https://i.ibb.co/placeholder/evening-routine.jpg
-      min_habits: 2
       max_habits: 5
-      expected_categories: ["meditation", "journaling", "reading", "health"]
-    assert:
-      - type: javascript
-        value: file://validate-extraction.js
-
-  - description: "Mixed routine with timings"
-    vars:
-      url: https://i.ibb.co/placeholder/mixed-routine.jpg
-      min_habits: 3
-      max_habits: 8
-      expected_categories: ["exercise", "meditation", "productivity", "reading"]
+      expected_categories: ["Do room", "Clean desk", "Go to gym"]
     assert:
       - type: javascript
         value: file://validate-extraction.js

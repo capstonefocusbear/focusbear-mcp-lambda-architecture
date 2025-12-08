@@ -70,6 +70,7 @@ export class AsyncTaskService extends BaseCRUDService<AsyncTaskRepository, Async
       const updatedTask = await this.asyncTaskRepository.update(id, {
         status: updateDto.status,
         metadata: updateDto.metadata || existingTask.metadata,
+        updated_at: new Date().toISOString(),
       });
 
       return updatedTask;

@@ -10,6 +10,7 @@ import {
   HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
   HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
   TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
+  ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -92,7 +93,28 @@ export class PromptCacheService implements OnModuleInit {
         });
       }
 
-      // Load handwritten todos prompt
+      // Load routine suggestions prompt
+      this.logger.log(`Loading routine suggestions prompts from ${ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH}`);
+      try {
+        const routineSuggestionsContent = await fs.readFile(ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH, 'utf8');
+        const routineSuggestionPrompts = yaml.load(routineSuggestionsContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (routineSuggestionPrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(routineSuggestionPrompts.prompts);
+          this.logger.log(`Loaded ${routineSuggestionPrompts.prompts.length} routine suggestions prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load routine suggestions prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load routine suggestions prompts',
+            configPath: ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
       try {
         const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');

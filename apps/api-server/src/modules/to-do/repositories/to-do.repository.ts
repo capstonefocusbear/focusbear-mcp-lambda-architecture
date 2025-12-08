@@ -31,7 +31,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       WHEN to_do.due_date::date < CURRENT_DATE THEN 
         /* Overdue: base score + 1 point per overdue day (no cap) */
         10.0 + (CURRENT_DATE - to_do.due_date::date)
-      WHEN to_do.due_date = CURRENT_DATE THEN 9.0
+      WHEN to_do.due_date::date = CURRENT_DATE THEN 9.0
       ELSE GREATEST(
         0.1,
         /* Final formula: ((base / 8) * 10) * modifier */
@@ -54,7 +54,10 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         )
       )
     END
-    * (to_do.outcome::float / NULLIF((${ToDoRepository.EFFORT_MINUTES}), 0))
+    * (
+      COALESCE(to_do.outcome::numeric, 0.0)
+      / GREATEST(1.0, LEAST(10.0, COALESCE(to_do.perspiration_level::numeric, 1.0)))
+    )
   `;
 
   constructor(private readonly connection: Connection) {

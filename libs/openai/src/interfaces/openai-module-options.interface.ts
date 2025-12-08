@@ -10,6 +10,8 @@ export interface IOpenAIOptions {
   subtasksGeneration?: OpenAI.ClientOptions;
   brainDumpConversion?: OpenAI.ClientOptions;
   habitAdjustment?: OpenAI.ClientOptions;
+  routineSuggestionEmbedding?: OpenAI.ClientOptions;
+  routineSuggestion?: OpenAI.ClientOptions;
   // Backward compatibility
   apiKey?: string;
 }

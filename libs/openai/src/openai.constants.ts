@@ -16,6 +16,7 @@ export const MAX_WORD_LENGTH = {
   metadata: 500,
 };
 export const INPUT_WRAPPER = '%%%';
+export const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
 
 export enum OpenAIKeyType {
   GENERAL = 'general',
@@ -30,6 +31,8 @@ export enum OpenAIKeyType {
   ACTIVITY_EMOJI_GENERATION = 'activityEmojiGeneration',
   HABIT_ADJUSTMENT = 'habitAdjustment',
   TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
+  ROUTINE_SUGGESTION_EMBEDDING = 'routineSuggestionEmbedding',
+  ROUTINE_SUGGESTION = 'routineSuggestion',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
@@ -41,6 +44,8 @@ export const HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/handwritten-todos-analysis/prompt.json';
 export const TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/todos-transcript-analysis/prompt.json';
+export const ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/routine-suggestions/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
@@ -144,11 +149,14 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
 
   analyzeImage: {
     model: GPT_4_1,
+    prompt_cache_retention: '24h',
+
     messages: null,
   },
 
   habitAdjustment: {
     model: GPT_4_1,
+    prompt_cache_retention: '24h',
     temperature: 0,
     n: 1,
     max_tokens: 1024,
@@ -161,5 +169,11 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },
+  },
+  routineSuggestions: {
+    model: GPT_5_MINI,
+    temperature: 1,
+    n: 1,
+    messages: null,
   },
 };

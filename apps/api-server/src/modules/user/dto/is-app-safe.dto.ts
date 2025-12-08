@@ -20,6 +20,12 @@ export class IsAppSafeDto {
   @MaxLength(MAX_WORD_LENGTH.justification)
   justificationForThisSpecificApp?: string;
 
+  // Legacy/alias field used by some clients
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_WORD_LENGTH.justification)
+  justification?: string;
+
   @IsOptional()
   @IsString()
   language = 'English';

@@ -25,6 +25,7 @@ import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-u
 import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import {
+  DEFAULT_EMBEDDING_MODEL,
   INPUT_WRAPPER,
   MAX_WORD_LENGTH,
   OPENAI_MODULE_OPTIONS,
@@ -54,6 +55,8 @@ export class OpenAIService {
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
     [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -779,6 +782,40 @@ export class OpenAIService {
     );
   }
 
+  async createEmbedding(
+    input: string | string[],
+    {
+      model = DEFAULT_EMBEDDING_MODEL,
+      type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
+    }: { model?: string; type?: OpenAIKeyType } = {},
+  ): Promise<number[]> {
+    try {
+      const openai = this.getOpenAIInstance(type);
+      const response = await openai.embeddings.create({
+        input,
+        model,
+      });
+      return response.data?.[0]?.embedding ?? [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      return [];
+    }
+  }
+
+  async createChatCompletion(
+    messages: ChatCompletionMessageParam[],
+    {
+      type = OpenAIKeyType.ROUTINE_SUGGESTION,
+      params = {},
+    }: { type?: OpenAIKeyType; params?: Partial<OpenAI.Chat.ChatCompletionCreateParamsNonStreaming> } = {},
+  ) {
+    const baseParams = {
+      ...(OPENAI_PARAMS.routineSuggestions as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+      ...params,
+    };
+    return this.getOpenAIChatCompletionsNonStreaming(messages, type, baseParams);
+  }
+
   isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {
     // Skip validation for empty strings or null/undefined
     if (!input) {
@@ -963,6 +1000,14 @@ export class OpenAIService {
         const parsed = JSON.parse(response);
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
+          if (!Array.isArray(parsed)) {
+            this.sentryService.instance().captureException(new Error('Grouped habits response is not iterable'), {
+              level: 'error',
+              extra: { response, currentHabits, userFeedback },
+            });
+            return currentHabits;
+          }
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
           const validGrouped: Record<string, ActivityTemplate[]> = {};
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
@@ -1001,7 +1046,8 @@ export class OpenAIService {
         // If groupByGoals is requested but AI did not group, group here
         if (groupByGoals) {
           const grouped: Record<string, ActivityTemplate[]> = {};
-          for (const goal of userGoals) {
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
+          for (const goal of normalizedGoals) {
             grouped[goal] = sanitizedAdjustedHabits.filter((adjustedHabit) => {
               return currentHabits.find((habit) => adjustedHabit.id === habit.id).tags?.includes(goal);
             });

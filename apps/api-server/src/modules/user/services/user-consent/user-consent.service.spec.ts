@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { DateTime, Settings } from 'luxon';
 import { userDummy } from '../../../../../test/dummies';
 import { UserConsentRepositoryMock, UserRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';

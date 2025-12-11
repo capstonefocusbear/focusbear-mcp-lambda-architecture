@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import axios from 'axios';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';

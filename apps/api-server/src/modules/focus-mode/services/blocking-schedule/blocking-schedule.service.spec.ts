@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { randomUUID } from 'crypto';
 import { BlockingScheduleService } from './blocking-schedule.service';
 import { BlockingScheduleRepository } from '../../repositories/blocking-schedule.repository';

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import {

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DataSource } from 'typeorm';
 import { UserRepository } from '../../repositories/user.repository';
 import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dto';

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { DateTime } from 'luxon';
 import { UserProgressMetricsService } from './user-progress-metrics.service';
 import { DailyStatsRepository } from '../../repositories/user-daily-stats.repository';

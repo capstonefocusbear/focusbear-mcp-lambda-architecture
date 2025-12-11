@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { I18nService } from 'nestjs-i18n';
 import { Auth0ManagementService } from '@app/auth0';
 import { UnlockRequestRepository } from '../repositories/unlock-request.repository';

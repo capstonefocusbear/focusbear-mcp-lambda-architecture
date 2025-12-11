@@ -1,5 +1,5 @@
 import { Process, Processor } from '@nestjs/bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
 import { OpenAIService } from '@app/openai';
 import { R2Service } from '@app/r2';

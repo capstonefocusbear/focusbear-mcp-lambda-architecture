@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { Job } from 'bull';
 import { PusherService } from '@app/pusher';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { RoutineSuggestionsConsumer } from './routine-suggestions.consumer';
 import { ActivityLibraryService } from '../services/activity-library.service';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';

@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { ActivitiesArrayDummy, userDummy } from '../../../../../test/dummies';
 import { ActivityRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { ActivityRepository } from '../../repositories/activity.repository';

@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
 import { load } from 'cheerio';

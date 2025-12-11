@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { convert as htmlToPlainText } from 'html-to-text';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';

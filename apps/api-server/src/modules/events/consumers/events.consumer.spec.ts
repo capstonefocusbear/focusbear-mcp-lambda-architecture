@@ -1,7 +1,7 @@
 /* eslint-disable global-require */
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
-import { SENTRY_TOKEN, SentryService } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, SentryService } from '@app/observability';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';

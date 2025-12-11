@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Inject, Injectable, UseGuards, forwardRef } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { getDataCenterUrl, secondsToHHMM } from '../../../shared/utils/helpers';
 import { BaseIntegrationService } from './base.service';
 import { UserRepository } from '../../user/repositories/user.repository';

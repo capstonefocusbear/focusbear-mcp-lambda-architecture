@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { CompletedFocusBlockRepositoryMock, UserRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { CompletedFocusBlockRepository } from '../../repositories/completed-focus-block.repository';

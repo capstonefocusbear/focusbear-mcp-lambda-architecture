@@ -3,7 +3,7 @@ import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { hhmmToSeconds, secondsTohhmm } from '../../../shared/utils/helpers';
 import { BullQueues, FIELD_NAME_TOTAL, FIELD_NAME_WORKLOG } from '../../../shared/utils/constants';
 import { BaseIntegrationService } from './base.service';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { Between } from 'typeorm';
 import { User } from '../../entities/user.entity';

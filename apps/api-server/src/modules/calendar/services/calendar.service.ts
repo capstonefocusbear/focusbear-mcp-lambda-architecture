@@ -1,5 +1,5 @@
 import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { CalendarPlatforms } from '../../platform-integrations/domain/calendar-platforms.enum';
 import { CalendarDto } from '../dto/calendar.dto';
 import { CalendarExcludedKeyword } from '../entities/calendar-excluded-keywords.entity';

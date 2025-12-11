@@ -1,7 +1,7 @@
 import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { SendGridService } from '@app/send-grid';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';
 import { UserRepository } from '../../user/repositories/user.repository';

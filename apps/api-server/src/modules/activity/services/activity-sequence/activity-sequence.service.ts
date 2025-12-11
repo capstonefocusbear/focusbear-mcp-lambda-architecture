@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DAYS_OF_WEEK } from '../../../../../../../cron-jobs/user-stats-cron-job/constants';
 import { ActivityType } from '../../domain/activity-type.enum';
 import { DailySequenceDurations } from '../../domain/daily-sequence-durations.model';

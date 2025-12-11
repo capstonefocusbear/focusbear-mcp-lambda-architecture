@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { promises as fs } from 'fs';
 import { GeminiService } from './gemini.service';
 import { GEMINI_MODULE_OPTIONS, GEMINI_PROMPT_CONFIG_PATH } from './gemini.constants';

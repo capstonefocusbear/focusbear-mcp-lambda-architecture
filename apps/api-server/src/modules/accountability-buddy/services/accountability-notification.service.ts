@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { NotificationRepository } from '../../notification/repository/notification.repository';
 import { Notification } from '../../notification/entities/notification.entity';
 import { NotificationType } from '../../../shared/domain/notification-type.enum';

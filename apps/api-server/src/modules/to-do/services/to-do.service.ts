@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
 import { OpenAIService } from '@app/openai';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { BraindumpTaskDto } from '@app/openai/dto/braindump-task-response.dto';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';

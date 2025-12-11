@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards, Query, Param, Post, Body, Req } from '@nestjs/common';
 import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Throttle } from '@nestjs/throttler';
 import { API_RESPONSE_EMAIL_NOT_VERIFIED, API_RESPONSE_THIRD_PARTY_EMAIL } from '../../../shared/utils/error-constants';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';

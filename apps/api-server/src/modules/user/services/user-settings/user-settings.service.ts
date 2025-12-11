@@ -8,7 +8,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { Job } from 'bull';
 import { R2Service } from '@app/r2';
 import { OpenAIService } from '@app/openai';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import axios from 'axios';
 import { HabitImportConsumer } from './habit-import.consumer';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';

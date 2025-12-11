@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { OpenAIService } from '@app/openai';
 import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';

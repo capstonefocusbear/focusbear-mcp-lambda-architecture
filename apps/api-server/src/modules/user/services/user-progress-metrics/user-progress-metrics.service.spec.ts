@@ -207,7 +207,7 @@ describe('UserProgressMetricsService', () => {
       );
     });
 
-    it('should use current week when weekStart is not provided', async () => {
+    it('should use previous week when weekStart is not provided', async () => {
       // Arrange
       const user = createMockUser();
 
@@ -223,8 +223,8 @@ describe('UserProgressMetricsService', () => {
       expect(result.week_start).toBeInstanceOf(Date);
       expect(result.week_end).toBeInstanceOf(Date);
 
-      const startOfWeek = DateTime.now().setZone(user.timezone).startOf('week');
-      const expectedStart = startOfWeek.startOf('day').toJSDate();
+      const startOfPreviousWeek = DateTime.now().setZone(user.timezone).minus({ weeks: 1 }).startOf('week');
+      const expectedStart = startOfPreviousWeek.startOf('day').toJSDate();
 
       expect(result.week_start.toISOString().split('T')[0]).toBe(expectedStart.toISOString().split('T')[0]);
     });

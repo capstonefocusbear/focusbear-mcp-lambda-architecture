@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { OpenAIService } from '@app/openai';
 import { HabitImportExtractionService } from './habit-import-extraction.service';
 import { ActivityTemplateRetrieverService } from './activity-template-retriever.service';

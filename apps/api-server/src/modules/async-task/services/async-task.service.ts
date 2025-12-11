@@ -31,6 +31,8 @@ export class AsyncTaskService extends BaseCRUDService<AsyncTaskRepository, Async
       const asyncTask = new AsyncTask({
         status: AsyncTaskStatus.PENDING,
         metadata: createDto.metadata,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       return await this.asyncTaskRepository.create(asyncTask);

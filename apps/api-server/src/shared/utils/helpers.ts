@@ -226,7 +226,10 @@ export const safeDecodeURIComponent = (str: string): string => {
   if (!str) return str;
 
   try {
-    return decodeURIComponent(str);
+    // Replace '+' with spaces first (for application/x-www-form-urlencoded format)
+    // This is needed for Windows app bug reports where spaces are encoded as '+'
+    const withSpaces = str.replace(/\+/g, ' ');
+    return decodeURIComponent(withSpaces);
   } catch (error) {
     return str; // Return original string if decoding fails
   }

@@ -138,13 +138,40 @@ export class SyncTasksConsumer {
     platform: IntegrationPlatforms,
   ) {
     const syncedTasksFromProjectIds = syncedTasksFromProject.map((task) => task.external_task_id);
-    // Get tasks that are from same project but not synced yet
-    const tasksToSync = tasksFromProject.filter((task) => !syncedTasksFromProjectIds.includes(task.id));
     const projectsExternalIdToLocalIdMap = this.getSyncedProjectsIdMap(syncedProjects);
-    const newTasksFromProject = tasksToSync.map((newExternalTask) => {
-      return this.createNewToDo(newExternalTask, userId, projectsExternalIdToLocalIdMap, platform);
-    });
-    await this.toDoRepository.orm.save(newTasksFromProject);
+
+    // Identify new and existing tasks
+    const tasksToCreate = tasksFromProject.filter((task) => !syncedTasksFromProjectIds.includes(task.id));
+    const tasksToUpdate = tasksFromProject.filter((task) => syncedTasksFromProjectIds.includes(task.id));
+
+    // Create new tasks
+    const newTasks = tasksToCreate.map((newExternalTask) =>
+      this.createNewToDo(newExternalTask, userId, projectsExternalIdToLocalIdMap, platform),
+    );
+
+    // Update only tasks that have changed
+    const updatedTasks = tasksToUpdate
+      .map((taskToUpdate) => {
+        const existingTask = syncedTasksFromProject.find((t) => t.external_task_id === taskToUpdate.id);
+        if (existingTask) {
+          const hasChanged =
+            existingTask.title !== taskToUpdate.name ||
+            existingTask.details !== taskToUpdate.description ||
+            JSON.stringify(existingTask.external_task_metadata) !==
+              JSON.stringify({ platform, task_data: taskToUpdate.external_metadata });
+
+          if (hasChanged) {
+            existingTask.title = taskToUpdate.name;
+            existingTask.details = taskToUpdate.description;
+            existingTask.external_task_metadata = { platform, task_data: taskToUpdate.external_metadata };
+            return existingTask;
+          }
+        }
+        return null;
+      })
+      .filter((task) => task !== null);
+
+    await this.toDoRepository.orm.save([...newTasks, ...updatedTasks]);
   }
 
   createNewToDo(task: Task, userId: string, projectExternalIdToLocalIdMap: any, platform: IntegrationPlatforms) {

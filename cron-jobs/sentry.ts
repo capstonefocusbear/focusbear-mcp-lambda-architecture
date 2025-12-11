@@ -62,6 +62,7 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
   job: () => Promise<T>,
   options: { exitOnFinish?: boolean } = {},
 ): Promise<T> {
+  const METRICS_TIMEOUT_MS = Number(process.env.CRON_METRICS_TIMEOUT_MS || 5000);
   const { exitOnFinish = true } = options;
   const startedAt = Date.now();
   let exitCode = 1;
@@ -89,7 +90,7 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
 
     try {
       const processedCount = itemCounts ? Object.values(itemCounts).reduce((total, count) => total + count, 0) : undefined;
-      await emitCronMetrics({
+      const metricsPromise = emitCronMetrics({
         namespace,
         environment,
         service,
@@ -99,6 +100,10 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
         processedCount,
         itemCounts,
       });
+      await Promise.race([
+        metricsPromise,
+        new Promise<void>((resolve) => setTimeout(resolve, METRICS_TIMEOUT_MS)),
+      ]);
     } catch (error) {
       console.error('Failed to emit cron metrics', error);
     }

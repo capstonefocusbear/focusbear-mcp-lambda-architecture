@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, Unautho
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
 import { InjectSentry, SentryService } from '@app/observability';
+import { In } from 'typeorm';
 import { BullWorkers, MAX_RETRY } from '../../../shared/utils/constants';
 import { IBaseIntegrationService } from './base.service.interface';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -246,6 +247,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       );
       const projectsResponse = [];
       if (!portals) return projectsResponse;
+      const externalProjectIds: string[] = [];
       for (const portal of portals) {
         // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
@@ -259,6 +261,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
         projects.forEach((project) => {
+          externalProjectIds.push(project.id);
           const isSynced = userSyncedProjectsExternalIds.includes(project.id);
           let externalStatuses = [];
           let haveTasksBeenSynced = false;
@@ -278,6 +281,30 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
             external_statuses: externalStatuses,
           };
           projectsResponse.push(projectData);
+        });
+      }
+
+      // Remove unrelated projects that were previously synced
+      const projectsToRemove = userSyncedProjects.filter(
+        (syncedProject) => !externalProjectIds.includes(syncedProject.external_project_id),
+      );
+      if (projectsToRemove.length > 0) {
+        const toDosToRemove = await this.toDoRepository.orm.find({
+          where: {
+            user_id: userId,
+            synced_project_id: In(projectsToRemove.map((project) => project.id)),
+          },
+        });
+
+        if (toDosToRemove.length > 0) {
+          const toDoIdsToRemove = toDosToRemove.map((toDo) => toDo.id);
+          await this.toDoRepository.orm.delete({
+            id: In(toDoIdsToRemove),
+          });
+        }
+        const projectIdsToRemove = projectsToRemove.map((project) => project.id);
+        await this.syncedProjectsRepository.orm.delete({
+          id: In(projectIdsToRemove),
         });
       }
 

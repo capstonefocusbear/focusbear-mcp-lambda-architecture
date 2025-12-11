@@ -11,6 +11,8 @@ import {
   HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
   TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
   ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH,
+  HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH,
+  HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -178,6 +180,48 @@ export class PromptCacheService implements OnModuleInit {
           extra: {
             message: 'Failed to load usage screenshot prompts',
             configPath: USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load habit import image prompts
+      this.logger.log(`Loading habit import image prompts from ${HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH}`);
+      try {
+        const habitImportImageContent = await fs.readFile(HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH, 'utf8');
+        const habitImportImagePrompts = yaml.load(habitImportImageContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (habitImportImagePrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(habitImportImagePrompts.prompts);
+          this.logger.log(`Loaded ${habitImportImagePrompts.prompts.length} habit import image prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load habit import image prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load habit import image prompts',
+            configPath: HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load habit import transcript prompts
+      this.logger.log(`Loading habit import transcript prompts from ${HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
+      try {
+        const habitImportTranscriptContent = await fs.readFile(HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH, 'utf8');
+        const habitImportTranscriptPrompts = yaml.load(habitImportTranscriptContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (habitImportTranscriptPrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(habitImportTranscriptPrompts.prompts);
+          this.logger.log(`Loaded ${habitImportTranscriptPrompts.prompts.length} habit import transcript prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load habit import transcript prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load habit import transcript prompts',
+            configPath: HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH,
           },
         });
       }

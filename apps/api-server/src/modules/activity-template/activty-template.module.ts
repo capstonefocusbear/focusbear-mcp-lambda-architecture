@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { IPusherOptions, PusherModule } from '@app/pusher';
+import { R2Module } from '@app/r2';
 import { ActivityTemplateService } from './services/activity-template.service';
 import { ActivityTemplateRepository } from './repository/activity-template.repository';
 import { ActivityTemplateParserService } from './services/activity-template-parser.service';
@@ -26,6 +27,9 @@ import { RoutineSuggestionsConsumer } from './consumers/routine-suggestions.cons
 import { AsyncTaskModule } from '../async-task/async-task.module';
 import { BullQueues } from '../../shared/utils/constants';
 import { HabitCreationAsyncService } from './services/habit-creation-async.service';
+import { HabitImportAsyncService } from './services/habit-import-async.service';
+import { HabitImportExtractionService } from './services/habit-import-extraction.service';
+import { HabitImportConsumer } from './consumers/habit-import.consumer';
 
 @Module({
   providers: [
@@ -43,6 +47,9 @@ import { HabitCreationAsyncService } from './services/habit-creation-async.servi
     RoutineSuggestionsAsyncService,
     HabitCreationAsyncService,
     RoutineSuggestionsConsumer,
+    HabitImportAsyncService,
+    HabitImportExtractionService,
+    HabitImportConsumer,
   ],
   exports: [
     ActivityTemplateParserService,
@@ -57,6 +64,8 @@ import { HabitCreationAsyncService } from './services/habit-creation-async.servi
     HabitLibraryRequestRepository,
     RoutineSuggestionsAsyncService,
     HabitCreationAsyncService,
+    HabitImportAsyncService,
+    HabitImportExtractionService,
   ],
   controllers: [ActivityLibraryController],
   imports: [
@@ -67,6 +76,9 @@ import { HabitCreationAsyncService } from './services/habit-creation-async.servi
     BullModule.registerQueue({
       name: BullQueues.ROUTINE_SUGGESTIONS,
     }),
+    BullModule.registerQueue({
+      name: BullQueues.HABIT_IMPORT,
+    }),
     PusherModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -76,6 +88,11 @@ import { HabitCreationAsyncService } from './services/habit-creation-async.servi
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('openai'),
+    }),
+    R2Module.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): any => configService.get('r2'),
     }),
   ],
 })

@@ -25,12 +25,16 @@ export class UserProgressMetricsService {
     try {
       const timezone = user.timezone || 'UTC';
       const now = DateTime.now().setZone(timezone);
-      const startOfWeek = (weekStart ? DateTime.fromJSDate(weekStart).setZone(timezone) : now.startOf('week')).startOf(
-        'day',
-      );
 
-      // If weekStart is provided (e.g., daily emails for a rolling 7-day window), cap at a 7-day range.
-      const endOfWeek = weekStart ? startOfWeek.plus({ days: 6 }).endOf('day') : startOfWeek.endOf('week');
+      // By default, report on the previous full week so that
+      // a weekly cron running at the start of the new week reflects
+      // the activity that just finished.
+      const base = weekStart
+        ? DateTime.fromJSDate(weekStart).setZone(timezone)
+        : now.minus({ weeks: 1 }).startOf('week');
+
+      const startOfWeek = base.startOf('day');
+      const endOfWeek = startOfWeek.plus({ days: 6 }).endOf('day');
 
       const weeklyStats = await this.dailyStatsRepository.orm.find({
         where: {

@@ -59,4 +59,10 @@ describe('Cron Job Wrapper Integration', () => {
     expect(Sentry.captureException).toHaveBeenCalled();
     expect(exitMock).toHaveBeenCalled();
   });
+
+  it('should clear timeout timer when job completes', async () => {
+    const promise = withTimeout(Promise.resolve('ok'), CRON_JOB_TIMEOUT_MS);
+    await expect(promise).resolves.toBe('ok');
+    expect(jest.getTimerCount()).toBe(0);
+  });
 }); 

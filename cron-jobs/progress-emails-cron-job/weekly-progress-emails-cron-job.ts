@@ -3,16 +3,23 @@ import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { AppModule } from '../../apps/api-server/src/app.module';
-import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
 import { Auth0ManagementService } from '@app/auth0';
-import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
+import { CRON_JOB_TIMEOUT_MS, ONE_MINUTE } from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
 const BATCH_SIZE = 30; // Process users in batches to avoid overwhelming the queue
+
+const WEEKLY_PROGRESS_EMAILS_CRON_TIMEOUT_MS = (() => {
+  const ms = Number(process.env.WEEKLY_PROGRESS_EMAILS_CRON_TIMEOUT_MS);
+  if (Number.isFinite(ms) && ms > 0) {
+    return ms;
+  }
+  return Math.max(CRON_JOB_TIMEOUT_MS, 30 * ONE_MINUTE);
+})();
 
 async function runWeeklyProgressEmailsCronJob() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -27,7 +34,7 @@ async function runWeeklyProgressEmailsCronJob() {
   let failedEmails = 0;
   try {
     console.log('Starting weekly progress emails cron job...');
-
+    const startedAt = Date.now();
 
     // Process users in batches to avoid overwhelming the system
     let skip = 0;
@@ -36,9 +43,8 @@ async function runWeeklyProgressEmailsCronJob() {
       const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
       usersConsidered += batch.length;
-      console.log(
-        `Processing batch ${batchNum} (${batch.length} users)`
-      );
+      const batchStartedAt = Date.now();
+      console.log(`Processing batch ${batchNum} (${batch.length} users)`);
 
       const emailPromises = batch.map(async (user) => {
         try {
@@ -71,9 +77,7 @@ async function runWeeklyProgressEmailsCronJob() {
             },
           );
 
-          console.log(`Queued weekly progress email for user ${user.id}`);
-          emailsQueued += 1;
-          return { success: true };
+          return { success: true, userId: user.id };
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -88,13 +92,19 @@ async function runWeeklyProgressEmailsCronJob() {
               logLevel: 'error',
             },
           );
-          return { success: false, error: error.message || 'Unknown error' };
+          return { success: false, userId: user.id, error: error.message || 'Unknown error' };
         }
       });
 
       // Wait for all emails in this batch to be queued
       const results = await Promise.all(emailPromises);
-      failedEmails += results.filter((result) => !result.success).length;
+      const successful = results.filter((result) => result.success).length;
+      const failed = results.length - successful;
+      emailsQueued += successful;
+      failedEmails += failed;
+      console.log(
+        `Batch ${batchNum} completed: ${successful} queued, ${failed} failed (${Date.now() - batchStartedAt}ms). Totals: ${emailsQueued} queued, ${failedEmails} failed, ${usersConsidered} users considered (${Date.now() - startedAt}ms)`,
+      );
 
       // Small delay between batches to avoid overwhelming the system
       if (batch.length === BATCH_SIZE) {
@@ -128,5 +138,7 @@ async function runWeeklyProgressEmailsCronJob() {
 }
 
 if (require.main === module) {
-  runCronWithTelemetry('weekly-progress-emails-cron', () => withTimeout(runWeeklyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('weekly-progress-emails-cron', () =>
+    withTimeout(runWeeklyProgressEmailsCronJob(), WEEKLY_PROGRESS_EMAILS_CRON_TIMEOUT_MS),
+  );
 }

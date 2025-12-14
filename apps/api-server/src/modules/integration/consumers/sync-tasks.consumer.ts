@@ -93,7 +93,7 @@ export class SyncTasksConsumer {
       // Get all user local tasks saved from external platforms
       const allUserExternalTasks = await this.toDoRepository.orm.find({
         where: { user_id: userId, external_task_id: Not(IsNull()) },
-        select: ['id', 'external_task_id', 'external_task_metadata'],
+        select: ['id', 'external_task_id', 'external_task_metadata', 'title', 'details'],
       });
       const allTasksFromPlatform = await this.getTasksFromSyncedProjects(userId, platform);
       for await (const syncedProject of syncedProjects) {

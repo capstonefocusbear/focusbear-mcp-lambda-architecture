@@ -563,9 +563,10 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)
@@ -578,9 +579,10 @@ export class UserRepository extends BaseRepository<User> {
 
     return this.buildEmailUserQuery()
       .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)
@@ -602,9 +604,10 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)

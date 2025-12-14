@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Process, Processor } from '@nestjs/bull';
-import { InjectSentry, SentryService } from '@app/observability';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Job } from 'bull';
 import { In, IsNull, Not } from 'typeorm';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
@@ -140,6 +140,13 @@ export class SyncTasksConsumer {
     const syncedTasksFromProjectIds = syncedTasksFromProject.map((task) => task.external_task_id);
     const projectsExternalIdToLocalIdMap = this.getSyncedProjectsIdMap(syncedProjects);
 
+    const syncedTasksMap = syncedTasksFromProject.reduce((map, task) => {
+      return {
+        ...map,
+        [task.external_task_id]: task,
+      };
+    }, {} as Record<string, ToDo>);
+
     // Identify new and existing tasks
     const tasksToCreate = tasksFromProject.filter((task) => !syncedTasksFromProjectIds.includes(task.id));
     const tasksToUpdate = tasksFromProject.filter((task) => syncedTasksFromProjectIds.includes(task.id));
@@ -152,7 +159,7 @@ export class SyncTasksConsumer {
     // Update only tasks that have changed
     const updatedTasks = tasksToUpdate
       .map((taskToUpdate) => {
-        const existingTask = syncedTasksFromProject.find((t) => t.external_task_id === taskToUpdate.id);
+        const existingTask = syncedTasksMap[taskToUpdate.id];
         if (existingTask) {
           const hasChanged =
             existingTask.title !== taskToUpdate.name ||

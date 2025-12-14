@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Process, Processor } from '@nestjs/bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
 import { In, IsNull, Not } from 'typeorm';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';

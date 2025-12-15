@@ -32,6 +32,17 @@ export class IsUrlSafeDto {
   @MaxLength(MAX_WORD_LENGTH.justification)
   justificationForThisUrl?: string;
 
+  // Legacy/alias fields used by some clients
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_WORD_LENGTH.justification)
+  justification?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_WORD_LENGTH.justification)
+  extraJustificationForThisSite?: string;
+
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

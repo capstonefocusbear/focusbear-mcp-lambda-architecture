@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { Between } from 'typeorm';
 import { User } from '../../entities/user.entity';
@@ -25,10 +25,16 @@ export class UserProgressMetricsService {
     try {
       const timezone = user.timezone || 'UTC';
       const now = DateTime.now().setZone(timezone);
-      const startOfWeek = (weekStart ? DateTime.fromJSDate(weekStart).setZone(timezone) : now.startOf('week')).startOf(
-        'day',
-      );
-      const endOfWeek = startOfWeek.endOf('week');
+
+      // By default, report on the previous full week so that
+      // a weekly cron running at the start of the new week reflects
+      // the activity that just finished.
+      const base = weekStart
+        ? DateTime.fromJSDate(weekStart).setZone(timezone)
+        : now.minus({ weeks: 1 }).startOf('week');
+
+      const startOfWeek = base.startOf('day');
+      const endOfWeek = startOfWeek.plus({ days: 6 }).endOf('day');
 
       const weeklyStats = await this.dailyStatsRepository.orm.find({
         where: {
@@ -49,7 +55,7 @@ export class UserProgressMetricsService {
         new Date(user.created_at),
       );
 
-      const routineMetrics = this.aggregateRoutineMetrics(weeklyStats, streaks);
+      const routineMetrics = this.aggregateRoutineMetrics(weeklyStats, streaks, DAYS_IN_WEEK);
       const focusMetrics = this.aggregateFocusMetrics(weeklyStats, streaks);
       const taskMetrics = this.aggregateTaskMetrics(weeklyStats);
 
@@ -74,6 +80,59 @@ export class UserProgressMetricsService {
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         extra: { userId: user.id, operation: 'calculateWeeklyProgress' },
+      });
+      throw error;
+    }
+  }
+
+  async calculateDailyProgress(user: User): Promise<WeeklyProgressMetricsDto> {
+    try {
+      const timezone = user.timezone || 'UTC';
+      const targetDay = DateTime.now().setZone(timezone).minus({ days: 1 });
+      const dayStart = targetDay.startOf('day');
+      const dayEnd = targetDay.endOf('day');
+
+      const dailyStats = await this.dailyStatsRepository.orm.find({
+        where: {
+          user_id: user.id,
+          date_completed: Between(dayStart.toJSDate(), dayEnd.toJSDate()),
+        },
+      });
+
+      const allTimeStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
+      const routineDurations = await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
+      const streaks = this.userStreaksService.calculateStreaksForUser(
+        allTimeStats,
+        user.timezone,
+        routineDurations,
+        new Date(user.created_at),
+      );
+
+      const routineMetrics = this.aggregateRoutineMetrics(dailyStats, streaks, 1);
+      const focusMetrics = this.aggregateFocusMetrics(dailyStats, streaks);
+      const taskMetrics = this.aggregateTaskMetrics(dailyStats);
+
+      return {
+        week_start: dayStart.toJSDate(),
+        week_end: dayEnd.toJSDate(),
+        routines: routineMetrics,
+        focus_sessions: focusMetrics,
+        tasks: taskMetrics,
+        streaks: {
+          current_overall: streaks.focus_modes_streak,
+          best_overall: Math.max(
+            streaks.focus_modes_streak,
+            streaks.morning_routines_streak,
+            streaks.evening_routines_streak,
+          ),
+          morning_routine: streaks.morning_routines_streak,
+          evening_routine: streaks.evening_routines_streak,
+          focus_mode: streaks.focus_modes_streak,
+        },
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        extra: { userId: user.id, operation: 'calculateDailyProgress' },
       });
       throw error;
     }
@@ -148,7 +207,7 @@ export class UserProgressMetricsService {
     }
   }
 
-  private aggregateRoutineMetrics(weeklyStats: DailyStats[], streaks: any) {
+  private aggregateRoutineMetrics(weeklyStats: DailyStats[], streaks: any, totalDays = DAYS_IN_WEEK) {
     const morningRoutinesCompleted = weeklyStats.filter((s) => s.morning_routine_completion_percentage > 0).length;
     const eveningRoutinesCompleted = weeklyStats.filter((s) => s.evening_routine_completion_percentage > 0).length;
     const microBreaksCompleted = weeklyStats.reduce((sum, s) => sum + (s.seconds_spent_doing_breaks > 0 ? 1 : 0), 0);
@@ -156,17 +215,17 @@ export class UserProgressMetricsService {
     return {
       morning: {
         completed: morningRoutinesCompleted,
-        total: DAYS_IN_WEEK,
+        total: totalDays,
         streak: streaks.morning_routines_streak,
       },
       evening: {
         completed: eveningRoutinesCompleted,
-        total: DAYS_IN_WEEK,
+        total: totalDays,
         streak: streaks.evening_routines_streak,
       },
       micro_breaks: {
         completed: microBreaksCompleted,
-        total: DAYS_IN_WEEK,
+        total: totalDays,
         streak: streaks.micro_breaks_streak,
       },
     };

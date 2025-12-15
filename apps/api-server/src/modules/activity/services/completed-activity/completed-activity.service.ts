@@ -9,7 +9,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime, IANAZone } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -1373,36 +1373,38 @@ export class CompletedActivityService implements OnModuleInit {
     activity: Activity,
     language: string,
   ): Promise<void> {
-    const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
-
-    if (isVerboseLoggingAllowed) {
-      console.log('Broadcasting completion event for user:', {
+    // Verbose logging for broadcast start
+    await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Broadcasting completion event for user:',
+      {
         user_id,
         completed_activity_id,
         activity_id: activity.id,
         activity_name: activity.activity_data.name,
         language,
         timestamp: new Date().toISOString(),
-      });
-    }
+      },
+    ]);
 
     const pushData = new ActivityCompletedPush(completed_activity_id, { ...completedActivity });
 
     // Pusher Channels broadcast with error handling
     try {
-      if (isVerboseLoggingAllowed) {
-        console.log('Triggering Pusher Channels event:', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Triggering Pusher Channels event:',
+        {
           channel: `private-${user_id}`,
           event: 'activity-completed',
           pushData,
-        });
-      }
+        },
+      ]);
 
       await this.pusher.trigger(`private-${user_id}`, 'activity-completed', pushData);
 
-      if (isVerboseLoggingAllowed) {
-        console.log('Pusher Channels trigger successful for user:', user_id);
-      }
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Channels trigger successful for user:',
+        user_id,
+      ]);
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
@@ -1417,15 +1419,16 @@ export class CompletedActivityService implements OnModuleInit {
         },
       });
 
-      if (isVerboseLoggingAllowed) {
-        console.error('Pusher Channels trigger failed:', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Channels trigger failed:',
+        {
           user_id,
-          error: error.message,
-          stack: error.stack,
+          error: (error as Error).message,
+          stack: (error as Error).stack,
           channel: `private-${user_id}`,
           event: 'activity-completed',
-        });
-      }
+        },
+      ]);
     }
 
     // Pusher Beams notification with error handling
@@ -1443,21 +1446,24 @@ export class CompletedActivityService implements OnModuleInit {
         should_send_only_data_for_android: true,
       });
 
-      if (isVerboseLoggingAllowed) {
-        console.log('Publishing Pusher Beams notification:', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Publishing Pusher Beams notification:',
+        {
           user_id,
           title,
           body,
           publishRequest: JSON.stringify(publishRequest),
-        });
-      }
+        },
+      ]);
 
+      // eslint-disable-next-line no-console
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeams.publishToUsers([user_id], publishRequest);
 
-      if (isVerboseLoggingAllowed) {
-        console.log('Pusher Beams notification published successfully for user:', user_id);
-      }
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification published successfully for user:',
+        user_id,
+      ]);
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'error',
@@ -1475,14 +1481,15 @@ export class CompletedActivityService implements OnModuleInit {
         },
       });
 
-      if (isVerboseLoggingAllowed) {
-        console.error('Pusher Beams notification failed:', {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification failed:',
+        {
           user_id,
-          error: error.message,
-          stack: error.stack,
+          error: (error as Error).message,
+          stack: (error as Error).stack,
           activity_name: activity.activity_data.name,
-        });
-      }
+        },
+      ]);
     }
 
     this.sentryService.instance().addBreadcrumb({

@@ -3,6 +3,10 @@ import { Notification } from '../../apps/api-server/src/modules/notification/ent
 import { runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
+import { CronJobDataSource } from '../data-source';
+import {
+  logVerboselyIfUserHasVerboseLoggingEnabled,
+} from '../utils/verbose-logging';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { Pool } = require('pg');
@@ -14,9 +18,8 @@ dotenv.config();
 
 const { POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USERNAME, POSTGRES_PASSWORD, POSTGRES_DB } = process.env;
 const db_uri = process.env.RENDER_DB_CONNECTION_URI;
-const connectionString = db_uri
-  ? db_uri
-  : `postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
+const connectionString =
+  db_uri || `postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
 
 const poolConfig = {
   connectionString,
@@ -43,7 +46,7 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
-const sendBeamsPushNotification = async (userId: string, notificationData: Notification) => {
+const sendBeamsPushNotification = async (user_id: string, notificationData: Notification) => {
   const publishRequest: BeamsPublishRequest = {
     apns: {
       aps: {},
@@ -57,10 +60,44 @@ const sendBeamsPushNotification = async (userId: string, notificationData: Notif
       },
     },
   };
-  await beamsClient.publishToUsers([userId], publishRequest);
+
+  // Verbose logging for push notification
+  await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+    'Publishing Pusher Beams notification for scheduled notification (verbose logging enabled):',
+    {
+      user_id,
+      notificationData,
+      publishRequest: JSON.stringify(publishRequest),
+    },
+  ]);
+
+  try {
+    await beamsClient.publishToUsers([user_id], publishRequest);
+
+    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Pusher Beams notification published successfully for scheduled notification:',
+      user_id,
+    ]);
+  } catch (error) {
+    await logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Pusher Beams notification failed for scheduled notification:',
+      {
+        user_id,
+        error: (error as Error).message,
+        stack: (error as Error).stack,
+        notificationData,
+      },
+    ]);
+    throw error;
+  }
 };
 
 async function runPusherCronJob() {
+  // Initialize data source for user verbose logging checks
+  if (!CronJobDataSource.isInitialized) {
+    await CronJobDataSource.initialize();
+  }
+
   const notificationsToSend = await fetchNotifications();
   // eslint-disable-next-line no-console
   console.log(`Ran for ${notificationsToSend.length} notification(s).`);

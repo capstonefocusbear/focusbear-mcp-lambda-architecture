@@ -1,6 +1,6 @@
 import { InjectQueue } from '@nestjs/bull';
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Queue } from 'bull';
 import { StripeService } from '@app/stripe';
 import { UserRepository } from '../../../user/repositories/user.repository';

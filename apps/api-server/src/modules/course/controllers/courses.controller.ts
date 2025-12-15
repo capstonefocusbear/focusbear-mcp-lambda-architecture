@@ -34,7 +34,7 @@ export class CoursesController {
 
   @Post()
   createCourse(@Body() createCourseDto: CreateCourseDto, @AuthContext() { user }: Passport) {
-    this.coursesService.createCourse(createCourseDto, user.id);
+    return this.coursesService.createCourse(createCourseDto, user.id);
   }
 
   @Get(':course_id')
@@ -100,7 +100,7 @@ export class CoursesController {
   }
 
   @Get('user')
-  getUserCourses(@Param() getUserCoursesDto: GetUserCoursesDto, @AuthContext() { user }: Passport) {
+  getUserCourses(@Query() getUserCoursesDto: GetUserCoursesDto, @AuthContext() { user }: Passport) {
     return this.coursesService.getUserCreatedCourses(getUserCoursesDto, user.id);
   }
 

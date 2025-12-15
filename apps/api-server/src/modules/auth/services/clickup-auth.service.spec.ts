@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
@@ -84,7 +84,7 @@ describe('ClickUpService', () => {
         code: 'code',
       });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.CLICK_UP,
         {

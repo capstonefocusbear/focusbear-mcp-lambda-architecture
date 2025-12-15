@@ -1,3 +1,4 @@
+import './instrument';
 import './tracing';
 import { Logger, ValidationPipe, ValidationPipeOptions } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

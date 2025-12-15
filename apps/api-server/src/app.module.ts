@@ -3,7 +3,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
-import { SentryModule } from '@ntegral/nestjs-sentry';
+import { SentryModule } from '@app/observability';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
@@ -42,6 +42,7 @@ import { SurveyModule } from './modules/survey/survey.module';
 import { EmailModule } from './modules/email/email.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
+import { AccountabilityBuddyModule } from './modules/accountability-buddy/accountability-buddy.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
@@ -115,6 +116,7 @@ import { AppVersionsModule } from './modules/app-versions/app-versions.module';
     AsyncTaskModule,
     ZohoDeskModule,
     ObservabilityModule,
+    AccountabilityBuddyModule,
     AnnouncementsModule,
     AppVersionsModule,
   ],

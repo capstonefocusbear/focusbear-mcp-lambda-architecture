@@ -15,6 +15,22 @@ import { CustomRoutine } from '../entities/custom-routine';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
+  private static readonly EMAIL_USER_SELECT_FIELDS = [
+    'user.id',
+    'user.auth0_id',
+    'user.username',
+    'user.language',
+    'user.timezone',
+    'user.created_at',
+    'user.updated_at',
+    'user.last_completed_sequence_at',
+    'user.last_completed_focus_mode_at',
+    'user.last_completed_sequence_started_at',
+    'user.last_time_stats_updated',
+    'user.metadata',
+    'user.email_frequency',
+  ];
+
   constructor(private readonly dataSource: DataSource) {
     super(dataSource, User);
   }
@@ -46,25 +62,62 @@ export class UserRepository extends BaseRepository<User> {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
+      // Batch upsert activity sequences and collect activities for deletion
+      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
+      const sequenceIdsToKeep = sequencesToUpsert.map((seq) => seq.id).filter((seqId) => !!seqId);
+
       await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
-      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id);
-      await queryRunner.manager.delete(CustomRoutine, {
-        user_id: id,
-        id: Not(In(customRoutinesIdsToKeep)),
-      });
+      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id).filter((routineId) => !!routineId);
+
+      // Delete activity sequences that belong to custom routines being deleted
+      // This must happen before deleting the custom routines to avoid orphaned sequences
+      // Only delete sequences that are NOT in the sequencesToUpsert (i.e., sequences for deleted custom routines)
+      if (customRoutinesIdsToKeep.length > 0) {
+        // Get custom routine IDs from sequences that are being kept
+        const keptCustomRoutineIds = new Set(
+          sequencesToUpsert.map((seq) => seq.custom_routine_id).filter((customRoutineId) => !!customRoutineId),
+        );
+
+        // Delete sequences for custom routines that are being removed
+        // Only delete if the sequence is not being kept AND the custom_routine_id is not in the kept list
+        if (keptCustomRoutineIds.size > 0) {
+          await queryRunner.manager.delete(ActivitySequence, {
+            user_id: id,
+            custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
+            id: Not(In(sequenceIdsToKeep)),
+          });
+        } else {
+          // If no custom routine sequences are being kept, delete all sequences with custom_routine_id
+          await queryRunner.manager.delete(ActivitySequence, {
+            user_id: id,
+            custom_routine_id: Not(IsNull()),
+            id: Not(In(sequenceIdsToKeep)),
+          });
+        }
+
+        await queryRunner.manager.delete(CustomRoutine, {
+          user_id: id,
+          id: Not(In(customRoutinesIdsToKeep)),
+        });
+      } else {
+        await queryRunner.manager.delete(ActivitySequence, {
+          user_id: id,
+          custom_routine_id: Not(IsNull()),
+        });
+
+        await queryRunner.manager.delete(CustomRoutine, {
+          user_id: id,
+        });
+      }
 
       await queryRunner.manager.update(User, { id }, { ...updateData });
 
-      // Batch upsert activity sequences and collect activities for deletion
-      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
       // Collect all activity IDs to keep
       const allActivityIds = activitiesData.flatMap(({ activities }) => activities.map((activity) => activity.id));
       const allActivityIdsToKeep = new Set<string>(allActivityIds);
 
-      // Batch upsert all sequences
       await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
 
-      // Batch delete activities
       await queryRunner.manager.delete(Activity, {
         user_id: id,
         id: Not(In(Array.from(allActivityIdsToKeep))),
@@ -198,6 +251,27 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.focus_modes', 'focus_modes')
+      .leftJoin('users.teamToAdmin', 'teamToAdmin')
+      .addSelect(['teamToAdmin.id'])
+      .leftJoin('teamToAdmin.team', 'team')
+      .addSelect(['team.id', 'team.name'])
+      .where('users.id = :id', { id })
+      .getOne();
+  }
+
+  async getUserSummary(id: string): Promise<User> {
+    return this.orm
+      .createQueryBuilder('users')
+      .select([
+        'users.id',
+        'users.auth0_id',
+        'users.stripe_customer_id',
+        'users.username',
+        'users.language',
+        'users.has_consented_to_terms_of_service',
+        'users.user_type',
+        'users.has_consented_to_privacy_policy',
+      ])
       .leftJoin('users.teamToAdmin', 'teamToAdmin')
       .addSelect(['teamToAdmin.id'])
       .leftJoin('teamToAdmin.team', 'team')
@@ -477,68 +551,40 @@ export class UserRepository extends BaseRepository<User> {
     return result[0] || null;
   }
 
-  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: In([EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: [
-        'activity_sequences',
-        'activity_sequences.activities',
-        'completed_activity_sequences',
-        'completed_activities',
-        'completed_focus_blocks',
-      ],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+  private buildEmailUserQuery() {
+    return this.orm.createQueryBuilder('user').select(UserRepository.EMAIL_USER_SELECT_FIELDS);
   }
 
-  async getUsersForDailyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: EmailFrequency.DAILY,
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: ['activity_sequences', 'completed_activities', 'completed_focus_blocks'],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+  async getUsersForWeeklyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
+      })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
+  }
+
+  async getUsersForDailyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
+      })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
   }
 
   async updateEmailFrequency(userId: string, frequency: EmailFrequency): Promise<void> {
@@ -548,62 +594,28 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30): Promise<User[]> {
-    return this.orm.find({
-      where: {
-        email_frequency: In([EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY]),
-      },
-      select: [
-        'id',
-        'auth0_id',
-        'username',
-        'language',
-        'timezone',
-        'created_at',
-        'updated_at',
-        'last_completed_sequence_at',
-        'last_completed_focus_mode_at',
-        'last_completed_sequence_started_at',
-        'last_time_stats_updated',
-        'metadata',
-        'email_frequency',
-      ],
-      relations: [
-        'activity_sequences',
-        'activity_sequences.activities',
-        'completed_activity_sequences',
-        'completed_activities',
-        'completed_focus_blocks',
-      ],
-      order: {
-        id: 'ASC',
-      },
-      skip,
-      take,
-    });
+  async getUsersForMonthlyEmailsBatch(skip = 0, take = 30, daysThreshold = 30): Promise<User[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return this.buildEmailUserQuery()
+      .where('user.email_frequency IN (:...frequencies)', {
+        frequencies: [EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY],
+      })
+      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
+        threshold: thresholdDate,
+      })
+      .orderBy('user.id', 'ASC')
+      .skip(skip)
+      .take(take)
+      .getMany();
   }
 
   async getUsersForNoProgressEmailsBatch(skip = 0, take = 30, daysThreshold = 7): Promise<User[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
-    return this.orm
-      .createQueryBuilder('user')
-      .select([
-        'user.id',
-        'user.auth0_id',
-        'user.username',
-        'user.language',
-        'user.timezone',
-        'user.created_at',
-        'user.updated_at',
-        'user.last_completed_sequence_at',
-        'user.last_completed_focus_mode_at',
-        'user.last_completed_sequence_started_at',
-        'user.last_time_stats_updated',
-        'user.metadata',
-        'user.email_frequency',
-      ])
+    return this.buildEmailUserQuery()
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })

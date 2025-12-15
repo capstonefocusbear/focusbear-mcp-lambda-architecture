@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ACITIVITY_EMOJI_MAP, BullQueues, BullWorkers } from '../../../../shared/utils/constants';
@@ -359,7 +359,7 @@ export class ActivityParserService {
   }
 
   private async createActivitySequence(
-    serializedActivities: Activity[],
+    serializedActivities: Activity[] | UpdateActivityDto[],
     {
       type,
       user_id,
@@ -377,7 +377,7 @@ export class ActivityParserService {
       },
     });
     const activity_ids = serializedActivities.map(({ id }) => id);
-    const total_duration_seconds = this.calculateSequenceDuration(serializedActivities);
+    const total_duration_seconds = this.calculateSequenceDuration(serializedActivities as Activity[]);
     let sequenceItem;
     if (custom_routine_id) {
       sequenceItem = await this.activitySequenceRepository.findOneByTypeAndCustomRoutineForUser(
@@ -431,7 +431,7 @@ export class ActivityParserService {
     return Promise.all(
       customRoutines.map(async (routine) => {
         const type = ActivityType.standalone;
-        const routine_activities = routine?.standalone_activities as any;
+        const routine_activities = (routine?.standalone_activities ?? []) as UpdateActivityDto[];
         const sequence = await this.createActivitySequence(routine_activities, {
           type,
           user_id,
@@ -439,8 +439,15 @@ export class ActivityParserService {
         });
         const activity_sequence_id = sequence.id;
         const context = { type, user_id, activity_sequence_id, custom_routine_id: routine.id };
-        const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
-        const activities: Activity[] = routine_activities.flatMap(createActivity(context));
+        // ✅ FIXED: Properly await all promises
+        // ❌ BEFORE: Used flatMap without awaiting promises:
+        //    const createActivity = (e) => (activity: UpdateActivityDto) => this.createActivity(activity, e);
+        //    const activities: Activity[] = routine_activities.flatMap(createActivity(context));
+        //    This returned Promise<Activity[]>[] instead of Activity[], so activities were never created
+        //    and custom routine habits weren't being saved to the database.
+        const activities: Activity[] = (
+          await Promise.all(routine_activities.map((activity) => this.createActivity(activity, context)))
+        ).flat();
         return { sequence, activities };
       }),
     );

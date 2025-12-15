@@ -1,5 +1,5 @@
 import { Process, Processor } from '@nestjs/bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
 import axios from 'axios';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';

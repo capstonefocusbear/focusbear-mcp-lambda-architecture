@@ -4,12 +4,14 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { Raw } from 'typeorm';
+import { InjectSentry, SentryService, emitUserActivityMetric } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -29,6 +31,7 @@ import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserStripePropertiesDto } from '../../dto/update-user-stripe-property.dto';
 import { UserAuthContext } from '../../../auth/domain/user-auth-context.model';
 import { User } from '../../entities/user.entity';
+import { UserSummaryResponseDto } from '../../dto/user-summary-response.dto';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { UpdateLocalDeviceSettingsDto } from '../../dto/update-local-device-settings.dto';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
@@ -70,11 +73,17 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { MetricsConfig } from '../../../../config/metrics.config';
+import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private readonly verboseLogger = new Logger(UserService.name);
+
+  private verboseLogCache = new Map<string, boolean>();
+
   constructor(
     private readonly completedFocusBlock: CompletedFocusBlockRepository,
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -101,6 +110,8 @@ export class UserService {
     private readonly emailService: SendGridService,
     @Inject(forwardRef(() => CompletedActivitySequenceService))
     private completedActivitySequenceService: CompletedActivitySequenceService,
+    @Inject(forwardRef(() => AccountabilityBuddyService))
+    private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -117,7 +128,12 @@ export class UserService {
       if (!auth0User) throw new NotFoundException('User does not exist in Auth0!');
       const accountsWithSameEmail = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       const user = await this.updateOrCreateUser({ auth0_id, email, auth0_client }, registeredUser);
-      if (!registeredUser) await this.handleInitialRegistration(user.id);
+      if (!registeredUser) {
+        await Promise.allSettled([
+          this.handleInitialRegistration(user.id),
+          this.accountabilityBuddyService.linkPendingInvitationsForNewUser(user.id, email), // Link pending accountability buddy invitations for the newly registered user
+        ]);
+      }
       // Send email to support if user signs up with existing email
       if (!registeredUser && accountsWithSameEmail?.length > 1) {
         await this.sendDuplicatesEmail(auth0_id, accountsWithSameEmail);
@@ -295,7 +311,13 @@ export class UserService {
       if (!userDetails) throw new NotFoundException(`User with id: ${id} does not exist!`);
       const auth0User = await this.auth0ManagementService.getAuth0User(userDetails.auth0_id);
       const email = auth0User?.email || '';
-      const { focus_modes, teamToAdmin, ...rest } = userDetails;
+      const {
+        focus_modes,
+        teamToAdmin,
+        local_device_settings: _localDeviceSettings,
+        onboarding_progress: _onboardingProgress,
+        ...userDetailsWithoutDeprecated
+      } = userDetails;
       // map focus_mode_template_id null values to undefined to exclude property from response
       const formattedFocusModes = focus_modes?.map((focusMode) => {
         if (focusMode.focus_mode_template_id === null) {
@@ -307,7 +329,7 @@ export class UserService {
       const adminForTeams = teamToAdmin?.map(({ team }) => team);
 
       return {
-        ...rest,
+        ...userDetailsWithoutDeprecated,
         email,
         focus_modes: formattedFocusModes,
         email_verified: auth0User.email_verified,
@@ -319,53 +341,121 @@ export class UserService {
     }
   }
 
-  async getUserCurrentActivityProps(id: string): Promise<CurrentActivityProps> {
+  async getUserSummary(id: string, from?: string): Promise<UserSummaryResponseDto> {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
-        message: 'Getting user current activity props',
+        message: 'Getting user summary',
         data: {
           user_id: id,
+          from,
         },
       });
-      let partialUser = await this.userRepository.getUserCurrentActivityProps(id);
+      const userSummary = await this.userRepository.getUserSummary(id);
+      if (!userSummary) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      const auth0User = await this.auth0ManagementService.getAuth0User(userSummary.auth0_id);
+      const {
+        teamToAdmin,
+        id: userId,
+        stripe_customer_id,
+        username,
+        language,
+        has_consented_to_terms_of_service,
+        user_type,
+        has_consented_to_privacy_policy,
+      } = userSummary;
+      const adminForTeams =
+        teamToAdmin
+          ?.map(({ team }) => (team ? { id: team.id, name: team.name } : null))
+          .filter((team): team is { id: string; name: string } => Boolean(team)) ?? [];
 
-      if (!partialUser) throw new NotFoundException(`User with id: ${id} does not exist!`);
+      return {
+        id: userId,
+        stripe_customer_id,
+        email: auth0User?.email ?? '',
+        email_verified: auth0User?.email_verified ?? false,
+        username,
+        language,
+        adminForTeams,
+        has_consented_to_terms_of_service,
+        user_type,
+        has_consented_to_privacy_policy,
+      };
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
+  async getUserCurrentActivityProps(userId: string): Promise<CurrentActivityProps> {
+    const startTimeMs = Date.now();
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'info',
+        message: 'getUserCurrentActivityProps:start',
+        data: { user_id: userId },
+      });
+
+      // fetch minimal user state
+      let partialUser = await this.userRepository.getUserCurrentActivityProps(userId);
+      if (!partialUser) {
+        throw new NotFoundException(`User with id: ${userId} does not exist!`);
+      }
+
       const initialCurrentActivity = partialUser.current_activity_id;
-      let current_sequence_completed_activities = [];
+      let currentSequenceCompletedActivityIds: string[] = [];
+
+      // start in parallel
+      const todayRoutineProgressPromise = this.completedActivitySequenceService.getRoutinesProgress(
+        partialUser.id,
+        partialUser.timezone,
+      );
+
       if (partialUser.current_activity) {
-        const updatedPartialUser = await this.recalculateActivityProps(partialUser);
-        partialUser = updatedPartialUser;
+        partialUser = await this.recalculateActivityProps(partialUser);
+
         if (partialUser.current_completing_sequence_log_id) {
-          current_sequence_completed_activities =
+          currentSequenceCompletedActivityIds =
             await this.completedActivityService.getCurrentSequenceCompletedActivityIds(
               partialUser.current_completing_sequence_log_id,
             );
         }
       }
 
-      const todayRoutineProgress = await this.completedActivitySequenceService.getRoutinesProgress(
-        partialUser.id,
-        partialUser.timezone,
-      );
+      const todayRoutineProgress = await todayRoutineProgressPromise;
 
       const currentActivityProps = new CurrentActivityProps({
         ...partialUser,
-        current_sequence_completed_activities,
+        current_sequence_completed_activities: currentSequenceCompletedActivityIds,
         today_routine_progress: todayRoutineProgress,
       });
-      if (id === JEREMYS_USER_ID) {
-        // eslint-disable-next-line no-console
-        console.log('Jeremy current user state', {
+
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'getUserCurrentActivityProps:success',
+        data: {
+          user_id: userId,
           initialCurrentActivity,
-          updatedActivityProps: currentActivityProps,
-          originalActivityProps: partialUser,
-        });
-      }
+          current_activity_id: currentActivityProps.current_activity,
+        },
+      });
+
+      const elapsedMs = Date.now() - startTimeMs;
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, true);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, true);
+
       return currentActivityProps;
     } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
+      const elapsedMs = Date.now() - startTimeMs;
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.logCurrentActivityPropsLatency(userId, elapsedMs, false, normalizedError);
+      await this.emitCurrentActivityPropsMetric(userId, elapsedMs, false, normalizedError);
+      this.sentryService.instance().captureException(error, {
+        level: 'error',
+      });
       throw error;
     }
   }
@@ -795,14 +885,22 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    // Normalise justification field so all clients (Mac, mobile, future) map into
+    // a single canonical property that the OpenAI service and prompts expect.
+    const normalisedDto: IsUrlSafeDto & { [key: string]: any } = {
+      ...isUrlSafeDto,
+      url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
+    };
 
-    return this.openAIService.checkIfUrlIsSafeToUse(
-      {
-        ...isUrlSafeDto,
-        url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
-      },
-      user.language,
-    );
+    normalisedDto.justificationForThisUrl =
+      isUrlSafeDto.justificationForThisUrl ??
+      // Generic alias used by some clients
+      isUrlSafeDto.justification ??
+      // Mac app "new intention" flow
+      isUrlSafeDto.extraJustificationForThisSite ??
+      undefined;
+
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -810,8 +908,12 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    const normalisedDto: IsAppSafeDto & { [key: string]: any } = { ...isAppSafeDto };
 
-    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language);
+    normalisedDto.justificationForThisSpecificApp =
+      isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
+
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {
@@ -836,9 +938,52 @@ export class UserService {
     return { isVerboseLoggingAllowed: user?.verbose_logging, user };
   }
 
+  private async getVerboseLoggingCached(userId: string): Promise<boolean> {
+    const cached = this.verboseLogCache.get(userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const { isVerboseLoggingAllowed } = await this.isVerboseLoggingAllowed(userId);
+    const value = isVerboseLoggingAllowed || false;
+    this.verboseLogCache.set(userId, value);
+    return value;
+  }
+
+  // Clear cache for a user when verbose_logging setting is updated
+  clearVerboseLoggingCache(userId: string): void {
+    this.verboseLogCache.delete(userId);
+  }
+
+  // Centralized function to log messages only if the user has verbose logging enabled
+  async logVerboselyIfUserHasVerboseLoggingEnabled(user_id: string, logArgs: any[]): Promise<void> {
+    try {
+      const isVerboseLoggingAllowed = await this.getVerboseLoggingCached(user_id);
+      if (isVerboseLoggingAllowed) {
+        if (!logArgs?.length) {
+          this.verboseLogger.log('');
+          return;
+        }
+        const [firstArg, ...restArgs] = logArgs;
+        this.verboseLogger.log(firstArg, ...restArgs);
+      }
+    } catch (error) {
+      // Silently fail if we can't check verbose logging status
+    }
+  }
+
   async updateUsername(user_id: string, { username }: UpdateUsernameDto) {
+    const normalizedUsername = username?.normalize('NFC').trim();
+    if (!normalizedUsername) {
+      throw new BadRequestException('Username cannot be empty');
+    }
+
     const existingUserWithSameUsername = await this.userRepository.orm.findOne({
-      where: { username: username.toLowerCase() },
+      where: {
+        username: Raw((alias) => `LOWER(${alias}) = LOWER(:username)`, {
+          username: normalizedUsername,
+        }),
+      },
     });
     if (existingUserWithSameUsername && existingUserWithSameUsername.id !== user_id) {
       throw new ConflictException(
@@ -854,15 +999,15 @@ export class UserService {
         resolve({ allowed: true });
       }, USERNAME_VALIDATION_TIMEOUT);
     });
-    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(username);
+    const usernameIsValidPromise = this.openAIService.checkIfUsernameIsValid(normalizedUsername);
     // Check if username is allowed or default to true after 15 seconds
     const { allowed } = await Promise.race([usernameIsValidPromise, timeoutPromise]);
     clearTimeout(timeoutId); // Clear the timeout if usernameIsValidPromise has resolved
     if (!allowed) {
-      throw new BadRequestException(`Username: ${username} not accepted because it is deemed offensive`);
+      throw new BadRequestException(`Username: ${normalizedUsername} not accepted because it is deemed offensive`);
     }
     await this.userRepository.update(user_id, {
-      username: username.toLowerCase(),
+      username: normalizedUsername,
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
@@ -959,5 +1104,72 @@ export class UserService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private async emitCurrentActivityPropsMetric(
+    userId: string,
+    durationMs: number,
+    success: boolean,
+    error?: Error,
+  ): Promise<void> {
+    const metrics = this.getMetricsConfig();
+    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+
+    if (!shouldEmitMetrics) {
+      return;
+    }
+
+    try {
+      await emitUserActivityMetric({
+        namespace: metrics.namespace,
+        environment: metrics.environment,
+        service: metrics.service,
+        operation: 'getUserCurrentActivityProps',
+        durationMs,
+        success,
+        userId,
+        errorName: error?.name,
+        errorMessage: error?.message,
+      });
+    } catch (emitError) {
+      this.verboseLogger.warn(
+        'Failed to emit getUserCurrentActivityProps metric',
+        emitError instanceof Error ? emitError.message : undefined,
+      );
+    }
+  }
+
+  private logCurrentActivityPropsLatency(userId: string, durationMs: number, success: boolean, error?: Error): void {
+    const payload = {
+      event: success ? 'GetUserCurrentActivityPropsLatency' : 'GetUserCurrentActivityPropsError',
+      user_id: userId,
+      durationMs,
+      success,
+      error_name: error?.name,
+      error_message: error?.message,
+    };
+    const serializedPayload = JSON.stringify(payload);
+
+    if (success) {
+      this.verboseLogger.log(serializedPayload);
+      return;
+    }
+
+    const trace = error?.stack || error?.message;
+    this.verboseLogger.error(serializedPayload, trace);
+  }
+
+  private getMetricsConfig(): MetricsConfig {
+    return (
+      this.config.get<MetricsConfig>('metrics') || {
+        emitQueueMetrics: true,
+        emitUserActivityMetrics: true,
+        pollIntervalMs: 60_000,
+        namespace: 'FocusBear/Queues',
+        service: 'api',
+        environment: 'prod',
+        logQueueFailures: true,
+      }
+    );
   }
 }

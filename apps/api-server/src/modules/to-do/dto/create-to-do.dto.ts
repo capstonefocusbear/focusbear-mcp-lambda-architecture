@@ -13,7 +13,7 @@ export class CreateToDoDto {
 
   @IsOptional()
   @IsString()
-  details: string;
+  details?: string;
 
   @IsOptional()
   @IsDate()
@@ -36,6 +36,7 @@ export class CreateToDoDto {
   @IsArray()
   tags?: CreateFocusModeTagDto[];
 
+  @IsOptional()
   subtasks?: SubtaskDto[];
 
   @IsOptional()

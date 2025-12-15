@@ -66,7 +66,10 @@ interface TranslationDataType {
   [key: string]: { morning: { title: string; message: string }; evening: { title: string; message: string } };
 }
 
-const openAiAPI = new OpenAI({ apiKey: OPEN_AI_CONFIG.pushNotification.apiKey });
+const openAiAPI = new OpenAI({
+  apiKey: OPEN_AI_CONFIG.pushNotification.apiKey,
+  timeout: CRON_JOB_TIMEOUT_MS - 2000,
+});
 
 // getPrompt function includes a default tone "humorous" if no tone is provided
 function getPrompt(routine: string, language: string, tone: string = 'humorous') {
@@ -279,6 +282,16 @@ async function updateUsersEveningRoutineNotification(users: User[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
+async function publishToUsersWithTimeout(userIds: string[], publishRequest: BeamsPublishRequest) {
+  const timeoutMs = CRON_JOB_TIMEOUT_MS - 2000;
+  return Promise.race([
+    beamsClient.publishToUsers(userIds, publishRequest),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Pusher Beams publish timeout after ${timeoutMs}ms`)), timeoutMs),
+    ),
+  ]);
+}
+
 async function publishToUsersByLanguage(
   users: User[],
   language: string,
@@ -296,7 +309,18 @@ async function publishToUsersByLanguage(
   console.log('USER-IDS:', userIDs, 'LANGUAGE:', language);
   const chunkSize = 500;
   for (let i = 0; i < userIDs.length; i += chunkSize) {
-    await beamsClient.publishToUsers(userIDs.slice(i, i + chunkSize), publishRequest);
+    const chunk = userIDs.slice(i, i + chunkSize);
+    try {
+      await publishToUsersWithTimeout(chunk, publishRequest);
+    } catch (error) {
+      console.error('Error publishing Pusher Beams notification chunk', {
+        language,
+        routine,
+        chunkSize: chunk.length,
+        error,
+      });
+      throw error;
+    }
   }
 
   return userIDs.length;
@@ -308,46 +332,75 @@ function createFileName(routine: string, language: string) {
 
 async function runRoutineNotificationsCronJob() {
   await CronJobDataSource.initialize();
-  const translationData: TranslationDataType = {};
-  let notificationsDispatched = 0;
+  try {
+    // eslint-disable-next-line no-console
+    console.log('Routine cron: data source initialized');
+    const translationData: TranslationDataType = {};
+    let notificationsDispatched = 0;
 
-  for await (const language of LANGUAGES) {
-    const morningMessage = await getMessage(
-      ActivityType.morning,
-      createFileName(ActivityType.morning, language),
-      language,
-    );
-    const eveningMessage = await getMessage(
-      ActivityType.evening,
-      createFileName(ActivityType.evening, language),
-      language,
-    );
-    translationData[language] = {
-      morning: { title: MORNING_ROUTINE_TITLES[language], message: morningMessage },
-      evening: { title: EVENING_ROUTINE_TITLES[language], message: eveningMessage },
-    };
-    const startupUsers = await getUsersForStartup(language);
-    const shutdownUsers = await getUsersForShutdown(language);
+    for await (const language of LANGUAGES) {
+      // eslint-disable-next-line no-console
+      console.log('Routine cron: processing language', language);
+      const morningMessage = await getMessage(
+        ActivityType.morning,
+        createFileName(ActivityType.morning, language),
+        language,
+      );
+      // eslint-disable-next-line no-console
+      console.log('Routine cron: morning message resolved', language);
+      const eveningMessage = await getMessage(
+        ActivityType.evening,
+        createFileName(ActivityType.evening, language),
+        language,
+      );
+      translationData[language] = {
+        morning: { title: MORNING_ROUTINE_TITLES[language], message: morningMessage },
+        evening: { title: EVENING_ROUTINE_TITLES[language], message: eveningMessage },
+      };
+      const startupUsers = await getUsersForStartup(language);
+      const shutdownUsers = await getUsersForShutdown(language);
 
-    notificationsDispatched += await publishToUsersByLanguage(
-      startupUsers,
-      language,
-      ActivityType.morning,
-      translationData,
-    );
-    notificationsDispatched += await publishToUsersByLanguage(
-      shutdownUsers,
-      language,
-      ActivityType.evening,
-      translationData,
-    );
+      // eslint-disable-next-line no-console
+      console.log('Routine cron: fetched users', {
+        language,
+        startup: startupUsers.length,
+        shutdown: shutdownUsers.length,
+      });
 
-    await Promise.all([
-      updateUsersMorningRoutineNotification(startupUsers),
-      updateUsersEveningRoutineNotification(shutdownUsers),
-    ]);
+      notificationsDispatched += await publishToUsersByLanguage(
+        startupUsers,
+        language,
+        ActivityType.morning,
+        translationData,
+      );
+      notificationsDispatched += await publishToUsersByLanguage(
+        shutdownUsers,
+        language,
+        ActivityType.evening,
+        translationData,
+      );
+
+      // eslint-disable-next-line no-console
+      console.log('Routine cron: finished publishing notifications', language);
+
+      await Promise.all([
+        updateUsersMorningRoutineNotification(startupUsers),
+        updateUsersEveningRoutineNotification(shutdownUsers),
+      ]);
+      // eslint-disable-next-line no-console
+      console.log('Routine cron: updated routine notifications', language);
+    }
+    // eslint-disable-next-line no-console
+    console.log('Routine cron: finished all languages', { notificationsDispatched });
+    return { notificationsDispatched };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
   }
-  return { notificationsDispatched };
 }
 
 if (require.main === module) {

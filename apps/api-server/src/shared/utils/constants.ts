@@ -9,6 +9,9 @@ import { OnboardFlowTimeUI } from '../../modules/user/domain/onboarding/onboardi
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
+export const SECONDS_TO_MINUTES = 60;
+export const DYNAMIC_SCORE_ADJUSTMENT = 0.05;
+export const FALLBACK_MINIMUM_SCORE = 0.5;
 export const TRIAL_DURATION_DAYS = 7;
 export const USERNAME_VALIDATION_TIMEOUT = 15000;
 export const STRIPE_API_VERSION = '2022-08-01';
@@ -20,8 +23,11 @@ export const FOCUS_BEAR_EMAILS = {
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
-  VERIFY_EMAIL: '', // TODO: generate template
-  REQUEST_PASSWORD_RESET: '', // TODO: generate template
+  VERIFY_EMAIL: 'd-d6cff2b375e54523b86061abebb8dbdf',
+  REQUEST_PASSWORD_RESET: 'd-67cec7f121f04901814f6f41ec6e0122',
+  ACCOUNTABILITY_BUDDY_INVITATION: 'd-ffddae2b9fb040a79244c8a871cce582',
+  UNLOCK_REQUEST_RECEIVED: 'd-4b680eec43b84bf5b9f94bf2658ff738',
+  UNLOCK_REQUEST_APPROVED: 'd-af80a1ec861a4da1989b8132b82c7b82',
 };
 export const TEAM_A = 'Team A';
 export const EMAIL_SUBJECTS = {
@@ -42,6 +48,7 @@ export const ONE_MINUTE_SECONDS = 60;
 export const TEN_MINUTES = 600000;
 export const ONE_DAY_SECONDS = 86400;
 export const ONE_SECOND_AS_MILLIS = 1000;
+export const TWO_SECONDS_AS_MILLIS = 2000;
 export const TEN_SECONDS_AS_MILLIS = 10000;
 export const TWENTY = 20;
 export const TRIAL_COST_CENTS = 0;
@@ -132,7 +139,24 @@ export const FIELD_NAME_WORKLOG = 'Worklog';
 export const FIELD_NAME_TOTAL = 'Total';
 export const MAX_RETRY = 2;
 
+export const ACCOUNTABILITY_BUDDY = {
+  MAX_BUDDIES_PER_USER: 10,
+  UNLOCK_REQUEST_COOLDOWN_HOURS: 1,
+  INVITATION_EXPIRATION_DAYS: 1,
+  UNLOCK_DURATION_MIN_MINUTES: 1,
+  UNLOCK_DURATION_MAX_MINUTES: 1440, // 24 hours
+  UNLOCK_REQUEST_REASON_MAX_LENGTH: 1000,
+  UNLOCK_REQUEST_DEFAULT_REASON: 'No reason provided',
+} as const;
+
+export const AUTH0_RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  BASE_DELAY_MS: TWO_SECONDS_AS_MILLIS, // 2000ms for exponential backoff (2s, 4s, 6s)
+} as const;
+
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
+export const GPT_5_MINI = 'gpt-5-mini';
+export const GPT_5_1 = 'gpt-5.1';
 
 export const GPT_4_1 = 'gpt-4.1';
 
@@ -153,6 +177,9 @@ export enum BullQueues {
   COMPLETED_ACTIVITY_DLQ = 'completed-activity-dlq',
   TODO_IMAGE = 'todo-image',
   TODO_AUDIO = 'todo-audio',
+  ROUTINE_SUGGESTIONS = 'routine-suggestions',
+  EMAIL_VERIFICATION = 'email-verification',
+  HABIT_IMPORT = 'habit-import',
 }
 
 export enum BullWorkers {
@@ -173,6 +200,10 @@ export enum BullWorkers {
   SYNC_USAGE_DATA = 'sync-usage-data',
   GENERATE_ACTIVITY_EMOJI = 'generate-activity-emoji',
   PROCESS_COMPLETED_ACTIVITY = 'process-completed-activity',
+  PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
+  PROCESS_HABIT_CREATION = 'process-habit-creation',
+  SEND_EMAIL_VERIFICATION = 'send-email-verification',
+  PROCESS_HABIT_IMPORT = 'process-habit-import',
 }
 
 export const createActivityFunction = {
@@ -305,6 +336,7 @@ export const DEFAULT_AI_RESPONSE_TIMEOUT_MS = 15000;
 export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
 export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
+export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

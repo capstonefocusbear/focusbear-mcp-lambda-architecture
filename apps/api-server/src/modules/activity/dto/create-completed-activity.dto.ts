@@ -43,12 +43,20 @@ export function transformLogQuantityAnswers({ value }) {
   return value;
 }
 
+export function transformEmptyStringToUndefined({ value }) {
+  if (value === '') {
+    return undefined;
+  }
+  return value;
+}
+
 export class CreateCompletedActivityDto {
   @IsNotEmpty()
   @IsUUID('4')
   activity_id: string;
 
   @IsOptional()
+  @Transform(transformEmptyStringToUndefined)
   @IsUUID('4')
   choice_id?: string;
 

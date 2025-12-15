@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import {
@@ -10,6 +10,9 @@ import {
   HABIT_ADJUSTMENT_PROMPT_CONFIG_PATH,
   HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
   TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
+  ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH,
+  HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH,
+  HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -92,14 +95,47 @@ export class PromptCacheService implements OnModuleInit {
         });
       }
 
+      // Load routine suggestions prompt
+      this.logger.log(`Loading routine suggestions prompts from ${ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH}`);
+      try {
+        const routineSuggestionsContent = await fs.readFile(ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH, 'utf8');
+        const routineSuggestionPrompts = yaml.load(routineSuggestionsContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (routineSuggestionPrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(routineSuggestionPrompts.prompts);
+          this.logger.log(`Loaded ${routineSuggestionPrompts.prompts.length} routine suggestions prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load routine suggestions prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load routine suggestions prompts',
+            configPath: ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
       // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
       try {
         const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');
-        const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent)[0];
+        const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent);
+
+        // Find the system message and concatenate all text blocks
+        const systemMsg = handwrittenTodosPrompt.find((msg) => msg.role === 'system');
+        const systemText = (systemMsg.content || [])
+          .filter((block) => block.type === 'text' && block.text)
+          .map((block) => block.text)
+          .join('\n\n');
+
+        if (!systemText) {
+          throw new Error('handwritten todos prompt missing system text');
+        }
+
         allPrompts.push({
           id: 'handwritten-todos-analysis',
-          raw: handwrittenTodosPrompt.content[0].text,
+          raw: systemText,
         });
         this.logger.log('Loaded handwritten todos prompt');
       } catch (error) {
@@ -111,7 +147,6 @@ export class PromptCacheService implements OnModuleInit {
           },
         });
       }
-
       // Load todos transcript prompt (audio flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading todos transcript prompt from ${TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
       try {
@@ -145,6 +180,48 @@ export class PromptCacheService implements OnModuleInit {
           extra: {
             message: 'Failed to load usage screenshot prompts',
             configPath: USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load habit import image prompts
+      this.logger.log(`Loading habit import image prompts from ${HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH}`);
+      try {
+        const habitImportImageContent = await fs.readFile(HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH, 'utf8');
+        const habitImportImagePrompts = yaml.load(habitImportImageContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (habitImportImagePrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(habitImportImagePrompts.prompts);
+          this.logger.log(`Loaded ${habitImportImagePrompts.prompts.length} habit import image prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load habit import image prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load habit import image prompts',
+            configPath: HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH,
+          },
+        });
+      }
+
+      // Load habit import transcript prompts
+      this.logger.log(`Loading habit import transcript prompts from ${HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
+      try {
+        const habitImportTranscriptContent = await fs.readFile(HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH, 'utf8');
+        const habitImportTranscriptPrompts = yaml.load(habitImportTranscriptContent) as {
+          prompts: Array<{ id: string; raw: string }>;
+        };
+        if (habitImportTranscriptPrompts?.prompts?.length) {
+          allPrompts = allPrompts.concat(habitImportTranscriptPrompts.prompts);
+          this.logger.log(`Loaded ${habitImportTranscriptPrompts.prompts.length} habit import transcript prompts`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to load habit import transcript prompts: ${error.message}`);
+        this.sentryService.instance().captureException(error, {
+          extra: {
+            message: 'Failed to load habit import transcript prompts',
+            configPath: HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH,
           },
         });
       }

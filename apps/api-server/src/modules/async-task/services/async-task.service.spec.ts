@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { NotFoundException } from '@nestjs/common';
 import { AsyncTaskService } from './async-task.service';
 import { AsyncTaskRepository } from '../repositories/async-task.repository';
@@ -207,6 +207,7 @@ describe('AsyncTaskService', () => {
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,
         metadata: updateDto.metadata,
+        updated_at: expect.any(String),
       });
       expect(result).toEqual(updatedTask);
       expect(mockAddBreadcrumb).toHaveBeenCalledWith({
@@ -248,6 +249,7 @@ describe('AsyncTaskService', () => {
       expect(AsyncTaskRepositoryMock.update).toHaveBeenCalledWith(taskId, {
         status: updateDto.status,
         metadata: existingTask.metadata,
+        updated_at: expect.any(String),
       });
       expect(result).toEqual(updatedTask);
     });

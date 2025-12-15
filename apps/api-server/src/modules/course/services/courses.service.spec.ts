@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { SentryServiceMock } from '../../../../test/mocks';
 import { CoursesRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { CoursesRepository } from '../repositories/courses.repository';
@@ -61,7 +61,7 @@ describe('CoursesService', () => {
 
   describe('createCourse', () => {
     it("negative: should throw NotFoundException when a user couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(undefined);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(undefined);
       const responseMessage = `User with user_id ${userDummy.id} couldn't be found`;
       let exception: any;
       try {
@@ -74,9 +74,10 @@ describe('CoursesService', () => {
     });
 
     it('positive: should create course contents', async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.createCourseContent.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.createCourse(DummyCreateCourseDto, userDummy.id);
-      expect(CoursesRepositoryMock.createCourseContent).toBeCalledWith(
+      expect(CoursesRepositoryMock.createCourseContent).toHaveBeenCalledWith(
         {
           ...DummyCreateCourseDto,
         },
@@ -108,7 +109,7 @@ describe('CoursesService', () => {
 
   describe('updateCourse', () => {
     it("negative: should throw NotFoundException if the course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(null);
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
@@ -121,7 +122,7 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw ForbiddenException, if the user isn't the author of the course", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
       const responseMessage = `User with user_id ${userDummy.id} not allowed to perform the operation`;
       let exception: any;
       try {
@@ -134,13 +135,13 @@ describe('CoursesService', () => {
     });
 
     it('positive: should update course content if the user is the author of the course', async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.updateCourse(DummyUpdateCourseDto, DummyCourseOne.id, userDummy.id, [UserTypes.STANDARD]);
       expect(CoursesRepositoryMock.updateCourseContent).toHaveBeenCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
     });
 
     it('positive: should update course content if the user is has an admin role', async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.updateCourse(DummyUpdateCourseDto, DummyCourseOne.id, adminUserDummy.id, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseContent).toHaveBeenCalledWith(DummyUpdateCourseDto, DummyCourseOne.id);
     });
@@ -148,7 +149,7 @@ describe('CoursesService', () => {
 
   describe('deleteCourse', () => {
     it("negative: should throw NotFoundException when a course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(null);
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
@@ -161,7 +162,7 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw ForbiddenException, if the user isn't an ADMIN", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
       const responseMessage = 'User not allowed to perform the operation';
       let exception: any;
       try {
@@ -174,7 +175,7 @@ describe('CoursesService', () => {
     });
 
     it('positive: should delete the course, if the user role has an admin role', async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
       await coursesService.deleteCourse(DummyCourseTwo.id, { deleted: true }, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseDeleted).toHaveBeenCalledWith(DummyCourseTwo.id, true);
     });
@@ -182,7 +183,7 @@ describe('CoursesService', () => {
 
   describe('hideCourse', () => {
     it("negative: should throw NotFoundException when a course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(null);
       const responseMessage = `Course with course_id ${DummyCourseTwo.id} couldn't be found`;
       let exception: any;
       try {
@@ -195,7 +196,7 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw ForbiddenException, if the user isn't an ADMIN", async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
       const responseMessage = 'User not allowed to perform the operation';
       let exception: any;
       try {
@@ -208,7 +209,7 @@ describe('CoursesService', () => {
     });
 
     it('positive: should hide the course, if the user has an admin role', async () => {
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseOne);
       await coursesService.hideCourse(DummyCourseOne.id, { should_hide: true }, [UserTypes.ADMIN]);
       expect(CoursesRepositoryMock.updateCourseHidden).toHaveBeenCalledWith(DummyCourseOne.id, true);
     });
@@ -227,7 +228,7 @@ describe('CoursesService', () => {
 
   describe('createCourseRating', () => {
     it("negative: should throw NotFoundException when a user with a course couldn't be found in course enrolment", async () => {
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(null);
       const responseMessage = `Course enrolment with course_id ${DummyCreateCourseRatingDto.course_id} couldn't be found`;
       let exception: any;
       try {
@@ -240,7 +241,9 @@ describe('CoursesService', () => {
     });
 
     it('positive: should create a course rating', async () => {
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(DummyCourseEnrolments[0]);
+      CoursesRepositoryMock.findRatingByUserAndCourse.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.createRatingContent.mockResolvedValueOnce(DummyCourseRatings[0]);
       await coursesService.createCourseRating(DummyCreateCourseRatingDto, userDummy.id);
       expect(CoursesRepositoryMock.createRatingContent).toHaveBeenCalledWith(DummyCreateCourseRatingDto, userDummy.id);
     });
@@ -248,7 +251,7 @@ describe('CoursesService', () => {
 
   describe('createCourseEnrolment', () => {
     it("negative: should throw NotFoundException when a user couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(null);
       const responseMessage = `User with user_id ${nonExistUserDummy.id} couldn't be found`;
       let exception: any;
       try {
@@ -261,8 +264,8 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw NotFoundException when a course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(null);
       const responseMessage = `Course with course_id ${DummyCreateCourseEnrolmentDto.course_id} couldn't be found`;
       let exception: any;
       try {
@@ -275,8 +278,10 @@ describe('CoursesService', () => {
     });
 
     it('positive: should create a course enrolment', async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseOne);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.createEnrolmentContent.mockResolvedValueOnce(DummyCourseEnrolments[0]);
       await coursesService.createCourseEnrolment(DummyCreateCourseEnrolmentDto, userDummy.id);
       expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenCalledWith(
         DummyCreateCourseEnrolmentDto.course_id,
@@ -287,7 +292,7 @@ describe('CoursesService', () => {
 
   describe('updateCourseEnrolment', () => {
     it("negative: should throw NotFoundException when a user couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(null);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(null);
       const responseMessage = `User with user_id ${nonExistUserDummy.id} couldn't be found`;
       let exception: any;
       try {
@@ -300,10 +305,9 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw NotFoundException when a course couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(null);
-      const responseMessage = `Course enrolment with course_id ${DummyCourseTwo.id} couldn't be found`;
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(null);
+      const responseMessage = `Course with course_id ${DummyUpdateCourseEnrolmentDto.course_id} couldn't be found`;
       let exception: any;
       try {
         await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
@@ -315,10 +319,10 @@ describe('CoursesService', () => {
     });
 
     it("negative: should throw NotFoundException when a course enrolment of a user couldn't be found in DB", async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(null);
-      const responseMessage = `Course enrolment with course_id ${DummyCourseEnrolments[1].course_id} couldn't be found`;
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(null);
+      const responseMessage = `Course enrolment with course_id ${DummyUpdateCourseEnrolmentDto.course_id} couldn't be found`;
       let exception: any;
       try {
         await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
@@ -330,11 +334,14 @@ describe('CoursesService', () => {
     });
 
     it('positive: should update a course enrolment status when a user enrolment found in DB ', async () => {
-      CoursesRepositoryMock.checkForeignKeyUserIdExist.mockResolvedValueOnce(userDummy);
-      CoursesRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseTwo);
-      CoursesRepositoryMock.checkUserCourseEnrolment.mockResolvedValueOnce(DummyCourseEnrolments[0]);
+      CoursesRepositoryMock.findUserById.mockResolvedValueOnce(userDummy);
+      CoursesRepositoryMock.findCourseById.mockResolvedValueOnce(DummyCourseTwo);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(DummyCourseEnrolments[0]);
       await coursesService.updateCourseEnrolment(DummyUpdateCourseEnrolmentDto, userDummy.id);
-      expect(CoursesRepositoryMock.updateEnrolmentStatus).toHaveBeenCalledWith(DummyUpdateCourseEnrolmentDto);
+      expect(CoursesRepositoryMock.updateEnrolmentStatus).toHaveBeenCalledWith(
+        DummyUpdateCourseEnrolmentDto,
+        userDummy.id,
+      );
     });
   });
 
@@ -357,6 +364,10 @@ describe('CoursesService', () => {
   describe('syncPlatformCourses', () => {
     it('positive: should sync platform courses', async () => {
       CoursesRepositoryMock.getPlatformCourses.mockResolvedValueOnce([DummyCourseTwo, DummyCourseThree]);
+      CoursesRepositoryMock.findEnrolmentByUserAndCourse.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+      CoursesRepositoryMock.createEnrolmentContent
+        .mockResolvedValueOnce(DummyCourseEnrolments[0])
+        .mockResolvedValueOnce(DummyCourseEnrolments[1]);
       await coursesService.syncPlatformCourses({ platform: Platform.MAC }, userDummy.id);
       expect(CoursesRepositoryMock.getPlatformCourses).toHaveBeenCalledWith(Platform.MAC);
       expect(CoursesRepositoryMock.createEnrolmentContent).toHaveBeenCalledTimes(2);

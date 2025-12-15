@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
 import axios from 'axios';
@@ -85,7 +85,7 @@ describe('AsanaService', () => {
         code: 'code',
       });
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.ASANA,
         {
@@ -113,7 +113,7 @@ describe('AsanaService', () => {
 
       await asanaAuthService.refreshToken(userDummy.id);
 
-      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toBeCalledWith(
+      expect(PlatformIntegrationsServiceMock.updatePlatformIntegration).toHaveBeenCalledWith(
         userDummy.id,
         IntegrationPlatforms.ASANA,
         { access_token: refreshResponseMock.access_token },
@@ -153,7 +153,7 @@ describe('AsanaService', () => {
 
     it('negative: should throw error if refresh count is not 0', () => {
       const result = asanaAuthService.handleUnauthorizedError(userDummy.id, 1);
-      expect(result).rejects.toThrowError('Unauthorized after retry');
+      expect(result).rejects.toThrow('Unauthorized after retry');
     });
   });
 });

@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
 import { load } from 'cheerio';
@@ -25,6 +25,7 @@ import { IsUrlSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-u
 import { IsAppSafeDto } from '../../../apps/api-server/src/modules/user/dto/is-app-safe.dto';
 import { HabitOption, IOpenAIOptions } from './interfaces';
 import {
+  DEFAULT_EMBEDDING_MODEL,
   INPUT_WRAPPER,
   MAX_WORD_LENGTH,
   OPENAI_MODULE_OPTIONS,
@@ -54,6 +55,8 @@ export class OpenAIService {
     [OpenAIKeyType.ACTIVITY_EMOJI_GENERATION]?: OpenAI;
     [OpenAIKeyType.HABIT_ADJUSTMENT]?: OpenAI;
     [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING]?: OpenAI;
+    [OpenAIKeyType.ROUTINE_SUGGESTION]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -325,18 +328,16 @@ export class OpenAIService {
         };
       }
 
-      const filledPromptContent = promptContent
-        .replace('{{url}}', sanitizedUrl)
-        .replace('{{tab_title}}', finalTitle)
-        .replace('{{meta_description}}', finalDescription)
-        .replace('{{focus_mode}}', focus_mode || '')
-        .replace('{{intention}}', intention || '')
-        .replace('{{justificationForThisUrl}}', justificationForThisUrl || '')
-        .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '')
-        .replace(
-          '{{lastFiveJustificationsInThisFocusSession}}',
-          JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
-        );
+      const filledPromptContent = this.fillPrompt(promptContent, {
+        url: sanitizedUrl,
+        tab_title: finalTitle,
+        meta_description: finalDescription,
+        focus_mode: focus_mode || '',
+        intention: intention || '',
+        justificationForThisUrl: justificationForThisUrl || '',
+        currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+        lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+      });
 
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
@@ -413,12 +414,13 @@ export class OpenAIService {
     }
 
     // Fill in the prompt template with actual values
-    const filledPromptContent = promptContent
-      .replace('{{appName}}', appName)
-      .replace('{{focusMode}}', focusMode)
-      .replace('{{intention}}', intention || '')
-      .replace('{{justificationForThisSpecificApp}}', justificationForThisSpecificApp || '')
-      .replace('{{currentTaskInToDoPlayer}}', currentTaskInToDoPlayer || '');
+    const filledPromptContent = this.fillPrompt(promptContent, {
+      appName,
+      focusMode,
+      intention: intention || '',
+      justificationForThisSpecificApp: justificationForThisSpecificApp || '',
+      currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+    });
 
     const basePrompt: ChatCompletionMessageParam = {
       role: 'system',
@@ -780,6 +782,40 @@ export class OpenAIService {
     );
   }
 
+  async createEmbedding(
+    input: string | string[],
+    {
+      model = DEFAULT_EMBEDDING_MODEL,
+      type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
+    }: { model?: string; type?: OpenAIKeyType } = {},
+  ): Promise<number[]> {
+    try {
+      const openai = this.getOpenAIInstance(type);
+      const response = await openai.embeddings.create({
+        input,
+        model,
+      });
+      return response.data?.[0]?.embedding ?? [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      return [];
+    }
+  }
+
+  async createChatCompletion(
+    messages: ChatCompletionMessageParam[],
+    {
+      type = OpenAIKeyType.ROUTINE_SUGGESTION,
+      params = {},
+    }: { type?: OpenAIKeyType; params?: Partial<OpenAI.Chat.ChatCompletionCreateParamsNonStreaming> } = {},
+  ) {
+    const baseParams = {
+      ...(OPENAI_PARAMS.routineSuggestions as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
+      ...params,
+    };
+    return this.getOpenAIChatCompletionsNonStreaming(messages, type, baseParams);
+  }
+
   isValidInput(input: string, wordCount = MAX_WORD_LENGTH.default, context = 'user_input'): boolean {
     // Skip validation for empty strings or null/undefined
     if (!input) {
@@ -831,6 +867,17 @@ export class OpenAIService {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
   }
 
+  private fillPrompt(
+    template: string | null | undefined,
+    replacements: Record<string, string | undefined | null>,
+  ): string {
+    return Object.entries(replacements).reduce<string>((acc, [key, value]) => {
+      const safeValue = value ?? '';
+      const placeholder = `{{${key}}}`;
+      return acc.split(placeholder).join(safeValue);
+    }, template ?? '');
+  }
+
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
@@ -860,7 +907,9 @@ export class OpenAIService {
     try {
       const prompt = this.promptCacheService.getPrompt('usage-screenshot-analysis');
 
-      const filledPrompt = (prompt || '').replace('{{current_datetime}}', new Date().toISOString());
+      const filledPrompt = this.fillPrompt(prompt, {
+        current_datetime: new Date().toISOString(),
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -897,6 +946,7 @@ export class OpenAIService {
     const completions = await this.getOpenAIChatCompletionsNonStreaming(
       [defaultChat],
       OpenAIKeyType.ACTIVITY_EMOJI_GENERATION,
+      OPENAI_PARAMS.activityEmojiGeneration as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
     );
 
     const newMessage = completions.choices[0].message;
@@ -950,6 +1000,14 @@ export class OpenAIService {
         const parsed = JSON.parse(response);
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
+          if (!Array.isArray(parsed)) {
+            this.sentryService.instance().captureException(new Error('Grouped habits response is not iterable'), {
+              level: 'error',
+              extra: { response, currentHabits, userFeedback },
+            });
+            return currentHabits;
+          }
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
           const validGrouped: Record<string, ActivityTemplate[]> = {};
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
@@ -988,7 +1046,8 @@ export class OpenAIService {
         // If groupByGoals is requested but AI did not group, group here
         if (groupByGoals) {
           const grouped: Record<string, ActivityTemplate[]> = {};
-          for (const goal of userGoals) {
+          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
+          for (const goal of normalizedGoals) {
             grouped[goal] = sanitizedAdjustedHabits.filter((adjustedHabit) => {
               return currentHabits.find((habit) => adjustedHabit.id === habit.id).tags?.includes(goal);
             });
@@ -1013,10 +1072,9 @@ export class OpenAIService {
     try {
       const prompt = this.promptCacheService.getPrompt('handwritten-todos-analysis');
 
-      const filledPrompt = (prompt || '').replace(
-        '{{current_datetime}}',
-        currentDatetimeIso || new Date().toISOString(),
-      );
+      const filledPrompt = this.fillPrompt(prompt, {
+        current_datetime: currentDatetimeIso || new Date().toISOString(),
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1070,9 +1128,10 @@ export class OpenAIService {
 
       const currentDatetimeIso = new Date().toISOString();
       const prompt = this.promptCacheService.getPrompt('todos-transcript-analysis') || '';
-      const filledPrompt = prompt
-        .replace('{{transcript}}', transcript)
-        .replace('{{current_datetime}}', currentDatetimeIso);
+      const filledPrompt = this.fillPrompt(prompt, {
+        transcript,
+        current_datetime: currentDatetimeIso,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1094,6 +1153,75 @@ export class OpenAIService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw new Error('Failed to create todos from transcript');
+    }
+  }
+
+  async extractHabitsFromImage(
+    imageBuffer: string,
+  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+    try {
+      const prompt = this.promptCacheService.getPrompt('habit-import-image');
+
+      const filledPrompt = this.fillPrompt(prompt, {});
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: filledPrompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+              },
+            },
+          ],
+        },
+      ];
+
+      const response = await this.analyzeImage(messages);
+      const { content } = response.choices[0].message;
+
+      const habits = content ? JSON.parse(content).habits : [];
+      return Array.isArray(habits) ? habits : [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to extract habits from image');
+    }
+  }
+
+  async extractHabitsFromTranscript(
+    transcript: string,
+  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+    try {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'habit_import_transcript')) {
+        throw new Error('Invalid input');
+      }
+
+      const prompt = this.promptCacheService.getPrompt('habit-import-transcript') || '';
+      const filledPrompt = this.fillPrompt(prompt, {
+        transcript,
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: filledPrompt,
+        },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.ROUTINE_SUGGESTION,
+        OPENAI_PARAMS.habitImportExtraction as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
+
+      const content = completions.choices[0]?.message?.content;
+      const habits = content ? JSON.parse(content).habits : [];
+      return Array.isArray(habits) ? habits : [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to extract habits from transcript');
     }
   }
 

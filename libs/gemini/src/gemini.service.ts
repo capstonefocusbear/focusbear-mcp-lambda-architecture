@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { GoogleGenAI } from '@google/genai';
 import { promises as fs } from 'fs';
 import { IGeminiOptions } from './interfaces';

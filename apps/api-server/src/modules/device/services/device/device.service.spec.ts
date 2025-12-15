@@ -1,6 +1,6 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { randomUUID } from 'crypto';
 import {
   ANDROID_DEVICE_NAME,
@@ -189,7 +189,7 @@ describe('DeviceService', () => {
 
       await deviceService.updateDeviceAppVersion(desktopDeviceDummy.id, '1.0.2');
 
-      expect(DeviceRepositoryMock.orm.save).toBeCalledWith({ ...desktopDeviceDummy, app_version: '1.0.2' });
+      expect(DeviceRepositoryMock.orm.save).toHaveBeenCalledWith({ ...desktopDeviceDummy, app_version: '1.0.2' });
     });
   });
 
@@ -215,7 +215,7 @@ describe('DeviceService', () => {
 
       await deviceService.getDevicesForAdmin(userDummy.id, userId);
 
-      expect(DeviceRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userId } });
+      expect(DeviceRepositoryMock.orm.find).toHaveBeenCalledWith({ where: { user_id: userId } });
     });
   });
 

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { R2Service } from '@app/r2/services/r2.service';
 import { trackDtoDummy, userDummy } from '../../../../test/dummies';
 import { R2ServiceMock, SentryServiceMock, TracksRepositoryMock, UserRepositoryMock } from '../../../../test/mocks';
@@ -83,7 +83,7 @@ describe('TracksService', () => {
     it('Positive: should call upsert on tracksRepository with track DTO', async () => {
       await tracksService.upsertTrack(trackDtoDummy);
 
-      expect(TracksRepositoryMock.upsert).toBeCalledWith(trackDtoDummy, ['id']);
+      expect(TracksRepositoryMock.upsert).toHaveBeenCalledWith(trackDtoDummy, ['id']);
     });
   });
 });

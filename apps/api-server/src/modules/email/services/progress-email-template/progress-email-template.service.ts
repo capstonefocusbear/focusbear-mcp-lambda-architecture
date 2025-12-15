@@ -18,13 +18,20 @@ export class ProgressEmailTemplateService {
     private readonly i18nService: I18nService,
   ) {}
 
+  private getApiBaseUrl(): string {
+    return process.env.API_URL || process.env.DASHBOARD_URL || 'https://api.focusbear.io';
+  }
+
   async generateWeeklyProgressEmail(
     user: User,
     metrics: WeeklyProgressMetricsDto,
     unsubscribeToken: string,
+    options: { variant?: 'weekly' | 'daily' } = {},
   ): Promise<EmailContent> {
     const userName = user.username || 'Friend';
     const userLang = user.language || 'en';
+    const variant = options.variant || 'weekly';
+    const isDaily = variant === 'daily';
 
     const weekStart = new Date(metrics.week_start).toLocaleDateString('en-US', {
       month: 'long',
@@ -34,26 +41,38 @@ export class ProgressEmailTemplateService {
       month: 'long',
       day: 'numeric',
     });
+    const singleDay = weekEnd;
 
     const templateData = {
       userName,
+      variant,
       headerTitle:
-        this.i18nService.t('common.email_weekly_progress_header_title', { lang: userLang }) || 'Weekly Progress Report',
-      headerSubtitle:
-        this.i18nService.t('common.email_weekly_progress_header_subtitle', {
-          lang: userLang,
-          args: { username: userName, weekStart, weekEnd },
-        }) || `Hi ${userName}! Here's how you did from ${weekStart} to ${weekEnd}`,
+        this.i18nService.t(
+          isDaily ? 'common.email_daily_progress_header_title' : 'common.email_weekly_progress_header_title',
+          { lang: userLang },
+        ) || (isDaily ? 'Daily Progress Report' : 'Weekly Progress Report'),
+      headerSubtitle: isDaily
+        ? this.i18nService.t('common.email_daily_progress_header_subtitle', {
+            lang: userLang,
+            args: { username: userName, date: singleDay },
+          }) || `Hi ${userName}! Here's how you did on ${singleDay}`
+        : this.i18nService.t('common.email_weekly_progress_header_subtitle', {
+            lang: userLang,
+            args: { username: userName, weekStart, weekEnd },
+          }) || `Hi ${userName}! Here's how you did from ${weekStart} to ${weekEnd}`,
       footerText:
-        this.i18nService.t('common.email_weekly_progress_footer_text', { lang: userLang }) || 'Keep up the great work!',
+        this.i18nService.t(
+          isDaily ? 'common.email_daily_progress_footer_text' : 'common.email_weekly_progress_footer_text',
+          { lang: userLang },
+        ) || 'Keep up the great work!',
       unsubscribeText:
-        this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+        this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Unsubscribe from these emails',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
 
       // Progress metrics
       focusUsagePercentage: this.calculateOverallUsage(metrics),
@@ -141,12 +160,12 @@ export class ProgressEmailTemplateService {
         'Keep up the great work!',
       unsubscribeText:
         this.i18nService.t('common.email_unsubscribe_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
 
       // Progress metrics
       focusUsagePercentage: this.calculateOverallUsageMonthly(metrics),
@@ -226,11 +245,11 @@ export class ProgressEmailTemplateService {
         this.i18nService.t('common.email_no_progress_footer_text', { lang: userLang }) || 'We believe in you!',
       unsubscribeText:
         this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
-      apiUrl: process.env.API_URL || '',
+      managePreferencesText:
+        this.i18nService.t('common.email_manage_preferences_text', { lang: userLang }) || 'Manage email preferences',
+      apiUrl: this.getApiBaseUrl(),
       dashboardUrl: process.env.DASHBOARD_URL || '',
-      manageEmailPreferencesLink: `${
-        process.env.API_URL || ''
-      }/user/email-preferences/manage?token=${unsubscribeToken}`,
+      manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
       unsubscribeToken,
 
       // Translated labels for no-progress email
@@ -272,16 +291,22 @@ export class ProgressEmailTemplateService {
    */
   private calculateOverallUsage(metrics: WeeklyProgressMetricsDto): number {
     // Calculate routine completion rates (0-1 scale)
-    const morningUsage = metrics.routines.morning.completed / metrics.routines.morning.total || 0;
-    const eveningUsage = metrics.routines.evening.completed / metrics.routines.evening.total || 0;
-    const microBreaksUsage = metrics.routines.micro_breaks.completed / metrics.routines.micro_breaks.total || 0;
+    const morningTotal = metrics.routines?.morning?.total || 0;
+    const eveningTotal = metrics.routines?.evening?.total || 0;
+    const microTotal = metrics.routines?.micro_breaks?.total || 0;
+
+    const morningUsage = morningTotal > 0 ? metrics.routines.morning.completed / morningTotal : 0;
+    const eveningUsage = eveningTotal > 0 ? metrics.routines.evening.completed / eveningTotal : 0;
+    const microBreaksUsage = microTotal > 0 ? metrics.routines.micro_breaks.completed / microTotal : 0;
 
     // Average all routine types
     const routineUsage = (morningUsage + eveningUsage + microBreaksUsage) / 3;
 
-    // Focus usage: 1 session per day = 100% (7 sessions in a week)
+    const periodDays = Math.max(morningTotal, eveningTotal, microTotal, 1);
+
+    // Focus usage: 1 session per day = 100%
     const focusUsage =
-      metrics.focus_sessions.sessions_count > 0 ? Math.min(1, metrics.focus_sessions.sessions_count / 7) : 0;
+      metrics.focus_sessions.sessions_count > 0 ? Math.min(1, metrics.focus_sessions.sessions_count / periodDays) : 0;
 
     // Task completion rate (already in 0-1 scale)
     const taskUsage = metrics.tasks.completion_rate || 0;

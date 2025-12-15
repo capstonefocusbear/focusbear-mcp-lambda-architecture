@@ -1,9 +1,10 @@
-import { Entity, JoinColumn, Column, ManyToOne, Index } from 'typeorm';
+import { Entity, JoinColumn, Column, ManyToOne, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Course } from './course.entity';
 import { User } from '../../user/entities/user.entity';
 
 @Entity('course_enrolments')
+@Unique(['user_id', 'course_id'])
 export class CourseEnrolment extends BaseEntity {
   constructor({ id, ...data }: Partial<CourseEnrolment> = {}, options = { generateId: false }) {
     super(id, options);

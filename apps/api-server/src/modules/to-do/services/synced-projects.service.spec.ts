@@ -56,7 +56,7 @@ describe('SyncedProjectsService', () => {
 
       await service.mapStatusesToComplete(userDummy.id, dummyProjectId, dummyExternalStatuses);
 
-      expect(SyncedProjectsRepositoryMock.orm.save).toBeCalledWith({
+      expect(SyncedProjectsRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...syncedProjectDummy,
         available_statuses: dummyExternalStatuses,
       });
@@ -66,7 +66,7 @@ describe('SyncedProjectsService', () => {
   describe('getUserSyncedProjects', () => {
     it('positive: should fetch projects from platform specified in query param', async () => {
       await service.getUserSyncedProjects(userDummy.id, { platform: IntegrationPlatforms.ZOHO });
-      expect(ServiceMock.getAllUserProjects).toBeCalledWith(userDummy.id);
+      expect(ServiceMock.getAllUserProjects).toHaveBeenCalledWith(userDummy.id);
     });
   });
 
@@ -75,7 +75,7 @@ describe('SyncedProjectsService', () => {
       const dummyData = { platform: IntegrationPlatforms.ZOHO, portal_id: 'dummy-id', project_id: 'dummy-id-2' };
       await service.syncProject(userDummy.id, dummyData);
 
-      expect(ServiceMock.syncProjectAndChildTasks).toBeCalledWith(
+      expect(ServiceMock.syncProjectAndChildTasks).toHaveBeenCalledWith(
         userDummy.id,
         dummyData.portal_id,
         dummyData.project_id,

@@ -38,7 +38,7 @@ describe('PlatformIntegrationsService', () => {
         userDummy.id,
       );
 
-      expect(PlatformIntegrationsRepositoryMock.orm.findOne).toBeCalledWith({
+      expect(PlatformIntegrationsRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { platform: IntegrationPlatforms.ZOHO, user_id: userDummy.id },
       });
 
@@ -63,7 +63,7 @@ describe('PlatformIntegrationsService', () => {
         dummyZohoData.accountId,
       );
 
-      expect(PlatformIntegrationsRepositoryMock.orm.save).toBeCalledWith(
+      expect(PlatformIntegrationsRepositoryMock.orm.save).toHaveBeenCalledWith(
         new PlatformIntegration({
           user_id: userDummy.id,
           platform: IntegrationPlatforms.ZOHO,

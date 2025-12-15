@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { SentryService } from '@ntegral/nestjs-sentry';
+import { SentryService } from '@app/observability';
 import { Auth0ManagementService } from './auth0-management.service';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options } from '../interfaces';
@@ -40,12 +40,13 @@ jest.mock('ioredis', () => {
   return { default: mockRedis };
 });
 
-// Mock FieldTransformer
+// Mock FieldTransformer and callPromiseWithTimeout
 jest.mock('../../../../apps/api-server/src/shared/utils/helpers', () => ({
   FieldTransformer: {
     to: jest.fn((data) => `encrypted_${data}`),
     from: jest.fn((data) => data.replace('encrypted_', '')),
   },
+  callPromiseWithTimeout: jest.fn((promise: Promise<any>) => promise),
 }));
 
 describe('Auth0ManagementService', () => {
@@ -68,7 +69,7 @@ describe('Auth0ManagementService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    
+
     // Mock Redis environment variables
     process.env.REDIS_HOSTNAME = 'localhost';
     process.env.REDIS_PORT = '6379';
@@ -298,15 +299,11 @@ describe('Auth0ManagementService', () => {
       await service.getAuth0User(auth0Id);
 
       expect(getUserSpy).toHaveBeenCalledWith({ id: auth0Id });
-      expect(setexSpy).toHaveBeenCalledWith(
-        `auth0:user:${auth0Id}`,
-        3600,
-        expect.stringMatching(/^encrypted_/)
-      );
+      expect(setexSpy).toHaveBeenCalledWith(`auth0:user:${auth0Id}`, 3600, expect.stringMatching(/^encrypted_/));
     });
 
     it('should decrypt data when retrieving from Redis', async () => {
-      const getSpy = jest.spyOn(mockRedisClient, 'get').mockResolvedValue('encrypted_' + JSON.stringify(mockUser));
+      const getSpy = jest.spyOn(mockRedisClient, 'get').mockResolvedValue(`encrypted_${JSON.stringify(mockUser)}`);
 
       const result = await service.getAuth0User(auth0Id);
 

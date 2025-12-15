@@ -24,6 +24,7 @@ async function runWeeklyProgressEmailsCronJob() {
 
   let emailsQueued = 0;
   let usersConsidered = 0;
+  let failedEmails = 0;
   try {
     console.log('Starting weekly progress emails cron job...');
 
@@ -32,8 +33,9 @@ async function runWeeklyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
-      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE);
+      const batch = await userRepository.getUsersForWeeklyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
+      usersConsidered += batch.length;
       console.log(
         `Processing batch ${batchNum} (${batch.length} users)`
       );
@@ -71,6 +73,7 @@ async function runWeeklyProgressEmailsCronJob() {
 
           console.log(`Queued weekly progress email for user ${user.id}`);
           emailsQueued += 1;
+          return { success: true };
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -85,11 +88,13 @@ async function runWeeklyProgressEmailsCronJob() {
               logLevel: 'error',
             },
           );
+          return { success: false, error: error.message || 'Unknown error' };
         }
       });
 
       // Wait for all emails in this batch to be queued
-      await Promise.all(emailPromises);
+      const results = await Promise.all(emailPromises);
+      failedEmails += results.filter((result) => !result.success).length;
 
       // Small delay between batches to avoid overwhelming the system
       if (batch.length === BATCH_SIZE) {
@@ -104,6 +109,7 @@ async function runWeeklyProgressEmailsCronJob() {
     return {
       emailsQueued,
       usersConsidered,
+      failedEmails,
     };
   } catch (error) {
     captureErrorWithContext(

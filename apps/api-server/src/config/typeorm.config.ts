@@ -14,6 +14,7 @@ import { User } from '../modules/user/entities/user.entity';
 import { HabitPack } from '../modules/habit-pack/entity/habit-pack.entity';
 import { InstalledPack } from '../modules/habit-pack/entity/installed-pack.entity';
 import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
+import { ActivityTemplateEmbedding } from '../modules/activity-template/entity/activity-template-embedding.entity';
 import { Notification } from '../modules/notification/entities/notification.entity';
 import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata.entity';
 import { Track } from '../modules/tracks/entities/track.entity';
@@ -48,12 +49,15 @@ import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
 import { ActivityTemplateTag } from '../modules/activity-template/entity/activity-template-tag.entity';
+import { HabitLibraryRequest } from '../modules/activity-template/entity/habit-library-request.entity';
 import { CustomRoutine } from '../modules/user/entities/custom-routine';
 import { StudyParticipant } from '../modules/user/entities/study-participant.entity';
 import { UsageData } from '../modules/user/entities/usage-data.entity';
 import { HealthMetrics } from '../modules/user/entities/health-metrics.entity';
 import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
 import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
+import { AccountabilityBuddy } from '../modules/accountability-buddy/entities/accountability-buddy.entity';
+import { UnlockRequest } from '../modules/accountability-buddy/entities/unlock-request.entity';
 import { AppVersionEntity } from '../modules/app-versions/entities/app-versions.entity';
 import { AnnouncementEntity } from '../modules/announcements/entities/announcements.entity';
 import { AnnouncementViewEntity } from '../modules/announcements/entities/announcement-views.entity';
@@ -71,6 +75,7 @@ export const typeormConfig = registerAs(
     logging: ['error', 'warn'],
     maxQueryExecutionTime: 200,
     ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+    migrationsTransactionMode: 'none',
     entities: [
       User,
       Activity,
@@ -85,6 +90,8 @@ export const typeormConfig = registerAs(
       HabitPack,
       InstalledPack,
       ActivityTemplate,
+      ActivityTemplateEmbedding,
+      HabitLibraryRequest,
       Notification,
       VideoMetadata,
       Track,
@@ -127,10 +134,12 @@ export const typeormConfig = registerAs(
       HealthMetrics,
       FlankerTest,
       AsyncTask,
+      AccountabilityBuddy,
+      UnlockRequest,
       AppVersionEntity,
       AnnouncementEntity,
       AnnouncementViewEntity,
     ],
-    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}'), join(__dirname, '../../seeds/**/*.{ts,js}')],
+    migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),
 );

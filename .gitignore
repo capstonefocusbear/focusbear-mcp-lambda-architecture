@@ -52,3 +52,5 @@ todo.txt
 /routine-notifications-cron-job/morning-message-es.json
 
 package-lock.json
+
+.cursor

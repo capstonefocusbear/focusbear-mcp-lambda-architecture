@@ -2,8 +2,8 @@ import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/c
 import { DeviceCredential, ManagementClient } from 'auth0';
 import Redis from 'ioredis';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
-import { IAuth0Options, IManagementService } from '../interfaces';
-import { FieldTransformer } from '../../../../apps/api-server/src/shared/utils/helpers';
+import { IAuth0Options, IManagementService, Auth0User } from '../interfaces';
+import { FieldTransformer, callPromiseWithTimeout } from '../../../../apps/api-server/src/shared/utils/helpers';
 
 @Injectable()
 export class Auth0ManagementService extends ManagementClient implements IManagementService {
@@ -32,7 +32,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       const cacheKey = `auth0:user:${auth0Id}`;
       const encryptedData = await this.redisClient.get(cacheKey);
       if (!encryptedData) return null;
-      
+
       // Decrypt the cached data
       const decryptedData = FieldTransformer.from(encryptedData);
       return JSON.parse(decryptedData);
@@ -55,22 +55,22 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     }
   }
 
-  async getAuth0User(auth0Id: string): Promise<any> {
+  async getAuth0User(auth0Id: string): Promise<Auth0User | null> {
     try {
-      // Try to get cached user first
-      const cachedUser = await this.getCachedUser(auth0Id);
+      // Try to get cached user first (timeboxed)
+      const cachedUser = await callPromiseWithTimeout(this.getCachedUser(auth0Id), 300).catch(() => null);
       if (cachedUser) {
         return cachedUser;
       }
 
       // Fetch from Auth0 if not cached
-      const { data: user } = await this.users.get({ id: auth0Id });
+      const { data: user } = await callPromiseWithTimeout(this.users.get({ id: auth0Id }), 4000);
 
       // Cache the user data for future requests
       if (user) {
         await this.setCachedUser(auth0Id, user);
       }
-      return user;
+      return user as Auth0User;
     } catch (error) {
       if (error.message.includes('does not exist')) {
         return null;

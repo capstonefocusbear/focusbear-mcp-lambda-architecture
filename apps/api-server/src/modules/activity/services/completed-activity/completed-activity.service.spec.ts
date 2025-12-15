@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { randomInt, randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { I18nService } from 'nestjs-i18n';
@@ -332,7 +332,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(DeviceServiceMock.markAsLeader).toBeCalledWith(completedActivity.device_id, user_id);
+      expect(DeviceServiceMock.markAsLeader).toHaveBeenCalledWith(completedActivity.device_id, user_id);
     });
 
     it('positive: if there is the next activity in the sequence, its id should be set as current_activity_id for the given User', async () => {
@@ -349,7 +349,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
         current_activity_sequence_id: sequenceWhenThereIsNextActivity.id,
         current_activity_assigned_at: expect.toBeDateString(),
@@ -379,7 +379,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: null,
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
@@ -407,7 +407,7 @@ describe('CompletedActivityService', () => {
       );
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
         new CompletedActivity(
           { ...completedActivityUpsertFormat, user_id, completed_sequence_id: undefined },
           { generateId: false, log_quantity: ActivityDummy.log_quantity },
@@ -435,7 +435,7 @@ describe('CompletedActivityService', () => {
         { user_id },
       );
 
-      expect(LogQuantityAnswersRepositoryMock.orm.insert).toBeCalledWith(createdLogQuantityAnswerDummies);
+      expect(LogQuantityAnswersRepositoryMock.orm.insert).toHaveBeenCalledWith(createdLogQuantityAnswerDummies);
     });
 
     it('positive: push notification should be sent via pusher', async () => {
@@ -453,7 +453,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.PROCESS_COMPLETED_ACTIVITY,
         expect.objectContaining({
           completedActivity,
@@ -487,7 +487,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.PROCESS_COMPLETED_ACTIVITY,
         expect.objectContaining({
           completedActivity,
@@ -550,7 +550,7 @@ describe('CompletedActivityService', () => {
       expect(result.completed_choice_log.id).toBe(completedChoiceId);
 
       // Verify background job is enqueued
-      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.PROCESS_COMPLETED_ACTIVITY,
         expect.objectContaining({
           completedActivity: dtoWithChoice,
@@ -598,7 +598,7 @@ describe('CompletedActivityService', () => {
       expect(result.completed_choice_log).toBeNull(); // Should be null for activities without choices
 
       // Verify background job is enqueued
-      expect(CompletedActivityQueueMock.add).toBeCalledWith(
+      expect(CompletedActivityQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.PROCESS_COMPLETED_ACTIVITY,
         expect.objectContaining({
           completedActivity,
@@ -762,8 +762,8 @@ describe('CompletedActivityService', () => {
         { user_id },
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
-      expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toBeCalledTimes(0);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
+      expect(UserDailyStatsServiceMock.updateDailyStatsRoutineCompletion).toHaveBeenCalledTimes(0);
     });
 
     it('positive: if there is no next activity in the sequence, this sequence should be completed', async () => {
@@ -784,7 +784,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         UncompletedSequenceLogDummy.id,
         userWithCurrentActivity.id,
       );
@@ -814,13 +814,13 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(dtoWithChoice, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
         new CompletedActivity(
           { ...completedActivityUpsertFormat, quantity_logged: null, user_id, completed_sequence_id: undefined },
           { generateId: false, log_quantity: false },
         ),
       );
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
         new CompletedActivity(
           {
             ...completedActivityUpsertFormat,
@@ -871,7 +871,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[2].id,
         current_activity_sequence_id: ActivitySequenceWithHighPriorityActivitiesDummy.id,
         current_activity_assigned_at: expect.toBeDateString(),
@@ -922,7 +922,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: null,
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
@@ -970,7 +970,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: sequenceWithActivitiesForDifferentDays.activities[2].id,
         current_activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
         current_activity_assigned_at: expect.toBeDateString(),
@@ -1020,11 +1020,11 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activityToComplete, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         completedSequenceLogId,
         userDummy.id,
       );
-      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toHaveBeenCalledWith(
         userDummy.id,
         sequenceId,
         new Date('2022-12-08T13:30:00.000Z'),
@@ -1061,7 +1061,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toBeCalled();
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).not.toHaveBeenCalled();
       jest.useRealTimers();
     });
 
@@ -1076,7 +1076,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toBeCalledWith(
+      expect(UserDailyStatsServiceMock.updateTimeSpentInBreaks).toHaveBeenCalledWith(
         userDummy.id,
         completedActivity.start_time,
         userDummy.timezone,
@@ -1095,7 +1095,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(completedActivity, fastifyRequestDummy.headers, { user_id });
 
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
         new CompletedActivity(
           { ...completedActivityUpsertFormat, user_id, completed_sequence_id: undefined },
           { generateId: false, log_quantity: ActivityDummy.log_quantity },
@@ -1133,7 +1133,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: null,
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
@@ -1183,7 +1183,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
+      expect(ActivityRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...ActivityDummyWithCompetencyChoices,
         activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 2 },
       });
@@ -1226,7 +1226,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(ActivityRepositoryMock.orm.save).toBeCalledWith({
+      expect(ActivityRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...ActivityDummyWithCompetencyChoices,
         activity_data: { ...ActivityDummyWithCompetencyChoices.activity_data, current_competency_level: 1 },
       });
@@ -1275,7 +1275,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+      expect(ActivityRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
 
     it('positive: activity current_competency_level should not be decremented if it is already at min level', async () => {
@@ -1315,7 +1315,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+      expect(ActivityRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
     it('positive: should not update competency level if activity does not track it', async () => {
       ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
@@ -1354,7 +1354,7 @@ describe('CompletedActivityService', () => {
         user_id,
       });
 
-      expect(ActivityRepositoryMock.orm.save).not.toBeCalled();
+      expect(ActivityRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
     it('positive: next activity should be set to first activity that has not been completed yet rather than next activity in sequence', async () => {
       // mock date to be a Monday because dummy sequence has activities that should only be done on Mondays
@@ -1386,7 +1386,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.completeActivity(activity, fastifyRequestDummy.headers, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: sequenceWithActivitiesForDifferentDays.activities[0].id,
         current_activity_sequence_id: sequenceWithActivitiesForDifferentDays.id,
         current_activity_assigned_at: new Date('2023-02-20T06:30:00.000Z'),
@@ -1451,7 +1451,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
-      expect(DeviceServiceMock.markAsLeader).toBeCalledWith(completedActivity.device_id, user_id);
+      expect(DeviceServiceMock.markAsLeader).toHaveBeenCalledWith(completedActivity.device_id, user_id);
     });
 
     it('positive: if there is the next activity in the sequence, its id should be set as current_activity_id for the given User', async () => {
@@ -1475,7 +1475,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: sequenceWhenThereIsNextActivity.activity_ids[1],
         current_activity_sequence_id: sequenceWhenThereIsNextActivity.id,
         current_activity_assigned_at: expect.toBeDateString(),
@@ -1508,7 +1508,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.skipActivity(completedActivity, { user_id });
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(user_id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(user_id, {
         current_activity_id: null,
         current_activity_sequence_id: null,
         current_activity_assigned_at: null,
@@ -1561,7 +1561,7 @@ describe('CompletedActivityService', () => {
         { user_id },
       );
 
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(updatedCompletedActivity);
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(updatedCompletedActivity);
     });
 
     it('positive: if client passes skipped_did_complete, service should respect it and treat as completion in guard later', async () => {
@@ -1587,7 +1587,7 @@ describe('CompletedActivityService', () => {
         { user_id },
       );
 
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
         expect.objectContaining({ metadata: { skipped_did_complete: true } }),
       );
     });
@@ -1631,7 +1631,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
-      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toHaveBeenCalledWith(
         [params.activity_id, null],
         {
           ...query,
@@ -1653,7 +1653,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
-      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toHaveBeenCalledWith(
         [params.activity_id, null],
         {
           ...query,
@@ -1712,7 +1712,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.getStatsByActivityPerDay(params, query);
 
-      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.getAggregatedQuantityLogsPerDay).toHaveBeenCalledWith(
         [params.activity_id, linkedActivityId],
         {
           ...query,
@@ -1729,7 +1729,7 @@ describe('CompletedActivityService', () => {
       const timeRange = { from_time: new Date(), to_time: new Date() };
       await completedActivityService.getCompletedLogsByActivityInTimeRange({ activity_id }, timeRange);
 
-      expect(CompletedActivityRepositoryMock.getLogsByActivityInTimeRange).toBeCalledWith(activity_id, timeRange);
+      expect(CompletedActivityRepositoryMock.getLogsByActivityInTimeRange).toHaveBeenCalledWith(activity_id, timeRange);
     });
   });
 
@@ -1759,7 +1759,7 @@ describe('CompletedActivityService', () => {
       await completedActivityService.reviseCompletedLog(CompletedActivityDummy.id, { quantity_logged });
 
       const updatedItem = { ...CompletedActivityDummy, quantity_logged };
-      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith(updatedItem);
+      expect(CompletedActivityRepositoryMock.orm.save).toHaveBeenCalledWith(updatedItem);
     });
 
     it('positive: if log_quantity_answers are sent they should be updated', async () => {
@@ -1774,9 +1774,9 @@ describe('CompletedActivityService', () => {
         log_quantity_answers: [logQuantityAnswersDtoDummy[0]],
       });
 
-      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalled();
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toHaveBeenCalled();
 
-      expect(LogQuantityAnswersRepositoryMock.orm.save).toBeCalledWith({
+      expect(LogQuantityAnswersRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...logQuantityAnswerDummy,
         question_id: logQuantityAnswersDtoDummy[0].question_id,
         logged_value: logQuantityAnswersDtoDummy[0].logged_value,
@@ -1791,7 +1791,7 @@ describe('CompletedActivityService', () => {
         log_quantity_answers: [logQuantityAnswersDtoDummy[0]],
       });
 
-      expect(LogQuantityAnswersRepositoryMock.orm.save).not.toBeCalled();
+      expect(LogQuantityAnswersRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
   });
 
@@ -1866,10 +1866,10 @@ describe('CompletedActivityService', () => {
       await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
       const timerange = { from_time: expect.toBeDateString(), to_time: expect.toBeDateString() };
-      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
-      expect(CompletedActivityRepositoryMock.getDaySummaryAVG).toBeCalledWith(userDummy.id, timerange);
-      expect(CompletedActivityRepositoryMock.getDaySummarySUM).toBeCalledWith(userDummy.id, timerange);
-      expect(CompletedActivityRepositoryMock.getDaySummaryDuration).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toHaveBeenCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummaryAVG).toHaveBeenCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummarySUM).toHaveBeenCalledWith(userDummy.id, timerange);
+      expect(CompletedActivityRepositoryMock.getDaySummaryDuration).toHaveBeenCalledWith(userDummy.id, timerange);
     });
 
     it('positive: should return DaySummary data model', async () => {
@@ -1899,7 +1899,7 @@ describe('CompletedActivityService', () => {
       const result = await completedActivityService.getDaySummary(userDummy.id, 'UTC');
 
       expect(result).toBeInstanceOf(DaySummary);
-      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toHaveBeenCalledWith(userDummy.id, timerange);
       jest.useRealTimers();
     });
 
@@ -1916,7 +1916,7 @@ describe('CompletedActivityService', () => {
       const result = await completedActivityService.getDaySummary(userDummy.id, 'America/Moncton');
 
       expect(result).toBeInstanceOf(DaySummary);
-      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toBeCalledWith(userDummy.id, timerange);
+      expect(CompletedFocusBlockRepositoryMock.getLogsByUserInTimeRange).toHaveBeenCalledWith(userDummy.id, timerange);
       jest.useRealTimers();
     });
   });
@@ -2044,11 +2044,11 @@ describe('CompletedActivityService', () => {
         },
       );
 
-      expect(ActivitySequenceRepositoryMock.orm.findOne).toBeCalledWith({
+      expect(ActivitySequenceRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: MorningActivitySequenceDummy.id },
         relations: ['activities'],
       });
-      expect(ActivitySequenceRepositoryMock.orm.findOne).toBeCalledWith({
+      expect(ActivitySequenceRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: EveningActivitySequenceDummy.id },
         relations: ['activities'],
       });
@@ -2092,10 +2092,10 @@ describe('CompletedActivityService', () => {
         },
       );
 
-      expect(ActivityRepositoryMock.orm.find).toBeCalledWith({
+      expect(ActivityRepositoryMock.orm.find).toHaveBeenCalledWith({
         where: { activity_sequence_id: MorningActivitySequenceDummy.id, user_id: userDummy.id },
       });
-      expect(ActivityRepositoryMock.orm.find).toBeCalledWith({
+      expect(ActivityRepositoryMock.orm.find).toHaveBeenCalledWith({
         where: { activity_sequence_id: EveningActivitySequenceDummy.id, user_id: userDummy.id },
       });
     });
@@ -2139,7 +2139,7 @@ describe('CompletedActivityService', () => {
         },
       );
 
-      expect(CompletedActivityRepositoryMock.upsertActivity).toBeCalledTimes(3);
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -2272,7 +2272,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.getCompletedActivityNotes(userDummy.id, fetchNotesParams);
 
-      expect(CompletedActivityRepositoryMock.getNotes).toBeCalledWith(
+      expect(CompletedActivityRepositoryMock.getNotes).toHaveBeenCalledWith(
         userDummy.id,
         ActivityDummy.id,
         dummyFromDate,
@@ -2319,12 +2319,12 @@ describe('CompletedActivityService', () => {
         secondCompletedActivityId,
       ]);
 
-      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledTimes(2);
-      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith({
+      expect(CompletedActivityRepositoryMock.orm.save).toHaveBeenCalledTimes(2);
+      expect(CompletedActivityRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...completedActivitiesWithNotesDummyArray[0],
         activity_note: null,
       });
-      expect(CompletedActivityRepositoryMock.orm.save).toBeCalledWith({
+      expect(CompletedActivityRepositoryMock.orm.save).toHaveBeenCalledWith({
         ...completedActivitiesWithNotesDummyArray[1],
         activity_note: null,
       });
@@ -2437,7 +2437,7 @@ describe('CompletedActivityService', () => {
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
       expect(response.activity).toBe(null);
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         partialUserDummy.current_completing_sequence_log_id,
         partialUserDummy.id,
       );
@@ -2468,11 +2468,11 @@ describe('CompletedActivityService', () => {
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
       expect(response.activity).toBe(null);
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         partialUserDummy.current_completing_sequence_log_id,
         partialUserDummy.id,
       );
-      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toHaveBeenCalledWith(
         partialUserDummy.id,
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
@@ -2504,11 +2504,11 @@ describe('CompletedActivityService', () => {
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
       expect(response.activity).toBe(null);
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         partialUserDummy.current_completing_sequence_log_id,
         partialUserDummy.id,
       );
-      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toHaveBeenCalledWith(
         partialUserDummy.id,
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
@@ -2540,11 +2540,11 @@ describe('CompletedActivityService', () => {
       const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
       expect(response.activity).toBe(null);
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         partialUserDummy.current_completing_sequence_log_id,
         partialUserDummy.id,
       );
-      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.nullifyUserCurrentActivityProps).toHaveBeenCalledWith(
         partialUserDummy.id,
         partialUserDummy.current_activity_sequence_id,
         partialUserDummy.current_sequence_started_at,
@@ -2580,8 +2580,8 @@ describe('CompletedActivityService', () => {
     const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
     expect(response.activity).toBe(null);
-    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toBeCalled();
-    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).toBeCalledWith(
+    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).not.toHaveBeenCalled();
+    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).toHaveBeenCalledWith(
       partialUserDummy.id,
     );
     jest.useRealTimers();
@@ -2614,11 +2614,11 @@ describe('CompletedActivityService', () => {
     const response = await completedActivityService.recalculateCurrentActivity(partialUserDummy);
 
     expect(response.activity).toBe(null);
-    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+    expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
       partialUserDummy.current_completing_sequence_log_id,
       partialUserDummy.id,
     );
-    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).not.toBeCalled();
+    expect(CompletedActivitySequenceServiceMock.clearUserCurrentActivityPropsWithoutCompletion).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 
@@ -2727,7 +2727,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         current_activity_id: MorningActivitySequenceDummy.activity_ids[1],
         current_activity_sequence_id: MorningActivitySequenceDummy.id,
         current_activity_assigned_at: new Date('2022-12-10T07:30:00.000Z'),
@@ -2759,7 +2759,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         current_activity_id: EveningActivitySequenceDummy.activity_ids[1],
         current_activity_sequence_id: EveningActivitySequenceDummy.id,
         current_activity_assigned_at: new Date('2022-12-10T21:30:00.000Z'),
@@ -2789,7 +2789,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
-      expect(UserRepositoryMock.orm.update).not.toBeCalled();
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
     });
 
     it('positive: if synced activity is break activity, activity props should NOT be updated', async () => {
@@ -2814,7 +2814,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
-      expect(UserRepositoryMock.orm.update).not.toBeCalled();
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
     });
 
     it('positive: if synced activity is from a different day, activity props should NOT be updated', async () => {
@@ -2839,7 +2839,7 @@ describe('CompletedActivityService', () => {
 
       await completedActivityService.updateActivityPropsForOfflineSync([completedActivityDummy], userDummy);
 
-      expect(UserRepositoryMock.orm.update).not.toBeCalled();
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
     });
 
     describe('hasCutoffTimeBeenReached (private method)', () => {
@@ -3231,7 +3231,7 @@ describe('CompletedActivityService', () => {
       });
 
       // Should set next activity in sequence (not complete routine)
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(userDummy.id, {
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
         current_activity_id: ActivitySequenceWithHighPriorityActivitiesDummy.activities[1].id,
         current_activity_sequence_id: ActivitySequenceWithHighPriorityActivitiesDummy.id,
         current_activity_assigned_at: expect.toBeDateString(),
@@ -3283,7 +3283,7 @@ describe('CompletedActivityService', () => {
       });
 
       // Should complete routine (set current activity to null)
-      expect(UserRepositoryMock.orm.update).toBeCalledWith(
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         userDummy.id,
         expect.objectContaining({
           current_activity_id: null,

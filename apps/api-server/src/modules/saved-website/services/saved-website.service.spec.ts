@@ -29,7 +29,7 @@ describe('SavedWebsiteService', () => {
     it('positive: should fetch users saved websites', async () => {
       await savedWebsiteService.getUserSavedWebsites(userDummy.id);
 
-      expect(SavedWebsiteRepositoryMock.orm.find).toBeCalledWith({
+      expect(SavedWebsiteRepositoryMock.orm.find).toHaveBeenCalledWith({
         where: { user_id: userDummy.id },
         order: { created_at: 'DESC' },
       });
@@ -41,7 +41,7 @@ describe('SavedWebsiteService', () => {
       const savedWebsiteDummy = { url: 'www.test.com', title: 'Test Site' };
       await savedWebsiteService.saveWebsites(userDummy.id, [savedWebsiteDummy]);
 
-      expect(SavedWebsiteRepositoryMock.orm.save).toBeCalledWith([
+      expect(SavedWebsiteRepositoryMock.orm.save).toHaveBeenCalledWith([
         new SavedWebsite({ user_id: userDummy.id, ...savedWebsiteDummy }),
       ]);
     });
@@ -52,7 +52,7 @@ describe('SavedWebsiteService', () => {
       const websiteIdDummy = randomUUID();
       await savedWebsiteService.deleteSavedWebsite(userDummy.id, websiteIdDummy);
 
-      expect(SavedWebsiteRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: websiteIdDummy });
+      expect(SavedWebsiteRepositoryMock.orm.delete).toHaveBeenCalledWith({ user_id: userDummy.id, id: websiteIdDummy });
     });
   });
 
@@ -61,7 +61,10 @@ describe('SavedWebsiteService', () => {
       const websiteIdDummy = randomUUID();
       await savedWebsiteService.deleteSavedWebsites(userDummy.id, [websiteIdDummy]);
 
-      expect(SavedWebsiteRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: In([websiteIdDummy]) });
+      expect(SavedWebsiteRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        user_id: userDummy.id,
+        id: In([websiteIdDummy]),
+      });
     });
   });
 });

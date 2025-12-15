@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
 import { getQueueToken } from '@nestjs/bull';
@@ -80,7 +80,7 @@ describe('ClickUpService', () => {
 
       await clickUpService.getUser(userDummy.id);
 
-      expect(UserRepositoryMock.orm.findOneBy).toBeCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: userDummy.id });
     });
   });
 
@@ -132,7 +132,7 @@ describe('ClickUpService', () => {
 
       const result = clickUpService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
 
-      expect(result).rejects.toThrowError('Failed to update task status after trying to get new access token.');
+      expect(result).rejects.toThrow('Failed to update task status after trying to get new access token.');
     });
 
     it('negative: should throw an error if the request fails', async () => {
@@ -145,7 +145,7 @@ describe('ClickUpService', () => {
       mockedAxios.put.mockRejectedValue(new Error('Request failed'));
 
       const result = clickUpService.updateTaskStatus(userDummy.id, portalId, projectId, taskId, statusId);
-      expect(result).rejects.toThrowError('Request failed');
+      expect(result).rejects.toThrow('Request failed');
     });
   });
 

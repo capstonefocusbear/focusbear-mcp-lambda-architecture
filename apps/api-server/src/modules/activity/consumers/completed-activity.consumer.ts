@@ -1,5 +1,5 @@
 import { Process, Processor, InjectQueue } from '@nestjs/bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job, Queue } from 'bull';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { CreateCompletedActivityDto } from '../dto/create-completed-activity.dto';

@@ -2,7 +2,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
@@ -291,16 +291,16 @@ describe('EventService', () => {
       await eventsService.handleEventBroadcast(userDummy.id, tc.dummyEvent, auth0UserDummy.email);
 
       if (tc.expectCliq) {
-        expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+        expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
           channel: 'channel',
           message: `${tc.msgPrefix}\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(tc.dummyEvent)}\`\`\``,
         });
       } else {
-        expect(mockedAxios.post).not.toBeCalled();
+        expect(mockedAxios.post).not.toHaveBeenCalled();
       }
 
       if (tc.expectEmail) {
-        expect(SendGridServiceMock.sendEmail).toBeCalledWith({
+        expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith({
           to: FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT,
           from: FOCUS_BEAR_EMAILS.SUPPORT,
           replyTo: auth0UserDummy.email,
@@ -312,7 +312,7 @@ describe('EventService', () => {
           subject: `${EMAIL_SUBJECTS.APP_QUIT_FEEDBACK}: ${reason}`,
         });
       } else {
-        expect(SendGridServiceMock.sendEmail).not.toBeCalled();
+        expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
       }
     });
   });
@@ -335,7 +335,7 @@ describe('EventService', () => {
     it('positive: should add the incoming track event to the events queue', async () => {
       await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
 
-      expect(QueueMock.add).toBeCalledWith(BullWorkers.TRACK_EVENT, {
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.TRACK_EVENT, {
         user_id: userDummy.id,
         user_auth0_id: userDummy.auth0_id,
         trackEventDto: { event_type: 'test-event' },
@@ -355,7 +355,7 @@ describe('EventService', () => {
       )}\`\`\``;
       await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
         message,
       });
@@ -371,7 +371,7 @@ describe('EventService', () => {
       )}\`\`\``;
       await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
         message,
       });
@@ -385,7 +385,7 @@ describe('EventService', () => {
       const message = `*User quit app:*\n*User ID:* ${userDummy.id}\n*Event:*\`\`\`${JSON.stringify(dummyEvent)}\`\`\``;
       await eventsService.logEventInCliq(userDummy.id, dummyEvent);
 
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
         message,
       });

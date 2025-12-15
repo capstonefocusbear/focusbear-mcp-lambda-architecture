@@ -21,6 +21,7 @@ async function runNoProgressEmailsCronJob() {
 
   let emailsQueued = 0;
   let usersConsidered = 0;
+  let failedEmails = 0;
   try {
     console.log('Starting no-progress emails cron job...');
     // Paginated batch processing to avoid OOM
@@ -29,6 +30,7 @@ async function runNoProgressEmailsCronJob() {
     while (true) {
       const batch = await userRepository.getUsersForNoProgressEmailsBatch(skip, BATCH_SIZE, 7);
       if (batch.length === 0) break;
+      usersConsidered += batch.length;
       console.log(`Processing batch ${batchNum} (${batch.length} users)`);
 
       const emailPromises = batch.map(async (user) => {
@@ -60,6 +62,7 @@ async function runNoProgressEmailsCronJob() {
 
           console.log(`Queued no-progress email for user ${user.id}`);
           emailsQueued += 1;
+          return { success: true };
         } catch (error) {
           captureErrorWithContext(
             error,
@@ -74,10 +77,12 @@ async function runNoProgressEmailsCronJob() {
               logLevel: 'error',
             },
           );
+          return { success: false, error: error.message || 'Unknown error' };
         }
       });
 
-      await Promise.all(emailPromises);
+      const results = await Promise.all(emailPromises);
+      failedEmails += results.filter((result) => !result.success).length;
 
       // Delay between batches
       if (batch.length === BATCH_SIZE) {
@@ -92,6 +97,7 @@ async function runNoProgressEmailsCronJob() {
     return {
       emailsQueued,
       usersConsidered,
+      failedEmails,
     };
   } catch (error) {
     captureErrorWithContext(

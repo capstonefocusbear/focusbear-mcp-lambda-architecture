@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import axios from 'axios';
 import { NotFoundException } from '@nestjs/common';
 import {
@@ -73,7 +73,7 @@ describe('VideoMetadataService', () => {
 
       const result = await videoMetadataService.saveVideosMetadata(videoUrlsDummy, userDummy.id);
 
-      expect(VideoMetadataRepositoryMock.upsert).toBeCalledTimes(1);
+      expect(VideoMetadataRepositoryMock.upsert).toHaveBeenCalledTimes(1);
       expect(result).toEqual(videoMetadataReturnValueDummy);
     });
   });

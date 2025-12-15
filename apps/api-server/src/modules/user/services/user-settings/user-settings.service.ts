@@ -8,7 +8,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
@@ -17,6 +17,7 @@ import { PusherService } from '@app/pusher';
 import { I18nService } from 'nestjs-i18n';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
+import { Auth0ManagementService } from '@app/auth0';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
@@ -59,6 +60,7 @@ export class UserSettingsService {
     private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
     private readonly customRoutineRepository: CustomRoutineRepository,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -164,6 +166,38 @@ export class UserSettingsService {
         this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
       }
 
+      let mergedSettingsData = updateSettingsData;
+      let isFirstLogin = false;
+      if (user?.auth0_id) {
+        const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
+      }
+      if (is_onboarding && !isFirstLogin) {
+        let currentSettings: UpdateUserSettingsDto | null = null;
+        try {
+          currentSettings = await this.getSettings({ user_id });
+        } catch {
+          currentSettings = null;
+        }
+
+        const hasExistingRoutines =
+          !!currentSettings?.morning_activities?.length || !!currentSettings?.evening_activities?.length;
+
+        if (hasExistingRoutines) {
+          mergedSettingsData = {
+            ...updateSettingsData,
+            morning_activities: this.mergeById(
+              currentSettings?.morning_activities,
+              updateSettingsData?.morning_activities,
+            ),
+            evening_activities: this.mergeById(
+              currentSettings?.evening_activities,
+              updateSettingsData?.evening_activities,
+            ),
+          };
+        }
+      }
+
       const {
         startup_time,
         shutdown_time,
@@ -172,10 +206,11 @@ export class UserSettingsService {
         morning_activities,
         break_activities,
         custom_routines,
-      } = updateSettingsData;
+        verbose_logging,
+      } = mergedSettingsData;
 
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
-        await this.updateUserIfCurrentActivityDeleted(updateSettingsData, user);
+        await this.updateUserIfCurrentActivityDeleted(mergedSettingsData, user);
 
       const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
@@ -185,7 +220,7 @@ export class UserSettingsService {
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
       const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
-        updateSettingsData,
+        mergedSettingsData,
         user,
         is_onboarding,
       );
@@ -208,17 +243,34 @@ export class UserSettingsService {
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
         is_relax_activity_generated,
+        ...(typeof verbose_logging === 'boolean' && { verbose_logging }),
       });
 
       let customRoutines = [];
       let deserializeCustomRoutineActivities = [];
       if (custom_routines?.length) {
-        customRoutines = custom_routines?.map(({ standalone_activities, activity_sequence_id, ...rest }) => ({
-          ...rest,
-          user_id,
-        }));
+        // First, ensure all custom routines have IDs (generate if missing)
+        const customRoutinesWithIds = custom_routines.map((routine) => {
+          if (!routine.id) {
+            return { ...routine, id: randomUUID() };
+          }
+          return routine;
+        });
+
+        // Create CustomRoutine instances for saving (without standalone_activities)
+        customRoutines = customRoutinesWithIds.map(({ standalone_activities, activity_sequence_id, ...rest }) => {
+          return new CustomRoutine(
+            {
+              ...rest,
+              user_id,
+            },
+            { generateId: false }, // ID already set above
+          );
+        });
+
+        // Use the DTOs with IDs for deserializing activities
         deserializeCustomRoutineActivities = await this.activityParserService.deserializeCustomRoutineActivities(
-          custom_routines,
+          customRoutinesWithIds,
           user_id,
         );
       }
@@ -240,6 +292,9 @@ export class UserSettingsService {
         tutorials,
         customRoutines,
       );
+      if (typeof verbose_logging === 'boolean') {
+        this.userService.clearVerboseLoggingCache(user_id);
+      }
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
@@ -251,6 +306,57 @@ export class UserSettingsService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  mergeById<T extends { id?: string }>(existing: T[] = [], incoming: T[] = []): T[] {
+    const safeExisting = existing ?? [];
+    const safeIncoming = incoming ?? [];
+    if (safeExisting.length === 0) {
+      // Ensure items without id get a new UUID to avoid later collisions
+      return safeIncoming.map((item) => {
+        if (!item?.id) return { ...(item as any), id: randomUUID() } as T;
+        return item;
+      });
+    }
+    if (safeIncoming.length === 0) return [...safeExisting];
+
+    const existingIds = new Set<string>(safeExisting.map((item) => item?.id).filter(Boolean) as string[]);
+    const idToName = new Map<string, string | undefined>(
+      safeExisting.map((item) => [item?.id as string, (item as any)?.name] as const).filter(([id]) => Boolean(id)),
+    );
+
+    const merged: T[] = [...safeExisting];
+    const seenIds = new Set(existingIds);
+
+    for (const item of safeIncoming) {
+      const currentId = (item?.id as string | undefined) || undefined;
+      const currentName = (item as any)?.name as string | undefined;
+
+      let itemToAppend: T | null = null;
+
+      if (!currentId) {
+        // No id → always append with a fresh UUID
+        itemToAppend = { ...(item as any), id: randomUUID() } as T;
+      } else if (seenIds.has(currentId)) {
+        const existingName = idToName.get(currentId);
+        if (existingName && currentName && existingName !== currentName) {
+          // Same id but different name → treat as distinct; assign new UUID
+          itemToAppend = { ...(item as any), id: randomUUID() } as T;
+        }
+        // else same id and same (or unknown) name → skip as duplicate
+      } else {
+        // New id → append and record
+        itemToAppend = item as T;
+        seenIds.add(currentId);
+        idToName.set(currentId, currentName);
+      }
+
+      if (itemToAppend) {
+        merged.push(itemToAppend);
+      }
+    }
+
+    return merged;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

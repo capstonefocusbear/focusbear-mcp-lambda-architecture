@@ -1,12 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { SENTRY_TOKEN } from '@app/observability';
+import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { SendGridService } from '@app/send-grid';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
+import { getQueueToken } from '@nestjs/bull';
 import {
   Auth0AuthenticationServiceMock,
   Auth0ManagementServiceMock,
@@ -19,7 +20,8 @@ import {
 import { AuthService } from './auth.service';
 import { Passport } from '../domain/passport.model';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { auth0UserDummy } from '../../../../test/dummies';
+import { auth0UserDummy, QueueMock } from '../../../../test/dummies';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -56,6 +58,10 @@ describe('AuthService', () => {
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
+        },
+        {
+          provide: getQueueToken(BullQueues.EMAIL_VERIFICATION),
+          useValue: QueueMock,
         },
         Auth0AuthenticationService,
         Auth0ManagementService,
@@ -110,44 +116,56 @@ describe('AuthService', () => {
 
   describe('openEmailConfirmation', () => {
     const origin = 'https://dashboard.focusbear.io';
-    it('positive: should send verification email if user is found and not verified', async () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      QueueMock.add.mockResolvedValue({} as any);
+    });
+
+    it('positive: should queue verification email job if user is found and not verified', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
         { ...auth0UserDummy, email_verified: false },
       ]);
-      Auth0ManagementServiceMock.resendEmailVerification.mockResolvedValue({
-        data: 'Verification email sent.',
-        status: 200,
-      });
 
       const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(response).toEqual({ data: 'Verification email sent.', status: 200 });
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.SEND_EMAIL_VERIFICATION,
+        {
+          email: auth0UserDummy.email,
+          origin,
+        },
+        expect.objectContaining({
+          attempts: 3,
+          backoff: expect.objectContaining({
+            type: 'exponential',
+            delay: 2000,
+          }),
+        }),
+      );
+      expect(response).toEqual({ data: 'Email verification queued.', status: 202 });
     });
 
-    it('negative: should throw ConflictException, if user email is already verified', async () => {
+    it('positive: should queue job even if user email is already verified (handled in consumer)', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
         { ...auth0UserDummy, email_verified: true },
       ]);
-      Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
-      await expect(authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin)).rejects.toThrow(
-        ConflictException,
-      );
+      const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
+      expect(QueueMock.add).toHaveBeenCalled();
+      expect(response).toEqual({ data: 'Email verification queued.', status: 202 });
     });
 
     it('negative: should throw NotFoundException if user is not found', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([]);
-      Auth0ManagementServiceMock.resendEmailVerification.mockReset();
 
       await expect(authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin)).rejects.toThrow(
         NotFoundException,
       );
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(Auth0ManagementServiceMock.resendEmailVerification).not.toHaveBeenCalled();
+      expect(QueueMock.add).not.toHaveBeenCalled();
     });
   });
 });

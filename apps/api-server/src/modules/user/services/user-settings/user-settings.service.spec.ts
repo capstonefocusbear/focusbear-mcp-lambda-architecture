@@ -2,7 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { Settings } from 'luxon';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
@@ -154,7 +154,8 @@ describe('UserSettingsService', () => {
 
       const result = await userSettingsService.getSettings({ user_id });
 
-      expect(result).toMatchSnapshot();
+      const serializedResult = JSON.parse(JSON.stringify(result));
+      expect(serializedResult).toMatchSnapshot();
     });
 
     it("positive: if cutoff_time_for_non_high_priority_activities is not null it should be returned along with rest of user's settings", async () => {
@@ -287,6 +288,25 @@ describe('UserSettingsService', () => {
       );
     });
 
+    it('positive: should clear verbose logging cache when verbose_logging setting is provided', async () => {
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+
+      await userSettingsService.updateSettings(
+        { user_id: userDummy.id },
+        { ...userSettingsDummy, verbose_logging: true },
+        true,
+        { is_onboarding: false },
+      );
+
+      expect(UserServiceMock.clearVerboseLoggingCache).toHaveBeenCalledWith(userDummy.id);
+    });
+
     it('positive: consistentlyUpdateUserSettings should be called', async () => {
       const { startup_time, shutdown_time, break_after_minutes } = userSettingsDummy;
       const updatedUser = new User({
@@ -314,7 +334,7 @@ describe('UserSettingsService', () => {
         is_onboarding: false,
       });
 
-      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalledWith(
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toHaveBeenCalledWith(
         {
           ...updatedUser,
           last_time_user_settings_modified: expect.toBeDateString(),
@@ -354,7 +374,7 @@ describe('UserSettingsService', () => {
         { is_onboarding: true },
       );
 
-      expect(ActivityParserServiceMock.deserialize).toBeCalledWith(
+      expect(ActivityParserServiceMock.deserialize).toHaveBeenCalledWith(
         {
           morning_activities: [],
           evening_activities: [
@@ -394,7 +414,7 @@ describe('UserSettingsService', () => {
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'America/New_York' });
 
       // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
       Settings.now = () => new Date().valueOf();
     });
 
@@ -402,21 +422,21 @@ describe('UserSettingsService', () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC-2' });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
     });
 
     it('positive: should update user timezone in UTC offset format receiving positive UTC offset zone format', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC+2' });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
     });
 
     it('positive: if only language is passed in timezone should not be updated', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { language: LanguageOptions.SPANISH });
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { language: 'es' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { language: 'es' });
     });
   });
 
@@ -456,7 +476,7 @@ describe('UserSettingsService', () => {
         current_activity_id: null,
         current_activity_sequence_id: null,
       });
-      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toBeCalledWith(
+      expect(CompletedActivitySequenceServiceMock.completeActivitySequence).toHaveBeenCalledWith(
         userWithCurrentActivity.completing_sequence_log.id,
         userWithCurrentActivity.id,
       );
@@ -662,7 +682,7 @@ describe('UserSettingsService', () => {
 
       await userSettingsService.addActivityToRoutine(userDummy.id, activityDataDummy);
 
-      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toBeCalled();
+      expect(UserRepositoryMock.consistentlyUpdateUserSettings).toHaveBeenCalled();
     });
   });
 
@@ -743,6 +763,76 @@ describe('UserSettingsService', () => {
           message: 'Identical startup/shutdown times detected',
         }),
       );
+    });
+  });
+
+  describe('mergeById', () => {
+    type TestItem = { id?: string; name?: string; extra?: string };
+
+    it('returns incoming when existing is empty and assigns uuid for items without id', () => {
+      const incoming: TestItem[] = [{ name: 'A' }, { id: '1', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>([], incoming);
+      expect(result).toHaveLength(2);
+      const [first, second] = result;
+      expect(first.id).toBeDefined();
+      expect(typeof first.id).toBe('string');
+      expect(second.id).toBe('1');
+    });
+
+    it('returns existing when incoming is empty (copy, not same reference)', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, []);
+      expect(result).toEqual(existing);
+      expect(result).not.toBe(existing);
+    });
+
+    it('appends unique incoming items by id', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '2', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(2);
+      expect(result.map((i) => i.id)).toEqual(['1', '2']);
+    });
+
+    it('skips duplicates when incoming has same id and same name', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1', name: 'A' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(existing[0]);
+    });
+
+    it('treats same id but different name as distinct, generating a new uuid', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1', name: 'B' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(2);
+      const [ex, inc] = result;
+      expect(ex.id).toBe('1');
+      expect(inc.name).toBe('B');
+      expect(inc.id).toBeDefined();
+      expect(inc.id).not.toBe('1');
+    });
+
+    it('skips duplicate when incoming has same id but unknown name', () => {
+      const existing: TestItem[] = [{ id: '1', name: 'A' }];
+      const incoming: TestItem[] = [{ id: '1' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(existing[0]);
+    });
+
+    it('preserves order: existing first, then unique incoming in order', () => {
+      const existing: TestItem[] = [
+        { id: '1', name: 'A' },
+        { id: '2', name: 'B' },
+      ];
+      const incoming: TestItem[] = [{ id: '2', name: 'B' }, { id: '3', name: 'C' }, { name: 'D' }];
+      const result = userSettingsService.mergeById<TestItem>(existing, incoming);
+      expect(result[0].id).toBe('1');
+      expect(result[1].id).toBe('2');
+      expect(result[2].id).toBe('3');
+      expect(result[3].id).toBeDefined();
     });
   });
 

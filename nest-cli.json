@@ -6,11 +6,11 @@
   "compilerOptions": {
     "webpack": true,
     "tsConfigPath": "apps/api-server/tsconfig.app.json",
-    "plugins": [
-      {
-        "name": "@nestjs/swagger",
-        "options": {
-          "classValidatorShim": true,
+      "plugins": [
+        {
+          "name": "@nestjs/swagger",
+          "options": {
+            "classValidatorShim": true,
           "introspectComments": true,
           "dtoFileNameSuffix": [".dto.ts", ".entity.ts", ".model.ts"]
         }
@@ -28,7 +28,11 @@
       "entryFile": "main",
       "sourceRoot": "apps/api-server/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/api-server/tsconfig.app.json"
+        "tsConfigPath": "apps/api-server/tsconfig.app.json",
+        "assets": [
+          { "include": "src/shared/i18n/**/*", "watchAssets": true },
+          { "include": "src/modules/email/templates/**/*", "watchAssets": true }
+        ]
       }
     },
     "observability": {

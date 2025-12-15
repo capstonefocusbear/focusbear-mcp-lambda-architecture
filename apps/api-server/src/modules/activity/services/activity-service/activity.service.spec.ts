@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { randomUUID } from 'crypto';
 import { StripeService } from '@app/stripe';
 import { QueueMock, userDummy, userSettingsDBResponseDummy } from '../../../../../test/dummies';
@@ -101,7 +101,7 @@ describe('ActivityService', () => {
         `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       );
 
-      expect(QueueMock.add).toBeCalledWith(BullWorkers.DELETE_ACTIVITY_IMAGE, {
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.DELETE_ACTIVITY_IMAGE, {
         user_id: userDummy.id,
         filePath: `/uploads/activity_images/${activityId}/quantum_awareness_icon.png`,
       });
@@ -145,7 +145,7 @@ describe('ActivityService', () => {
         activity_type: ActivityType.morning,
       });
 
-      expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
+      expect(ActivityRepositoryMock.getActivitiesForAdmin).toHaveBeenCalledWith(userDummy.id, 2, ActivityType.morning);
     });
 
     it("positive: if activities are searched using user's email, stripe ID should be fetched first from Stripe and that should be used to query user's activities", async () => {
@@ -163,11 +163,11 @@ describe('ActivityService', () => {
         page_num: 1,
       });
 
-      expect(StripeServiceMock.getStripeCustomerId).toBeCalledWith(dummyEmail);
-      expect(UserConsentRepositoryMock.orm.findOne).toBeCalledWith({
+      expect(StripeServiceMock.getStripeCustomerId).toHaveBeenCalledWith(dummyEmail);
+      expect(UserConsentRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: [{ id: undefined }, { stripe_customer_id: dummyStripeId }],
       });
-      expect(ActivityRepositoryMock.getActivitiesForAdmin).toBeCalledWith(userDummy.id, 2, ActivityType.morning);
+      expect(ActivityRepositoryMock.getActivitiesForAdmin).toHaveBeenCalledWith(userDummy.id, 2, ActivityType.morning);
     });
 
     it("positive: if activities are searched using user's email and no matching user is found in Stripe, empty array of activities should be returned", async () => {

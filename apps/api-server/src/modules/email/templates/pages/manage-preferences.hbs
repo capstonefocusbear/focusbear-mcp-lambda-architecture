@@ -133,7 +133,7 @@
     </div>
     
     <div class="unsubscribe-link">
-      <a href="{{apiUrl}}/user/email-preferences/unsubscribe?token={{token}}">
+      <a href="/user/email-preferences/unsubscribe?token={{token}}">
         Or unsubscribe from all emails
       </a>
     </div>
@@ -160,7 +160,7 @@
       saveButton.disabled = true;
       saveButton.textContent = 'Saving...';
       
-      fetch('{{apiUrl}}/user/email-preferences/manage', {
+      fetch('/user/email-preferences/manage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

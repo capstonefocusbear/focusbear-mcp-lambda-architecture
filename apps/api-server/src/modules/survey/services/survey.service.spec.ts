@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SurveyService } from './survey.service';
 import { SurveyRepository } from '../repositories/survey.repository';
@@ -81,7 +81,7 @@ describe('surveyService', () => {
     it('positive: should save new survey', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       await surveyService.createSurvey(dummyCreateSurveyDto, userDummy.id);
-      expect(SurveyRepositoryMock.createSurvey).toBeCalledWith(dummyCreateSurveyDto, userDummy.id);
+      expect(SurveyRepositoryMock.createSurvey).toHaveBeenCalledWith(dummyCreateSurveyDto, userDummy.id);
     });
   });
 
@@ -122,7 +122,7 @@ describe('surveyService', () => {
       await surveyService.updateSurvey(dummyUpdateSurveyDto, userDummy.id);
       const { survey_id, ...rest } = dummyUpdateSurveyDto;
 
-      expect(SurveyRepositoryMock.updateSurvey).toBeCalledWith(
+      expect(SurveyRepositoryMock.updateSurvey).toHaveBeenCalledWith(
         new Survey({
           ...dummySurveys[0],
           ...rest,
@@ -183,8 +183,12 @@ describe('surveyService', () => {
       await surveyService.createSurveyAnswer(dummyCreateSurveyAnswerDto.VALID, dummySurveys[0].id, userDummy.id);
 
       const { metadata, ...rest } = dummyCreateSurveyAnswerDto.VALID;
-      expect(SurveyAnswerRepositoryMock.createSurveyAnswer).toBeCalledWith(rest, dummySurveys[0].id, userDummy.id);
-      expect(SurveyAnswerMetadataRepositoryMock.createSurveyAnswerMetadata).toBeCalledWith(
+      expect(SurveyAnswerRepositoryMock.createSurveyAnswer).toHaveBeenCalledWith(
+        rest,
+        dummySurveys[0].id,
+        userDummy.id,
+      );
+      expect(SurveyAnswerMetadataRepositoryMock.createSurveyAnswerMetadata).toHaveBeenCalledWith(
         metadata,
         dummySurveys[0].id,
         userDummy.id,
@@ -243,7 +247,7 @@ describe('surveyService', () => {
 
       await surveyService.updateSurveyCompletion(dummySurveys[0].id, true, userDummy.id);
 
-      expect(SurveyAnswerRepositoryMock.updateSurveyAnswerCompletion).toBeCalledWith(
+      expect(SurveyAnswerRepositoryMock.updateSurveyAnswerCompletion).toHaveBeenCalledWith(
         dummySurveys[0].id,
         userDummy.id,
         true,
@@ -295,7 +299,7 @@ describe('surveyService', () => {
 
       const response = await surveyService.getUserUncompletedSurveys(userDummy.id);
 
-      expect(SurveyRepositoryMock.getUserSurveys).toBeCalledWith(userDummy.id, false);
+      expect(SurveyRepositoryMock.getUserSurveys).toHaveBeenCalledWith(userDummy.id, false);
       expect(response).toHaveLength(1);
       expect(response).toEqual([dummySurveys[0]]);
     });
@@ -321,7 +325,7 @@ describe('surveyService', () => {
 
       const response = await surveyService.getUserCompletedSurveys(userDummy.id);
 
-      expect(SurveyRepositoryMock.getUserSurveys).toBeCalledWith(userDummy.id, true);
+      expect(SurveyRepositoryMock.getUserSurveys).toHaveBeenCalledWith(userDummy.id, true);
       expect(response).toHaveLength(1);
       expect(response).toEqual([dummySurveyAnswers[1]]);
     });

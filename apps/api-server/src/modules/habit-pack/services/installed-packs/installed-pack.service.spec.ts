@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { installedPackRecordDummy, routineHabitPackDummy } from '../../../../../test/dummies/habit-packs.dummies';
 import { userDummy } from '../../../../../test/dummies';
 import { InstalledPackRepositoryMock, SentryServiceMock } from '../../../../../test/mocks';
@@ -42,7 +42,10 @@ describe('HabitPackManagerService', () => {
       InstalledPackRepositoryMock.orm.findOne.mockResolvedValueOnce(installedPackRecordDummy);
       await installedPackService.setPackAsInstalledForUser(userDummy.id, routineHabitPackDummy.id);
 
-      expect(InstalledPackRepositoryMock.update).toBeCalledWith(installedPackRecordDummy.id, installedPackRecordDummy);
+      expect(InstalledPackRepositoryMock.update).toHaveBeenCalledWith(
+        installedPackRecordDummy.id,
+        installedPackRecordDummy,
+      );
     });
 
     it('Positive: should call create on installedPackRepository', async () => {
@@ -55,7 +58,7 @@ describe('HabitPackManagerService', () => {
       };
       await installedPackService.setPackAsInstalledForUser(userDummy.id, routineHabitPackDummy.id);
 
-      expect(InstalledPackRepositoryMock.create).toBeCalledWith(newRecord);
+      expect(InstalledPackRepositoryMock.create).toHaveBeenCalledWith(newRecord);
     });
   });
 
@@ -65,7 +68,10 @@ describe('HabitPackManagerService', () => {
       expect(installedPackRecordDummy.installation_status).toBe(true);
       await installedPackService.setPackAsUninstalledForUser(userDummy.id, routineHabitPackDummy.id);
 
-      expect(InstalledPackRepositoryMock.update).toBeCalledWith(installedPackRecordDummy.id, installedPackRecordDummy);
+      expect(InstalledPackRepositoryMock.update).toHaveBeenCalledWith(
+        installedPackRecordDummy.id,
+        installedPackRecordDummy,
+      );
       expect(installedPackRecordDummy.installation_status).toBe(false);
     });
   });

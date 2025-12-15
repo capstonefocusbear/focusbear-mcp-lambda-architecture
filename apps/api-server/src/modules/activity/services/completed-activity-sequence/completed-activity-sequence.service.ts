@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { BadRequestException, Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { Between } from 'typeorm';
 import { User } from '../../../user/entities/user.entity';

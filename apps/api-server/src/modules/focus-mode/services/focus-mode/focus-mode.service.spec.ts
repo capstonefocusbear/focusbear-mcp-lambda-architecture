@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { HttpException, NotFoundException } from '@nestjs/common';
 import {
   FocusModeDummy,
@@ -81,7 +81,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
-      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray() }),
       );
     });
@@ -91,7 +91,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
-      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledWith(
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toHaveBeenCalledWith(
         user_id,
         UserProgressUpdateTypes.EDIT_FOCUS_MODE,
       );
@@ -102,7 +102,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.createFocusMode(user_id, { ...createFocusModeDto, metadata: { isDefault: true } });
 
-      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toBeCalledTimes(0);
+      expect(UserDailyStatsServiceMock.updateUserOnboardingProgress).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -139,7 +139,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto);
 
-      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith(
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusMode({ ...FocusModeDummy, ...updateFocusModeDto, user_id, tags: expect.toBeArray() }),
       );
     });
@@ -151,7 +151,7 @@ describe('FocusModeService', () => {
     it('positive: repository delete should be called', async () => {
       await focusModeService.delete(id);
 
-      expect(FocusModeRepositoryMock.orm.delete).toBeCalledWith(id);
+      expect(FocusModeRepositoryMock.orm.delete).toHaveBeenCalledWith(id);
     });
   });
 
@@ -161,7 +161,7 @@ describe('FocusModeService', () => {
 
       const result = await focusModeService.fetchUserFocusModes(userDummy.id);
 
-      expect(FocusModeRepositoryMock.orm.find).toBeCalledWith({ where: { user_id: userDummy.id } });
+      expect(FocusModeRepositoryMock.orm.find).toHaveBeenCalledWith({ where: { user_id: userDummy.id } });
       expect(result).toEqual([FocusModeDummy]);
     });
   });
@@ -175,7 +175,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
-      expect(FocusModeRepositoryMock.orm.save).toBeCalledWith({ ...FocusModeDummy });
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith({ ...FocusModeDummy });
     });
 
     it('positive: if a focus mode contains tags the tags should be saved', async () => {
@@ -187,7 +187,7 @@ describe('FocusModeService', () => {
         { ...UpsertFocusModeDummy, id: FocusModeDummy.id, tags: [{ text: 'Some tag', id: tagId }] },
       ]);
 
-      expect(FocusModeTagRepositoryMock.upsert).toBeCalledWith(savedTag, ['id']);
+      expect(FocusModeTagRepositoryMock.upsert).toHaveBeenCalledWith(savedTag, ['id']);
     });
   });
 
@@ -197,8 +197,8 @@ describe('FocusModeService', () => {
 
       await focusModeService.deleteFocusMode(FocusModeDummy.id);
 
-      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toBeCalledTimes(0);
-      expect(FocusModeRepositoryMock.orm.softDelete).toBeCalledWith(FocusModeDummy.id);
+      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
+      expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
     });
 
     it('positive: if focus mode has a template id, installed record should be fetched and updated as uninstalled', async () => {
@@ -215,7 +215,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.deleteFocusMode(FocusModeDummy.id);
 
-      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toBeCalledWith(installedRecord.id, {
+      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledWith(installedRecord.id, {
         installation_status: false,
       });
     });
@@ -233,7 +233,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.deleteRemovedFocusModeTags(userDummy.id, existingTags, incomingTags);
 
-      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({ id: tagIdTwo, user_id: userDummy.id });
+      expect(FocusModeTagRepositoryMock.orm.delete).toHaveBeenCalledWith({ id: tagIdTwo, user_id: userDummy.id });
     });
   });
 
@@ -270,7 +270,7 @@ describe('FocusModeService', () => {
     it('positive: should get user focus mode tags', async () => {
       await focusModeService.getUserFocusTags(userDummy.id);
 
-      expect(FocusModeTagRepositoryMock.orm.find).toBeCalledWith({
+      expect(FocusModeTagRepositoryMock.orm.find).toHaveBeenCalledWith({
         where: { user_id: userDummy.id },
         select: ['id', 'text'],
       });
@@ -282,7 +282,7 @@ describe('FocusModeService', () => {
       const focusTagDummy = { id: randomUUID(), text: 'Tag Name' };
       await focusModeService.upsertFocusModeTag(focusTagDummy, userDummy.id);
 
-      expect(FocusModeTagRepositoryMock.upsert).toBeCalledWith(
+      expect(FocusModeTagRepositoryMock.upsert).toHaveBeenCalledWith(
         new FocusModeTag({ ...focusTagDummy, user_id: userDummy.id }),
         ['id'],
       );
@@ -295,7 +295,7 @@ describe('FocusModeService', () => {
 
       await focusModeService.deleteFocusModeTag(dummyTagId, userDummy.id);
 
-      expect(FocusModeTagRepositoryMock.orm.delete).toBeCalledWith({ id: dummyTagId, user_id: userDummy.id });
+      expect(FocusModeTagRepositoryMock.orm.delete).toHaveBeenCalledWith({ id: dummyTagId, user_id: userDummy.id });
     });
   });
 });

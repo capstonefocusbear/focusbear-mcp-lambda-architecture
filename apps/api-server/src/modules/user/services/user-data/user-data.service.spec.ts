@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { getQueueToken } from '@nestjs/bull';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
@@ -81,7 +81,7 @@ describe('UserDataService', () => {
     it('positive: should enter job into queue to process and email user their data', async () => {
       await service.processAndEmailUserData(userDummy.id, LanguageOptions.ENGLISH);
 
-      expect(QueueMock.add).toBeCalledWith(BullWorkers.GET_USER_PERSONAL_DATA, {
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.GET_USER_PERSONAL_DATA, {
         user_id: userDummy.id,
         language: LanguageOptions.ENGLISH,
       });
@@ -100,12 +100,12 @@ describe('UserDataService', () => {
       const dummyHeaders = { 'app-version': '1.0.100', platform: 'Windows' };
       await service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' }, dummyHeaders);
 
-      expect(RevenueCatServiceMock.deleteUserFromRevenueCat).toBeCalledWith(userDummy.id);
-      expect(Auth0ManagementServiceMock.deleteAuth0User).toBeCalledWith(userDummy.auth0_id);
-      expect(BrevoServiceMock.deleteContactFromBrevo).toBeCalledWith(dummyEmail);
-      expect(UserRepositoryMock.orm.delete).toBeCalledWith({ id: userDummy.id });
-      expect(StripeServiceMock.deleteStripeCustomer).toBeCalledWith(dummyStripeId);
-      expect(mockedAxios.post).toBeCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
+      expect(RevenueCatServiceMock.deleteUserFromRevenueCat).toHaveBeenCalledWith(userDummy.id);
+      expect(Auth0ManagementServiceMock.deleteAuth0User).toHaveBeenCalledWith(userDummy.auth0_id);
+      expect(BrevoServiceMock.deleteContactFromBrevo).toHaveBeenCalledWith(dummyEmail);
+      expect(UserRepositoryMock.orm.delete).toHaveBeenCalledWith({ id: userDummy.id });
+      expect(StripeServiceMock.deleteStripeCustomer).toHaveBeenCalledWith(dummyStripeId);
+      expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
         message: `Account deleted for user with email: te**@mail.com and ID: ${
           userDummy.id

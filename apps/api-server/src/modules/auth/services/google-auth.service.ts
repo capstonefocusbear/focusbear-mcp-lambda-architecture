@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { google } from 'googleapis';
 import axios from 'axios';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { AuthorizeQuery } from '../dto/authorize-query.dto';

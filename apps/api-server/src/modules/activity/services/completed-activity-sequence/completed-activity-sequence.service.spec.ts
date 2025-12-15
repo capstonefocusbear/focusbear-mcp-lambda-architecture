@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import {
   ActivitySequenceRepositoryMock,
   CompletedActivityRepositoryMock,
@@ -116,7 +116,7 @@ describe('CompletedActivitySequenceService', () => {
         completedActivity.start_time,
       );
 
-      expect(CompletedActivityRepositoryMock.create).toBeCalledWith({
+      expect(CompletedActivityRepositoryMock.create).toHaveBeenCalledWith({
         id: undefined,
         activity_sequence_id: ActivitySequenceDummy.id,
         start_time: completedActivity.start_time,
@@ -151,7 +151,7 @@ describe('CompletedActivitySequenceService', () => {
         completedActivity.start_time,
       );
 
-      expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith({
+      expect(CompletedActivitySequenceRepositoryMock.create).toHaveBeenCalledWith({
         id: undefined,
         activity_sequence_id: ActivitySequenceDummy.id,
         start_time: completedActivity.start_time,
@@ -223,7 +223,7 @@ describe('CompletedActivitySequenceService', () => {
       await completedActivitySequenceService.completeActivitySequence(log.id, userDummy.id);
 
       log.finalizeUncompletedLog();
-      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toHaveBeenCalledWith(log);
     });
 
     it('guard: should NOT finalize if sequence has zero non-skipped logs (only true skips)', async () => {
@@ -237,9 +237,11 @@ describe('CompletedActivitySequenceService', () => {
       await completedActivitySequenceService.completeActivitySequence(emptyLog.id, userDummy.id);
 
       // Should not finalize/save the sequence
-      expect(CompletedActivitySequenceRepositoryMock.orm.save).not.toBeCalled();
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).not.toHaveBeenCalled();
       // But should still clear skipped list for the user
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { current_sequence_skipped_activities: null });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        current_sequence_skipped_activities: null,
+      });
     });
 
     it('positive: should finalize if there is at least one "did already" log (skipped_did_complete)', async () => {
@@ -256,7 +258,7 @@ describe('CompletedActivitySequenceService', () => {
 
       await completedActivitySequenceService.completeActivitySequence(logWithDidAlready.id, userDummy.id);
 
-      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalled();
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toHaveBeenCalled();
     });
   });
 
@@ -270,7 +272,7 @@ describe('CompletedActivitySequenceService', () => {
       await completedActivitySequenceService.completeActivitySequenceByDate(log.id, userDummy.id, startTime);
 
       log.finalizeUncompletedLog();
-      expect(CompletedActivitySequenceRepositoryMock.orm.save).toBeCalledWith(log);
+      expect(CompletedActivitySequenceRepositoryMock.orm.save).toHaveBeenCalledWith(log);
     });
   });
 
@@ -481,7 +483,7 @@ describe('CompletedActivitySequenceService', () => {
         true,
       );
 
-      expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id, testUser.id);
+      expect(spyMethod).toHaveBeenCalledWith(testUser.completing_sequence_log.id, testUser.id);
     });
 
     it('positive: if user has consistent current sequence, this sequence should be completed', async () => {
@@ -498,7 +500,7 @@ describe('CompletedActivitySequenceService', () => {
         true,
       );
 
-      expect(spyMethod).toBeCalledWith(testUser.completing_sequence_log.id, testUser.id);
+      expect(spyMethod).toHaveBeenCalledWith(testUser.completing_sequence_log.id, testUser.id);
     });
 
     it('positive: nullified current sequence should be saved for given user', async () => {
@@ -515,7 +517,7 @@ describe('CompletedActivitySequenceService', () => {
         true,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -546,7 +548,7 @@ describe('CompletedActivitySequenceService', () => {
         true,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -577,7 +579,7 @@ describe('CompletedActivitySequenceService', () => {
         false,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -611,7 +613,7 @@ describe('CompletedActivitySequenceService', () => {
         false,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -650,7 +652,7 @@ describe('CompletedActivitySequenceService', () => {
         false,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -687,7 +689,7 @@ describe('CompletedActivitySequenceService', () => {
         false,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -724,7 +726,7 @@ describe('CompletedActivitySequenceService', () => {
         false,
       );
 
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -750,7 +752,7 @@ describe('CompletedActivitySequenceService', () => {
 
       await completedActivitySequenceService.forceCompleteCurrentSequence(ActivitySequenceDummy.id, testUser.id, true);
 
-      expect(CompletedActivitySequenceRepositoryMock.create).toBeCalledWith(
+      expect(CompletedActivitySequenceRepositoryMock.create).toHaveBeenCalledWith(
         new CompletedActivitySequence({
           activity_sequence_id: ActivitySequenceDummy.id,
           user_id: testUser.id,
@@ -760,7 +762,7 @@ describe('CompletedActivitySequenceService', () => {
           duration_minutes: 0,
         }),
       );
-      expect(UserRepositoryMock.update).toBeCalledWith(testUser.id, {
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(testUser.id, {
         current_activity_sequence_id: null,
         current_activity_id: null,
         current_activity_assigned_at: null,
@@ -779,7 +781,9 @@ describe('CompletedActivitySequenceService', () => {
     it('positive: should set the users current_sequence_skipped_activities to null', async () => {
       await completedActivitySequenceService.nullifyCurrentSequenceSkippedActivities(userDummy.id);
 
-      expect(UserRepositoryMock.update).toBeCalledWith(userDummy.id, { current_sequence_skipped_activities: null });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        current_sequence_skipped_activities: null,
+      });
     });
   });
 

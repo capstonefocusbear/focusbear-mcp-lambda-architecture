@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import {
   DummyCourseOne,
   DummyCourseOneLessons,
@@ -66,14 +66,14 @@ describe('LessonsService', () => {
       LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       LessonsRepositoryMock.upsertCourseLessons(DummyCreateLessonDto);
       await lessonsService.upsertLessons(DummyCreateLessonDto, userDummy.id, [UserTypes.STANDARD]);
-      expect(LessonsRepositoryMock.upsertCourseLessons).toBeCalledWith(DummyCreateLessonDto);
+      expect(LessonsRepositoryMock.upsertCourseLessons).toHaveBeenCalledWith(DummyCreateLessonDto);
     });
 
     it('positive: should update course lessons, if the user is an admin', async () => {
       LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       LessonsRepositoryMock.upsertCourseLessons(DummyUpdateLessonDto);
       await lessonsService.upsertLessons(DummyUpdateLessonDto, userDummy.id, [UserTypes.ADMIN]);
-      expect(LessonsRepositoryMock.upsertCourseLessons).toBeCalledWith(DummyUpdateLessonDto);
+      expect(LessonsRepositoryMock.upsertCourseLessons).toHaveBeenCalledWith(DummyUpdateLessonDto);
     });
   });
 
@@ -109,7 +109,7 @@ describe('LessonsService', () => {
       LessonsRepositoryMock.checkForeignKeyCourseIdExist.mockResolvedValueOnce(DummyCourseOne);
       LessonsRepositoryMock.checkForeignKeyLessonIdExist.mockResolvedValueOnce(DummyCourseOneLessons[0].id);
       await lessonsService.createCompletedLesson(DummyCreateCLessonCompletionDto, userDummy.id);
-      expect(LessonsRepositoryMock.createLessonCompletion).toBeCalledWith(
+      expect(LessonsRepositoryMock.createLessonCompletion).toHaveBeenCalledWith(
         {
           lesson_id: DummyCourseOneLessons[0].id,
           course_id: DummyCourseOne.id,
@@ -164,7 +164,7 @@ describe('LessonsService', () => {
         lesson_id: DummyCreateLessonDto.lessons[0].id,
         course_id: DummyCreateLessonDto.course_id,
       });
-      expect(LessonsRepositoryMock.deleteCourseLesson).toBeCalledWith({
+      expect(LessonsRepositoryMock.deleteCourseLesson).toHaveBeenCalledWith({
         lesson_id: DummyCreateLessonDto.lessons[0].id,
         course_id: DummyCreateLessonDto.course_id,
       });

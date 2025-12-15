@@ -44,7 +44,7 @@ describe('BrevoService', () => {
       };
       await service.registerBrevoEvent(dummyEmail, eventDummy);
 
-      expect(mockedAxios.post).toBeCalledWith(callUrlDummy, dataDummy, configDummy);
+      expect(mockedAxios.post).toHaveBeenCalledWith(callUrlDummy, dataDummy, configDummy);
     });
   });
 
@@ -62,7 +62,7 @@ describe('BrevoService', () => {
 
       await service.deleteContactFromBrevo(dummyEmail);
 
-      expect(mockedAxios.delete).toBeCalledWith(callUrlDummy, configDummy);
+      expect(mockedAxios.delete).toHaveBeenCalledWith(callUrlDummy, configDummy);
     });
   });
 });

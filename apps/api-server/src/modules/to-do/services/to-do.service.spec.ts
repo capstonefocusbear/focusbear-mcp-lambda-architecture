@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { getQueueToken } from '@nestjs/bull';
@@ -112,11 +112,42 @@ describe('toDoService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
+    it('negative: should log security warning when unauthorized update is attempted', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      try {
+        await toDoService.upsertToDo(userDummy.id, { ...toDoDummy, id: toDoId });
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(SentryServiceMock.instance().captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('SECURITY: Unauthorized todo update attempt'),
+        'warning',
+      );
+    });
+
     it('positive: should save new incoming to do', async () => {
       await toDoService.upsertToDo(userDummy.id, toDoDummy);
 
-      expect(ToDoRepositoryMock.orm.save).toBeCalledWith(
+      expect(ToDoRepositoryMock.orm.save).toHaveBeenCalledWith(
         new ToDo({ user_id: userDummy.id, ...toDoDummy, updated_at: expect.toBeDateString() }),
+      );
+    });
+
+    it('positive: should always set user_id to authenticated user regardless of input', async () => {
+      const maliciousUserId = randomUUID();
+      // Even if client sends a different user_id, it should be overwritten
+      const maliciousToDo = { ...toDoDummy, user_id: maliciousUserId };
+
+      await toDoService.upsertToDo(userDummy.id, maliciousToDo as any);
+
+      expect(ToDoRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: userDummy.id, // Should be the authenticated user, not the malicious one
+        }),
       );
     });
   });
@@ -198,6 +229,96 @@ describe('toDoService', () => {
       );
     });
 
+    it('positive: should return correct pagination metadata for multiple pages', async () => {
+      // Mock 25 todos with total count of 25
+      const mockTodos = Array.from({ length: 10 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata
+      expect(response.meta).toEqual({
+        page: 1,
+        take: 10,
+        order: 'ASC',
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: false, // page 1
+        hasNextPage: true, // page 1 < pageCount 3
+      });
+    });
+
+    it('positive: should return correct pagination metadata for last page', async () => {
+      // Mock 5 todos for last page with total count of 25
+      const mockTodos = Array.from({ length: 5 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 3, // Last page
+        take: 10,
+        skip: 20, // (3-1) * 10
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata for last page
+      expect(response.meta).toEqual({
+        page: 3,
+        take: 10,
+        order: 'ASC',
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: true, // page 3 > 1
+        hasNextPage: false, // page 3 = pageCount 3
+      });
+    });
+
+    it('positive: should return correct pagination metadata for middle page', async () => {
+      // Mock 10 todos for middle page with total count of 25
+      const mockTodos = Array.from({ length: 10 }, (_, i) => ({
+        id: `todo-${i}`,
+        title: `Todo ${i}`,
+        status: 'NOT_STARTED',
+      }));
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 25]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce(mockTodos);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 2, // Middle page
+        take: 10,
+        skip: 10, // (2-1) * 10
+        should_use_cache: true,
+      });
+
+      // Verify pagination metadata for middle page
+      expect(response.meta).toEqual({
+        page: 2,
+        take: 10,
+        order: 'ASC',
+        itemCount: 25,
+        pageCount: 3, // Math.ceil(25/10) = 3
+        hasPreviousPage: true, // page 2 > 1
+        hasNextPage: true, // page 2 < pageCount 3
+      });
+    });
+
     it('positive: should map top_score from repo result to PaginationDto', async () => {
       const mockToDos = [
         {
@@ -258,11 +379,62 @@ describe('toDoService', () => {
   });
 
   describe('deleteToDo', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     it('positive: should delete users to do from DB', async () => {
       const toDoId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: userDummy.id });
+      ToDoRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
       await toDoService.deleteToDo(userDummy.id, toDoId);
 
-      expect(ToDoRepositoryMock.orm.delete).toBeCalledWith({ user_id: userDummy.id, id: toDoId });
+      expect(ToDoRepositoryMock.orm.delete).toHaveBeenCalledWith({ user_id: userDummy.id, id: toDoId });
+    });
+
+    it('negative: should throw UnauthorizedException when user tries to delete another users todo', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      let exception;
+      try {
+        await toDoService.deleteToDo(userDummy.id, toDoId);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toContain('not allowed to delete todo');
+      expect(ToDoRepositoryMock.orm.delete).not.toHaveBeenCalled();
+    });
+
+    it('negative: should log security warning when unauthorized deletion is attempted', async () => {
+      const toDoId = randomUUID();
+      const anotherUserId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...toDoDummy, id: toDoId, user_id: anotherUserId });
+
+      try {
+        await toDoService.deleteToDo(userDummy.id, toDoId);
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(SentryServiceMock.instance().captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('SECURITY: Unauthorized todo deletion attempt'),
+        'warning',
+      );
+    });
+
+    it('positive: should handle deletion of non-existent todo gracefully', async () => {
+      const toDoId = randomUUID();
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ToDoRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
+      await toDoService.deleteToDo(userDummy.id, toDoId);
+
+      expect(ToDoRepositoryMock.orm.delete).toHaveBeenCalledWith({ user_id: userDummy.id, id: toDoId });
     });
   });
 
@@ -289,8 +461,8 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(ToDoRepositoryMock.update).toBeCalledWith(toDoId, { status: ToDoStatus.COMPLETED });
-      expect(TaskTimeLogsRepositoryMock.orm.save).toBeCalledWith([
+      expect(ToDoRepositoryMock.update).toHaveBeenCalledWith(toDoId, { status: ToDoStatus.COMPLETED });
+      expect(TaskTimeLogsRepositoryMock.orm.save).toHaveBeenCalledWith([
         new TaskTimeLog({
           user_id: userDummy.id,
           task_id: toDoId,
@@ -298,7 +470,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).toBeCalled();
+      expect(QueueMock.add).toHaveBeenCalled();
     });
 
     it('positive: To dos from external platforms should be added to queue to log time in external platform', async () => {
@@ -314,8 +486,8 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(ToDoRepositoryMock.update).toBeCalledWith(toDoTimeLogDummy.id, { status: toDoTimeLogDummy.status });
-      expect(TaskTimeLogsRepositoryMock.orm.save).toBeCalledWith([
+      expect(ToDoRepositoryMock.update).toHaveBeenCalledWith(toDoTimeLogDummy.id, { status: toDoTimeLogDummy.status });
+      expect(TaskTimeLogsRepositoryMock.orm.save).toHaveBeenCalledWith([
         new TaskTimeLog({
           user_id: userDummy.id,
           duration_logged_seconds: 60,
@@ -323,7 +495,7 @@ describe('toDoService', () => {
           completed_focus_block_id: CompletedFocusBlockDummy.id,
         }),
       ]);
-      expect(QueueMock.add).toBeCalledWith(BullWorkers.SAVE_TASK_TIME_LOG, {
+      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.SAVE_TASK_TIME_LOG, {
         userId: userDummy.id,
         toDoTimeLogs: [toDoTimeLogDummy],
         toDos: [ToDoDBResponseDummy],
@@ -347,7 +519,7 @@ describe('toDoService', () => {
 
       await toDoService.logToDosTime([toDoTimeLogDummy], userDummy.id, CompletedFocusBlockDummy.id);
 
-      expect(QueueMock.add).not.toBeCalled();
+      expect(QueueMock.add).not.toHaveBeenCalled();
     });
   });
 
@@ -359,7 +531,7 @@ describe('toDoService', () => {
       ToDoRepositoryMock.searchUserToDos.mockResolvedValueOnce(results);
       const response = await toDoService.searchToDos(dummySearchToDosDto, userDummy.id);
 
-      expect(ToDoRepositoryMock.searchUserToDos).toBeCalledWith(dummySearchToDosDto, userDummy.id);
+      expect(ToDoRepositoryMock.searchUserToDos).toHaveBeenCalledWith(dummySearchToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummySearchToDosDto.take);
       expect(response).toEqual(results);
     });
@@ -377,7 +549,7 @@ describe('toDoService', () => {
       ToDoRepositoryMock.getUserRecentToDos.mockResolvedValueOnce(results);
       const response = await toDoService.getRecentToDos(dummyRecentToDosDto, userDummy.id);
 
-      expect(ToDoRepositoryMock.getUserRecentToDos).toBeCalledWith(dummyRecentToDosDto, userDummy.id);
+      expect(ToDoRepositoryMock.getUserRecentToDos).toHaveBeenCalledWith(dummyRecentToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummyRecentToDosDto.take);
       expect(response).toEqual(results);
     });

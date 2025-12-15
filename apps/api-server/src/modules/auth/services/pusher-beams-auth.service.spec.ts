@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { userDummy } from '../../../../test/dummies';
 import { PusherBeamsAuthService } from './pusher-beams-auth.service';
@@ -49,7 +49,7 @@ describe('PusherBeamsAuthService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       await pusherBeamsAuthService.unsubscribeFromBeams(userDummy.id);
 
-      expect(PusherBeamsServiceMock.deleteUser).toBeCalledWith(userDummy.id);
+      expect(PusherBeamsServiceMock.deleteUser).toHaveBeenCalledWith(userDummy.id);
     });
   });
 });

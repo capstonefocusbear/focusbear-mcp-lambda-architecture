@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { RevenueCatService } from '@app/revenue-cat';
 import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
@@ -943,4 +943,222 @@ export class TeamManagementService {
     }
     return { user, auth0User };
   }
+
+  // @Description: This method is used to add bulk students to a team (dev use only)
+  /* eslint-disable */
+  async addBulkStudents(adminId: string, addBulkStudentsDto: { team_id: string; students: string[] }) {
+    const { team_id, students } = addBulkStudentsDto;
+    try {
+      const team = await this.validateTeam(team_id);
+
+      const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+
+      this.validateMemberAction(admins, adminId);
+
+      let studentInfo: { firstName: string; lastName: string; email: string; userId: string }[] = [];
+
+      // Helper function to parse name from email (e.g., "sergio.garcia@catolica.edu.sv" -> firstName: "sergio", lastName: "garcia")
+      const parseNameFromEmail = (email: string): { firstName: string; lastName: string } => {
+        const emailPrefix = email.split('@')[0];
+        const parts = emailPrefix.split('.');
+        if (parts.length >= 2) {
+          return {
+            firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+            lastName: parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase(),
+          };
+        }
+        // Fallback if email doesn't follow expected pattern
+        return {
+          firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+          lastName: '',
+        };
+      };
+
+      // Process students in batches to avoid rate limits
+      const BATCH_SIZE = 10; // Process 10 at a time
+      const BATCH_DELAY = 500; // 500ms delay between batches
+
+      for (let i = 0; i < students.length; i += BATCH_SIZE) {
+        const batch = students.slice(i, i + BATCH_SIZE);
+
+        const batchPromises = batch.map(async (email) => {
+          try {
+            let userId = '';
+            const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+            if (auth0User) {
+              const user = await this.userRepository.orm.findOne({ where: { auth0_id: auth0User?.user_id } });
+              userId = user?.id || '';
+              if (!userId) {
+                console.log(`Student ${email} is not registered in the system`);
+              }
+            }
+            const parsedName = parseNameFromEmail(email);
+            return {
+              firstName: auth0User?.given_name || parsedName.firstName,
+              lastName: auth0User?.family_name || parsedName.lastName,
+              email: auth0User?.email || email,
+              userId: userId,
+            };
+          } catch (error) {
+            console.error(`Failed to fetch user for email ${email}:`, error);
+            // Fallback to parsed name if Auth0 fetch fails
+            const parsedName = parseNameFromEmail(email);
+            return {
+              firstName: parsedName.firstName,
+              lastName: parsedName.lastName,
+              email: email,
+              userId: '',
+            };
+          }
+        });
+
+        const batchResults = await Promise.allSettled(batchPromises);
+
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            studentInfo.push(result.value);
+          }
+        });
+
+        // Add delay between batches (except for the last batch)
+        if (i + BATCH_SIZE < students.length) {
+          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
+        }
+      }
+
+      studentInfo = studentInfo.filter((student) => student.userId);
+
+      // Batch processing for validation
+      const VALIDATION_BATCH_SIZE = 10;
+      const VALIDATION_BATCH_DELAY = 200; // Smaller delay for validation
+      const validatedStudents: typeof studentInfo = [];
+
+      for (let i = 0; i < studentInfo.length; i += VALIDATION_BATCH_SIZE) {
+        const validationBatch = studentInfo.slice(i, i + VALIDATION_BATCH_SIZE);
+
+        const validationResults = await Promise.allSettled(
+          validationBatch.map(async (student) => {
+            try {
+              await this.validateMembership(student.userId, team.id, team, members);
+              return student;
+            } catch (error) {
+              console.error(`Failed to validate membership for ${student.email}:`, error);
+              return null;
+            }
+          }),
+        );
+
+        validationResults.forEach((result) => {
+          if (result.status === 'fulfilled' && result.value) {
+            validatedStudents.push(result.value);
+          }
+        });
+
+        // Add delay between validation batches (except for the last batch)
+        if (i + VALIDATION_BATCH_SIZE < studentInfo.length) {
+          await new Promise((resolve) => setTimeout(resolve, VALIDATION_BATCH_DELAY));
+        }
+      }
+
+      // Process member creation sequentially to avoid race condition with team size
+      // Track current team size to pass correct value to grantMembershipAndUpdateTeam
+      let currentTeamSize = members.length;
+      const successfullyAddedStudents: typeof validatedStudents = [];
+      const failedStudents: Array<{ student: (typeof validatedStudents)[0]; reason: string }> = [];
+
+      // Track added ids within this run to prevent duplicates in the input list
+      const addedIds = new Set<string>();
+
+      for (const student of validatedStudents) {
+        const memberId = student.userId;
+        const first_name = student.firstName;
+        const last_name = student.lastName;
+        const email = student.email;
+
+        // enforce offline capacity using currentTeamSize
+        if (team.payment_type === PaymentType.OFFLINE && currentTeamSize >= (team.team_size_limit || Infinity)) {
+          failedStudents.push({ student, reason: 'Team capacity reached' });
+          continue;
+        }
+
+        // avoid adding duplicate ids within this run
+        if (memberId && addedIds.has(memberId)) {
+          failedStudents.push({ student, reason: 'Duplicate in input' });
+          continue;
+        }
+
+        try {
+          const [memberRecordResult, membershipResult] = await Promise.allSettled([
+            this.ensureTeamMemberRecord(
+              team.id,
+              memberId,
+              email,
+              first_name,
+              last_name,
+              team.expires_date as Date,
+              true,
+            ),
+            this.grantMembershipAndUpdateTeam(team, currentTeamSize, memberId),
+          ]);
+
+          if (memberRecordResult.status === 'fulfilled' && membershipResult.status === 'fulfilled') {
+            currentTeamSize++;
+            if (memberId) addedIds.add(memberId);
+            successfullyAddedStudents.push(student);
+          } else {
+            // Handle partial failure: if a NEW member record was created but membership failed, rollback the record
+            if (memberRecordResult.status === 'fulfilled' && membershipResult.status === 'rejected') {
+              try {
+                // Rollback: delete the member record that was just created
+                const memberIdentifier = memberId ? { member_id: memberId } : { email };
+                await this.teamToMemberRepository.orm.delete({ team_id: team.id, ...memberIdentifier });
+                console.log(`Rolled back newly created member record for ${email} after membership grant failure`);
+              } catch (rollbackError) {
+                console.error(`Failed to rollback member record for ${email}:`, rollbackError);
+              }
+            }
+
+            // Track which operation failed
+            let failureReason = '';
+            if (memberRecordResult.status === 'rejected') {
+              failureReason = `Failed to create team member record: ${memberRecordResult.reason}`;
+              console.error(`Failed to create team member record for ${email}:`, memberRecordResult.reason);
+            }
+            if (membershipResult.status === 'rejected') {
+              failureReason = failureReason
+                ? `${failureReason}; Failed to grant membership: ${membershipResult.reason}`
+                : `Failed to grant membership: ${membershipResult.reason}`;
+              console.error(`Failed to grant membership for ${email}:`, membershipResult.reason);
+            }
+            failedStudents.push({ student, reason: failureReason });
+          }
+        } catch (error) {
+          console.error(`Failed to add member ${email}:`, error);
+          failedStudents.push({ student, reason: `Unexpected error: ${error}` });
+          // Continue processing other members even if one fails
+        }
+      }
+
+      // Calculate students that couldn't be processed (no userId, validation failed, etc.)
+      const studentsWithoutUserId = students.length - studentInfo.length;
+      const validationFailed = studentInfo.length - validatedStudents.length;
+      const additionFailed = failedStudents.length;
+
+      return {
+        totalRequested: students.length,
+        successfullyAdded: successfullyAddedStudents.length,
+        failed: {
+          noUserId: studentsWithoutUserId,
+          validationFailed: validationFailed,
+          additionFailed: additionFailed,
+          total: studentsWithoutUserId + validationFailed + additionFailed,
+        },
+        added: successfullyAddedStudents,
+        failedDetails: failedStudents,
+      };
+    } catch (error) {
+      console.error(`Failed to add bulk students:`, error);
+    }
+  }
+  /* eslint-enable */
 }

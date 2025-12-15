@@ -18,18 +18,17 @@ export class SyncedProjectsController {
   constructor(private readonly syncedProjectsService: SyncedProjectsService) {}
 
   @Put('/external-statuses')
-  async mapExternalStatusesToComplete(
-    @Body() { project_id, external_statuses }: MapExternalStatusToCompleteDto,
-    @AuthContext() { user }: Passport,
-  ) {
+  async mapExternalStatusesToComplete(@Body() dto: MapExternalStatusToCompleteDto, @AuthContext() { user }: Passport) {
+    const { project_id, external_statuses } = dto;
     return this.syncedProjectsService.mapStatusesToComplete(user.id, project_id, external_statuses);
   }
 
   @Get()
   async getUserSyncedProjectsByPlatform(
-    @Query() { platform }: GetSyncedProjectsQueryDto,
+    @Query() query: GetSyncedProjectsQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<SyncedProjectDto[]> {
+    const { platform } = query;
     return this.syncedProjectsService.getUserSyncedProjects(user.id, { platform });
   }
 
@@ -39,7 +38,8 @@ export class SyncedProjectsController {
   }
 
   @Delete()
-  async unSyncProject(@Query() { project_id }: UnSyncProjectQueryDto, @AuthContext() { user }: Passport) {
+  async unSyncProject(@Query() query: UnSyncProjectQueryDto, @AuthContext() { user }: Passport) {
+    const { project_id } = query;
     return this.syncedProjectsService.unSyncProject(user.id, project_id);
   }
 }

@@ -1,8 +1,14 @@
-import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, emitUserActivityMetric } from '@app/observability';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
@@ -23,6 +29,7 @@ import {
   userDummy,
 } from '../../../../../test/dummies';
 import {
+  AccountabilityBuddyServiceMock,
   Auth0ManagementServiceMock,
   CompletedActivityRepositoryMock,
   CompletedFocusBlockRepositoryMock,
@@ -70,9 +77,21 @@ import { DeviceService } from '../../../device/services/device/device.service';
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { maskEmail } from '../../../../shared/utils/helpers';
 import { CompletedActivitySequenceService } from '../../../activity/services/completed-activity-sequence/completed-activity-sequence.service';
+import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 // Mock axios and set the type
 jest.mock('axios');
+jest.mock('@app/observability', () => {
+  // Preserve real exports (including InjectSentry, SENTRY_TOKEN, SentryService)
+  // and only stub the metric helpers used in this spec.
+  const actual = jest.requireActual('@app/observability');
+  return {
+    ...actual,
+    emitQueueMetrics: jest.fn(),
+    emitCronMetrics: jest.fn(),
+    emitUserActivityMetric: jest.fn(),
+  };
+});
 
 describe('UserService', () => {
   let userService: UserService;
@@ -111,8 +130,11 @@ describe('UserService', () => {
           useValue: QueueMock,
         },
         CompletedActivitySequenceService,
+        AccountabilityBuddyService,
       ],
     })
+      .overrideProvider(AccountabilityBuddyService)
+      .useValue(AccountabilityBuddyServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
       .overrideProvider(RevenueCatService)
@@ -261,6 +283,35 @@ describe('UserService', () => {
 
       expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(emailPayload);
     });
+
+    it('does not overwrite username for existing users on sync', async () => {
+      const stripeCustomerId = randomUUID();
+      const existing = { ...userDummy, username: 'Zoë' };
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existing);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(existing);
+      UserRepositoryMock.update.mockResolvedValueOnce(existing);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
+      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+      RevenueCatServiceMock.checkSubscriptionStatus.mockResolvedValueOnce({ status: 'active' });
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          stripe_customer_id: stripeCustomerId,
+        }),
+      );
+      expect(UserRepositoryMock.update).not.toHaveBeenCalledWith(
+        existing.id,
+        expect.objectContaining({
+          username: expect.anything(),
+        }),
+      );
+    });
   });
 
   describe('getUserDetails', () => {
@@ -283,6 +334,27 @@ describe('UserService', () => {
       expect(UserRepositoryMock.getUserDetails).toHaveBeenCalledWith(id);
     });
 
+    it('positive: response excludes local device settings and onboarding progress', async () => {
+      const localDeviceSettings = { windows: { version: '1.0.0' } };
+      const onboardingProgress = { has_completed_setup: true };
+      UserRepositoryMock.getUserDetails.mockResolvedValueOnce({
+        ...userDummy,
+        focus_modes: [],
+        teamToAdmin: [],
+        local_device_settings: localDeviceSettings,
+        onboarding_progress: onboardingProgress,
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        email: auth0UserDummy.email,
+        email_verified: true,
+      });
+
+      const response = await userService.getUserDetails(id);
+
+      expect(response).not.toHaveProperty('local_device_settings');
+      expect(response).not.toHaveProperty('onboarding_progress');
+    });
+
     it('negative: if user account does not exist, throw the NotFoundException', async () => {
       UserRepositoryMock.getUserDetails.mockResolvedValueOnce(null);
       const errorMessage = `User with id: ${id} does not exist!`;
@@ -298,9 +370,66 @@ describe('UserService', () => {
     });
   });
 
+  describe('getUserSummary', () => {
+    const id = randomUUID();
+
+    it('positive: returns minimal user details and admin teams', async () => {
+      const team = { id: randomUUID(), name: 'Bear Tamers' };
+      UserRepositoryMock.getUserSummary.mockResolvedValueOnce({
+        id,
+        stripe_customer_id: 'cus_summary123',
+        username: 'summary-user',
+        language: 'en',
+        has_consented_to_terms_of_service: true,
+        user_type: UserTypes.STANDARD,
+        teamToAdmin: [{ team }],
+        has_consented_to_privacy_policy: true,
+      });
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        email: auth0UserDummy.email,
+        email_verified: auth0UserDummy.email_verified,
+      });
+
+      const response = await userService.getUserSummary(id, 'dashboard');
+
+      expect(UserRepositoryMock.getUserSummary).toHaveBeenCalledWith(id);
+      expect(response).toStrictEqual({
+        id,
+        stripe_customer_id: 'cus_summary123',
+        email: auth0UserDummy.email,
+        email_verified: auth0UserDummy.email_verified,
+        username: 'summary-user',
+        language: 'en',
+        adminForTeams: [team],
+        has_consented_to_terms_of_service: true,
+        user_type: UserTypes.STANDARD,
+        has_consented_to_privacy_policy: true,
+      });
+    });
+
+    it('negative: throws NotFoundException when repository misses user', async () => {
+      UserRepositoryMock.getUserSummary.mockResolvedValueOnce(null);
+      let exception: any;
+
+      try {
+        await userService.getUserSummary(id, undefined);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception?.message).toBe(`User with id: ${id} does not exist!`);
+    });
+  });
+
   describe('getUserCurrentActivityProps', () => {
+    let emitMetricMock: jest.MockedFunction<typeof emitUserActivityMetric>;
+
     beforeEach(() => {
       jest.clearAllMocks();
+      emitMetricMock = emitUserActivityMetric as jest.MockedFunction<typeof emitUserActivityMetric>;
+      emitMetricMock.mockReset();
+      emitMetricMock.mockResolvedValue(undefined);
     });
 
     it('negative: if there is no user throw NotFoundExcaption', async () => {
@@ -363,7 +492,7 @@ describe('UserService', () => {
 
       await userService.getUserCurrentActivityProps(userDummy.id);
 
-      expect(UserRepositoryMock.getUserCurrentActivityProps).toBeCalledTimes(2);
+      expect(UserRepositoryMock.getUserCurrentActivityProps).toHaveBeenCalledTimes(2);
     });
 
     it('positive: if new activity is returned after recalculating current activity, it should be included in response as current_activity', async () => {
@@ -379,6 +508,47 @@ describe('UserService', () => {
       const response = await userService.getUserCurrentActivityProps(userDummy.id);
 
       expect(response.current_activity).toBe(ActivityDummy);
+    });
+
+    it('positive: emits latency metric metadata on success', async () => {
+      UserRepositoryMock.getUserCurrentActivityProps.mockResolvedValue({
+        ...userDummy,
+        current_activity: null,
+      });
+
+      await userService.getUserCurrentActivityProps(userDummy.id);
+
+      expect(emitMetricMock).toHaveBeenCalledTimes(1);
+      expect(emitMetricMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'getUserCurrentActivityProps',
+          success: true,
+          durationMs: expect.any(Number),
+        }),
+      );
+    });
+
+    it('negative: emits failure metric and logs structured error metadata', async () => {
+      const error = new Error('db unavailable');
+      UserRepositoryMock.getUserCurrentActivityProps.mockRejectedValueOnce(error);
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+      await expect(userService.getUserCurrentActivityProps(userDummy.id)).rejects.toThrow('db unavailable');
+
+      expect(emitMetricMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'getUserCurrentActivityProps',
+          success: false,
+          durationMs: expect.any(Number),
+          errorMessage: error.message,
+          errorName: error.name,
+        }),
+      );
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('GetUserCurrentActivityPropsError'),
+        expect.stringContaining(error.message),
+      );
+      loggerSpy.mockRestore();
     });
   });
 
@@ -558,7 +728,7 @@ describe('UserService', () => {
 
       await userService.updateUserSignUpField({ pack_id: routineHabitPackDBResponseDummy.id }, userDummy.id);
 
-      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
     });
 
     it('positive: if user already has signed_up_via_focus_mode value, no update should occur', async () => {
@@ -569,7 +739,7 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toBeCalledTimes(0);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
     });
 
     it("positive: user's signed_up_via_habit_pack property should be updated with incoming pack id", async () => {
@@ -659,6 +829,21 @@ describe('UserService', () => {
   });
 
   describe('updateUsername', () => {
+    it('negative: if username is empty after normalization, error should be thrown', async () => {
+      const username = '   '; // Only whitespace
+      const errorMessage = 'Username cannot be empty';
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
     it('negative: if username is considered offensive, error should be thrown', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: false });
       const username = 'randomusername';
@@ -696,11 +881,88 @@ describe('UserService', () => {
     it('positive: username should be saved if valid', async () => {
       OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
       const username = 'randomusername';
+      const normalizedUsername = username.normalize('NFC').trim();
 
       await userService.updateUsername(userDummy.id, { username });
 
       expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
-        username,
+        username: normalizedUsername,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+
+    it('positive: username with underscores should be handled correctly', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'john_smith';
+      const normalizedUsername = username.normalize('NFC').trim();
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      // Verify that the query uses Raw with case-insensitive comparison
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: {
+          username: expect.objectContaining({
+            _type: 'raw',
+          }),
+        },
+      });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: normalizedUsername,
+        has_received_inactivity_warning: false,
+        updated_at: expect.toBeDateString(),
+      });
+    });
+  });
+
+  describe('updateUsername Unicode handling', () => {
+    it('saves Unicode names, trims and normalizes NFC', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const decomposed = ' wants e\u0308 ';
+      const expected = 'wants ë';
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await userService.updateUsername(userDummy.id, { username: decomposed });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          username: expected,
+        }),
+      );
+    });
+  });
+
+  describe('updateUsername case-insensitive handling', () => {
+    it('should detect case-insensitive username conflicts', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      const existingUser = { ...userDummy, id: randomUUID(), username: 'JohnDoe' };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existingUser);
+      const username = 'johndoe'; // Different case
+
+      let exception: any;
+      try {
+        await userService.updateUsername(userDummy.id, { username });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(ConflictException);
+      expect(exception.message).toEqual(`Username: ${username} already taken by user with ID: ${existingUser.id}`);
+    });
+
+    it('should preserve original case when saving username', async () => {
+      OpenAIServiceMock.checkIfUsernameIsValid.mockResolvedValueOnce({ allowed: true });
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null); // No existing user
+      const username = 'JohnDoe'; // Mixed case
+
+      await userService.updateUsername(userDummy.id, { username });
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, {
+        username: 'JohnDoe', // Should preserve original case
         has_received_inactivity_warning: false,
         updated_at: expect.toBeDateString(),
       });
@@ -922,6 +1184,110 @@ describe('UserService', () => {
         updated_at: expect.toBeDateString(),
         has_received_inactivity_warning: false,
       });
+    });
+  });
+
+  describe('logVerboselyIfUserHasVerboseLoggingEnabled', () => {
+    let loggerSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+      // Clear cache before each test
+      userService.clearVerboseLoggingCache(userDummy.id);
+    });
+
+    afterEach(() => {
+      loggerSpy.mockRestore();
+      // Clear cache after each test
+      userService.clearVerboseLoggingCache(userDummy.id);
+    });
+
+    it('positive: should execute console.log when verbose logging is enabled', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs);
+    });
+
+    it('positive: should not execute console.log when verbose logging is disabled', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: false });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+
+      expect(loggerSpy).not.toHaveBeenCalled();
+    });
+
+    it('positive: should not execute console.log when user is not found', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+
+      expect(loggerSpy).not.toHaveBeenCalled();
+    });
+
+    it('positive: should not throw error when database query fails', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(
+        userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs),
+      ).resolves.not.toThrow();
+
+      expect(loggerSpy).not.toHaveBeenCalled();
+    });
+
+    it('positive: should cache verbose logging value and not call DB on second request', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      // First call - should hit DB
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+
+      // Second call - should use cache, no DB call
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, not 2
+      expect(loggerSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('positive: should use cache after first call with different logArgs', async () => {
+      const logArgs1 = ['First message:', { key: 'value1' }];
+      const logArgs2 = ['Second message:', { key: 'value2' }];
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...userDummy, verbose_logging: true });
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs1);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs2);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1); // Still 1, cached
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs1);
+      expect(loggerSpy).toHaveBeenCalledWith(...logArgs2);
+    });
+
+    it('positive: should clear cache when clearVerboseLoggingCache is called', async () => {
+      const logArgs = ['Test message:', { key: 'value' }];
+      UserRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce({ ...userDummy, verbose_logging: true })
+        .mockResolvedValueOnce({ ...userDummy, verbose_logging: false });
+
+      // First call - caches true
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+
+      // Clear cache
+      userService.clearVerboseLoggingCache(userDummy.id);
+
+      // Second call - should hit DB again and cache false
+      await userService.logVerboselyIfUserHasVerboseLoggingEnabled(userDummy.id, logArgs);
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledTimes(2);
+      expect(loggerSpy).toHaveBeenCalledTimes(1); // Not called because verbose_logging is now false
     });
   });
 

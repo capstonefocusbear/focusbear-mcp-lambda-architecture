@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { R2Service } from '@app/r2/services/r2.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { FOCUS_MUSIC_BUCKET, TRACK_THUMBNAILS_BUCKET } from '../domain/tracks.constants';

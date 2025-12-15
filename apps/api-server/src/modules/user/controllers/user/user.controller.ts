@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Throttle } from '@nestjs/throttler';
 import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
@@ -29,6 +29,8 @@ import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
 import { UpdateUserConsentDto } from '../../dto/update-user-consent.dto';
 import { UserConsentService } from '../../services/user-consent/user-consent.service';
 import { UserDailyStatsService } from '../../services/user-daily-stats/user-daily-stats.service';
+import { GetUserSummaryQueryDto } from '../../dto/get-user-summary-query.dto';
+import { UserSummaryResponseDto } from '../../dto/user-summary-response.dto';
 import { OnboardingStatsResponseDto } from '../../dto/onboarding-stats-response.dto';
 import { GenerateChatBotResponseDto } from '../../dto/generate-chatbot-response.dto';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
@@ -75,6 +77,16 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserDetails(@AuthContext() { user }: Passport): Promise<User> {
     return this.userService.getUserDetails(user.id);
+  }
+
+  @Get('/details/summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  async getUserSummary(
+    @Query() { from }: GetUserSummaryQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<UserSummaryResponseDto> {
+    return this.userService.getUserSummary(user.id, from);
   }
 
   @Get('/details/current-activity-props')
@@ -152,8 +164,13 @@ export class UserController {
   @Put('consent')
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
-  async upsertUserConsent(@Body() userConsent: UpdateUserConsentDto, @AuthContext() { user }: Passport) {
-    return this.userConsentService.upsertUserConsent(userConsent, user.id);
+  async upsertUserConsent(
+    @Body() body: UpdateUserConsentDto | UpdateUserConsentDto[],
+    @AuthContext() { user }: Passport,
+  ) {
+    // DEPRECATED: single-object payload support; will be removed soon
+    const consents = Array.isArray(body) ? body : [body];
+    return this.userConsentService.upsertUserConsents(consents, user.id);
   }
 
   @Get('stats/onboarding')

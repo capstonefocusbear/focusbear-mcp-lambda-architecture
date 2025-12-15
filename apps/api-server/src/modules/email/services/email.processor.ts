@@ -1,10 +1,11 @@
 import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { SendGridService } from '@app/send-grid';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { EmailFrequency } from '../../user/entities/user.entity';
 
 @Processor('emailQueue')
 @Injectable()
@@ -32,19 +33,33 @@ export class EmailProcessor {
   @Process('send-progress-email')
   async handleProgressEmail(job: Job) {
     try {
-      const { user, metrics, unsubscribe_token } = job.data;
+      const { user, metrics, unsubscribe_token, emailType } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService.instance().captureMessage('Skipped sending progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id, emailType: emailType || 'weekly' },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+      const variant = emailType === 'daily' ? 'daily' : 'weekly';
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content
       const emailContent = await this.progressEmailTemplateService.generateWeeklyProgressEmail(
         user,
         metrics,
         unsubscribe_token,
+        { variant },
       );
 
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
@@ -76,6 +91,17 @@ export class EmailProcessor {
   async handleMonthlyProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService.instance().captureMessage('Skipped sending monthly progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content using monthly template
       const emailContent = await this.progressEmailTemplateService.generateMonthlyProgressEmail(
@@ -87,7 +113,8 @@ export class EmailProcessor {
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
@@ -119,6 +146,17 @@ export class EmailProcessor {
   async handleNoProgressEmail(job: Job) {
     try {
       const { user, unsubscribe_token } = job.data;
+      // Safety check: skip if user is currently unsubscribed
+      if (await this.isUserUnsubscribed(user.id)) {
+        this.sentryService.instance().captureMessage('Skipped sending no-progress email: user unsubscribed', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id },
+          tags: { email_action: 'skip_unsubscribed' },
+        });
+        return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+      const fromEmail = 'support@focusbear.io';
+      const replyToEmail = fromEmail;
 
       // Generate email content
       const emailContent = await this.progressEmailTemplateService.generateNoProgressEmail(user, unsubscribe_token);
@@ -126,7 +164,8 @@ export class EmailProcessor {
       // Send email via SendGrid
       await this.sendGridService.sendEmail({
         to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@focusbear.io',
+        from: fromEmail,
+        replyTo: replyToEmail,
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
@@ -165,6 +204,20 @@ export class EmailProcessor {
         extra: { operation: 'updateLastEmailSent', userId },
         level: 'warning',
       });
+    }
+  }
+
+  private async isUserUnsubscribed(userId: string): Promise<boolean> {
+    try {
+      const record = await this.userRepository.orm.findOne({ where: { id: userId } });
+      return record?.email_frequency === EmailFrequency.UNSUBSCRIBED;
+    } catch (error) {
+      // If we cannot determine, be safe and do not block sending; log for visibility
+      this.sentryService.instance().captureException(error, {
+        extra: { operation: 'isUserUnsubscribed', userId },
+        level: 'warning',
+      });
+      return false;
     }
   }
 }

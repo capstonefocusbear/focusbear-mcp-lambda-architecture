@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { PusherService } from '@app/pusher';
 import { PusherBeamsService } from '@app/pusher-beams';
@@ -20,6 +20,7 @@ import { FocusModeService } from '../focus-mode/focus-mode.service';
 import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
 import { ToDoService } from '../../../to-do/services/to-do.service';
 import { UpdateScheduledFinishDto } from '../../dto/update-scheduled-finish-time.dto';
+import { UserService } from '../../../user/services/user/user.service';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -35,6 +36,7 @@ export class FocusModeManagerService {
     private readonly toDoRepository: ToDoRepository,
     private readonly toDoService: ToDoService,
     private readonly i18nService: I18nService,
+    private readonly userService: UserService,
   ) {}
 
   async startCurrentFocusMode(
@@ -106,9 +108,41 @@ export class FocusModeManagerService {
         data: { user_id, notificationData },
       });
       await this.pusher.trigger(`private-${user_id}`, 'focus-mode-started', notificationData);
+
+      // Verbose logging for push notification
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Publishing Pusher Beams notification for focus mode start (verbose logging enabled):',
+        {
+          user_id,
+          title: pushNotificationTitle,
+          body: pushNotificationBody,
+          notificationData,
+          publishRequest: JSON.stringify(publishRequest),
+        },
+      ]);
+
       // eslint-disable-next-line no-console
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
-      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+
+      try {
+        await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+
+        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+          'Pusher Beams notification published successfully for focus mode start:',
+          user_id,
+        ]);
+      } catch (error) {
+        await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+          'Pusher Beams notification failed for focus mode start:',
+          {
+            user_id,
+            error: (error as Error).message,
+            stack: (error as Error).stack,
+            focus_mode_name: name,
+          },
+        ]);
+        throw error;
+      }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -302,7 +336,38 @@ export class FocusModeManagerService {
       data: { user_id, notificationData },
     });
     await this.pusher.trigger(`private-${user_id}`, 'focus-mode-finished', notificationData);
-    await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+
+    // Verbose logging for push notification
+    await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+      'Publishing Pusher Beams notification for focus mode completion (verbose logging enabled):',
+      {
+        user_id,
+        title: pushNotificationTitle,
+        body: pushNotificationBody,
+        notificationData,
+        publishRequest: JSON.stringify(publishRequest),
+      },
+    ]);
+
+    try {
+      await this.pusherBeamsService.publishToUsers([user_id], publishRequest);
+
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification published successfully for focus mode completion:',
+        user_id,
+      ]);
+    } catch (error) {
+      await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
+        'Pusher Beams notification failed for focus mode completion:',
+        {
+          user_id,
+          error: (error as Error).message,
+          stack: (error as Error).stack,
+          intention,
+        },
+      ]);
+      throw error;
+    }
   }
 
   calculateFocusDurationSeconds(fromTime: Date, toTime: Date): number {

@@ -37,6 +37,7 @@ import { CalendarExcludedKeyword } from '../../calendar/entities/calendar-exclud
 import { Calendar } from '../../calendar/entities/calendar.entity';
 import { TeamToMember } from '../../team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../../team/entities/team-to-admin.entity';
+import { AccountabilityBuddy } from '../../accountability-buddy/entities/accountability-buddy.entity';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
 import { Feedback } from '../../../../../../libs/stripe/src/entities/feedback.entity';
 import { CustomRoutine } from './custom-routine';
@@ -387,6 +388,16 @@ export class User extends BaseEntity {
   has_consented_to_terms_of_service?: boolean;
 
   @Column({
+    type: 'boolean',
+    nullable: true,
+    transformer: {
+      to: (value: boolean | null | undefined) => value,
+      from: (value: boolean | null) => !!value,
+    },
+  })
+  has_consented_to_privacy_policy?: boolean;
+
+  @Column({
     type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('long_term_goals'),
@@ -555,6 +566,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => TeamToAdmin, (teamToAdmin) => teamToAdmin.admin)
   teamToAdmin?: TeamToAdmin[];
+
+  @OneToMany(() => AccountabilityBuddy, (accountabilityBuddy) => accountabilityBuddy.user)
+  accountability_buddies?: AccountabilityBuddy[];
 
   @ManyToOne(() => HabitPack, (habit_pack) => habit_pack.id, { onDelete: 'NO ACTION', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'signed_up_via_habit_pack' })

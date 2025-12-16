@@ -5,7 +5,7 @@ import { Job } from 'bull';
 import { EmailProcessor } from './email.processor';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { User } from '../../user/entities/user.entity';
+import { EmailFrequency, User } from '../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../user/dto/weekly-progress-metrics.dto';
 
 describe('EmailProcessor', () => {
@@ -19,6 +19,12 @@ describe('EmailProcessor', () => {
     id: 'user-123',
     language: 'en',
     metadata: { name: 'Test User' },
+  };
+
+  const mockUserWithWeeklyEmailsEnabled: Partial<User> = {
+    ...mockUser,
+    email_frequency: EmailFrequency.WEEKLY,
+    feature_flags: ['weekly_emails'],
   };
 
   const mockMetrics: WeeklyProgressMetricsDto = {
@@ -70,6 +76,7 @@ describe('EmailProcessor', () => {
     userRepositoryMock = {
       orm: {
         findOneBy: jest.fn().mockResolvedValue(mockUser),
+        findOne: jest.fn().mockResolvedValue(mockUserWithWeeklyEmailsEnabled),
       } as any,
       update: jest.fn().mockResolvedValue(undefined),
     };
@@ -77,6 +84,7 @@ describe('EmailProcessor', () => {
     sentryServiceMock = {
       instance: jest.fn().mockReturnValue({
         captureException: jest.fn(),
+        captureMessage: jest.fn(),
       }),
     };
 
@@ -132,7 +140,7 @@ describe('EmailProcessor', () => {
     const mockJob = { id: 'job-123', data: mockJobData } as Job;
 
     // Setup mock to return user when looking for it
-    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUser);
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithWeeklyEmailsEnabled);
 
     const result = await processor.handleProgressEmail(mockJob);
 
@@ -169,7 +177,7 @@ describe('EmailProcessor', () => {
     const mockJob = { id: 'job-456', data: mockJobData } as Job;
 
     // Setup mock to return user when looking for it
-    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUser);
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithWeeklyEmailsEnabled);
 
     const result = await processor.handleNoProgressEmail(mockJob);
 
@@ -202,7 +210,7 @@ describe('EmailProcessor', () => {
     const mockJob = { id: 'job-enhanced', data: mockJobData } as Job;
 
     // Setup mock to return user when looking for it
-    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUser);
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithWeeklyEmailsEnabled);
 
     const result = await processor.handleProgressEmail(mockJob);
 

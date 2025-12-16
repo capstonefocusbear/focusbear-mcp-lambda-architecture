@@ -176,7 +176,7 @@ async function sendEnhancedProgressEmails(
     const batch = users.slice(i, i + BATCH_SIZE);
 
     const emailPromises = batch.map(async (userData) => {
-      if (userData.user.email_frequency === EmailFrequency.WEEKLY) {
+      if (userData.user.email_frequency === EmailFrequency.WEEKLY && userData.user.feature_flags?.includes('weekly_emails')) {
         try {
           // Calculate progress metrics
           const metrics = await userProgressMetricsService.calculateWeeklyProgress(userData.user);

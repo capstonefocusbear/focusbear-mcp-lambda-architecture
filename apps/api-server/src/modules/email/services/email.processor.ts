@@ -34,8 +34,10 @@ export class EmailProcessor {
   async handleProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token, emailType } = job.data;
+      const settings = await this.getUserEmailSettings(user.id);
+
       // Safety check: skip if user is currently unsubscribed
-      if (await this.isUserUnsubscribed(user.id)) {
+      if (settings?.email_frequency === EmailFrequency.UNSUBSCRIBED) {
         this.sentryService.instance().captureMessage('Skipped sending progress email: user unsubscribed', {
           level: 'info',
           extra: { jobId: job.id, userId: user.id, emailType: emailType || 'weekly' },
@@ -44,6 +46,18 @@ export class EmailProcessor {
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
       }
       const variant = emailType === 'daily' ? 'daily' : 'weekly';
+
+      if (variant === 'weekly' && !settings?.feature_flags?.includes('weekly_emails')) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending weekly progress email: feature flag not enabled', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id },
+            tags: { email_action: 'skip_feature_flag' },
+          });
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
+      }
+
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
 
@@ -218,6 +232,23 @@ export class EmailProcessor {
         level: 'warning',
       });
       return false;
+    }
+  }
+
+  private async getUserEmailSettings(
+    userId: string,
+  ): Promise<{ email_frequency?: EmailFrequency; feature_flags?: string[] } | null> {
+    try {
+      return await this.userRepository.orm.findOne({
+        where: { id: userId },
+        select: ['id', 'email_frequency', 'feature_flags'],
+      });
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        extra: { operation: 'getUserEmailSettings', userId },
+        level: 'warning',
+      });
+      return null;
     }
   }
 }

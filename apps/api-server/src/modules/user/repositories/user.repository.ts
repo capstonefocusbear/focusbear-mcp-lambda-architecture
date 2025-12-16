@@ -29,6 +29,7 @@ export class UserRepository extends BaseRepository<User> {
     'user.last_time_stats_updated',
     'user.metadata',
     'user.email_frequency',
+    'user.feature_flags',
   ];
 
   constructor(private readonly dataSource: DataSource) {
@@ -563,6 +564,7 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
+      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: 'weekly_emails' })
       .andWhere(
         '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
         { threshold: thresholdDate },

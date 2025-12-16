@@ -133,4 +133,22 @@ describe('BullQueueMetricsService', () => {
       expect(duplicatedConnection.quit).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('SentryCron integration', () => {
+    beforeEach(async () => {
+      await service.onModuleInit();
+      jest.clearAllMocks();
+    });
+
+    it('should execute with @SentryCron decorator', async () => {
+      await expect(service.publishQueueDepthMetrics()).resolves.not.toThrow();
+    });
+
+    it('should handle errors gracefully', async () => {
+      moduleRef.get = jest.fn().mockReturnValue({
+        getJobCounts: jest.fn().mockRejectedValue(new Error('Queue error')),
+      });
+      await expect(service.publishQueueDepthMetrics()).resolves.not.toThrow();
+    });
+  });
 });

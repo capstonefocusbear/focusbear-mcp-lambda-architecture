@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import fastifyMultiPart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
@@ -37,6 +38,7 @@ async function bootstrap(): Promise<void> {
   const HELMET: unknown = configService.get('helmet');
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 
+  app.useGlobalFilters(new SentryGlobalFilter());
   app.useGlobalFilters(new BadGatewayExceptionFilter());
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());

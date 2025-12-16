@@ -1,4 +1,5 @@
 import { DynamicModule, Global, Module, Provider } from '@nestjs/common';
+import { SentryModule as OfficialSentryModule } from '@sentry/nestjs/setup';
 import { SentryService } from './sentry.service';
 import { SENTRY_TOKEN } from './sentry.constants';
 
@@ -11,12 +12,10 @@ export interface SentryAsyncModuleOptions {
 @Global()
 @Module({})
 export class SentryModule {
-  // Accept optional options for compatibility with existing usage patterns,
-  // but configuration is handled via Sentry.init in instrument.ts.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  static forRoot(_options?: any): DynamicModule {
+  static forRoot(): DynamicModule {
     return {
       module: SentryModule,
+      imports: [OfficialSentryModule.forRoot()],
       providers: [
         SentryService,
         {
@@ -37,7 +36,7 @@ export class SentryModule {
 
     return {
       module: SentryModule,
-      imports: options.imports || [],
+      imports: [OfficialSentryModule.forRoot(), ...(options.imports || [])],
       providers: [
         asyncOptionsProvider,
         SentryService,

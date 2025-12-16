@@ -6,14 +6,21 @@ import { OpenAIService } from '@app/openai';
 import axios from 'axios';
 import { toFile } from 'openai/uploads';
 import { extname } from 'path';
+import { createHash } from 'crypto';
+import { Logger } from '@nestjs/common';
+import * as sharp from 'sharp';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { HabitImportExtractionService } from '../services/habit-import-extraction.service';
 import { HabitImportJobData } from '../dto/import-habits-from-media.dto';
 import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
 
+const MIN_IMAGE_DIMENSION = 768;
+
 @Processor(BullQueues.HABIT_IMPORT)
 export class HabitImportConsumer {
+  private readonly logger = new Logger(HabitImportConsumer.name);
+
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly r2Service: R2Service,
@@ -24,7 +31,7 @@ export class HabitImportConsumer {
 
   @Process(BullWorkers.PROCESS_HABIT_IMPORT)
   async processHabitImport(job: Job<HabitImportJobData>) {
-    const { asyncTaskId, userId, mediaKey, mediaType, routineType } = job.data;
+    const { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash } = job.data;
 
     const baseMetadata = {
       taskType: 'habit-import',
@@ -39,29 +46,115 @@ export class HabitImportConsumer {
     });
 
     try {
+      this.logger.debug(
+        `HabitImport:start ${JSON.stringify({
+          asyncTaskId,
+          userId,
+          mediaKey,
+          mediaType,
+          routineType: routineType ?? null,
+          requestHash,
+          jobId: job.id,
+          attemptsMade: job.attemptsMade,
+        })}`,
+      );
+
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Processing habit import',
-        data: { userId, mediaKey, mediaType },
+        data: { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash },
       });
 
       // 1. Fetch file from R2
       const fileUrl = await this.r2Service.getPresignedUrl(S3_BUCKET_HABIT_IMPORTS, mediaKey);
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Habit import presigned URL generated',
+        data: { asyncTaskId, bucket: S3_BUCKET_HABIT_IMPORTS, mediaKey },
+      });
 
       // 2. Extract habits based on media type
       let extractedHabits;
       if (mediaType === 'image') {
         // Fetch image and convert to base64
-        const imageResponse = await axios.get(fileUrl, {
+        const imageResponse = await axios.get<ArrayBuffer>(fileUrl, {
           responseType: 'arraybuffer',
           timeout: 120000,
         });
         const contentTypeHeader = imageResponse.headers?.['content-type'] as string | undefined;
-        const base64 = Buffer.from(imageResponse.data, 'binary').toString('base64');
-        const inferredMimeType = this.resolveImageMimeType(mediaKey, contentTypeHeader);
+        let buffer = Buffer.from(imageResponse.data);
+        const originalBytes = buffer.byteLength;
+        const sha256 = createHash('sha256').update(buffer).digest('hex');
+
+        // Get image dimensions and upscale if too small
+        const metadata = await sharp(buffer).metadata();
+        const originalWidth = metadata.width ?? 0;
+        const originalHeight = metadata.height ?? 0;
+        let upscaled = false;
+
+        if (originalWidth < MIN_IMAGE_DIMENSION || originalHeight < MIN_IMAGE_DIMENSION) {
+          // Calculate scale factor to make smallest dimension at least MIN_IMAGE_DIMENSION
+          const scaleFactor = Math.max(MIN_IMAGE_DIMENSION / originalWidth, MIN_IMAGE_DIMENSION / originalHeight);
+          const newWidth = Math.round(originalWidth * scaleFactor);
+          const newHeight = Math.round(originalHeight * scaleFactor);
+
+          this.logger.debug(
+            `HabitImport:upscaling ${JSON.stringify({
+              asyncTaskId,
+              originalWidth,
+              originalHeight,
+              newWidth,
+              newHeight,
+              scaleFactor: scaleFactor.toFixed(2),
+            })}`,
+          );
+
+          buffer = await sharp(buffer)
+            .resize(newWidth, newHeight, {
+              kernel: 'lanczos3',
+              fit: 'fill',
+            })
+            .png()
+            .toBuffer();
+          upscaled = true;
+        }
+
+        const bytes = buffer.byteLength;
+        const base64 = buffer.toString('base64');
+        const inferredMimeType = upscaled ? 'image/png' : this.resolveImageMimeType(mediaKey, contentTypeHeader);
         const imageBuffer = `data:${inferredMimeType};base64,${base64}`;
+
+        this.logger.debug(
+          `HabitImport:imageFetched ${JSON.stringify({
+            asyncTaskId,
+            mediaKey,
+            contentTypeHeader: contentTypeHeader ?? null,
+            inferredMimeType,
+            originalBytes,
+            bytes,
+            sha256,
+            originalWidth,
+            originalHeight,
+            upscaled,
+          })}`,
+        );
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Habit import image fetched',
+          data: { asyncTaskId, mediaKey, contentTypeHeader, inferredMimeType, bytes, sha256, upscaled },
+        });
+
         extractedHabits = await this.habitImportExtractionService.extractHabitsFromImage(imageBuffer);
+        this.logger.debug(
+          `HabitImport:imageExtracted ${JSON.stringify({
+            asyncTaskId,
+            mediaKey,
+            extractedCount: extractedHabits?.length ?? 0,
+          })}`,
+        );
       } else {
         // Audio: fetch, transcribe, then extract
         const audioResponse = await axios.get<ArrayBuffer>(fileUrl, {
@@ -87,6 +180,20 @@ export class HabitImportConsumer {
       }
 
       if (!extractedHabits || extractedHabits.length === 0) {
+        this.logger.warn(
+          `HabitImport:emptyExtraction ${JSON.stringify({
+            asyncTaskId,
+            userId,
+            mediaKey,
+            mediaType,
+            routineType: routineType ?? null,
+            requestHash,
+          })}`,
+        );
+        this.sentryService.instance().captureMessage('Habit import produced 0 extracted habits', {
+          level: 'warning',
+          extra: { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash },
+        });
         await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
           processingCompleted: new Date(),
           extractedCount: 0,

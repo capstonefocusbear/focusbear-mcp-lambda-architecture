@@ -1,11 +1,31 @@
+// Mock @sentry/nestjs before any imports that use it
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import * as Sentry from '@sentry/nestjs';
 
-jest.mock('@sentry/nestjs', () => ({
-  captureException: jest.fn(),
-  withScope: jest.fn((callback) => callback({ setTag: jest.fn(), setContext: jest.fn() })),
-}));
+jest.mock('@sentry/nestjs', () => {
+  const mockScope = {
+    setTag: jest.fn(),
+    setUser: jest.fn(),
+    setContext: jest.fn(),
+    setLevel: jest.fn(),
+  };
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      return callback(mockScope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: jest.fn(() => () => {}),
+    SentryCron: jest.fn(() => () => {}),
+  };
+});
 
 describe('SentryGlobalFilter', () => {
   let filter: SentryGlobalFilter;

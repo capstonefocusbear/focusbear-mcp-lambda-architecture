@@ -1,3 +1,4 @@
+// Mock @sentry/nestjs before any imports that use it
 import axios from 'axios';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -21,6 +22,34 @@ import {
   RevenueCatServiceMock,
 } from '../../../apps/api-server/test/mocks';
 import { Feedback } from './entities/feedback.entity';
+
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

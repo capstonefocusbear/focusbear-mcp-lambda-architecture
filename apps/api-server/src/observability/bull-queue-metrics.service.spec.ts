@@ -1,8 +1,37 @@
+// Mock @sentry/nestjs before any imports that use it
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull-shared';
 import { BullQueueMetricsService } from './bull-queue-metrics.service';
 import { BullQueues } from '../shared/utils/constants';
+
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
 
 const queueEventsInstances: Array<{
   waitUntilReady: jest.Mock;

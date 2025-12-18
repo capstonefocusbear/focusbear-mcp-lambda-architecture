@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, In, IsNull, Not } from 'typeorm';
+import { FEATURE_FLAGS } from '@api-server/shared/utils/constants';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
@@ -564,7 +565,7 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: 'weekly_emails' })
+      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: FEATURE_FLAGS.WEEKLY_EMAILS })
       .andWhere(
         '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
         { threshold: thresholdDate },

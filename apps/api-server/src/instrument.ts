@@ -10,4 +10,3 @@ if (dsn) {
     debug: process.env.SENTRY_DEBUG === 'true',
   });
 }
-

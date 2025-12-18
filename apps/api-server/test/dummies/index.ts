@@ -2497,3 +2497,153 @@ export const dummyNotifyLogsUploadSuccessDto = {
   feedback_message: 'dummy feedback',
   uploaded_file_url: 'https://dummylogs.com/log.txt',
 };
+export const appVersionDummyiOS = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.1.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Bug fixes and performance improvements',
+  created_at: new Date('2024-01-15'),
+  updated_at: new Date('2024-01-15'),
+};
+
+export const appVersionDummyiOSMinSupported = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: null,
+  created_at: new Date('2023-12-01'),
+  updated_at: new Date('2023-12-01'),
+};
+
+export const appVersionDummyBeta = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.2.0-beta.1',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Beta release with new features',
+  created_at: new Date('2024-02-01'),
+  updated_at: new Date('2024-02-01'),
+};
+
+export const appVersionDummyAndroid = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Major Android update',
+  created_at: new Date('2024-03-01'),
+  updated_at: new Date('2024-03-01'),
+};
+
+export const appVersionDummyAndroidMinSupported = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.5.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: null,
+  created_at: new Date('2024-01-01'),
+  updated_at: new Date('2024-01-01'),
+};
+
+export const appVersionDummyEdgeCaseOldest = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '0.0.1',
+  is_supported: false,
+  is_beta_only: false,
+  release_notes: 'Initial release',
+  created_at: new Date('2020-01-01'),
+  updated_at: new Date('2020-01-01'),
+};
+
+export const appVersionDummyEdgeCaseAlpha = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '1.0.0-alpha.2',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Alpha version',
+  created_at: new Date('2023-06-01'),
+  updated_at: new Date('2023-06-01'),
+};
+
+export const createAppVersionDtoiOSDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.3.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'New feature release',
+};
+
+export const createAppVersionDtoBetaDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.1.0-beta.2',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Beta testing',
+};
+
+export const createAppVersionDtoAndroidDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Major Android update',
+};
+
+export const createAppVersionDtoEdgeCaseOldestDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '0.0.1',
+  is_supported: false,
+  is_beta_only: false,
+  release_notes: 'Initial release',
+};
+
+export const createAppVersionDtoInvalidMissingPatchDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.1',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoInvalidCompletelyDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: 'invalid',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoInvalidWildcardDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.1.x',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoDuplicateiOSDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.1.0',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoDuplicateAndroidDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.0.0',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoSameVersionDifferentOSDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.1.0',
+  is_supported: true,
+  is_beta_only: false,
+};

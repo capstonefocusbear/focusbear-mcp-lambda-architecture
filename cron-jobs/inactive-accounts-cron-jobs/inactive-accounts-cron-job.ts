@@ -12,7 +12,7 @@ import { CronJobDataSource } from '../data-source';
 import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
-import { STRIPE_API_VERSION } from '../../apps/api-server/src/shared/utils/constants';
+import { STRIPE_API_VERSION, FEATURE_FLAGS } from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
@@ -176,7 +176,7 @@ async function sendEnhancedProgressEmails(
     const batch = users.slice(i, i + BATCH_SIZE);
 
     const emailPromises = batch.map(async (userData) => {
-      if (userData.user.email_frequency === EmailFrequency.WEEKLY) {
+      if (userData.user.email_frequency === EmailFrequency.WEEKLY && userData.user.feature_flags?.includes(FEATURE_FLAGS.WEEKLY_EMAILS)) {
         try {
           // Calculate progress metrics
           const metrics = await userProgressMetricsService.calculateWeeklyProgress(userData.user);

@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Raw } from 'typeorm';
-import { InjectSentry, SentryService } from '@app/observability';
+import { InjectSentry, SentryService, emitUserActivityMetric } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -24,7 +24,6 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
-import { emitUserActivityMetric } from '@app/observability';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';

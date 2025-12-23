@@ -232,7 +232,7 @@ describe('UserService', () => {
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(stripeCustomerId);
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
 
       await userService.syncUserAccount(syncAccountDto);
@@ -243,7 +243,8 @@ describe('UserService', () => {
           stripe_customer_id: stripeCustomerId,
         }),
       );
-      expect(StripeServiceMock.registerNewCustomer).toHaveBeenCalledWith(auth0UserDummy.email, 'MacOS');
+      expect(StripeServiceMock.getStripeCustomerId).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(StripeServiceMock.registerNewCustomer).not.toHaveBeenCalled();
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toHaveBeenCalledWith(userDummy.id);
@@ -258,7 +259,7 @@ describe('UserService', () => {
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(stripeCustomerId);
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       // mock 2 users to exist in auth0 with same email
       const dummyAuth0Response = [auth0UserDummy, auth0UserDummy];
@@ -288,7 +289,7 @@ describe('UserService', () => {
       UserRepositoryMock.update.mockResolvedValueOnce(existing);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(stripeCustomerId);
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       RevenueCatServiceMock.checkSubscriptionStatus.mockResolvedValueOnce({ status: 'active' });
 
@@ -306,6 +307,30 @@ describe('UserService', () => {
           username: expect.anything(),
         }),
       );
+    });
+
+    it('positive: new user created without Stripe customer ID when no existing customer found', async () => {
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(null);
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth0_id: syncAccountDto.auth0_id,
+          stripe_customer_id: null,
+        }),
+      );
+      expect(StripeServiceMock.getStripeCustomerId).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(StripeServiceMock.registerNewCustomer).not.toHaveBeenCalled();
+      expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
   });
 

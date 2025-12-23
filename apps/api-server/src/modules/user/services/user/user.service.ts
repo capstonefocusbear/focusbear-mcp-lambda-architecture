@@ -113,7 +113,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
-  ) {}
+  ) { }
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
@@ -177,61 +177,44 @@ export class UserService {
         },
       });
       let os = OperatingSystem.Unknown;
+      // check if stripe customer exists, but don't create one here
+      // users can pay through RevenueCat (mobile) or Stripe (web), so missing Stripe ID is fine
       let stripeId = await this.stripeService.getStripeCustomerId(email);
 
-      if (!stripeId) {
+      const devicesFromDb = registeredUser
+        ? await this.deviceRepository.orm.find({
+          where: { user_id: registeredUser.id },
+          order: { created_at: 'ASC' },
+        })
+        : [];
+
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Getting user OS',
+        data: {
+          devicesFromDb,
+          auth0_client,
+        },
+      });
+
+      os =
+        devicesFromDb?.[0]?.operating_system ??
+        (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
+
+      if (os === OperatingSystem.Unknown) {
         this.sentryService.instance().captureEvent({
-          message: 'Stripe ID not found',
-          level: 'error',
+          message: 'OS not found',
+          level: 'warning',
           extra: {
             auth0_id,
             email,
+            clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
           },
         });
-
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Service',
-          level: 'debug',
-          message: 'Registering new user in Stripe',
-        });
-
-        const devicesFromDb = registeredUser
-          ? await this.deviceRepository.orm.find({
-              where: { user_id: registeredUser.id },
-              order: { created_at: 'ASC' },
-            })
-          : [];
-
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Service',
-          level: 'debug',
-          message: 'Getting user OS',
-          data: {
-            devicesFromDb,
-            auth0_client,
-          },
-        });
-
-        os =
-          devicesFromDb?.[0]?.operating_system ??
-          (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
-
-        if (os === OperatingSystem.Unknown) {
-          this.sentryService.instance().captureEvent({
-            message: 'OS not found',
-            level: 'warning',
-            extra: {
-              auth0_id,
-              email,
-              clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
-            },
-          });
-        }
-
-        const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
-        stripeId = stripeCustomer.id;
       }
 
+      // stripe_customer_id can be null for new users, we'll create it when they subscribe
       const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
       if (registeredUser) {
         const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
@@ -1090,14 +1073,14 @@ export class UserService {
         [axios.post(cliqUrl, body)].concat(
           !email.includes('internaltest')
             ? [
-                this.emailService.sendEmail({
-                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
-                  from: FOCUS_BEAR_EMAILS.SUPPORT,
-                  replyTo: email,
-                  text: stringifiedUninstallFeedback,
-                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
-                }),
-              ]
+              this.emailService.sendEmail({
+                to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                from: FOCUS_BEAR_EMAILS.SUPPORT,
+                replyTo: email,
+                text: stringifiedUninstallFeedback,
+                subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+              }),
+            ]
             : [],
         ),
       );

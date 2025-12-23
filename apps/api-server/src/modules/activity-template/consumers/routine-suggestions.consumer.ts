@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -11,6 +12,8 @@ import { HabitCreationJobData } from '../services/habit-creation-async.service';
 
 @Processor(BullQueues.ROUTINE_SUGGESTIONS)
 export class RoutineSuggestionsConsumer {
+  private readonly logger = new Logger(RoutineSuggestionsConsumer.name);
+
   constructor(
     @InjectSentry() private readonly sentry: SentryService,
     private readonly asyncTaskService: AsyncTaskService,
@@ -48,11 +51,19 @@ export class RoutineSuggestionsConsumer {
         result,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
+      const payload = {
         asyncTaskId,
         status: 'completed',
-        result,
-      });
+      };
+      const payloadBytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+      this.logger.debug(
+        `RoutineSuggestions:pusherPayload ${JSON.stringify({
+          asyncTaskId,
+          userId,
+          payloadBytes,
+        })}`,
+      );
+      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', payload);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

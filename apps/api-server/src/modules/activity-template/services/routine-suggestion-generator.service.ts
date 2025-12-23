@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { OpenAIService, PromptCacheService } from '@app/openai';
 import { ActivityTemplate } from '../entity/activity-template.entity';

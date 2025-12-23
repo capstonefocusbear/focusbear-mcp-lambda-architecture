@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { R2Service } from '@app/r2';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';

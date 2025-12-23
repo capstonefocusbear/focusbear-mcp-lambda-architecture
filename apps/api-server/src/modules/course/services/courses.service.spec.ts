@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { SentryServiceMock } from '../../../../test/mocks';
 import { CoursesRepositoryMock } from '../../../../test/mocks/repositories.mock';
 import { CoursesRepository } from '../repositories/courses.repository';

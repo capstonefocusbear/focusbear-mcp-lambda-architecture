@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DEFAULT_EMBEDDING_MODEL } from '@app/openai/openai.constants';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import {
   ActivityTemplateEmbeddingSyncService,
   EMBEDDING_SYNC_RESULT,

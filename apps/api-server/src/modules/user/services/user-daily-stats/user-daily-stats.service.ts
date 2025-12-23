@@ -1,6 +1,6 @@
 /* eslint-disable default-case */
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { Between, Equal } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';

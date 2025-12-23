@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { Auth0ManagementService } from '@app/auth0';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { R2Service } from '@app/r2';
 import { SendGridService } from '@app/send-grid';
 import axios from 'axios';

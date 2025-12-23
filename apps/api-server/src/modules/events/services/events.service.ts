@@ -2,7 +2,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bull';
 import axios from 'axios';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { SendGridService } from '@app/send-grid';
 import Redis from 'ioredis';
 import { prettyJson } from '../../../shared/utils/helpers';

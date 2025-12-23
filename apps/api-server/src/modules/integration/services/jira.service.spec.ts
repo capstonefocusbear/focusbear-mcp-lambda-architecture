@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import axios from 'axios';
 import { getQueueToken } from '@nestjs/bull';
 import { jiraIssueDummy, savedJiraTaskDummy } from '../../../../test/dummies/integration.dummies';

@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { CompletedActivityMetadata } from '../domain/completed-activity.metadata';
 import { LogQuantityAnswerDto } from './log-quantity-answers.dto';
-import { transformLogQuantityAnswers } from './create-completed-activity.dto';
+import { transformLogQuantityAnswers, transformEmptyStringToUndefined } from './create-completed-activity.dto';
 
 export class CreateSkippedActivityDto {
   @IsNotEmpty()
@@ -19,6 +19,7 @@ export class CreateSkippedActivityDto {
   activity_id: string;
 
   @IsOptional()
+  @Transform(transformEmptyStringToUndefined)
   @IsUUID('4')
   choice_id?: string;
 

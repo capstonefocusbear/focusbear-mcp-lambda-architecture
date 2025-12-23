@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { standaloneHabitPackDummy } from '../../../../test/dummies/habit-packs.dummies';
 import {
   ActivityTemplateRepositoryMock,

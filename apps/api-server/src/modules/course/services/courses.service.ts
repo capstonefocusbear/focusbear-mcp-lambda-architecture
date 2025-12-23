@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { CreateCourseEnrolmentDto } from '../dto/create-course-enrolment.dto';
 import { CreateCourseRatingDto } from '../dto/create-course-rating.dto';

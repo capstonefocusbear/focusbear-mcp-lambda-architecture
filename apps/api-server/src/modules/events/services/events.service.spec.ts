@@ -2,7 +2,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { NotFoundException } from '@nestjs/common';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';

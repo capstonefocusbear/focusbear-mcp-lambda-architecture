@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';

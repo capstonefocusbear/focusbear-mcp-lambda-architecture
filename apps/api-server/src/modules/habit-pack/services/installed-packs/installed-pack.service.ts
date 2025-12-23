@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { InstalledPack } from '../../entity/installed-pack.entity';
 import { InstalledPackRepository } from '../../repositories/installed-pack.repository';
 

@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { CreateLessonCompletionDto } from '../dto/create-lesson-completion.dto';
 import { UpsertLessonsDto } from '../dto/upsert-lessons.dto';

@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { randomUUID } from 'crypto';
 import { In } from 'typeorm';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';

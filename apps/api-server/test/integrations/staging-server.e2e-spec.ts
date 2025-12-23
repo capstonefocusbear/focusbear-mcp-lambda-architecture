@@ -196,6 +196,47 @@ describe('endpoints', () => {
 
       expect(response.status).toBe(201);
     });
+
+    it('positive: should accept empty string choice_id without validation error', async () => {
+      const response = await request(baseURL)
+        .post('/completed-activity/sync')
+        .send({
+          completed_activites: [
+            {
+              activity_id: '821de233-ce30-41af-95c7-f46ed8887c1b',
+              activity_sequence_id: '5c7e7824-dbb6-4d8d-80b3-69e214c225af',
+              choice_id: '',
+              device_id: userDeviceId,
+              duration_logged: 60,
+              finish_time: '2025-12-02T04:44:22.024Z',
+              metadata: {
+                skipped_did_complete: 0,
+                skipped_did_not_complete: 0,
+              },
+              note_logged: '',
+              start_time: '2025-12-02T04:43:22.024Z',
+            },
+            {
+              activity_id: '68f30b42-c850-4738-bcc4-99e73606f1b6',
+              activity_sequence_id: '5c7e7824-dbb6-4d8d-80b3-69e214c225af',
+              choice_id: '',
+              device_id: userDeviceId,
+              duration_logged: 300,
+              finish_time: '2025-12-02T04:45:13.234Z',
+              metadata: {
+                skipped_did_complete: 1,
+                skipped_did_not_complete: 0,
+              },
+              note_logged: '',
+              quantity_logged: 22,
+              start_time: '2025-12-02T04:45:12.234Z',
+            },
+          ],
+        })
+        .set({ Authorization: `Bearer ${token}` });
+
+      expect(response.status).toBe(201);
+    });
   });
 
   describe('GET /completed-activity/:activity_id', () => {

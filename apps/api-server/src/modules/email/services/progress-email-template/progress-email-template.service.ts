@@ -108,7 +108,7 @@ export class ProgressEmailTemplateService {
         this.i18nService.t('common.email_you_last_used', { lang: userLang }) || 'You last used the app on',
       usageLowWarningText:
         this.i18nService.t('common.email_usage_low_warning', { lang: userLang }) ||
-        "This is too low. Consistent usage is key to building strong habits! Let's get back on track this week. 💪",
+        "That's lower than usual — and that's okay. Small, consistent steps add up; whenever you're ready, we're here to help you build momentum.",
       whyItMattersText: this.i18nService.t('common.email_why_it_matters', { lang: userLang }) || 'Why it matters',
       habitMomentumText:
         this.i18nService.t('common.email_habit_momentum', { lang: userLang }) || 'Habit building needs daily momentum.',

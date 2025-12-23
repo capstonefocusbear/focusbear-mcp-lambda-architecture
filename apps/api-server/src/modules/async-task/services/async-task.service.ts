@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { BaseCRUDService } from '../../../shared/services/base-crud.service';
 import { AsyncTask } from '../entities/async-task.entity';
 import { AsyncTaskRepository } from '../repositories/async-task.repository';
@@ -31,6 +31,8 @@ export class AsyncTaskService extends BaseCRUDService<AsyncTaskRepository, Async
       const asyncTask = new AsyncTask({
         status: AsyncTaskStatus.PENDING,
         metadata: createDto.metadata,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       return await this.asyncTaskRepository.create(asyncTask);

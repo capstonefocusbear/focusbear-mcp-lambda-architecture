@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, In, IsNull, Not } from 'typeorm';
+import { FEATURE_FLAGS } from '@api-server/shared/utils/constants';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { ActivitySequence } from '../../activity/entities/activity-sequence.entity';
@@ -29,6 +30,7 @@ export class UserRepository extends BaseRepository<User> {
     'user.last_time_stats_updated',
     'user.metadata',
     'user.email_frequency',
+    'user.feature_flags',
   ];
 
   constructor(private readonly dataSource: DataSource) {
@@ -563,9 +565,11 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: FEATURE_FLAGS.WEEKLY_EMAILS })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)
@@ -578,9 +582,10 @@ export class UserRepository extends BaseRepository<User> {
 
     return this.buildEmailUserQuery()
       .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)
@@ -602,9 +607,10 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.MONTHLY, EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
-      .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at >= :threshold)', {
-        threshold: thresholdDate,
-      })
+      .andWhere(
+        '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
+        { threshold: thresholdDate },
+      )
       .orderBy('user.id', 'ASC')
       .skip(skip)
       .take(take)

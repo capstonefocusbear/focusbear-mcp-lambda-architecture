@@ -8,4 +8,3 @@ export class SentryService {
     return Sentry;
   }
 }
-

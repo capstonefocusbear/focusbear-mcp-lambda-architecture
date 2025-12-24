@@ -1,7 +1,12 @@
+// Set a mock DSN for testing
+import '../src/instrument';
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
 import { AppModule } from '../src/app.module';
+
+process.env.SENTRY_DSN = process.env.SENTRY_DSN || 'mock-sentry-dsn-for-testing';
 
 jest.mock('@sentry/nestjs', () => ({
   init: jest.fn(),
@@ -25,7 +30,7 @@ describe('Sentry Integration (e2e)', () => {
     await app.close();
   });
 
-  it('should initialize Sentry on app start', () => {
+  it('should initialize Sentry on app start when SENTRY_DSN is set', () => {
     expect(Sentry.init).toHaveBeenCalled();
   });
 });

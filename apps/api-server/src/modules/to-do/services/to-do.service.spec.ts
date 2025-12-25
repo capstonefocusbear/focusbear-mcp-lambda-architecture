@@ -564,4 +564,214 @@ describe('toDoService', () => {
       expect(response).toEqual(dummyConvertBrainDumpToTasksResponse);
     });
   });
+
+  describe('getToDos - subtasks filtering', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should filter out empty array subtasks and return only valid subtasks', async () => {
+      const mockToDosWithInvalidSubtasks = [
+        {
+          id: 'todo-1',
+          title: 'TODO !!!!!',
+          user_id: userDummy.id,
+          subtasks: [
+            [],
+            [],
+            { name: 'Valid Subtask 1', is_completed: false },
+            [],
+            { name: 'Valid Subtask 2', is_completed: true },
+            [],
+          ],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithInvalidSubtasks, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toHaveLength(2);
+      expect(data[0].subtasks).toEqual([
+        { name: 'Valid Subtask 1', is_completed: false },
+        { name: 'Valid Subtask 2', is_completed: true },
+      ]);
+    });
+
+    it('positive: should filter out null and undefined subtasks', async () => {
+      const mockToDosWithNullSubtasks = [
+        {
+          id: 'todo-2',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: [
+            null,
+            { name: 'Valid Subtask', is_completed: false },
+            undefined,
+            { name: 'Another Valid', is_completed: true },
+          ],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithNullSubtasks, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toHaveLength(2);
+      expect(data[0].subtasks).toEqual([
+        { name: 'Valid Subtask', is_completed: false },
+        { name: 'Another Valid', is_completed: true },
+      ]);
+    });
+
+    it('positive: should filter out objects missing required fields', async () => {
+      const mockToDosWithIncompleteSubtasks = [
+        {
+          id: 'todo-3',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: [
+            { name: 'Valid Subtask', is_completed: false },
+            { name: 'Missing is_completed field' }, // Missing is_completed
+            { is_completed: true }, // Missing name
+            { something_else: 'value' }, // Missing both required fields
+            { name: 'Another Valid', is_completed: true },
+          ],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithIncompleteSubtasks, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toHaveLength(2);
+      expect(data[0].subtasks).toEqual([
+        { name: 'Valid Subtask', is_completed: false },
+        { name: 'Another Valid', is_completed: true },
+      ]);
+    });
+
+    it('positive: should return empty array when all subtasks are invalid', async () => {
+      const mockToDosWithAllInvalidSubtasks = [
+        {
+          id: 'todo-4',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: [[], [], null, undefined, { invalid: 'data' }],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithAllInvalidSubtasks, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toEqual([]);
+    });
+
+    it('positive: should return empty array when subtasks is not an array', async () => {
+      const mockToDosWithNonArraySubtasks = [
+        {
+          id: 'todo-5',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: null,
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithNonArraySubtasks, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toEqual([]);
+    });
+
+    it('positive: should preserve valid subtasks with extra fields', async () => {
+      const mockToDosWithExtraFields = [
+        {
+          id: 'todo-6',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: [
+            { name: 'Subtask with ID', is_completed: false, id: 'subtask-123' },
+            { name: 'Subtask with metadata', is_completed: true, created_at: '2024-01-01' },
+          ],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithExtraFields, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toHaveLength(2);
+      expect(data[0].subtasks[0]).toHaveProperty('id', 'subtask-123');
+      expect(data[0].subtasks[1]).toHaveProperty('created_at', '2024-01-01');
+    });
+
+    it('positive: should normalize subtasks when should_use_cache is false', async () => {
+      const mockToDosWithInvalidSubtasks = [
+        {
+          id: 'todo-7',
+          title: 'Test Todo',
+          user_id: userDummy.id,
+          subtasks: [[], { name: 'Valid', is_completed: false }, []],
+        },
+      ];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockToDosWithInvalidSubtasks, 1]);
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: false,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].subtasks).toHaveLength(1);
+      expect(data[0].subtasks).toEqual([{ name: 'Valid', is_completed: false }]);
+    });
+  });
 });

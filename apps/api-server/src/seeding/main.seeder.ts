@@ -98,7 +98,6 @@ export class MainSeeder implements Seeder {
     // create dummy data for backendTestUser
     await userFactory.save({
       id: TEST_USER_ID,
-      auth0_id: 'auth0|643ca25c983376898fcd5028',
       username: 'testuser',
       num_days_of_stats: 30,
     });

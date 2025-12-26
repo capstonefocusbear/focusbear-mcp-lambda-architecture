@@ -110,7 +110,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   convertBrainDumpToTasks: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
   },
@@ -154,7 +153,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   analyzeImage: {
     model: GPT_4_1,
     prompt_cache_retention: '24h',
-
     messages: null,
   },
 

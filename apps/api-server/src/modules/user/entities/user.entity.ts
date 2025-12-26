@@ -445,6 +445,13 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'jsonb',
+    nullable: false,
+    default: () => "'[]'::jsonb",
+  })
+  feature_flags?: string[];
+
+  @Column({
+    type: 'jsonb',
     nullable: true,
     transformer: BaseEntity.encryptJSONField('revenue_cat_data'),
   })

@@ -380,13 +380,14 @@ export class ToDoService {
 
   /**
    * Normalizes subtasks by filtering out invalid entries.
-   * This is the CORRECT place for validation (service layer, not ORM).
    *
    * Filters out:
    * - Empty arrays []
    * - null/undefined values
    * - Non-object entries
    * - Objects missing required fields
+   * - Empty or whitespace-only names
+   * - Non-boolean is_completed values
    *
    * @param value - Raw subtasks from database
    * @returns Clean array of valid subtasks
@@ -401,7 +402,10 @@ export class ToDoService {
         typeof item === 'object' &&
         !Array.isArray(item) &&
         'name' in item &&
-        'is_completed' in item,
+        'is_completed' in item &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        typeof item.is_completed === 'boolean',
     );
   }
 }

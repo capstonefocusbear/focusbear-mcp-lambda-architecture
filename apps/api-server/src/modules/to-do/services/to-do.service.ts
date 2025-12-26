@@ -120,11 +120,18 @@ export class ToDoService {
       perspiration_lte,
       synced_project_id,
     });
+
+    // Normalize subtasks (remove invalid entries like empty arrays)
+    const normalizedToDos = toDos.map((todo) => ({
+      ...todo,
+      subtasks: this.normalizeSubtasks(todo.subtasks),
+    }));
+
     let updateToDos: ToDoResponse[];
     if (should_use_cache) {
-      updateToDos = await this.addCachedStatusesToToDos(toDos, user_id);
+      updateToDos = await this.addCachedStatusesToToDos(normalizedToDos, user_id);
     } else {
-      updateToDos = await this.addProjectStatusesToToDos(toDos, user_id);
+      updateToDos = await this.addProjectStatusesToToDos(normalizedToDos, user_id);
     }
     return new PaginationDto(
       updateToDos,
@@ -369,5 +376,36 @@ export class ToDoService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  /**
+   * Normalizes subtasks by filtering out invalid entries.
+   *
+   * Filters out:
+   * - Empty arrays []
+   * - null/undefined values
+   * - Non-object entries
+   * - Objects missing required fields
+   * - Empty or whitespace-only names
+   * - Non-boolean is_completed values
+   *
+   * @param value - Raw subtasks from database
+   * @returns Clean array of valid subtasks
+   */
+  private normalizeSubtasks(value: unknown): any[] {
+    if (!Array.isArray(value)) return [];
+
+    return value.filter(
+      (item): item is { name: string; is_completed: boolean } =>
+        item !== null &&
+        item !== undefined &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        'name' in item &&
+        'is_completed' in item &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        typeof item.is_completed === 'boolean',
+    );
   }
 }

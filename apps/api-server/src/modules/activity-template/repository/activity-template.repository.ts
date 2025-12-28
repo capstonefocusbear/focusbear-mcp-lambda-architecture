@@ -7,7 +7,6 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { LogQuantityQuestion } from '../../activity/entities/log-quantity-questions';
 import { ActivityTemplateTag } from '../entity/activity-template-tag.entity';
 import { convertMinutesToSeconds } from '../../../shared/utils/helpers';
-import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 
 @Injectable()
 export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate> {
@@ -58,7 +57,15 @@ export class ActivityTemplateRepository extends BaseRepository<ActivityTemplate>
     });
   }
 
-  async getActivityTemplatesWithGoalsMatched({ routine_duration, user_goals, routine }: GetRoutineSuggestionsDto) {
+  async getActivityTemplatesWithGoalsMatched({
+    routine_duration,
+    user_goals,
+    routine,
+  }: {
+    routine_duration: number;
+    user_goals?: string[];
+    routine?: string;
+  }) {
     const duration_seconds = convertMinutesToSeconds(routine_duration);
     const allowed_routines = [ActivityType.morning, ActivityType.evening];
     const goals = (user_goals ?? []).map((goal) => goal.toLowerCase()).filter(Boolean);

@@ -3,9 +3,10 @@ import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
 import { StripeService } from '@app/stripe';
 import { UserRepository } from '../repositories/user.repository';
-import { DeviceRepository } from '../repositories/device.repository';
-import { DeviceService } from '../services/device/device.service';
-import { BullQueues, BullWorkers, OperatingSystem } from '../../../shared/utils/constants';
+import { DeviceRepository } from '../../device/repositories/device.repository';
+import { DeviceService } from '../../device/services/device/device.service';
+import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 interface CreateStripeCustomerJobData {
   user_id: string;

@@ -119,7 +119,6 @@ describe('RoutineSuggestionsConsumer', () => {
     expect(PusherServiceMock.trigger).toHaveBeenCalledWith('private-user-7', 'routine-suggestions.completed', {
       asyncTaskId: 'task-123',
       status: 'completed',
-      result: suggestions,
     });
   });
 

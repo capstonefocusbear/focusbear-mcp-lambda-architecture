@@ -140,12 +140,10 @@ export class SyncTasksConsumer {
     const syncedTasksFromProjectIds = syncedTasksFromProject.map((task) => task.external_task_id);
     const projectsExternalIdToLocalIdMap = this.getSyncedProjectsIdMap(syncedProjects);
 
-    const syncedTasksMap = syncedTasksFromProject.reduce((map, task) => {
-      return {
-        ...map,
-        [task.external_task_id]: task,
-      };
-    }, {} as Record<string, ToDo>);
+    const syncedTasksMap: Record<string, ToDo> = Object.create(null);
+    for (const task of syncedTasksFromProject) {
+      syncedTasksMap[task.external_task_id] = task;
+    }
 
     // Identify new and existing tasks
     const tasksToCreate = tasksFromProject.filter((task) => !syncedTasksFromProjectIds.includes(task.id));

@@ -183,6 +183,7 @@ export enum BullQueues {
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
+  STRIPE_CUSTOMER = 'stripe-customer',
 }
 
 export enum BullWorkers {
@@ -193,6 +194,7 @@ export enum BullWorkers {
   SYNC_PROJECT_TASKS = 'sync-project-tasks',
   RESUME_NOTIFICATION = 'resume-notification',
   MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  CREATE_STRIPE_CUSTOMER = 'create-stripe-customer',
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',

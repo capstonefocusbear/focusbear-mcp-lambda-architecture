@@ -103,6 +103,7 @@ export class UserService {
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
     @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
+    @InjectQueue(BullQueues.STRIPE_CUSTOMER) private stripeCustomerQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly deviceRepository: DeviceRepository,
     @Inject(forwardRef(() => DeviceService))
@@ -112,7 +113,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
-  ) { }
+  ) {}
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
@@ -175,55 +176,47 @@ export class UserService {
           auth0_id,
         },
       });
-      let os = OperatingSystem.Unknown;
-      // check if stripe customer exists, but don't create one here
-      // users can pay through RevenueCat (mobile) or Stripe (web), so missing Stripe ID is fine
-      let stripeId = await this.stripeService.getStripeCustomerId(email);
 
-      const devicesFromDb = registeredUser
-        ? await this.deviceRepository.orm.find({
-          where: { user_id: registeredUser.id },
-          order: { created_at: 'ASC' },
-        })
-        : [];
+      // Queue background job to create Stripe customer if needed
+      // This makes the endpoint faster by not waiting for Stripe API calls
+      if (registeredUser) {
+        // For existing users, only queue job if they don't have a stripe_customer_id
+        if (!registeredUser.stripe_customer_id) {
+          await this.stripeCustomerQueue.add(BullWorkers.CREATE_STRIPE_CUSTOMER, {
+            user_id: registeredUser.id,
+            email,
+            auth0_id,
+          });
+        }
+        return registeredUser;
+      }
 
-      this.sentryService.instance().addBreadcrumb({
-        category: 'Service',
-        level: 'debug',
-        message: 'Getting user OS',
-        data: {
-          devicesFromDb,
-          auth0_client,
-        },
+      // For new users, create user first then queue Stripe customer creation
+      const newUserProperties: UserStripePropertiesDto = {
+        auth0_id,
+        stripe_customer_id: null, // Will be set by background job
+      };
+      const newUser = new User({ ...newUserProperties });
+      const newlySavedUser = await this.userRepository.create(newUser);
+
+      // Queue background job to create Stripe customer
+      await this.stripeCustomerQueue.add(BullWorkers.CREATE_STRIPE_CUSTOMER, {
+        user_id: newlySavedUser.id,
+        email,
+        auth0_id,
       });
 
-      os =
+      // Create device entry for new users
+      const devicesFromDb = await this.deviceRepository.orm.find({
+        where: { user_id: newlySavedUser.id },
+        order: { created_at: 'ASC' },
+      });
+
+      const os =
         devicesFromDb?.[0]?.operating_system ??
         (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
 
-      if (os === OperatingSystem.Unknown) {
-        this.sentryService.instance().captureEvent({
-          message: 'OS not found',
-          level: 'warning',
-          extra: {
-            auth0_id,
-            email,
-            clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
-          },
-        });
-      }
-
-      // stripe_customer_id can be null for new users, we'll create it when they subscribe
-      const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
-      if (registeredUser) {
-        const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
-        return updatedUser;
-      }
-      const newUser = new User({ ...userProperties });
-      const newlySavedUser = await this.userRepository.create(newUser);
-
-      // Create device entry for new users
-      if (os) {
+      if (os !== OperatingSystem.Unknown) {
         try {
           await this.deviceService.createOrUpdateDevice(
             {
@@ -1072,14 +1065,14 @@ export class UserService {
         [axios.post(cliqUrl, body)].concat(
           !email.includes('internaltest')
             ? [
-              this.emailService.sendEmail({
-                to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
-                from: FOCUS_BEAR_EMAILS.SUPPORT,
-                replyTo: email,
-                text: stringifiedUninstallFeedback,
-                subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
-              }),
-            ]
+                this.emailService.sendEmail({
+                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                  from: FOCUS_BEAR_EMAILS.SUPPORT,
+                  replyTo: email,
+                  text: stringifiedUninstallFeedback,
+                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+                }),
+              ]
             : [],
         ),
       );

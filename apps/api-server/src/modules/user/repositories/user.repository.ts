@@ -625,6 +625,7 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email_frequency IN (:...frequencies)', {
         frequencies: [EmailFrequency.WEEKLY, EmailFrequency.DAILY],
       })
+      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: 'no_progress_emails' })
       .andWhere('(user.last_completed_sequence_at IS NULL OR user.last_completed_sequence_at < :threshold)', {
         threshold: thresholdDate,
       })

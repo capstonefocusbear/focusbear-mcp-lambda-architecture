@@ -40,7 +40,7 @@ export class ToDoService {
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
-  ) {}
+  ) { }
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
@@ -335,7 +335,13 @@ export class ToDoService {
         },
       });
 
-      return await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+      const todos = await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+
+      // Normalize subtasks for search results
+      return todos.map((todo) => ({
+        ...todo,
+        subtasks: this.normalizeSubtasks(todo.subtasks),
+      }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -354,7 +360,13 @@ export class ToDoService {
         },
       });
 
-      return await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
+      const todos = await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
+
+      // Normalize subtasks for recent todos
+      return todos.map((todo) => ({
+        ...todo,
+        subtasks: this.normalizeSubtasks(todo.subtasks),
+      }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

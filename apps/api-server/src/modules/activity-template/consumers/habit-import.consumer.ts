@@ -6,16 +6,20 @@ import { OpenAIService } from '@app/openai';
 import axios from 'axios';
 import { toFile } from 'openai/uploads';
 import { extname } from 'path';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Logger } from '@nestjs/common';
 import * as sharp from 'sharp';
+import { isUUID } from 'class-validator';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { HabitImportExtractionService } from '../services/habit-import-extraction.service';
-import { ExtractedHabit, HabitImportJobData } from '../dto/import-habits-from-media.dto';
+import { ExtractedHabit, HabitImportJobData, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
 import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
+import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
+import { ActivityType } from '../../activity/domain/activity-type.enum';
 
 const MIN_IMAGE_DIMENSION = 768;
+const ONE_MINUTE_SECONDS = 60;
 
 @Processor(BullQueues.HABIT_IMPORT)
 export class HabitImportConsumer {
@@ -30,7 +34,7 @@ export class HabitImportConsumer {
   ) {}
 
   @Process(BullWorkers.PROCESS_HABIT_IMPORT)
-  async processHabitImport(job: Job<HabitImportJobData>) {
+  async processHabitImport(job: Job<HabitImportJobData>): Promise<UpdateActivityDto[]> {
     const { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash } = job.data;
 
     const baseMetadata = {
@@ -93,6 +97,7 @@ export class HabitImportConsumer {
 
       // 3. Match extracted habits against library
       const results = await this.habitImportExtractionService.matchExtractedHabits(extractedHabits);
+      const usableHabits = this.formatHabitImportResult(results, routineType);
 
       // 4. Log unmatched habits to habit_library_requests
       await this.habitImportExtractionService.logUnmatchedHabits(results, userId, {
@@ -110,10 +115,10 @@ export class HabitImportConsumer {
         extractedCount: extractedHabits.length,
         matchedCount,
         unmatchedCount,
-        result: results,
+        result: usableHabits,
       });
 
-      return results;
+      return usableHabits;
     } catch (error) {
       // Update status to FAILED
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
@@ -294,5 +299,52 @@ export class HabitImportConsumer {
       result: [],
     });
     return [];
+  }
+
+  private formatHabitImportResult(results: HabitSuggestionResult[], routineType?: string): UpdateActivityDto[] {
+    const fallbackActivityType = this.resolveActivityTypeFromRoutineType(routineType) ?? ActivityType.library;
+    return results
+      .map((result) => {
+        const extracted = result.suggestedHabit ?? result.extractedHabit;
+        const durationSeconds =
+          result.matchedTemplate?.durationSeconds ??
+          (Number.isFinite(extracted.estimatedDurationMinutes)
+            ? extracted.estimatedDurationMinutes * ONE_MINUTE_SECONDS
+            : undefined) ??
+          undefined;
+
+        const rawId = result.matchedTemplate?.id;
+        const resolvedId = rawId && isUUID(rawId) ? rawId : randomUUID();
+
+        const name = String(result.matchedTemplate?.name ?? extracted.name ?? '').trim();
+        if (!name) {
+          return null;
+        }
+
+        const habit: UpdateActivityDto = {
+          id: resolvedId,
+          name,
+          duration_seconds: Number.isFinite(Number(durationSeconds))
+            ? Math.max(0, Math.round(Number(durationSeconds)))
+            : 0,
+          activity_type: String(result.matchedTemplate?.activityType ?? fallbackActivityType),
+          category: extracted.category,
+          text_instructions: result.matchedTemplate?.description ?? extracted.description,
+        };
+        return habit;
+      })
+      .filter((habit): habit is UpdateActivityDto => Boolean(habit));
+  }
+
+  private resolveActivityTypeFromRoutineType(routineType?: string): ActivityType | undefined {
+    if (!routineType) return undefined;
+    const normalized = String(routineType).trim().toLowerCase();
+    if (normalized === 'morning') return ActivityType.morning;
+    if (normalized === 'evening') return ActivityType.evening;
+    if (normalized === 'break') return ActivityType.break;
+    if (normalized === 'breaking') return ActivityType.break;
+    if (normalized === 'library') return ActivityType.library;
+    if (normalized === 'standalone') return ActivityType.standalone;
+    return undefined;
   }
 }

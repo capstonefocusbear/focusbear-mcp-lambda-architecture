@@ -34,6 +34,8 @@ jest.mock('sharp', () => {
 describe('HabitImportConsumer', () => {
   let consumer: HabitImportConsumer;
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
   const asyncTaskServiceMock = {
     updateStatusWithMetadata: jest.fn(),
   };
@@ -111,10 +113,10 @@ describe('HabitImportConsumer', () => {
         extractedHabit: mockExtractedHabits[0],
         matched: true,
         matchedTemplate: {
-          id: 'template-1',
+          id: '11111111-1111-4111-8111-111111111111',
           name: 'Mindfulness Meditation',
           description: 'Guided meditation',
-          activityType: 'mindfulness',
+          activityType: 'morning',
           durationSeconds: 600,
           matchScore: 0.9,
           justification: 'Similar meditation activity',
@@ -185,11 +187,31 @@ describe('HabitImportConsumer', () => {
           extractedCount: 2,
           matchedCount: 1,
           unmatchedCount: 1,
-          result: mockResults,
+          result: expect.any(Array),
         }),
       );
 
-      expect(result).toEqual(mockResults);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Mindfulness Meditation',
+          duration_seconds: 600,
+          activity_type: 'morning',
+          category: 'meditation',
+          text_instructions: 'Guided meditation',
+        }),
+      );
+      expect(result[1]).toEqual(
+        expect.objectContaining({
+          id: expect.stringMatching(UUID_REGEX),
+          name: 'Exercise',
+          duration_seconds: 1800,
+          activity_type: 'morning',
+          category: 'exercise',
+          text_instructions: 'Workout',
+        }),
+      );
     });
 
     it('should return empty array when no habits are extracted', async () => {
@@ -230,10 +252,10 @@ describe('HabitImportConsumer', () => {
         extractedHabit: mockExtractedHabits[0],
         matched: true,
         matchedTemplate: {
-          id: 'template-2',
+          id: '22222222-2222-4222-8222-222222222222',
           name: 'Daily Reading',
           description: 'Read for 20 minutes',
-          activityType: 'learning',
+          activityType: 'morning',
           durationSeconds: 1200,
           matchScore: 0.85,
           justification: 'Reading activity match',
@@ -266,7 +288,16 @@ describe('HabitImportConsumer', () => {
         'I read for 20 minutes every day',
       );
 
-      expect(result).toEqual(mockResults);
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Daily Reading',
+          duration_seconds: 1200,
+          activity_type: 'morning',
+          category: 'reading',
+          text_instructions: 'Read for 20 minutes',
+        }),
+      ]);
     });
 
     it('should throw error when transcript is empty', async () => {

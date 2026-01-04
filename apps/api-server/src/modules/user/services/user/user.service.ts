@@ -182,11 +182,21 @@ export class UserService {
       if (registeredUser) {
         // For existing users, only queue job if they don't have a stripe_customer_id
         if (!registeredUser.stripe_customer_id) {
-          await this.stripeCustomerQueue.add(BullWorkers.CREATE_STRIPE_CUSTOMER, {
-            user_id: registeredUser.id,
-            email,
-            auth0_id,
-          });
+          await this.stripeCustomerQueue.add(
+            BullWorkers.CREATE_STRIPE_CUSTOMER,
+            {
+              user_id: registeredUser.id,
+              email,
+              auth0_id,
+            },
+            {
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000, // 2s, 4s, 8s
+              },
+            },
+          );
         }
         return registeredUser;
       }
@@ -200,11 +210,21 @@ export class UserService {
       const newlySavedUser = await this.userRepository.create(newUser);
 
       // Queue background job to create Stripe customer
-      await this.stripeCustomerQueue.add(BullWorkers.CREATE_STRIPE_CUSTOMER, {
-        user_id: newlySavedUser.id,
-        email,
-        auth0_id,
-      });
+      await this.stripeCustomerQueue.add(
+        BullWorkers.CREATE_STRIPE_CUSTOMER,
+        {
+          user_id: newlySavedUser.id,
+          email,
+          auth0_id,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000, // 2s, 4s, 8s
+          },
+        },
+      );
 
       // Create device entry for new users
       const devicesFromDb = await this.deviceRepository.orm.find({

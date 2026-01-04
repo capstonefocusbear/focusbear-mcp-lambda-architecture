@@ -250,11 +250,21 @@ describe('UserService', () => {
           stripe_customer_id: null, // Will be set by background job
         }),
       );
-      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.CREATE_STRIPE_CUSTOMER, {
-        user_id: userDummy.id,
-        email: auth0UserDummy.email,
-        auth0_id: syncAccountDto.auth0_id,
-      });
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.CREATE_STRIPE_CUSTOMER,
+        {
+          user_id: userDummy.id,
+          email: auth0UserDummy.email,
+          auth0_id: syncAccountDto.auth0_id,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toHaveBeenCalledWith(userDummy.id);
@@ -325,11 +335,21 @@ describe('UserService', () => {
           stripe_customer_id: null, // Will be set by background job
         }),
       );
-      expect(QueueMock.add).toHaveBeenCalledWith(BullWorkers.CREATE_STRIPE_CUSTOMER, {
-        user_id: userDummy.id,
-        email: auth0UserDummy.email,
-        auth0_id: syncAccountDto.auth0_id,
-      });
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.CREATE_STRIPE_CUSTOMER,
+        {
+          user_id: userDummy.id,
+          email: auth0UserDummy.email,
+          auth0_id: syncAccountDto.auth0_id,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });

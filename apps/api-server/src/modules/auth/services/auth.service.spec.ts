@@ -4,7 +4,6 @@ import { SENTRY_TOKEN } from '@app/observability';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SendGridService } from '@app/send-grid';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
 import { getQueueToken } from '@nestjs/bull';
@@ -13,7 +12,6 @@ import {
   Auth0ManagementServiceMock,
   ConfigServiceMock,
   JwtServiceMock,
-  SendGridServiceMock,
   SentryServiceMock,
   UserRepositoryMock,
 } from '../../../../test/mocks/index';
@@ -48,10 +46,6 @@ describe('AuthService', () => {
           useValue: JwtServiceMock,
         },
         {
-          provide: SendGridService,
-          useValue: SendGridServiceMock,
-        },
-        {
           provide: I18nService,
           useValue: i18nServiceMock,
         },
@@ -61,6 +55,10 @@ describe('AuthService', () => {
         },
         {
           provide: getQueueToken(BullQueues.EMAIL_VERIFICATION),
+          useValue: QueueMock,
+        },
+        {
+          provide: getQueueToken(BullQueues.PASSWORD_RESET_EMAIL),
           useValue: QueueMock,
         },
         Auth0AuthenticationService,
@@ -165,6 +163,53 @@ describe('AuthService', () => {
         NotFoundException,
       );
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(QueueMock.add).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    const origin = 'https://dashboard.focusbear.io';
+    const lang = 'en';
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      QueueMock.add.mockResolvedValue({} as any);
+      i18nServiceMock.t.mockReturnValue('User');
+    });
+
+    it('positive: should queue password reset email job if user exists and email is verified', async () => {
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
+        { ...auth0UserDummy, email_verified: true },
+      ]);
+
+      const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);
+
+      expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.SEND_PASSWORD_RESET_EMAIL,
+        {
+          email: auth0UserDummy.email,
+          auth0_id: auth0UserDummy.user_id,
+          user_name: auth0UserDummy.name,
+          origin,
+        },
+        expect.objectContaining({
+          attempts: 3,
+          backoff: expect.objectContaining({
+            type: 'exponential',
+            delay: 2000,
+          }),
+        }),
+      );
+      expect(response).toEqual({ data: 'Password reset email queued.', status: 202 });
+    });
+
+    it('negative: should throw NotFoundException if user does not exist', async () => {
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([]);
+
+      await expect(authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin)).rejects.toThrow(
+        NotFoundException,
+      );
       expect(QueueMock.add).not.toHaveBeenCalled();
     });
   });

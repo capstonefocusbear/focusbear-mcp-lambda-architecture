@@ -12,18 +12,10 @@ import { InjectSentry, SentryService } from '@app/observability';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SendGridService } from '@app/send-grid';
 import { I18nService } from 'nestjs-i18n';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import {
-  AUTH0_RETRY_CONFIG,
-  BullQueues,
-  BullWorkers,
-  EMAIL_SENDER_NAME,
-  EMAIL_TEMPLATE_IDS,
-  FOCUS_BEAR_EMAILS,
-} from '../../../shared/utils/constants';
+import { AUTH0_RETRY_CONFIG, BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { SendEmailVerificationDto } from '../dto/send-email-verification.dto';
 import { EmailConfirmationForGuestDto } from '../dto/email-confirmation-guest.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
@@ -39,7 +31,6 @@ export class AuthService {
     private readonly auth0ManagementService: Auth0ManagementService,
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
-    private readonly emailService: SendGridService,
     private readonly i18nService: I18nService,
     @Inject('EmailVerificationJwtService')
     private readonly emailJwtService: JwtService,
@@ -47,6 +38,8 @@ export class AuthService {
     private readonly passwordResetJwtService: JwtService,
     @InjectQueue(BullQueues.EMAIL_VERIFICATION)
     private readonly emailVerificationQueue: Queue,
+    @InjectQueue(BullQueues.PASSWORD_RESET_EMAIL)
+    private readonly passwordResetEmailQueue: Queue,
   ) {}
 
   async authenticate({ authorization }: { authorization: string }): Promise<Passport> {
@@ -133,41 +126,39 @@ export class AuthService {
         );
       }
 
-      const secret = this.configService.get('tokens.password_reset.secret');
-      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '7 days';
+      const user_name =
+        auth0User.name ||
+        auth0User.given_name ||
+        auth0User.nickname ||
+        this.i18nService.t('common.user_name_fallback', { lang });
 
-      const resetToken = await this.passwordResetJwtService.signAsync(
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Enqueuing password reset email job',
+        data: { email, auth0_id: auth0User.user_id },
+      });
+
+      await this.passwordResetEmailQueue.add(
+        BullWorkers.SEND_PASSWORD_RESET_EMAIL,
         {
           email,
           auth0_id: auth0User.user_id,
+          user_name,
+          origin,
         },
         {
-          secret,
-          expiresIn,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
         },
       );
 
-      const baseUrl = this.getFrontendBaseUrl(origin);
-      const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
-
-      await this.emailService.sendEmail({
-        to: email,
-        from: {
-          name: EMAIL_SENDER_NAME,
-          email: FOCUS_BEAR_EMAILS.NOREPLY,
-        },
-        templateId: EMAIL_TEMPLATE_IDS.REQUEST_PASSWORD_RESET,
-        dynamicTemplateData: {
-          user_name:
-            auth0User.name ||
-            auth0User.given_name ||
-            auth0User.nickname ||
-            this.i18nService.t('common.user_name_fallback', { lang }),
-          reset_link: resetLink,
-        },
-      });
-
-      return { data: 'Password reset link sent.', status: 201 };
+      return { data: 'Password reset email queued.', status: 202 };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

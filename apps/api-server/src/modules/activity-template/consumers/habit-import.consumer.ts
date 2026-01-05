@@ -305,21 +305,20 @@ export class HabitImportConsumer {
     const fallbackActivityType = this.resolveActivityTypeFromRoutineType(routineType) ?? ActivityType.library;
     return results
       .map((result) => {
-        const extracted = result.suggestedHabit ?? result.extractedHabit;
-        const durationSeconds =
-          result.matchedTemplate?.durationSeconds ??
-          (Number.isFinite(extracted.estimatedDurationMinutes)
-            ? extracted.estimatedDurationMinutes * ONE_MINUTE_SECONDS
-            : undefined) ??
-          undefined;
+        const sourceHabit = result.suggestedHabit ? result.suggestedHabit : result.extractedHabit;
+        const template = result.matchedTemplate;
+        const durationSeconds = this.resolveDurationSeconds(template, sourceHabit);
 
-        const rawId = result.matchedTemplate?.id;
+        const rawId = template?.id;
         const resolvedId = rawId && isUUID(rawId) ? rawId : randomUUID();
 
-        const name = String(result.matchedTemplate?.name ?? extracted.name ?? '').trim();
+        const name = this.resolveHabitName(template, sourceHabit);
         if (!name) {
           return null;
         }
+
+        const description = template?.description ? template.description : sourceHabit.description;
+        const activityType = template?.activityType ? String(template.activityType) : String(fallbackActivityType);
 
         const habit: UpdateActivityDto = {
           id: resolvedId,
@@ -327,13 +326,39 @@ export class HabitImportConsumer {
           duration_seconds: Number.isFinite(Number(durationSeconds))
             ? Math.max(0, Math.round(Number(durationSeconds)))
             : 0,
-          activity_type: String(result.matchedTemplate?.activityType ?? fallbackActivityType),
-          category: extracted.category,
-          text_instructions: result.matchedTemplate?.description ?? extracted.description,
+          activity_type: activityType,
+          category: sourceHabit.category,
+          text_instructions: description,
         };
         return habit;
       })
       .filter((habit): habit is UpdateActivityDto => Boolean(habit));
+  }
+
+  private resolveHabitName(
+    template: HabitSuggestionResult['matchedTemplate'] | undefined,
+    habit: ExtractedHabit,
+  ): string {
+    if (template?.name) {
+      return String(template.name).trim();
+    }
+    if (habit?.name) {
+      return String(habit.name).trim();
+    }
+    return '';
+  }
+
+  private resolveDurationSeconds(
+    template: HabitSuggestionResult['matchedTemplate'] | undefined,
+    habit: ExtractedHabit,
+  ): number | undefined {
+    if (typeof template?.durationSeconds === 'number') {
+      return template.durationSeconds;
+    }
+    if (Number.isFinite(habit?.estimatedDurationMinutes)) {
+      return habit.estimatedDurationMinutes * ONE_MINUTE_SECONDS;
+    }
+    return undefined;
   }
 
   private resolveActivityTypeFromRoutineType(routineType?: string): ActivityType | undefined {

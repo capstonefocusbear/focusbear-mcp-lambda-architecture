@@ -490,15 +490,36 @@ describe('ActivityLibraryService', () => {
               name: 'Draft 500 words',
               description: 'Write a rough draft without editing.',
               routineType: ActivityType.morning,
-              durationMinutes: 10,
+              durationMinutes: 5,
               justification: 'Builds consistent writing momentum.',
             },
             {
               name: 'Outline next chapter',
               description: 'Create bullet points for the next section.',
               routineType: ActivityType.morning,
-              durationMinutes: 10,
+              durationMinutes: 5,
               justification: 'Keeps the book structure clear.',
+            },
+            {
+              name: 'Research topic',
+              description: 'Gather information for current chapter.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Ensures accuracy and depth.',
+            },
+            {
+              name: 'Edit previous draft',
+              description: "Review and refine yesterday's writing.",
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Improves quality iteratively.',
+            },
+            {
+              name: 'Read for inspiration',
+              description: 'Read similar genre for 5 minutes.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Sparks creativity and style development.',
             },
           ]);
         }
@@ -508,8 +529,36 @@ describe('ActivityLibraryService', () => {
               name: 'Bodyweight strength',
               description: 'Do a short strength circuit.',
               routineType: ActivityType.morning,
-              durationMinutes: 10,
+              durationMinutes: 5,
               justification: 'Supports strength building.',
+            },
+            {
+              name: 'Morning stretches',
+              description: 'Dynamic stretches to warm up.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Prevents injury and improves flexibility.',
+            },
+            {
+              name: 'Core workout',
+              description: 'Plank and ab exercises.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Builds core stability.',
+            },
+            {
+              name: 'Cardio session',
+              description: 'Quick jumping jacks or burpees.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Boosts cardiovascular health.',
+            },
+            {
+              name: 'Cool down routine',
+              description: 'Slow stretches to end workout.',
+              routineType: ActivityType.morning,
+              durationMinutes: 5,
+              justification: 'Aids recovery and reduces soreness.',
             },
           ]);
         }
@@ -522,11 +571,25 @@ describe('ActivityLibraryService', () => {
         'Write a book',
         expect.any(Object),
       );
+
+      // Custom goal habits should appear first
       expect(response[0]?.ai_goals).toContain('Write a book');
 
+      // Verify all custom goal habits appear before any predefined goal habits
       const customCount = response.filter((activity) => activity.ai_goals?.includes('Write a book')).length;
       const predefinedCount = response.filter((activity) => activity.ai_goals?.includes('Get buffed')).length;
-      expect(customCount).toBeGreaterThanOrEqual(predefinedCount);
+      expect(customCount).toBeGreaterThan(0);
+      expect(predefinedCount).toBeGreaterThan(0);
+
+      // Find the last index of a custom goal habit and first index of a predefined goal habit
+      const lastCustomIndex = response.reduce(
+        (lastIdx, activity, idx) => (activity.ai_goals?.includes('Write a book') ? idx : lastIdx),
+        -1,
+      );
+      const firstPredefinedIndex = response.findIndex((activity) => activity.ai_goals?.includes('Get buffed'));
+
+      // All custom habits should come before all predefined habits
+      expect(lastCustomIndex).toBeLessThan(firstPredefinedIndex);
     });
 
     it('orders groupByGoals keys custom-first', async () => {

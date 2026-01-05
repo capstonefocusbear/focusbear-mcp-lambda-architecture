@@ -16,7 +16,8 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
     where: { platform },
   });
   const recordsWithAccessAndRefreshTokens = IntegrationRecords.filter((integration) => {
-    return integration.data.access_token; // && integration.data.refresh_token;
+    // Skip accounts that require reauth (e.g., missing scopes, invalid tokens)
+    return integration.data?.access_token && !integration.data?.requires_reauth;
   });
   const idsOfUsersToSync = recordsWithAccessAndRefreshTokens.map((integrationRecord) => {
     return {

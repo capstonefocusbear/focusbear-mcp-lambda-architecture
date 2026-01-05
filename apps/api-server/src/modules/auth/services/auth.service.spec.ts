@@ -191,7 +191,7 @@ describe('AuthService', () => {
         {
           email: auth0UserDummy.email,
           auth0_id: auth0UserDummy.user_id,
-          user_name: auth0UserDummy.name,
+          user_name: auth0UserDummy.given_name,
           origin,
         },
         expect.objectContaining({

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, Max, Min, IsOptional } from 'class-validator';
 
 export class URLSafeProbabilityResponseDto {
   @IsNumber()
@@ -10,4 +10,12 @@ export class URLSafeProbabilityResponseDto {
   @IsNotEmpty()
   @IsString()
   reason: string;
+
+  @IsOptional()
+  @IsString()
+  suggested_task?: string;
+
+  @IsOptional()
+  @IsString()
+  suggested_task_id?: string;
 }

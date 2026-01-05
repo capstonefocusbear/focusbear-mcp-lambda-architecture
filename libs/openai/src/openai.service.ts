@@ -285,6 +285,7 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
+      current_tasks,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -330,6 +331,7 @@ export class OpenAIService {
         };
       }
 
+      const currentTasksJson = current_tasks ? JSON.stringify(current_tasks) : '[]';
       const filledPromptContent = this.fillPrompt(promptContent, {
         url: sanitizedUrl,
         tab_title: finalTitle,
@@ -339,6 +341,7 @@ export class OpenAIService {
         justificationForThisUrl: justificationForThisUrl || '',
         currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
         lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+        current_tasks: currentTasksJson,
       });
 
       const basePrompt: ChatCompletionMessageParam = {
@@ -347,6 +350,7 @@ export class OpenAIService {
       };
 
       let retryCount = 0;
+      let response: URLSafeProbabilityResponseDto | null = null;
       while (retryCount < 3) {
         try {
           const completions = await this.getOpenAIChatCompletionsNonStreaming(
@@ -356,13 +360,33 @@ export class OpenAIService {
           );
 
           const { content } = completions.choices[0].message;
-          return plainToClass(URLSafeProbabilityResponseDto, JSON.parse(content));
+          response = plainToClass(URLSafeProbabilityResponseDto, JSON.parse(content));
+          break; // Success, exit retry loop
         } catch (error) {
           retryCount++;
           this.sentryService.instance().captureException(error, {
             extra: { retryCount, prompt: 'default' },
           });
         }
+      }
+
+      // If we got a response, add task suggestion if needed
+      if (response) {
+        // If alignment score < 70%, suggest a task
+        if (response.allowed_probability < 0.7) {
+          const suggestedTask = await this.suggestTaskForUrl(
+            sanitizedUrl,
+            finalTitle,
+            finalDescription,
+            current_tasks,
+            prefLanguage,
+          );
+          if (suggestedTask) {
+            response.suggested_task = suggestedTask.task_name;
+            response.suggested_task_id = suggestedTask.task_id;
+          }
+        }
+        return response;
       }
 
       return {
@@ -385,7 +409,8 @@ export class OpenAIService {
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer } = isAppSafeDto;
+    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer, current_tasks } =
+      isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -416,12 +441,14 @@ export class OpenAIService {
     }
 
     // Fill in the prompt template with actual values
+    const currentTasksJson = current_tasks ? JSON.stringify(current_tasks) : '[]';
     const filledPromptContent = this.fillPrompt(promptContent, {
       appName,
       focusMode,
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      current_tasks: currentTasksJson,
     });
 
     const basePrompt: ChatCompletionMessageParam = {
@@ -430,6 +457,7 @@ export class OpenAIService {
     };
 
     let retryCount = 0;
+    let response: URLSafeProbabilityResponseDto | null = null;
     while (retryCount < 3) {
       try {
         const completions = await this.getOpenAIChatCompletionsNonStreaming(
@@ -440,11 +468,24 @@ export class OpenAIService {
         const newMessage = completions.choices[0].message;
         const { content } = newMessage;
         const parsedResponse = JSON.parse(content);
-
-        return plainToClass(URLSafeProbabilityResponseDto, parsedResponse);
+        response = plainToClass(URLSafeProbabilityResponseDto, parsedResponse);
+        break; // Success, exit retry loop
       } catch (error) {
         retryCount++;
       }
+    }
+
+    // If we got a response, add task suggestion if needed
+    if (response) {
+      // If alignment score < 70%, suggest a task
+      if (response.allowed_probability < 0.7) {
+        const suggestedTask = await this.suggestTaskForApp(appName, focusMode, current_tasks, prefLanguage);
+        if (suggestedTask) {
+          response.suggested_task = suggestedTask.task_name;
+          response.suggested_task_id = suggestedTask.task_id;
+        }
+      }
+      return response;
     }
 
     // Fallback response if retries fail - potential OpenAI throttling?
@@ -453,6 +494,142 @@ export class OpenAIService {
       allowed_probability: 0,
       reason: translatedReason,
     };
+  }
+
+  /**
+   * Suggests a task based on the URL and current tasks.
+   * Prioritizes tasks from current_tasks array, but if none match, suggests a new task name.
+   */
+  private async suggestTaskForUrl(
+    url: string,
+    tabTitle: string,
+    metaDescription: string,
+    currentTasks: Array<{ task_name: string; task_id: string }> | undefined,
+    prefLanguage: string,
+  ): Promise<{ task_name: string; task_id: string } | null> {
+    try {
+      // Build a prompt to suggest a task
+      const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
+
+      const taskSuggestionPrompt = `Based on the following website information, suggest what task the user might be working on.
+
+Website URL: ${url}
+Page Title: ${tabTitle}
+Page Description: ${metaDescription}
+
+Current available tasks:
+${currentTasksList}
+
+Please analyze the website content and:
+1. If any of the current tasks seem relevant to this website, return the most relevant one (use its exact task_name and task_id)
+2. If none of the current tasks match, suggest a new task name that would be appropriate for this website
+
+Return your response as a JSON object with this exact format:
+{
+  "task_name": "the task name",
+  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
+}
+
+If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+
+      const messages: ChatCompletionMessageParam[] = [
+        this.UNTRUSTED_USER_INPUT_PROMPT,
+        {
+          role: 'user',
+          content: taskSuggestionPrompt,
+        },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(messages, OpenAIKeyType.URL_SAFETY, {
+        model: 'gpt-4o-mini',
+        temperature: 0.3,
+        max_tokens: 200,
+      } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
+
+      const { content } = completions.choices[0].message;
+      const parsed = JSON.parse(content);
+
+      if (parsed.task_name && parsed.task_id) {
+        return {
+          task_name: parsed.task_name,
+          task_id: parsed.task_id,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        extra: { url, tabTitle, currentTasks },
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Suggests a task based on the app name and current tasks.
+   * Prioritizes tasks from current_tasks array, but if none match, suggests a new task name.
+   */
+  private async suggestTaskForApp(
+    appName: string,
+    focusMode: string,
+    currentTasks: Array<{ task_name: string; task_id: string }> | undefined,
+    prefLanguage: string,
+  ): Promise<{ task_name: string; task_id: string } | null> {
+    try {
+      // Build a prompt to suggest a task
+      const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
+
+      const taskSuggestionPrompt = `Based on the following app information, suggest what task the user might be working on.
+
+App Name: ${appName}
+Focus Mode: ${focusMode}
+
+Current available tasks:
+${currentTasksList}
+
+Please analyze the app and:
+1. If any of the current tasks seem relevant to this app, return the most relevant one (use its exact task_name and task_id)
+2. If none of the current tasks match, suggest a new task name that would be appropriate for this app
+
+Return your response as a JSON object with this exact format:
+{
+  "task_name": "the task name",
+  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
+}
+
+If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+
+      const messages: ChatCompletionMessageParam[] = [
+        this.UNTRUSTED_USER_INPUT_PROMPT,
+        {
+          role: 'user',
+          content: taskSuggestionPrompt,
+        },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(messages, OpenAIKeyType.APP_SAFETY, {
+        model: 'gpt-4o-mini',
+        temperature: 0.3,
+        max_tokens: 200,
+      } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
+
+      const { content } = completions.choices[0].message;
+      const parsed = JSON.parse(content);
+
+      if (parsed.task_name && parsed.task_id) {
+        return {
+          task_name: parsed.task_name,
+          task_id: parsed.task_id,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        extra: { appName, focusMode, currentTasks },
+      });
+      return null;
+    }
   }
 
   addHttpsProtocol(url: string): string {

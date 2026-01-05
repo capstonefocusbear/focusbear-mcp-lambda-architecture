@@ -20,6 +20,7 @@ import { Passport } from '../domain/passport.model';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { auth0UserDummy, QueueMock } from '../../../../test/dummies';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -169,7 +170,7 @@ describe('AuthService', () => {
 
   describe('requestPasswordReset', () => {
     const origin = 'https://dashboard.focusbear.io';
-    const lang = 'en';
+    const lang = LanguageOptions.ENGLISH;
 
     beforeEach(() => {
       jest.clearAllMocks();

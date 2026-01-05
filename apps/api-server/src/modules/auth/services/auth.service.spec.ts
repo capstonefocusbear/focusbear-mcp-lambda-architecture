@@ -180,7 +180,7 @@ describe('AuthService', () => {
 
     it('positive: should queue password reset email job if user exists and email is verified', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
-        { ...auth0UserDummy, email_verified: true },
+        { ...auth0UserDummy, email_verified: true, identities: [{ isSocial: false }] },
       ]);
 
       const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);

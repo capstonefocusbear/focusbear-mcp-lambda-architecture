@@ -93,7 +93,7 @@ export class SyncTasksConsumer {
       // Get all user local tasks saved from external platforms
       const allUserExternalTasks = await this.toDoRepository.orm.find({
         where: { user_id: userId, external_task_id: Not(IsNull()) },
-        select: ['id', 'external_task_id', 'external_task_metadata'],
+        select: ['id', 'external_task_id', 'external_task_metadata', 'title', 'details'],
       });
       const allTasksFromPlatform = await this.getTasksFromSyncedProjects(userId, platform);
       for await (const syncedProject of syncedProjects) {
@@ -140,6 +140,11 @@ export class SyncTasksConsumer {
     const syncedTasksFromProjectIds = syncedTasksFromProject.map((task) => task.external_task_id);
     const projectsExternalIdToLocalIdMap = this.getSyncedProjectsIdMap(syncedProjects);
 
+    const syncedTasksMap: Record<string, ToDo> = Object.create(null);
+    for (const task of syncedTasksFromProject) {
+      syncedTasksMap[task.external_task_id] = task;
+    }
+
     // Identify new and existing tasks
     const tasksToCreate = tasksFromProject.filter((task) => !syncedTasksFromProjectIds.includes(task.id));
     const tasksToUpdate = tasksFromProject.filter((task) => syncedTasksFromProjectIds.includes(task.id));
@@ -152,7 +157,7 @@ export class SyncTasksConsumer {
     // Update only tasks that have changed
     const updatedTasks = tasksToUpdate
       .map((taskToUpdate) => {
-        const existingTask = syncedTasksFromProject.find((t) => t.external_task_id === taskToUpdate.id);
+        const existingTask = syncedTasksMap[taskToUpdate.id];
         if (existingTask) {
           const hasChanged =
             existingTask.title !== taskToUpdate.name ||

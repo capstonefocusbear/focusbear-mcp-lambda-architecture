@@ -40,7 +40,7 @@ export class ToDoService {
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
-  ) { }
+  ) {}
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });

@@ -24,7 +24,7 @@ describe('EmailProcessor', () => {
   const mockUserWithWeeklyEmailsEnabled: Partial<User> = {
     ...mockUser,
     email_frequency: EmailFrequency.WEEKLY,
-    feature_flags: ['weekly_emails'],
+    feature_flags: ['weekly_emails', 'no_progress_emails'],
   };
 
   const mockMetrics: WeeklyProgressMetricsDto = {

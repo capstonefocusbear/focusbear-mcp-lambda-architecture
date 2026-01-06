@@ -67,7 +67,7 @@
     "@nestjs/core": "^11.0.12",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "^2.0.6",
-    "@nestjs/platform-fastify": "^11.0.12",
+    "@nestjs/platform-fastify": "^11.1.11",
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/swagger": "^11.1.0",
     "@nestjs/throttler": "^6.4.0",
@@ -177,7 +177,8 @@
     "tmp": "0.2.4",
     "glob": "11.1.0",
     "@modelcontextprotocol/sdk": "^1.24.1",
-    "jws": "4.0.1"
+    "jws": "4.0.1",
+    "qs": "6.14.1"
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -197,7 +198,8 @@
     "tmp": "0.2.4",
     "glob": "11.1.0",
     "@modelcontextprotocol/sdk": "^1.24.1",
-    "jws": "4.0.1"
+    "jws": "4.0.1",
+    "qs": "6.14.1"
   },
   "husky": {
     "hooks": {

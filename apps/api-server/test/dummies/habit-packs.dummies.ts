@@ -682,12 +682,19 @@ export const uninstalledPackRecordDummy: InstalledPack = {
 };
 
 export const dummyGetRoutineSuggestionsDto = {
-  user_goals: ['meditate consistently', 'exercise more', 'improve focus'],
+  user_goals: [
+    { goal: 'meditate consistently', isCustom: false },
+    { goal: 'exercise more', isCustom: false },
+    { goal: 'improve focus', isCustom: false },
+  ],
   routine_duration: 20,
 };
 
 export const dummyGetRoutineSuggestionsBuildHealthyHabitsDto: GetRoutineSuggestionsDto = {
-  user_goals: ['Build healthy habits', 'Stay focused at work'],
+  user_goals: [
+    { goal: 'Build healthy habits', isCustom: false },
+    { goal: 'Stay focused at work', isCustom: false },
+  ],
   routine_duration: 10,
 };
 

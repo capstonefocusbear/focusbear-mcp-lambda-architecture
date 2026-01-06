@@ -46,7 +46,10 @@ describe('RoutineSuggestionsAsyncService', () => {
 
   it('creates an async task and enqueues a routine suggestion job', async () => {
     const dto: GetRoutineSuggestionsDto = {
-      user_goals: ['be healthier', 'read more'],
+      user_goals: [
+        { goal: 'be healthier', isCustom: false },
+        { goal: 'read more', isCustom: false },
+      ],
       routine_duration: 30,
       routine: 'morning',
       groupByGoals: false,

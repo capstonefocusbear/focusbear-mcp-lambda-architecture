@@ -1,24 +1,36 @@
-import { Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Matches } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { UserGoalDto, UserGoalInput } from './user-goal.dto';
+
+export type GetRoutineSuggestionsInput = Omit<GetRoutineSuggestionsDto, 'user_goals'> & {
+  user_goals: UserGoalInput[];
+};
 
 export class GetRoutineSuggestionsDto {
   @Transform(({ value }) => {
     if (!Array.isArray(value)) {
       return value;
     }
-    return value.map((goal) => (typeof goal === 'string' ? goal.trim() : '')).filter((goal) => goal.length > 0);
+    return value
+      .map((item) => {
+        if (typeof item === 'string') {
+          return { goal: item.trim(), isCustom: false };
+        }
+        if (item && typeof item === 'object') {
+          return {
+            goal: typeof (item as any).goal === 'string' ? String((item as any).goal).trim() : '',
+            isCustom: (item as any).isCustom === true,
+          };
+        }
+        return { goal: '', isCustom: false };
+      })
+      .filter((item) => item.goal.length > 0);
   })
   @IsNotEmpty()
   @IsArray()
-  @IsString({ each: true })
-  @MaxLength(200, { each: true, message: 'Each goal must be at most 200 characters' })
-  // eslint-disable-next-line no-misleading-character-class
-  @Matches(/^[\p{L}\p{N}\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\s,.'&!?()\-:;]+$/u, {
-    each: true,
-    message:
-      'Goal contains invalid characters. Only letters, numbers, emojis, spaces, and basic punctuation are allowed.',
-  })
-  user_goals: string[];
+  @ValidateNested({ each: true })
+  @Type(() => UserGoalDto)
+  user_goals: UserGoalDto[];
 
   @IsNotEmpty()
   @IsNumber()

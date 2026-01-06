@@ -102,7 +102,6 @@ describe('ToDoRepository - SQL Query Testing', () => {
         'to_do.external_task_id',
         'to_do.external_task_metadata',
         'to_do.created_at',
-        'to_do.subtasks',
         'to_do.objective',
         'tags.id',
         'tags.text',
@@ -252,6 +251,127 @@ describe('ToDoRepository - SQL Query Testing', () => {
       await toDoRepository.getUserToDos(userId, queryDto);
 
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('top_score', 'ASC');
+    });
+
+    it('should correctly map subtasks from raw query results', async () => {
+      const mockSubtasks = [
+        { name: 'Subtask 1', is_completed: false },
+        { name: 'Subtask 2', is_completed: true },
+      ];
+
+      const mockResults = [
+        {
+          id: 'todo-1',
+          title: 'Test Todo',
+        },
+      ];
+
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: mockResults,
+        raw: [
+          {
+            to_do_id: 'todo-1',
+            top_score: 5.5,
+            raw_subtasks: mockSubtasks,
+          },
+        ],
+      });
+
+      mockQueryBuilder.getCount.mockResolvedValue(1);
+
+      const [todos] = await toDoRepository.getUserToDos(userId, baseQueryDto);
+
+      expect(todos[0]).toHaveProperty('subtasks', mockSubtasks);
+      expect(todos[0]).toHaveProperty('top_score', 5.5);
+    });
+
+    it('should handle null subtasks from raw query results', async () => {
+      const mockResults = [
+        {
+          id: 'todo-1',
+          title: 'Test Todo',
+        },
+      ];
+
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: mockResults,
+        raw: [
+          {
+            to_do_id: 'todo-1',
+            top_score: 5.5,
+            raw_subtasks: null,
+          },
+        ],
+      });
+
+      mockQueryBuilder.getCount.mockResolvedValue(1);
+
+      const [todos] = await toDoRepository.getUserToDos(userId, baseQueryDto);
+
+      expect(todos[0]).toHaveProperty('subtasks', null);
+    });
+
+    it('should handle multiple todos with different subtasks', async () => {
+      const mockSubtasks1 = [{ name: 'Subtask 1', is_completed: false }];
+      const mockSubtasks2 = [
+        { name: 'Subtask A', is_completed: true },
+        { name: 'Subtask B', is_completed: false },
+      ];
+
+      const mockResults = [
+        { id: 'todo-1', title: 'Test Todo 1' },
+        { id: 'todo-2', title: 'Test Todo 2' },
+      ];
+
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: mockResults,
+        raw: [
+          {
+            to_do_id: 'todo-1',
+            top_score: 5.5,
+            raw_subtasks: mockSubtasks1,
+          },
+          {
+            to_do_id: 'todo-2',
+            top_score: 3.2,
+            raw_subtasks: mockSubtasks2,
+          },
+        ],
+      });
+
+      mockQueryBuilder.getCount.mockResolvedValue(2);
+
+      const [todos] = await toDoRepository.getUserToDos(userId, baseQueryDto);
+
+      expect(todos[0]).toHaveProperty('subtasks', mockSubtasks1);
+      expect(todos[1]).toHaveProperty('subtasks', mockSubtasks2);
+      expect(todos[0]).toHaveProperty('top_score', 5.5);
+      expect(todos[1]).toHaveProperty('top_score', 3.2);
+    });
+
+    it('should use addSelect to fetch raw_subtasks separately', async () => {
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: [],
+        raw: [],
+      });
+
+      await toDoRepository.getUserToDos(userId, baseQueryDto);
+
+      // Verify that raw_subtasks is selected separately using addSelect
+      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith('to_do.subtasks', 'raw_subtasks');
+    });
+
+    it('should not include subtasks in main select statement', async () => {
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: [],
+        raw: [],
+      });
+
+      await toDoRepository.getUserToDos(userId, baseQueryDto);
+
+      // Verify that the main select does NOT include 'to_do.subtasks'
+      const selectCall = mockQueryBuilder.select.mock.calls[0][0];
+      expect(selectCall).not.toContain('to_do.subtasks');
     });
   });
 

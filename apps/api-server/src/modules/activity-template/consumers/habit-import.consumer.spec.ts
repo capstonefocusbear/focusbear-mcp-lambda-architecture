@@ -20,6 +20,17 @@ jest.mock('openai/uploads', () => ({
   toFile: jest.fn().mockResolvedValue({ name: 'test-file.mp3' }),
 }));
 
+// Mock sharp
+jest.mock('sharp', () => {
+  const mockSharp = jest.fn(() => ({
+    metadata: jest.fn().mockResolvedValue({ width: 1024, height: 768 }),
+    resize: jest.fn().mockReturnThis(),
+    png: jest.fn().mockReturnThis(),
+    toBuffer: jest.fn().mockResolvedValue(Buffer.from('upscaled-image')),
+  }));
+  return mockSharp;
+});
+
 describe('HabitImportConsumer', () => {
   let consumer: HabitImportConsumer;
 

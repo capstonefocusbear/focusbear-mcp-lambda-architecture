@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Body, Query, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Query, BadRequestException, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
+import { IsAdmin } from '../../auth/guards/is-admin/is-admin.guard';
 import { AppVersionsService } from '../services/app-versions.service';
 import { LatestAppVersionResponseDto } from '../dto/latest-app-version-response.dto';
 import { CreateAppVersionDto } from '../dto/create-app-version.dto';
@@ -18,20 +20,20 @@ export class AppVersionsController {
   })
   @ApiResponse({ status: 200, description: 'Latest version information', type: LatestAppVersionResponseDto })
   async getLatestAppVersion(@Query() query: GetLatestAppVersionQueryDto): Promise<LatestAppVersionResponseDto> {
-    // Map os_name to OperatingSystem enum
+    const normalizedOs = query.os_name.trim().toLowerCase();
+
+    // Map os_name to OperatingSystem enum (case-insensitive)
     const osMap: Record<string, OperatingSystem> = {
       ios: OperatingSystem.iOS,
-      iOS: OperatingSystem.iOS,
       android: OperatingSystem.Android,
-      Android: OperatingSystem.Android,
       mac: OperatingSystem.MacOS,
       macos: OperatingSystem.MacOS,
-      MacOS: OperatingSystem.MacOS,
       windows: OperatingSystem.Windows,
-      Windows: OperatingSystem.Windows,
+      web: OperatingSystem.Web,
+      unknown: OperatingSystem.Unknown,
     };
 
-    const os = osMap[query.os_name];
+    const os = osMap[normalizedOs];
     if (!os) {
       throw new BadRequestException(
         `Invalid operating system: ${query.os_name}. Must be one of: iOS, Android, MacOS, Windows`,
@@ -42,8 +44,11 @@ export class AppVersionsController {
   }
 
   @Post('create-version')
+  @UseGuards(IsAuth, IsAdmin) // Add this guard
+  @ApiBearerAuth() // Add this for Swagger documentation
   @ApiOperation({ summary: 'Create new app version (CI/CD)' })
   @ApiResponse({ status: 201, description: 'Version created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createAppVersion(@Body() createAppVersionDto: CreateAppVersionDto) {
     return this.appVersionsService.createVersion(createAppVersionDto);
   }

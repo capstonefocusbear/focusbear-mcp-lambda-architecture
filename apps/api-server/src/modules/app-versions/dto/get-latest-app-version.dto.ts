@@ -5,7 +5,7 @@ import { Transform } from 'class-transformer';
 export class GetLatestAppVersionQueryDto {
   @IsString()
   @ApiProperty({
-    enum: ['iOS', 'Android', 'MacOS', 'Windows'],
+    enum: ['iOS', 'Android', 'MacOS', 'Windows', 'Web', 'Unknown'],
     description: 'Operating system name',
     example: 'iOS',
   })

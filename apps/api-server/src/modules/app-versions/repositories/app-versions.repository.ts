@@ -37,14 +37,11 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
     const queryBuilder = this.orm
       // Query for no beta
       .createQueryBuilder('app_version')
-      .where('app_version.operating_system = :os', { os })
-      .andWhere('app_version.is_supported = true');
+      .where('app_version.operating_system = :os', { os });
 
-    // Query for include beta
-    if (includeBeta) {
-      queryBuilder
-        .orWhere('app_version.is_beta_only = :includeBeta', { includeBeta })
-        .andWhere('app_version.operating_system = :os', { os });
+    // Exclude beta-only versions unless explicitly requested
+    if (!includeBeta) {
+      queryBuilder.andWhere('app_version.is_beta_only = false');
     }
 
     const versions = await queryBuilder.getMany();
@@ -62,12 +59,15 @@ export class AppVersionsRepository extends BaseRepository<AppVersionEntity> {
    * @returns Minimum supported version or null if none found
    */
   async findMinSupported(os: OperatingSystem): Promise<AppVersionEntity | null> {
-    const queryBuilder = await this.orm
+    const versions = await this.orm
       .createQueryBuilder('app_version')
       .where('app_version.operating_system = :os', { os })
-      .andWhere('app_version.is_supported = true');
+      .andWhere('app_version.is_supported = true')
+      .getMany();
 
-    const versions = await queryBuilder.getMany();
+    if (versions.length === 0) {
+      return null;
+    }
 
     // Sort by SemVer ascending (oldest first)
     return versions.sort((a, b) => semver.compare(a.semver_string, b.semver_string))[0];

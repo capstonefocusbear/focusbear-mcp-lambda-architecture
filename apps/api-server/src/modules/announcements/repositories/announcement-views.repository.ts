@@ -31,31 +31,24 @@ export class AnnouncementViewsRepository extends BaseRepository<AnnouncementView
     action?: ViewAction;
     source?: string;
     read_at?: Date;
-  }): Promise<AnnouncementViewEntity> {
+  }): Promise<void> {
     const { user_id, announcement_id, action = ViewAction.VIEWED, source, read_at } = data;
 
-    // Try to find existing view first
-    const view = await this.orm
-      .createQueryBuilder('view')
-      .where('view.user_id = :user_id', { user_id })
-      .andWhere('view.announcement_id = :announcement_id', { announcement_id })
-      .getOne();
-
-    if (view) {
-      view.action = action;
-      view.read_at = read_at || new Date();
-      return this.orm.save(view);
-    }
-
-    // Create new view
-    const newView = this.orm.create({
-      user_id,
-      announcement_id,
-      source,
-      action,
-      read_at: read_at || new Date(),
-    });
-
-    return this.orm.save(newView);
+    await this.orm
+      .createQueryBuilder()
+      .insert()
+      .into(AnnouncementViewEntity)
+      .values({
+        user_id,
+        announcement_id,
+        source,
+        action,
+        read_at: read_at || new Date(),
+      })
+      .orUpdate({
+        conflict_target: ['user_id', 'announcement_id'],
+        overwrite: ['action', 'source', 'read_at'],
+      })
+      .execute();
   }
 }

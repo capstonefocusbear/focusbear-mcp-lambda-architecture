@@ -18,24 +18,20 @@ export class AnnouncementsService {
    * @returns Active, unread announcements
    */
   async getActiveAnnouncements(user_id: string, os_name: string): Promise<GetAnnouncementsResponseDto> {
+    const normalizedOs = os_name.trim().toLowerCase();
+
     // Map os_name to OperatingSystem enum (case-insensitive)
     const osMap: Record<string, OperatingSystem> = {
       ios: OperatingSystem.iOS,
-      iOS: OperatingSystem.iOS,
       android: OperatingSystem.Android,
-      Android: OperatingSystem.Android,
       mac: OperatingSystem.MacOS,
       macos: OperatingSystem.MacOS,
-      MacOS: OperatingSystem.MacOS,
       windows: OperatingSystem.Windows,
-      Windows: OperatingSystem.Windows,
       web: OperatingSystem.Web,
-      Web: OperatingSystem.Web,
       unknown: OperatingSystem.Unknown,
-      Unknown: OperatingSystem.Unknown,
     };
 
-    const os = osMap[os_name];
+    const os = osMap[normalizedOs];
     if (!os) {
       throw new BadRequestException(
         `Invalid operating system: ${os_name}. Must be one of: ios, android, macos, windows, web or unknown`,

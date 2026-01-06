@@ -513,12 +513,12 @@ export class OpenAIService {
 
       const taskSuggestionPrompt = `Based on the following website information, suggest what task the user might be working on.
 
-Website URL: ${url}
-Page Title: ${tabTitle}
-Page Description: ${metaDescription}
+Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
+Page Title: ${INPUT_WRAPPER}${tabTitle}${INPUT_WRAPPER}
+Page Description: ${INPUT_WRAPPER}${metaDescription}${INPUT_WRAPPER}
 
 Current available tasks:
-${currentTasksList}
+${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
 
 Please analyze the website content and:
 1. If any of the current tasks seem relevant to this website, return the most relevant one (use its exact task_name and task_id)
@@ -544,6 +544,7 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
         model: 'gpt-4o-mini',
         temperature: 0.3,
         max_tokens: 200,
+        response_format: { type: 'json_object' },
       } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
 
       const { content } = completions.choices[0].message;
@@ -581,11 +582,11 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
 
       const taskSuggestionPrompt = `Based on the following app information, suggest what task the user might be working on.
 
-App Name: ${appName}
-Focus Mode: ${focusMode}
+App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}
+Focus Mode: ${INPUT_WRAPPER}${focusMode}${INPUT_WRAPPER}
 
 Current available tasks:
-${currentTasksList}
+${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
 
 Please analyze the app and:
 1. If any of the current tasks seem relevant to this app, return the most relevant one (use its exact task_name and task_id)
@@ -611,6 +612,7 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
         model: 'gpt-4o-mini',
         temperature: 0.3,
         max_tokens: 200,
+        response_format: { type: 'json_object' },
       } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
 
       const { content } = completions.choices[0].message;

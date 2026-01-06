@@ -1,6 +1,3 @@
-// Set a mock DSN for testing
-import '../src/instrument';
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
@@ -18,6 +15,10 @@ describe('Sentry Integration (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
+    // instrument.ts calls Sentry.init at import-time if SENTRY_DSN is set
+    // (main.ts imports instrument.ts, but AppModule doesn't), so we load it explicitly for this test.
+    await import('../src/instrument');
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

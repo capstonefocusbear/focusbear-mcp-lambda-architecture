@@ -2056,6 +2056,7 @@ export class CompletedActivityService implements OnModuleInit {
   async getCurrentSequenceCompletedActivityIds(currentCompletingSequenceLogId: string) {
     const completedActivities = await this.completedActivityRepository.orm.find({
       where: { completed_sequence_id: currentCompletingSequenceLogId },
+      select: ['activity_id'],
     });
     return completedActivities?.map((completedActivity) => completedActivity.activity_id) || [];
   }

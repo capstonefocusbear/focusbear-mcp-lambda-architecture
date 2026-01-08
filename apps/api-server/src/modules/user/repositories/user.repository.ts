@@ -582,6 +582,7 @@ export class UserRepository extends BaseRepository<User> {
 
     return this.buildEmailUserQuery()
       .where('user.email_frequency = :frequency', { frequency: EmailFrequency.DAILY })
+      .andWhere('user.feature_flags ? :featureFlag', { featureFlag: FEATURE_FLAGS.DAILY_EMAILS })
       .andWhere(
         '((user.last_completed_sequence_at IS NOT NULL AND user.last_completed_sequence_at >= :threshold) OR (user.last_completed_focus_mode_at IS NOT NULL AND user.last_completed_focus_mode_at >= :threshold))',
         { threshold: thresholdDate },

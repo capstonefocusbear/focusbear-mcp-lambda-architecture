@@ -50,6 +50,10 @@ export class EmailProcessor {
         this.logger.log(`Skipped weekly progress email for user ${user.id}: feature flag not enabled`);
         return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
+      if (variant === 'daily' && !settings?.feature_flags?.includes(FEATURE_FLAGS.DAILY_EMAILS)) {
+        this.logger.log(`Skipped daily progress email for user ${user.id}: feature flag not enabled`);
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
+      }
 
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;

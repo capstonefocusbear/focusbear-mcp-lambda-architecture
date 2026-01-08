@@ -29,6 +29,12 @@ describe('EmailProcessor', () => {
     feature_flags: [FEATURE_FLAGS.WEEKLY_EMAILS, 'no_progress_emails'],
   };
 
+  const mockUserWithDailyEmailsEnabled: Partial<User> = {
+    ...mockUser,
+    email_frequency: EmailFrequency.DAILY,
+    feature_flags: [FEATURE_FLAGS.DAILY_EMAILS],
+  };
+
   const mockUserWithMonthlyEmailsEnabled: Partial<User> = {
     ...mockUser,
     email_frequency: EmailFrequency.MONTHLY,
@@ -276,6 +282,53 @@ describe('EmailProcessor', () => {
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
       metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
     });
+    expect(result).toEqual({ success: true, userId: 'user-123' });
+  });
+
+  it('should skip daily progress email when feature flag not enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMetrics,
+      unsubscribe_token: 'test-token-daily',
+      emailType: 'daily',
+    };
+
+    const mockJob = { id: 'job-daily-skip', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue({
+      ...mockUser,
+      email_frequency: EmailFrequency.DAILY,
+      feature_flags: [],
+    });
+
+    const result = await processor.handleProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).not.toHaveBeenCalled();
+    expect(sendGridMock.sendEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, userId: 'user-123', skipped: 'feature_flag_not_enabled' });
+  });
+
+  it('should handle daily progress email jobs correctly when feature flag enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMetrics,
+      unsubscribe_token: 'test-token-daily',
+      emailType: 'daily',
+    };
+
+    const mockJob = { id: 'job-daily', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithDailyEmailsEnabled);
+
+    const result = await processor.handleProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).toHaveBeenCalledWith(
+      mockJobData.user,
+      mockJobData.metrics,
+      mockJobData.unsubscribe_token,
+      { variant: 'daily' },
+    );
+    expect(sendGridMock.sendEmail).toHaveBeenCalled();
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
 

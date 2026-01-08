@@ -41,13 +41,22 @@ async function runExpiredInvitationsCronJob() {
     await CronJobDataSource.initialize();
   }
 
-  const expiredInvitations = await getExpiredPendingInvitations();
+  try {
+    const expiredInvitations = await getExpiredPendingInvitations();
 
-  for await (const invitation of expiredInvitations) {
-    await markInvitationAsExpired(invitation);
+    for await (const invitation of expiredInvitations) {
+      await markInvitationAsExpired(invitation);
+    }
+
+    return { expiredInvitations: expiredInvitations.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
   }
-
-  return { expiredInvitations: expiredInvitations.length };
 }
 
 if (require.main === module) {

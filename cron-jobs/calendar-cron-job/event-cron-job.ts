@@ -30,41 +30,49 @@ async function getUsersToSyncWithPlatform(platform: CalendarPlatforms) {
 
 async function runEventCronJob() {
   await CronJobDataSource.initialize();
-  // Initialize the BullMQ queue
   const syncQueue = new Queue(BullQueues.SYNC_EVENTS, {
     connection: { host: process.env.REDIS_HOSTNAME, port: Number(process.env.REDIS_PORT) },
   });
-  let jobsEnqueued = 0;
 
-  // Function to enqueue jobs
-  const enqueueSyncJobs = async (
-    platform: CalendarPlatforms,
-    users: {
-      id: string;
-      account: string;
-    }[],
-  ) => {
-    for await (const user of users) {
-      await syncQueue.add(BullWorkers.SYNC_EVENTS_FOR_PLATFORM, {
-        platform,
-        userId: user.id,
-        account: user.account,
+  try {
+    let jobsEnqueued = 0;
+
+    const enqueueSyncJobs = async (
+      platform: CalendarPlatforms,
+      users: {
+        id: string;
+        account: string;
+      }[],
+    ) => {
+      for await (const user of users) {
+        await syncQueue.add(BullWorkers.SYNC_EVENTS_FOR_PLATFORM, {
+          platform,
+          userId: user.id,
+          account: user.account,
+        });
+        jobsEnqueued += 1;
+      }
+    };
+
+    const usersToSyncGoogle = await getUsersToSyncWithPlatform(CalendarPlatforms.GOOGLE);
+    await enqueueSyncJobs(CalendarPlatforms.GOOGLE, usersToSyncGoogle);
+
+    const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
+    await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
+
+    return { jobsEnqueued };
+  } finally {
+    await syncQueue.close().catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to close BullMQ queue', error);
+    });
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
       });
-      jobsEnqueued += 1;
     }
-  };
-
-  // Enqueue jobs for Google Calendar
-  const usersToSyncGoogle = await getUsersToSyncWithPlatform(CalendarPlatforms.GOOGLE);
-  await enqueueSyncJobs(CalendarPlatforms.GOOGLE, usersToSyncGoogle);
-
-  // Enqueue jobs for Microsoft Calendar
-  const usersToSyncMicrosoft = await getUsersToSyncWithPlatform(CalendarPlatforms.MICROSOFT);
-  await enqueueSyncJobs(CalendarPlatforms.MICROSOFT, usersToSyncMicrosoft);
-
-  await syncQueue.close();
-
-  return { jobsEnqueued };
+  }
 }
 
 if (require.main === module) {

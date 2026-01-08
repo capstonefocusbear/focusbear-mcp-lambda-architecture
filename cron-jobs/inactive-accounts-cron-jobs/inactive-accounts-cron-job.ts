@@ -405,6 +405,12 @@ async function runInactiveAccountsCronJob() {
     );
     throw error;
   } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
     await app.close();
   }
 }

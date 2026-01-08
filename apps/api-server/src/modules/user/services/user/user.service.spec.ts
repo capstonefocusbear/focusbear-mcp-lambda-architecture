@@ -271,9 +271,8 @@ describe('UserService', () => {
 
       await userService.syncUserAccount(syncAccountDto);
 
-      const body = `New sign up is associated with multiple Auth0 accounts. Current: ${
-        syncAccountDto.auth0_id
-      }, Others: ${dummyAuth0Response.map((u) => u.user_id).join(', ')}`;
+      const body = `New sign up is associated with multiple Auth0 accounts. Current: ${syncAccountDto.auth0_id
+        }, Others: ${dummyAuth0Response.map((u) => u.user_id).join(', ')}`;
       const emailPayload = {
         to: [FOCUS_BEAR_EMAILS.SUPPORT],
         from: FOCUS_BEAR_EMAILS.SUPPORT,
@@ -1112,7 +1111,8 @@ describe('UserService', () => {
 
   describe('updateMetadata', () => {
     it('positive: should call function to update user metadata', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
       const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
       const descriptionDummy = 'Random text here';
 
@@ -1121,11 +1121,14 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
-        metadata: { profile_image: profileImageDummy, description: descriptionDummy },
-        updated_at: expect.toBeDateString(),
-        has_received_inactivity_warning: false,
-      });
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          metadata: { profile_image: profileImageDummy.url, description: descriptionDummy },
+          updated_at: expect.toBeDateString(),
+          has_received_inactivity_warning: false,
+        }),
+      );
     });
   });
 

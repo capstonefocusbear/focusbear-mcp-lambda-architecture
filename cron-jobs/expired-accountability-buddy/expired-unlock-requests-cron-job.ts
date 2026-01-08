@@ -39,13 +39,22 @@ async function runExpiredUnlockRequestsCronJob() {
     await CronJobDataSource.initialize();
   }
 
-  const expiredRequests = await getExpiredPendingUnlockRequests();
+  try {
+    const expiredRequests = await getExpiredPendingUnlockRequests();
 
-  for await (const request of expiredRequests) {
-    await markUnlockRequestAsExpired(request);
+    for await (const request of expiredRequests) {
+      await markUnlockRequestAsExpired(request);
+    }
+
+    return { expiredRequests: expiredRequests.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
   }
-
-  return { expiredRequests: expiredRequests.length };
 }
 
 if (require.main === module) {

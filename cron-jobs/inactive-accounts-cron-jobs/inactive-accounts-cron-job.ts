@@ -257,7 +257,7 @@ async function deleteUsers(users: User[]): Promise<number> {
   for await (const user of users) {
     const auth0Promise = auth0.users.delete({ id: user.auth0_id });
     const revenueCatPromise = deleteUserFromRevenueCat(user.id);
-    const stripePromise = stripe.customers.del(user.stripe_customer_id);
+    const stripePromise = user.stripe_customer_id ? stripe.customers.del(user.stripe_customer_id) : Promise.resolve();
     const userRepositoryPromise = CronJobDataSource.manager.delete(User, user.id);
     await Promise.all([auth0Promise, revenueCatPromise, stripePromise, userRepositoryPromise]);
   }

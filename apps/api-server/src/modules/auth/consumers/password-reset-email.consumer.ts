@@ -49,7 +49,7 @@ export class PasswordResetEmailConsumer {
 
       // Generate reset token
       const secret = this.configService.get('tokens.password_reset.secret');
-      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '7 days';
+      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '1 hour';
 
       const resetToken = await this.passwordResetJwtService.signAsync(
         {

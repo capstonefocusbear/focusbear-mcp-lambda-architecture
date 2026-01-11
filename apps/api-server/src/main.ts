@@ -37,6 +37,7 @@ async function bootstrap(): Promise<void> {
   const HELMET: unknown = configService.get('helmet');
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 
+  // SentryGlobalFilter is now registered via APP_FILTER in AppModule to use NestJS DI
   app.useGlobalFilters(new BadGatewayExceptionFilter());
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE));
   app.useGlobalFilters(new TypeOrmExceptionFilter());

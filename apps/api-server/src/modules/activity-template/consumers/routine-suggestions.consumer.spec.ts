@@ -57,7 +57,7 @@ describe('RoutineSuggestionsConsumer', () => {
         userId: 'user-7',
         requestHash: 'hash-abc',
         request: {
-          user_goals: ['goal one'],
+          user_goals: [{ goal: 'goal one', isCustom: false }],
           routine_duration: 20,
           routine: 'morning',
           groupByGoals: false,
@@ -119,7 +119,6 @@ describe('RoutineSuggestionsConsumer', () => {
     expect(PusherServiceMock.trigger).toHaveBeenCalledWith('private-user-7', 'routine-suggestions.completed', {
       asyncTaskId: 'task-123',
       status: 'completed',
-      result: suggestions,
     });
   });
 

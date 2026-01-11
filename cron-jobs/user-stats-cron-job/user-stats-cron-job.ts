@@ -161,7 +161,7 @@ async function recalculateDailyStatRoutineCompletions(dailyStat: DailyStats) {
     );
   }
   updatedDailyStat.should_recalculate = false;
-  CronJobDataSource.manager.update(DailyStats, { id: dailyStat.id }, updatedDailyStat);
+  await CronJobDataSource.manager.update(DailyStats, { id: dailyStat.id }, updatedDailyStat);
 }
 
 async function calculateOfflineActivitiesCompletionPercentage() {
@@ -181,72 +181,30 @@ async function calculateOfflineActivitiesCompletionPercentage() {
 
 async function runUserStatsCronJob() {
   await CronJobDataSource.initialize();
-  await calculateOfflineActivitiesCompletionPercentage();
-  const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
-  const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
-    where: { last_time_stats_updated: LessThan(time24HoursAgo) },
-    take: 50,
-  });
-  for await (const user of usersWhoseStatsAreOutOfDate) {
-    const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
-      where: {
-        user_id: user.id,
-      },
-      order: { date_completed: 'DESC' },
+  try {
+    await calculateOfflineActivitiesCompletionPercentage();
+    const time24HoursAgo = DateTime.local().minus({ days: 1 }).toJSDate();
+    const usersWhoseStatsAreOutOfDate = await CronJobDataSource.manager.find(User, {
+      where: { last_time_stats_updated: LessThan(time24HoursAgo) },
+      take: 50,
     });
-    const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
-      await getUserRoutineDailyDurations(user.id);
-    const {
-      focus_modes_streak,
-      morning_routines_streak,
-      evening_routines_streak,
-      micro_breaks_streak,
-      percent_morning_routines_streak_complete_in_90days,
-      percent_evening_routines_streak_complete_in_90days,
-      percent_micro_breaks_streak_complete_in_90days,
-      num_days_of_stats,
-      number_days_completed,
-      morning_number_days_completed,
-      morning_num_days_of_stats,
-      evening_number_days_completed,
-      evening_num_days_of_stats,
-      micro_breaks_number_days_completed,
-      micro_breaks_num_days_of_stats,
-      focus_modes_number_days_completed,
-      focus_modes_num_days_of_stats,
-    } = calculateStreaks(
-      userDailyStats,
-      user.timezone,
-      {
-        morningRoutineDailyDurations,
-        eveningRoutineDailyDurations,
-        microBreaksDailyDurations,
-      },
-      new Date(user.created_at),
-    );
-    const userLevel = determineUserLevel(user.onboarding_progress, {
-      focus_modes_streak,
-      morning_routines_streak,
-      evening_routines_streak,
-      micro_breaks_streak,
-    });
-    const currentTime = DateTime.now().setZone(user.timezone || 'UTC').toJSDate();
-    await CronJobDataSource.manager.update(
-      User,
-      { id: user.id },
-      {
-        onboarding_progress: {
-          ...user.onboarding_progress,
-          level: userLevel,
+    for await (const user of usersWhoseStatsAreOutOfDate) {
+      const userDailyStats = await CronJobDataSource.manager.find(DailyStats, {
+        where: {
+          user_id: user.id,
         },
-        last_time_stats_updated: currentTime,
+        order: { date_completed: 'DESC' },
+      });
+      const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
+        await getUserRoutineDailyDurations(user.id);
+      const {
+        focus_modes_streak,
         morning_routines_streak,
         evening_routines_streak,
-        focus_modes_streak,
         micro_breaks_streak,
-        morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,
-        evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
-        micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
+        percent_morning_routines_streak_complete_in_90days,
+        percent_evening_routines_streak_complete_in_90days,
+        percent_micro_breaks_streak_complete_in_90days,
         num_days_of_stats,
         number_days_completed,
         morning_number_days_completed,
@@ -257,12 +215,63 @@ async function runUserStatsCronJob() {
         micro_breaks_num_days_of_stats,
         focus_modes_number_days_completed,
         focus_modes_num_days_of_stats,
-      },
-    );
+      } = calculateStreaks(
+        userDailyStats,
+        user.timezone,
+        {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        },
+        new Date(user.created_at),
+      );
+      const userLevel = determineUserLevel(user.onboarding_progress, {
+        focus_modes_streak,
+        morning_routines_streak,
+        evening_routines_streak,
+        micro_breaks_streak,
+      });
+      const currentTime = DateTime.now().setZone(user.timezone || 'UTC').toJSDate();
+      await CronJobDataSource.manager.update(
+        User,
+        { id: user.id },
+        {
+          onboarding_progress: {
+            ...user.onboarding_progress,
+            level: userLevel,
+          },
+          last_time_stats_updated: currentTime,
+          morning_routines_streak,
+          evening_routines_streak,
+          focus_modes_streak,
+          micro_breaks_streak,
+          morning_percent_number_day_of_stats_completed: percent_morning_routines_streak_complete_in_90days,
+          evening_percent_number_day_of_stats_completed: percent_evening_routines_streak_complete_in_90days,
+          micro_percent_number_day_of_stats_completed: percent_micro_breaks_streak_complete_in_90days,
+          num_days_of_stats,
+          number_days_completed,
+          morning_number_days_completed,
+          morning_num_days_of_stats,
+          evening_number_days_completed,
+          evening_num_days_of_stats,
+          micro_breaks_number_days_completed,
+          micro_breaks_num_days_of_stats,
+          focus_modes_number_days_completed,
+          focus_modes_num_days_of_stats,
+        },
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
+    return { usersUpdated: usersWhoseStatsAreOutOfDate.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
   }
-  // eslint-disable-next-line no-console
-  console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
-  return { usersUpdated: usersWhoseStatsAreOutOfDate.length };
 }
 
 if (require.main === module) {

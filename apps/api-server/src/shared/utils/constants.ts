@@ -40,6 +40,11 @@ export const EMAIL_SUBJECTS = {
   DUPLICATE_EMAIL_SIGN_UP: 'Duplicate EMail Sign Up',
 };
 export const EMAIL_SENDER_NAME = 'Focus Bear';
+export const FEATURE_FLAGS = {
+  WEEKLY_EMAILS: 'weekly_emails',
+  DAILY_EMAILS: 'daily_emails',
+  MONTHLY_EMAILS: 'monthly_emails',
+} as const;
 export const ONE_HOUR_SECONDS = 3600;
 export const ONE_HOUR_MILLISECONDS = 3600000;
 export const ONE_MINUTE = 60000;

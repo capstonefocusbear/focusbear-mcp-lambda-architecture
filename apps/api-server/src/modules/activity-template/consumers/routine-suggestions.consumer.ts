@@ -118,6 +118,7 @@ export class RoutineSuggestionsConsumer {
       await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
         asyncTaskId,
         status: 'completed',
+        result,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -52,17 +52,32 @@ const beamsClient = new PushNotifications({
   secretKey: process.env.PUSHER_BEAMS_PRIMARY_KEY,
 });
 
+const truncate = (str: string, maxLen: number) => (str?.length > maxLen ? `${str.slice(0, maxLen - 3)}...` : str);
+
 const sendBeamsPushNotification = async (user_id: string, notificationData: Notification) => {
+  const notificationId = String(notificationData.id);
+  const title = truncate(notificationData.summary ?? 'Calendar Reminder', 80) || 'Calendar Reminder';
+  const body = truncate(notificationData.description ?? notificationData.summary ?? 'Upcoming event', 180);
+
   const publishRequest: BeamsPublishRequest = {
     apns: {
-      aps: {},
+      aps: {
+        alert: {
+          title,
+          body,
+        },
+      },
       data: {
-        notificationData,
+        notificationId,
       },
     },
     fcm: {
+      notification: {
+        title,
+        body,
+      },
       data: {
-        notificationData,
+        notificationId,
       },
     },
   };

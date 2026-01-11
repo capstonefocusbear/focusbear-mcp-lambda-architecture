@@ -127,7 +127,14 @@ export class ToDoService {
       subtasks: Array.isArray(todo.subtasks)
         ? todo.subtasks.filter(
             (item) =>
-              item && typeof item === 'object' && !Array.isArray(item) && 'name' in item && 'is_completed' in item,
+              item &&
+              typeof item === 'object' &&
+              !Array.isArray(item) &&
+              'name' in item &&
+              'is_completed' in item &&
+              typeof item.name === 'string' &&
+              item.name.trim().length > 0 &&
+              typeof item.is_completed === 'boolean',
           )
         : [],
     }));
@@ -348,7 +355,14 @@ export class ToDoService {
         subtasks: Array.isArray(todo.subtasks)
           ? todo.subtasks.filter(
               (item) =>
-                item && typeof item === 'object' && !Array.isArray(item) && 'name' in item && 'is_completed' in item,
+                item &&
+                typeof item === 'object' &&
+                !Array.isArray(item) &&
+                'name' in item &&
+                'is_completed' in item &&
+                typeof item.name === 'string' &&
+                item.name.trim().length > 0 &&
+                typeof item.is_completed === 'boolean',
             )
           : [],
       }));
@@ -378,7 +392,14 @@ export class ToDoService {
         subtasks: Array.isArray(todo.subtasks)
           ? todo.subtasks.filter(
               (item) =>
-                item && typeof item === 'object' && !Array.isArray(item) && 'name' in item && 'is_completed' in item,
+                item &&
+                typeof item === 'object' &&
+                !Array.isArray(item) &&
+                'name' in item &&
+                'is_completed' in item &&
+                typeof item.name === 'string' &&
+                item.name.trim().length > 0 &&
+                typeof item.is_completed === 'boolean',
             )
           : [],
       }));

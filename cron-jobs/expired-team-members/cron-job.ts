@@ -117,11 +117,20 @@ async function disassociateMemberFromTeam({ team_id, member_id }: TeamToMember) 
 
 async function runExpiredTeamMembersCronJob() {
   await CronJobDataSource.initialize();
-  const expiringMembers = await getMembersWhoseTrialExpired();
-  for await (const member of expiringMembers) {
-    await disassociateMemberFromTeam(member);
+  try {
+    const expiringMembers = await getMembersWhoseTrialExpired();
+    for await (const member of expiringMembers) {
+      await disassociateMemberFromTeam(member);
+    }
+    return { membersProcessed: expiringMembers.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
   }
-  return { membersProcessed: expiringMembers.length };
 }
 
 if (require.main === module) {

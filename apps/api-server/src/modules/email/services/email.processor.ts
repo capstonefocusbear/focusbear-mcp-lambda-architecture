@@ -50,6 +50,10 @@ export class EmailProcessor {
         this.logger.log(`Skipped weekly progress email for user ${user.id}: feature flag not enabled`);
         return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
+      if (variant === 'daily' && !settings?.feature_flags?.includes(FEATURE_FLAGS.DAILY_EMAILS)) {
+        this.logger.log(`Skipped daily progress email for user ${user.id}: feature flag not enabled`);
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
+      }
 
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
@@ -98,14 +102,27 @@ export class EmailProcessor {
   async handleMonthlyProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
+      const settings = await this.getUserEmailSettings(user.id);
+
       // Safety check: skip if user is currently unsubscribed
-      if (await this.isUserUnsubscribed(user.id)) {
+      if (settings?.email_frequency === EmailFrequency.UNSUBSCRIBED) {
         this.sentryService.instance().captureMessage('Skipped sending monthly progress email: user unsubscribed', {
           level: 'info',
           extra: { jobId: job.id, userId: user.id },
           tags: { email_action: 'skip_unsubscribed' },
         });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+
+      if (!settings?.feature_flags?.includes(FEATURE_FLAGS.MONTHLY_EMAILS)) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending monthly progress email: feature flag not enabled', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id },
+            tags: { email_action: 'skip_feature_flag' },
+          });
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;

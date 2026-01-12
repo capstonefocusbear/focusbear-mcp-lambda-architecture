@@ -11,6 +11,22 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
     super(connection, CompletedFocusBlock);
   }
 
+  async getMaxFocusDurationSecondsByUserInTimeRange(
+    user_id: string,
+    { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },
+  ): Promise<number> {
+    const result = await this.orm
+      .createQueryBuilder('completed_focus_blocks')
+      .innerJoin('completed_focus_blocks.focus_mode', 'focus_mode', 'focus_mode.deleted_at IS NULL')
+      .select('COALESCE(MAX(completed_focus_blocks.focus_duration_seconds), 0)', 'max')
+      .where('completed_focus_blocks.user_id = :user_id', { user_id })
+      .andWhere('completed_focus_blocks.finish_time BETWEEN :from_time AND :to_time', { from_time, to_time })
+      .getRawOne<{ max: string | number | null }>();
+
+    const max = result?.max ?? 0;
+    return typeof max === 'number' ? max : Number(max || 0);
+  }
+
   async getLogsByUserInTimeRange(
     user_id: string,
     { from_time = TWENTY_FOUR_HOURS_AGO, to_time = CURRENT_TIME },

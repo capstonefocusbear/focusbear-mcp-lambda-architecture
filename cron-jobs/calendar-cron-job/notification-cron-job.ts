@@ -176,28 +176,37 @@ const updateNotificationStatus = async (id: string) => {
 
 async function runNotificationCronJob() {
   await CronJobDataSource.initialize();
-  const calendarEventsToSend = await fetchEvents();
-  // eslint-disable-next-line no-console
-  console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
-  if (calendarEventsToSend.length === 0) {
-    return { notificationsSent: 0 };
-  }
+  try {
+    const calendarEventsToSend = await fetchEvents();
+    // eslint-disable-next-line no-console
+    console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
+    if (calendarEventsToSend.length === 0) {
+      return { notificationsSent: 0 };
+    }
 
-  await Promise.all(
-    calendarEventsToSend.map(async (calendarEvent) => {
-      const { id, summary, description, event_begins, event_ends } = calendarEvent;
-      await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
-        id,
-        summary,
-        description,
-        event_begins,
-        event_ends,
+    await Promise.all(
+      calendarEventsToSend.map(async (calendarEvent) => {
+        const { id, summary, description, event_begins, event_ends } = calendarEvent;
+        await sendBeamsPushNotification(calendarEvent.user_id, calendarEvent.language, {
+          id,
+          summary,
+          description,
+          event_begins,
+          event_ends,
+        });
+        await updateNotificationStatus(id);
+      }),
+    );
+
+    return { notificationsSent: calendarEventsToSend.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
       });
-      await updateNotificationStatus(id);
-    }),
-  );
-
-  return { notificationsSent: calendarEventsToSend.length };
+    }
+  }
 }
 
 if (require.main === module) {

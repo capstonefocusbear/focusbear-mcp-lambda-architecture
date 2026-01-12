@@ -2,6 +2,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { SentryTraced } from '@sentry/nestjs';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
@@ -152,6 +153,7 @@ export class OpenAIService {
     return baseMessage;
   }
 
+  @SentryTraced('createMotivationalSummary')
   async createMotivationalSummary(
     response: FastifyReply,
     input: HabitOption[],
@@ -233,6 +235,7 @@ export class OpenAIService {
     }
   }
 
+  @SentryTraced('streamChatReply')
   async streamChatReply(res: FastifyReply, messages: ChatCompletionMessageParam[], language = 'English') {
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',

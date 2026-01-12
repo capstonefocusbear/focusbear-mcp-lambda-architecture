@@ -81,11 +81,19 @@ export class RoutineSuggestionsConsumer {
         errorMessage,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
-        asyncTaskId,
-        status: 'failed',
-        errorMessage,
-      });
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
+          asyncTaskId,
+          status: 'failed',
+          errorMessage,
+        });
+      } catch (pusherError) {
+        this.sentry.instance().captureException(pusherError, {
+          level: 'warning',
+          tags: { service: 'pusher-channels', operation: 'trigger', event: 'routine-suggestions.completed' },
+          extra: { asyncTaskId, userId, context: 'failed to send failure notification' },
+        });
+      }
     }
   }
 
@@ -137,11 +145,19 @@ export class RoutineSuggestionsConsumer {
         errorMessage,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
-        asyncTaskId,
-        status: 'failed',
-        errorMessage,
-      });
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
+          asyncTaskId,
+          status: 'failed',
+          errorMessage,
+        });
+      } catch (pusherError) {
+        this.sentry.instance().captureException(pusherError, {
+          level: 'warning',
+          tags: { service: 'pusher-channels', operation: 'trigger', event: 'habit-creation.completed' },
+          extra: { asyncTaskId, userId, context: 'failed to send failure notification' },
+        });
+      }
     }
   }
 }

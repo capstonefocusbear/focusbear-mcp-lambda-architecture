@@ -251,14 +251,14 @@ describe('ToDoRepository Top Score Calculation (DB Integration)', () => {
     });
 
     // Insert a test project
-    testProject = await dataSource.getRepository(SyncedProject).save({
+    await dataSource.getRepository(SyncedProject).save({
       user_id: testUserId,
       external_project_id: 'external-proj-1',
       available_statuses: [{ label: 'Open', status_id: 'open', should_complete_task: false }],
     });
 
     // Insert a test tag
-    testTag = await dataSource.getRepository(FocusModeTag).save({
+    await dataSource.getRepository(FocusModeTag).save({
       text: 'Urgent',
       user_id: testUserId,
     });

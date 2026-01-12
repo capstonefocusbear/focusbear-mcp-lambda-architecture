@@ -30,7 +30,13 @@ import { CompletedActivitySequenceRepository } from '../activity/repositories/co
     FocusModeTagRepository,
     CompletedFocusBlockService,
   ],
-  exports: [FocusModeRepository, FocusModeTagRepository, FocusModeService, BlockingScheduleService],
+  exports: [
+    FocusModeRepository,
+    FocusModeTagRepository,
+    FocusModeService,
+    BlockingScheduleService,
+    CompletedFocusBlockRepository,
+  ],
   imports: [
     forwardRef(() => UserModule),
     PusherModule.registerAsync({

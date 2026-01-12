@@ -1,8 +1,37 @@
+// Mock @sentry/nestjs before any imports that use it
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull-shared';
 import { BullQueueMetricsService } from './bull-queue-metrics.service';
 import { BullQueues } from '../shared/utils/constants';
+
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
 
 const queueEventsInstances: Array<{
   waitUntilReady: jest.Mock;
@@ -131,6 +160,24 @@ describe('BullQueueMetricsService', () => {
 
     trackedQueues.forEach(({ duplicatedConnection }) => {
       expect(duplicatedConnection.quit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('SentryCron integration', () => {
+    beforeEach(async () => {
+      await service.onModuleInit();
+      jest.clearAllMocks();
+    });
+
+    it('should execute with @SentryCron decorator', async () => {
+      await expect(service.publishQueueDepthMetrics()).resolves.not.toThrow();
+    });
+
+    it('should handle errors gracefully', async () => {
+      moduleRef.get = jest.fn().mockReturnValue({
+        getJobCounts: jest.fn().mockRejectedValue(new Error('Queue error')),
+      });
+      await expect(service.publishQueueDepthMetrics()).resolves.not.toThrow();
     });
   });
 });

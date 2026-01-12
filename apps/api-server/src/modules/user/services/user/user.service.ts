@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Raw } from 'typeorm';
+import { SentryTraced } from '@sentry/nestjs';
 import { InjectSentry, SentryService, emitUserActivityMetric } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
@@ -114,6 +115,7 @@ export class UserService {
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
+  @SentryTraced('syncUserAccount')
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -162,6 +164,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
+  @SentryTraced('updateOrCreateUser')
   async updateOrCreateUser(
     { auth0_id, email, auth0_client }: SyncUserAccountDto,
     registeredUser?: User,

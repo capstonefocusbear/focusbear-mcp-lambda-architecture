@@ -182,9 +182,7 @@ export enum BullQueues {
   TODO_AUDIO = 'todo-audio',
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
-  PASSWORD_RESET_EMAIL = 'password-reset-email',
   HABIT_IMPORT = 'habit-import',
-  STRIPE_CUSTOMER = 'stripe-customer',
 }
 
 export enum BullWorkers {
@@ -195,7 +193,6 @@ export enum BullWorkers {
   SYNC_PROJECT_TASKS = 'sync-project-tasks',
   RESUME_NOTIFICATION = 'resume-notification',
   MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
-  CREATE_STRIPE_CUSTOMER = 'create-stripe-customer',
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
@@ -209,7 +206,6 @@ export enum BullWorkers {
   PROCESS_ROUTINE_SUGGESTIONS = 'process-routine-suggestions',
   PROCESS_HABIT_CREATION = 'process-habit-creation',
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
-  SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
   PROCESS_HABIT_IMPORT = 'process-habit-import',
 }
 

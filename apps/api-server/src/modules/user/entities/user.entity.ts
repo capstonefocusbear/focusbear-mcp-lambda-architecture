@@ -60,7 +60,6 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
-    nullable: true,
   })
   stripe_customer_id?: string;
 

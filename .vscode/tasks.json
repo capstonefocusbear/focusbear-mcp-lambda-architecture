@@ -10,12 +10,6 @@
 			"problemMatcher": [
 				"$tsc"
 			]
-		},
-		{
-			"label": "Test Auth Service",
-			"type": "shell",
-			"command": "npm test -- auth.service.spec.ts",
-			"group": "test"
 		}
 	]
 }

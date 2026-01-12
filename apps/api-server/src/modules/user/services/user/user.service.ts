@@ -103,7 +103,6 @@ export class UserService {
     private readonly adminAccessRequestRepository: AdminAccessRequestRepository,
     private readonly openAIService: OpenAIService,
     @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
-    @InjectQueue(BullQueues.STRIPE_CUSTOMER) private stripeCustomerQueue: Queue,
     private readonly platformIntegrationsService: PlatformIntegrationsService,
     private readonly deviceRepository: DeviceRepository,
     @Inject(forwardRef(() => DeviceService))
@@ -176,67 +175,72 @@ export class UserService {
           auth0_id,
         },
       });
+      let os = OperatingSystem.Unknown;
+      let stripeId = await this.stripeService.getStripeCustomerId(email);
 
-      // Queue background job to create Stripe customer if needed
-      // This makes the endpoint faster by not waiting for Stripe API calls
-      if (registeredUser) {
-        // For existing users, only queue job if they don't have a stripe_customer_id
-        if (!registeredUser.stripe_customer_id) {
-          await this.stripeCustomerQueue.add(
-            BullWorkers.CREATE_STRIPE_CUSTOMER,
-            {
-              user_id: registeredUser.id,
-              email,
+      if (!stripeId) {
+        this.sentryService.instance().captureEvent({
+          message: 'Stripe ID not found',
+          level: 'error',
+          extra: {
+            auth0_id,
+            email,
+          },
+        });
+
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Registering new user in Stripe',
+        });
+
+        const devicesFromDb = registeredUser
+          ? await this.deviceRepository.orm.find({
+              where: { user_id: registeredUser.id },
+              order: { created_at: 'ASC' },
+            })
+          : [];
+
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'debug',
+          message: 'Getting user OS',
+          data: {
+            devicesFromDb,
+            auth0_client,
+          },
+        });
+
+        os =
+          devicesFromDb?.[0]?.operating_system ??
+          (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
+
+        if (os === OperatingSystem.Unknown) {
+          this.sentryService.instance().captureEvent({
+            message: 'OS not found',
+            level: 'warning',
+            extra: {
               auth0_id,
+              email,
+              clientId: auth0_client?.client_id?.toString() || 'unknown client ID',
             },
-            {
-              attempts: 3,
-              backoff: {
-                type: 'exponential',
-                delay: 2000, // 2s, 4s, 8s
-              },
-            },
-          );
+          });
         }
-        return registeredUser;
+
+        const stripeCustomer = await this.stripeService.registerNewCustomer(email, os);
+        stripeId = stripeCustomer.id;
       }
 
-      // For new users, create user first then queue Stripe customer creation
-      const newUserProperties: UserStripePropertiesDto = {
-        auth0_id,
-        stripe_customer_id: null, // Will be set by background job
-      };
-      const newUser = new User({ ...newUserProperties });
+      const userProperties: UserStripePropertiesDto = { auth0_id, stripe_customer_id: stripeId };
+      if (registeredUser) {
+        const updatedUser = await this.userRepository.update(registeredUser.id, userProperties);
+        return updatedUser;
+      }
+      const newUser = new User({ ...userProperties });
       const newlySavedUser = await this.userRepository.create(newUser);
 
-      // Queue background job to create Stripe customer
-      await this.stripeCustomerQueue.add(
-        BullWorkers.CREATE_STRIPE_CUSTOMER,
-        {
-          user_id: newlySavedUser.id,
-          email,
-          auth0_id,
-        },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2000, // 2s, 4s, 8s
-          },
-        },
-      );
-
       // Create device entry for new users
-      const devicesFromDb = await this.deviceRepository.orm.find({
-        where: { user_id: newlySavedUser.id },
-        order: { created_at: 'ASC' },
-      });
-
-      const os =
-        devicesFromDb?.[0]?.operating_system ??
-        (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
-
-      if (os !== OperatingSystem.Unknown) {
+      if (os) {
         try {
           await this.deviceService.createOrUpdateDevice(
             {

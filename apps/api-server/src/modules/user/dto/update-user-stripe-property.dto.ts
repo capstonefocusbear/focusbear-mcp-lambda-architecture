@@ -1,11 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class UserStripePropertiesDto {
   @IsNotEmpty()
   @IsString()
   auth0_id: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  stripe_customer_id?: string;
+  stripe_customer_id: string;
 }

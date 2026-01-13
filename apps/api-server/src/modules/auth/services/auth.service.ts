@@ -114,7 +114,7 @@ export class AuthService {
         );
       }
 
-      const isThirdPartyUser = auth0User.identities.some((identity) => identity.isSocial);
+      const isThirdPartyUser = auth0User.identities?.some((identity) => identity.isSocial);
       if (isThirdPartyUser) {
         throw new HttpException(
           {

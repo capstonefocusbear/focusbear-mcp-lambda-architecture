@@ -48,19 +48,10 @@ export class PasswordResetEmailConsumer {
       });
 
       // Generate reset token
-      const secret = this.configService.get('tokens.password_reset.secret');
-      const expiresIn = this.configService.get('tokens.password_reset.signOptions.expiresIn') || '1 hour';
-
-      const resetToken = await this.passwordResetJwtService.signAsync(
-        {
-          email,
-          auth0_id,
-        },
-        {
-          secret,
-          expiresIn,
-        },
-      );
+      const resetToken = await this.passwordResetJwtService.signAsync({
+        email,
+        auth0_id,
+      });
 
       // Build reset link
       const baseUrl = this.getFrontendBaseUrl(origin);

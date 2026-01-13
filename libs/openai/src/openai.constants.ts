@@ -65,8 +65,7 @@ export const SUBTASKS_GENERATION_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/subtasks-generation/config.yaml';
 export const BRAIN_DUMP_CONVERSION_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/brain-dump-conversion/config.yaml';
-export const EMOJI_GENERATION_PROMPT_CONFIG_PATH =
-  'apps/api-server/test/prompt-testing/emoji-generation/config.yaml';
+export const EMOJI_GENERATION_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/emoji-generation/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious

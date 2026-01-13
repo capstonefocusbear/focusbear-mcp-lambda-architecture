@@ -153,7 +153,9 @@ export class OpenAIService {
     // Fallback to old hardcoded prompts if cache fails
     const baseMessage = `Given the user's habits input below ${this.wrapUserInput(
       longTermGoalsPhrase,
-    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone to keep them motivated in their daily habits in ${language}.\n\nHabits input: ${habitsInput}\n\n${this.wrapUserInput(addedLongTermGoals)}`;
+    )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone to keep them motivated in their daily habits in ${language}.\n\nHabits input: ${habitsInput}\n\n${this.wrapUserInput(
+      addedLongTermGoals,
+    )}`;
     const futureSelfMessage = `Given the user's habits input below ${this.wrapUserInput(
       longTermGoalsPhrase,
     )}, generate a short motivational message (keep it below ${wordCount} words and add line breaks where appropriate) in a ${tone} tone as if you're a future self 20 years from now talking to the present user to encourage them to work hard for the future version of themselves, and don't use past tense. Do this in ${language}.\n\nHabits input: ${habitsInput}\n\n${addedLongTermGoals}\n\nDon't start with 'Dear...' just start with the message`;
@@ -279,9 +281,9 @@ export class OpenAIService {
           const { choices } = chunk;
           const {
             finish_reason,
-            delta: { content },
+            delta: { content: chunkContent },
           } = choices[0];
-          stream.write(`data: ${!finish_reason ? content : '[DONE]'}\n\n`);
+          stream.write(`data: ${!finish_reason ? chunkContent : '[DONE]'}\n\n`);
           if (finish_reason) {
             stream.end();
           }
@@ -535,12 +537,12 @@ export class OpenAIService {
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-url');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-          input_wrapper: INPUT_WRAPPER,
-          url,
-          tab_title: tabTitle,
-          meta_description: metaDescription,
-          current_tasks_list: currentTasksList,
-        })
+            input_wrapper: INPUT_WRAPPER,
+            url,
+            tab_title: tabTitle,
+            meta_description: metaDescription,
+            current_tasks_list: currentTasksList,
+          })
         : `Based on the following website information, suggest what task the user might be working on.
 
 Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
@@ -613,11 +615,11 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-app');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-          input_wrapper: INPUT_WRAPPER,
-          app_name: appName,
-          focus_mode: focusMode,
-          current_tasks_list: currentTasksList,
-        })
+            input_wrapper: INPUT_WRAPPER,
+            app_name: appName,
+            focus_mode: focusMode,
+            current_tasks_list: currentTasksList,
+          })
         : `Based on the following app information, suggest what task the user might be working on.
 
 App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}

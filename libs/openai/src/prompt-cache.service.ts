@@ -33,7 +33,7 @@ export class PromptCacheService implements OnModuleInit {
     prompts: Array<{ id: string; raw: string }>;
   } = { prompts: [] };
 
-  constructor(@InjectSentry() private readonly sentryService: SentryService) { }
+  constructor(@InjectSentry() private readonly sentryService: SentryService) {}
 
   async onModuleInit() {
     await this.loadPrompts();
@@ -100,15 +100,15 @@ export class PromptCacheService implements OnModuleInit {
           if (!config?.prompts) {
             return [];
           }
-          const loadedPrompts: Array<{ id: string; raw: string }> = [];
-          for (const prompt of config.prompts) {
-            const promptContent = await this.loadPromptContent(prompt, configPath);
-            if (promptContent) {
-              loadedPrompts.push({ id: prompt.id, raw: promptContent });
-            }
-          }
-          this.logger.log(`Loaded ${loadedPrompts.length} ${configName} prompts`);
-          return loadedPrompts;
+          const loadedPrompts: Array<{ id: string; raw: string }> = await Promise.all(
+            config.prompts.map(async (prompt) => {
+              const promptContent = await this.loadPromptContent(prompt, configPath);
+              return promptContent ? { id: prompt.id, raw: promptContent } : null;
+            }),
+          );
+          const validPrompts = loadedPrompts.filter((p): p is { id: string; raw: string } => p !== null);
+          this.logger.log(`Loaded ${validPrompts.length} ${configName} prompts`);
+          return validPrompts;
         } catch (error) {
           this.logger.error(`Failed to load ${configName} prompts: ${error.message}`);
           this.sentryService.instance().captureException(error, {

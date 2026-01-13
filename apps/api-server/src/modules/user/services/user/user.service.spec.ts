@@ -271,8 +271,9 @@ describe('UserService', () => {
 
       await userService.syncUserAccount(syncAccountDto);
 
-      const body = `New sign up is associated with multiple Auth0 accounts. Current: ${syncAccountDto.auth0_id
-        }, Others: ${dummyAuth0Response.map((u) => u.user_id).join(', ')}`;
+      const body = `New sign up is associated with multiple Auth0 accounts. Current: ${
+        syncAccountDto.auth0_id
+      }, Others: ${dummyAuth0Response.map((u) => u.user_id).join(', ')}`;
       const emailPayload = {
         to: [FOCUS_BEAR_EMAILS.SUPPORT],
         from: FOCUS_BEAR_EMAILS.SUPPORT,

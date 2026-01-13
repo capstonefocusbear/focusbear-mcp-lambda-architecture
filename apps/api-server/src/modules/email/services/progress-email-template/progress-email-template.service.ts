@@ -4,6 +4,10 @@ import { User } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
 import { MonthlyProgressMetricsDto } from '../../../user/dto/monthly-progress-metrics.dto';
 import { EmailTemplateCompilerService } from '../email-template-compiler/email-template-compiler.service';
+import { AnnouncementsService } from '../../../announcements/services/announcements.service';
+import { AnnouncementEntity } from '../../../announcements/entities/announcements.entity';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 
 interface EmailContent {
   subject: string;
@@ -16,6 +20,8 @@ export class ProgressEmailTemplateService {
   constructor(
     private readonly emailTemplateCompilerService: EmailTemplateCompilerService,
     private readonly i18nService: I18nService,
+    private readonly announcementsService: AnnouncementsService,
+    private readonly deviceRepository: DeviceRepository,
   ) {}
 
   private getMonthlyPeriodDays(metrics: MonthlyProgressMetricsDto): number {
@@ -51,6 +57,7 @@ export class ProgressEmailTemplateService {
       day: 'numeric',
     });
     const singleDay = weekEnd;
+    const announcements = await this.getUserAnnouncements(user.id); // Fetch announcements based on user's latest device OS
 
     const templateData = {
       userName,
@@ -95,6 +102,10 @@ export class ProgressEmailTemplateService {
       morningRoutineStreak: metrics.streaks.morning_routine,
       eveningRoutineStreak: metrics.streaks.evening_routine,
       focusModeStreak: metrics.streaks.focus_mode,
+      announcements,
+      announcementsTitle:
+        this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
+      announcementCtaText: this.i18nService.t('common.email_announcements_cta', { lang: userLang }) || 'Learn more',
 
       // Translated labels
       focusBearUsageTitle:
@@ -191,10 +202,7 @@ export class ProgressEmailTemplateService {
         metrics.focus_sessions?.sessions_count > 0
           ? Math.min(
               100,
-              Math.round(
-                (metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics)) *
-                  100,
-              ),
+              Math.round((metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics)) * 100),
             )
           : 0,
       microBreaksUsage:
@@ -381,5 +389,48 @@ export class ProgressEmailTemplateService {
       month: 'long',
       day: 'numeric',
     });
+  }
+
+  private normalizeOperatingSystem(os?: OperatingSystem | null): string {
+    switch (os) {
+      case OperatingSystem.iOS:
+        return 'ios';
+      case OperatingSystem.Android:
+        return 'android';
+      case OperatingSystem.MacOS:
+        return 'macos';
+      case OperatingSystem.Windows:
+        return 'windows';
+      case OperatingSystem.Web:
+        return 'web';
+      case OperatingSystem.Unknown:
+      default:
+        return 'unknown'; // Fallback value to ensure API calls never fail due to missing OS
+    }
+  }
+
+  private async getUserOperatingSystem(userId: string): Promise<string> {
+    try {
+      const latestDevice = await this.deviceRepository.orm.findOne({
+        where: { user_id: userId },
+        order: { updated_at: 'DESC', created_at: 'DESC' },
+      });
+
+      return this.normalizeOperatingSystem(latestDevice?.operating_system as OperatingSystem);
+    } catch {
+      return 'unknown'; // Safe fallback: email sending should not be blocked by device lookup issues
+    }
+  }
+
+  private async getUserAnnouncements(userId: string): Promise<AnnouncementEntity[]> {
+    try {
+      const osName = await this.getUserOperatingSystem(userId);
+      const response = await this.announcementsService.getActiveAnnouncements(userId, osName);
+      // Ensure template logic can safely iterate without null checks
+      return response?.announcements ?? [];
+    } catch {
+      // Fail-safe: announcements are optional content
+      return [];
+    }
   }
 }

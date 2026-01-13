@@ -6,6 +6,9 @@ import { User, EmailFrequency } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
 import { MonthlyProgressMetricsDto } from '../../../user/dto/monthly-progress-metrics.dto';
 import { EmailTemplateCompilerService } from '../email-template-compiler/email-template-compiler.service';
+import { AnnouncementsService } from '../../../announcements/services/announcements.service';
+import { DeviceRepository } from '../../../device/repositories/device.repository';
+import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 
 const createMockUser = (language: string): User => {
   const user = new User();
@@ -76,9 +79,23 @@ describe('ProgressEmailTemplateService', () => {
   let service: ProgressEmailTemplateService;
   const mockI18nService = mockDeep<I18nService>();
   let mockCompilerService: { compileProgressEmail: jest.Mock };
+  let mockAnnouncementsService: { getActiveAnnouncements: jest.Mock };
+  let mockDeviceRepository: { orm: { findOne: jest.Mock } };
 
   beforeEach(async () => {
     mockI18nService.t.mockImplementation(() => undefined);
+
+    // Announcements service returns no announcements by default
+    mockAnnouncementsService = {
+      getActiveAnnouncements: jest.fn().mockResolvedValue({ announcements: [] }),
+    };
+
+    // Device repository returns null by default (no device found)
+    mockDeviceRepository = {
+      orm: {
+        findOne: jest.fn().mockResolvedValue(null),
+      },
+    };
 
     mockCompilerService = {
       compileProgressEmail: jest.fn().mockImplementation((templateType: string, data: any) => {
@@ -134,6 +151,14 @@ describe('ProgressEmailTemplateService', () => {
         {
           provide: I18nService,
           useValue: mockI18nService,
+        },
+        {
+          provide: AnnouncementsService,
+          useValue: mockAnnouncementsService,
+        },
+        {
+          provide: DeviceRepository,
+          useValue: mockDeviceRepository,
         },
       ],
     }).compile();
@@ -246,6 +271,73 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.html).toContain('90 minutes'); // Longest session
       expect(result.html).toContain('75%'); // Completion rate
     });
+
+    it('should not break when there are no announcements', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const metrics = createMockWeeklyMetrics();
+
+      mockDeviceRepository.orm.findOne.mockResolvedValue({
+        operating_system: OperatingSystem.MacOS,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+
+      mockAnnouncementsService.getActiveAnnouncements.mockResolvedValue({
+        announcements: [],
+      });
+
+      // Act & Assert
+      await expect(service.generateWeeklyProgressEmail(user, metrics, 'test-token')).resolves.not.toThrow();
+
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'weekly-progress',
+        expect.objectContaining({
+          announcements: [],
+        }),
+      );
+    });
+
+    it('should use the most recent device OS when fetching announcements', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const metrics = createMockWeeklyMetrics();
+      const unsubscribeToken = 'test-token-123';
+      const announcement = { id: 'ann1', heading: 'New update', details: 'Details here' };
+
+      mockDeviceRepository.orm.findOne.mockResolvedValue({
+        operating_system: OperatingSystem.MacOS,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      mockAnnouncementsService.getActiveAnnouncements.mockResolvedValue({ announcements: [announcement as any] });
+
+      // Act
+      await service.generateWeeklyProgressEmail(user, metrics, unsubscribeToken);
+
+      // Assert
+      expect(mockAnnouncementsService.getActiveAnnouncements).toHaveBeenCalledWith(user.id, 'macos');
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'weekly-progress',
+        expect.objectContaining({
+          announcements: [announcement],
+        }),
+      );
+    });
+
+    it('should fallback to unknown OS when no device is found', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const metrics = createMockWeeklyMetrics();
+
+      mockDeviceRepository.orm.findOne.mockResolvedValue(null);
+
+      // Act
+      await service.generateWeeklyProgressEmail(user, metrics, 'token');
+
+      // Assert
+      expect(mockAnnouncementsService.getActiveAnnouncements).toHaveBeenCalledWith(user.id, 'unknown');
+    });
   });
 
   describe('generateNoProgressEmail', () => {
@@ -288,12 +380,15 @@ describe('ProgressEmailTemplateService', () => {
 
   describe('generateMonthlyProgressEmail', () => {
     it('should base monthly focus mode usage on actual days in month', async () => {
+      // Arrange
       const user = createMockUser('en');
       const metrics = createMockMonthlyMetrics(); // 14 sessions over 28 days => 50%
       const unsubscribeToken = 'test-token-123';
 
+      // Act
       await service.generateMonthlyProgressEmail(user, metrics, unsubscribeToken);
 
+      // Assert
       expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
         'monthly-progress',
         expect.objectContaining({

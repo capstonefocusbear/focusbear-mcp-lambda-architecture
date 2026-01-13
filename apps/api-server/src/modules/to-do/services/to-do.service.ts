@@ -42,6 +42,29 @@ export class ToDoService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
+  /**
+   * Filters out invalid subtask entries from legacy data
+   * @param subtasks - Array of subtasks that may contain invalid entries
+   * @returns Array of valid subtasks only
+   */
+  private filterValidSubtasks(subtasks: any): any[] {
+    if (!Array.isArray(subtasks)) {
+      return [];
+    }
+
+    return subtasks.filter(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        'name' in item &&
+        'is_completed' in item &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        typeof item.is_completed === 'boolean',
+    );
+  }
+
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
     if (existingToDo) {
@@ -124,19 +147,7 @@ export class ToDoService {
     // Clean up legacy data: filter out empty arrays and invalid subtask entries
     const cleanedToDos = toDos.map((todo) => ({
       ...todo,
-      subtasks: Array.isArray(todo.subtasks)
-        ? todo.subtasks.filter(
-            (item) =>
-              item &&
-              typeof item === 'object' &&
-              !Array.isArray(item) &&
-              'name' in item &&
-              'is_completed' in item &&
-              typeof item.name === 'string' &&
-              item.name.trim().length > 0 &&
-              typeof item.is_completed === 'boolean',
-          )
-        : [],
+      subtasks: this.filterValidSubtasks(todo.subtasks),
     }));
 
     let updateToDos: ToDoResponse[];
@@ -352,19 +363,7 @@ export class ToDoService {
       // Clean up legacy data
       return todos.map((todo) => ({
         ...todo,
-        subtasks: Array.isArray(todo.subtasks)
-          ? todo.subtasks.filter(
-              (item) =>
-                item &&
-                typeof item === 'object' &&
-                !Array.isArray(item) &&
-                'name' in item &&
-                'is_completed' in item &&
-                typeof item.name === 'string' &&
-                item.name.trim().length > 0 &&
-                typeof item.is_completed === 'boolean',
-            )
-          : [],
+        subtasks: this.filterValidSubtasks(todo.subtasks),
       }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -389,19 +388,7 @@ export class ToDoService {
       // Clean up legacy data
       return todos.map((todo) => ({
         ...todo,
-        subtasks: Array.isArray(todo.subtasks)
-          ? todo.subtasks.filter(
-              (item) =>
-                item &&
-                typeof item === 'object' &&
-                !Array.isArray(item) &&
-                'name' in item &&
-                'is_completed' in item &&
-                typeof item.name === 'string' &&
-                item.name.trim().length > 0 &&
-                typeof item.is_completed === 'boolean',
-            )
-          : [],
+        subtasks: this.filterValidSubtasks(todo.subtasks),
       }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

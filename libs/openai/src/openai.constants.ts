@@ -50,6 +50,23 @@ export const HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/habit-import-image/config.yaml';
 export const HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/habit-import-transcript/config.yaml';
+export const UNTRUSTED_USER_INPUT_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/untrusted-user-input/config.yaml';
+export const MOTIVATIONAL_SUMMARY_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/motivational-summary/config.yaml';
+export const CHAT_REPLY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/chat-reply/config.yaml';
+export const TASK_SUGGESTION_URL_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/task-suggestion-url/config.yaml';
+export const TASK_SUGGESTION_APP_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/task-suggestion-app/config.yaml';
+export const USERNAME_VALIDATION_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/username-validation/config.yaml';
+export const SUBTASKS_GENERATION_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/subtasks-generation/config.yaml';
+export const BRAIN_DUMP_CONVERSION_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/brain-dump-conversion/config.yaml';
+export const EMOJI_GENERATION_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/emoji-generation/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious

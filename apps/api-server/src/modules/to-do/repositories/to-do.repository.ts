@@ -93,6 +93,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.external_task_metadata',
         'to_do.created_at',
         'to_do.objective',
+        'to_do.subtasks',
         'tags.id',
         'tags.text',
         'to_do.duration',
@@ -100,7 +101,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.perspiration_level',
         'to_do.outcome',
       ])
-      .addSelect('to_do.subtasks', 'raw_subtasks')
       .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
       .take(take)
       .skip(skip)
@@ -131,32 +131,24 @@ export class ToDoRepository extends BaseRepository<ToDo> {
 
     const { entities: todos, raw: rows } = await query.getRawAndEntities();
 
-    // Map top_score and subtasks by id from raw rows
+    // Map top_score from raw rows
     // Using Map to avoid array index issues with joins
     const ALIAS_TODO_ID = 'to_do_id';
     const ALIAS_TOP_SCORE = 'top_score';
-    const ALIAS_SUBTASKS = 'raw_subtasks';
 
     const topScoreByTodoId = new Map<string, number>();
-    const subtasksByTodoId = new Map<string, any[]>();
 
     for (const row of rows as any[]) {
       const id = String(row[ALIAS_TODO_ID]);
       const score = row[ALIAS_TOP_SCORE];
-      const subtasks = row[ALIAS_SUBTASKS];
 
       if (id && score != null && !topScoreByTodoId.has(id)) {
         topScoreByTodoId.set(id, Number(score));
-      }
-
-      if (id && !subtasksByTodoId.has(id)) {
-        subtasksByTodoId.set(id, subtasks);
       }
     }
 
     const resultsWithTopScore = todos.map((todo) => ({
       ...todo,
-      subtasks: subtasksByTodoId.get(String((todo as any).id)) ?? null,
       top_score: topScoreByTodoId.get(String((todo as any).id)) ?? null,
     }));
 

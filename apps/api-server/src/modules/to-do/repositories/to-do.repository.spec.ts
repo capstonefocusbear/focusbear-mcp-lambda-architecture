@@ -103,6 +103,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
         'to_do.external_task_metadata',
         'to_do.created_at',
         'to_do.objective',
+        'to_do.subtasks',
         'tags.id',
         'tags.text',
         'to_do.duration',
@@ -253,7 +254,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('top_score', 'ASC');
     });
 
-    it('should correctly map subtasks from raw query results', async () => {
+    it('should correctly include subtasks from entities', async () => {
       const mockSubtasks = [
         { name: 'Subtask 1', is_completed: false },
         { name: 'Subtask 2', is_completed: true },
@@ -263,6 +264,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
         {
           id: 'todo-1',
           title: 'Test Todo',
+          subtasks: mockSubtasks,
         },
       ];
 
@@ -272,7 +274,6 @@ describe('ToDoRepository - SQL Query Testing', () => {
           {
             to_do_id: 'todo-1',
             top_score: 5.5,
-            raw_subtasks: mockSubtasks,
           },
         ],
       });
@@ -285,11 +286,12 @@ describe('ToDoRepository - SQL Query Testing', () => {
       expect(todos[0]).toHaveProperty('top_score', 5.5);
     });
 
-    it('should handle null subtasks from raw query results', async () => {
+    it('should handle null subtasks from entities', async () => {
       const mockResults = [
         {
           id: 'todo-1',
           title: 'Test Todo',
+          subtasks: null,
         },
       ];
 
@@ -299,7 +301,6 @@ describe('ToDoRepository - SQL Query Testing', () => {
           {
             to_do_id: 'todo-1',
             top_score: 5.5,
-            raw_subtasks: null,
           },
         ],
       });
@@ -319,8 +320,8 @@ describe('ToDoRepository - SQL Query Testing', () => {
       ];
 
       const mockResults = [
-        { id: 'todo-1', title: 'Test Todo 1' },
-        { id: 'todo-2', title: 'Test Todo 2' },
+        { id: 'todo-1', title: 'Test Todo 1', subtasks: mockSubtasks1 },
+        { id: 'todo-2', title: 'Test Todo 2', subtasks: mockSubtasks2 },
       ];
 
       mockQueryBuilder.getRawAndEntities.mockResolvedValue({
@@ -329,12 +330,10 @@ describe('ToDoRepository - SQL Query Testing', () => {
           {
             to_do_id: 'todo-1',
             top_score: 5.5,
-            raw_subtasks: mockSubtasks1,
           },
           {
             to_do_id: 'todo-2',
             top_score: 3.2,
-            raw_subtasks: mockSubtasks2,
           },
         ],
       });
@@ -349,7 +348,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
       expect(todos[1]).toHaveProperty('top_score', 3.2);
     });
 
-    it('should use addSelect to fetch raw_subtasks separately', async () => {
+    it('should include subtasks in main select statement', async () => {
       mockQueryBuilder.getRawAndEntities.mockResolvedValue({
         entities: [],
         raw: [],
@@ -357,21 +356,9 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
       await toDoRepository.getUserToDos(userId, baseQueryDto);
 
-      // Verify that raw_subtasks is selected separately using addSelect
-      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith('to_do.subtasks', 'raw_subtasks');
-    });
-
-    it('should not include subtasks in main select statement', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
-        entities: [],
-        raw: [],
-      });
-
-      await toDoRepository.getUserToDos(userId, baseQueryDto);
-
-      // Verify that the main select does NOT include 'to_do.subtasks'
+      // Verify that the main select includes 'to_do.subtasks'
       const selectCall = mockQueryBuilder.select.mock.calls[0][0];
-      expect(selectCall).not.toContain('to_do.subtasks');
+      expect(selectCall).toContain('to_do.subtasks');
     });
   });
 

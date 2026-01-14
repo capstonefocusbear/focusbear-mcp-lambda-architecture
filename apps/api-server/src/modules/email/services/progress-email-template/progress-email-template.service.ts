@@ -191,10 +191,7 @@ export class ProgressEmailTemplateService {
         metrics.focus_sessions?.sessions_count > 0
           ? Math.min(
               100,
-              Math.round(
-                (metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics)) *
-                  100,
-              ),
+              Math.round((metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics)) * 100),
             )
           : 0,
       microBreaksUsage:

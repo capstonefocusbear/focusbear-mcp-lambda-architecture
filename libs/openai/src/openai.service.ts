@@ -308,7 +308,7 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
-      current_tasks,
+      current_tasks, // Used for task suggestions when alignment score < 70% (lines 404, 530) and in prompt filling (lines 357, 367)
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -537,12 +537,12 @@ export class OpenAIService {
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-url');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            url,
-            tab_title: tabTitle,
-            meta_description: metaDescription,
-            current_tasks_list: currentTasksList,
-          })
+          input_wrapper: INPUT_WRAPPER,
+          url,
+          tab_title: tabTitle,
+          meta_description: metaDescription,
+          current_tasks_list: currentTasksList,
+        })
         : `Based on the following website information, suggest what task the user might be working on.
 
 Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
@@ -615,11 +615,11 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-app');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            app_name: appName,
-            focus_mode: focusMode,
-            current_tasks_list: currentTasksList,
-          })
+          input_wrapper: INPUT_WRAPPER,
+          app_name: appName,
+          focus_mode: focusMode,
+          current_tasks_list: currentTasksList,
+        })
         : `Based on the following app information, suggest what task the user might be working on.
 
 App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}

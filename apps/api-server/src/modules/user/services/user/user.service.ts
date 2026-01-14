@@ -112,7 +112,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
-  ) {}
+  ) { }
 
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
@@ -196,9 +196,9 @@ export class UserService {
 
         const devicesFromDb = registeredUser
           ? await this.deviceRepository.orm.find({
-              where: { user_id: registeredUser.id },
-              order: { created_at: 'ASC' },
-            })
+            where: { user_id: registeredUser.id },
+            order: { created_at: 'ASC' },
+          })
           : [];
 
         this.sentryService.instance().addBreadcrumb({
@@ -747,11 +747,11 @@ export class UserService {
     }
 
     if (user_job_details !== undefined) {
-      (updateData as any).user_job_details = user_job_details;
+      updateData.user_job_details = user_job_details;
     }
 
     if (user_typical_distractions !== undefined) {
-      (updateData as any).user_typical_distractions = user_typical_distractions;
+      updateData.user_typical_distractions = user_typical_distractions;
     }
 
     await this.userRepository.orm.update(user_id, updateData);
@@ -1111,14 +1111,14 @@ export class UserService {
         [axios.post(cliqUrl, body)].concat(
           !email.includes('internaltest')
             ? [
-                this.emailService.sendEmail({
-                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
-                  from: FOCUS_BEAR_EMAILS.SUPPORT,
-                  replyTo: email,
-                  text: stringifiedUninstallFeedback,
-                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
-                }),
-              ]
+              this.emailService.sendEmail({
+                to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                from: FOCUS_BEAR_EMAILS.SUPPORT,
+                replyTo: email,
+                text: stringifiedUninstallFeedback,
+                subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+              }),
+            ]
             : [],
         ),
       );

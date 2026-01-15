@@ -17,9 +17,8 @@ import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
-// Optional debug knob: when set, we emit extra logs for this specific user to help
-// understand why they are/aren't eligible and whether we attempt publishing.
-const { JEREMYS_USER_ID } = process.env;
+//TODO: Remove after root cause is found
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 const OPEN_AI_CONFIG = openAiConfig();
 

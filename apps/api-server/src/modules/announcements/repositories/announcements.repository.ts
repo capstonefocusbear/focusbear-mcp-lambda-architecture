@@ -17,7 +17,7 @@ export class AnnouncementsRepository extends BaseRepository<AnnouncementEntity> 
    * @returns Active, non-expired, unviewed announcements sorted by priority and date
    */
   async findActiveAnnouncements(viewedIds: string[], os: OperatingSystem): Promise<AnnouncementEntity[]> {
-    const queryBuilder = await this.orm
+    const queryBuilder = this.orm
       .createQueryBuilder('announcement')
       .where('announcement.expiry_date > :now', { now: new Date() })
       .andWhere('announcement.operating_system = :os', { os });
@@ -49,7 +49,7 @@ export class AnnouncementsRepository extends BaseRepository<AnnouncementEntity> 
    * @returns Announcement entity or null
    */
   async findById(id: string): Promise<AnnouncementEntity | null> {
-    const ann = await this.orm.createQueryBuilder('announcement').where('announcement.id = :id', { id }).getOne();
+    const ann = this.orm.createQueryBuilder('announcement').where('announcement.id = :id', { id }).getOne();
     return ann;
   }
 }

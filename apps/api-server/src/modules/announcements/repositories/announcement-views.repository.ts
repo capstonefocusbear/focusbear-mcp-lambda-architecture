@@ -13,13 +13,13 @@ export class AnnouncementViewsRepository extends BaseRepository<AnnouncementView
    * Find all announcement IDs that a user has already viewed/dismissed
    */
   async findViewedAnnouncementIds(user_id: string): Promise<string[]> {
-    const views = await this.orm
+    const views = this.orm
       .createQueryBuilder('view')
       .select('view.announcement_id')
       .where('view.user_id = :user_id', { user_id })
       .getMany();
 
-    return views.map((view) => view.announcement_id);
+    return (await views).map((view) => view.announcement_id);
   }
 
   /**

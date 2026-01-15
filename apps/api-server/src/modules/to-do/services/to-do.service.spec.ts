@@ -14,6 +14,7 @@ import {
   SyncedProjectsRepositoryMock,
   TaskTimeLogsRepositoryMock,
   ToDoRepositoryMock,
+  UserRepositoryMock,
 } from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -39,6 +40,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
@@ -57,6 +59,7 @@ describe('toDoService', () => {
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
         OpenAIService,
+        UserRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -79,6 +82,8 @@ describe('toDoService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .overrideProvider(OpenAIService)
       .useValue(OpenAIServiceMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);

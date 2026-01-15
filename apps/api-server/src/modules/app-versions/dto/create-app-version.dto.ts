@@ -4,9 +4,15 @@ import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 
 export class CreateAppVersionDto {
   @IsNotEmpty()
-  @IsEnum(OperatingSystem)
+  @IsEnum([
+    OperatingSystem.iOS,
+    OperatingSystem.Android,
+    OperatingSystem.MacOS,
+    OperatingSystem.Windows,
+    OperatingSystem.Web,
+  ])
   @ApiProperty({
-    enum: OperatingSystem,
+    enum: ['iOS', 'Android', 'MacOS', 'Windows', 'Web'],
     description: 'Operating system',
     example: OperatingSystem.iOS,
   })

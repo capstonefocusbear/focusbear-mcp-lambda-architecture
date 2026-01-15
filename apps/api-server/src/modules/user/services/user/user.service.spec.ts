@@ -1113,7 +1113,7 @@ describe('UserService', () => {
   describe('updateMetadata', () => {
     it('positive: should call function to update user metadata', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
+      const profileImageDummy = 'www.image.com';
       const descriptionDummy = 'Random text here';
 
       await userService.updateMetadata(

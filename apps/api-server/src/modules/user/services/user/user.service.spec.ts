@@ -1373,7 +1373,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should call OpenAI service with correct parameters including user context', async () => {
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const isUrlSafeDto = {
         url: 'https://example.com',
@@ -1396,17 +1396,14 @@ describe('UserService', () => {
         expect.objectContaining({
           ...isUrlSafeDto,
           url: expect.any(String),
+          justificationForThisUrl: undefined,
         }),
         userDummy.language,
-        {
-          jobDetails: userDummy.user_job_details,
-          typicalDistractions: userDummy.user_typical_distractions,
-        },
       );
       expect(result).toEqual(expectedResponse);
     });
 
-    it('positive: should pass user context fields from user entity to OpenAI service', async () => {
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
       const userWithContext = {
         ...userDummy,
         user_job_details: 'Software developer working on AI features',
@@ -1433,16 +1430,13 @@ describe('UserService', () => {
         expect.objectContaining({
           ...isUrlSafeDto,
           url: expect.any(String),
+          justificationForThisUrl: undefined,
         }),
         userWithContext.language,
-        {
-          jobDetails: 'Software developer working on AI features',
-          typicalDistractions: 'YouTube videos and Reddit',
-        },
       );
     });
 
-    it('positive: should pass undefined user context when user entity fields are null', async () => {
+    it('positive: should normalize DTO when user entity fields are null', async () => {
       const userWithoutContext = {
         ...userDummy,
         user_job_details: null,
@@ -1469,12 +1463,9 @@ describe('UserService', () => {
         expect.objectContaining({
           ...isUrlSafeDto,
           url: expect.any(String),
+          justificationForThisUrl: undefined,
         }),
         userWithoutContext.language,
-        {
-          jobDetails: null,
-          typicalDistractions: null,
-        },
       );
     });
   });
@@ -1500,7 +1491,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should call OpenAI service with correct parameters', async () => {
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const isAppSafeDto = {
         focusMode: 'work',
@@ -1518,14 +1509,17 @@ describe('UserService', () => {
       const result = await userService.checkIsAppSafe(isAppSafeDto, userDummy.id);
 
       expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
-      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userDummy.language, {
-        jobDetails: userDummy.user_job_details,
-        typicalDistractions: userDummy.user_typical_distractions,
-      });
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: 'I need it for programming',
+        }),
+        userDummy.language,
+      );
       expect(result).toEqual(expectedResponse);
     });
 
-    it('positive: should pass user context fields from user entity to OpenAI service', async () => {
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
       const userWithContext = {
         ...userDummy,
         user_job_details: 'Full-stack engineer at Focus Bear',
@@ -1546,13 +1540,16 @@ describe('UserService', () => {
 
       await userService.checkIsAppSafe(isAppSafeDto, userWithContext.id);
 
-      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userWithContext.language, {
-        jobDetails: 'Full-stack engineer at Focus Bear',
-        typicalDistractions: 'Short-form social media clips',
-      });
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithContext.language,
+      );
     });
 
-    it('positive: should pass undefined user context when user entity fields are null', async () => {
+    it('positive: should normalize DTO when user entity fields are null', async () => {
       const userWithoutContext = {
         ...userDummy,
         user_job_details: null,
@@ -1573,10 +1570,13 @@ describe('UserService', () => {
 
       await userService.checkIsAppSafe(isAppSafeDto, userWithoutContext.id);
 
-      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userWithoutContext.language, {
-        jobDetails: null,
-        typicalDistractions: null,
-      });
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithoutContext.language,
+      );
     });
   });
 

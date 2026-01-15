@@ -45,10 +45,7 @@ export class AnnouncementViewsRepository extends BaseRepository<AnnouncementView
         action,
         read_at: read_at || new Date(),
       })
-      .orUpdate({
-        conflict_target: ['user_id', 'announcement_id'],
-        overwrite: ['action', 'source', 'read_at'],
-      })
+      .orUpdate(['action', 'source', 'read_at'], ['user_id', 'announcement_id'])
       .execute();
   }
 }

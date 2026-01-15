@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { OpenAIService, PromptCacheService } from '@app/openai';
 import { RoutineSuggestionGeneratorService, RoutineSuggestionCandidate } from './routine-suggestion-generator.service';
 import { ActivityTemplate } from '../entity/activity-template.entity';
@@ -240,6 +240,36 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       rejectedCount: 1,
       parsedCount: 1,
       minScoreApplied: 0.7,
+    });
+  });
+
+  it('caps LLM-provided match scores to retrieval similarity to avoid unrelated habits', async () => {
+    promptCacheServiceMock.getPrompt.mockReturnValue(null);
+    const template = buildTemplate({ activity_data: { name: 'Yoga Flow', text_instructions: 'Do yoga.' } });
+    const candidate = buildCandidate(template, 0.22);
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([
+              {
+                habitId: template.id,
+                justification: 'Helpful for posture.',
+                matchScore: 0.9,
+              },
+            ]),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateSuggestions('Become a guitarist', [candidate], { minMatchScore: 0.5 });
+
+    expect(result).toEqual({
+      accepted: [],
+      rejectedCount: 1,
+      parsedCount: 1,
+      minScoreApplied: 0.5,
     });
   });
 

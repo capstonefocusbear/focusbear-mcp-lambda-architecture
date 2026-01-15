@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { createHash } from 'crypto';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
@@ -69,11 +69,27 @@ export class RoutineSuggestionsAsyncService {
   }
 
   private computeRequestHash(dto: GetRoutineSuggestionsDto, userId: string): string {
+    const normalizedGoals = (dto.user_goals ?? [])
+      .map((item: any) => {
+        if (typeof item === 'string') {
+          return { goal: item.trim().toLowerCase(), isCustom: false };
+        }
+        if (item && typeof item === 'object') {
+          return {
+            goal: typeof item.goal === 'string' ? item.goal.trim().toLowerCase() : '',
+            isCustom: item.isCustom === true,
+          };
+        }
+        return { goal: '', isCustom: false };
+      })
+      .filter((entry) => entry.goal.length > 0);
+
     const payload = {
       userId,
       routine: dto.routine ?? null,
       routineDuration: dto.routine_duration ?? null,
-      goals: (dto.user_goals ?? []).map((goal) => goal.trim().toLowerCase()).sort(),
+      // Include `isCustom` in the hash so custom-vs-predefined intent can't collide in async caching/metadata.
+      goals: normalizedGoals.map((entry) => `${entry.goal}:${entry.isCustom}`).sort(),
       groupByGoals: dto.groupByGoals ?? false,
     };
     return createHash('sha256').update(JSON.stringify(payload)).digest('hex');

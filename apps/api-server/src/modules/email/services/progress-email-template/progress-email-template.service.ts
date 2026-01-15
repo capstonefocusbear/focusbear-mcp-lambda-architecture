@@ -18,6 +18,15 @@ export class ProgressEmailTemplateService {
     private readonly i18nService: I18nService,
   ) {}
 
+  private getMonthlyPeriodDays(metrics: MonthlyProgressMetricsDto): number {
+    return Math.max(
+      metrics.routines?.morning?.total || 0,
+      metrics.routines?.evening?.total || 0,
+      metrics.routines?.micro_breaks?.total || 0,
+      1,
+    );
+  }
+
   private getApiBaseUrl(): string {
     return process.env.API_URL || process.env.DASHBOARD_URL || 'https://api.focusbear.io';
   }
@@ -108,7 +117,7 @@ export class ProgressEmailTemplateService {
         this.i18nService.t('common.email_you_last_used', { lang: userLang }) || 'You last used the app on',
       usageLowWarningText:
         this.i18nService.t('common.email_usage_low_warning', { lang: userLang }) ||
-        "This is too low. Consistent usage is key to building strong habits! Let's get back on track this week. 💪",
+        "That's lower than usual — and that's okay. Small, consistent steps add up; whenever you're ready, we're here to help you build momentum.",
       whyItMattersText: this.i18nService.t('common.email_why_it_matters', { lang: userLang }) || 'Why it matters',
       habitMomentumText:
         this.i18nService.t('common.email_habit_momentum', { lang: userLang }) || 'Habit building needs daily momentum.',
@@ -180,7 +189,10 @@ export class ProgressEmailTemplateService {
           : 0,
       focusModeUsage:
         metrics.focus_sessions?.sessions_count > 0
-          ? Math.min(100, Math.round((metrics.focus_sessions.sessions_count / 30) * 100))
+          ? Math.min(
+              100,
+              Math.round((metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics)) * 100),
+            )
           : 0,
       microBreaksUsage:
         metrics.routines?.micro_breaks?.total > 0
@@ -286,7 +298,7 @@ export class ProgressEmailTemplateService {
 
   /**
    * Calculate overall usage percentage for weekly progress
-   * Combines routine completion, focus sessions, and task completion rates
+   * Combines routine completion and focus sessions
    * @returns Overall usage percentage (0-100)
    */
   private calculateOverallUsage(metrics: WeeklyProgressMetricsDto): number {
@@ -308,16 +320,13 @@ export class ProgressEmailTemplateService {
     const focusUsage =
       metrics.focus_sessions.sessions_count > 0 ? Math.min(1, metrics.focus_sessions.sessions_count / periodDays) : 0;
 
-    // Task completion rate (already in 0-1 scale)
-    const taskUsage = metrics.tasks.completion_rate || 0;
-
-    // Average all three components and convert to percentage
-    return Math.round(((routineUsage + focusUsage + taskUsage) / 3) * 100);
+    // Tasks are excluded from the usage score until we have real task metrics (current tasks values are placeholders).
+    return Math.round(((routineUsage + focusUsage) / 2) * 100);
   }
 
   /**
    * Calculate overall usage percentage for monthly progress
-   * Combines routine completion, focus sessions, and task completion rates
+   * Combines routine completion and focus sessions
    * @returns Overall usage percentage (0-100)
    */
   private calculateOverallUsageMonthly(metrics: MonthlyProgressMetricsDto): number {
@@ -334,16 +343,14 @@ export class ProgressEmailTemplateService {
     // Average all routine types
     const routineUsage = (morningUsage + eveningUsage + microBreaksUsage) / 3;
 
-    // Focus usage: 1 session per day = 100% (30 sessions in a month)
-    // Note: This assumes 30 days in a month and that 1 focus session per day is ideal
+    // Focus usage: 1 session per day = 100%
     const focusUsage =
-      metrics.focus_sessions?.sessions_count > 0 ? Math.min(1, metrics.focus_sessions.sessions_count / 30) : 0;
+      metrics.focus_sessions?.sessions_count > 0
+        ? Math.min(1, metrics.focus_sessions.sessions_count / this.getMonthlyPeriodDays(metrics))
+        : 0;
 
-    // Task completion rate (already in 0-1 scale)
-    const taskUsage = metrics.tasks?.completion_rate || 0;
-
-    // Average all three components and convert to percentage
-    return Math.round(((routineUsage + focusUsage + taskUsage) / 3) * 100);
+    // Tasks are excluded from the usage score until we have real task metrics (current tasks values are placeholders).
+    return Math.round(((routineUsage + focusUsage) / 2) * 100);
   }
 
   private getLastActiveDate(user: User, userLang = 'en'): string {

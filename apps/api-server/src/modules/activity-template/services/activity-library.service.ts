@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
@@ -9,7 +9,8 @@ import { ActivityTemplateRepository } from '../repository/activity-template.repo
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
-import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
+import { GetRoutineSuggestionsDto, GetRoutineSuggestionsInput } from '../dto/get-routine-suggestions.dto';
+import { UserGoalDto, UserGoalInput } from '../dto/user-goal.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
 import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
@@ -42,9 +43,19 @@ export interface ActivityMetadata {
   justification: string;
   matchScore: number;
   goals: string[];
+  isFromCustomGoal: boolean;
   name?: string;
   description?: string;
 }
+
+type NormalizedGoalEntry = { goal: string; isCustom: boolean };
+type NormalizedGoals = {
+  goalEntries: NormalizedGoalEntry[];
+  goalStrings: string[];
+  hasCustomGoals: boolean;
+  customGoalStrings: string[];
+  predefinedGoalStrings: string[];
+};
 
 @Injectable()
 export class ActivityLibraryService {
@@ -129,7 +140,7 @@ export class ActivityLibraryService {
   }
 
   async getActivitiesRelatedToUserGoals(
-    getRoutineSuggestionsDto: GetRoutineSuggestionsDto,
+    getRoutineSuggestionsDto: GetRoutineSuggestionsInput,
     user_id: string,
     options?: RoutineSuggestionRequestOptions,
   ) {
@@ -137,6 +148,7 @@ export class ActivityLibraryService {
       const { useRag = true, ...ragOptions } = options ?? {};
       const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       const request = normalizedRoutineSuggestionsDto;
+      const normalizedGoals = this.normalizeGoalsWithMetadata(request.user_goals);
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -147,7 +159,7 @@ export class ActivityLibraryService {
       this.logger.debug(
         `RoutineSuggestions:start ${JSON.stringify({
           userId: user_id,
-          goalCount: request.user_goals?.length ?? 0,
+          goalCount: normalizedGoals.goalStrings.length,
           routine: request.routine,
           durationMinutes: request.routine_duration,
         })}`,
@@ -157,11 +169,15 @@ export class ActivityLibraryService {
 
       const routineDurationSeconds = request.routine_duration * ONE_MINUTE_SECONDS;
 
-      const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched(request);
+      const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched({
+        routine_duration: request.routine_duration,
+        routine: request.routine,
+        user_goals: normalizedGoals.goalStrings,
+      });
       this.logger.debug(
         `RoutineSuggestions:dbDirectMatches ${JSON.stringify({
           userId: user_id,
-          goals: request.user_goals,
+          goals: normalizedGoals.goalStrings,
           directMatchCount: directMatches.length,
         })}`,
       );
@@ -169,19 +185,31 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      const directTemplates = this.userDesiredRoutineDurationSeconds(orderedMatches, routineDurationSeconds);
+      const { metadata: directMatchMetadata, matchedCustomGoalLowerSet } = this.buildDirectMatchMetadata(
+        orderedMatches,
+        normalizedGoals,
+      );
+      const directTemplates = this.userDesiredRoutineDurationSeconds(
+        orderedMatches,
+        routineDurationSeconds,
+        directMatchMetadata,
+      );
 
-      if (directTemplates.length) {
+      const customGoalsWithoutMatches = normalizedGoals.customGoalStrings.filter(
+        (goal) => !matchedCustomGoalLowerSet.has(goal.toLowerCase()),
+      );
+
+      if (directTemplates.length && (!normalizedGoals.hasCustomGoals || customGoalsWithoutMatches.length === 0)) {
         this.logger.debug(
           `RoutineSuggestions:directMatches ${JSON.stringify({
             userId: user_id,
-            goals: request.user_goals,
+            goals: normalizedGoals.goalStrings,
             templateCount: directTemplates.length,
           })}`,
         );
         if (request.groupByGoals) {
           const groupedByGoal: Record<string, ActivityTemplate[]> = {};
-          for (const goal of request.user_goals ?? []) {
+          for (const { goal } of normalizedGoals.goalEntries) {
             groupedByGoal[goal] = directTemplates
               .filter((template: ActivityTemplate) => template.tags?.some((tag) => tag.tags.includes(goal)))
               .map((template) => ({
@@ -199,7 +227,7 @@ export class ActivityLibraryService {
         this.logger.debug(
           `RoutineSuggestions:ragSkipped ${JSON.stringify({
             userId: user_id,
-            goalCount: request.user_goals?.length ?? 0,
+            goalCount: normalizedGoals.goalStrings.length,
             routine: request.routine,
             durationMinutes: request.routine_duration,
           })}`,
@@ -207,12 +235,15 @@ export class ActivityLibraryService {
         return request.groupByGoals ? {} : [];
       }
 
-      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, ragOptions);
+      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, ragOptions, {
+        templates: orderedMatches,
+        metadata: directMatchMetadata,
+      });
 
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
           userId: user_id,
-          goals: request.user_goals,
+          goals: normalizedGoals.goalStrings,
           templateCount: ragResult.templates.length,
           generatedCount: ragResult.groupedByGoal
             ? Object.values(ragResult.groupedByGoal).reduce((acc, list) => acc + (list?.length ?? 0), 0)
@@ -229,7 +260,7 @@ export class ActivityLibraryService {
     }
   }
 
-  private normalizeRoutineSuggestionsDto(dto: GetRoutineSuggestionsDto): GetRoutineSuggestionsDto {
+  private normalizeRoutineSuggestionsDto(dto: GetRoutineSuggestionsInput): GetRoutineSuggestionsDto {
     const normalizedGoals = this.normalizeUserGoals(dto.user_goals);
     return {
       ...dto,
@@ -237,12 +268,21 @@ export class ActivityLibraryService {
     };
   }
 
-  private normalizeUserGoals(userGoals?: string[]): string[] {
+  private normalizeUserGoals(userGoals?: UserGoalInput[]): UserGoalDto[] {
     if (!userGoals?.length) {
       return [];
     }
 
-    return userGoals.map((goal) => this.normalizeGoal(goal)).filter((goal) => goal.length > 0);
+    // The API is backward compatible: older clients send `string[]`, newer clients send `{ goal, isCustom }[]`.
+    // This normalizer converts both shapes into the internal `{ goal, isCustom }[]` representation.
+    return userGoals
+      .map((goal) => {
+        if (typeof goal === 'string') {
+          return { goal: this.normalizeGoal(goal), isCustom: false };
+        }
+        return { goal: this.normalizeGoal(goal.goal), isCustom: goal.isCustom ?? false };
+      })
+      .filter((goal) => goal.goal.length > 0);
   }
 
   private normalizeGoal(goal: string): string {
@@ -251,6 +291,84 @@ export class ActivityLibraryService {
     }
     const withoutEmojis = goal.replace(EMOJI_REGEX, '');
     return withoutEmojis.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Produces a "dual" representation of goals:
+   * - `goalEntries`: keeps `isCustom` and is sorted custom-first (for deterministic priority).
+   * - `goalStrings`: plain strings for legacy consumers (DB tag match, embedding calls, etc).
+   *
+   * We keep this helper local to the service so the rest of the pipeline can treat goals consistently.
+   */
+  private normalizeGoalsWithMetadata(userGoals?: UserGoalInput[]): NormalizedGoals {
+    const entries = this.normalizeUserGoals(userGoals).map((entry) => ({
+      goal: entry.goal,
+      isCustom: entry.isCustom ?? false,
+    }));
+
+    const sorted = [...entries].sort((a, b) => {
+      if (a.isCustom && !b.isCustom) return -1;
+      if (!a.isCustom && b.isCustom) return 1;
+      return 0;
+    });
+
+    const customGoalStrings = sorted.filter((entry) => entry.isCustom).map((entry) => entry.goal);
+    const predefinedGoalStrings = sorted.filter((entry) => !entry.isCustom).map((entry) => entry.goal);
+
+    return {
+      goalEntries: sorted,
+      goalStrings: sorted.map((entry) => entry.goal),
+      hasCustomGoals: customGoalStrings.length > 0,
+      customGoalStrings,
+      predefinedGoalStrings,
+    };
+  }
+
+  /**
+   * Direct tag-matches are "high confidence" and should always be eligible, but we still need to know whether
+   * a direct match is supporting a custom goal vs a predefined goal so we can keep ordering deterministic.
+   *
+   * This builds a metadata map for the direct-match templates and also tracks which custom goals were actually matched.
+   */
+  private buildDirectMatchMetadata(
+    templates: ActivityTemplate[],
+    normalizedGoals: NormalizedGoals,
+  ): { metadata: Map<string, ActivityMetadata>; matchedCustomGoalLowerSet: Set<string> } {
+    const customGoalMap = new Map(normalizedGoals.customGoalStrings.map((goal) => [goal.toLowerCase(), goal]));
+    const predefinedGoalMap = new Map(normalizedGoals.predefinedGoalStrings.map((goal) => [goal.toLowerCase(), goal]));
+    const matchedCustomGoalLowerSet = new Set<string>();
+    const metadata = new Map<string, ActivityMetadata>();
+
+    templates.forEach((template) => {
+      const matchedGoals: string[] = [];
+      let matchedCustom = false;
+
+      template.tags?.forEach((tagEntity) => {
+        tagEntity.tags.forEach((tag) => {
+          const tagLower = tag.toLowerCase();
+          const canonicalCustom = customGoalMap.get(tagLower);
+          if (canonicalCustom) {
+            matchedCustom = true;
+            matchedCustomGoalLowerSet.add(tagLower);
+            matchedGoals.push(canonicalCustom);
+            return;
+          }
+          const canonicalPredefined = predefinedGoalMap.get(tagLower);
+          if (canonicalPredefined) {
+            matchedGoals.push(canonicalPredefined);
+          }
+        });
+      });
+
+      metadata.set(template.id, {
+        isFromCustomGoal: matchedCustom,
+        matchScore: 1,
+        goals: matchedGoals,
+        justification: '',
+      });
+    });
+
+    return { metadata, matchedCustomGoalLowerSet };
   }
 
   /**
@@ -278,27 +396,39 @@ export class ActivityLibraryService {
       [ActivityType.library]: 0,
     }; // @Description: unit of duration is seconds
 
-    // Sort by match score (highest first), then by duration (shortest first)
-    const sortedTemplates = activityTemplates
-      .filter(
-        (template) =>
-          template.activity_type === ActivityType.morning ||
-          template.activity_type === ActivityType.evening ||
-          template.activity_type === ActivityType.break ||
-          template.activity_type === ActivityType.library,
-      )
-      .sort((a, b) => {
-        const aMetadata = metadataMap.get(a.id);
-        const bMetadata = metadataMap.get(b.id);
-        const aScore = aMetadata?.matchScore ?? 0;
-        const bScore = bMetadata?.matchScore ?? 0;
+    // We want deterministic priority:
+    // 1) habits supporting custom goals
+    // 2) habits supporting predefined goals
+    //
+    // Within each bucket we keep the existing ranking (higher matchScore first, then shorter duration).
+    const customTemplates = activityTemplates.filter((template) => metadataMap.get(template.id)?.isFromCustomGoal);
+    const predefinedTemplates = activityTemplates.filter((template) => !metadataMap.get(template.id)?.isFromCustomGoal);
+    const sortByScoreThenDuration = (templates: ActivityTemplate[]) =>
+      templates
+        .filter(
+          (template) =>
+            template.activity_type === ActivityType.morning ||
+            template.activity_type === ActivityType.evening ||
+            template.activity_type === ActivityType.break ||
+            template.activity_type === ActivityType.library,
+        )
+        .sort((a, b) => {
+          const aMetadata = metadataMap.get(a.id);
+          const bMetadata = metadataMap.get(b.id);
+          const aScore = aMetadata?.matchScore ?? 0;
+          const bScore = bMetadata?.matchScore ?? 0;
 
-        // Sort by match score descending, then by duration ascending
-        if (bScore !== aScore) {
-          return bScore - aScore;
-        }
-        return a.duration_seconds - b.duration_seconds;
-      });
+          if (bScore !== aScore) {
+            return bScore - aScore;
+          }
+          return a.duration_seconds - b.duration_seconds;
+        });
+
+    // Custom-first: sort each partition by match score then duration, then concatenate.
+    const sortedTemplates = [
+      ...sortByScoreThenDuration(customTemplates),
+      ...sortByScoreThenDuration(predefinedTemplates),
+    ];
 
     sortedTemplates.some((activityTemplate) => {
       const template_duration = parseInt(activityTemplate.duration_seconds?.toString(), 10);
@@ -319,41 +449,43 @@ export class ActivityLibraryService {
         return false;
       }
 
-      // For morning/evening: also respect duration budget
+      // Respect the user's duration budget for all activity types
       const isValidDuration = this.isValidTemplateDuration(
         template_duration,
         routineDuration[activityType],
         userRoutineDurationSeconds,
       );
-      if (isValidDuration || activityType === ActivityType.break || activityType === ActivityType.library) {
-        routineDuration[activityType] += template_duration;
-        const { activity_data, ...rest } = activityTemplate;
-        const metadata = metadataMap.get(activityTemplate.id);
-        const baseActivity: any = {
-          ...rest,
-          ...activity_data,
-          id: randomUUID(),
-          original_template_id: activityTemplate.id,
-          ai_generated: false,
-          ai_justification: metadata?.justification ?? '',
-          ai_match_score: typeof metadata?.matchScore === 'number' ? Number(metadata.matchScore.toFixed(2)) : null,
-          ai_goals: metadata?.goals ?? [],
-        };
-        const overrideName = metadata?.name ?? baseActivity.name;
-        if (overrideName) {
-          baseActivity.name = overrideName;
-        }
-        const overrideDescription = metadata?.description ?? baseActivity.text_instructions;
-        if (overrideDescription) {
-          baseActivity.text_instructions = overrideDescription;
-          baseActivity.description = overrideDescription;
-        }
-        if (!baseActivity.description && baseActivity.text_instructions) {
-          baseActivity.description = baseActivity.text_instructions;
-        }
-        allValidActivities.push(baseActivity);
-        routineLength[activityTemplate.activity_type] += 1;
+      if (!isValidDuration) {
+        return false;
       }
+
+      routineDuration[activityType] += template_duration;
+      const { activity_data, ...rest } = activityTemplate;
+      const metadata = metadataMap.get(activityTemplate.id);
+      const baseActivity: any = {
+        ...rest,
+        ...activity_data,
+        id: randomUUID(),
+        original_template_id: activityTemplate.id,
+        ai_generated: false,
+        ai_justification: metadata?.justification ?? '',
+        ai_match_score: typeof metadata?.matchScore === 'number' ? Number(metadata.matchScore.toFixed(2)) : null,
+        ai_goals: metadata?.goals ?? [],
+      };
+      const overrideName = metadata?.name ?? baseActivity.name;
+      if (overrideName) {
+        baseActivity.name = overrideName;
+      }
+      const overrideDescription = metadata?.description ?? baseActivity.text_instructions;
+      if (overrideDescription) {
+        baseActivity.text_instructions = overrideDescription;
+        baseActivity.description = overrideDescription;
+      }
+      if (!baseActivity.description && baseActivity.text_instructions) {
+        baseActivity.description = baseActivity.text_instructions;
+      }
+      allValidActivities.push(baseActivity);
+      routineLength[activityTemplate.activity_type] += 1;
       return false;
     });
     return allValidActivities;
@@ -364,18 +496,25 @@ export class ActivityLibraryService {
     routineDurationSeconds: number,
     userId?: string,
     options?: RagRequestOptions,
+    seed?: { templates: ActivityTemplate[]; metadata: Map<string, ActivityMetadata> },
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
     // RAG flow documented in docs/rag-routine-suggestions-flow.md
     const request = getRoutineSuggestionsDto;
-    const goals = request.user_goals ?? [];
+    const normalizedGoals = this.normalizeGoalsWithMetadata(request.user_goals);
+    const goals = normalizedGoals.goalEntries;
     if (!goals.length) {
       return { templates: [], groupedByGoal: {} };
     }
 
     const goalResults = await Promise.all(
-      goals.map(async (goal) => {
+      goals.map(async ({ goal, isCustom }) => {
+        // When a user typed a custom goal, treat it as the primary intent.
+        // We still generate for predefined goals, but we keep their per-goal cap lower so custom tends to dominate.
         const generationOptions = {
-          limit: RAG_RETRIEVAL_LIMIT,
+          limit:
+            normalizedGoals.hasCustomGoals && !isCustom
+              ? Math.max(1, Math.floor(RAG_RETRIEVAL_LIMIT / 2))
+              : RAG_RETRIEVAL_LIMIT,
           routineType: request.routine,
           routineDurationSeconds,
         };
@@ -383,7 +522,7 @@ export class ActivityLibraryService {
           const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, RAG_RETRIEVAL_LIMIT);
           if (!matches.length) {
             const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
-            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
+            return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
           const matchedIds = matches.map((match) => match.activityTemplateId);
@@ -407,14 +546,44 @@ export class ActivityLibraryService {
 
           if (!candidates.length) {
             const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
-            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
+            return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
           const suggestionResult = await this.routineSuggestionGeneratorService.generateSuggestions(goal, candidates, {
             limit: generationOptions.limit,
           });
           if (suggestionResult.accepted.length) {
-            return { goal, suggestions: suggestionResult.accepted, generated: [] as GeneratedHabitSuggestion[] };
+            const acceptedDurationSeconds = suggestionResult.accepted.reduce(
+              (total, suggestion) => total + Number(suggestion.template?.duration_seconds ?? 0),
+              0,
+            );
+
+            if (acceptedDurationSeconds >= (generationOptions.routineDurationSeconds ?? 0)) {
+              return {
+                goal,
+                isCustom,
+                suggestions: suggestionResult.accepted,
+                generated: [] as GeneratedHabitSuggestion[],
+              };
+            }
+
+            const remainingSeconds = Math.max(
+              ONE_MINUTE_SECONDS,
+              (generationOptions.routineDurationSeconds ?? ONE_MINUTE_SECONDS) - acceptedDurationSeconds,
+            );
+            const remainingSlots = Math.max(
+              0,
+              (generationOptions.limit ?? RAG_RETRIEVAL_LIMIT) - suggestionResult.accepted.length,
+            );
+            const generated = remainingSlots
+              ? await this.routineSuggestionGeneratorService.generateNewHabits(goal, {
+                  ...generationOptions,
+                  routineDurationSeconds: remainingSeconds,
+                  limit: remainingSlots,
+                })
+              : [];
+
+            return { goal, isCustom, suggestions: suggestionResult.accepted, generated };
           }
 
           this.sentryService.instance().addBreadcrumb({
@@ -425,7 +594,7 @@ export class ActivityLibraryService {
           });
           const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
           if (generated.length) {
-            return { goal, suggestions: [] as RoutineSuggestionResult[], generated };
+            return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
           this.sentryService.instance().captureMessage('RoutineSuggestion: generated habits fallback returned empty', {
@@ -441,27 +610,40 @@ export class ActivityLibraryService {
           );
           if (similarityFallback.length) {
             // Last-resort: if the LLM rejected everything or errored, surface top embedding matches with a disclaimer
-            return { goal, suggestions: similarityFallback, generated: [] as GeneratedHabitSuggestion[] };
+            return {
+              goal,
+              isCustom,
+              suggestions: similarityFallback,
+              generated: [] as GeneratedHabitSuggestion[],
+            };
           }
 
-          return { goal, suggestions: [] as RoutineSuggestionResult[], generated: [] as GeneratedHabitSuggestion[] };
+          return {
+            goal,
+            isCustom,
+            suggestions: [] as RoutineSuggestionResult[],
+            generated: [] as GeneratedHabitSuggestion[],
+          };
         } catch (error) {
           this.sentryService.instance().captureException(error, {
             level: 'error',
             extra: { goal },
           });
-          return { goal, suggestions: [] as RoutineSuggestionResult[], generated: [] as GeneratedHabitSuggestion[] };
+          return {
+            goal,
+            isCustom,
+            suggestions: [] as RoutineSuggestionResult[],
+            generated: [] as GeneratedHabitSuggestion[],
+          };
         }
       }),
     );
 
     const metadataAccumulator = new Map<string, ActivityMetadata>();
     const templatesAccumulator = new Map<string, ActivityTemplate>();
-    const suggestionsByGoal: Record<string, RoutineSuggestionResult[]> = {};
     const generatedByGoal: Record<string, GeneratedHabitSuggestion[]> = {};
 
-    goalResults.forEach(({ goal, suggestions, generated }) => {
-      suggestionsByGoal[goal] = suggestions;
+    goalResults.forEach(({ goal, isCustom, suggestions, generated }) => {
       if (generated?.length) {
         generatedByGoal[goal] = generated;
       }
@@ -479,6 +661,7 @@ export class ActivityLibraryService {
             existing.matchScore = Math.max(existing.matchScore, suggestion.matchScore);
           }
           existing.goals = Array.from(new Set([...existing.goals, goal]));
+          existing.isFromCustomGoal = existing.isFromCustomGoal || isCustom;
           if (suggestionName) {
             existing.name = suggestionName;
           }
@@ -490,12 +673,35 @@ export class ActivityLibraryService {
             justification: suggestion.justification || '',
             matchScore: suggestion.matchScore ?? 0,
             goals: [goal],
+            isFromCustomGoal: isCustom,
             name: suggestionName,
             description: suggestionDescription,
           });
         }
       });
     });
+
+    if (seed?.templates?.length) {
+      // Seed = direct tag matches from the "fast path".
+      // We merge them into the same accumulator so the duration/type selection step can apply custom-first ordering
+      // across both direct matches and RAG suggestions.
+      seed.templates.forEach((template) => {
+        templatesAccumulator.set(template.id, template);
+        const seedMetadata = seed.metadata.get(template.id);
+        if (!seedMetadata) {
+          return;
+        }
+        const existing = metadataAccumulator.get(template.id);
+        if (!existing) {
+          metadataAccumulator.set(template.id, seedMetadata);
+          return;
+        }
+        existing.matchScore = Math.max(existing.matchScore, seedMetadata.matchScore);
+        existing.justification = [existing.justification, seedMetadata.justification].filter(Boolean).join(' ').trim();
+        existing.goals = Array.from(new Set([...(existing.goals ?? []), ...(seedMetadata.goals ?? [])]));
+        existing.isFromCustomGoal = existing.isFromCustomGoal || seedMetadata.isFromCustomGoal;
+      });
+    }
 
     const aggregatedTemplates = Array.from(templatesAccumulator.values());
 
@@ -533,29 +739,63 @@ export class ActivityLibraryService {
       })}`,
     );
 
+    // If duration filtering removed all suggestions, generate habits so the response is not empty
+    if (!finalTemplates.length) {
+      const goalsNeedingGeneration = normalizedGoals.goalStrings.filter(
+        (goal) => (generatedByGoal[goal]?.length ?? 0) === 0,
+      );
+      const generatedResults = await Promise.all(
+        goalsNeedingGeneration.map((goal) =>
+          this.routineSuggestionGeneratorService.generateNewHabits(goal, {
+            limit: RAG_RETRIEVAL_LIMIT,
+            routineDurationSeconds,
+            routineType: request.routine,
+          }),
+        ),
+      );
+      goalsNeedingGeneration.forEach((goal, index) => {
+        const generated = generatedResults[index] ?? [];
+        if (generated.length) {
+          generatedByGoal[goal] = generated;
+        }
+      });
+    }
+
     const generatedActivities = this.buildGeneratedActivities(generatedByGoal, routineDurationSeconds, request.routine);
 
     await this.persistGeneratedHabits(userId, generatedByGoal, request, generatedActivities.flat.length > 0, options);
 
-    const templatesByOriginalId = new Map(
-      finalTemplates
-        .filter((template: any) => template.original_template_id)
-        .map((template: any) => [template.original_template_id as string, template]),
-    );
+    let combinedTemplates = [...finalTemplates, ...generatedActivities.flat];
+    if (normalizedGoals.hasCustomGoals) {
+      // Final guardrail: ensure custom-goal habits appear first in the flat list even after generation/merging.
+      // We do this based on the ai_goals field (which we populate for both library matches and generated habits).
+      const customGoalLowerSet = new Set(normalizedGoals.customGoalStrings.map((goal) => goal.toLowerCase()));
+      const customFirst: ActivityTemplate[] = [];
+      const predefinedNext: ActivityTemplate[] = [];
+      combinedTemplates.forEach((template: any) => {
+        const aiGoals = Array.isArray(template?.ai_goals) ? template.ai_goals : [];
+        const isCustom = aiGoals.some((goal: string) => customGoalLowerSet.has(String(goal).toLowerCase()));
+        (isCustom ? customFirst : predefinedNext).push(template);
+      });
+      combinedTemplates = [...customFirst, ...predefinedNext];
+    }
 
     let groupedByGoal: Record<string, ActivityTemplate[]> | undefined;
     if (request.groupByGoals) {
       groupedByGoal = {};
-      for (const goal of goals) {
-        const suggestionEntries = (suggestionsByGoal[goal] ?? [])
-          .map((suggestion) => templatesByOriginalId.get(suggestion.habitId))
-          .filter((template): template is ActivityTemplate => !!template);
-        const generatedEntries = generatedActivities.byGoal[goal] ?? [];
-        groupedByGoal[goal] = [...suggestionEntries, ...generatedEntries];
+      // Preserve insertion order: custom goals first, then predefined goals.
+      // This makes the result predictable for clients that render sections in object-key order.
+      for (const { goal } of normalizedGoals.goalEntries) {
+        const goalLower = goal.toLowerCase();
+        groupedByGoal[goal] = combinedTemplates.filter((template: any) => {
+          if (!Array.isArray(template?.ai_goals)) {
+            return false;
+          }
+          return template.ai_goals.some((g: string) => String(g).toLowerCase() === goalLower);
+        });
       }
     }
 
-    const combinedTemplates = [...finalTemplates, ...generatedActivities.flat];
     if (!combinedTemplates.length) {
       return {
         templates: [],
@@ -591,16 +831,18 @@ export class ActivityLibraryService {
           typeof maxDurationMinutes === 'number'
             ? Math.min(rawDurationMinutes, maxDurationMinutes)
             : rawDurationMinutes;
+        const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
         const activityType =
           typeof habit.routineType === 'string'
             ? (habit.routineType.toLowerCase() as ActivityType)
             : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
         const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
-        const description = habit.description ?? '';
+        const rawDescription = habit.description ?? '';
+        const description = this.sanitizeDurationPhrases(rawDescription);
 
         const generatedActivity: any = {
           id: randomUUID(),
-          name: habit.name,
+          name: sanitizedName || habit.name,
           text_instructions: description,
           description,
           duration_seconds: durationSeconds,
@@ -617,6 +859,20 @@ export class ActivityLibraryService {
     });
 
     return { byGoal, flat };
+  }
+
+  /**
+   * Removes explicit duration phrasing from generated descriptions so the UI doesn't double-announce time.
+   */
+  private sanitizeDurationPhrases(text: string): string {
+    if (!text) return '';
+    const durationPattern =
+      /\b\d+(?:\s*[–—-]\s*\d+)?\s*[–—-]?\s*(?:hours?|hrs?|hr|minutes?|minute|mins?|min|seconds?|second|secs?|sec|s)\b[:.,-]?\s*/gi;
+    const cleaned = text
+      .replace(durationPattern, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    return cleaned;
   }
 
   private async persistGeneratedHabits(
@@ -731,9 +987,9 @@ export class ActivityLibraryService {
   }
 
   async createHabitWithAi(createHabitWithAiDto: CreateHabitWithAiDto, user_id: string) {
-    const goals = this.normalizeUserGoals(
-      createHabitWithAiDto.user_goals?.length ? createHabitWithAiDto.user_goals : [createHabitWithAiDto.prompt],
-    );
+    const hasExplicitGoals = (createHabitWithAiDto.user_goals?.length ?? 0) > 0;
+    const rawGoals = hasExplicitGoals ? (createHabitWithAiDto.user_goals as string[]) : [createHabitWithAiDto.prompt];
+    const goals = this.normalizeUserGoals(rawGoals.map((goal) => ({ goal, isCustom: !hasExplicitGoals })));
     const routineDuration = createHabitWithAiDto.routine_duration ?? DEFAULT_GENERATED_ACTIVITY_MINUTES;
     const request: GetRoutineSuggestionsDto = {
       user_goals: goals,

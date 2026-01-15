@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { Auth0AuthenticationService, Auth0ManagementService } from '@app/auth0';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';

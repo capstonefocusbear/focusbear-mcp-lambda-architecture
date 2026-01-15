@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SentryModule } from '@ntegral/nestjs-sentry';
+import { SentryModule } from '@app/observability';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';

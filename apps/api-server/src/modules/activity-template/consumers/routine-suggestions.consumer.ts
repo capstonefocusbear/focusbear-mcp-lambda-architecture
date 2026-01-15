@@ -1,6 +1,7 @@
+import { Logger } from '@nestjs/common';
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { PusherService } from '@app/pusher';
 import { RoutineSuggestionsJobData } from '../services/routine-suggestions-async.service';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
@@ -11,6 +12,8 @@ import { HabitCreationJobData } from '../services/habit-creation-async.service';
 
 @Processor(BullQueues.ROUTINE_SUGGESTIONS)
 export class RoutineSuggestionsConsumer {
+  private readonly logger = new Logger(RoutineSuggestionsConsumer.name);
+
   constructor(
     @InjectSentry() private readonly sentry: SentryService,
     private readonly asyncTaskService: AsyncTaskService,
@@ -48,11 +51,19 @@ export class RoutineSuggestionsConsumer {
         result,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
+      const payload = {
         asyncTaskId,
         status: 'completed',
-        result,
-      });
+      };
+      const payloadBytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+      this.logger.debug(
+        `RoutineSuggestions:pusherPayload ${JSON.stringify({
+          asyncTaskId,
+          userId,
+          payloadBytes,
+        })}`,
+      );
+      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', payload);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -70,11 +81,19 @@ export class RoutineSuggestionsConsumer {
         errorMessage,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
-        asyncTaskId,
-        status: 'failed',
-        errorMessage,
-      });
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'routine-suggestions.completed', {
+          asyncTaskId,
+          status: 'failed',
+          errorMessage,
+        });
+      } catch (pusherError) {
+        this.sentry.instance().captureException(pusherError, {
+          level: 'warning',
+          tags: { service: 'pusher-channels', operation: 'trigger', event: 'routine-suggestions.completed' },
+          extra: { asyncTaskId, userId, context: 'failed to send failure notification' },
+        });
+      }
     }
   }
 
@@ -107,7 +126,6 @@ export class RoutineSuggestionsConsumer {
       await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
         asyncTaskId,
         status: 'completed',
-        result,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -126,11 +144,19 @@ export class RoutineSuggestionsConsumer {
         errorMessage,
       });
 
-      await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
-        asyncTaskId,
-        status: 'failed',
-        errorMessage,
-      });
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'habit-creation.completed', {
+          asyncTaskId,
+          status: 'failed',
+          errorMessage,
+        });
+      } catch (pusherError) {
+        this.sentry.instance().captureException(pusherError, {
+          level: 'warning',
+          tags: { service: 'pusher-channels', operation: 'trigger', event: 'habit-creation.completed' },
+          extra: { asyncTaskId, userId, context: 'failed to send failure notification' },
+        });
+      }
     }
   }
 }

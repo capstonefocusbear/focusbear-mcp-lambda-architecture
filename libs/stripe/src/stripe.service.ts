@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SentryTraced } from '@sentry/nestjs';
+import { InjectSentry, SentryService } from '@app/observability';
 import axios from 'axios';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0/services/auth0-management.service';
@@ -38,6 +39,7 @@ export class StripeService extends Stripe {
 
   readonly ormFeedback = AppDataSource.getRepository(Feedback);
 
+  @SentryTraced('createCheckoutSession')
   async createCheckoutSession(
     customer: string,
     { price_id, team_id, team_size = 1, team_name }: CreateStripeCheckoutSessionDto,
@@ -66,6 +68,7 @@ export class StripeService extends Stripe {
       });
   }
 
+  @SentryTraced('updateSubscription')
   async updateSubscription(subId: string, subItemId: string, quantity: number) {
     const subscription = await this.subscriptions.update(subId, {
       items: [

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { BlockingScheduleRepository } from '../../repositories/blocking-schedule.repository';
 import { FocusModeRepository } from '../../repositories/focus-mode.repository';
 import { UpsertBlockingScheduleDto } from '../../dto/upsert-blocking-schedule.dto';

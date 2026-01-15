@@ -8,7 +8,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
@@ -361,7 +361,15 @@ export class UserSettingsService {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async sendSettingsUpdatedBroadcast(userId: string, language: string, deviceId: string) {
-    await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+    try {
+      await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { service: 'pusher-channels', operation: 'trigger', event: 'settings-updated' },
+        extra: { userId, deviceId },
+      });
+    }
     // NOTE: comment out until implemented in mobile app
     // const title = this.i18nService.t('common.settings_updated', { lang: language });
     // const body = this.i18nService.t('common.settings_updated_message', {

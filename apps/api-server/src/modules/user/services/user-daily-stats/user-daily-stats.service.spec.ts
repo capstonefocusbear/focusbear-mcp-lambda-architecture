@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { getQueueToken } from '@nestjs/bull';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';

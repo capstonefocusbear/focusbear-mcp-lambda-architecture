@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { randomUUID } from 'crypto';
 import * as _ from 'lodash';
 import { In } from 'typeorm';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { UpdateActivityTemplateDto } from '../../../activity-template/dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../../../activity-template/repository/activity-template.repository';
 import { UpdateActivityDto } from '../../../activity/dto/update-activity.dto';

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
 import { CreateSurveyAnswerDto } from '../dto/create-survey-answer.dto';
 import { SurveyRepository } from '../repositories/survey.repository';

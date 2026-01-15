@@ -9,7 +9,8 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { DateTime, IANAZone } from 'luxon';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SentryTraced } from '@sentry/nestjs';
+import { InjectSentry, SentryService } from '@app/observability';
 import { In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -161,6 +162,7 @@ export class CompletedActivityService implements OnModuleInit {
     }
   }
 
+  @SentryTraced('completeActivity')
   async completeActivity(
     completedActivity: CreateCompletedActivityDto,
     headers: any,
@@ -314,7 +316,7 @@ export class CompletedActivityService implements OnModuleInit {
     const corrected = await this.getOrCreateCompletingSequenceLog(user, sequence.id, at); // Get/create the per-user, per-sequence, per-day CAS (keyed by user, sequence.id, and at) so this habit attaches to the correct routine/day and not an broken log.
 
     // Fallback to the originally provided log if corrected == undefined
-    return (corrected ?? log)!;
+    return corrected ?? log;
   }
 
   private async handleUpdateDailyStats(
@@ -2054,6 +2056,7 @@ export class CompletedActivityService implements OnModuleInit {
   async getCurrentSequenceCompletedActivityIds(currentCompletingSequenceLogId: string) {
     const completedActivities = await this.completedActivityRepository.orm.find({
       where: { completed_sequence_id: currentCompletingSequenceLogId },
+      select: ['activity_id'],
     });
     return completedActivities?.map((completedActivity) => completedActivity.activity_id) || [];
   }

@@ -48,13 +48,13 @@ $ npm install
 $ npm run migration:up
 ```
 
-(Optional) Seed the database with test data
+6. Seed the database with test data
 
 ```bash
 $ npm run seed
 ```
 
-6. Run app by executing one of commands. Depends on your needs
+7. Run app by executing one of commands. Depends on your needs
 
 ```bash
 # Production mode
@@ -67,7 +67,7 @@ $ npm run start:dev
 $ npm run start:debug
 ```
 
-7. Make sure the server is alive by querying GET http://127.0.0.1:5038/healthcheck in the Browser or curl
+8. Make sure the server is alive by querying GET http://127.0.0.1:5038/healthcheck in the Browser or curl
 
 ## Test
 

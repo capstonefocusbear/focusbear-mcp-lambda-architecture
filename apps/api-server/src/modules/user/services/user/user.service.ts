@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Raw } from 'typeorm';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SentryTraced } from '@sentry/nestjs';
+import { InjectSentry, SentryService, emitUserActivityMetric } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -24,7 +25,6 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
-import { emitUserActivityMetric } from '@app/observability';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
@@ -46,6 +46,7 @@ import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-
 import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
+import { UserMetadata } from '../../domain/user-metadata.model';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
@@ -115,6 +116,7 @@ export class UserService {
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
+  @SentryTraced('syncUserAccount')
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -163,6 +165,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
+  @SentryTraced('updateOrCreateUser')
   async updateOrCreateUser(
     { auth0_id, email, auth0_client }: SyncUserAccountDto,
     registeredUser?: User,
@@ -726,11 +729,22 @@ export class UserService {
     }
   }
 
-  async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
+  async updateMetadata(
+    { profile_image, description, name, last_email_sent, email_preferences }: UpdateUserMetadataDto,
+    user_id: string,
+  ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+
+    const metadataUpdate: Partial<UserMetadata> = {};
+    if (profile_image !== undefined) metadataUpdate.profile_image = profile_image;
+    if (description !== undefined) metadataUpdate.description = description;
+    if (name !== undefined) metadataUpdate.name = name;
+    if (last_email_sent !== undefined) metadataUpdate.last_email_sent = last_email_sent;
+    if (email_preferences !== undefined) metadataUpdate.email_preferences = email_preferences;
+
     await this.userRepository.orm.update(user_id, {
-      metadata: { profile_image, description },
+      metadata: { ...(user.metadata || {}), ...metadataUpdate },
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     });
@@ -886,18 +900,22 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    // Normalise justification field so all clients (Mac, mobile, future) map into
+    // a single canonical property that the OpenAI service and prompts expect.
+    const normalisedDto: IsUrlSafeDto & { [key: string]: any } = {
+      ...isUrlSafeDto,
+      url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
+    };
 
-    return this.openAIService.checkIfUrlIsSafeToUse(
-      {
-        ...isUrlSafeDto,
-        url: this.getRefactoredURLWithRespectToPrivacy(isUrlSafeDto.url),
-      },
-      user.language,
-      {
-        jobDetails: user.user_job_details,
-        typicalDistractions: user.user_typical_distractions,
-      },
-    );
+    normalisedDto.justificationForThisUrl =
+      isUrlSafeDto.justificationForThisUrl ??
+      // Generic alias used by some clients
+      isUrlSafeDto.justification ??
+      // Mac app "new intention" flow
+      isUrlSafeDto.extraJustificationForThisSite ??
+      undefined;
+
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -905,11 +923,12 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
     }
+    const normalisedDto: IsAppSafeDto & { [key: string]: any } = { ...isAppSafeDto };
 
-    return this.openAIService.checkIfAppIsSafeToUse(isAppSafeDto, user.language, {
-      jobDetails: user.user_job_details,
-      typicalDistractions: user.user_typical_distractions,
-    });
+    normalisedDto.justificationForThisSpecificApp =
+      isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
+
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

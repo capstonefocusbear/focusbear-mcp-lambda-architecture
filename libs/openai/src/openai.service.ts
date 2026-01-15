@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-import { Inject, Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { SentryTraced } from '@sentry/nestjs';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Stream } from 'stream';
 import { FastifyReply } from 'fastify';
 import { load } from 'cheerio';
@@ -46,6 +47,8 @@ type SafetyUserContext = {
 
 @Injectable()
 export class OpenAIService {
+  private readonly logger = new Logger(OpenAIService.name);
+
   // Store OpenAI instances for different functions
   private openAIInstances: {
     [OpenAIKeyType.GENERAL]?: OpenAI;
@@ -155,6 +158,7 @@ export class OpenAIService {
     return baseMessage;
   }
 
+  @SentryTraced('createMotivationalSummary')
   async createMotivationalSummary(
     response: FastifyReply,
     input: HabitOption[],
@@ -236,6 +240,7 @@ export class OpenAIService {
     }
   }
 
+  @SentryTraced('streamChatReply')
   async streamChatReply(res: FastifyReply, messages: ChatCompletionMessageParam[], language = 'English') {
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
@@ -928,10 +933,33 @@ export class OpenAIService {
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
+      this.logger.debug(
+        `OpenAI:analyzeImage request ${JSON.stringify({
+          keyType: OpenAIKeyType.SCREEN_TIME_IMAGE_OCR,
+          model: (OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming)?.model ?? null,
+          messageCount: messages?.length ?? 0,
+        })}`,
+      );
       const response = await openai.chat.completions.create({
         ...(OPENAI_PARAMS.analyzeImage as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming),
         messages,
       });
+
+      const choice0 = response.choices?.[0];
+      const finishReason = choice0?.finish_reason ?? null;
+      const content = choice0?.message?.content ?? null;
+      const refusal = (choice0?.message as any)?.refusal ?? null;
+      this.logger.debug(
+        `OpenAI:analyzeImage response ${JSON.stringify({
+          id: response.id ?? null,
+          model: response.model ?? null,
+          finishReason,
+          hasContent: content !== null && content !== undefined && String(content).length > 0,
+          contentLength: content ? String(content).length : 0,
+          hasRefusal: Boolean(refusal),
+          usage: response.usage ?? null,
+        })}`,
+      );
       return response;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -967,6 +995,7 @@ export class OpenAIService {
               type: 'image_url',
               image_url: {
                 url: imageBuffer,
+                detail: 'high',
               },
             },
           ],
@@ -1132,6 +1161,7 @@ export class OpenAIService {
               type: 'image_url',
               image_url: {
                 url: imageBuffer,
+                detail: 'high',
               },
             },
           ],
@@ -1200,6 +1230,133 @@ export class OpenAIService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw new Error('Failed to create todos from transcript');
+    }
+  }
+
+  async extractHabitsFromImage(
+    imageBuffer: string,
+  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+    try {
+      const prompt = this.promptCacheService.getPrompt('habit-import-image');
+
+      const filledPrompt = this.fillPrompt(prompt, {});
+      if (!prompt) {
+        this.logger.warn('OpenAI:habitImportImage prompt missing from cache');
+        this.sentryService.instance().captureMessage('Habit import image prompt missing from cache', {
+          level: 'warning',
+        });
+      }
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: filledPrompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBuffer,
+                detail: 'high',
+              },
+            },
+          ],
+        },
+      ];
+
+      const response = await this.analyzeImage(messages);
+      const choice0 = response.choices?.[0];
+      const finishReason = choice0?.finish_reason ?? null;
+      const content = choice0?.message?.content ?? null;
+      const refusal = (choice0?.message as any)?.refusal ?? null;
+
+      this.logger.debug(
+        `OpenAI:extractHabitsFromImage raw ${JSON.stringify({
+          responseId: response.id ?? null,
+          model: response.model ?? null,
+          finishReason,
+          hasContent: content !== null && content !== undefined && String(content).length > 0,
+          contentLength: content ? String(content).length : 0,
+          contentPreview: content ? String(content).slice(0, 500) : null,
+          hasRefusal: Boolean(refusal),
+          refusalText: refusal ?? null,
+          usage: response.usage ?? null,
+        })}`,
+      );
+
+      if (!content || String(content).trim().length === 0) {
+        this.logger.warn(
+          `OpenAI:extractHabitsFromImage emptyContent ${JSON.stringify({
+            finishReason,
+            hasRefusal: Boolean(refusal),
+          })}`,
+        );
+        this.sentryService.instance().captureMessage('Habit import image extraction returned empty content', {
+          level: 'warning',
+          extra: { finishReason, hasRefusal: Boolean(refusal) },
+        });
+        return [];
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(String(content));
+      } catch (parseError) {
+        const snippet = String(content).slice(0, 500);
+        this.logger.warn(
+          `OpenAI:extractHabitsFromImage jsonParseFailed ${JSON.stringify({
+            finishReason,
+            snippet,
+          })}`,
+        );
+        this.sentryService.instance().captureException(parseError, {
+          level: 'warning',
+          extra: { finishReason, snippet },
+        });
+        throw parseError;
+      }
+
+      const habits = parsed?.habits ?? [];
+      const normalized = Array.isArray(habits) ? habits : [];
+      this.logger.debug(`OpenAI:extractHabitsFromImage parsed ${JSON.stringify({ habitCount: normalized.length })}`);
+      return normalized;
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to extract habits from image');
+    }
+  }
+
+  async extractHabitsFromTranscript(
+    transcript: string,
+  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+    try {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'habit_import_transcript')) {
+        throw new Error('Invalid input');
+      }
+
+      const prompt = this.promptCacheService.getPrompt('habit-import-transcript') || '';
+      const filledPrompt = this.fillPrompt(prompt, {
+        transcript,
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: filledPrompt,
+        },
+      ];
+
+      const completions = await this.getOpenAIChatCompletionsNonStreaming(
+        messages,
+        OpenAIKeyType.ROUTINE_SUGGESTION,
+        OPENAI_PARAMS.habitImportExtraction as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+      );
+
+      const content = completions.choices[0]?.message?.content;
+      const habits = content ? JSON.parse(content).habits : [];
+      return Array.isArray(habits) ? habits : [];
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw new Error('Failed to extract habits from transcript');
     }
   }
 

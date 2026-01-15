@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { SentryService } from '@ntegral/nestjs-sentry';
+import { SentryService } from '@app/observability';
 import { Auth0ManagementService } from './auth0-management.service';
 import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options } from '../interfaces';

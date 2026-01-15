@@ -1,7 +1,7 @@
 /* eslint-disable linebreak-style */
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { Job, UnrecoverableError } from 'bullmq';
 import { In, MoreThan } from 'typeorm';
 import { DateTime } from 'luxon';
@@ -74,7 +74,16 @@ export class SyncEventsConsumer extends WorkerHost {
     }
 
     switch (job.name) {
-      case BullWorkers.SYNC_EVENTS_FOR_PLATFORM:
+      case BullWorkers.SYNC_EVENTS_FOR_PLATFORM: {
+        // Check if account requires reauth - skip silently if so
+        const integrationRecord = await this.platformIntegrationRepository.orm.findOne({
+          where: { user_id: userId, platform, external_user_id: account },
+        });
+        if (integrationRecord?.data?.requires_reauth) {
+          this.logger.debug(`Skipping sync for user ${userId}, account ${account}: requires reauth`);
+          return; // Job completes successfully, exit function entirely
+        }
+
         try {
           this.sentryService.instance().addBreadcrumb({
             category: 'Service',
@@ -180,6 +189,7 @@ export class SyncEventsConsumer extends WorkerHost {
           throw error;
         }
         break;
+      }
 
       default:
         break;

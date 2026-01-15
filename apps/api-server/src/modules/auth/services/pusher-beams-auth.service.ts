@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { PusherBeamsAuthResponse } from '../dto/pusher-beams-auth-response.dto';

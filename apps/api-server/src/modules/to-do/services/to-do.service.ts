@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
 import { OpenAIService } from '@app/openai';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { BraindumpTaskDto } from '@app/openai/dto/braindump-task-response.dto';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
@@ -41,6 +41,29 @@ export class ToDoService {
     private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
+
+  /**
+   * Filters out invalid subtask entries from legacy data
+   * @param subtasks - Array of subtasks that may contain invalid entries
+   * @returns Array of valid subtasks only
+   */
+  private filterValidSubtasks(subtasks: any): any[] {
+    if (!Array.isArray(subtasks)) {
+      return [];
+    }
+
+    return subtasks.filter(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        'name' in item &&
+        'is_completed' in item &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        typeof item.is_completed === 'boolean',
+    );
+  }
 
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
@@ -120,11 +143,18 @@ export class ToDoService {
       perspiration_lte,
       synced_project_id,
     });
+
+    // Clean up legacy data: filter out empty arrays and invalid subtask entries
+    const cleanedToDos = toDos.map((todo) => ({
+      ...todo,
+      subtasks: this.filterValidSubtasks(todo.subtasks),
+    }));
+
     let updateToDos: ToDoResponse[];
     if (should_use_cache) {
-      updateToDos = await this.addCachedStatusesToToDos(toDos, user_id);
+      updateToDos = await this.addCachedStatusesToToDos(cleanedToDos, user_id);
     } else {
-      updateToDos = await this.addProjectStatusesToToDos(toDos, user_id);
+      updateToDos = await this.addProjectStatusesToToDos(cleanedToDos, user_id);
     }
     return new PaginationDto(
       updateToDos,
@@ -328,7 +358,13 @@ export class ToDoService {
         },
       });
 
-      return await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+      const todos = await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
+
+      // Clean up legacy data
+      return todos.map((todo) => ({
+        ...todo,
+        subtasks: this.filterValidSubtasks(todo.subtasks),
+      }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -347,7 +383,13 @@ export class ToDoService {
         },
       });
 
-      return await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
+      const todos = await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
+
+      // Clean up legacy data
+      return todos.map((todo) => ({
+        ...todo,
+        subtasks: this.filterValidSubtasks(todo.subtasks),
+      }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

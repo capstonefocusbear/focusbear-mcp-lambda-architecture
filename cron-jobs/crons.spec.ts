@@ -1,16 +1,42 @@
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/nestjs';
 import * as sentryModule from './sentry';
 import { withTimeout } from '../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../apps/api-server/src/shared/utils/constants';
 
-jest.mock('@sentry/node');
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
 
 describe('Cron Job Wrapper Integration', () => {
   let originalProcessExit: any;
   let exitMock: jest.SpyInstance;
   beforeAll(() => {
     originalProcessExit = process.exit;
-    exitMock = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+    exitMock = jest.spyOn(process, 'exit').mockImplementation((() => { }) as any);
   });
   afterAll(() => {
     exitMock.mockRestore();
@@ -58,5 +84,11 @@ describe('Cron Job Wrapper Integration', () => {
     await expect(promise).rejects.toThrow('Operation timed out');
     expect(Sentry.captureException).toHaveBeenCalled();
     expect(exitMock).toHaveBeenCalled();
+  });
+
+  it('should clear timeout timer when job completes', async () => {
+    const promise = withTimeout(Promise.resolve('ok'), CRON_JOB_TIMEOUT_MS);
+    await expect(promise).resolves.toBe('ok');
+    expect(jest.getTimerCount()).toBe(0);
   });
 }); 

@@ -31,7 +31,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       WHEN to_do.due_date::date < CURRENT_DATE THEN 
         /* Overdue: base score + 1 point per overdue day (no cap) */
         10.0 + (CURRENT_DATE - to_do.due_date::date)
-      WHEN to_do.due_date = CURRENT_DATE THEN 9.0
+      WHEN to_do.due_date::date = CURRENT_DATE THEN 9.0
       ELSE GREATEST(
         0.1,
         /* Final formula: ((base / 8) * 10) * modifier */
@@ -54,7 +54,10 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         )
       )
     END
-    * (to_do.outcome::float / NULLIF((${ToDoRepository.EFFORT_MINUTES}), 0))
+    * (
+      COALESCE(to_do.outcome::numeric, 0.0)
+      / GREATEST(1.0, LEAST(10.0, COALESCE(to_do.perspiration_level::numeric, 1.0)))
+    )
   `;
 
   constructor(private readonly connection: Connection) {
@@ -89,8 +92,8 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.external_task_id',
         'to_do.external_task_metadata',
         'to_do.created_at',
-        'to_do.subtasks',
         'to_do.objective',
+        'to_do.subtasks',
         'tags.id',
         'tags.text',
         'to_do.duration',
@@ -128,13 +131,17 @@ export class ToDoRepository extends BaseRepository<ToDo> {
 
     const { entities: todos, raw: rows } = await query.getRawAndEntities();
 
-    // Aggregate top_score by todo id from raw rows (avoid relying on array index alignment)
+    // Map top_score from raw rows
+    // Using Map to avoid array index issues with joins
     const ALIAS_TODO_ID = 'to_do_id';
     const ALIAS_TOP_SCORE = 'top_score';
+
     const topScoreByTodoId = new Map<string, number>();
+
     for (const row of rows as any[]) {
-      const id = String((row as any)[ALIAS_TODO_ID]);
-      const score = (row as any)[ALIAS_TOP_SCORE];
+      const id = String(row[ALIAS_TODO_ID]);
+      const score = row[ALIAS_TOP_SCORE];
+
       if (id && score != null && !topScoreByTodoId.has(id)) {
         topScoreByTodoId.set(id, Number(score));
       }

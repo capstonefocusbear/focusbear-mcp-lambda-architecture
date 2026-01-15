@@ -1,6 +1,7 @@
+// Mock @sentry/nestjs before any imports that use it
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SENTRY_TOKEN, SentryModule, SentryService } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, SentryModule, SentryService } from '@app/observability';
 import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
@@ -22,6 +23,34 @@ import {
 import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 import { AiToneOptions } from './domain/ai-tones.enum';
+
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -89,7 +118,7 @@ describe('OpenAIService', () => {
     });
 
     module = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot({ dsn: '' })],
+      imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot()],
       providers: [
         OpenAIService,
         {

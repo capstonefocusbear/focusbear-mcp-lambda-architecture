@@ -244,23 +244,32 @@ async function getUsersToSyncWithZoho() {
 
 async function runIntegrationCronJob() {
   await CronJobDataSource.initialize();
-  const usersToSync = await getUsersToSyncWithZoho();
-  const syncUserPromises = usersToSync.map((userId) => syncUserTasks(userId));
-  const results = await Promise.all(syncUserPromises);
+  try {
+    const usersToSync = await getUsersToSyncWithZoho();
+    const syncUserPromises = usersToSync.map((userId) => syncUserTasks(userId));
+    const results = await Promise.all(syncUserPromises);
 
-  const aggregate = results.reduce(
-    (acc, current) => {
-      acc.tasksSaved += current?.tasksSaved || 0;
-      acc.tasksRemoved += current?.tasksRemoved || 0;
-      return acc;
-    },
-    { tasksSaved: 0, tasksRemoved: 0 },
-  );
+    const aggregate = results.reduce(
+      (acc, current) => {
+        acc.tasksSaved += current?.tasksSaved || 0;
+        acc.tasksRemoved += current?.tasksRemoved || 0;
+        return acc;
+      },
+      { tasksSaved: 0, tasksRemoved: 0 },
+    );
 
-  return {
-    usersProcessed: usersToSync.length,
-    ...aggregate,
-  };
+    return {
+      usersProcessed: usersToSync.length,
+      ...aggregate,
+    };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
+  }
 }
 
 if (require.main === module) {

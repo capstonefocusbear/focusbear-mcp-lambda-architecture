@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { OpenAIService, PromptCacheService } from '@app/openai';
 import { ActivityTemplate } from '../entity/activity-template.entity';
@@ -273,7 +273,12 @@ Guidance:
 
         const llmScore = Number.isFinite(item?.matchScore) ? Number(item.matchScore) : undefined;
         const candidateSimilarity = this.normalizeScore(candidate.similarity);
-        const normalizedScore = llmScore ? this.normalizeScore(llmScore) : candidateSimilarity;
+        const llmScoreNormalized = typeof llmScore === 'number' ? this.normalizeScore(llmScore) : undefined;
+        // Keep the match score grounded in retrieval similarity to avoid unrelated habits sneaking in.
+        const normalizedScore =
+          typeof llmScoreNormalized === 'number'
+            ? Math.min(candidateSimilarity, llmScoreNormalized)
+            : candidateSimilarity;
 
         if (normalizedScore < minMatchScore) {
           rejectedCount += 1;

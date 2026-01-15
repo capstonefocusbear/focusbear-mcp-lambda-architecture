@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { ActivityChoiceData } from '../../activity/domain/activity-choice-data.model';
 import { ActivityData } from '../../activity/domain/activity-data.model';
 import { ActivityType } from '../../activity/domain/activity-type.enum';

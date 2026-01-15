@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { RoutineSuggestionsAsyncService } from './routine-suggestions-async.service';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTask } from '../../async-task/entities/async-task.entity';
@@ -46,7 +46,10 @@ describe('RoutineSuggestionsAsyncService', () => {
 
   it('creates an async task and enqueues a routine suggestion job', async () => {
     const dto: GetRoutineSuggestionsDto = {
-      user_goals: ['be healthier', 'read more'],
+      user_goals: [
+        { goal: 'be healthier', isCustom: false },
+        { goal: 'read more', isCustom: false },
+      ],
       routine_duration: 30,
       routine: 'morning',
       groupByGoals: false,

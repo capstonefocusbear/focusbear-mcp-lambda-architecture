@@ -4,6 +4,7 @@ import { mockDeep } from 'jest-mock-extended';
 import { ProgressEmailTemplateService } from './progress-email-template.service';
 import { User, EmailFrequency } from '../../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../../user/dto/weekly-progress-metrics.dto';
+import { MonthlyProgressMetricsDto } from '../../../user/dto/monthly-progress-metrics.dto';
 import { EmailTemplateCompilerService } from '../email-template-compiler/email-template-compiler.service';
 
 const createMockUser = (language: string): User => {
@@ -58,14 +59,28 @@ const createMockWeeklyMetrics = (): WeeklyProgressMetricsDto => ({
   },
 });
 
+const createMockMonthlyMetrics = (): MonthlyProgressMetricsDto => ({
+  month_start: new Date('2025-02-01'),
+  month_end: new Date('2025-02-28'),
+  routines: {
+    morning: { completed: 0, total: 28, streak: 0 },
+    evening: { completed: 0, total: 28, streak: 0 },
+    micro_breaks: { completed: 0, total: 28, streak: 0 },
+  },
+  focus_sessions: { total_minutes: 0, sessions_count: 14, longest_session: 0, streak: 0 },
+  tasks: { completed: 0, created: 0, completion_rate: 0 },
+  streaks: { current_overall: 0, best_overall: 0, morning_routine: 0, evening_routine: 0, focus_mode: 0 },
+});
+
 describe('ProgressEmailTemplateService', () => {
   let service: ProgressEmailTemplateService;
   const mockI18nService = mockDeep<I18nService>();
+  let mockCompilerService: { compileProgressEmail: jest.Mock };
 
   beforeEach(async () => {
     mockI18nService.t.mockImplementation(() => undefined);
 
-    const mockCompilerService = {
+    mockCompilerService = {
       compileProgressEmail: jest.fn().mockImplementation((templateType: string, data: any) => {
         if (templateType === 'weekly-progress') {
           const weekStart = new Date(
@@ -268,6 +283,23 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('5-minute morning routine');
       expect(result.text).toContain('15-minute focus sessions');
       expect(result.text).toContain('micro-breaks');
+    });
+  });
+
+  describe('generateMonthlyProgressEmail', () => {
+    it('should base monthly focus mode usage on actual days in month', async () => {
+      const user = createMockUser('en');
+      const metrics = createMockMonthlyMetrics(); // 14 sessions over 28 days => 50%
+      const unsubscribeToken = 'test-token-123';
+
+      await service.generateMonthlyProgressEmail(user, metrics, unsubscribeToken);
+
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'monthly-progress',
+        expect.objectContaining({
+          focusModeUsage: 50,
+        }),
+      );
     });
   });
 });

@@ -12,4 +12,11 @@ export class PlatformIntegrationMetadataDto {
   accountId?: string;
 
   location?: string;
+
+  // Reauth status fields (set when account has auth issues like missing scopes)
+  requires_reauth?: boolean;
+
+  reauth_reason?: { reason: string; [key: string]: any };
+
+  reauth_requested_at?: string;
 }

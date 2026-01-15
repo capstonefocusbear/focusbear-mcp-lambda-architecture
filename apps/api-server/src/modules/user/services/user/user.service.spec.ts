@@ -8,7 +8,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN, emitUserActivityMetric } from '@app/observability';
 import { FastifyReply } from 'fastify';
 import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
@@ -17,7 +17,6 @@ import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
 import axios from 'axios';
-import { emitUserActivityMetric } from '@app/observability';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
@@ -82,11 +81,17 @@ import { AccountabilityBuddyService } from '../../../accountability-buddy/servic
 
 // Mock axios and set the type
 jest.mock('axios');
-jest.mock('@app/observability', () => ({
-  emitQueueMetrics: jest.fn(),
-  emitCronMetrics: jest.fn(),
-  emitUserActivityMetric: jest.fn(),
-}));
+jest.mock('@app/observability', () => {
+  // Preserve real exports (including InjectSentry, SENTRY_TOKEN, SentryService)
+  // and only stub the metric helpers used in this spec.
+  const actual = jest.requireActual('@app/observability');
+  return {
+    ...actual,
+    emitQueueMetrics: jest.fn(),
+    emitCronMetrics: jest.fn(),
+    emitUserActivityMetric: jest.fn(),
+  };
+});
 
 describe('UserService', () => {
   let userService: UserService;

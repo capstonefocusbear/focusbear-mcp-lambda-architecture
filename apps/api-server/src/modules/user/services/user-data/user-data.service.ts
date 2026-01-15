@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import axios from 'axios';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';

@@ -226,7 +226,10 @@ export const safeDecodeURIComponent = (str: string): string => {
   if (!str) return str;
 
   try {
-    return decodeURIComponent(str);
+    // Replace '+' with spaces first (for application/x-www-form-urlencoded format)
+    // This is needed for Windows app bug reports where spaces are encoded as '+'
+    const withSpaces = str.replace(/\+/g, ' ');
+    return decodeURIComponent(withSpaces);
   } catch (error) {
     return str; // Return original string if decoding fails
   }
@@ -278,11 +281,39 @@ export const constructLogUploadEmailBody = (
   `;
 };
 
-export function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage = 'Operation timed out'): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(timeoutMessage)), ms)),
-  ]);
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  timeoutMessage = 'Operation timed out',
+  onTimeout?: () => void | Promise<void>,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    const handleTimeout = async () => {
+      // If the caller stops awaiting `promise` after a timeout (common with Promise.race),
+      // its eventual rejection can become an unhandledRejection. Prevent that.
+      promise.catch(() => undefined);
+
+      try {
+        await onTimeout?.();
+      } catch {
+        // Ignore cleanup errors; we're already timing out.
+      }
+
+      reject(new Error(timeoutMessage));
+    };
+
+    timeoutId = setTimeout(() => {
+      handleTimeout().catch(() => undefined);
+    }, ms);
+    (timeoutId as any)?.unref?.();
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
 }
 
 export function isValidEmail(email: string): boolean {

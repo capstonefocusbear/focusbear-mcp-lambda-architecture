@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { InjectSentry, SentryService } from '@app/observability';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ACITIVITY_EMOJI_MAP, BullQueues, BullWorkers } from '../../../../shared/utils/constants';

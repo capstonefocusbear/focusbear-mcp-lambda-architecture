@@ -1,7 +1,7 @@
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/nestjs';
 import { withSentry } from './sentry';
 
-jest.mock('@sentry/node', () => ({
+jest.mock('@sentry/nestjs', () => ({
   init: jest.fn(),
   captureException: jest.fn(),
   flush: jest.fn().mockResolvedValue(undefined),

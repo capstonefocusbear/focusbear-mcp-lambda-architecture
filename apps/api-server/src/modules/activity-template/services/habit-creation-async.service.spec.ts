@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { SENTRY_TOKEN } from '@ntegral/nestjs-sentry';
+import { SENTRY_TOKEN } from '@app/observability';
 import { HabitCreationAsyncService } from './habit-creation-async.service';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';

@@ -185,6 +185,7 @@ export enum BullQueues {
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
+  WEBHOOK = 'webhook',
 }
 
 export enum BullWorkers {
@@ -209,6 +210,7 @@ export enum BullWorkers {
   PROCESS_HABIT_CREATION = 'process-habit-creation',
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
   PROCESS_HABIT_IMPORT = 'process-habit-import',
+  SEND_WEBHOOK = 'send-webhook',
 }
 
 export const createActivityFunction = {

@@ -22,7 +22,7 @@ export class CreateWebhookSubscriptionDto {
 
   @ApiProperty({
     description: 'The event types to subscribe to',
-    example: [WebhookEventType.ACTIVITY_COMPLETED, WebhookEventType.TODO_CREATED],
+    example: [WebhookEventType.HABIT_COMPLETED, WebhookEventType.ROUTINE_COMPLETED],
     enum: WebhookEventType,
     isArray: true,
   })

@@ -74,10 +74,17 @@ export class TodoController {
     return this.toDoService.getRecentToDos(dto, user.id);
   }
 
+  /**
+   * Retrieves tasks for a specific user. Used by the admin dashboard to display
+   * user task data for debugging and support purposes.
+   */
   @Get('/admin')
   @UseGuards(IsAdmin)
-  async getTasksForAdmin(@Query() { user_id }: GetAdminTasksQueryDto, @AuthContext() { user: admin }: Passport) {
-    return this.toDoService.getTasksForAdmin(admin.id, user_id);
+  async getTasksForAdminDashboard(
+    @Query() { user_id }: GetAdminTasksQueryDto,
+    @AuthContext() { user: admin }: Passport,
+  ) {
+    return this.toDoService.getTasksForAdminDashboard(admin.id, user_id);
   }
 
   @Post('convert-brain-dump')

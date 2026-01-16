@@ -20,6 +20,7 @@ import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import {
+  adminUserDummy,
   CompletedFocusBlockDummy,
   QueueMock,
   ToDoDBResponseDummy,
@@ -871,6 +872,94 @@ describe('toDoService', () => {
       const data = response.data as any[];
       expect(data[0].subtasks).toHaveLength(1);
       expect(data[0].subtasks).toEqual([{ name: 'Valid', is_completed: true }]);
+    });
+  });
+
+  describe('getTasksForAdminDashboard', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should return tasks for a user when called by an admin', async () => {
+      const mockTasks = [
+        {
+          id: randomUUID(),
+          title: 'Test Task 1',
+          status: ToDoStatus.NOT_STARTED,
+          due_date: new Date(),
+          eisenhower_quadrant: 1,
+          duration: 60,
+          outcome: 5,
+          perspiration_level: 3,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          id: randomUUID(),
+          title: 'Test Task 2',
+          status: ToDoStatus.IN_PROGRESS,
+          due_date: new Date(),
+          eisenhower_quadrant: 2,
+          duration: 120,
+          outcome: 7,
+          perspiration_level: 5,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ];
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce(mockTasks);
+
+      const result = await toDoService.getTasksForAdminDashboard(adminUserDummy.id, userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: adminUserDummy.id });
+      expect(ToDoRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id },
+        select: [
+          'id',
+          'title',
+          'status',
+          'due_date',
+          'eisenhower_quadrant',
+          'duration',
+          'outcome',
+          'perspiration_level',
+          'created_at',
+          'updated_at',
+        ],
+        order: { updated_at: 'DESC' },
+      });
+      expect(result).toEqual(mockTasks);
+    });
+
+    it('negative: should throw NotFoundException when admin user is not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      const nonExistentAdminId = randomUUID();
+      let exception;
+      try {
+        await toDoService.getTasksForAdminDashboard(nonExistentAdminId, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception.message).toEqual(`User with ID: ${nonExistentAdminId} not found!`);
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
+    });
+
+    it('negative: should throw UnauthorizedException when user is not an admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      let exception;
+      try {
+        await toDoService.getTasksForAdminDashboard(userDummy.id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception.message).toEqual(`User with ID: ${userDummy.id} is not admin!`);
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
     });
   });
 });

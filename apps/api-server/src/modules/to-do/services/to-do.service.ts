@@ -416,7 +416,12 @@ export class ToDoService {
     }
   }
 
-  async getTasksForAdmin(adminId: string, userId: string): Promise<ToDo[]> {
+  /**
+   * Retrieves tasks for a specific user. Used by the admin dashboard to display
+   * user task data for debugging and support purposes.
+   * Includes TOP priority columns (outcome, perspiration_level) for task prioritization context.
+   */
+  async getTasksForAdminDashboard(adminId: string, userId: string): Promise<ToDo[]> {
     const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
     if (!adminUser) {
       throw new NotFoundException(`User with ID: ${adminId} not found!`);
@@ -427,7 +432,18 @@ export class ToDoService {
     }
     const tasks = await this.toDoRepository.orm.find({
       where: { user_id: userId },
-      select: ['id', 'title', 'status', 'due_date', 'eisenhower_quadrant', 'duration', 'created_at', 'updated_at'],
+      select: [
+        'id',
+        'title',
+        'status',
+        'due_date',
+        'eisenhower_quadrant',
+        'duration',
+        'outcome',
+        'perspiration_level',
+        'created_at',
+        'updated_at',
+      ],
       order: { updated_at: 'DESC' },
     });
     return tasks;

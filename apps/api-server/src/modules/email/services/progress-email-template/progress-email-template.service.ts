@@ -57,7 +57,9 @@ export class ProgressEmailTemplateService {
       day: 'numeric',
     });
     const singleDay = weekEnd;
-    const announcements = await this.getUserAnnouncements(user.id); // Fetch announcements based on user's latest device OS
+
+    // Fetch announcements based on user's latest device OS
+    const announcements = await this.getUserAnnouncements(user.id);
 
     const templateData = {
       userName,
@@ -102,6 +104,9 @@ export class ProgressEmailTemplateService {
       morningRoutineStreak: metrics.streaks.morning_routine,
       eveningRoutineStreak: metrics.streaks.evening_routine,
       focusModeStreak: metrics.streaks.focus_mode,
+
+      // Announcements section
+      // These are optional and shown only when available
       announcements,
       announcementsTitle:
         this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
@@ -153,6 +158,8 @@ export class ProgressEmailTemplateService {
   ): Promise<EmailContent> {
     const userName = user.username || 'Friend';
     const userLang = user.language || 'en';
+
+    // Fetch announcements based on user's latest device OS
     const announcements = await this.getUserAnnouncements(user.id);
 
     const monthStart = new Date(metrics.month_start).toLocaleDateString('en-US', {
@@ -187,6 +194,9 @@ export class ProgressEmailTemplateService {
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
       manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
+
+      // Announcements section
+      // These are optional and shown only when available
       announcements,
       announcementsTitle:
         this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
@@ -260,6 +270,8 @@ export class ProgressEmailTemplateService {
   async generateNoProgressEmail(user: User, unsubscribeToken: string): Promise<EmailContent> {
     const userName = user.username || 'Friend';
     const userLang = user.language || 'en';
+
+    // Fetch announcements based on user's latest device OS
     const announcements = await this.getUserAnnouncements(user.id);
 
     const templateData = {
@@ -280,6 +292,9 @@ export class ProgressEmailTemplateService {
       dashboardUrl: process.env.DASHBOARD_URL || '',
       manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
       unsubscribeToken,
+
+      // Announcements section
+      // These are optional and shown only when available
       announcements,
       announcementsTitle:
         this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
@@ -401,6 +416,10 @@ export class ProgressEmailTemplateService {
     });
   }
 
+  /**
+   * Normalize internal OperatingSystem enum to API-friendly string values
+   * This ensures consistent OS values when calling the announcements API
+   */
   private normalizeOperatingSystem(os?: OperatingSystem | null): string {
     switch (os) {
       case OperatingSystem.iOS:
@@ -415,31 +434,41 @@ export class ProgressEmailTemplateService {
         return 'web';
       case OperatingSystem.Unknown:
       default:
-        return 'unknown'; // Fallback value to ensure API calls never fail due to missing OS
+        // Fallback value to ensure API calls never fail due to missing OS
+        return 'unknown';
     }
   }
 
+  /**
+   * Get the user's most recent device operating system
+   * Used for targeting announcements by platform
+   */
   private async getUserOperatingSystem(userId: string): Promise<string> {
     try {
       const latestDevice = await this.deviceRepository.orm.findOne({
         where: { user_id: userId },
-        order: { updated_at: 'DESC', created_at: 'DESC' },
+        order: { updated_at: 'DESC', created_at: 'DESC' }, // Use the most recently updated device as the source of truth
       });
-
       return this.normalizeOperatingSystem(latestDevice?.operating_system as OperatingSystem);
     } catch {
-      return 'unknown'; // Safe fallback: email sending should not be blocked by device lookup issues
+      // Safe fallback: email sending should not be blocked by device lookup issues
+      return 'unknown';
     }
   }
 
+  /**
+   * Fetch active announcements for the user based on their latest device OS
+   * Announcements are optional and should never block email delivery
+   */
   private async getUserAnnouncements(userId: string): Promise<AnnouncementEntity[]> {
     try {
       const osName = await this.getUserOperatingSystem(userId);
       const response = await this.announcementsService.getActiveAnnouncements(userId, osName);
-      // Ensure template logic can safely iterate without null checks
+
+      // Always return an array so templates can iterate safely
       return response?.announcements ?? [];
     } catch {
-      // Fail-safe: announcements are optional content
+      // Fail-safe: announcements are non-critical content
       return [];
     }
   }

@@ -450,5 +450,29 @@ describe('ProgressEmailTemplateService', () => {
         }),
       );
     });
+
+    it('should include announcements in monthly progress email', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const metrics = createMockMonthlyMetrics();
+      const announcement = { id: 'ann1', heading: 'Monthly update', details: 'Monthly details' };
+      mockDeviceRepository.orm.findOne.mockResolvedValue({
+        operating_system: OperatingSystem.MacOS,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      mockAnnouncementsService.getActiveAnnouncements.mockResolvedValue({ announcements: [announcement as any] });
+
+      // Act
+      await service.generateMonthlyProgressEmail(user, metrics, 'token-123');
+
+      // Assert
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'monthly-progress',
+        expect.objectContaining({
+          announcements: [announcement],
+        }),
+      );
+    });
   });
 });

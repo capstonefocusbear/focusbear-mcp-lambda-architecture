@@ -153,6 +153,7 @@ export class ProgressEmailTemplateService {
   ): Promise<EmailContent> {
     const userName = user.username || 'Friend';
     const userLang = user.language || 'en';
+    const announcements = await this.getUserAnnouncements(user.id);
 
     const monthStart = new Date(metrics.month_start).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -186,6 +187,10 @@ export class ProgressEmailTemplateService {
       dashboardUrl: process.env.DASHBOARD_URL || '',
       unsubscribeToken,
       manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
+      announcements,
+      announcementsTitle:
+        this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
+      announcementCtaText: this.i18nService.t('common.email_announcements_cta', { lang: userLang }) || 'Learn more',
 
       // Progress metrics
       focusUsagePercentage: this.calculateOverallUsageMonthly(metrics),

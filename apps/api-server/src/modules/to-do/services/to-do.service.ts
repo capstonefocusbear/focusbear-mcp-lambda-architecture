@@ -30,6 +30,7 @@ import { PaginationDto } from '../../../shared/pagination/index.dto';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UserTypes } from '../../user/domain/user-types.enum';
+import { AdminTaskResponseDto } from '../dto/admin-task-response.dto';
 
 @Injectable()
 export class ToDoService {
@@ -421,7 +422,7 @@ export class ToDoService {
    * user task data for debugging and support purposes.
    * Includes TOP priority columns (outcome, perspiration_level) for task prioritization context.
    */
-  async getTasksForAdminDashboard(adminId: string, userId: string): Promise<ToDo[]> {
+  async getTasksForAdminDashboard(adminId: string, userId: string): Promise<AdminTaskResponseDto[]> {
     const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
     if (!adminUser) {
       throw new NotFoundException(`User with ID: ${adminId} not found!`);
@@ -446,6 +447,17 @@ export class ToDoService {
       ],
       order: { updated_at: 'DESC' },
     });
-    return tasks;
+    return tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      due_date: task.due_date,
+      eisenhower_quadrant: task.eisenhower_quadrant,
+      duration: task.duration,
+      outcome: task.outcome,
+      perspiration_level: task.perspiration_level,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+    }));
   }
 }

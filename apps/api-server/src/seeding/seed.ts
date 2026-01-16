@@ -9,6 +9,7 @@ import { ActivitySequenceFactory } from './activity-sequence.factory';
 import { DeviceFactory } from './devices.factory';
 import { ActivityTemplateFactory } from './activity-template.factory';
 import { ActivityTemplateTagFactory } from './activity-template-tag.factory';
+import { CompletedFocusBlocksSeeder } from './completed-focus-blocks.seeder';
 
 const options: DataSourceOptions & SeederOptions = {
   ...typeormConfig(),
@@ -21,7 +22,7 @@ const options: DataSourceOptions & SeederOptions = {
     ActivityTemplateFactory,
     ActivityTemplateTagFactory,
   ],
-  seeds: [MainSeeder],
+  seeds: [MainSeeder, CompletedFocusBlocksSeeder],
 };
 
 const datasource = new DataSource(options);

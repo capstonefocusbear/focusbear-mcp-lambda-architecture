@@ -344,6 +344,31 @@ describe('ProgressEmailTemplateService', () => {
       // Assert
       expect(mockAnnouncementsService.getActiveAnnouncements).toHaveBeenCalledWith(user.id, 'unknown');
     });
+
+    it('should include announcements in daily progress email', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const metrics = createMockWeeklyMetrics();
+      const announcement = { id: 'ann1', heading: 'Daily update', details: 'Daily details' };
+      mockDeviceRepository.orm.findOne.mockResolvedValue({
+        operating_system: OperatingSystem.MacOS,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      mockAnnouncementsService.getActiveAnnouncements.mockResolvedValue({ announcements: [announcement as any] });
+
+      // Act
+      await service.generateWeeklyProgressEmail(user, metrics, 'token-123', { variant: 'daily' });
+
+      // Assert
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'weekly-progress',
+        expect.objectContaining({
+          variant: 'daily',
+          announcements: [announcement],
+        }),
+      );
+    });
   });
 
   describe('generateNoProgressEmail', () => {

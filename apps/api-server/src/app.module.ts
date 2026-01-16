@@ -47,6 +47,7 @@ import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 import { AccountabilityBuddyModule } from './modules/accountability-buddy/accountability-buddy.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
+import { ProjectModule } from './modules/project/project.module';
 
 @Module({
   imports: [
@@ -117,6 +118,7 @@ import { ObservabilityModule } from './observability/observability.module';
     ZohoDeskModule,
     ObservabilityModule,
     AccountabilityBuddyModule,
+    ProjectModule,
   ],
   controllers: [AppController],
   providers: [

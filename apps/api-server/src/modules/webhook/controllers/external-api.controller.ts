@@ -56,17 +56,11 @@ export class ExternalApiController {
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Get user daily stats' })
+  @ApiOperation({ summary: 'Get user daily stats for the last N days' })
   @ApiResponse({ status: 200, description: 'User stats retrieved successfully' })
-  async getUserStats(@ApiKeyUser() user: ApiKeyUserContext, @Query('date') date?: string) {
-    const targetDate = date ? new Date(date) : new Date();
-    const userData = await this.userRepository.orm.findOne({
-      where: { id: user.id },
-      select: ['timezone'],
-    });
-
-    const stats = await this.userDailyStatsService.getDailyStats(user.id, targetDate, userData.timezone);
-
+  async getUserStats(@ApiKeyUser() user: ApiKeyUserContext, @Query('days') days?: string) {
+    const numDays = days ? parseInt(days, 10) : 7;
+    const stats = await this.userDailyStatsService.getLastNDaysDailyStats(user.id, numDays);
     return stats;
   }
 

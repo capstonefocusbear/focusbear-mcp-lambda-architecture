@@ -255,6 +255,7 @@ export class ProgressEmailTemplateService {
   async generateNoProgressEmail(user: User, unsubscribeToken: string): Promise<EmailContent> {
     const userName = user.username || 'Friend';
     const userLang = user.language || 'en';
+    const announcements = await this.getUserAnnouncements(user.id);
 
     const templateData = {
       userName,
@@ -274,6 +275,10 @@ export class ProgressEmailTemplateService {
       dashboardUrl: process.env.DASHBOARD_URL || '',
       manageEmailPreferencesLink: `${this.getApiBaseUrl()}/user/email-preferences/manage?token=${unsubscribeToken}`,
       unsubscribeToken,
+      announcements,
+      announcementsTitle:
+        this.i18nService.t('common.email_announcements_title', { lang: userLang }) || 'Latest updates for your device',
+      announcementCtaText: this.i18nService.t('common.email_announcements_cta', { lang: userLang }) || 'Learn more',
 
       // Translated labels for no-progress email
       haventSeenYouText:

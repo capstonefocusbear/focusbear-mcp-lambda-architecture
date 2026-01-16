@@ -200,6 +200,12 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('Morning: 5/7 completed');
       expect(result.text).toContain('Total Focus Time: 480 minutes');
       expect(result.text).toContain('Keep up the great work!');
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'weekly-progress',
+        expect.objectContaining({
+          announcements: expect.any(Array),
+        }),
+      );
     });
 
     it('should handle users without metadata name', async () => {
@@ -375,6 +381,29 @@ describe('ProgressEmailTemplateService', () => {
       expect(result.text).toContain('5-minute morning routine');
       expect(result.text).toContain('15-minute focus sessions');
       expect(result.text).toContain('micro-breaks');
+    });
+
+    it('should include announcements in no-progress email', async () => {
+      // Arrange
+      const user = createMockUser('en');
+      const announcement = { id: 'ann1', heading: 'Update', details: 'Details' };
+      mockDeviceRepository.orm.findOne.mockResolvedValue({
+        operating_system: OperatingSystem.MacOS,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      mockAnnouncementsService.getActiveAnnouncements.mockResolvedValue({ announcements: [announcement as any] });
+
+      // Act
+      await service.generateNoProgressEmail(user, 'test-token-123');
+
+      // Assert
+      expect(mockCompilerService.compileProgressEmail).toHaveBeenCalledWith(
+        'no-progress',
+        expect.objectContaining({
+          announcements: [announcement],
+        }),
+      );
     });
   });
 

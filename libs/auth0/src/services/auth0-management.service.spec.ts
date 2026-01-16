@@ -36,6 +36,7 @@ jest.mock('ioredis', () => {
   const mockRedis = jest.fn().mockImplementation(() => ({
     get: jest.fn(),
     setex: jest.fn(),
+    del: jest.fn(),
   }));
   return { default: mockRedis };
 });
@@ -234,23 +235,36 @@ describe('Auth0ManagementService', () => {
 
   describe('markUserEmailAsVerified', () => {
     const auth0Id = 'auth0|123456';
+    const email = 'test@example.com';
 
     it('positive: should successfully mark email as verified', async () => {
       const updatedUser = { ...mockUser, email_verified: true };
       const updateSpy = jest.spyOn(service.users, 'update').mockResolvedValue({ data: updatedUser } as any);
+      const delSpy = jest.spyOn((service as any).redisClient, 'del').mockResolvedValue(1);
 
-      const result = await service.markUserEmailAsVerified(auth0Id);
+      const result = await service.markUserEmailAsVerified(auth0Id, email);
 
       expect(result).toEqual({ data: updatedUser });
       expect(updateSpy).toHaveBeenCalledWith({ id: auth0Id }, { email_verified: true });
+      expect(delSpy).toHaveBeenCalledWith(`auth0:user:${auth0Id}`, `auth0:users:email:${email}`);
     });
 
     it('negative: should throw HttpException on failure', async () => {
       jest.spyOn(service.users, 'update').mockRejectedValue(new Error('Update failed'));
 
-      await expect(service.markUserEmailAsVerified(auth0Id)).rejects.toThrow(
+      await expect(service.markUserEmailAsVerified(auth0Id, email)).rejects.toThrow(
         new HttpException('Failed to verify email in Auth0', HttpStatus.INTERNAL_SERVER_ERROR),
       );
+    });
+
+    it('positive: should not fail if cache invalidation fails', async () => {
+      const updatedUser = { ...mockUser, email_verified: true };
+      jest.spyOn(service.users, 'update').mockResolvedValue({ data: updatedUser } as any);
+      jest.spyOn((service as any).redisClient, 'del').mockRejectedValue(new Error('Redis down'));
+
+      const result = await service.markUserEmailAsVerified(auth0Id, email);
+
+      expect(result).toEqual({ data: updatedUser });
     });
   });
 

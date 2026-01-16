@@ -29,6 +29,7 @@ const ProjectMemberRepositoryMock = {
   getMemberByProjectAndUser: jest.fn(),
   getMemberByProjectAndEmail: jest.fn(),
   getPendingInvitationsForEmail: jest.fn(),
+  getPendingInvitationsForUser: jest.fn(),
   linkUserToInvitation: jest.fn(),
   acceptInvitation: jest.fn(),
   declineInvitation: jest.fn(),
@@ -480,6 +481,43 @@ describe('ProjectService', () => {
       await projectService.linkUserToInvitations(userDummy.id, userDummy.email);
 
       expect(ProjectMemberRepositoryMock.linkUserToInvitation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getPendingInvitations', () => {
+    it('positive: should return pending invitations for user', async () => {
+      const pendingInvitations = [
+        { id: randomUUID(), user_id: userDummy.id, project: projectDummy },
+        { id: randomUUID(), user_id: userDummy.id, project: { ...projectDummy, id: randomUUID(), name: 'Project 2' } },
+      ];
+      ProjectMemberRepositoryMock.getPendingInvitationsForUser.mockResolvedValueOnce(pendingInvitations);
+
+      const result = await projectService.getPendingInvitations(userDummy.id);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Test Project');
+      expect(result[1].name).toBe('Project 2');
+    });
+
+    it('positive: should return empty array when no pending invitations', async () => {
+      ProjectMemberRepositoryMock.getPendingInvitationsForUser.mockResolvedValueOnce([]);
+
+      const result = await projectService.getPendingInvitations(userDummy.id);
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('positive: should filter out invitations without project', async () => {
+      const pendingInvitations = [
+        { id: randomUUID(), user_id: userDummy.id, project: projectDummy },
+        { id: randomUUID(), user_id: userDummy.id, project: null },
+      ];
+      ProjectMemberRepositoryMock.getPendingInvitationsForUser.mockResolvedValueOnce(pendingInvitations);
+
+      const result = await projectService.getPendingInvitations(userDummy.id);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Test Project');
     });
   });
 });

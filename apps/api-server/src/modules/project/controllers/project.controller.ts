@@ -35,6 +35,11 @@ export class ProjectController {
     return this.projectService.getUserProjects(user.id);
   }
 
+  @Get('invitations/pending')
+  async getPendingInvitations(@AuthContext() { user }: Passport): Promise<ProjectResponseDto[]> {
+    return this.projectService.getPendingInvitations(user.id);
+  }
+
   @Get(':project_id')
   async getProjectById(
     @Param() params: GetProjectParamsDto,

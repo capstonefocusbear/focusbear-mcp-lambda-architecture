@@ -268,6 +268,13 @@ export class ProjectService {
     );
   }
 
+  async getPendingInvitations(userId: string): Promise<ProjectResponseDto[]> {
+    const pendingInvitations = await this.projectMemberRepository.getPendingInvitationsForUser(userId);
+    return pendingInvitations
+      .filter((invitation) => invitation.project)
+      .map((invitation) => this.mapProjectToResponse(invitation.project));
+  }
+
   private async userHasAccessToProject(userId: string, projectId: string): Promise<boolean> {
     const project = await this.projectRepository.getProjectById(projectId);
 

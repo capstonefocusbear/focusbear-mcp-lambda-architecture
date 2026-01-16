@@ -10,6 +10,7 @@ import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { ToDoService } from '../services/to-do.service';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
+import { GetToDosByIdsQueryDto } from '../dto/get-to-dos-by-ids-query.dto';
 import { DeleteToDoQuery } from '../dto/delete-todo-query.dto';
 import { ToDoResponse } from '../dto/to-do-response.dto';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
@@ -70,6 +71,13 @@ export class TodoController {
   @Get('recent')
   async recentToDos(@Query() dto: RecentToDoDto, @AuthContext() { user }: Passport) {
     return this.toDoService.getRecentToDos(dto, user.id);
+  }
+
+  @Get('by-ids')
+  async getToDosByIds(@Query() dto: GetToDosByIdsQueryDto, @AuthContext() { user }: Passport) {
+    const ids = [...new Set(dto.ids)];
+
+    return this.toDoService.getToDosByIds(user.id, ids);
   }
 
   @Post('convert-brain-dump')

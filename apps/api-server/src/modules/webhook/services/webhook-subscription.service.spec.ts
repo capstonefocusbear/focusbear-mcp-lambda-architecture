@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { SentryService } from '@app/observability';
+import { SENTRY_TOKEN } from '@app/observability';
 import { WebhookSubscriptionService } from './webhook-subscription.service';
 import { WebhookSubscriptionRepository } from '../repositories/webhook-subscription.repository';
 import { WebhookSubscription } from '../entities/webhook-subscription.entity';
@@ -8,7 +8,6 @@ import { WebhookEventType } from '../domain/webhook-event-type.enum';
 
 describe('WebhookSubscriptionService', () => {
   let service: WebhookSubscriptionService;
-  let webhookSubscriptionRepository: jest.Mocked<WebhookSubscriptionRepository>;
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
   const mockSubscriptionId = '987fcdeb-51a2-3b4c-5d6e-7f8a9b0c1d2e';
@@ -18,33 +17,36 @@ describe('WebhookSubscriptionService', () => {
     captureException: jest.fn(),
   };
 
+  const mockSentryService = {
+    instance: jest.fn().mockReturnValue(mockSentryInstance),
+  };
+
+  const webhookSubscriptionRepositoryMock = {
+    orm: {
+      save: jest.fn(),
+      findOne: jest.fn(),
+      delete: jest.fn(),
+    },
+    findByUserId: jest.fn(),
+    findByEventType: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebhookSubscriptionService,
         {
           provide: WebhookSubscriptionRepository,
-          useValue: {
-            orm: {
-              save: jest.fn(),
-              findOne: jest.fn(),
-              delete: jest.fn(),
-            },
-            findByUserId: jest.fn(),
-            findByEventType: jest.fn(),
-          },
+          useValue: webhookSubscriptionRepositoryMock,
         },
         {
-          provide: SentryService,
-          useValue: {
-            instance: jest.fn().mockReturnValue(mockSentryInstance),
-          },
+          provide: SENTRY_TOKEN,
+          useValue: mockSentryService,
         },
       ],
     }).compile();
 
     service = module.get<WebhookSubscriptionService>(WebhookSubscriptionService);
-    webhookSubscriptionRepository = module.get(WebhookSubscriptionRepository);
   });
 
   afterEach(() => {
@@ -56,7 +58,7 @@ describe('WebhookSubscriptionService', () => {
       const createDto = {
         name: 'Test Webhook',
         url: 'https://hooks.zapier.com/test',
-        event_types: [WebhookEventType.ACTIVITY_COMPLETED],
+        event_types: [WebhookEventType.HABIT_COMPLETED],
       };
 
       const savedSubscription = {
@@ -70,7 +72,7 @@ describe('WebhookSubscriptionService', () => {
         created_at: new Date().toISOString(),
       };
 
-      webhookSubscriptionRepository.orm.save.mockResolvedValue(savedSubscription as WebhookSubscription);
+      webhookSubscriptionRepositoryMock.orm.save.mockResolvedValueOnce(savedSubscription as WebhookSubscription);
 
       const result = await service.createSubscription(mockUserId, createDto);
 
@@ -78,7 +80,7 @@ describe('WebhookSubscriptionService', () => {
       expect(result).toHaveProperty('name', createDto.name);
       expect(result).toHaveProperty('url', createDto.url);
       expect(result).toHaveProperty('event_types', createDto.event_types);
-      expect(webhookSubscriptionRepository.orm.save).toHaveBeenCalled();
+      expect(webhookSubscriptionRepositoryMock.orm.save).toHaveBeenCalled();
     });
   });
 
@@ -90,7 +92,7 @@ describe('WebhookSubscriptionService', () => {
           user_id: mockUserId,
           name: 'Webhook 1',
           url: 'https://hooks.zapier.com/test1',
-          event_types: [WebhookEventType.ACTIVITY_COMPLETED],
+          event_types: [WebhookEventType.HABIT_COMPLETED],
           is_active: true,
           failure_count: 0,
           created_at: new Date().toISOString(),
@@ -100,19 +102,19 @@ describe('WebhookSubscriptionService', () => {
           user_id: mockUserId,
           name: 'Webhook 2',
           url: 'https://hooks.zapier.com/test2',
-          event_types: [WebhookEventType.TODO_CREATED],
+          event_types: [WebhookEventType.ROUTINE_COMPLETED],
           is_active: true,
           failure_count: 0,
           created_at: new Date().toISOString(),
         },
       ];
 
-      webhookSubscriptionRepository.findByUserId.mockResolvedValue(mockSubscriptions as WebhookSubscription[]);
+      webhookSubscriptionRepositoryMock.findByUserId.mockResolvedValueOnce(mockSubscriptions as WebhookSubscription[]);
 
       const result = await service.getSubscriptions(mockUserId);
 
       expect(result).toHaveLength(2);
-      expect(webhookSubscriptionRepository.findByUserId).toHaveBeenCalledWith(mockUserId);
+      expect(webhookSubscriptionRepositoryMock.findByUserId).toHaveBeenCalledWith(mockUserId);
     });
   });
 
@@ -123,24 +125,24 @@ describe('WebhookSubscriptionService', () => {
         user_id: mockUserId,
         name: 'Test Webhook',
         url: 'https://hooks.zapier.com/test',
-        event_types: [WebhookEventType.ACTIVITY_COMPLETED],
+        event_types: [WebhookEventType.HABIT_COMPLETED],
         is_active: true,
         failure_count: 0,
         created_at: new Date().toISOString(),
       };
 
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(mockSubscription as WebhookSubscription);
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(mockSubscription as WebhookSubscription);
 
       const result = await service.getSubscription(mockUserId, mockSubscriptionId);
 
       expect(result).toHaveProperty('id', mockSubscriptionId);
-      expect(webhookSubscriptionRepository.orm.findOne).toHaveBeenCalledWith({
+      expect(webhookSubscriptionRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: mockSubscriptionId, user_id: mockUserId },
       });
     });
 
     it('should throw NotFoundException if subscription not found', async () => {
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(null);
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       await expect(service.getSubscription(mockUserId, mockSubscriptionId)).rejects.toThrow(NotFoundException);
     });
@@ -153,7 +155,7 @@ describe('WebhookSubscriptionService', () => {
         user_id: mockUserId,
         name: 'Test Webhook',
         url: 'https://hooks.zapier.com/test',
-        event_types: [WebhookEventType.ACTIVITY_COMPLETED],
+        event_types: [WebhookEventType.HABIT_COMPLETED],
         is_active: true,
         failure_count: 0,
         created_at: new Date().toISOString(),
@@ -161,8 +163,8 @@ describe('WebhookSubscriptionService', () => {
 
       const updateDto = { name: 'Updated Webhook' };
 
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(mockSubscription as WebhookSubscription);
-      webhookSubscriptionRepository.orm.save.mockResolvedValue({
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(mockSubscription as WebhookSubscription);
+      webhookSubscriptionRepositoryMock.orm.save.mockResolvedValueOnce({
         ...mockSubscription,
         ...updateDto,
       } as WebhookSubscription);
@@ -170,11 +172,11 @@ describe('WebhookSubscriptionService', () => {
       const result = await service.updateSubscription(mockUserId, mockSubscriptionId, updateDto);
 
       expect(result).toHaveProperty('name', 'Updated Webhook');
-      expect(webhookSubscriptionRepository.orm.save).toHaveBeenCalled();
+      expect(webhookSubscriptionRepositoryMock.orm.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if subscription not found', async () => {
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(null);
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       await expect(service.updateSubscription(mockUserId, mockSubscriptionId, { name: 'Updated' })).rejects.toThrow(
         NotFoundException,
@@ -189,16 +191,16 @@ describe('WebhookSubscriptionService', () => {
         user_id: mockUserId,
       };
 
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(mockSubscription as WebhookSubscription);
-      webhookSubscriptionRepository.orm.delete.mockResolvedValue({ affected: 1 } as any);
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(mockSubscription as WebhookSubscription);
+      webhookSubscriptionRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 1 } as any);
 
       await service.deleteSubscription(mockUserId, mockSubscriptionId);
 
-      expect(webhookSubscriptionRepository.orm.delete).toHaveBeenCalledWith(mockSubscriptionId);
+      expect(webhookSubscriptionRepositoryMock.orm.delete).toHaveBeenCalledWith(mockSubscriptionId);
     });
 
     it('should throw NotFoundException if subscription not found', async () => {
-      webhookSubscriptionRepository.orm.findOne.mockResolvedValue(null);
+      webhookSubscriptionRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       await expect(service.deleteSubscription(mockUserId, mockSubscriptionId)).rejects.toThrow(NotFoundException);
     });
@@ -212,19 +214,21 @@ describe('WebhookSubscriptionService', () => {
           user_id: mockUserId,
           name: 'Webhook 1',
           url: 'https://hooks.zapier.com/test1',
-          event_types: [WebhookEventType.ACTIVITY_COMPLETED],
+          event_types: [WebhookEventType.HABIT_COMPLETED],
           is_active: true,
         },
       ];
 
-      webhookSubscriptionRepository.findByEventType.mockResolvedValue(mockSubscriptions as WebhookSubscription[]);
+      webhookSubscriptionRepositoryMock.findByEventType.mockResolvedValueOnce(
+        mockSubscriptions as WebhookSubscription[],
+      );
 
-      const result = await service.getSubscriptionsByEventType(mockUserId, WebhookEventType.ACTIVITY_COMPLETED);
+      const result = await service.getSubscriptionsByEventType(mockUserId, WebhookEventType.HABIT_COMPLETED);
 
       expect(result).toHaveLength(1);
-      expect(webhookSubscriptionRepository.findByEventType).toHaveBeenCalledWith(
+      expect(webhookSubscriptionRepositoryMock.findByEventType).toHaveBeenCalledWith(
         mockUserId,
-        WebhookEventType.ACTIVITY_COMPLETED,
+        WebhookEventType.HABIT_COMPLETED,
       );
     });
   });

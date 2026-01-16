@@ -1,13 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { SentryService } from '@app/observability';
+import { SENTRY_TOKEN } from '@app/observability';
 import { ApiKeyService } from './api-key.service';
 import { ApiKeyRepository } from '../repositories/api-key.repository';
 import { ApiKey } from '../entities/api-key.entity';
 
 describe('ApiKeyService', () => {
   let service: ApiKeyService;
-  let apiKeyRepository: jest.Mocked<ApiKeyRepository>;
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
   const mockApiKeyId = '987fcdeb-51a2-3b4c-5d6e-7f8a9b0c1d2e';
@@ -17,34 +16,37 @@ describe('ApiKeyService', () => {
     captureException: jest.fn(),
   };
 
+  const mockSentryService = {
+    instance: jest.fn().mockReturnValue(mockSentryInstance),
+  };
+
+  const apiKeyRepositoryMock = {
+    orm: {
+      save: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    findByKeyHash: jest.fn(),
+    findByUserId: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ApiKeyService,
         {
           provide: ApiKeyRepository,
-          useValue: {
-            orm: {
-              save: jest.fn(),
-              findOne: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-            findByKeyHash: jest.fn(),
-            findByUserId: jest.fn(),
-          },
+          useValue: apiKeyRepositoryMock,
         },
         {
-          provide: SentryService,
-          useValue: {
-            instance: jest.fn().mockReturnValue(mockSentryInstance),
-          },
+          provide: SENTRY_TOKEN,
+          useValue: mockSentryService,
         },
       ],
     }).compile();
 
     service = module.get<ApiKeyService>(ApiKeyService);
-    apiKeyRepository = module.get(ApiKeyRepository);
   });
 
   afterEach(() => {
@@ -63,7 +65,7 @@ describe('ApiKeyService', () => {
         created_at: new Date().toISOString(),
       };
 
-      apiKeyRepository.orm.save.mockResolvedValue(savedKey as ApiKey);
+      apiKeyRepositoryMock.orm.save.mockResolvedValueOnce(savedKey as ApiKey);
 
       const result = await service.createApiKey(mockUserId, createDto);
 
@@ -71,7 +73,7 @@ describe('ApiKeyService', () => {
       expect(result).toHaveProperty('name', createDto.name);
       expect(result).toHaveProperty('api_key');
       expect(result.api_key).toMatch(/^fb_live_/);
-      expect(apiKeyRepository.orm.save).toHaveBeenCalled();
+      expect(apiKeyRepositoryMock.orm.save).toHaveBeenCalled();
     });
 
     it('should create an API key with expiration date', async () => {
@@ -87,12 +89,12 @@ describe('ApiKeyService', () => {
         created_at: new Date().toISOString(),
       };
 
-      apiKeyRepository.orm.save.mockResolvedValue(savedKey as ApiKey);
+      apiKeyRepositoryMock.orm.save.mockResolvedValueOnce(savedKey as ApiKey);
 
       const result = await service.createApiKey(mockUserId, createDto);
 
       expect(result).toHaveProperty('expires_at');
-      expect(apiKeyRepository.orm.save).toHaveBeenCalled();
+      expect(apiKeyRepositoryMock.orm.save).toHaveBeenCalled();
     });
   });
 
@@ -117,12 +119,12 @@ describe('ApiKeyService', () => {
         },
       ];
 
-      apiKeyRepository.findByUserId.mockResolvedValue(mockKeys as ApiKey[]);
+      apiKeyRepositoryMock.findByUserId.mockResolvedValueOnce(mockKeys as ApiKey[]);
 
       const result = await service.getApiKeys(mockUserId);
 
       expect(result).toHaveLength(2);
-      expect(apiKeyRepository.findByUserId).toHaveBeenCalledWith(mockUserId);
+      expect(apiKeyRepositoryMock.findByUserId).toHaveBeenCalledWith(mockUserId);
     });
   });
 
@@ -134,19 +136,19 @@ describe('ApiKeyService', () => {
         is_active: true,
       };
 
-      apiKeyRepository.orm.findOne.mockResolvedValue(mockKey as ApiKey);
-      apiKeyRepository.orm.update.mockResolvedValue({ affected: 1 } as any);
+      apiKeyRepositoryMock.orm.findOne.mockResolvedValueOnce(mockKey as ApiKey);
+      apiKeyRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 1 } as any);
 
       await service.revokeApiKey(mockUserId, mockApiKeyId);
 
-      expect(apiKeyRepository.orm.update).toHaveBeenCalledWith(
+      expect(apiKeyRepositoryMock.orm.update).toHaveBeenCalledWith(
         mockApiKeyId,
         expect.objectContaining({ is_active: false }),
       );
     });
 
     it('should throw NotFoundException if API key not found', async () => {
-      apiKeyRepository.orm.findOne.mockResolvedValue(null);
+      apiKeyRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       await expect(service.revokeApiKey(mockUserId, mockApiKeyId)).rejects.toThrow(NotFoundException);
     });
@@ -159,16 +161,16 @@ describe('ApiKeyService', () => {
         user_id: mockUserId,
       };
 
-      apiKeyRepository.orm.findOne.mockResolvedValue(mockKey as ApiKey);
-      apiKeyRepository.orm.delete.mockResolvedValue({ affected: 1 } as any);
+      apiKeyRepositoryMock.orm.findOne.mockResolvedValueOnce(mockKey as ApiKey);
+      apiKeyRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 1 } as any);
 
       await service.deleteApiKey(mockUserId, mockApiKeyId);
 
-      expect(apiKeyRepository.orm.delete).toHaveBeenCalledWith(mockApiKeyId);
+      expect(apiKeyRepositoryMock.orm.delete).toHaveBeenCalledWith(mockApiKeyId);
     });
 
     it('should throw NotFoundException if API key not found', async () => {
-      apiKeyRepository.orm.findOne.mockResolvedValue(null);
+      apiKeyRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
       await expect(service.deleteApiKey(mockUserId, mockApiKeyId)).rejects.toThrow(NotFoundException);
     });
@@ -182,7 +184,7 @@ describe('ApiKeyService', () => {
     });
 
     it('should return null for non-existent key', async () => {
-      apiKeyRepository.findByKeyHash.mockResolvedValue(null);
+      apiKeyRepositoryMock.findByKeyHash.mockResolvedValueOnce(null);
 
       const result = await service.validateApiKey('fb_live_abc123');
 
@@ -197,7 +199,7 @@ describe('ApiKeyService', () => {
         is_active: true,
       };
 
-      apiKeyRepository.findByKeyHash.mockResolvedValue(expiredKey as ApiKey);
+      apiKeyRepositoryMock.findByKeyHash.mockResolvedValueOnce(expiredKey as ApiKey);
 
       const result = await service.validateApiKey('fb_live_abc123');
 
@@ -212,13 +214,13 @@ describe('ApiKeyService', () => {
         expires_at: null,
       };
 
-      apiKeyRepository.findByKeyHash.mockResolvedValue(validKey as ApiKey);
-      apiKeyRepository.orm.update.mockResolvedValue({ affected: 1 } as any);
+      apiKeyRepositoryMock.findByKeyHash.mockResolvedValueOnce(validKey as ApiKey);
+      apiKeyRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 1 } as any);
 
       const result = await service.validateApiKey('fb_live_abc123');
 
       expect(result).toEqual(validKey);
-      expect(apiKeyRepository.orm.update).toHaveBeenCalledWith(
+      expect(apiKeyRepositoryMock.orm.update).toHaveBeenCalledWith(
         mockApiKeyId,
         expect.objectContaining({ last_used_at: expect.any(Date) }),
       );

@@ -84,7 +84,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
     } = getFocusBlockStatsQuery;
     const query = this.orm
       .createQueryBuilder('completed_focus_blocks')
-      .leftJoinAndSelect('completed_focus_blocks.focus_mode', 'focus_mode')
+      .innerJoinAndSelect('completed_focus_blocks.focus_mode', 'focus_mode', 'focus_mode.deleted_at IS NULL')
       .leftJoinAndSelect('completed_focus_blocks.tags', 'tags')
       .select([
         'completed_focus_blocks.id',

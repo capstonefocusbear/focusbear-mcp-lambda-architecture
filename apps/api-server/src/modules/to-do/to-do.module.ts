@@ -5,8 +5,11 @@ import { OpenAIModule } from '@app/openai';
 import { R2Module } from '@app/r2';
 import { UserModule } from '../user/user.module';
 import { TodoController } from './controllers/to-do.controller';
+import { TaskCommentController } from './controllers/task-comment.controller';
 import { ToDoService } from './services/to-do.service';
+import { TaskCommentService } from './services/task-comment.service';
 import { ToDoRepository } from './repositories/to-do.repository';
+import { TaskCommentRepository } from './repositories/task-comment.repository';
 import { TaskTimeLogsRepository } from './repositories/task-time-logs.repository';
 import { TimeLogsConsumer } from './consumers/time-logs.consumer';
 import { TodoImageConsumer } from './consumers/todo-image.consumer';
@@ -23,8 +26,10 @@ import { BullQueues } from '../../shared/utils/constants';
 @Module({
   providers: [
     ToDoService,
+    TaskCommentService,
     PlatformIntegrationRepository,
     ToDoRepository,
+    TaskCommentRepository,
     TaskTimeLogsRepository,
     TimeLogsConsumer,
     TodoImageConsumer,
@@ -32,7 +37,14 @@ import { BullQueues } from '../../shared/utils/constants';
     SyncedProjectsRepository,
     SyncedProjectsService,
   ],
-  exports: [ToDoRepository, ToDoService, SyncedProjectsRepository, SyncedProjectsService],
+  exports: [
+    ToDoRepository,
+    ToDoService,
+    TaskCommentRepository,
+    TaskCommentService,
+    SyncedProjectsRepository,
+    SyncedProjectsService,
+  ],
   imports: [
     forwardRef(() => UserModule),
     forwardRef(() => IntegrationModule),
@@ -66,6 +78,6 @@ import { BullQueues } from '../../shared/utils/constants';
     }),
     forwardRef(() => FocusModeModule),
   ],
-  controllers: [TodoController, SyncedProjectsController],
+  controllers: [TodoController, TaskCommentController, SyncedProjectsController],
 })
 export class ToDoModule {}

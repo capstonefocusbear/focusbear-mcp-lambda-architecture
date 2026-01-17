@@ -10,6 +10,9 @@ import { DeviceFactory } from './devices.factory';
 import { ActivityTemplateFactory } from './activity-template.factory';
 import { ActivityTemplateTagFactory } from './activity-template-tag.factory';
 import { CompletedFocusBlocksSeeder } from './completed-focus-blocks.seeder';
+import { FocusModeFactory } from './focus-mode.factory';
+import { FocusModeTagFactory } from './focus-mode-tag.factory';
+import { CompletedFocusBlockFactory } from './completed-focus-block.factory';
 
 const options: DataSourceOptions & SeederOptions = {
   ...typeormConfig(),
@@ -21,6 +24,9 @@ const options: DataSourceOptions & SeederOptions = {
     DeviceFactory,
     ActivityTemplateFactory,
     ActivityTemplateTagFactory,
+    FocusModeFactory,
+    FocusModeTagFactory,
+    CompletedFocusBlockFactory,
   ],
   seeds: [MainSeeder, CompletedFocusBlocksSeeder],
 };

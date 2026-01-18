@@ -284,3 +284,22 @@ export const UserOnboardingRepositoryMock = {
   ...BaseRepositoryMock,
   findByUserIdAndOs: jest.fn(),
 };
+export const AppVersionsRepositoryMock = {
+  ...BaseRepositoryMock,
+  findLatest: jest.fn(),
+  findMinSupported: jest.fn(),
+  findAllByOS: jest.fn(),
+  createVersion: jest.fn(),
+};
+
+export const AnnouncementsRepositoryMock = {
+  ...BaseRepositoryMock,
+  findById: jest.fn(),
+  findActiveAnnouncements: jest.fn(),
+};
+
+export const AnnouncementViewsRepositoryMock = {
+  ...BaseRepositoryMock,
+  recordView: jest.fn(),
+  findViewedAnnouncementIds: jest.fn(),
+};

@@ -10,4 +10,12 @@ export class UpdateUserMetadataDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  user_job_details?: string;
+
+  @IsOptional()
+  @IsString()
+  user_typical_distractions?: string;
 }

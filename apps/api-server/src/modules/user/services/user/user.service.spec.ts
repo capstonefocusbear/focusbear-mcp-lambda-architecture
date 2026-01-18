@@ -1112,7 +1112,8 @@ describe('UserService', () => {
 
   describe('updateMetadata', () => {
     it('positive: should call function to update user metadata', async () => {
-      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
       const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
       const descriptionDummy = 'Random text here';
 
@@ -1121,11 +1122,14 @@ describe('UserService', () => {
         userDummy.id,
       );
 
-      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(userDummy.id, {
-        metadata: { profile_image: profileImageDummy, description: descriptionDummy },
-        updated_at: expect.toBeDateString(),
-        has_received_inactivity_warning: false,
-      });
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          metadata: { profile_image: profileImageDummy.url, description: descriptionDummy },
+          updated_at: expect.toBeDateString(),
+          has_received_inactivity_warning: false,
+        }),
+      );
     });
   });
 

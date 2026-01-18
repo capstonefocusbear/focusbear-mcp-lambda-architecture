@@ -1,0 +1,15 @@
+prompts:
+  - id: username-validation
+    file: prompt.md
+
+providers:
+  - id: openai:gpt-4.1-mini
+    config:
+      temperature: 0
+      max_tokens: 50
+      response_format:
+        type: json_object
+
+output:
+  - debug
+  - json

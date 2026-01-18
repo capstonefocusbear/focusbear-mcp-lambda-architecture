@@ -113,7 +113,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
-  ) {}
+  ) { }
 
   @SentryTraced('syncUserAccount')
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -199,9 +199,9 @@ export class UserService {
 
         const devicesFromDb = registeredUser
           ? await this.deviceRepository.orm.find({
-              where: { user_id: registeredUser.id },
-              order: { created_at: 'ASC' },
-            })
+            where: { user_id: registeredUser.id },
+            order: { created_at: 'ASC' },
+          })
           : [];
 
         this.sentryService.instance().addBreadcrumb({
@@ -728,14 +728,36 @@ export class UserService {
     }
   }
 
-  async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
+  async updateMetadata(
+    { profile_image, description, user_job_details, user_typical_distractions }: UpdateUserMetadataDto,
+    user_id: string,
+  ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    await this.userRepository.orm.update(user_id, {
-      metadata: { profile_image, description },
+    const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
-    });
+    };
+
+    if (profile_image !== undefined || description !== undefined) {
+      // Preserve existing metadata fields while updating profile_image and/or description
+      const existingMetadata = user.metadata || {};
+      updateData.metadata = {
+        ...existingMetadata,
+        ...(profile_image !== undefined && { profile_image: profile_image.url }),
+        ...(description !== undefined && { description }),
+      };
+    }
+
+    if (user_job_details !== undefined) {
+      updateData.user_job_details = user_job_details;
+    }
+
+    if (user_typical_distractions !== undefined) {
+      updateData.user_typical_distractions = user_typical_distractions;
+    }
+
+    await this.userRepository.orm.update(user_id, updateData);
   }
 
   shouldSyncWithRevenueCat(user: User) {
@@ -1092,14 +1114,14 @@ export class UserService {
         [axios.post(cliqUrl, body)].concat(
           !email.includes('internaltest')
             ? [
-                this.emailService.sendEmail({
-                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
-                  from: FOCUS_BEAR_EMAILS.SUPPORT,
-                  replyTo: email,
-                  text: stringifiedUninstallFeedback,
-                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
-                }),
-              ]
+              this.emailService.sendEmail({
+                to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                from: FOCUS_BEAR_EMAILS.SUPPORT,
+                replyTo: email,
+                text: stringifiedUninstallFeedback,
+                subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+              }),
+            ]
             : [],
         ),
       );

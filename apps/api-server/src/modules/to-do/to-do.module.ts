@@ -6,10 +6,13 @@ import { R2Module } from '@app/r2';
 import { UserModule } from '../user/user.module';
 import { TodoController } from './controllers/to-do.controller';
 import { TaskCommentController } from './controllers/task-comment.controller';
+import { TaskAttachmentController } from './controllers/task-attachment.controller';
 import { ToDoService } from './services/to-do.service';
 import { TaskCommentService } from './services/task-comment.service';
+import { TaskAttachmentService } from './services/task-attachment.service';
 import { ToDoRepository } from './repositories/to-do.repository';
 import { TaskCommentRepository } from './repositories/task-comment.repository';
+import { TaskAttachmentRepository } from './repositories/task-attachment.repository';
 import { TaskTimeLogsRepository } from './repositories/task-time-logs.repository';
 import { TimeLogsConsumer } from './consumers/time-logs.consumer';
 import { TodoImageConsumer } from './consumers/todo-image.consumer';
@@ -27,9 +30,11 @@ import { BullQueues } from '../../shared/utils/constants';
   providers: [
     ToDoService,
     TaskCommentService,
+    TaskAttachmentService,
     PlatformIntegrationRepository,
     ToDoRepository,
     TaskCommentRepository,
+    TaskAttachmentRepository,
     TaskTimeLogsRepository,
     TimeLogsConsumer,
     TodoImageConsumer,
@@ -42,6 +47,8 @@ import { BullQueues } from '../../shared/utils/constants';
     ToDoService,
     TaskCommentRepository,
     TaskCommentService,
+    TaskAttachmentRepository,
+    TaskAttachmentService,
     SyncedProjectsRepository,
     SyncedProjectsService,
   ],
@@ -78,6 +85,6 @@ import { BullQueues } from '../../shared/utils/constants';
     }),
     forwardRef(() => FocusModeModule),
   ],
-  controllers: [TodoController, TaskCommentController, SyncedProjectsController],
+  controllers: [TodoController, TaskCommentController, TaskAttachmentController, SyncedProjectsController],
 })
 export class ToDoModule {}

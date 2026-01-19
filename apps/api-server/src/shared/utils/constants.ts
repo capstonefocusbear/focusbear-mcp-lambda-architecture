@@ -343,6 +343,7 @@ export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
 export const S3_BUCKET_TASK_ATTACHMENTS = 'task-attachments';
+export const S3_BUCKET_COMMENT_ATTACHMENTS = 'comment-attachments';
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

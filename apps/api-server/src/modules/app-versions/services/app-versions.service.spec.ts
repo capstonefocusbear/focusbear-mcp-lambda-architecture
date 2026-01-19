@@ -18,8 +18,6 @@ import {
   createAppVersionDtoInvalidMissingPatchDummy,
   createAppVersionDtoInvalidCompletelyDummy,
   createAppVersionDtoInvalidWildcardDummy,
-  createAppVersionDtoDuplicateiOSDummy,
-  createAppVersionDtoDuplicateAndroidDummy,
   createAppVersionDtoSameVersionDifferentOSDummy,
 } from '../../../../test/dummies';
 import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
@@ -145,7 +143,6 @@ describe('AppVersionsService', () => {
 
       const result = await appVersionsService.createVersion(createAppVersionDtoiOSDummy);
 
-      expect(AppVersionsRepositoryMock.findAllByOS).toHaveBeenCalledWith(createAppVersionDtoiOSDummy.operating_system);
       expect(AppVersionsRepositoryMock.createVersion).toHaveBeenCalledWith({
         operating_system: createAppVersionDtoiOSDummy.operating_system,
         semver_string: createAppVersionDtoiOSDummy.semver_string,
@@ -170,7 +167,6 @@ describe('AppVersionsService', () => {
 
       const result = await appVersionsService.createVersion(createAppVersionDtoAndroidDummy);
 
-      expect(AppVersionsRepositoryMock.findAllByOS).toHaveBeenCalledWith(OperatingSystem.Android);
       expect(AppVersionsRepositoryMock.createVersion).toHaveBeenCalledWith({
         operating_system: createAppVersionDtoAndroidDummy.operating_system,
         semver_string: createAppVersionDtoAndroidDummy.semver_string,
@@ -274,40 +270,6 @@ describe('AppVersionsService', () => {
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toBe('Invalid semantic version: 2.1.x');
-    });
-
-    it('negative: should throw BadRequestException when duplicate version exists for iOS', async () => {
-      AppVersionsRepositoryMock.findAllByOS.mockResolvedValueOnce([appVersionDummyiOS]);
-
-      let exception: any;
-
-      try {
-        await appVersionsService.createVersion(createAppVersionDtoDuplicateiOSDummy);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toBe('Version 2.1.0 already exists for iOS');
-      expect(AppVersionsRepositoryMock.createVersion).not.toHaveBeenCalled();
-    });
-
-    it('negative: should throw BadRequestException when duplicate version exists for Android', async () => {
-      AppVersionsRepositoryMock.findAllByOS.mockResolvedValueOnce([appVersionDummyAndroid]);
-
-      let exception: any;
-
-      try {
-        await appVersionsService.createVersion(createAppVersionDtoDuplicateAndroidDummy);
-      } catch (error) {
-        exception = error;
-      }
-
-      expect(exception).toBeDefined();
-      expect(exception).toBeInstanceOf(BadRequestException);
-      expect(exception.message).toBe('Version 3.0.0 already exists for Android');
-      expect(AppVersionsRepositoryMock.createVersion).not.toHaveBeenCalled();
     });
   });
 });

@@ -42,6 +42,29 @@ export class ToDoService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
+  /**
+   * Filters out invalid subtask entries from legacy data
+   * @param subtasks - Array of subtasks that may contain invalid entries
+   * @returns Array of valid subtasks only
+   */
+  private filterValidSubtasks(subtasks: any): any[] {
+    if (!Array.isArray(subtasks)) {
+      return [];
+    }
+
+    return subtasks.filter(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        'name' in item &&
+        'is_completed' in item &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        typeof item.is_completed === 'boolean',
+    );
+  }
+
   async validateUpdatingToDo(userId: string, upsertToDo: CreateToDoDto) {
     const existingToDo = await this.toDoRepository.orm.findOne({ where: { id: upsertToDo.id } });
     if (existingToDo) {
@@ -121,17 +144,17 @@ export class ToDoService {
       synced_project_id,
     });
 
-    // Normalize subtasks (remove invalid entries like empty arrays)
-    const normalizedToDos = toDos.map((todo) => ({
+    // Clean up legacy data: filter out empty arrays and invalid subtask entries
+    const cleanedToDos = toDos.map((todo) => ({
       ...todo,
-      subtasks: this.normalizeSubtasks(todo.subtasks),
+      subtasks: this.filterValidSubtasks(todo.subtasks),
     }));
 
     let updateToDos: ToDoResponse[];
     if (should_use_cache) {
-      updateToDos = await this.addCachedStatusesToToDos(normalizedToDos, user_id);
+      updateToDos = await this.addCachedStatusesToToDos(cleanedToDos, user_id);
     } else {
-      updateToDos = await this.addProjectStatusesToToDos(normalizedToDos, user_id);
+      updateToDos = await this.addProjectStatusesToToDos(cleanedToDos, user_id);
     }
     return new PaginationDto(
       updateToDos,
@@ -337,10 +360,10 @@ export class ToDoService {
 
       const todos = await this.toDoRepository.searchUserToDos(searchToDosDto, user_id);
 
-      // Normalize subtasks for search results
+      // Clean up legacy data
       return todos.map((todo) => ({
         ...todo,
-        subtasks: this.normalizeSubtasks(todo.subtasks),
+        subtasks: this.filterValidSubtasks(todo.subtasks),
       }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -362,10 +385,10 @@ export class ToDoService {
 
       const todos = await this.toDoRepository.getUserRecentToDos(recentToDoDto, user_id);
 
-      // Normalize subtasks for recent todos
+      // Clean up legacy data
       return todos.map((todo) => ({
         ...todo,
-        subtasks: this.normalizeSubtasks(todo.subtasks),
+        subtasks: this.filterValidSubtasks(todo.subtasks),
       }));
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -390,34 +413,19 @@ export class ToDoService {
     }
   }
 
-  /**
-   * Normalizes subtasks by filtering out invalid entries.
-   *
-   * Filters out:
-   * - Empty arrays []
-   * - null/undefined values
-   * - Non-object entries
-   * - Objects missing required fields
-   * - Empty or whitespace-only names
-   * - Non-boolean is_completed values
-   *
-   * @param value - Raw subtasks from database
-   * @returns Clean array of valid subtasks
-   */
-  private normalizeSubtasks(value: unknown): any[] {
-    if (!Array.isArray(value)) return [];
+  async getToDosByIds(userId: string, ids: string[]): Promise<ToDo[]> {
+    if (!ids.length) {
+      return [];
+    }
 
-    return value.filter(
-      (item): item is { name: string; is_completed: boolean } =>
-        item !== null &&
-        item !== undefined &&
-        typeof item === 'object' &&
-        !Array.isArray(item) &&
-        'name' in item &&
-        'is_completed' in item &&
-        typeof item.name === 'string' &&
-        item.name.trim().length > 0 &&
-        typeof item.is_completed === 'boolean',
-    );
+    const todos = await this.toDoRepository.orm.find({
+      where: { user_id: userId, id: In(ids) },
+      select: ['id', 'title', 'status', 'due_date', 'duration', 'icon', 'subtasks'],
+    });
+
+    return todos.map((todo) => ({
+      ...todo,
+      subtasks: this.filterValidSubtasks(todo.subtasks),
+    }));
   }
 }

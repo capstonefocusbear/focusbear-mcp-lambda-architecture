@@ -1,12 +1,14 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
+import { APP_VERSIONS_SUPPORTED_OPERATING_SYSTEMS } from '../app-versions.constants';
 
 export class CreateAppVersionDto {
   @IsNotEmpty()
   @IsEnum(OperatingSystem)
+  @IsIn(APP_VERSIONS_SUPPORTED_OPERATING_SYSTEMS)
   @ApiProperty({
-    enum: OperatingSystem,
+    enum: APP_VERSIONS_SUPPORTED_OPERATING_SYSTEMS,
     description: 'Operating system',
     example: OperatingSystem.iOS,
   })

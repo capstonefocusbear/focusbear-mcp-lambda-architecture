@@ -1,15 +1,22 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import {
+  APP_VERSIONS_OS_DISPLAY_VALUES,
+  APP_VERSIONS_OS_QUERY_VALUES,
+  AppVersionsOsQueryValue,
+} from '../app-versions.constants';
 
 export class GetLatestAppVersionQueryDto {
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value), { toClassOnly: true })
+  @IsIn(APP_VERSIONS_OS_QUERY_VALUES)
   @ApiProperty({
-    enum: ['iOS', 'Android', 'MacOS', 'Windows', 'Web', 'Unknown'],
-    description: 'Operating system name',
+    enum: APP_VERSIONS_OS_DISPLAY_VALUES,
+    description: 'Operating system name (case-insensitive)',
     example: 'iOS',
   })
-  os_name: string;
+  os_name: AppVersionsOsQueryValue;
 
   @IsBoolean()
   @IsOptional()

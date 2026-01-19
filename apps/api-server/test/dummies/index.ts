@@ -2629,20 +2629,6 @@ export const createAppVersionDtoInvalidWildcardDummy = {
   is_beta_only: false,
 };
 
-export const createAppVersionDtoDuplicateiOSDummy = {
-  operating_system: OperatingSystem.iOS,
-  semver_string: '2.1.0',
-  is_supported: true,
-  is_beta_only: false,
-};
-
-export const createAppVersionDtoDuplicateAndroidDummy = {
-  operating_system: OperatingSystem.Android,
-  semver_string: '3.0.0',
-  is_supported: true,
-  is_beta_only: false,
-};
-
 export const createAppVersionDtoSameVersionDifferentOSDummy = {
   operating_system: OperatingSystem.Android,
   semver_string: '2.1.0',

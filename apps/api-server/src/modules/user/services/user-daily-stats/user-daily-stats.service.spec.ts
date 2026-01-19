@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@app/observability';
 import { getQueueToken } from '@nestjs/bull';
+import { UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DateTime, Settings } from 'luxon';
 import { Between } from 'typeorm';
@@ -22,6 +23,7 @@ import { CompletedActivityRepository } from '../../../activity/repositories/comp
 import { CompletedActivitySequenceRepository } from '../../../activity/repositories/completed-activity-sequence.repository';
 import {
   userDummy,
+  adminUserDummy,
   QueueMock,
   UncompletedSequenceLogDummy,
   dailyStatsArrayDummy,
@@ -570,6 +572,66 @@ describe('UserDailyStatsService', () => {
       const stats = await service.getLastNDaysDailyStats(userDummy.id, DAYS_IN_WEEK);
       expect(stats.length).toBe(7);
       expect(stats[0]).toBeInstanceOf(DailyStatSummary);
+    });
+  });
+
+  describe('getUserStatsForAdminDashboard', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+    });
+
+    it('positive: should return aggregated user stats when called by an admin', async () => {
+      const mockDailyStats = [
+        {
+          focus_modes_completed: 3,
+          seconds_spent_in_focus_sessions: 3600,
+          morning_routine_completion_percentage: 80,
+          evening_routine_completion_percentage: 60,
+          micro_breaks_routine_completion_percentage: 70,
+        },
+        {
+          focus_modes_completed: 2,
+          seconds_spent_in_focus_sessions: 1800,
+          morning_routine_completion_percentage: 90,
+          evening_routine_completion_percentage: 40,
+          micro_breaks_routine_completion_percentage: 30,
+        },
+      ];
+
+      UserRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(adminUserDummy)
+        .mockResolvedValueOnce({ ...userDummy, focus_modes_streak: 5 });
+      DailyStatsRepositoryMock.getUserDailyStats.mockResolvedValueOnce(mockDailyStats);
+
+      const result = await service.getUserStatsForAdminDashboard(adminUserDummy.id, userDummy.id);
+
+      expect(result.total_focus_sessions).toBe(5);
+      expect(result.total_focus_duration_minutes).toBe(90);
+      expect(result.streak_days).toBe(5);
+      expect(result.total_routines_completed).toBe(3);
+      expect(result.total_habits_completed).toBe(1);
+    });
+
+    it('negative: should throw UnauthorizedException when called by a non-admin user', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      await expect(service.getUserStatsForAdminDashboard(userDummy.id, userDummy.id)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('positive: should return zero values when user has no daily stats', async () => {
+      UserRepositoryMock.orm.findOneBy
+        .mockResolvedValueOnce(adminUserDummy)
+        .mockResolvedValueOnce({ ...userDummy, focus_modes_streak: 0 });
+      DailyStatsRepositoryMock.getUserDailyStats.mockResolvedValueOnce([]);
+
+      const result = await service.getUserStatsForAdminDashboard(adminUserDummy.id, userDummy.id);
+
+      expect(result.total_focus_sessions).toBe(0);
+      expect(result.total_focus_duration_minutes).toBe(0);
+      expect(result.average_daily_focus_minutes).toBe(0);
+      expect(result.streak_days).toBe(0);
     });
   });
 });

@@ -1,5 +1,7 @@
 import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CurrentTaskDto } from './current-task.dto';
 
 export class IsAppSafeDto {
   @IsOptional()
@@ -33,4 +35,10 @@ export class IsAppSafeDto {
   @IsOptional()
   @IsString()
   currentTaskInToDoPlayer?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CurrentTaskDto)
+  current_tasks?: CurrentTaskDto[];
 }

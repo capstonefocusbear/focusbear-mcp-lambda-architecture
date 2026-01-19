@@ -121,7 +121,7 @@ export class AuthService {
         );
       }
 
-      const isThirdPartyUser = auth0User.identities.some((identity) => identity.isSocial);
+      const isThirdPartyUser = auth0User.identities?.some((identity) => identity.isSocial) ?? false;
       if (isThirdPartyUser) {
         throw new HttpException(
           {
@@ -164,6 +164,8 @@ export class AuthService {
             auth0User.nickname ||
             this.i18nService.t('common.user_name_fallback', { lang }),
           reset_link: resetLink,
+          verification_link: resetLink,
+          resetLink,
         },
       });
 
@@ -272,7 +274,7 @@ export class AuthService {
         return { message: 'Email is already verified.' };
       }
 
-      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id);
+      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       if (error.name === 'TokenExpiredError') {

@@ -22,4 +22,12 @@ export class UpdateUserMetadataDto {
   @IsOptional()
   @IsObject()
   email_preferences?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  user_job_details?: string;
+
+  @IsOptional()
+  @IsString()
+  user_typical_distractions?: string;
 }

@@ -412,4 +412,20 @@ export class ToDoService {
       throw error;
     }
   }
+
+  async getToDosByIds(userId: string, ids: string[]): Promise<ToDo[]> {
+    if (!ids.length) {
+      return [];
+    }
+
+    const todos = await this.toDoRepository.orm.find({
+      where: { user_id: userId, id: In(ids) },
+      select: ['id', 'title', 'status', 'due_date', 'duration', 'icon', 'subtasks'],
+    });
+
+    return todos.map((todo) => ({
+      ...todo,
+      subtasks: this.filterValidSubtasks(todo.subtasks),
+    }));
+  }
 }

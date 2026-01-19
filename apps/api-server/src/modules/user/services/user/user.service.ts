@@ -46,7 +46,6 @@ import { FocusModeService } from '../../../focus-mode/services/focus-mode/focus-
 import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { UpdateUserSignUpFieldDto } from '../../dto/update-user-sign-up-field.dto';
 import { UpdateUserMetadataDto } from '../../dto/update-user-metadata.dto';
-import { UserMetadata } from '../../domain/user-metadata.model';
 import { UserDailyStatsService } from '../user-daily-stats/user-daily-stats.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
 import { AdminAccessRequestRepository } from '../../repositories/admin-access-requests.repository';
@@ -730,24 +729,53 @@ export class UserService {
   }
 
   async updateMetadata(
-    { profile_image, description, name, last_email_sent, email_preferences }: UpdateUserMetadataDto,
+    {
+      profile_image,
+      description,
+      name,
+      last_email_sent,
+      email_preferences,
+      user_job_details,
+      user_typical_distractions,
+    }: UpdateUserMetadataDto,
     user_id: string,
   ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
 
-    const metadataUpdate: Partial<UserMetadata> = {};
-    if (profile_image !== undefined) metadataUpdate.profile_image = profile_image;
-    if (description !== undefined) metadataUpdate.description = description;
-    if (name !== undefined) metadataUpdate.name = name;
-    if (last_email_sent !== undefined) metadataUpdate.last_email_sent = last_email_sent;
-    if (email_preferences !== undefined) metadataUpdate.email_preferences = email_preferences;
-
-    await this.userRepository.orm.update(user_id, {
-      metadata: { ...(user.metadata || {}), ...metadataUpdate },
+    const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
-    });
+    };
+
+    if (
+      profile_image !== undefined ||
+      description !== undefined ||
+      name !== undefined ||
+      last_email_sent !== undefined ||
+      email_preferences !== undefined
+    ) {
+      // Preserve existing metadata fields while updating
+      const existingMetadata = user.metadata || {};
+      updateData.metadata = {
+        ...existingMetadata,
+        ...(profile_image !== undefined && { profile_image }),
+        ...(description !== undefined && { description }),
+        ...(name !== undefined && { name }),
+        ...(last_email_sent !== undefined && { last_email_sent }),
+        ...(email_preferences !== undefined && { email_preferences }),
+      };
+    }
+
+    if (user_job_details !== undefined) {
+      updateData.user_job_details = user_job_details;
+    }
+
+    if (user_typical_distractions !== undefined) {
+      updateData.user_typical_distractions = user_typical_distractions;
+    }
+
+    await this.userRepository.orm.update(user_id, updateData);
   }
 
   shouldSyncWithRevenueCat(user: User) {

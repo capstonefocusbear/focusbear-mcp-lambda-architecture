@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { R2Service } from '@app/r2';
 import { TaskAttachmentService } from './task-attachment.service';
@@ -172,6 +172,47 @@ describe('TaskAttachmentService', () => {
           file_size: 1024,
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('negative: should throw BadRequestException when file_key does not match expected format', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'test.pdf',
+          file_key: 'malicious-key-pointing-to-other-file',
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException when file_key has wrong taskId', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const wrongTaskId = randomUUID();
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'test.pdf',
+          file_key: `${wrongTaskId}/${userDummy.id}-123456-test.pdf`,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException when file_key has wrong userId', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const wrongUserId = randomUUID();
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'test.pdf',
+          file_key: `${taskDummy.id}/${wrongUserId}-123456-test.pdf`,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

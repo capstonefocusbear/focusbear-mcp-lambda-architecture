@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { R2Service } from '@app/r2';
 import { TaskAttachmentRepository } from '../repositories/task-attachment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -52,6 +52,10 @@ export class TaskAttachmentService {
     const hasAccess = await this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this task');
+    }
+
+    if (!this.isValidFileKey(dto.file_key, taskId, userId)) {
+      throw new BadRequestException('Invalid file key format');
     }
 
     const attachment = new TaskAttachment(
@@ -162,5 +166,10 @@ export class TaskAttachmentService {
 
   private sanitizeFileName(fileName: string): string {
     return fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  }
+
+  private isValidFileKey(fileKey: string, taskId: string, userId: string): boolean {
+    const expectedPrefix = `${taskId}/${userId}-`;
+    return fileKey.startsWith(expectedPrefix);
   }
 }

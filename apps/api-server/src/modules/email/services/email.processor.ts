@@ -230,7 +230,7 @@ export class EmailProcessor {
       if (user) {
         const updatedMetadata = {
           ...user.metadata,
-          last_email_sent: new Date(),
+          last_email_sent: new Date().toISOString(),
         };
         await this.userRepository.update(userId, { metadata: updatedMetadata });
       }

@@ -378,8 +378,11 @@ export class OpenAIService {
 
       // Append user context at the end to preserve prompt caching
       let finalPromptContent = filledPromptContent;
-      const jobDetails = userContext?.jobDetails?.trim();
-      const typicalDistractions = userContext?.typicalDistractions?.trim();
+      const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+      const typicalDistractions = this.normalizeSafetyUserContextInput(
+        userContext?.typicalDistractions,
+        'safety_user_typical_distractions',
+      );
       if (jobDetails || typicalDistractions) {
         const contextParts: string[] = [];
         if (jobDetails) {
@@ -506,8 +509,11 @@ export class OpenAIService {
 
     // Append user context at the end to preserve prompt caching
     let finalPromptContent = filledPromptContent;
-    const jobDetails = userContext?.jobDetails?.trim();
-    const typicalDistractions = userContext?.typicalDistractions?.trim();
+    const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+    const typicalDistractions = this.normalizeSafetyUserContextInput(
+      userContext?.typicalDistractions,
+      'safety_user_typical_distractions',
+    );
     if (jobDetails || typicalDistractions) {
       const contextParts: string[] = [];
       if (jobDetails) {
@@ -1148,6 +1154,20 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
 
   private wrapUserInput(input: string): string {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
+  }
+
+  private normalizeSafetyUserContextInput(input: string | null | undefined, context: string): string | undefined {
+    const value = input?.trim();
+    if (!value) {
+      return undefined;
+    }
+
+    const truncated = value.slice(0, MAX_WORD_LENGTH.metadata);
+    if (!this.isValidInput(truncated, MAX_WORD_LENGTH.metadata, context)) {
+      return undefined;
+    }
+
+    return truncated;
   }
 
   private fillPrompt(

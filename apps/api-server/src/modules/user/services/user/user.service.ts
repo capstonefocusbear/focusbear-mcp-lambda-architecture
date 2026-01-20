@@ -733,7 +733,6 @@ export class UserService {
       profile_image,
       description,
       name,
-      last_email_sent,
       email_preferences,
       user_job_details,
       user_typical_distractions,
@@ -752,7 +751,6 @@ export class UserService {
       profile_image !== undefined ||
       description !== undefined ||
       name !== undefined ||
-      last_email_sent !== undefined ||
       email_preferences !== undefined
     ) {
       // Preserve existing metadata fields while updating
@@ -762,7 +760,6 @@ export class UserService {
         ...(profile_image !== undefined && { profile_image }),
         ...(description !== undefined && { description }),
         ...(name !== undefined && { name }),
-        ...(last_email_sent !== undefined && { last_email_sent }),
         ...(email_preferences !== undefined && { email_preferences }),
       };
     }
@@ -943,7 +940,10 @@ export class UserService {
       isUrlSafeDto.extraJustificationForThisSite ??
       undefined;
 
-    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -956,7 +956,10 @@ export class UserService {
     normalisedDto.justificationForThisSpecificApp =
       isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
 
-    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

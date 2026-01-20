@@ -1403,6 +1403,7 @@ describe('UserService', () => {
           justificationForThisUrl: undefined,
         }),
         userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
       );
       expect(result).toEqual(expectedResponse);
     });
@@ -1437,6 +1438,10 @@ describe('UserService', () => {
           justificationForThisUrl: undefined,
         }),
         userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
       );
     });
 
@@ -1470,6 +1475,7 @@ describe('UserService', () => {
           justificationForThisUrl: undefined,
         }),
         userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
       );
     });
   });
@@ -1519,6 +1525,7 @@ describe('UserService', () => {
           justificationForThisSpecificApp: 'I need it for programming',
         }),
         userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
       );
       expect(result).toEqual(expectedResponse);
     });
@@ -1550,6 +1557,10 @@ describe('UserService', () => {
           justificationForThisSpecificApp: undefined,
         }),
         userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
       );
     });
 
@@ -1580,6 +1591,7 @@ describe('UserService', () => {
           justificationForThisSpecificApp: undefined,
         }),
         userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
       );
     });
   });

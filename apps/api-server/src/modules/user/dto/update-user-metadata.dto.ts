@@ -1,8 +1,13 @@
-import { Type } from 'class-transformer';
-import { IsDate, IsObject, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateUserMetadataDto {
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object' && typeof value.url === 'string') return value.url;
+    return value;
+  })
   @IsString()
   profile_image?: string;
 
@@ -13,11 +18,6 @@ export class UpdateUserMetadataDto {
   @IsOptional()
   @IsString()
   name?: string;
-
-  @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  last_email_sent?: Date;
 
   @IsOptional()
   @IsObject()

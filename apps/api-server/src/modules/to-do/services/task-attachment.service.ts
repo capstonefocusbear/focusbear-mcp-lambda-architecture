@@ -6,7 +6,7 @@ import { TaskAttachment } from '../entities/task-attachment.entity';
 import { CreateTaskAttachmentDto } from '../dto/create-task-attachment.dto';
 import { TaskAttachmentResponseDto } from '../dto/task-attachment-response.dto';
 import { GenerateUploadAttachmentUrlDto } from '../dto/generate-upload-attachment-url.dto';
-import { S3_BUCKET_TASK_ATTACHMENTS } from '../../../shared/utils/constants';
+import { S3_BUCKET_TASK_ATTACHMENTS, MAX_ATTACHMENT_SIZE_BYTES } from '../../../shared/utils/constants';
 
 @Injectable()
 export class TaskAttachmentService {
@@ -56,6 +56,10 @@ export class TaskAttachmentService {
 
     if (!this.isValidFileKey(dto.file_key, taskId, userId)) {
       throw new BadRequestException('Invalid file key format');
+    }
+
+    if (dto.file_size > MAX_ATTACHMENT_SIZE_BYTES) {
+      throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
     }
 
     const attachment = new TaskAttachment(

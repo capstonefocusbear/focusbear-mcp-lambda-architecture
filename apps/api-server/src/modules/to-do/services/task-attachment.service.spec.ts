@@ -214,6 +214,20 @@ describe('TaskAttachmentService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('negative: should throw BadRequestException when file size exceeds 20 MB limit', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'large-file.pdf',
+          file_key: `${taskDummy.id}/${userDummy.id}-123456-large-file.pdf`,
+          content_type: 'application/pdf',
+          file_size: oversizedFileSize,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('getAttachmentsByTaskId', () => {

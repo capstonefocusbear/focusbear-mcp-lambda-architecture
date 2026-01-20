@@ -4,6 +4,8 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { R2Service } from '@app/r2';
 import { OpenAIService } from '@app/openai';
+import { GetAdminTasksQueryDto } from '../dto/get-admin-tasks-query.dto';
+import { IsAdmin } from '../../auth/guards/is-admin/is-admin.guard';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -71,6 +73,19 @@ export class TodoController {
   @Get('recent')
   async recentToDos(@Query() dto: RecentToDoDto, @AuthContext() { user }: Passport) {
     return this.toDoService.getRecentToDos(dto, user.id);
+  }
+
+  /**
+   * Retrieves tasks for a specific user. Used by the admin dashboard to display
+   * user task data for debugging and support purposes.
+   */
+  @Get('/admin')
+  @UseGuards(IsAdmin)
+  async getTasksForAdminDashboard(
+    @Query() { user_id }: GetAdminTasksQueryDto,
+    @AuthContext() { user: admin }: Passport,
+  ) {
+    return this.toDoService.getTasksForAdminDashboard(admin.id, user_id);
   }
 
   @Get('by-ids')

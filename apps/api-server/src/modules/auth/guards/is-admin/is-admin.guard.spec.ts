@@ -23,14 +23,19 @@ describe('IsAdmin', () => {
 
   describe('canActivate', () => {
     it('negative: should return false value if the user does not have admin role', async () => {
-      const headers = {
+      const request = {
         headers: {
           authorization: `Bearer ${accessTokenWithoutAdminRole}`,
+        },
+        raw: {
+          passport: {
+            isAuth: true,
+          },
         },
       };
       const context = {
         switchToHttp: () => ({
-          getRequest: () => headers,
+          getRequest: () => request,
         }),
       };
 
@@ -40,20 +45,47 @@ describe('IsAdmin', () => {
     });
 
     it('positive: should return true value if the user had admin role', async () => {
-      const headers = {
+      const request = {
         headers: {
           authorization: `Bearer ${accessTokenWithAdminRole}`,
+        },
+        raw: {
+          passport: {
+            isAuth: true,
+          },
         },
       };
       const context = {
         switchToHttp: () => ({
-          getRequest: () => headers,
+          getRequest: () => request,
         }),
       };
 
       const result = isAdminGuard.canActivate(context as unknown as ExecutionContext);
 
       expect(result).toBeTrue();
+    });
+
+    it('negative: should throw UnauthorizedException when user is not authenticated', async () => {
+      const request = {
+        headers: {
+          authorization: `Bearer ${accessTokenWithAdminRole}`,
+        },
+        raw: {
+          passport: {
+            isAuth: false,
+          },
+        },
+      };
+      const context = {
+        switchToHttp: () => ({
+          getRequest: () => request,
+        }),
+      };
+
+      expect(() => isAdminGuard.canActivate(context as unknown as ExecutionContext)).toThrow(
+        'User must be authenticated before checking admin status',
+      );
     });
   });
 });

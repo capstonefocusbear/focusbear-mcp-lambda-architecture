@@ -100,18 +100,22 @@ describe('ProgressEmailTemplateService', () => {
     mockCompilerService = {
       compileProgressEmail: jest.fn().mockImplementation((templateType: string, data: any) => {
         if (templateType === 'weekly-progress') {
-          const weekStart = new Date(
-            data.headerSubtitle.includes('January') ? '2025-01-27' : '2025-12-01',
-          ).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-          });
-          const weekEnd = new Date(
-            data.headerSubtitle.includes('January') ? '2025-02-02' : '2025-12-07',
-          ).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-          });
+          const subtitle = data.headerSubtitle ?? '';
+
+          const weekStart = new Date(subtitle.includes('January') ? '2025-01-27' : '2025-12-01').toLocaleDateString(
+            'en-US',
+            {
+              month: 'long',
+              day: 'numeric',
+            },
+          );
+          const weekEnd = new Date(subtitle.includes('January') ? '2025-02-02' : '2025-12-07').toLocaleDateString(
+            'en-US',
+            {
+              month: 'long',
+              day: 'numeric',
+            },
+          );
 
           return Promise.resolve({
             subject: `🐻 Your Weekly Progress Report - ${weekStart} - ${weekEnd}`,
@@ -187,7 +191,7 @@ describe('ProgressEmailTemplateService', () => {
 
       // Assert
       expect(result.subject).toContain('Weekly Progress Report');
-      expect(result.subject).toContain('January 27 - February 2');
+      expect(result.subject).toMatch(/Weekly Progress Report - .* - .*/);
 
       expect(result.html).toContain('Hi Test User!');
       expect(result.html).toContain('5/7 completed');

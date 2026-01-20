@@ -242,6 +242,21 @@ describe('CommentAttachmentService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('negative: should throw BadRequestException when file size exceeds 20 MB limit', async () => {
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
+
+      await expect(
+        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+          file_name: 'large-file.pdf',
+          file_key: `${commentDummy.id}/${userDummy.id}-123456-large-file.pdf`,
+          content_type: 'application/pdf',
+          file_size: oversizedFileSize,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('getAttachmentsByCommentId', () => {

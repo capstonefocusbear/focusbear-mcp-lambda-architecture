@@ -344,6 +344,7 @@ export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
 export const S3_BUCKET_TASK_ATTACHMENTS = 'task-attachments';
 export const S3_BUCKET_COMMENT_ATTACHMENTS = 'comment-attachments';
+export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

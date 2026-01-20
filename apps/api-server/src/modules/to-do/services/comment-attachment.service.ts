@@ -7,7 +7,7 @@ import { CommentAttachment } from '../entities/comment-attachment.entity';
 import { CreateCommentAttachmentDto } from '../dto/create-comment-attachment.dto';
 import { CommentAttachmentResponseDto } from '../dto/comment-attachment-response.dto';
 import { GenerateUploadCommentAttachmentUrlDto } from '../dto/generate-upload-comment-attachment-url.dto';
-import { S3_BUCKET_COMMENT_ATTACHMENTS } from '../../../shared/utils/constants';
+import { S3_BUCKET_COMMENT_ATTACHMENTS, MAX_ATTACHMENT_SIZE_BYTES } from '../../../shared/utils/constants';
 
 @Injectable()
 export class CommentAttachmentService {
@@ -74,6 +74,10 @@ export class CommentAttachmentService {
 
     if (!this.isValidFileKey(dto.file_key, commentId, userId)) {
       throw new BadRequestException('Invalid file key format');
+    }
+
+    if (dto.file_size > MAX_ATTACHMENT_SIZE_BYTES) {
+      throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
     }
 
     const attachment = new CommentAttachment(

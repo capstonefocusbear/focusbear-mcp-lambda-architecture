@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { In } from 'typeorm';
@@ -28,6 +28,9 @@ import { RecentToDoDto } from '../dto/recent-to-do.dto';
 import { ConvertBrainDump } from '../dto/convert-brain-dump.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { UserRepository } from '../../user/repositories/user.repository';
+import { UserTypes } from '../../user/domain/user-types.enum';
+import { AdminTaskResponseDto } from '../dto/admin-task-response.dto';
 
 @Injectable()
 export class ToDoService {
@@ -40,6 +43,7 @@ export class ToDoService {
     private readonly integrationFactory: IntegrationFactory,
     private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   /**
@@ -411,6 +415,50 @@ export class ToDoService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  /**
+   * Retrieves tasks for a specific user. Used by the admin dashboard to display
+   * user task data for debugging and support purposes.
+   * Includes TOP priority columns (outcome, perspiration_level) for task prioritization context.
+   */
+  async getTasksForAdminDashboard(adminId: string, userId: string): Promise<AdminTaskResponseDto[]> {
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
+    if (!adminUser) {
+      throw new NotFoundException(`User with ID: ${adminId} not found!`);
+    }
+    const isAdmin = adminUser.user_type === UserTypes.ADMIN;
+    if (!isAdmin) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not admin!`);
+    }
+    const tasks = await this.toDoRepository.orm.find({
+      where: { user_id: userId },
+      select: [
+        'id',
+        'title',
+        'status',
+        'due_date',
+        'eisenhower_quadrant',
+        'duration',
+        'outcome',
+        'perspiration_level',
+        'created_at',
+        'updated_at',
+      ],
+      order: { updated_at: 'DESC' },
+    });
+    return tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      due_date: task.due_date,
+      eisenhower_quadrant: task.eisenhower_quadrant,
+      duration: task.duration,
+      outcome: task.outcome,
+      perspiration_level: task.perspiration_level,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+    }));
   }
 
   async getToDosByIds(userId: string, ids: string[]): Promise<ToDo[]> {

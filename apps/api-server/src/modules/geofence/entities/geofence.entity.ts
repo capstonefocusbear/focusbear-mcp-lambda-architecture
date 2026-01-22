@@ -17,11 +17,19 @@ export class Geofence extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: false })
   name: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: false })
-  latitude: number;
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    transformer: BaseEntity.encryptField('geofence_latitude'),
+  })
+  latitude: string;
 
-  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: false })
-  longitude: number;
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    transformer: BaseEntity.encryptField('geofence_longitude'),
+  })
+  longitude: string;
 
   @Column({ type: 'integer', default: 100 })
   radius: number;

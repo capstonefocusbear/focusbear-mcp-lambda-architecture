@@ -18,7 +18,7 @@ import { MetricsConfig } from '../../../../config/metrics.config';
 export class UserSettingsController {
   constructor(private readonly userSettingsService: UserSettingsService, private readonly config: ConfigService) {}
 
-  private getMetiricsConfig(): MetricsConfig {
+  private getMetricsConfig(): MetricsConfig {
     return (
       this.config.get<MetricsConfig>('metrics') || {
         emitQueueMetrics: true,
@@ -33,7 +33,7 @@ export class UserSettingsController {
   }
 
   private async emitMetric(operation: string, durationMs: number, success: boolean, userId: string): Promise<void> {
-    const metrics = this.getMetiricsConfig();
+    const metrics = this.getMetricsConfig();
     const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
     if (!shouldEmitMetrics) {
       return;
@@ -51,6 +51,7 @@ export class UserSettingsController {
       });
     } catch (error) {
       // Silently fail - don't let metrics emission block the response
+      console.error('Failed to emit user-settings metric', error);
     }
   }
 

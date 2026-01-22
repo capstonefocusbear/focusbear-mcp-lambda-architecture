@@ -14,7 +14,11 @@ export class Geofence extends BaseEntity {
   @Column({ type: 'uuid', nullable: false })
   user_id: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: false })
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    transformer: BaseEntity.encryptField('geofence_name'),
+  })
   name: string;
 
   @Column({

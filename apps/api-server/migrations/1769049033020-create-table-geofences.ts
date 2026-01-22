@@ -8,7 +8,7 @@ export class CreateTableGeofences1769049033020 implements MigrationInterface {
                 "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 "user_id" uuid NOT NULL,
-                "name" character varying(255) NOT NULL,
+                "name" character varying NOT NULL,
                                 "latitude" character varying NOT NULL,
                                 "longitude" character varying NOT NULL,
                 "radius" integer NOT NULL DEFAULT 100,

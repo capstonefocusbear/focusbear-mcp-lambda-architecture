@@ -49,6 +49,7 @@ import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
+import { GeofenceModule } from './modules/geofence/geofence.module';
 
 @Module({
   imports: [
@@ -121,6 +122,7 @@ import { AppVersionsModule } from './modules/app-versions/app-versions.module';
     AccountabilityBuddyModule,
     AnnouncementsModule,
     AppVersionsModule,
+    GeofenceModule,
   ],
   controllers: [AppController],
   providers: [

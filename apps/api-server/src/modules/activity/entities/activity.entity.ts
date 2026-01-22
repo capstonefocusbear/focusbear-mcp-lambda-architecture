@@ -11,6 +11,7 @@ import { DaysOfWeek } from '../domain/days-of-week.enum';
 import { LogQuantityQuestion } from './log-quantity-questions';
 import { ImpactCategory } from '../domain/impact-category.enum';
 import { Tutorial } from './tutorial.entity';
+import { Geofence } from '../../geofence/entities/geofence.entity';
 
 @Entity('activities')
 export class Activity extends BaseEntity {
@@ -135,6 +136,18 @@ export class Activity extends BaseEntity {
     type: 'varchar',
   })
   cutoff_time_for_doing_activity?: string;
+
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: true,
+    default: null,
+  })
+  geofence_id?: string;
+
+  @ManyToOne(() => Geofence, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'geofence_id' })
+  geofence?: Geofence;
 
   @ManyToOne(() => ActivitySequence, (activity_sequence) => activity_sequence.activities, {
     onDelete: 'CASCADE',

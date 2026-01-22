@@ -58,6 +58,9 @@ import { FlankerTest } from '../modules/user/entities/flanker-test.entity';
 import { AsyncTask } from '../modules/async-task/entities/async-task.entity';
 import { AccountabilityBuddy } from '../modules/accountability-buddy/entities/accountability-buddy.entity';
 import { UnlockRequest } from '../modules/accountability-buddy/entities/unlock-request.entity';
+import { AppVersionEntity } from '../modules/app-versions/entities/app-versions.entity';
+import { AnnouncementEntity } from '../modules/announcements/entities/announcements.entity';
+import { AnnouncementViewEntity } from '../modules/announcements/entities/announcement-views.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -133,6 +136,9 @@ export const typeormConfig = registerAs(
       AsyncTask,
       AccountabilityBuddy,
       UnlockRequest,
+      AppVersionEntity,
+      AnnouncementEntity,
+      AnnouncementViewEntity,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),

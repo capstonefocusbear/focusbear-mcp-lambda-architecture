@@ -48,6 +48,8 @@ import { AccountabilityBuddyModule } from './modules/accountability-buddy/accoun
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 
 @Module({
   imports: [
@@ -119,6 +121,8 @@ import { WebhookModule } from './modules/webhook/webhook.module';
     ObservabilityModule,
     AccountabilityBuddyModule,
     WebhookModule,
+    AnnouncementsModule,
+    AppVersionsModule,
   ],
   controllers: [AppController],
   providers: [

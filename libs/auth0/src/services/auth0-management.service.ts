@@ -5,6 +5,12 @@ import { AUTH0_MODULE_OPTIONS } from '../auth0.constants';
 import { IAuth0Options, IManagementService, Auth0User } from '../interfaces';
 import { FieldTransformer, callPromiseWithTimeout } from '../../../../apps/api-server/src/shared/utils/helpers';
 
+const AUTH0_USER_CACHE_TTL_SECONDS = 3600;
+const AUTH0_USERS_BY_EMAIL_CACHE_TTL_SECONDS = 1800;
+
+const getAuth0UserCacheKey = (auth0Id: string) => `auth0:user:${auth0Id}`;
+const getAuth0UsersByEmailCacheKey = (email: string) => `auth0:users:email:${email}`;
+
 @Injectable()
 export class Auth0ManagementService extends ManagementClient implements IManagementService {
   private readonly logger: Logger;
@@ -29,7 +35,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
   private async getCachedUser(auth0Id: string): Promise<any> {
     try {
-      const cacheKey = `auth0:user:${auth0Id}`;
+      const cacheKey = getAuth0UserCacheKey(auth0Id);
       const encryptedData = await this.redisClient.get(cacheKey);
       if (!encryptedData) return null;
 
@@ -44,12 +50,11 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
 
   private async setCachedUser(auth0Id: string, userData: any): Promise<void> {
     try {
-      const cacheKey = `auth0:user:${auth0Id}`;
+      const cacheKey = getAuth0UserCacheKey(auth0Id);
       // Encrypt the user data before storing in Redis
       const jsonData = JSON.stringify(userData);
       const encryptedData = FieldTransformer.to(jsonData);
-      // Cache for 1 hour (3600 seconds)
-      await this.redisClient.setex(cacheKey, 3600, encryptedData);
+      await this.redisClient.setex(cacheKey, AUTH0_USER_CACHE_TTL_SECONDS, encryptedData);
     } catch (error) {
       console.error('Failed to cache user:', error);
     }
@@ -87,7 +92,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
   async getAuth0UsersWithEmail(email: string): Promise<any[]> {
     try {
       // Try to get cached users first
-      const cacheKey = `auth0:users:email:${email}`;
+      const cacheKey = getAuth0UsersByEmailCacheKey(email);
       const encryptedData = await this.redisClient.get(cacheKey);
       if (encryptedData) {
         const decryptedData = FieldTransformer.from(encryptedData);
@@ -101,7 +106,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       if (usersMatchingEmail) {
         const jsonData = JSON.stringify(usersMatchingEmail);
         const encryptedUserData = FieldTransformer.to(jsonData);
-        await this.redisClient.setex(cacheKey, 1800, encryptedUserData); // 30 minutes
+        await this.redisClient.setex(cacheKey, AUTH0_USERS_BY_EMAIL_CACHE_TTL_SECONDS, encryptedUserData);
       }
       return usersMatchingEmail;
     } catch (error) {
@@ -126,9 +131,21 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
     }
   }
 
-  async markUserEmailAsVerified(auth0Id: string) {
+  async markUserEmailAsVerified(auth0Id: string, email?: string) {
     try {
-      return await this.users.update({ id: auth0Id }, { email_verified: true });
+      const result = await this.users.update({ id: auth0Id }, { email_verified: true });
+
+      try {
+        const cacheKeysToDelete = [getAuth0UserCacheKey(auth0Id)];
+        if (email) {
+          cacheKeysToDelete.push(getAuth0UsersByEmailCacheKey(email));
+        }
+        await this.redisClient.del(...cacheKeysToDelete);
+      } catch (cacheError) {
+        this.logger.warn(`Failed to invalidate Auth0 user cache for ${auth0Id}: ${cacheError?.message ?? cacheError}`);
+      }
+
+      return result;
     } catch (error) {
       throw new HttpException('Failed to verify email in Auth0', HttpStatus.INTERNAL_SERVER_ERROR);
     }

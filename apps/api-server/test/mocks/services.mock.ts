@@ -51,6 +51,8 @@ export const Auth0ManagementServiceMock = {
   deleteAuth0User: jest.fn(),
   getDeviceCredentials: jest.fn(),
   resendEmailVerification: jest.fn(),
+  markUserEmailAsVerified: jest.fn(),
+  updatePassword: jest.fn(),
 };
 
 export const CompletedActivityQueueMock = {

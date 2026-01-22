@@ -464,6 +464,18 @@ export class User extends BaseEntity {
   revenue_cat_status?: string;
 
   @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  user_job_details?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  user_typical_distractions?: string;
+
+  @Column({
     type: 'timestamptz',
     nullable: true,
   })

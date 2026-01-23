@@ -95,7 +95,6 @@ jest.mock('@app/observability', () => {
 
 describe('UserService', () => {
   let userService: UserService;
-  const stripeCustomerQueueMock = { add: jest.fn(), process: jest.fn() };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -132,7 +131,7 @@ describe('UserService', () => {
         },
         {
           provide: getQueueToken(BullQueues.STRIPE_CUSTOMER),
-          useValue: stripeCustomerQueueMock,
+          useValue: QueueMock,
         },
         CompletedActivitySequenceService,
         AccountabilityBuddyService,
@@ -234,7 +233,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned with stripe id', async () => {
+    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
@@ -248,10 +247,10 @@ describe('UserService', () => {
       expect(UserRepositoryMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           auth0_id: syncAccountDto.auth0_id,
-          stripe_customer_id: null,
+          stripe_customer_id: null, // Will be set by background job
         }),
       );
-      expect(stripeCustomerQueueMock.add).toHaveBeenCalledWith(
+      expect(QueueMock.add).toHaveBeenCalledWith(
         BullWorkers.CREATE_STRIPE_CUSTOMER,
         {
           user_id: userDummy.id,
@@ -283,7 +282,7 @@ describe('UserService', () => {
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(stripeCustomerId);
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       // mock 2 users to exist in auth0 with same email
       const dummyAuth0Response = [auth0UserDummy, auth0UserDummy];
@@ -305,10 +304,11 @@ describe('UserService', () => {
     });
 
     it('does not overwrite username for existing users on sync', async () => {
-      const existing = { ...userDummy, username: 'Zoë', stripe_customer_id: null };
-      Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
+      const existing = { ...userDummy, username: 'Zoë' };
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existing);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(existing);
+      UserRepositoryMock.update.mockResolvedValueOnce(existing);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
@@ -316,13 +316,34 @@ describe('UserService', () => {
 
       await userService.syncUserAccount(syncAccountDto);
 
+      // Should not queue Stripe job for users who already have stripe_customer_id
+      expect(QueueMock.add).not.toHaveBeenCalledWith(BullWorkers.CREATE_STRIPE_CUSTOMER, expect.anything());
       expect(UserRepositoryMock.update).not.toHaveBeenCalled();
-      expect(stripeCustomerQueueMock.add).toHaveBeenCalledWith(
+    });
+
+    it('positive: new user gets Stripe customer created via background job', async () => {
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth0_id: syncAccountDto.auth0_id,
+          stripe_customer_id: null, // Will be set by background job
+        }),
+      );
+      expect(QueueMock.add).toHaveBeenCalledWith(
         BullWorkers.CREATE_STRIPE_CUSTOMER,
         {
           user_id: userDummy.id,
           email: auth0UserDummy.email,
-          operating_system: 'iOS',
+          operating_system: 'MacOS',
         },
         {
           jobId: `create-stripe-customer:${userDummy.id}`,
@@ -335,6 +356,8 @@ describe('UserService', () => {
           },
         },
       );
+      expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
   });
 

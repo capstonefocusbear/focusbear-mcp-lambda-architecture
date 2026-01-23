@@ -45,6 +45,7 @@ import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
 import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
+import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
 import { UserFeedbackRepository } from './repositories/user-feedback.repository';
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
@@ -68,7 +69,6 @@ import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consu
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
-import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
 
 @Module({
   providers: [
@@ -87,6 +87,7 @@ import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
     UserDataService,
     UserPersonalDataConsumer,
     RevenueCatStatusConsumer,
+    StripeCustomerConsumer,
     UserFeedbackRepository,
     UserFeedbackService,
     CustomRoutineRepository,
@@ -97,7 +98,6 @@ import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
     FlankerTestService,
-    StripeCustomerConsumer,
   ],
   exports: [
     UserRepository,
@@ -160,9 +160,6 @@ import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
         name: BullQueues.REVENUE_CAT_STATUS,
       },
       {
-        name: BullQueues.STRIPE_CUSTOMER,
-      },
-      {
         name: BullQueues.USAGE_IMAGE,
       },
       {
@@ -170,6 +167,9 @@ import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
       },
       {
         name: BullQueues.USAGE_DATA,
+      },
+      {
+        name: BullQueues.STRIPE_CUSTOMER,
       },
     ),
     R2Module.registerAsync({

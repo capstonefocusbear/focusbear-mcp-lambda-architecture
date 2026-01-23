@@ -257,14 +257,10 @@ export class OpenAIService {
   @SentryTraced('streamChatReply')
   async streamChatReply(res: FastifyReply, messages: ChatCompletionMessageParam[], language = 'English') {
     const promptTemplate = this.promptCacheService.getPrompt('chat-reply');
-    const content = promptTemplate
-      ? this.fillPrompt(promptTemplate, { language })
-      : `You are a ${language} speaking chatbot(don't mention that you are a chatbot) 
-      named Focus Bear helping people to be productive and achieve 
-      the goals they set out to achieve. You are part of an app that has features 
-      like allowing users to block apps and websites they find distracting and letting them 
-       practice habits they set out to do as part of their daily routines. You are restricted to 
-      talking about productivity and habits and should limit responses to 100 words. Please greet the user briefly.`;
+    if (!promptTemplate) {
+      throw new Error('chat-reply prompt template not found');
+    }
+    const content = this.fillPrompt(promptTemplate, { language });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content,
@@ -548,44 +544,16 @@ export class OpenAIService {
       const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
 
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-url');
-      const taskSuggestionPrompt = promptTemplate
-        ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            url,
-            tab_title: tabTitle,
-            meta_description: metaDescription,
-            current_tasks_list: currentTasksList,
-          })
-        : `Based on the following website information, suggest what task the user might be working on.
-
-Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
-Page Title: ${INPUT_WRAPPER}${tabTitle}${INPUT_WRAPPER}
-Page Description: ${INPUT_WRAPPER}${metaDescription}${INPUT_WRAPPER}
-
-Current available tasks:
-${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
-
-Please analyze the website content and determine the most appropriate task:
-
-IMPORTANT: Only select an existing task if there is a STRONG, SPECIFIC connection between the website content and the task. Be careful with generic websites - they should only match tasks that are clearly related to what the website is commonly used for.
-
-Guidelines for matching:
-- If the website is clearly specialized for a specific purpose (e.g., Jira for project management, Figma for design, a specific documentation page), it MAY match a related task
-- If the website is generic/multi-purpose (e.g., Google homepage, Gmail inbox, Twitter feed, Reddit), only match an existing task if the task is CLEARLY related to what the website is commonly used for. For example: GitHub CAN match a task like "Coding" or "Development work" since GitHub is commonly used for coding. But a generic search engine should NOT match "documentation for voice call system" just because you could theoretically search for docs there.
-- When in doubt, suggest a NEW task rather than forcing a poor match
-
-Decision process:
-1. First, determine if the website is specialized or generic/multi-purpose
-2. If an existing task has a STRONG, DIRECT connection to the website (considering what the website is commonly used for), return that task (use its exact task_name and task_id)
-3. Otherwise, suggest a new task name that would be appropriate for this website
-
-Return your response as a JSON object with this exact format:
-{
-  "task_name": "the task name",
-  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
-}
-
-If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+      if (!promptTemplate) {
+        throw new Error('task-suggestion-url prompt template not found');
+      }
+      const taskSuggestionPrompt = this.fillPrompt(promptTemplate, {
+        input_wrapper: INPUT_WRAPPER,
+        url,
+        tab_title: tabTitle,
+        meta_description: metaDescription,
+        current_tasks_list: currentTasksList,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         this.getUntrustedUserInputPrompt(),
@@ -636,42 +604,15 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
 
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-app');
-      const taskSuggestionPrompt = promptTemplate
-        ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            app_name: appName,
-            focus_mode: focusMode,
-            current_tasks_list: currentTasksList,
-          })
-        : `Based on the following app information, suggest what task the user might be working on.
-
-App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}
-Focus Mode: ${INPUT_WRAPPER}${focusMode}${INPUT_WRAPPER}
-
-Current available tasks:
-${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
-
-Please analyze the app and determine the most appropriate task:
-
-IMPORTANT: Only select an existing task if there is a STRONG, SPECIFIC connection between the app and the task. Be careful with generic/multi-purpose apps - they should only match tasks that are clearly related to what the app is commonly used for.
-
-Guidelines for matching:
-- If the app is clearly specialized for a specific purpose (e.g., Figma for design, Slack for communication, Xcode for iOS development), it MAY match a related task
-- If the app is generic/multi-purpose (e.g., Terminal, VS Code, Finder, Notes, Safari), only match an existing task if the task is CLEARLY related to what the app is commonly used for. For example: Terminal CAN match a task like "Coding" or "Development work" since Terminal is commonly used for coding. But Terminal should NOT match "documentation for voice call system" just because you could theoretically write docs in Terminal.
-- When in doubt, suggest a NEW task rather than forcing a poor match
-
-Decision process:
-1. First, determine if the app is specialized or generic/multi-purpose
-2. If an existing task has a STRONG, DIRECT connection to the app (considering what the app is commonly used for), return that task (use its exact task_name and task_id)
-3. Otherwise, suggest a new task name that would be appropriate for this app
-
-Return your response as a JSON object with this exact format:
-{
-  "task_name": "the task name",
-  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
-}
-
-If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+      if (!promptTemplate) {
+        throw new Error('task-suggestion-app prompt template not found');
+      }
+      const taskSuggestionPrompt = this.fillPrompt(promptTemplate, {
+        input_wrapper: INPUT_WRAPPER,
+        app_name: appName,
+        focus_mode: focusMode,
+        current_tasks_list: currentTasksList,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         this.getUntrustedUserInputPrompt(),
@@ -896,14 +837,10 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('username-validation');
-    const usernamePromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, username })
-      : `Given the following username, determine whether it uses curse words, sexual language, or could be offensive to anyone, if it is deemed fine, return true, if offensive, return false.
-      Examples of inappropriate usernames for which false should be returned: sexymommee, hitler 
-      the output should be in the format:
-      { allowed: boolean }
-      username: ${this.wrapUserInput(username)},
-      JSON output:`;
+    if (!promptTemplate) {
+      throw new Error('username-validation prompt template not found');
+    }
+    const usernamePromptContent = this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, username });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: usernamePromptContent,
@@ -940,17 +877,10 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('subtasks-generation');
-    const subtasksPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, language, task })
-      : `Break down the following task into smaller steps. Each step should be a JSON object with the format: 
-      { "name": "Subtask Name (capitalized and in ${language})", "is_completed": false }. 
-      The final output should be: { "task": "${task}", "subtasks": [array of subtasks] }.
-      
-      Please use the following JSON structure without any code block formatting or backticks:
-    
-      Task: ${this.wrapUserInput(task)}
-      
-      JSON output:`;
+    if (!promptTemplate) {
+      throw new Error('subtasks-generation prompt template not found');
+    }
+    const subtasksPromptContent = this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, language, task });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: subtasksPromptContent,
@@ -984,22 +914,13 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('brain-dump-conversion');
-    const brainDumpPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, brain_dump_contents: brainDumpContents })
-      : `The user has done a 'brain dump' of ideas and wants help converting it into tasks and subtasks. 
-                Structure it into array of JSON tasks for them and come up with subtasks if the task is large. 
-                The user may have ADHD and needs help with task initiation so make the first task really easy.
-                Please use the following JSON structure without any code block formatting or backticks:
-                  [
-                    {
-                      "task_name": "name1",
-                      "estimated_duration_minutes": 20,
-                      "subtasks": ["subtask1", "subtask2"]
-                    }
-                  ]
-
-                Here is the braindump: ${this.wrapUserInput(brainDumpContents)}. 
-                `;
+    if (!promptTemplate) {
+      throw new Error('brain-dump-conversion prompt template not found');
+    }
+    const brainDumpPromptContent = this.fillPrompt(promptTemplate, {
+      input_wrapper: INPUT_WRAPPER,
+      brain_dump_contents: brainDumpContents,
+    });
     const userMessage: ChatCompletionMessageParam = {
       role: 'user',
       content: brainDumpPromptContent,
@@ -1227,11 +1148,13 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
 
   async generateEmojiForActivity(activityName: string): Promise<string> {
     const promptTemplate = this.promptCacheService.getPrompt('emoji-generation');
-    const emojiPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, activity_name: activityName })
-      : `Given the following activity name that is part of the user's routine, generate a single emoji that best describe the activity.
-      Activity name: ${this.wrapUserInput(activityName)}
-      `;
+    if (!promptTemplate) {
+      throw new Error('emoji-generation prompt template not found');
+    }
+    const emojiPromptContent = this.fillPrompt(promptTemplate, {
+      input_wrapper: INPUT_WRAPPER,
+      activity_name: activityName,
+    });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: emojiPromptContent,

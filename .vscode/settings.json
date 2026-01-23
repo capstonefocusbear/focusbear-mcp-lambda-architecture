@@ -1,7 +1,6 @@
 {
-  "cSpell.words": [
-    "bullmq"
-  ],
+  "cSpell.words": ["bullmq"],
   "files.eol": "\n",
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

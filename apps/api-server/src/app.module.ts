@@ -48,6 +48,8 @@ import { AccountabilityBuddyModule } from './modules/accountability-buddy/accoun
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
 import { ProjectModule } from './modules/project/project.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 
 @Module({
   imports: [
@@ -119,6 +121,8 @@ import { ProjectModule } from './modules/project/project.module';
     ObservabilityModule,
     AccountabilityBuddyModule,
     ProjectModule,
+    AnnouncementsModule,
+    AppVersionsModule,
   ],
   controllers: [AppController],
   providers: [

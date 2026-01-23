@@ -1,14 +1,14 @@
 /* eslint-disable global-require */
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@app/observability';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
 import { SendGridService } from '@app/send-grid';
 import { randomUUID } from 'crypto';
 import { prettyJson } from '../../../shared/utils/helpers';
-import { userDummy, QueueMock, auth0UserDummy, lastFiftyEventsDummy } from '../../../../test/dummies';
+import { userDummy, QueueMock, auth0UserDummy, lastFiftyEventsDummy, adminUserDummy } from '../../../../test/dummies';
 import {
   EMAIL_SUBJECTS,
   FOCUS_BEAR_EMAILS,
@@ -388,6 +388,64 @@ describe('EventService', () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
         message,
+      });
+    });
+  });
+
+  describe('getTrackEventsForAdminDashboard', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should return track events for a user when called by an admin', async () => {
+      const mockEvents = [
+        {
+          id: randomUUID(),
+          event_type: 'FOCUS_MODE_ENABLED',
+          event_data: { duration: 60 },
+          created_at: '2024-01-15T10:00:00.000Z',
+        },
+        {
+          id: randomUUID(),
+          event_type: 'FOCUS_MODE_DISABLED',
+          event_data: null,
+          created_at: '2024-01-15T11:00:00.000Z',
+        },
+      ];
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
+      TrackEventRepositoryMock.orm.find.mockResolvedValueOnce(mockEvents);
+
+      const result = await eventsService.getTrackEventsForAdminDashboard(adminUserDummy.id, userDummy.id, 100);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].event_name).toBe('FOCUS_MODE_ENABLED');
+      expect(result[1].event_name).toBe('FOCUS_MODE_DISABLED');
+      expect(TrackEventRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id },
+        order: { created_at: 'DESC' },
+        take: 100,
+      });
+    });
+
+    it('negative: should throw UnauthorizedException when called by a non-admin user', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      await expect(eventsService.getTrackEventsForAdminDashboard(userDummy.id, userDummy.id, 100)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('positive: should use default take value of 100 when not specified', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
+      TrackEventRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      await eventsService.getTrackEventsForAdminDashboard(adminUserDummy.id, userDummy.id);
+
+      expect(TrackEventRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id },
+        order: { created_at: 'DESC' },
+        take: 100,
       });
     });
   });

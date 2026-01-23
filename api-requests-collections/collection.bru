@@ -5,11 +5,22 @@ auth {
 auth:oauth2 {
   grant_type: password
   access_token_url: {{token_endpoint}}
+  refresh_token_url: 
   username: {{email}}
   password: {{password}}
   client_id: {{client_id}}
   client_secret: {{client_secret}}
   scope: 
+  credentials_placement: body
+  credentials_id: credentials
+  token_placement: header
+  token_header_prefix: 
+  auto_fetch_token: true
+  auto_refresh_token: false
+}
+
+vars:pre-request {
+  base_url: http://localhost:5038
 }
 
 script:post-response {

@@ -728,14 +728,36 @@ export class UserService {
     }
   }
 
-  async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
+  async updateMetadata(
+    { profile_image, description, user_job_details, user_typical_distractions }: UpdateUserMetadataDto,
+    user_id: string,
+  ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    await this.userRepository.orm.update(user_id, {
-      metadata: { profile_image, description },
+    const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
-    });
+    };
+
+    if (profile_image !== undefined || description !== undefined) {
+      // Preserve existing metadata fields while updating profile_image and/or description
+      const existingMetadata = user.metadata || {};
+      updateData.metadata = {
+        ...existingMetadata,
+        ...(profile_image !== undefined && { profile_image: profile_image.url }),
+        ...(description !== undefined && { description }),
+      };
+    }
+
+    if (user_job_details !== undefined) {
+      updateData.user_job_details = user_job_details;
+    }
+
+    if (user_typical_distractions !== undefined) {
+      updateData.user_typical_distractions = user_typical_distractions;
+    }
+
+    await this.userRepository.orm.update(user_id, updateData);
   }
 
   shouldSyncWithRevenueCat(user: User) {

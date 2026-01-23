@@ -45,6 +45,8 @@ import {
 } from '../../../../libs/auth0/src/auth0.constants';
 import { TeamToMember } from '../../src/modules/team/entities/team-to-member.entity';
 import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
+import { AnnouncementType, AnnouncementPriority } from '../../src/modules/announcements/entities/announcements.entity';
+import { ViewAction } from '../../src/modules/announcements/entities/announcement-views.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -2496,4 +2498,268 @@ export const dummyNotifyLogsUploadSuccessDto = {
   app_version: '1.0.1',
   feedback_message: 'dummy feedback',
   uploaded_file_url: 'https://dummylogs.com/log.txt',
+};
+export const appVersionDummyiOS = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.1.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Bug fixes and performance improvements',
+  created_at: new Date('2024-01-15'),
+  updated_at: new Date('2024-01-15'),
+};
+
+export const appVersionDummyiOSMinSupported = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: null,
+  created_at: new Date('2023-12-01'),
+  updated_at: new Date('2023-12-01'),
+};
+
+export const appVersionDummyBeta = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.2.0-beta.1',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Beta release with new features',
+  created_at: new Date('2024-02-01'),
+  updated_at: new Date('2024-02-01'),
+};
+
+export const appVersionDummyAndroid = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Major Android update',
+  created_at: new Date('2024-03-01'),
+  updated_at: new Date('2024-03-01'),
+};
+
+export const appVersionDummyAndroidMinSupported = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.5.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: null,
+  created_at: new Date('2024-01-01'),
+  updated_at: new Date('2024-01-01'),
+};
+
+export const appVersionDummyEdgeCaseOldest = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '0.0.1',
+  is_supported: false,
+  is_beta_only: false,
+  release_notes: 'Initial release',
+  created_at: new Date('2020-01-01'),
+  updated_at: new Date('2020-01-01'),
+};
+
+export const appVersionDummyEdgeCaseAlpha = {
+  id: randomUUID(),
+  operating_system: OperatingSystem.iOS,
+  semver_string: '1.0.0-alpha.2',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Alpha version',
+  created_at: new Date('2023-06-01'),
+  updated_at: new Date('2023-06-01'),
+};
+
+export const createAppVersionDtoiOSDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.3.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'New feature release',
+};
+
+export const createAppVersionDtoBetaDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.1.0-beta.2',
+  is_supported: false,
+  is_beta_only: true,
+  release_notes: 'Beta testing',
+};
+
+export const createAppVersionDtoAndroidDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '3.0.0',
+  is_supported: true,
+  is_beta_only: false,
+  release_notes: 'Major Android update',
+};
+
+export const createAppVersionDtoEdgeCaseOldestDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '0.0.1',
+  is_supported: false,
+  is_beta_only: false,
+  release_notes: 'Initial release',
+};
+
+export const createAppVersionDtoInvalidMissingPatchDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: '2.1',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoInvalidCompletelyDummy = {
+  operating_system: OperatingSystem.iOS,
+  semver_string: 'invalid',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoInvalidWildcardDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.1.x',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+export const createAppVersionDtoSameVersionDifferentOSDummy = {
+  operating_system: OperatingSystem.Android,
+  semver_string: '2.1.0',
+  is_supported: true,
+  is_beta_only: false,
+};
+
+// Announcement dummies
+export const announcementDummyiOS = {
+  id: 'ann_2024_12_ios_update',
+  type: AnnouncementType.RELEASE,
+  heading: 'New iOS Features Available',
+  details: 'Check out our latest iOS app update with exciting new features and improvements.',
+  details_url: 'https://example.com/ios-release',
+  expiry_date: new Date('2025-12-31'),
+  priority: AnnouncementPriority.MEDIUM,
+  operating_system: OperatingSystem.iOS,
+  created_at: new Date('2024-12-01'),
+  updated_at: new Date('2024-12-01'),
+};
+
+export const announcementDummyAndroid = {
+  id: 'ann_2024_12_android_update',
+  type: AnnouncementType.RELEASE,
+  heading: 'Android App Enhancement',
+  details: 'Experience improved performance and new features in our Android app.',
+  details_url: 'https://example.com/android-release',
+  expiry_date: new Date('2025-12-31'),
+  priority: AnnouncementPriority.HIGH,
+  operating_system: OperatingSystem.Android,
+  created_at: new Date('2024-12-01'),
+  updated_at: new Date('2024-12-01'),
+};
+
+export const announcementDummyWeb = {
+  id: 'ann_2024_12_web_maintenance',
+  type: AnnouncementType.MAINTENANCE,
+  heading: 'Scheduled Maintenance',
+  details: 'Our web platform will undergo maintenance this weekend.',
+  details_url: null,
+  expiry_date: new Date('2025-01-15'),
+  priority: AnnouncementPriority.CRITICAL,
+  operating_system: OperatingSystem.Web,
+  created_at: new Date('2024-12-10'),
+  updated_at: new Date('2024-12-10'),
+};
+
+export const announcementDummyExpired = {
+  id: 'ann_2023_10_old_event',
+  type: AnnouncementType.EVENT,
+  heading: 'Past Event',
+  details: 'This announcement has already expired.',
+  details_url: null,
+  expiry_date: new Date('2023-12-01'),
+  priority: AnnouncementPriority.LOW,
+  operating_system: OperatingSystem.iOS,
+  created_at: new Date('2023-10-01'),
+  updated_at: new Date('2023-10-01'),
+};
+
+export const announcementDummyHighPriority = {
+  id: 'ann_2024_12_critical_survey',
+  type: AnnouncementType.SURVEY,
+  heading: 'Important User Survey',
+  details: 'Help us improve by taking our quick survey.',
+  details_url: 'https://example.com/survey',
+  expiry_date: new Date('2025-12-31'),
+  priority: AnnouncementPriority.CRITICAL,
+  operating_system: OperatingSystem.iOS,
+  created_at: new Date('2024-12-15'),
+  updated_at: new Date('2024-12-15'),
+};
+
+export const announcementDummyMacOS = {
+  id: 'ann_2024_12_macos_release',
+  type: AnnouncementType.RELEASE,
+  heading: 'MacOS Desktop Update',
+  details: 'New desktop app version for Mac users.',
+  details_url: 'https://example.com/macos-release',
+  expiry_date: new Date('2025-12-31'),
+  priority: AnnouncementPriority.MEDIUM,
+  operating_system: OperatingSystem.MacOS,
+  created_at: new Date('2024-12-01'),
+  updated_at: new Date('2024-12-01'),
+};
+
+export const announcementDummyWindows = {
+  id: 'ann_2024_12_windows_release',
+  type: AnnouncementType.RELEASE,
+  heading: 'Windows Desktop Update',
+  details: 'New desktop app version for Windows users.',
+  details_url: 'https://example.com/windows-release',
+  expiry_date: new Date('2025-12-31'),
+  priority: AnnouncementPriority.LOW,
+  operating_system: OperatingSystem.Windows,
+  created_at: new Date('2024-12-01'),
+  updated_at: new Date('2024-12-01'),
+};
+
+// Announcement View dummies
+export const announcementViewDummy = {
+  id: randomUUID(),
+  user_id: randomUUID(),
+  announcement_id: 'ann_2024_12_ios_update',
+  action: ViewAction.VIEWED,
+  source: 'mobile_app',
+  read_at: new Date('2024-12-20T10:30:00Z'),
+  created_at: new Date('2024-12-20T10:30:00Z'),
+};
+
+export const announcementViewDismissedDummy = {
+  id: randomUUID(),
+  user_id: randomUUID(),
+  announcement_id: 'ann_2024_12_android_update',
+  action: ViewAction.DISMISSED,
+  source: 'mobile_app',
+  read_at: new Date('2024-12-20T11:00:00Z'),
+  created_at: new Date('2024-12-20T11:00:00Z'),
+};
+
+// ViewAnnouncementDto dummies
+export const viewAnnouncementDtoWithAllFields = {
+  action: ViewAction.VIEWED,
+  source: 'mobile_app',
+  viewed_at: new Date('2024-12-20T10:30:00Z'),
+};
+
+export const viewAnnouncementDtoMinimal = {};
+
+export const viewAnnouncementDtoDismissed = {
+  action: ViewAction.DISMISSED,
+  source: 'web_app',
+  viewed_at: new Date('2024-12-20T15:45:00Z'),
 };

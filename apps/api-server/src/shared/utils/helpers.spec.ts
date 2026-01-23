@@ -1,4 +1,4 @@
-import { safeDecodeURIComponent } from './helpers';
+import { safeDecodeURIComponent, withTimeout } from './helpers';
 
 describe('safeDecodeURIComponent', () => {
   describe('Windows bug report fix - handling + as spaces', () => {
@@ -80,5 +80,51 @@ describe('safeDecodeURIComponent', () => {
       const expected = 'First line\nSecond line\nThird line';
       expect(safeDecodeURIComponent(input)).toBe(expected);
     });
+  });
+});
+
+describe('withTimeout', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('suppresses later rejection after timing out', async () => {
+    const unhandled = jest.fn();
+    const handler = () => unhandled();
+    process.on('unhandledRejection', handler);
+
+    try {
+      const lateRejection = new Promise<void>((_, reject) => setTimeout(() => reject(new Error('late')), 2000));
+      const promise = withTimeout(lateRejection, 1000);
+
+      jest.advanceTimersByTime(1000);
+      await expect(promise).rejects.toThrow('Operation timed out');
+
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', handler);
+    }
+  });
+
+  it('awaits onTimeout callback before rejecting', async () => {
+    const onTimeout = jest.fn(() => new Promise<void>((resolve) => setTimeout(resolve, 500)));
+    const neverResolves = new Promise<void>(() => {});
+    const promise = withTimeout(neverResolves, 1000, 'Operation timed out', onTimeout);
+
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    jest.advanceTimersByTime(500);
+    await expect(promise).rejects.toThrow('Operation timed out');
+    expect(onTimeout).toHaveBeenCalledTimes(1);
   });
 });

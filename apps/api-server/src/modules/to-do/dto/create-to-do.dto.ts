@@ -1,4 +1,16 @@
-import { IsArray, IsDate, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsDate,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { CreateFocusModeTagDto } from '../../focus-mode/dto/create-focus-mode-tag.dto';
 import { SubtaskDto } from './subtask.dto';
 
@@ -37,6 +49,9 @@ export class CreateToDoDto {
   tags?: CreateFocusModeTagDto[];
 
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SubtaskDto)
   subtasks?: SubtaskDto[];
 
   @IsOptional()

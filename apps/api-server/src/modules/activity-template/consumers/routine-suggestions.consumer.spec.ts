@@ -13,6 +13,7 @@ describe('RoutineSuggestionsConsumer', () => {
   let consumer: RoutineSuggestionsConsumer;
   const activityLibraryServiceMock = {
     getActivitiesRelatedToUserGoals: jest.fn(),
+    createHabitWithAi: jest.fn(),
   } as unknown as jest.Mocked<ActivityLibraryService>;
   const asyncTaskServiceMock = {
     updateStatusWithMetadata: jest.fn(),
@@ -57,7 +58,7 @@ describe('RoutineSuggestionsConsumer', () => {
         userId: 'user-7',
         requestHash: 'hash-abc',
         request: {
-          user_goals: ['goal one'],
+          user_goals: [{ goal: 'goal one', isCustom: false }],
           routine_duration: 20,
           routine: 'morning',
           groupByGoals: false,
@@ -65,7 +66,23 @@ describe('RoutineSuggestionsConsumer', () => {
       },
       ...overrides,
     } as Job<any>);
-
+  const buildHabitJob = (overrides: Partial<Job<any>>): Job<any> =>
+    ({
+      id: 'job-habit-1',
+      attemptsMade: 0,
+      data: {
+        asyncTaskId: 'task-456',
+        userId: 'user-7',
+        requestHash: 'hash-habit',
+        request: {
+          user_goals: ['goal one', 'goal two'],
+          routine_duration: 20,
+          routine: 'morning',
+          prompt: 'Build a habit',
+        },
+      },
+      ...overrides,
+    } as Job<any>);
   it('marks the task as processing, runs the pipeline, and emits completion events', async () => {
     const job = buildJob({});
     const suggestions = { templates: [{ id: 'activity-1' }], groupedByGoal: undefined };
@@ -118,6 +135,18 @@ describe('RoutineSuggestionsConsumer', () => {
 
     expect(PusherServiceMock.trigger).toHaveBeenCalledWith('private-user-7', 'routine-suggestions.completed', {
       asyncTaskId: 'task-123',
+      status: 'completed',
+    });
+  });
+
+  it('emits habit creation completion without the full result payload', async () => {
+    const job = buildHabitJob({});
+    (activityLibraryServiceMock.createHabitWithAi as jest.Mock).mockResolvedValue([{ id: 'habit-1' }]);
+
+    await consumer.handleHabitCreation(job);
+
+    expect(PusherServiceMock.trigger).toHaveBeenCalledWith('private-user-7', 'habit-creation.completed', {
+      asyncTaskId: 'task-456',
       status: 'completed',
     });
   });

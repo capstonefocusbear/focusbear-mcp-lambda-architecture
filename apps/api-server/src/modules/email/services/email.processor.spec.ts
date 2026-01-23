@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SendGridService } from '@app/send-grid';
 import { SENTRY_TOKEN } from '@app/observability';
 import { Job } from 'bull';
+import { FEATURE_FLAGS } from '@api-server/shared/utils/constants';
 import { EmailProcessor } from './email.processor';
 import { ProgressEmailTemplateService } from './progress-email-template/progress-email-template.service';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { EmailFrequency, User } from '../../user/entities/user.entity';
 import { WeeklyProgressMetricsDto } from '../../user/dto/weekly-progress-metrics.dto';
+import { MonthlyProgressMetricsDto } from '../../user/dto/monthly-progress-metrics.dto';
 
 describe('EmailProcessor', () => {
   let processor: EmailProcessor;
@@ -24,7 +26,19 @@ describe('EmailProcessor', () => {
   const mockUserWithWeeklyEmailsEnabled: Partial<User> = {
     ...mockUser,
     email_frequency: EmailFrequency.WEEKLY,
-    feature_flags: ['weekly_emails'],
+    feature_flags: [FEATURE_FLAGS.WEEKLY_EMAILS, 'no_progress_emails'],
+  };
+
+  const mockUserWithDailyEmailsEnabled: Partial<User> = {
+    ...mockUser,
+    email_frequency: EmailFrequency.DAILY,
+    feature_flags: [FEATURE_FLAGS.DAILY_EMAILS],
+  };
+
+  const mockUserWithMonthlyEmailsEnabled: Partial<User> = {
+    ...mockUser,
+    email_frequency: EmailFrequency.MONTHLY,
+    feature_flags: [FEATURE_FLAGS.MONTHLY_EMAILS],
   };
 
   const mockMetrics: WeeklyProgressMetricsDto = {
@@ -55,6 +69,34 @@ describe('EmailProcessor', () => {
     },
   };
 
+  const mockMonthlyMetrics: MonthlyProgressMetricsDto = {
+    month_start: new Date('2025-08-01'),
+    month_end: new Date('2025-08-31'),
+    routines: {
+      morning: { completed: 10, total: 31, streak: 3 },
+      evening: { completed: 8, total: 31, streak: 2 },
+      micro_breaks: { completed: 12, total: 31, streak: 5 },
+    },
+    focus_sessions: {
+      total_minutes: 480,
+      sessions_count: 20,
+      longest_session: 60,
+      streak: 7,
+    },
+    tasks: {
+      completed: 0,
+      created: 0,
+      completion_rate: 0,
+    },
+    streaks: {
+      current_overall: 10,
+      best_overall: 15,
+      morning_routine: 3,
+      evening_routine: 2,
+      focus_mode: 5,
+    },
+  };
+
   beforeEach(async () => {
     sendGridMock = {
       sendEmail: jest.fn(),
@@ -65,6 +107,11 @@ describe('EmailProcessor', () => {
         subject: 'Test Progress Email',
         html: '<html>Test HTML</html>',
         text: 'Test text content',
+      }),
+      generateMonthlyProgressEmail: jest.fn().mockResolvedValue({
+        subject: 'Test Monthly Progress Email',
+        html: '<html>Test Monthly HTML</html>',
+        text: 'Test monthly text content',
       }),
       generateNoProgressEmail: jest.fn().mockResolvedValue({
         subject: 'Test No Progress Email',
@@ -163,7 +210,7 @@ describe('EmailProcessor', () => {
       },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
@@ -194,7 +241,7 @@ describe('EmailProcessor', () => {
       text: 'No progress text content',
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
@@ -233,8 +280,55 @@ describe('EmailProcessor', () => {
       },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
+    expect(result).toEqual({ success: true, userId: 'user-123' });
+  });
+
+  it('should skip daily progress email when feature flag not enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMetrics,
+      unsubscribe_token: 'test-token-daily',
+      emailType: 'daily',
+    };
+
+    const mockJob = { id: 'job-daily-skip', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue({
+      ...mockUser,
+      email_frequency: EmailFrequency.DAILY,
+      feature_flags: [],
+    });
+
+    const result = await processor.handleProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).not.toHaveBeenCalled();
+    expect(sendGridMock.sendEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, userId: 'user-123', skipped: 'feature_flag_not_enabled' });
+  });
+
+  it('should handle daily progress email jobs correctly when feature flag enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMetrics,
+      unsubscribe_token: 'test-token-daily',
+      emailType: 'daily',
+    };
+
+    const mockJob = { id: 'job-daily', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithDailyEmailsEnabled);
+
+    const result = await processor.handleProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateWeeklyProgressEmail).toHaveBeenCalledWith(
+      mockJobData.user,
+      mockJobData.metrics,
+      mockJobData.unsubscribe_token,
+      { variant: 'daily' },
+    );
+    expect(sendGridMock.sendEmail).toHaveBeenCalled();
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
 
@@ -260,5 +354,63 @@ describe('EmailProcessor', () => {
         operation: 'handleProgressEmail',
       },
     });
+  });
+
+  it('should skip monthly progress email when feature flag not enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMonthlyMetrics,
+      unsubscribe_token: 'test-token-monthly',
+    };
+
+    const mockJob = { id: 'job-monthly-skip', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue({
+      ...mockUser,
+      email_frequency: EmailFrequency.MONTHLY,
+      feature_flags: [],
+    });
+
+    const result = await processor.handleMonthlyProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateMonthlyProgressEmail).not.toHaveBeenCalled();
+    expect(sendGridMock.sendEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, userId: 'user-123', skipped: 'feature_flag_not_enabled' });
+  });
+
+  it('should handle monthly progress email jobs correctly when feature flag enabled', async () => {
+    const mockJobData = {
+      user: { ...mockUser, email: 'test@example.com' },
+      metrics: mockMonthlyMetrics,
+      unsubscribe_token: 'test-token-monthly',
+    };
+
+    const mockJob = { id: 'job-monthly', data: mockJobData } as Job;
+
+    userRepositoryMock.orm.findOne = jest.fn().mockResolvedValue(mockUserWithMonthlyEmailsEnabled);
+
+    const result = await processor.handleMonthlyProgressEmail(mockJob);
+
+    expect(progressEmailTemplateServiceMock.generateMonthlyProgressEmail).toHaveBeenCalledWith(
+      mockJobData.user,
+      mockJobData.metrics,
+      mockJobData.unsubscribe_token,
+    );
+    expect(sendGridMock.sendEmail).toHaveBeenCalledWith({
+      to: 'test@example.com',
+      from: 'support@focusbear.io',
+      replyTo: 'support@focusbear.io',
+      subject: 'Test Monthly Progress Email',
+      html: '<html>Test Monthly HTML</html>',
+      text: 'Test monthly text content',
+      trackingSettings: {
+        clickTracking: { enable: true },
+        openTracking: { enable: true },
+      },
+    });
+    expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
+    });
+    expect(result).toEqual({ success: true, userId: 'user-123' });
   });
 });

@@ -108,6 +108,13 @@ prompts:
       Intention: {{intention}}
       User Justification: {{justificationForThisUrl}}
       Recent Justifications: {{lastFiveJustificationsInThisFocusSession}}
+      Task Must Align To Focus Intention: {{task_must_align_to_focus_intention}}
+
+      ## SUPER STRICT MODE RULE
+      If `Task Must Align To Focus Intention` is "true", this is SUPER STRICT MODE:
+      1. First, check if the `currentTaskInToDoPlayer` aligns with the `intention`. If the task does NOT align with the intention, IGNORE the task and evaluate the URL ONLY against the `intention`.
+      2. In super strict mode, be MORE conservative with scoring. URLs must have a CLEAR, DIRECT connection to the focus intention.
+      3. Do NOT accept URLs if the user's task doesn't align to the focus intention - only consider the focus intention when judging relevance.
 tests:
   - description: Google Docs for Project Documentation Task
     vars:

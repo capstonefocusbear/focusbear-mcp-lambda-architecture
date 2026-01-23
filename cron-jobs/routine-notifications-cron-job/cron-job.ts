@@ -6,7 +6,7 @@ import OpenAI from 'openai';
 import { MoreThanOrEqual } from 'typeorm';
 // eslint-disable-next-line import/extensions
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { GPT_4_1_MINI } from '../../apps/api-server/src/shared/utils/constants';
+import { GPT_4_1_MINI, CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
@@ -14,9 +14,11 @@ import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/
 import { openAiConfig } from '../../apps/api-server/src/config';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
-import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
+
+//TODO: Remove after root cause is found
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 const OPEN_AI_CONFIG = openAiConfig();
 
@@ -35,14 +37,7 @@ const LANGUAGES_MAP = {
 };
 
 // Available tones for routine notifications (subset of AiToneOptions for notifications)
-const NOTIFICATION_TONES = [
-  'humorous',
-  'cheerleader',
-  'upbeat',
-  'sassy',
-  'scientist',
-  'pirate',
-];
+const NOTIFICATION_TONES = ['humorous', 'cheerleader', 'upbeat', 'sassy', 'scientist', 'pirate'];
 
 // Function to get a random tone
 function getRandomTone(): string {
@@ -71,8 +66,96 @@ const openAiAPI = new OpenAI({
   timeout: CRON_JOB_TIMEOUT_MS - 2000,
 });
 
+/**
+ * Builds the set of "HH:mm" timestamps that we treat as eligible for matching a user's
+ * scheduled routine time. This includes the current minute, the next minute, and the
+ * last 30 minutes (to give the cron job a tolerance window).
+ */
+function buildTimeWindowStrings(currentTime: DateTime) {
+  const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
+  const timeStamp = currentTime.toFormat('HH:mm');
+  const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
+  const timeStrings: string[] = [];
+  for (let i = 0; i <= 30; i++) {
+    timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
+  }
+
+  return {
+    timeStamp,
+    timeStampPlusMinute,
+    timeStrings,
+    windowSet: new Set([timeStamp, timeStampPlusMinute, ...timeStrings]),
+  };
+}
+
+async function logRoutineNotificationDebugForUser(userId: string) {
+  const nowLocal = DateTime.local();
+  const nowUtc = DateTime.utc();
+  const thirtyDaysBeforeNowLocal = nowLocal.minus({ days: 30 });
+  const thirtyDaysBeforeNowUtc = nowUtc.minus({ days: 30 });
+
+  const user = await CronJobDataSource.manager.findOne(User, {
+    where: { id: userId },
+    select: ['id', 'language', 'utc_startup_time', 'utc_shutdown_time', 'routine_notification_times', 'updated_at'],
+  });
+
+  if (!user) {
+    console.log({ ROUTINE_NOTIFICATIONS_DEBUG_USER_NOT_FOUND: true, userId });
+    return;
+  }
+
+  const localWindow = buildTimeWindowStrings(nowLocal);
+  const utcWindow = buildTimeWindowStrings(nowUtc);
+
+  // TypeORM can hydrate timestamptz columns as a JS Date or a string depending on driver/config.
+  // We normalize here so the "active within last 30 days" gate can be inspected reliably.
+  const updatedAtValue = (user as any).updated_at as unknown;
+  const updatedAt =
+    updatedAtValue instanceof Date
+      ? DateTime.fromJSDate(updatedAtValue)
+      : typeof updatedAtValue === 'string' && updatedAtValue
+      ? DateTime.fromISO(updatedAtValue)
+      : undefined;
+  const isActiveRecentlyLocal = !!updatedAt && updatedAt >= thirtyDaysBeforeNowLocal;
+  const isActiveRecentlyUtc = !!updatedAt && updatedAt >= thirtyDaysBeforeNowUtc;
+
+  const lastMorningRaw = user.routine_notification_times?.last_time_notified_of_morning_routine;
+  const lastEveningRaw = user.routine_notification_times?.last_time_notified_of_evening_routine;
+
+  const lastMorningLocal = lastMorningRaw ? DateTime.fromJSDate(new Date(lastMorningRaw)) : undefined;
+  const lastEveningLocal = lastEveningRaw ? DateTime.fromJSDate(new Date(lastEveningRaw)) : undefined;
+  const lastMorningUtc = lastMorningRaw ? DateTime.fromJSDate(new Date(lastMorningRaw), { zone: 'utc' }) : undefined;
+  const lastEveningUtc = lastEveningRaw ? DateTime.fromJSDate(new Date(lastEveningRaw), { zone: 'utc' }) : undefined;
+
+  console.log({
+    ROUTINE_NOTIFICATIONS_DEBUG: true,
+    userId,
+    nowLocal: nowLocal.toISO(),
+    nowUtc: nowUtc.toISO(),
+    user: {
+      language: user.language,
+      utc_startup_time: user.utc_startup_time,
+      utc_shutdown_time: user.utc_shutdown_time,
+      updated_at: user.updated_at,
+      routine_notification_times: user.routine_notification_times,
+    },
+    eligibility: {
+      isActiveRecentlyLocal,
+      isActiveRecentlyUtc,
+      matchesStartupTimeLocalWindow: !!user.utc_startup_time && localWindow.windowSet.has(user.utc_startup_time),
+      matchesStartupTimeUtcWindow: !!user.utc_startup_time && utcWindow.windowSet.has(user.utc_startup_time),
+      matchesShutdownTimeLocalWindow: !!user.utc_shutdown_time && localWindow.windowSet.has(user.utc_shutdown_time),
+      matchesShutdownTimeUtcWindow: !!user.utc_shutdown_time && utcWindow.windowSet.has(user.utc_shutdown_time),
+      hasReceivedMorningNotificationTodayLocal: !!lastMorningLocal && lastMorningLocal.hasSame(nowLocal, 'day'),
+      hasReceivedEveningNotificationTodayLocal: !!lastEveningLocal && lastEveningLocal.hasSame(nowLocal, 'day'),
+      hasReceivedMorningNotificationTodayUtc: !!lastMorningUtc && lastMorningUtc.hasSame(nowUtc, 'day'),
+      hasReceivedEveningNotificationTodayUtc: !!lastEveningUtc && lastEveningUtc.hasSame(nowUtc, 'day'),
+    },
+  });
+}
+
 // getPrompt function includes a default tone "humorous" if no tone is provided
-function getPrompt(routine: string, language: string, tone: string = 'humorous') {
+function getPrompt(routine: string, language: string, tone = 'humorous') {
   return `In ${LANGUAGES_MAP[language]}, create a push notification text in a ${tone} and motivational tone, telling the user it's time to start their ${routine} routine they've set up to help with their productivity and habit formation. Return only the message and no new lines. Message: `;
 }
 
@@ -139,7 +222,7 @@ async function addMessageToR2(filename: string, messageData: { message: string; 
 }
 
 async function generateRoutineNotification(routine: string, fileName: string, language: string) {
-  const maxRetries = 1; //reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
+  const maxRetries = 1; // reduce the number of retries to total of 2 to prevent maxing open ai limit as the cron job is run every minute
   const TEN_SECONDS = 10000;
   const randomTone = getRandomTone(); // Get a random tone for this notification
   for (let i = 0; i <= maxRetries; i++) {
@@ -199,13 +282,7 @@ async function getMessage(routine: string, fileName: string, language: string): 
 
 async function getUsersForStartup(language: string) {
   const currentTime = DateTime.local();
-  const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
-  const timeStamp = currentTime.toFormat('HH:mm');
-  const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
-  const timeStrings: string[] = [];
-  for (let i = 0; i <= 30; i++) {
-    timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
-  }
+  const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
   const users = await CronJobDataSource.manager.find(User, {
@@ -218,27 +295,36 @@ async function getUsersForStartup(language: string) {
   });
   console.log({ USERS_FETCHED_FOR_STARTUP: users.length });
   const usersToReceiveNotification = users.filter((user) => {
-    const lastMorningRoutineNotification = DateTime.fromJSDate(
-      new Date(user.routine_notification_times.last_time_notified_of_morning_routine),
-    );
-    const hasReceivedNotificationToday = lastMorningRoutineNotification.hasSame(currentTime, 'day');
+    const lastNotified = user.routine_notification_times?.last_time_notified_of_morning_routine;
+    if (!lastNotified) return true;
+    const lastMorningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified));
+    const hasReceivedNotificationToday =
+      lastMorningRoutineNotification.isValid && lastMorningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
   });
   const usersMatchingMorningTimestamp = users.map((user) => user.id);
   const usersThatDidNotReceiveMorningNotificationToday = usersToReceiveNotification.map((user) => user.id);
   console.log({ usersMatchingMorningTimestamp, usersThatDidNotReceiveMorningNotificationToday });
+  if (JEREMYS_USER_ID) {
+    const jeremyInStartupFetch = users.find((u) => u.id === JEREMYS_USER_ID);
+    const jeremyMatchesMorningTimestamp = !!jeremyInStartupFetch;
+    const jeremyInStartup = usersToReceiveNotification.some((u) => u.id === JEREMYS_USER_ID);
+    const lastMorningRaw = jeremyInStartupFetch?.routine_notification_times?.last_time_notified_of_morning_routine;
+    const lastMorning = lastMorningRaw ? DateTime.fromJSDate(new Date(lastMorningRaw)) : undefined;
+    console.log({
+      JEREMYS_USER_ID,
+      JEREMY_MORNING_MATCHED_TIMESTAMP: jeremyMatchesMorningTimestamp,
+      JEREMY_MORNING_WILL_NOTIFY: jeremyInStartup,
+      JEREMY_MORNING_LAST_NOTIFIED: lastMorning?.toISO(),
+      JEREMY_MORNING_HAS_RECEIVED_TODAY: !!lastMorning && lastMorning.hasSame(currentTime, 'day'),
+    });
+  }
   return usersToReceiveNotification;
 }
 
 async function getUsersForShutdown(language: string) {
   const currentTime = DateTime.local();
-  const oneMinuteAfterNow = currentTime.plus({ minute: 1 });
-  const timeStamp = currentTime.toFormat('HH:mm');
-  const timeStampPlusMinute = oneMinuteAfterNow.toFormat('HH:mm');
-  const timeStrings: string[] = [];
-  for (let i = 0; i <= 30; i++) {
-    timeStrings.push(currentTime.minus({ minutes: i }).toFormat('HH:mm'));
-  }
+  const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
   const users = await CronJobDataSource.manager.find(User, {
@@ -252,15 +338,30 @@ async function getUsersForShutdown(language: string) {
   console.log({ USERS_FETCHED_FOR_SHUTDOWN: users.length });
 
   const usersToReceiveNotification = users.filter((user) => {
-    const lastEveningRoutineNotification = DateTime.fromJSDate(
-      new Date(user.routine_notification_times.last_time_notified_of_evening_routine),
-    );
-    const hasReceivedNotificationToday = lastEveningRoutineNotification.hasSame(currentTime, 'day');
+    const lastNotified = user.routine_notification_times?.last_time_notified_of_evening_routine;
+    if (!lastNotified) return true;
+    const lastEveningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified));
+    const hasReceivedNotificationToday =
+      lastEveningRoutineNotification.isValid && lastEveningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
   });
   const usersMatchingEveningTimestamp = users.map((user) => user.id);
   const usersThatDidNotReceiveEveningNotificationToday = usersToReceiveNotification.map((user) => user.id);
   console.log({ usersMatchingEveningTimestamp, usersThatDidNotReceiveEveningNotificationToday });
+  if (JEREMYS_USER_ID) {
+    const jeremyInShutdownFetch = users.find((u) => u.id === JEREMYS_USER_ID);
+    const jeremyMatchesEveningTimestamp = !!jeremyInShutdownFetch;
+    const jeremyInShutdown = usersToReceiveNotification.some((u) => u.id === JEREMYS_USER_ID);
+    const lastEveningRaw = jeremyInShutdownFetch?.routine_notification_times?.last_time_notified_of_evening_routine;
+    const lastEvening = lastEveningRaw ? DateTime.fromJSDate(new Date(lastEveningRaw)) : undefined;
+    console.log({
+      JEREMYS_USER_ID,
+      JEREMY_EVENING_MATCHED_TIMESTAMP: jeremyMatchesEveningTimestamp,
+      JEREMY_EVENING_WILL_NOTIFY: jeremyInShutdown,
+      JEREMY_EVENING_LAST_NOTIFIED: lastEvening?.toISO(),
+      JEREMY_EVENING_HAS_RECEIVED_TODAY: !!lastEvening && lastEvening.hasSame(currentTime, 'day'),
+    });
+  }
   return usersToReceiveNotification;
 }
 
@@ -307,6 +408,9 @@ async function publishToUsersByLanguage(
     fcm: { notification: { title, body: message } },
   });
   console.log('USER-IDS:', userIDs, 'LANGUAGE:', language);
+  if (JEREMYS_USER_ID && userIDs.includes(JEREMYS_USER_ID)) {
+    console.log({ JEREMY_NOTIFICATION_PUBLISHING: true, routine, language });
+  }
   const chunkSize = 500;
   for (let i = 0; i < userIDs.length; i += chunkSize) {
     const chunk = userIDs.slice(i, i + chunkSize);
@@ -335,6 +439,9 @@ async function runRoutineNotificationsCronJob() {
   try {
     // eslint-disable-next-line no-console
     console.log('Routine cron: data source initialized');
+    if (JEREMYS_USER_ID) {
+      await logRoutineNotificationDebugForUser(JEREMYS_USER_ID);
+    }
     const translationData: TranslationDataType = {};
     let notificationsDispatched = 0;
 
@@ -404,8 +511,7 @@ async function runRoutineNotificationsCronJob() {
 }
 
 if (require.main === module) {
-  runCronWithTelemetry(
-    'routine-notifications-cron',
-    () => withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS),
+  runCronWithTelemetry('routine-notifications-cron', () =>
+    withTimeout(runRoutineNotificationsCronJob(), CRON_JOB_TIMEOUT_MS),
   );
 }

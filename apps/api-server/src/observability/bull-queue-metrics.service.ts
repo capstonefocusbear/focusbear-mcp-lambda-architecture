@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { SentryCron } from '@sentry/nestjs';
 import { QueueEvents } from 'bullmq';
 import IORedis from 'ioredis';
 import { getQueueToken } from '@nestjs/bull-shared';
@@ -98,6 +99,7 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
     this.queueEvents.length = 0;
   }
 
+  @SentryCron('publish-queue-depth-metrics')
   @Cron(CronExpression.EVERY_MINUTE)
   async publishQueueDepthMetrics(): Promise<void> {
     const metrics = this.getMetricsConfig();

@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bull';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Queue } from 'bull';
 import axios from 'axios';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -28,6 +28,8 @@ import { UpdateAppVersionDto } from '../dto/update-app-version.dto';
 import { TrackEventRepository } from '../repositories/track-event.repository';
 import { OperatingSystem } from '../../../shared/domain/operating-system.enum';
 import { TrackEvent } from '../entities/track-event.entity';
+import { UserTypes } from '../../user/domain/user-types.enum';
+import { AdminTrackEventResponseDto } from '../dto/admin-track-event-response.dto';
 
 @Injectable()
 export class EventsService {
@@ -290,5 +292,32 @@ export class EventsService {
       take: 50,
     });
     return events;
+  }
+
+  /**
+   * Fetches track events for a specific user. Used by the admin support dashboard
+   * to view user activity history in the "Track Events" tab.
+   */
+  async getTrackEventsForAdminDashboard(
+    adminId: string,
+    userId: string,
+    take = 100,
+  ): Promise<AdminTrackEventResponseDto[]> {
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
+    const isAdmin = adminUser?.user_type === UserTypes.ADMIN;
+    if (!isAdmin) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not admin!`);
+    }
+    const events = await this.trackEventRepository.orm.find({
+      where: { user_id: userId },
+      order: { created_at: 'DESC' },
+      take,
+    });
+    return events.map((event) => ({
+      id: event.id,
+      event_name: event.event_type,
+      event_data: event.event_data,
+      created_at: event.created_at,
+    }));
   }
 }

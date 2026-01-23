@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  HttpException,
   HttpStatus,
   Inject,
   Injectable,
@@ -118,7 +117,7 @@ export class AuthService {
         return { data: 'Password reset email queued.', status: 202 };
       }
 
-      const isThirdPartyUser = auth0User.identities?.some((identity) => identity.isSocial);
+      const isThirdPartyUser = auth0User.identities?.some((identity) => identity.isSocial) ?? false;
       if (isThirdPartyUser) {
         this.sentryService.instance().addBreadcrumb({
           category: 'Service',
@@ -266,7 +265,7 @@ export class AuthService {
         return { message: 'Email is already verified.' };
       }
 
-      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id);
+      return await this.auth0ManagementService.markUserEmailAsVerified(auth0User.user_id, auth0User.email);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       if (error.name === 'TokenExpiredError') {

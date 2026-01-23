@@ -170,7 +170,6 @@ export enum BullQueues {
   REVENUE_CAT_STATUS = 'revenue-cat-status',
   USER_DATA = 'user-data',
   STATS = 'stats',
-  STRIPE_CUSTOMER = 'stripe-customer',
   ACTIVITY_IMAGE = 'activity-image',
   EVENTS = 'events',
   TIME_LOGS = 'time-logs',
@@ -186,6 +185,7 @@ export enum BullQueues {
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
+  STRIPE_CUSTOMER = 'stripe-customer',
   PASSWORD_RESET_EMAIL = 'password-reset-email',
 }
 

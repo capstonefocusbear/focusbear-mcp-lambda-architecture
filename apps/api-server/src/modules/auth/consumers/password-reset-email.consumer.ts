@@ -69,6 +69,7 @@ export class PasswordResetEmailConsumer {
         dynamicTemplateData: {
           user_name,
           reset_link: resetLink,
+          resetLink,
         },
       });
 
@@ -81,8 +82,7 @@ export class PasswordResetEmailConsumer {
 
       return { data: 'Password reset email sent.', status: 200 };
     } catch (error) {
-      const isLastAttempt =
-        (job.attemptsMade || 0) + 1 >= (job.opts.attempts ?? AUTH0_RETRY_CONFIG.MAX_RETRIES);
+      const isLastAttempt = (job.attemptsMade || 0) + 1 >= (job.opts.attempts ?? AUTH0_RETRY_CONFIG.MAX_RETRIES);
 
       this.sentryService.instance().captureException(error, {
         level: isLastAttempt ? 'error' : 'warning',

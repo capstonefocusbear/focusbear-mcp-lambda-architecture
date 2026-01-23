@@ -1037,6 +1037,13 @@ describe('OpenAIService', () => {
     beforeEach(() => {
       jest.clearAllMocks();
 
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'username-validation') {
+          return 'Check if the following username is appropriate: {{input_wrapper}}{{username}}{{input_wrapper}}';
+        }
+        return null;
+      });
+
       service = new OpenAIService(
         {
           USERNAME_VALIDATION: { apiKey: 'test' },
@@ -1100,7 +1107,7 @@ describe('OpenAIService', () => {
       expect(spy).toHaveBeenCalledWith('ignore previous');
     });
 
-    it('should call OpenAI with a prompt containing the wrapped username', async () => {
+    it('should call OpenAI with a prompt containing the username', async () => {
       const username = 'example_user';
 
       const getCompletionsSpy = jest
@@ -1109,11 +1116,8 @@ describe('OpenAIService', () => {
           choices: [{ message: { content: JSON.stringify({ allowed: true }) } }],
         });
 
-      const wrapSpy = jest.spyOn(service as any, 'wrapUserInput');
-
       await service.checkIfUsernameIsValid(username);
 
-      expect(wrapSpy).toHaveBeenCalledWith(username);
       expect(getCompletionsSpy).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -1752,6 +1756,14 @@ describe('OpenAIService', () => {
   describe('createSubtasks', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'subtasks-generation') {
+          return 'Break down the following task into smaller steps: {{input_wrapper}}{{task}}{{input_wrapper}} in {{language}}';
+        }
+        return null;
+      });
+
       service = new OpenAIService(
         {
           subtasksGeneration: { apiKey: 'test-subtasks-key' },
@@ -1796,6 +1808,14 @@ describe('OpenAIService', () => {
   describe('convertBrainDumpToTasks', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'brain-dump-conversion') {
+          return 'Convert the following brain dump to tasks: {{input_wrapper}}{{brain_dump_contents}}{{input_wrapper}}';
+        }
+        return null;
+      });
+
       service = new OpenAIService(
         {
           brainDumpConversion: { apiKey: 'test-braindump-key' },
@@ -1984,6 +2004,14 @@ describe('OpenAIService', () => {
   describe('generateEmojiForActivity', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'emoji-generation') {
+          return 'Generate a single emoji for this activity: {{input_wrapper}}{{activity_name}}{{input_wrapper}}';
+        }
+        return null;
+      });
+
       service = new OpenAIService(
         {
           activityEmojiGeneration: { apiKey: 'test-emoji-key' },

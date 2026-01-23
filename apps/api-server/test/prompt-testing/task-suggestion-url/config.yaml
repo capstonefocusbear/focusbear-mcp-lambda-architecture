@@ -13,3 +13,155 @@ providers:
 output:
   - debug
   - json
+
+tests:
+  # Test 1: GitHub with "Coding" task - SHOULD match (GitHub is commonly used for coding)
+  - description: "GitHub with Coding task - should match existing task"
+    vars:
+      url: "https://github.com/user/repo"
+      tab_title: "user/repo - GitHub"
+      meta_description: "A code repository"
+      current_tasks_list: |
+        - task_name: "Coding"
+          task_id: "task-coding-123"
+        - task_name: "Email correspondence"
+          task_id: "task-email-456"
+        - task_name: "Documentation for voice call system"
+          task_id: "task-docs-789"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-coding-123"
+      existing_task_ids: ["task-coding-123", "task-email-456", "task-docs-789"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 2: Google homepage with unrelated tasks - should suggest new task
+  - description: "Google homepage with unrelated tasks - should suggest new task"
+    vars:
+      url: "https://www.google.com"
+      tab_title: "Google"
+      meta_description: "Search the world's information"
+      current_tasks_list: |
+        - task_name: "Documentation for voice call system"
+          task_id: "task-docs-789"
+        - task_name: "Water the plants"
+          task_id: "task-plants-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-docs-789", "task-plants-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 3: Jira with project management task - SHOULD match (specialized site)
+  - description: "Jira with project management task - should match existing task"
+    vars:
+      url: "https://company.atlassian.net/browse/PROJ-123"
+      tab_title: "PROJ-123 - Fix login bug - Jira"
+      meta_description: "Jira issue tracker"
+      current_tasks_list: |
+        - task_name: "Project management"
+          task_id: "task-pm-123"
+        - task_name: "Write blog post"
+          task_id: "task-blog-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-pm-123"
+      existing_task_ids: ["task-pm-123", "task-blog-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 4: Figma with Design task - SHOULD match (specialized site)
+  - description: "Figma with Design task - should match existing task"
+    vars:
+      url: "https://www.figma.com/file/abc123"
+      tab_title: "Landing Page Design - Figma"
+      meta_description: "Figma design file"
+      current_tasks_list: |
+        - task_name: "Design new landing page"
+          task_id: "task-design-123"
+        - task_name: "Write unit tests"
+          task_id: "task-tests-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-design-123"
+      existing_task_ids: ["task-design-123", "task-tests-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 5: Stack Overflow with Development task - SHOULD match (commonly used for coding)
+  - description: "Stack Overflow with Development task - should match existing task"
+    vars:
+      url: "https://stackoverflow.com/questions/12345"
+      tab_title: "How to fix React error - Stack Overflow"
+      meta_description: "Stack Overflow question about React"
+      current_tasks_list: |
+        - task_name: "Development work"
+          task_id: "task-dev-123"
+        - task_name: "Schedule meetings"
+          task_id: "task-meetings-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-dev-123"
+      existing_task_ids: ["task-dev-123", "task-meetings-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 6: Twitter feed with only unrelated tasks - should suggest new task
+  - description: "Twitter feed with only unrelated tasks - should suggest new task"
+    vars:
+      url: "https://twitter.com/home"
+      tab_title: "Home / Twitter"
+      meta_description: "See what's happening in the world right now"
+      current_tasks_list: |
+        - task_name: "Fix backend API bug"
+          task_id: "task-bug-123"
+        - task_name: "Deploy to production"
+          task_id: "task-deploy-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-bug-123", "task-deploy-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 7: Gmail inbox with only coding tasks - should suggest new task
+  - description: "Gmail inbox with only coding tasks - should suggest new task"
+    vars:
+      url: "https://mail.google.com/mail/u/0/#inbox"
+      tab_title: "Inbox - Gmail"
+      meta_description: "Gmail email inbox"
+      current_tasks_list: |
+        - task_name: "Write unit tests"
+          task_id: "task-tests-123"
+        - task_name: "Code review"
+          task_id: "task-review-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-tests-123", "task-review-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js
+
+  # Test 8: Gmail inbox with Email task - SHOULD match (commonly used for email)
+  - description: "Gmail inbox with Email task - should match existing task"
+    vars:
+      url: "https://mail.google.com/mail/u/0/#inbox"
+      tab_title: "Inbox - Gmail"
+      meta_description: "Gmail email inbox"
+      current_tasks_list: |
+        - task_name: "Email correspondence"
+          task_id: "task-email-123"
+        - task_name: "Code review"
+          task_id: "task-review-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-email-123"
+      existing_task_ids: ["task-email-123", "task-review-456"]
+    assert:
+      - type: javascript
+        value: file://validate-task-suggestion.js

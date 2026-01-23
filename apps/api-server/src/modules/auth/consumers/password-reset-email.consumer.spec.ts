@@ -61,6 +61,7 @@ describe('PasswordResetEmailConsumer', () => {
         dynamicTemplateData: expect.objectContaining({
           user_name: job.data.user_name,
           reset_link: `https://dashboard.focusbear.io/reset-password?token=${encodeURIComponent('a.b+c')}`,
+          verification_link: `https://dashboard.focusbear.io/reset-password?token=${encodeURIComponent('a.b+c')}`,
         }),
       }),
     );

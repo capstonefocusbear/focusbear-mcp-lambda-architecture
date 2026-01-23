@@ -69,6 +69,7 @@ export class PasswordResetEmailConsumer {
         dynamicTemplateData: {
           user_name,
           reset_link: resetLink,
+          verification_link: resetLink,
           resetLink,
         },
       });

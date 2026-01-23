@@ -7,5 +7,5 @@ export class UserStripePropertiesDto {
 
   @IsNotEmpty()
   @IsString()
-  stripe_customer_id: string;
+  stripe_customer_id?: string | null;
 }

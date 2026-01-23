@@ -61,7 +61,7 @@ export class User extends BaseEntity {
     length: 255,
     unique: true,
   })
-  stripe_customer_id?: string;
+  stripe_customer_id?: string | null;
 
   @Column({
     type: 'varchar',

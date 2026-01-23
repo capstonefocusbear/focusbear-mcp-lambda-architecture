@@ -68,6 +68,7 @@ import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consu
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
+import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
 
 @Module({
   providers: [
@@ -96,6 +97,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
     FlankerTestService,
+    StripeCustomerConsumer,
   ],
   exports: [
     UserRepository,
@@ -156,6 +158,9 @@ import { FlankerTest } from './entities/flanker-test.entity';
       },
       {
         name: BullQueues.REVENUE_CAT_STATUS,
+      },
+      {
+        name: BullQueues.STRIPE_CUSTOMER,
       },
       {
         name: BullQueues.USAGE_IMAGE,

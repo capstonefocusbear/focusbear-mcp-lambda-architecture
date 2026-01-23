@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { getQueueToken } from '@nestjs/bull';
 import { SENTRY_TOKEN } from '@app/observability';
+import { SendGridService } from '@app/send-grid';
 import { DataSource } from 'typeorm';
 import { UserEmailPreferencesService } from './user-email-preferences.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -54,6 +55,10 @@ describe('UserEmailPreferencesService', () => {
     instance: () => mockSentryInstance,
   };
 
+  const mockSendGridService = {
+    sendEmail: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,6 +74,10 @@ describe('UserEmailPreferencesService', () => {
         {
           provide: DataSource,
           useValue: mockDataSource,
+        },
+        {
+          provide: SendGridService,
+          useValue: mockSendGridService,
         },
         {
           provide: getQueueToken('emailQueue'),

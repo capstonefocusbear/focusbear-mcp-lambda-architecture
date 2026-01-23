@@ -58,11 +58,40 @@
     .success-message {
       display: none;
     }
+    .email-input {
+      width: 100%;
+      max-width: 300px;
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+    .email-input:focus {
+      outline: none;
+      border-color: #FF6B35;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">🐻 Focus Bear</div>
+    
+    {{#if showEmailForm}}
+    <!-- Email form shown when token is missing -->
+    <div id="emailFormSection">
+      <h2>Manage Email Preferences</h2>
+      <p>Enter your email address to receive a link to manage your subscription preferences.</p>
+      
+      <form id="emailRequestForm">
+        <input type="email" class="email-input" id="emailInput" placeholder="Enter your email address" required />
+        <br />
+        <button type="submit" class="button">Send Preferences Link</button>
+      </form>
+    </div>
+    {{else}}
+    <!-- Normal unsubscribe form when token is present -->
     <h2>Unsubscribe from Email Updates</h2>
     <p>Are you sure you want to unsubscribe from Focus Bear progress emails?</p>
     <p>You'll miss out on your weekly progress reports and motivational updates.</p>
@@ -79,9 +108,46 @@
       <p>You have been unsubscribed from Focus Bear progress emails.</p>
       <p>You can re-subscribe anytime from your account settings.</p>
     </div>
+    {{/if}}
   </div>
   
   <script>
+    {{#if showEmailForm}}
+    // Email request form handler
+    document.getElementById('emailRequestForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      var email = document.getElementById('emailInput').value;
+      var submitButton = this.querySelector('button[type="submit"]');
+      
+      submitButton.disabled = true;
+      submitButton.textContent = 'Sending...';
+      
+      fetch('/user/email-preferences/request-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
+        // Always show success message to prevent email enumeration
+        document.getElementById('emailFormSection').innerHTML = 
+          '<h2>Check Your Email</h2>' +
+          '<p>If your email is registered with Focus Bear, you will receive a link to manage your email preferences shortly.</p>' +
+          '<p>Please check your inbox (and spam folder) for an email from Focus Bear.</p>';
+      })
+      .catch(function(error) {
+        // Still show success message to prevent email enumeration
+        document.getElementById('emailFormSection').innerHTML = 
+          '<h2>Check Your Email</h2>' +
+          '<p>If your email is registered with Focus Bear, you will receive a link to manage your email preferences shortly.</p>' +
+          '<p>Please check your inbox (and spam folder) for an email from Focus Bear.</p>';
+      });
+    });
+    {{else}}
+    // Unsubscribe form handler
     document.getElementById('unsubscribeForm').addEventListener('submit', function(e) {
       e.preventDefault();
       
@@ -90,16 +156,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: '{{token}}' })
       })
-      .then(response => response.json())
-      .then(data => {
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
         // Hide the form and show success message
         document.querySelector('.container').innerHTML = document.getElementById('successMessage').innerHTML;
       })
-      .catch(error => {
+      .catch(function(error) {
         alert('Error unsubscribing. Please try again.');
         console.error('Unsubscribe error:', error);
       });
     });
+    {{/if}}
   </script>
 </body>
 </html>

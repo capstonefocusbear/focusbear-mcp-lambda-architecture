@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards, Query, Param, Post, Body, Req } from '@nestjs/common';
-import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Throttle } from '@nestjs/throttler';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';

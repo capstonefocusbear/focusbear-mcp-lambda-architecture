@@ -35,7 +35,7 @@ describe('PasswordResetEmailConsumer', () => {
         origin: undefined,
       },
       ...overrides,
-    }) as unknown as Job<PasswordResetEmailJobData>;
+    } as unknown as Job<PasswordResetEmailJobData>);
 
   it('sends email using frontEndUrl when origin does not match devFrontendUrl', async () => {
     (configServiceMock.get as any).mockImplementation((key: string) => {
@@ -113,4 +113,3 @@ describe('PasswordResetEmailConsumer', () => {
     );
   });
 });
-

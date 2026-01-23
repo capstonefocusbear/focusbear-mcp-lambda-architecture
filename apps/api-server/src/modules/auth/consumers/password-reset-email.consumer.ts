@@ -6,6 +6,7 @@ import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import {
+  AUTH0_RETRY_CONFIG,
   BullQueues,
   BullWorkers,
   EMAIL_SENDER_NAME,
@@ -17,7 +18,7 @@ export interface PasswordResetEmailJobData {
   email: string;
   auth0_id: string;
   user_name: string;
-  origin: string;
+  origin?: string;
 }
 
 @Processor(BullQueues.PASSWORD_RESET_EMAIL)
@@ -55,7 +56,7 @@ export class PasswordResetEmailConsumer {
 
       // Build reset link
       const baseUrl = this.getFrontendBaseUrl(origin);
-      const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+      const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
       // Send email
       await this.emailService.sendEmail({
@@ -80,17 +81,31 @@ export class PasswordResetEmailConsumer {
 
       return { data: 'Password reset email sent.', status: 200 };
     } catch (error) {
+      const isLastAttempt =
+        (job.attemptsMade || 0) + 1 >= (job.opts.attempts ?? AUTH0_RETRY_CONFIG.MAX_RETRIES);
+
       this.sentryService.instance().captureException(error, {
-        level: 'error',
-        tags: { job_id: job.id?.toString() },
-        extra: { email, job_data: job.data },
+        level: isLastAttempt ? 'error' : 'warning',
+        tags: {
+          service: 'auth',
+          operation: 'send-password-reset-email',
+          job_id: job.id?.toString(),
+          attempts: (job.attemptsMade || 0).toString(),
+          is_last_attempt: isLastAttempt.toString(),
+        },
+        extra: { email, job_data: job.data, error_message: error.message },
       });
       throw error;
     }
   }
 
-  private getFrontendBaseUrl(origin: string) {
-    const devFrontendUrl = this.configService.get('server.devFrontendUrl');
-    return origin === devFrontendUrl ? devFrontendUrl : this.configService.get('server.frontEndUrl');
+  private getFrontendBaseUrl(origin?: string): string {
+    const devFrontendUrl = this.configService.get<string>('server.devFrontendUrl');
+    const frontEndUrl = this.configService.get<string>('server.frontEndUrl');
+
+    if (devFrontendUrl && origin === devFrontendUrl) return devFrontendUrl;
+    if (frontEndUrl) return frontEndUrl;
+
+    throw new Error('Missing server.frontEndUrl configuration');
   }
 }

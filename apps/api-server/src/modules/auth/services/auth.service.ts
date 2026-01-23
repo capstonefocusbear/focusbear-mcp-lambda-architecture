@@ -96,34 +96,37 @@ export class AuthService {
     return parsedCustomClaims;
   }
 
-  async requestPasswordReset({ email, lang }: ResetPasswordDto, origin: string) {
+  async requestPasswordReset({ email, lang }: ResetPasswordDto, origin?: string) {
     try {
       const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
       if (!auth0User) {
-        throw new NotFoundException(`User with email: ${email} does not exist!`);
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Password reset requested for non-existent user (not enqueued)',
+        });
+        return { data: 'Password reset email queued.', status: 202 };
       }
 
       if (!auth0User.email_verified) {
-        throw new HttpException(
-          {
-            error: 'EMAIL_NOT_VERIFIED',
-            message: 'You need to verify your email before proceeding.',
-            statusCode: HttpStatus.FORBIDDEN,
-          },
-          HttpStatus.FORBIDDEN,
-        );
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Password reset requested for unverified email (not enqueued)',
+          data: { auth0_id: auth0User.user_id },
+        });
+        return { data: 'Password reset email queued.', status: 202 };
       }
 
       const isThirdPartyUser = auth0User.identities?.some((identity) => identity.isSocial);
       if (isThirdPartyUser) {
-        throw new HttpException(
-          {
-            error: 'THIRD_PARTY_EMAIL',
-            message: 'Cannot reset password from a third-party email.',
-            statusCode: HttpStatus.BAD_REQUEST,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
+        this.sentryService.instance().addBreadcrumb({
+          category: 'Service',
+          level: 'info',
+          message: 'Password reset requested for third-party user (not enqueued)',
+          data: { auth0_id: auth0User.user_id },
+        });
+        return { data: 'Password reset email queued.', status: 202 };
       }
 
       const user_name =

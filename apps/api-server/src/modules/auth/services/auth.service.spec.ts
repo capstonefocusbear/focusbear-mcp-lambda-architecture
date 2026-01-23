@@ -18,13 +18,15 @@ import {
 import { AuthService } from './auth.service';
 import { Passport } from '../domain/passport.model';
 import { UserRepository } from '../../user/repositories/user.repository';
-import { auth0UserDummy, QueueMock } from '../../../../test/dummies';
+import { auth0UserDummy } from '../../../../test/dummies';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { LanguageOptions } from '../../../shared/domain/language-options.enum';
 
 describe('AuthService', () => {
   let authService: AuthService;
   const i18nServiceMock = mockDeep<I18nService>();
+  const emailVerificationQueueMock = { add: jest.fn(), process: jest.fn() };
+  const passwordResetEmailQueueMock = { add: jest.fn(), process: jest.fn() };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -56,11 +58,11 @@ describe('AuthService', () => {
         },
         {
           provide: getQueueToken(BullQueues.EMAIL_VERIFICATION),
-          useValue: QueueMock,
+          useValue: emailVerificationQueueMock,
         },
         {
           provide: getQueueToken(BullQueues.PASSWORD_RESET_EMAIL),
-          useValue: QueueMock,
+          useValue: passwordResetEmailQueueMock,
         },
         Auth0AuthenticationService,
         Auth0ManagementService,
@@ -117,7 +119,7 @@ describe('AuthService', () => {
     const origin = 'https://dashboard.focusbear.io';
     beforeEach(() => {
       jest.clearAllMocks();
-      QueueMock.add.mockResolvedValue({} as any);
+      emailVerificationQueueMock.add.mockResolvedValue({} as any);
     });
 
     it('positive: should queue verification email job if user is found and not verified', async () => {
@@ -128,7 +130,7 @@ describe('AuthService', () => {
       const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(QueueMock.add).toHaveBeenCalledWith(
+      expect(emailVerificationQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.SEND_EMAIL_VERIFICATION,
         {
           email: auth0UserDummy.email,
@@ -153,7 +155,7 @@ describe('AuthService', () => {
       const response = await authService.emailConfirmationForGuest({ email: auth0UserDummy.email }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(QueueMock.add).toHaveBeenCalled();
+      expect(emailVerificationQueueMock.add).toHaveBeenCalled();
       expect(response).toEqual({ data: 'Email verification queued.', status: 202 });
     });
 
@@ -164,7 +166,7 @@ describe('AuthService', () => {
         NotFoundException,
       );
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(QueueMock.add).not.toHaveBeenCalled();
+      expect(emailVerificationQueueMock.add).not.toHaveBeenCalled();
     });
   });
 
@@ -174,7 +176,7 @@ describe('AuthService', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      QueueMock.add.mockResolvedValue({} as any);
+      passwordResetEmailQueueMock.add.mockResolvedValue({} as any);
       i18nServiceMock.t.mockReturnValue('User');
     });
 
@@ -186,7 +188,7 @@ describe('AuthService', () => {
       const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);
 
       expect(Auth0ManagementServiceMock.getAuth0UsersWithEmail).toHaveBeenCalledWith(auth0UserDummy.email);
-      expect(QueueMock.add).toHaveBeenCalledWith(
+      expect(passwordResetEmailQueueMock.add).toHaveBeenCalledWith(
         BullWorkers.SEND_PASSWORD_RESET_EMAIL,
         {
           email: auth0UserDummy.email,
@@ -205,13 +207,35 @@ describe('AuthService', () => {
       expect(response).toEqual({ data: 'Password reset email queued.', status: 202 });
     });
 
-    it('negative: should throw NotFoundException if user does not exist', async () => {
+    it('negative: should not enqueue if user does not exist (but still return 202)', async () => {
       Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([]);
 
-      await expect(authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin)).rejects.toThrow(
-        NotFoundException,
-      );
-      expect(QueueMock.add).not.toHaveBeenCalled();
+      const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);
+
+      expect(response).toEqual({ data: 'Password reset email queued.', status: 202 });
+      expect(passwordResetEmailQueueMock.add).not.toHaveBeenCalled();
+    });
+
+    it('negative: should not enqueue if email is not verified (but still return 202)', async () => {
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
+        { ...auth0UserDummy, email_verified: false, identities: [{ isSocial: false }] },
+      ]);
+
+      const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);
+
+      expect(response).toEqual({ data: 'Password reset email queued.', status: 202 });
+      expect(passwordResetEmailQueueMock.add).not.toHaveBeenCalled();
+    });
+
+    it('negative: should not enqueue if third-party user (but still return 202)', async () => {
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValue([
+        { ...auth0UserDummy, email_verified: true, identities: [{ isSocial: true }] },
+      ]);
+
+      const response = await authService.requestPasswordReset({ email: auth0UserDummy.email, lang }, origin);
+
+      expect(response).toEqual({ data: 'Password reset email queued.', status: 202 });
+      expect(passwordResetEmailQueueMock.add).not.toHaveBeenCalled();
     });
   });
 });

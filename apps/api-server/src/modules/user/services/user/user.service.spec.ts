@@ -1114,7 +1114,7 @@ describe('UserService', () => {
     it('positive: should call function to update user metadata', async () => {
       const userWithoutMetadata = { ...userDummy, metadata: undefined };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
-      const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
+      const profileImageDummy = 'www.image.com';
       const descriptionDummy = 'Random text here';
 
       await userService.updateMetadata(
@@ -1125,7 +1125,7 @@ describe('UserService', () => {
       expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         userDummy.id,
         expect.objectContaining({
-          metadata: { profile_image: profileImageDummy.url, description: descriptionDummy },
+          metadata: { profile_image: profileImageDummy, description: descriptionDummy },
           updated_at: expect.toBeDateString(),
           has_received_inactivity_warning: false,
         }),
@@ -1354,6 +1354,132 @@ describe('UserService', () => {
     });
   });
 
+  describe('checkIsUrlSafe', () => {
+    it('negative: should throw error if user is not found', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.8,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      const result = await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
+      const userWithContext = {
+        ...userDummy,
+        user_job_details: 'Software developer working on AI features',
+        user_typical_distractions: 'YouTube videos and Reddit',
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithContext);
+      const isUrlSafeDto = {
+        url: 'https://github.com',
+        tab_title: 'GitHub',
+        meta_description: 'GitHub description',
+        focus_mode: 'work',
+        intention: 'coding',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsUrlSafe(isUrlSafeDto, userWithContext.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
+      );
+    });
+
+    it('positive: should normalize DTO when user entity fields are null', async () => {
+      const userWithoutContext = {
+        ...userDummy,
+        user_job_details: null,
+        user_typical_distractions: null,
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithoutContext);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.8,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsUrlSafe(isUrlSafeDto, userWithoutContext.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+    });
+  });
+
   describe('checkIsAppSafe', () => {
     it('negative: should throw error if user is not found', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
@@ -1375,7 +1501,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should call OpenAI service with correct parameters', async () => {
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const isAppSafeDto = {
         focusMode: 'work',
@@ -1393,8 +1519,80 @@ describe('UserService', () => {
       const result = await userService.checkIsAppSafe(isAppSafeDto, userDummy.id);
 
       expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
-      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userDummy.language);
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: 'I need it for programming',
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
       expect(result).toEqual(expectedResponse);
+    });
+
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
+      const userWithContext = {
+        ...userDummy,
+        user_job_details: 'Full-stack engineer at Focus Bear',
+        user_typical_distractions: 'Short-form social media clips',
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithContext);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This app is related to your focus mode intention',
+      };
+      OpenAIServiceMock.checkIfAppIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsAppSafe(isAppSafeDto, userWithContext.id);
+
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
+      );
+    });
+
+    it('positive: should normalize DTO when user entity fields are null', async () => {
+      const userWithoutContext = {
+        ...userDummy,
+        user_job_details: null,
+        user_typical_distractions: null,
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithoutContext);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This app is related to your focus mode intention',
+      };
+      OpenAIServiceMock.checkIfAppIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsAppSafe(isAppSafeDto, userWithoutContext.id);
+
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
     });
   });
 

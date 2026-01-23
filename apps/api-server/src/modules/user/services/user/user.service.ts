@@ -729,23 +729,38 @@ export class UserService {
   }
 
   async updateMetadata(
-    { profile_image, description, user_job_details, user_typical_distractions }: UpdateUserMetadataDto,
+    {
+      profile_image,
+      description,
+      name,
+      email_preferences,
+      user_job_details,
+      user_typical_distractions,
+    }: UpdateUserMetadataDto,
     user_id: string,
   ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
+
     const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
     };
 
-    if (profile_image !== undefined || description !== undefined) {
-      // Preserve existing metadata fields while updating profile_image and/or description
+    if (
+      profile_image !== undefined ||
+      description !== undefined ||
+      name !== undefined ||
+      email_preferences !== undefined
+    ) {
+      // Preserve existing metadata fields while updating
       const existingMetadata = user.metadata || {};
       updateData.metadata = {
         ...existingMetadata,
-        ...(profile_image !== undefined && { profile_image: profile_image.url }),
+        ...(profile_image !== undefined && { profile_image }),
         ...(description !== undefined && { description }),
+        ...(name !== undefined && { name }),
+        ...(email_preferences !== undefined && { email_preferences }),
       };
     }
 
@@ -925,7 +940,10 @@ export class UserService {
       isUrlSafeDto.extraJustificationForThisSite ??
       undefined;
 
-    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -938,7 +956,10 @@ export class UserService {
     normalisedDto.justificationForThisSpecificApp =
       isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
 
-    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

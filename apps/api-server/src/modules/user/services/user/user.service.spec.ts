@@ -255,9 +255,12 @@ describe('UserService', () => {
         {
           user_id: userDummy.id,
           email: auth0UserDummy.email,
-          auth0_id: syncAccountDto.auth0_id,
+          operating_system: 'MacOS',
         },
         {
+          jobId: `create-stripe-customer:${userDummy.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
           attempts: 3,
           backoff: {
             type: 'exponential',
@@ -340,9 +343,12 @@ describe('UserService', () => {
         {
           user_id: userDummy.id,
           email: auth0UserDummy.email,
-          auth0_id: syncAccountDto.auth0_id,
+          operating_system: 'MacOS',
         },
         {
+          jobId: `create-stripe-customer:${userDummy.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
           attempts: 3,
           backoff: {
             type: 'exponential',

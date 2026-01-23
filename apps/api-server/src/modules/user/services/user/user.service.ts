@@ -180,6 +180,10 @@ export class UserService {
         },
       });
 
+      const operatingSystem =
+        (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem) ??
+        OperatingSystem.Unknown;
+
       // Queue background job to create Stripe customer if needed
       // This makes the endpoint faster by not waiting for Stripe API calls
       if (registeredUser) {
@@ -190,9 +194,12 @@ export class UserService {
             {
               user_id: registeredUser.id,
               email,
-              auth0_id,
+              operating_system: operatingSystem,
             },
             {
+              jobId: `create-stripe-customer:${registeredUser.id}`,
+              removeOnComplete: true,
+              removeOnFail: false,
               attempts: 3,
               backoff: {
                 type: 'exponential',
@@ -218,9 +225,12 @@ export class UserService {
         {
           user_id: newlySavedUser.id,
           email,
-          auth0_id,
+          operating_system: operatingSystem,
         },
         {
+          jobId: `create-stripe-customer:${newlySavedUser.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
           attempts: 3,
           backoff: {
             type: 'exponential',
@@ -230,20 +240,11 @@ export class UserService {
       );
 
       // Create device entry for new users
-      const devicesFromDb = await this.deviceRepository.orm.find({
-        where: { user_id: newlySavedUser.id },
-        order: { created_at: 'ASC' },
-      });
-
-      const os =
-        devicesFromDb?.[0]?.operating_system ??
-        (this.deviceService.parseDeviceFromAuth0Client(auth0_client, auth0_client?.user_agent) as OperatingSystem);
-
-      if (os !== OperatingSystem.Unknown) {
+      if (operatingSystem !== OperatingSystem.Unknown) {
         try {
           await this.deviceService.createOrUpdateDevice(
             {
-              operating_system: os,
+              operating_system: operatingSystem,
               metadata: {
                 source: 'user_creation',
                 auth0_client_id: auth0_client?.client_id,
@@ -258,7 +259,7 @@ export class UserService {
             extra: {
               auth0_id,
               email,
-              operating_system: os,
+              operating_system: operatingSystem,
             },
           });
         }

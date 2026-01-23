@@ -113,7 +113,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
-  ) { }
+  ) {}
 
   @SentryTraced('syncUserAccount')
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
@@ -199,9 +199,9 @@ export class UserService {
 
         const devicesFromDb = registeredUser
           ? await this.deviceRepository.orm.find({
-            where: { user_id: registeredUser.id },
-            order: { created_at: 'ASC' },
-          })
+              where: { user_id: registeredUser.id },
+              order: { created_at: 'ASC' },
+            })
           : [];
 
         this.sentryService.instance().addBreadcrumb({
@@ -1114,14 +1114,14 @@ export class UserService {
         [axios.post(cliqUrl, body)].concat(
           !email.includes('internaltest')
             ? [
-              this.emailService.sendEmail({
-                to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
-                from: FOCUS_BEAR_EMAILS.SUPPORT,
-                replyTo: email,
-                text: stringifiedUninstallFeedback,
-                subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
-              }),
-            ]
+                this.emailService.sendEmail({
+                  to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],
+                  from: FOCUS_BEAR_EMAILS.SUPPORT,
+                  replyTo: email,
+                  text: stringifiedUninstallFeedback,
+                  subject: `${EMAIL_SUBJECTS.USER_FEEDBACK_AND_APP_LOGS}`,
+                }),
+              ]
             : [],
         ),
       );

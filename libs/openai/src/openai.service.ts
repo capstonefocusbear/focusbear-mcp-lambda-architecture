@@ -311,7 +311,8 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
-      current_tasks, // Used for task suggestions when alignment score < 70% (lines 404, 530) and in prompt filling (lines 357, 367)
+      task_must_align_to_focus_intention,
+      current_tasks,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -367,6 +368,7 @@ export class OpenAIService {
         justificationForThisUrl: justificationForThisUrl || '',
         currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
         lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+        task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
         current_tasks: currentTasksJson,
       });
 
@@ -435,8 +437,15 @@ export class OpenAIService {
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer, current_tasks } =
-      isAppSafeDto;
+    const {
+      focusMode,
+      intention,
+      appName,
+      justificationForThisSpecificApp,
+      currentTaskInToDoPlayer,
+      task_must_align_to_focus_intention,
+      current_tasks,
+    } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -474,6 +483,7 @@ export class OpenAIService {
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
       current_tasks: currentTasksJson,
     });
 
@@ -540,12 +550,12 @@ export class OpenAIService {
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-url');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-          input_wrapper: INPUT_WRAPPER,
-          url,
-          tab_title: tabTitle,
-          meta_description: metaDescription,
-          current_tasks_list: currentTasksList,
-        })
+            input_wrapper: INPUT_WRAPPER,
+            url,
+            tab_title: tabTitle,
+            meta_description: metaDescription,
+            current_tasks_list: currentTasksList,
+          })
         : `Based on the following website information, suggest what task the user might be working on.
 
 Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
@@ -618,11 +628,11 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-app');
       const taskSuggestionPrompt = promptTemplate
         ? this.fillPrompt(promptTemplate, {
-          input_wrapper: INPUT_WRAPPER,
-          app_name: appName,
-          focus_mode: focusMode,
-          current_tasks_list: currentTasksList,
-        })
+            input_wrapper: INPUT_WRAPPER,
+            app_name: appName,
+            focus_mode: focusMode,
+            current_tasks_list: currentTasksList,
+          })
         : `Based on the following app information, suggest what task the user might be working on.
 
 App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}

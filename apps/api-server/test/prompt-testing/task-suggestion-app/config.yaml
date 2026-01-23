@@ -1,0 +1,15 @@
+prompts:
+  - id: task-suggestion-app
+    file: prompt.md
+
+providers:
+  - id: openai:gpt-4o-mini
+    config:
+      temperature: 0.3
+      max_tokens: 200
+      response_format:
+        type: json_object
+
+output:
+  - debug
+  - json

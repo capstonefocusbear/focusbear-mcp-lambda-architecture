@@ -7,6 +7,7 @@ import { UserStreaksService } from '../user-streaks/user-streaks.service';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
 import { User, EmailFrequency } from '../../entities/user.entity';
 import { DailyStats } from '../../entities/user-daily-stats.entity';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 
 const createMockUser = (): User => {
   const user = new User();
@@ -29,8 +30,7 @@ const createMockDailyStats = (date: string, overrides: Partial<DailyStats> = {})
   stats.micro_breaks_routine_completion_percentage = overrides.micro_breaks_routine_completion_percentage || 0;
   stats.seconds_spent_in_focus_sessions = (overrides.seconds_spent_in_focus_sessions || 0) * 60;
   stats.seconds_spent_doing_breaks = overrides.seconds_spent_doing_breaks || 0;
-  stats.focus_modes_completed =
-    overrides.focus_modes_completed !== undefined ? overrides.focus_modes_completed : Math.floor(Math.random() * 5) + 1;
+  stats.focus_modes_completed = overrides.focus_modes_completed !== undefined ? overrides.focus_modes_completed : 1;
   return stats;
 };
 
@@ -52,6 +52,10 @@ describe('UserProgressMetricsService', () => {
 
   const mockActivitySequenceService = {
     getUserRoutineDailyDurations: jest.fn(),
+  };
+
+  const mockCompletedFocusBlockRepository = {
+    getMaxFocusDurationSecondsByUserInTimeRange: jest.fn(),
   };
 
   const mockSentryInstance = {
@@ -80,6 +84,10 @@ describe('UserProgressMetricsService', () => {
           useValue: mockActivitySequenceService,
         },
         {
+          provide: CompletedFocusBlockRepository,
+          useValue: mockCompletedFocusBlockRepository,
+        },
+        {
           provide: SENTRY_TOKEN,
           useValue: mockSentryService,
         },
@@ -88,6 +96,8 @@ describe('UserProgressMetricsService', () => {
 
     service = module.get<UserProgressMetricsService>(UserProgressMetricsService);
     userStreaksService = module.get(UserStreaksService);
+
+    mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
   });
 
   afterEach(() => {
@@ -158,6 +168,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue(allTimeStats);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue(mockRoutineDurations as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue(mockStreaks as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(150 * 60);
 
       // Act
       const result = await service.calculateWeeklyProgress(user, weekStart);
@@ -215,6 +226,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([]);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue({} as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateWeeklyProgress(user);
@@ -235,6 +247,7 @@ describe('UserProgressMetricsService', () => {
       const error = new Error('Database error');
 
       mockDailyStatsRepository.orm.find.mockRejectedValue(error);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act & Assert
       await expect(service.calculateWeeklyProgress(user)).rejects.toThrow(error);
@@ -312,6 +325,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue(allTimeStats);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue(mockRoutineDurations as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue(mockStreaks as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(150 * 60);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);
@@ -369,6 +383,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([]);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue({} as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateMonthlyProgress(user);
@@ -383,29 +398,37 @@ describe('UserProgressMetricsService', () => {
       expect(result.month_start.toISOString().split('T')[0]).toBe(expectedStart.toISOString().split('T')[0]);
     });
 
-    it('should handle empty monthly stats without fetching all-time data', async () => {
+    it('should calculate streaks even when there are no monthly stats', async () => {
       // Arrange
       const user = createMockUser();
       const monthStart = new Date('2025-08-01');
 
       mockDailyStatsRepository.orm.find.mockResolvedValue([]); // No monthly stats
+      mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([createMockDailyStats('2025-07-31')]);
+      mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
+      mockUserStreaksService.calculateStreaksForUser.mockReturnValue({
+        focus_modes_streak: 4,
+        morning_routines_streak: 2,
+        evening_routines_streak: 1,
+        micro_breaks_streak: 0,
+      } as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);
 
       // Assert
       expect(result.streaks).toEqual({
-        current_overall: 0,
-        best_overall: 0,
-        morning_routine: 0,
-        evening_routine: 0,
-        focus_mode: 0,
+        current_overall: 4,
+        best_overall: 4,
+        morning_routine: 2,
+        evening_routine: 1,
+        focus_mode: 4,
       });
 
-      // Should not fetch all-time stats when no monthly data
-      expect(mockDailyStatsRepository.getUserDailyStats).not.toHaveBeenCalled();
-      expect(mockActivitySequenceService.getUserRoutineDailyDurations).not.toHaveBeenCalled();
-      expect(mockUserStreaksService.calculateStreaksForUser).not.toHaveBeenCalled();
+      expect(mockDailyStatsRepository.getUserDailyStats).toHaveBeenCalledWith(user.id);
+      expect(mockActivitySequenceService.getUserRoutineDailyDurations).toHaveBeenCalledWith(user.id);
+      expect(mockUserStreaksService.calculateStreaksForUser).toHaveBeenCalled();
     });
 
     it('should handle different month lengths correctly', async () => {
@@ -430,6 +453,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue(monthlyStats);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue(mockStreaks as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);
@@ -450,6 +474,7 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([]);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue({} as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);
@@ -469,6 +494,7 @@ describe('UserProgressMetricsService', () => {
       const error = new Error('Database error');
 
       mockDailyStatsRepository.orm.find.mockRejectedValue(error);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act & Assert
       await expect(service.calculateMonthlyProgress(user)).rejects.toThrow(error);
@@ -477,16 +503,12 @@ describe('UserProgressMetricsService', () => {
       });
     });
 
-    it('should only fetch streaks data when monthly stats exist', async () => {
+    it('should fetch streaks data even when monthly stats are empty', async () => {
       // Arrange
       const user = createMockUser();
       const monthStart = new Date('2025-08-01');
 
-      const monthlyStats = [
-        createMockDailyStats('2025-08-01', {
-          morning_routine_completion_percentage: 100,
-        }),
-      ];
+      const monthlyStats: DailyStats[] = [];
 
       const mockStreaks = {
         focus_modes_streak: 5,
@@ -499,11 +521,12 @@ describe('UserProgressMetricsService', () => {
       mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([]);
       mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
       mockUserStreaksService.calculateStreaksForUser.mockReturnValue(mockStreaks as any);
+      mockCompletedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange.mockResolvedValue(0);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);
 
-      // Assert - Should fetch all-time data when monthly stats exist
+      // Assert
       expect(mockDailyStatsRepository.getUserDailyStats).toHaveBeenCalledWith(user.id);
       expect(mockActivitySequenceService.getUserRoutineDailyDurations).toHaveBeenCalledWith(user.id);
       expect(mockUserStreaksService.calculateStreaksForUser).toHaveBeenCalled();
@@ -714,6 +737,14 @@ describe('UserProgressMetricsService', () => {
       const monthStart = new Date('2025-08-01');
 
       mockDailyStatsRepository.orm.find.mockResolvedValue([]); // No stats
+      mockDailyStatsRepository.getUserDailyStats.mockResolvedValue([]); // No all-time stats either
+      mockActivitySequenceService.getUserRoutineDailyDurations.mockResolvedValue({} as any);
+      mockUserStreaksService.calculateStreaksForUser.mockReturnValue({
+        focus_modes_streak: 0,
+        morning_routines_streak: 0,
+        evening_routines_streak: 0,
+        micro_breaks_streak: 0,
+      } as any);
 
       // Act
       const result = await service.calculateMonthlyProgress(user, monthStart);

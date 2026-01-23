@@ -31,14 +31,20 @@ const poolConfig = {
 
 const fetchNotifications = async () => {
   const pool = new Pool(poolConfig);
-  await pool.connect();
-  const currentTime = DateTime.now().toISO();
-  const timeInFifteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
-  const res = await pool.query({
-    text: 'SELECT * FROM notifications WHERE event_begins >= $1 AND event_begins <= $2 AND received IS NOT TRUE;',
-    values: [currentTime, timeInFifteenMinutes],
-  });
-  return res.rows;
+  try {
+    const currentTime = DateTime.now().toISO();
+    const timeInFifteenMinutes = DateTime.now().plus({ minutes: 15 }).toISO();
+    const res = await pool.query({
+      text: 'SELECT * FROM notifications WHERE event_begins >= $1 AND event_begins <= $2 AND received IS NOT TRUE;',
+      values: [currentTime, timeInFifteenMinutes],
+    });
+    return res.rows;
+  } finally {
+    await pool.end().catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to close PG pool', error);
+    });
+  }
 };
 
 const beamsClient = new PushNotifications({
@@ -98,27 +104,36 @@ async function runPusherCronJob() {
     await CronJobDataSource.initialize();
   }
 
-  const notificationsToSend = await fetchNotifications();
-  // eslint-disable-next-line no-console
-  console.log(`Ran for ${notificationsToSend.length} notification(s).`);
-  if (notificationsToSend.length === 0) {
-    return { notificationsSent: 0 };
-  }
+  try {
+    const notificationsToSend = await fetchNotifications();
+    // eslint-disable-next-line no-console
+    console.log(`Ran for ${notificationsToSend.length} notification(s).`);
+    if (notificationsToSend.length === 0) {
+      return { notificationsSent: 0 };
+    }
 
-  await Promise.all(
-    notificationsToSend.map(async (notification) => {
-      const { id, summary, description, event_begins, event_ends } = notification;
-      await sendBeamsPushNotification(notification.user_id, {
-        id,
-        summary,
-        description,
-        event_begins,
-        event_ends,
+    await Promise.all(
+      notificationsToSend.map(async (notification) => {
+        const { id, summary, description, event_begins, event_ends } = notification;
+        await sendBeamsPushNotification(notification.user_id, {
+          id,
+          summary,
+          description,
+          event_begins,
+          event_ends,
+        });
+      }),
+    );
+
+    return { notificationsSent: notificationsToSend.length };
+  } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
       });
-    }),
-  );
-
-  return { notificationsSent: notificationsToSend.length };
+    }
+  }
 }
 
 if (require.main === module) {

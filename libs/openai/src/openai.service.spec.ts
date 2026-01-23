@@ -1,3 +1,4 @@
+// Mock @sentry/nestjs before any imports that use it
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN, SentryModule, SentryService } from '@app/observability';
@@ -23,6 +24,34 @@ import { OpenAIService } from './openai.service';
 import { PromptCacheService } from './prompt-cache.service';
 import { AiToneOptions } from './domain/ai-tones.enum';
 
+jest.mock('@sentry/nestjs', () => {
+  const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
+
+  const SentryTracedMock = () => mockDecorator;
+  const SentryCronMock = () => mockDecorator;
+
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    captureMessage: jest.fn(),
+    flush: jest.fn().mockResolvedValue(true),
+    withScope: jest.fn((callback) => {
+      const scope = {
+        setTag: jest.fn(),
+        setUser: jest.fn(),
+        setContext: jest.fn(),
+        setLevel: jest.fn(),
+      };
+      return callback(scope);
+    }),
+    cron: {
+      instrumentCron: jest.fn(),
+    },
+    SentryTraced: SentryTracedMock,
+    SentryCron: SentryCronMock,
+  };
+});
+
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Define mock prompt data that will be returned
@@ -31,12 +60,12 @@ const mockPrompts = {
     {
       name: 'default',
       content:
-        'Default prompt content {{url}} {{focus_mode}} {{tab_title}} {{meta_description}} {{intention}} {{justificationForThisUrl}} {{lastFiveJustificationsInThisFocusSession}} {{currentTaskInToDoPlayer}}',
+        'Default prompt content {{url}} {{focus_mode}} {{tab_title}} {{meta_description}} {{intention}} {{justificationForThisUrl}} {{lastFiveJustificationsInThisFocusSession}} {{currentTaskInToDoPlayer}} {{current_tasks}}',
     },
     {
       name: 'app-default',
       content:
-        'App safety prompt content {{appName}} {{focusMode}} {{intention}} {{justificationForThisSpecificApp}} {{currentTaskInToDoPlayer}}',
+        'App safety prompt content {{appName}} {{focusMode}} {{intention}} {{justificationForThisSpecificApp}} {{currentTaskInToDoPlayer}} {{current_tasks}}',
     },
   ],
 };
@@ -89,7 +118,7 @@ describe('OpenAIService', () => {
     });
 
     module = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot({ dsn: '' })],
+      imports: [ConfigModule.forRoot({ load: configsArray }), SentryModule.forRoot()],
       providers: [
         OpenAIService,
         {
@@ -273,6 +302,111 @@ describe('OpenAIService', () => {
       expect(promptContent).not.toContain('{{currentTaskInToDoPlayer}}');
       const occurrences = (promptContent.match(/Write the summary/g) || []).length;
       expect(occurrences).toBe(2);
+      completionsSpy.mockRestore();
+    });
+
+    it('should suggest a task when alignment score < 70% with current_tasks provided', async () => {
+      // Mock getMetadata to return proper metadata
+      const getMetadataSpy = jest.spyOn<any, any>(service as any, 'getMetadata').mockResolvedValueOnce({
+        title: 'Baby Mattresses',
+        description: 'Baby mattresses and changepads',
+      });
+
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.5,"reason":"Low alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForUrl').mockResolvedValueOnce({
+        task_name: 'finance planning',
+        task_id: 'task-123',
+      });
+
+      const dto = {
+        url: 'https://babybunting.com.au/furniture/mattresses-changepads/mattresses',
+        meta_description: 'Baby mattresses and changepads',
+        tab_title: 'Baby Mattresses',
+        focus_mode: 'Deep Work',
+        intention: 'review actions',
+        current_tasks: [
+          { task_name: 'finance planning', task_id: 'task-123' },
+          { task_name: 'research products', task_id: 'task-456' },
+        ],
+        language: 'en',
+      };
+
+      const result = await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.5);
+      expect(result.suggested_task).toBe('finance planning');
+      expect(result.suggested_task_id).toBe('task-123');
+      expect(suggestTaskSpy).toHaveBeenCalledWith(
+        'https://babybunting.com.au/furniture/mattresses-changepads/mattresses',
+        'Baby Mattresses',
+        'Baby mattresses and changepads',
+        dto.current_tasks,
+        'en',
+      );
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+      getMetadataSpy.mockRestore();
+    });
+
+    it('should not suggest a task when alignment score >= 70%', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"Good alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForUrl');
+
+      const dto = {
+        url: 'https://example.com',
+        meta_description: 'Test description',
+        tab_title: 'Test Title',
+        focus_mode: 'work',
+        intention: 'coding',
+        current_tasks: [{ task_name: 'coding task', task_id: 'task-123' }],
+        language: 'en',
+      };
+
+      const result = await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.8);
+      expect(result.suggested_task).toBeUndefined();
+      expect(result.suggested_task_id).toBeUndefined();
+      expect(suggestTaskSpy).not.toHaveBeenCalled();
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should pass current_tasks to the prompt', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        url: 'http://example.com',
+        meta_description: '',
+        tab_title: '',
+        focus_mode: 'work',
+        intention: 'focus',
+        current_tasks: [
+          { task_name: 'Task 1', task_id: 'id-1' },
+          { task_name: 'Task 2', task_id: 'id-2' },
+        ],
+        language: 'en',
+      };
+
+      await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).toContain(JSON.stringify(dto.current_tasks));
       completionsSpy.mockRestore();
     });
   });
@@ -750,6 +884,166 @@ describe('OpenAIService', () => {
       const taskOccurrences = (promptContent.match(/Implement API client/g) || []).length;
       expect(appOccurrences).toBe(2);
       expect(taskOccurrences).toBe(2);
+      completionsSpy.mockRestore();
+    });
+
+    it('should append user context to the end of the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(() => 'Prompt body');
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Ghostty',
+        justificationForThisSpecificApp: 'Need terminal',
+        currentTaskInToDoPlayer: 'Implement API client',
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en', {
+        jobDetails: 'Full-stack engineer at Focus Bear',
+        typicalDistractions: 'Short-form social media clips',
+      });
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+
+      expect(promptContent.startsWith('Prompt body')).toBe(true);
+      expect(promptContent).toContain(
+        'The user provided this context about their job: %%%Full-stack engineer at Focus Bear%%%',
+      );
+      expect(promptContent).toContain(
+        'And said that they normally get distracted by: %%%Short-form social media clips%%%',
+      );
+      expect(
+        promptContent.endsWith('And said that they normally get distracted by: %%%Short-form social media clips%%%'),
+      ).toBe(true);
+
+      completionsSpy.mockRestore();
+    });
+
+    it('should use correct phrasing when only distractions are provided (no jobDetails)', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(() => 'Prompt body');
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.8,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Ghostty',
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en', {
+        jobDetails: undefined,
+        typicalDistractions: 'Social media and YouTube',
+      });
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+
+      expect(promptContent.startsWith('Prompt body')).toBe(true);
+      expect(promptContent).toContain(
+        'The user said that they normally get distracted by: %%%Social media and YouTube%%%',
+      );
+      expect(promptContent).not.toContain('And said that they normally get distracted by:');
+      expect(
+        promptContent.endsWith('The user said that they normally get distracted by: %%%Social media and YouTube%%%'),
+      ).toBe(true);
+
+      completionsSpy.mockRestore();
+    });
+
+    it('should suggest a task when alignment score < 70% with current_tasks provided', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"Low alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForApp').mockResolvedValueOnce({
+        task_name: 'coding project',
+        task_id: 'task-789',
+      });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding',
+        appName: 'Visual Studio Code',
+        current_tasks: [
+          { task_name: 'coding project', task_id: 'task-789' },
+          { task_name: 'documentation', task_id: 'task-101' },
+        ],
+        language: 'en',
+      };
+
+      const result = await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.6);
+      expect(result.suggested_task).toBe('coding project');
+      expect(result.suggested_task_id).toBe('task-789');
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en');
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should not suggest a task when alignment score >= 70%', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.75,"reason":"Good alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForApp');
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding',
+        appName: 'Visual Studio Code',
+        current_tasks: [{ task_name: 'coding task', task_id: 'task-123' }],
+        language: 'en',
+      };
+
+      const result = await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.75);
+      expect(result.suggested_task).toBeUndefined();
+      expect(result.suggested_task_id).toBeUndefined();
+      expect(suggestTaskSpy).not.toHaveBeenCalled();
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should pass current_tasks to the prompt', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'coding',
+        appName: 'Visual Studio Code',
+        current_tasks: [
+          { task_name: 'Task 1', task_id: 'id-1' },
+          { task_name: 'Task 2', task_id: 'id-2' },
+        ],
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).toContain(JSON.stringify(dto.current_tasks));
       completionsSpy.mockRestore();
     });
   }); // Properly closing checkIfAppIsSafeToUse describe block

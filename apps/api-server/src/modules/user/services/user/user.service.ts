@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Raw } from 'typeorm';
+import { SentryTraced } from '@sentry/nestjs';
 import { InjectSentry, SentryService, emitUserActivityMetric } from '@app/observability';
 import { DateTime } from 'luxon';
 import { FastifyReply } from 'fastify';
@@ -115,6 +116,7 @@ export class UserService {
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
   ) {}
 
+  @SentryTraced('syncUserAccount')
   async syncUserAccount({ auth0_id, email, auth0_client }: SyncUserAccountDto): Promise<UserAuthContext> {
     try {
       this.sentryService.instance().addBreadcrumb({
@@ -163,6 +165,7 @@ export class UserService {
     return [auth0User, dbUser];
   }
 
+  @SentryTraced('updateOrCreateUser')
   async updateOrCreateUser(
     { auth0_id, email, auth0_client }: SyncUserAccountDto,
     registeredUser?: User,
@@ -721,14 +724,51 @@ export class UserService {
     }
   }
 
-  async updateMetadata({ profile_image, description }: UpdateUserMetadataDto, user_id: string): Promise<void> {
+  async updateMetadata(
+    {
+      profile_image,
+      description,
+      name,
+      email_preferences,
+      user_job_details,
+      user_typical_distractions,
+    }: UpdateUserMetadataDto,
+    user_id: string,
+  ): Promise<void> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
-    await this.userRepository.orm.update(user_id, {
-      metadata: { profile_image, description },
+
+    const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
-    });
+    };
+
+    if (
+      profile_image !== undefined ||
+      description !== undefined ||
+      name !== undefined ||
+      email_preferences !== undefined
+    ) {
+      // Preserve existing metadata fields while updating
+      const existingMetadata = user.metadata || {};
+      updateData.metadata = {
+        ...existingMetadata,
+        ...(profile_image !== undefined && { profile_image }),
+        ...(description !== undefined && { description }),
+        ...(name !== undefined && { name }),
+        ...(email_preferences !== undefined && { email_preferences }),
+      };
+    }
+
+    if (user_job_details !== undefined) {
+      updateData.user_job_details = user_job_details;
+    }
+
+    if (user_typical_distractions !== undefined) {
+      updateData.user_typical_distractions = user_typical_distractions;
+    }
+
+    await this.userRepository.orm.update(user_id, updateData);
   }
 
   shouldSyncWithRevenueCat(user: User) {
@@ -896,7 +936,10 @@ export class UserService {
       isUrlSafeDto.extraJustificationForThisSite ??
       undefined;
 
-    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfUrlIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async checkIsAppSafe(isAppSafeDto: IsAppSafeDto, user_id: string) {
@@ -909,7 +952,10 @@ export class UserService {
     normalisedDto.justificationForThisSpecificApp =
       isAppSafeDto.justificationForThisSpecificApp ?? isAppSafeDto.justification ?? undefined;
 
-    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language);
+    return this.openAIService.checkIfAppIsSafeToUse(normalisedDto, user.language, {
+      jobDetails: user.user_job_details ?? null,
+      typicalDistractions: user.user_typical_distractions ?? null,
+    });
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

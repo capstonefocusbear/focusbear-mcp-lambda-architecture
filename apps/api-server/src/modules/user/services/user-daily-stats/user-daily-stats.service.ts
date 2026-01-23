@@ -1,5 +1,5 @@
 /* eslint-disable default-case */
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, forwardRef } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { Between, Equal } from 'typeorm';
@@ -38,6 +38,8 @@ import { StreakTypes } from '../../domain/StreakTypes.enum';
 import { DailyStatSummary } from '../../domain/daily-stat-summary.model';
 import { CompletedActivitySequence } from '../../../activity/entities/completed-activity-sequence.entity';
 import { DailySequenceDurations } from '../../../activity/domain/daily-sequence-durations.model';
+import { UserTypes } from '../../domain/user-types.enum';
+import { AdminUserStatsResponseDto } from '../../dto/admin-user-stats-response.dto';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -520,5 +522,45 @@ export class UserDailyStatsService {
       });
     });
     return lastNDaysSummary;
+  }
+
+  /**
+   * Fetches aggregated usage statistics for a specific user. Used by the admin support
+   * dashboard to display user metrics in the "User Stats" tab.
+   */
+  async getUserStatsForAdminDashboard(adminId: string, userId: string): Promise<AdminUserStatsResponseDto> {
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
+    const isAdmin = adminUser?.user_type === UserTypes.ADMIN;
+    if (!isAdmin) {
+      throw new UnauthorizedException(`User with ID: ${adminId} is not admin!`);
+    }
+    const targetUser = await this.userRepository.orm.findOneBy({ id: userId });
+    const dailyStats = await this.dailyStatsRepository.getUserDailyStats(userId);
+    const totalFocusSessions = dailyStats.reduce((sum, stat) => sum + (stat.focus_modes_completed || 0), 0);
+    const totalFocusDurationSeconds = dailyStats.reduce(
+      (sum, stat) => sum + (stat.seconds_spent_in_focus_sessions || 0),
+      0,
+    );
+    const totalFocusDurationMinutes = Math.round(totalFocusDurationSeconds / 60);
+    const daysWithData = dailyStats.length;
+    const averageDailyFocusMinutes = daysWithData > 0 ? Math.round(totalFocusDurationSeconds / 60 / daysWithData) : 0;
+    const totalRoutinesCompleted = dailyStats.reduce((sum, stat) => {
+      const morningCompleted = (stat.morning_routine_completion_percentage || 0) >= 50 ? 1 : 0;
+      const eveningCompleted = (stat.evening_routine_completion_percentage || 0) >= 50 ? 1 : 0;
+      return sum + morningCompleted + eveningCompleted;
+    }, 0);
+    const totalHabitsCompleted = dailyStats.reduce((sum, stat) => {
+      const breakRoutinesCompleted = (stat.micro_breaks_routine_completion_percentage || 0) >= 50 ? 1 : 0;
+      return sum + breakRoutinesCompleted;
+    }, 0);
+    const streakDays = targetUser?.focus_modes_streak || 0;
+    return {
+      total_focus_sessions: totalFocusSessions,
+      total_focus_duration_minutes: totalFocusDurationMinutes,
+      total_habits_completed: totalHabitsCompleted,
+      total_routines_completed: totalRoutinesCompleted,
+      average_daily_focus_minutes: averageDailyFocusMinutes,
+      streak_days: streakDays,
+    };
   }
 }

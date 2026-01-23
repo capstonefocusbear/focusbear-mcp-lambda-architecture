@@ -281,10 +281,31 @@ export const constructLogUploadEmailBody = (
   `;
 };
 
-export function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage = 'Operation timed out'): Promise<T> {
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  timeoutMessage = 'Operation timed out',
+  onTimeout?: () => void | Promise<void>,
+): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), ms);
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    const handleTimeout = async () => {
+      // If the caller stops awaiting `promise` after a timeout (common with Promise.race),
+      // its eventual rejection can become an unhandledRejection. Prevent that.
+      promise.catch(() => undefined);
+
+      try {
+        await onTimeout?.();
+      } catch {
+        // Ignore cleanup errors; we're already timing out.
+      }
+
+      reject(new Error(timeoutMessage));
+    };
+
+    timeoutId = setTimeout(() => {
+      handleTimeout().catch(() => undefined);
+    }, ms);
     (timeoutId as any)?.unref?.();
   });
 

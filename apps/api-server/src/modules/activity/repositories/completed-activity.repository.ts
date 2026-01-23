@@ -51,13 +51,14 @@ export class CompletedActivityRepository extends BaseRepository<CompletedActivit
       .createQueryBuilder('completed_activities')
       .select("date_trunc('day', timezone(:timezone, completed_activities.finish_time))", 'date')
       .addSelect(`${log_summary_type}(completed_activities.${stat_type}_logged)`, 'summary')
+      .addSelect('COUNT(completed_activities.id)', 'count')
       .where('completed_activities.activity_id IN (:...activityIds)')
       .groupBy('date')
       .orderBy('date', 'DESC')
       .limit(days_number)
       .setParameters({ activityIds, days_number, timezone });
 
-    const completedActivities: { date: string; summary: string }[] = await query.getRawMany();
+    const completedActivities: { date: string; summary: string; count: string }[] = await query.getRawMany();
     return completedActivities.filter((activity) => activity.date);
   }
 

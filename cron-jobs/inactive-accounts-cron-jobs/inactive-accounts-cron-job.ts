@@ -132,6 +132,9 @@ async function sendEnhancedNoProgressEmails(users: { email: string; user: User }
 
     const emailPromises = batch.map(async (userData) => {
       try {
+        if (!userData.user.feature_flags?.includes('no_progress_emails')) {
+          return;
+        }
         await emailQueue.add(
           'send-no-progress-email',
           {
@@ -402,6 +405,12 @@ async function runInactiveAccountsCronJob() {
     );
     throw error;
   } finally {
+    if (CronJobDataSource.isInitialized) {
+      await CronJobDataSource.destroy().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to destroy CronJobDataSource', error);
+      });
+    }
     await app.close();
   }
 }

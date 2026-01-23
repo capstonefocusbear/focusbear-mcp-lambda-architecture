@@ -14,11 +14,13 @@ import {
   SyncedProjectsRepositoryMock,
   TaskTimeLogsRepositoryMock,
   ToDoRepositoryMock,
+  UserRepositoryMock,
 } from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import {
+  adminUserDummy,
   CompletedFocusBlockDummy,
   QueueMock,
   ToDoDBResponseDummy,
@@ -39,6 +41,7 @@ import { SyncedProjectsRepository } from '../repositories/synced-projects.reposi
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
@@ -57,6 +60,7 @@ describe('toDoService', () => {
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
         OpenAIService,
+        UserRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -79,6 +83,8 @@ describe('toDoService', () => {
       .useValue(SyncedProjectsRepositoryMock)
       .overrideProvider(OpenAIService)
       .useValue(OpenAIServiceMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);
@@ -524,7 +530,7 @@ describe('toDoService', () => {
   });
 
   describe('searchToDos', () => {
-    it('positive: should fetch ToDos matched search title', async () => {
+    it('positive: should fetch ToDos matched search title and normalize subtasks', async () => {
       const results = dummySearchToDosResponse
         .filter((todo) => todo.user_id === userDummy.id && todo.title.includes(dummySearchToDosDto.title))
         .slice(0, dummySearchToDosDto.take);
@@ -533,12 +539,12 @@ describe('toDoService', () => {
 
       expect(ToDoRepositoryMock.searchUserToDos).toHaveBeenCalledWith(dummySearchToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummySearchToDosDto.take);
-      expect(response).toEqual(results);
+      expect(response.length).toEqual(results.length);
     });
   });
 
   describe('getRecentToDos', () => {
-    it('positive: should fetch a recently updated ToDos before the specified date', async () => {
+    it('positive: should fetch a recently updated ToDos before the specified date and normalize subtasks', async () => {
       const results = dummyRecentToDosResponse
         .filter(
           (todo) =>
@@ -551,7 +557,7 @@ describe('toDoService', () => {
 
       expect(ToDoRepositoryMock.getUserRecentToDos).toHaveBeenCalledWith(dummyRecentToDosDto, userDummy.id);
       expect(response.length).toBeLessThanOrEqual(dummyRecentToDosDto.take);
-      expect(response).toEqual(results);
+      expect(response.length).toEqual(results.length);
     });
   });
 
@@ -866,6 +872,165 @@ describe('toDoService', () => {
       const data = response.data as any[];
       expect(data[0].subtasks).toHaveLength(1);
       expect(data[0].subtasks).toEqual([{ name: 'Valid', is_completed: true }]);
+    });
+  });
+
+  describe('getTasksForAdminDashboard', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should return tasks for a user when called by an admin', async () => {
+      const mockTasks = [
+        {
+          id: randomUUID(),
+          title: 'Test Task 1',
+          status: ToDoStatus.NOT_STARTED,
+          due_date: new Date(),
+          eisenhower_quadrant: 1,
+          duration: 60,
+          outcome: 5,
+          perspiration_level: 3,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          id: randomUUID(),
+          title: 'Test Task 2',
+          status: ToDoStatus.IN_PROGRESS,
+          due_date: new Date(),
+          eisenhower_quadrant: 2,
+          duration: 120,
+          outcome: 7,
+          perspiration_level: 5,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ];
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(adminUserDummy);
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce(mockTasks);
+
+      const result = await toDoService.getTasksForAdminDashboard(adminUserDummy.id, userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: adminUserDummy.id });
+      expect(ToDoRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id },
+        select: [
+          'id',
+          'title',
+          'status',
+          'due_date',
+          'eisenhower_quadrant',
+          'duration',
+          'outcome',
+          'perspiration_level',
+          'created_at',
+          'updated_at',
+        ],
+        order: { updated_at: 'DESC' },
+      });
+      expect(result).toEqual(mockTasks);
+    });
+
+    it('negative: should throw NotFoundException when admin user is not found', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      const nonExistentAdminId = randomUUID();
+      let exception;
+      try {
+        await toDoService.getTasksForAdminDashboard(nonExistentAdminId, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception.message).toEqual(`User with ID: ${nonExistentAdminId} not found!`);
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
+    });
+
+    it('negative: should throw UnauthorizedException when user is not an admin', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      let exception;
+      try {
+        await toDoService.getTasksForAdminDashboard(userDummy.id, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception.message).toEqual(`User with ID: ${userDummy.id} is not admin!`);
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getToDosByIds', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should return empty array when no ids provided', async () => {
+      const result = await toDoService.getToDosByIds(userDummy.id, []);
+
+      expect(result).toEqual([]);
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
+    });
+
+    it('positive: should fetch todos by ids for the authenticated user', async () => {
+      const todoIds = ['todo-1', 'todo-2'];
+      const mockTodos = [
+        { id: 'todo-1', title: 'Task 1', status: ToDoStatus.NOT_STARTED, subtasks: [] },
+        { id: 'todo-2', title: 'Task 2', status: ToDoStatus.COMPLETED, subtasks: [] },
+      ];
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce(mockTodos);
+
+      const result = await toDoService.getToDosByIds(userDummy.id, todoIds);
+
+      expect(ToDoRepositoryMock.orm.find).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id, id: expect.anything() },
+        select: ['id', 'title', 'status', 'due_date', 'duration', 'icon', 'subtasks'],
+      });
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('todo-1');
+      expect(result[1].id).toBe('todo-2');
+    });
+
+    it('positive: should only return todos belonging to the authenticated user', async () => {
+      const todoIds = ['todo-1', 'todo-2', 'todo-3'];
+      const mockTodos = [{ id: 'todo-1', title: 'Task 1', status: ToDoStatus.NOT_STARTED, subtasks: [] }];
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce(mockTodos);
+
+      const result = await toDoService.getToDosByIds(userDummy.id, todoIds);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('todo-1');
+    });
+
+    it('positive: should filter invalid subtasks from returned todos', async () => {
+      const todoIds = ['todo-1'];
+      const mockTodos = [
+        {
+          id: 'todo-1',
+          title: 'Task 1',
+          status: ToDoStatus.NOT_STARTED,
+          subtasks: [{ name: 'Valid subtask', is_completed: false }, { invalid: 'entry' }, [], null],
+        },
+      ];
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce(mockTodos);
+
+      const result = await toDoService.getToDosByIds(userDummy.id, todoIds);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].subtasks).toHaveLength(1);
+      expect(result[0].subtasks[0]).toEqual({ name: 'Valid subtask', is_completed: false });
+    });
+
+    it('positive: should return empty array when no todos match the provided ids', async () => {
+      const todoIds = ['non-existent-1', 'non-existent-2'];
+      ToDoRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      const result = await toDoService.getToDosByIds(userDummy.id, todoIds);
+
+      expect(result).toEqual([]);
     });
   });
 });

@@ -50,6 +50,10 @@ export class EmailProcessor {
         this.logger.log(`Skipped weekly progress email for user ${user.id}: feature flag not enabled`);
         return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
+      if (variant === 'daily' && !settings?.feature_flags?.includes(FEATURE_FLAGS.DAILY_EMAILS)) {
+        this.logger.log(`Skipped daily progress email for user ${user.id}: feature flag not enabled`);
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
+      }
 
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
@@ -98,14 +102,27 @@ export class EmailProcessor {
   async handleMonthlyProgressEmail(job: Job) {
     try {
       const { user, metrics, unsubscribe_token } = job.data;
+      const settings = await this.getUserEmailSettings(user.id);
+
       // Safety check: skip if user is currently unsubscribed
-      if (await this.isUserUnsubscribed(user.id)) {
+      if (settings?.email_frequency === EmailFrequency.UNSUBSCRIBED) {
         this.sentryService.instance().captureMessage('Skipped sending monthly progress email: user unsubscribed', {
           level: 'info',
           extra: { jobId: job.id, userId: user.id },
           tags: { email_action: 'skip_unsubscribed' },
         });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+
+      if (!settings?.feature_flags?.includes(FEATURE_FLAGS.MONTHLY_EMAILS)) {
+        this.sentryService
+          .instance()
+          .captureMessage('Skipped sending monthly progress email: feature flag not enabled', {
+            level: 'info',
+            extra: { jobId: job.id, userId: user.id },
+            tags: { email_action: 'skip_feature_flag' },
+          });
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
@@ -153,14 +170,25 @@ export class EmailProcessor {
   async handleNoProgressEmail(job: Job) {
     try {
       const { user, unsubscribe_token } = job.data;
+      const settings = await this.getUserEmailSettings(user.id);
+
       // Safety check: skip if user is currently unsubscribed
-      if (await this.isUserUnsubscribed(user.id)) {
+      if (settings?.email_frequency === EmailFrequency.UNSUBSCRIBED) {
         this.sentryService.instance().captureMessage('Skipped sending no-progress email: user unsubscribed', {
           level: 'info',
           extra: { jobId: job.id, userId: user.id },
           tags: { email_action: 'skip_unsubscribed' },
         });
         return { success: true, userId: user.id, skipped: 'unsubscribed' };
+      }
+
+      if (!settings?.feature_flags?.includes('no_progress_emails')) {
+        this.sentryService.instance().captureMessage('Skipped sending no-progress email: feature flag not enabled', {
+          level: 'info',
+          extra: { jobId: job.id, userId: user.id },
+          tags: { email_action: 'skip_feature_flag' },
+        });
+        return { success: true, userId: user.id, skipped: 'feature_flag_not_enabled' };
       }
       const fromEmail = 'support@focusbear.io';
       const replyToEmail = fromEmail;
@@ -202,7 +230,7 @@ export class EmailProcessor {
       if (user) {
         const updatedMetadata = {
           ...user.metadata,
-          last_email_sent: new Date(),
+          last_email_sent: new Date().toISOString(),
         };
         await this.userRepository.update(userId, { metadata: updatedMetadata });
       }
@@ -211,20 +239,6 @@ export class EmailProcessor {
         extra: { operation: 'updateLastEmailSent', userId },
         level: 'warning',
       });
-    }
-  }
-
-  private async isUserUnsubscribed(userId: string): Promise<boolean> {
-    try {
-      const record = await this.userRepository.orm.findOne({ where: { id: userId } });
-      return record?.email_frequency === EmailFrequency.UNSUBSCRIBED;
-    } catch (error) {
-      // If we cannot determine, be safe and do not block sending; log for visibility
-      this.sentryService.instance().captureException(error, {
-        extra: { operation: 'isUserUnsubscribed', userId },
-        level: 'warning',
-      });
-      return false;
     }
   }
 

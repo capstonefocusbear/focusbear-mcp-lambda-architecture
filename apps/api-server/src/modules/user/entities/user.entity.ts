@@ -252,6 +252,20 @@ export class User extends BaseEntity {
   metadata?: UserMetadata;
 
   @Column({
+    type: 'text',
+    nullable: true,
+    transformer: BaseEntity.encryptField('user_job_details'),
+  })
+  user_job_details?: string;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+    transformer: BaseEntity.encryptField('user_typical_distractions'),
+  })
+  user_typical_distractions?: string;
+
+  @Column({
     type: 'jsonb',
   })
   onboarding_progress?: UserOnboardingProgress;

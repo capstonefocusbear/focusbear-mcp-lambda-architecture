@@ -8,6 +8,8 @@ import { IsAuth } from '../guards/is-auth/is-auth.guard';
 import { PusherBeamsAuthResponse } from '../dto/pusher-beams-auth-response.dto';
 import { PusherBeamsAuthService } from '../services/pusher-beams-auth.service';
 
+const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
+
 @Controller('pusher')
 @ApiTags('pusher')
 @UseGuards(IsAuth)
@@ -25,11 +27,19 @@ export class PusherAuthController {
 
   @Get('beams-auth')
   getPusherBeamsToken(@AuthContext() { user }: Passport): Promise<PusherBeamsAuthResponse> {
+    if (user?.id === JEREMYS_USER_ID) {
+      // eslint-disable-next-line no-console
+      console.log({ userId: user.id }, 'Jeremy requested Beams token');
+    }
     return this.pusherBeamsAuthService.getPusherBeamsToken(user.id);
   }
 
   @Get('beams-unsubscribe')
   unsubscribeFromBeams(@AuthContext() { user }: Passport): Promise<void> {
+    if (user?.id === JEREMYS_USER_ID) {
+      // eslint-disable-next-line no-console
+      console.log({ userId: user.id }, 'Jeremy requested Beams unsubscribe');
+    }
     return this.pusherBeamsAuthService.unsubscribeFromBeams(user.id);
   }
 }

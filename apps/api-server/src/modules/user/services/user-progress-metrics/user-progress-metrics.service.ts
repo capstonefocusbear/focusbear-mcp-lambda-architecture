@@ -9,6 +9,7 @@ import { WeeklyProgressMetricsDto } from '../../dto/weekly-progress-metrics.dto'
 import { MonthlyProgressMetricsDto } from '../../dto/monthly-progress-metrics.dto';
 import { DailyStats } from '../../entities/user-daily-stats.entity';
 import { ActivitySequenceService } from '../../../activity/services/activity-sequence/activity-sequence.service';
+import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
 
 const DAYS_IN_WEEK = 7;
 
@@ -18,6 +19,7 @@ export class UserProgressMetricsService {
     private readonly dailyStatsRepository: DailyStatsRepository,
     private readonly userStreaksService: UserStreaksService,
     private readonly activitySequenceService: ActivitySequenceService,
+    private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -36,17 +38,20 @@ export class UserProgressMetricsService {
       const startOfWeek = base.startOf('day');
       const endOfWeek = startOfWeek.plus({ days: 6 }).endOf('day');
 
-      const weeklyStats = await this.dailyStatsRepository.orm.find({
-        where: {
-          user_id: user.id,
-          date_completed: Between(startOfWeek.toJSDate(), endOfWeek.toJSDate()),
-        },
-      });
-
-      const allTimeStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
-
-      // Get routine durations for streak calculations
-      const routineDurations = await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
+      const [weeklyStats, allTimeStats, routineDurations, longestFocusBlockSeconds] = await Promise.all([
+        this.dailyStatsRepository.orm.find({
+          where: {
+            user_id: user.id,
+            date_completed: Between(startOfWeek.toJSDate(), endOfWeek.toJSDate()),
+          },
+        }),
+        this.dailyStatsRepository.getUserDailyStats(user.id),
+        this.activitySequenceService.getUserRoutineDailyDurations(user.id),
+        this.completedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange(user.id, {
+          from_time: startOfWeek.toJSDate(),
+          to_time: endOfWeek.toJSDate(),
+        }),
+      ]);
 
       const streaks = this.userStreaksService.calculateStreaksForUser(
         allTimeStats,
@@ -56,7 +61,11 @@ export class UserProgressMetricsService {
       );
 
       const routineMetrics = this.aggregateRoutineMetrics(weeklyStats, streaks, DAYS_IN_WEEK);
-      const focusMetrics = this.aggregateFocusMetrics(weeklyStats, streaks);
+      const focusMetrics = this.aggregateFocusMetrics(
+        weeklyStats,
+        streaks,
+        longestFocusBlockSeconds > 0 ? longestFocusBlockSeconds / 60 : undefined,
+      );
       const taskMetrics = this.aggregateTaskMetrics(weeklyStats);
 
       return {
@@ -92,15 +101,20 @@ export class UserProgressMetricsService {
       const dayStart = targetDay.startOf('day');
       const dayEnd = targetDay.endOf('day');
 
-      const dailyStats = await this.dailyStatsRepository.orm.find({
-        where: {
-          user_id: user.id,
-          date_completed: Between(dayStart.toJSDate(), dayEnd.toJSDate()),
-        },
-      });
-
-      const allTimeStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
-      const routineDurations = await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
+      const [dailyStats, allTimeStats, routineDurations, longestFocusBlockSeconds] = await Promise.all([
+        this.dailyStatsRepository.orm.find({
+          where: {
+            user_id: user.id,
+            date_completed: Between(dayStart.toJSDate(), dayEnd.toJSDate()),
+          },
+        }),
+        this.dailyStatsRepository.getUserDailyStats(user.id),
+        this.activitySequenceService.getUserRoutineDailyDurations(user.id),
+        this.completedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange(user.id, {
+          from_time: dayStart.toJSDate(),
+          to_time: dayEnd.toJSDate(),
+        }),
+      ]);
       const streaks = this.userStreaksService.calculateStreaksForUser(
         allTimeStats,
         user.timezone,
@@ -109,7 +123,11 @@ export class UserProgressMetricsService {
       );
 
       const routineMetrics = this.aggregateRoutineMetrics(dailyStats, streaks, 1);
-      const focusMetrics = this.aggregateFocusMetrics(dailyStats, streaks);
+      const focusMetrics = this.aggregateFocusMetrics(
+        dailyStats,
+        streaks,
+        longestFocusBlockSeconds > 0 ? longestFocusBlockSeconds / 60 : undefined,
+      );
       const taskMetrics = this.aggregateTaskMetrics(dailyStats);
 
       return {
@@ -147,38 +165,36 @@ export class UserProgressMetricsService {
       ).startOf('day');
       const endOfMonth = startOfMonth.endOf('month');
 
-      // Get daily stats for the month - using efficient query with date range
-      const monthlyStats = await this.dailyStatsRepository.orm.find({
-        where: {
-          user_id: user.id,
-          date_completed: Between(startOfMonth.toJSDate(), endOfMonth.toJSDate()),
-        },
-      });
-
-      // Only fetch all-time stats if we have monthly data to avoid unnecessary memory usage
-      let streaks = {
-        morning_routines_streak: 0,
-        evening_routines_streak: 0,
-        focus_modes_streak: 0,
-        micro_breaks_streak: 0,
-      };
-      if (monthlyStats.length > 0) {
-        const allTimeStats = await this.dailyStatsRepository.getUserDailyStats(user.id);
-        const routineDurations = await this.activitySequenceService.getUserRoutineDailyDurations(user.id);
-
-        streaks = this.userStreaksService.calculateStreaksForUser(
-          allTimeStats,
-          user.timezone,
-          routineDurations,
-          new Date(user.created_at),
-        );
-      }
+      const [monthlyStats, allTimeStats, routineDurations, longestFocusBlockSeconds] = await Promise.all([
+        this.dailyStatsRepository.orm.find({
+          where: {
+            user_id: user.id,
+            date_completed: Between(startOfMonth.toJSDate(), endOfMonth.toJSDate()),
+          },
+        }),
+        this.dailyStatsRepository.getUserDailyStats(user.id),
+        this.activitySequenceService.getUserRoutineDailyDurations(user.id),
+        this.completedFocusBlockRepository.getMaxFocusDurationSecondsByUserInTimeRange(user.id, {
+          from_time: startOfMonth.toJSDate(),
+          to_time: endOfMonth.toJSDate(),
+        }),
+      ]);
+      const streaks = this.userStreaksService.calculateStreaksForUser(
+        allTimeStats,
+        user.timezone,
+        routineDurations,
+        new Date(user.created_at),
+      );
 
       // Calculate days in the actual month for more accurate metrics
       const daysInMonth = endOfMonth.day;
 
       const routineMetrics = this.aggregateMonthlyRoutineMetrics(monthlyStats, streaks, daysInMonth);
-      const focusMetrics = this.aggregateMonthlyFocusMetrics(monthlyStats, streaks);
+      const focusMetrics = this.aggregateMonthlyFocusMetrics(
+        monthlyStats,
+        streaks,
+        longestFocusBlockSeconds > 0 ? longestFocusBlockSeconds / 60 : undefined,
+      );
       const taskMetrics = this.aggregateMonthlyTaskMetrics(monthlyStats);
 
       return {
@@ -231,13 +247,15 @@ export class UserProgressMetricsService {
     };
   }
 
-  private aggregateFocusMetrics(weeklyStats: DailyStats[], streaks: any) {
+  private aggregateFocusMetrics(weeklyStats: DailyStats[], streaks: any, longestFocusSessionMinutes?: number) {
     const totalMinutes = weeklyStats.reduce((sum, s) => sum + (s.seconds_spent_in_focus_sessions || 0), 0) / 60; // Convert seconds to minutes
 
     const sessionsCount = weeklyStats.reduce((sum, s) => sum + (s.focus_modes_completed || 0), 0);
 
-    // Calculate longest session from daily stats (assuming we have this data)
-    const longestSession = Math.max(...weeklyStats.map((s) => (s.seconds_spent_in_focus_sessions || 0) / 60), 0);
+    const longestSession =
+      longestFocusSessionMinutes !== undefined
+        ? longestFocusSessionMinutes
+        : Math.max(...weeklyStats.map((s) => (s.seconds_spent_in_focus_sessions || 0) / 60), 0);
 
     return {
       total_minutes: Math.round(totalMinutes),
@@ -289,13 +307,15 @@ export class UserProgressMetricsService {
     };
   }
 
-  private aggregateMonthlyFocusMetrics(monthlyStats: DailyStats[], streaks: any) {
+  private aggregateMonthlyFocusMetrics(monthlyStats: DailyStats[], streaks: any, longestFocusSessionMinutes?: number) {
     const totalMinutes = monthlyStats.reduce((sum, s) => sum + (s.seconds_spent_in_focus_sessions || 0), 0) / 60; // Convert seconds to minutes
 
     const sessionsCount = monthlyStats.reduce((sum, s) => sum + (s.focus_modes_completed || 0), 0);
 
-    // Calculate longest session from daily stats (assuming we have this data)
-    const longestSession = Math.max(...monthlyStats.map((s) => (s.seconds_spent_in_focus_sessions || 0) / 60), 0);
+    const longestSession =
+      longestFocusSessionMinutes !== undefined
+        ? longestFocusSessionMinutes
+        : Math.max(...monthlyStats.map((s) => (s.seconds_spent_in_focus_sessions || 0) / 60), 0);
 
     return {
       total_minutes: Math.round(totalMinutes),

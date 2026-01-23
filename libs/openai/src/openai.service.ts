@@ -311,7 +311,8 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
-      current_tasks, // Used for task suggestions when alignment score < 70% (lines 404, 530) and in prompt filling (lines 357, 367)
+      task_must_align_to_focus_intention,
+      current_tasks,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -367,6 +368,7 @@ export class OpenAIService {
         justificationForThisUrl: justificationForThisUrl || '',
         currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
         lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+        task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
         current_tasks: currentTasksJson,
       });
 
@@ -435,8 +437,15 @@ export class OpenAIService {
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer, current_tasks } =
-      isAppSafeDto;
+    const {
+      focusMode,
+      intention,
+      appName,
+      justificationForThisSpecificApp,
+      currentTaskInToDoPlayer,
+      task_must_align_to_focus_intention,
+      current_tasks,
+    } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -474,6 +483,7 @@ export class OpenAIService {
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
       current_tasks: currentTasksJson,
     });
 

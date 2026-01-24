@@ -1,0 +1,33 @@
+import { Type } from 'class-transformer';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import { CreateNoteTagDto } from './create-note-tag.dto';
+
+export class CreateNoteDto {
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(500)
+  title: string;
+
+  @IsOptional()
+  @IsString()
+  body?: string;
+
+  @IsOptional()
+  @IsUUID()
+  completed_activity_id?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateNoteTagDto)
+  tags?: CreateNoteTagDto[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  embedded_todo_ids?: string[];
+}

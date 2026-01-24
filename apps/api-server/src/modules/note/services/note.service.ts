@@ -32,7 +32,7 @@ export class NoteService {
       tags: note.tags,
       embedded_todo_ids: note.embedded_todos?.map((todo) => todo.id) || [],
       activity_name: activityData?.name,
-      activity_emoji: activityData?.emoji,
+      activity_emoji: activityData?.habit_icon,
       logged_at: note.completed_activity?.start_time?.toISOString(),
       created_at: note.created_at,
       updated_at: note.updated_at,

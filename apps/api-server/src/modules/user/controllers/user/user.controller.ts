@@ -156,10 +156,13 @@ export class UserController {
   @UseGuards(IsAuth)
   @ApiSecurity('Auth0AccessToken')
   async updateUserMetadata(
-    @Body() { profile_image, description }: UpdateUserMetadataDto,
+    @Body() { profile_image, description, user_job_details, user_typical_distractions }: UpdateUserMetadataDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.userService.updateMetadata({ profile_image, description }, user.id);
+    return this.userService.updateMetadata(
+      { profile_image, description, user_job_details, user_typical_distractions },
+      user.id,
+    );
   }
 
   @Put('consent')

@@ -60,8 +60,9 @@ export class User extends BaseEntity {
     type: 'varchar',
     length: 255,
     unique: true,
+    nullable: true,
   })
-  stripe_customer_id?: string;
+  stripe_customer_id?: string | null;
 
   @Column({
     type: 'varchar',
@@ -249,6 +250,20 @@ export class User extends BaseEntity {
     transformer: BaseEntity.encryptJSONField('metadata'),
   })
   metadata?: UserMetadata;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+    transformer: BaseEntity.encryptField('user_job_details'),
+  })
+  user_job_details?: string;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+    transformer: BaseEntity.encryptField('user_typical_distractions'),
+  })
+  user_typical_distractions?: string;
 
   @Column({
     type: 'jsonb',
@@ -462,18 +477,6 @@ export class User extends BaseEntity {
     nullable: true,
   })
   revenue_cat_status?: string;
-
-  @Column({
-    type: 'varchar',
-    nullable: true,
-  })
-  user_job_details?: string;
-
-  @Column({
-    type: 'varchar',
-    nullable: true,
-  })
-  user_typical_distractions?: string;
 
   @Column({
     type: 'timestamptz',

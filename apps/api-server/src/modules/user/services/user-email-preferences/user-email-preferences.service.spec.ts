@@ -141,7 +141,7 @@ describe('UserEmailPreferencesService', () => {
       const mockUser = createMockUser(userId, EmailFrequency.DAILY);
       mockUser.metadata = {
         name: 'Test User',
-        last_email_sent: new Date('2025-08-01'),
+        last_email_sent: new Date('2025-08-01').toISOString(),
         email_preferences: {},
       };
       mockUserRepository.orm.findOne.mockResolvedValue(mockUser);

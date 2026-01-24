@@ -6,7 +6,7 @@ export class EmailPreferencesResponseDto {
   email_frequency: EmailFrequency;
 
   @ApiProperty({ description: 'Timestamp of last email sent', nullable: true })
-  last_email_sent: Date | null;
+  last_email_sent: string | null;
 
   @ApiProperty({ description: 'Token for one-click unsubscribe' })
   unsubscribe_token: string;

@@ -24,8 +24,12 @@ export class GeofenceService {
   async createGeofence(user_id: string, createGeofenceDto: CreateGeofenceDto): Promise<Geofence> {
     const geofence = new Geofence({
       user_id,
-      ...createGeofenceDto,
+      name: createGeofenceDto.name,
+      latitude: String(createGeofenceDto.latitude),
+      longitude: String(createGeofenceDto.longitude),
       radius: createGeofenceDto.radius || 100,
+      trigger_after_time: createGeofenceDto.trigger_after_time,
+      associated_routine_id: createGeofenceDto.associated_routine_id,
     });
     return this.geofenceRepository.orm.save(geofence);
   }
@@ -36,7 +40,25 @@ export class GeofenceService {
       throw new NotFoundException(`Geofence with ID: ${geofence_id} not found`);
     }
 
-    Object.assign(existingGeofence, updateGeofenceDto);
+    if (updateGeofenceDto.name !== undefined) {
+      existingGeofence.name = updateGeofenceDto.name;
+    }
+    if (updateGeofenceDto.latitude !== undefined) {
+      existingGeofence.latitude = String(updateGeofenceDto.latitude);
+    }
+    if (updateGeofenceDto.longitude !== undefined) {
+      existingGeofence.longitude = String(updateGeofenceDto.longitude);
+    }
+    if (updateGeofenceDto.radius !== undefined) {
+      existingGeofence.radius = updateGeofenceDto.radius;
+    }
+    if (updateGeofenceDto.trigger_after_time !== undefined) {
+      existingGeofence.trigger_after_time = updateGeofenceDto.trigger_after_time;
+    }
+    if (updateGeofenceDto.associated_routine_id !== undefined) {
+      existingGeofence.associated_routine_id = updateGeofenceDto.associated_routine_id;
+    }
+
     return this.geofenceRepository.orm.save(existingGeofence);
   }
 

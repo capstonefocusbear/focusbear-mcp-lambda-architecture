@@ -867,17 +867,20 @@ describe('CompletedActivitySequenceService', () => {
         morning_routine: {
           sequence_id: 'morning-seq-id',
           status: 'completed',
+          completion_percentage: 0,
         },
         evening_routine: {
           sequence_id: 'evening-seq-id',
           status: 'postponed',
           completed_habit_ids: ['e1'],
+          completion_percentage: 100,
         },
         custom_routines: [
           {
             sequence_id: 'custom-seq-id',
             status: 'in_progress',
             completed_habit_ids: ['c1'],
+            completion_percentage: 50,
           },
         ],
         standalone_routines: [
@@ -885,6 +888,7 @@ describe('CompletedActivitySequenceService', () => {
             sequence_id: 'standalone-seq-id',
             status: 'postponed',
             completed_habit_ids: ['s1'],
+            completion_percentage: 50,
           },
         ],
       });

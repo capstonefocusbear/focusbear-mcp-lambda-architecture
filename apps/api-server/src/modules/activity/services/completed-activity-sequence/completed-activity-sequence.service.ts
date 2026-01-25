@@ -623,9 +623,15 @@ export class CompletedActivitySequenceService {
         return null;
       }
 
+      // Calculate completion percentage based on activities in the sequence
+      const totalActivities = sequence.activity_ids?.length || 0;
+      const completionPercentage =
+        totalActivities > 0 ? Math.round((completedHabitIds.length / totalActivities) * 100) : 0;
+
       const baseData = {
         sequence_id: sequence.id,
         status,
+        completion_percentage: completionPercentage,
       };
 
       // Only include completed_habit_ids for non-completed routines

@@ -12,7 +12,6 @@ import {
   ONE_HOUR_SECONDS,
   ONE_MINUTE_SECONDS,
   TEN_MINUTES,
-  ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
 } from '../../../../shared/utils/constants';
 import {
   calculateStreaks,
@@ -251,8 +250,6 @@ export class UserDailyStatsService {
       const { hasInstalledDesktopApp, hasInstalledMobileApp } = await this.deviceService.getUserInstalledDevices(
         user.id,
       );
-      const { completed_morning_today, completed_evening_today, completed_focus_today, completed_break_today } =
-        this.getTodayCompletionStatus(userDailyStats, user.timezone);
       const {
         morning_routines_completion_percentage_for_current_level,
         evening_routines_completion_percentage_for_current_level,
@@ -309,10 +306,6 @@ export class UserDailyStatsService {
         average_break_routines_completion_percentage: breakRoutineAverage,
         break_routines_completion_percentage_for_current_level,
         break_routine_completion_streak_days: micro_breaks_streak,
-        completed_morning_today,
-        completed_evening_today,
-        completed_focus_today,
-        completed_break_today,
       };
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -407,40 +400,6 @@ export class UserDailyStatsService {
       onboarding_progress = BASE_ONBOARDING_PROGRESS;
     }
     return { ...onboarding_progress };
-  }
-
-  getTodayCompletionStatus(
-    userDailyStats: DailyStats[],
-    timezone: string,
-  ): {
-    completed_morning_today: boolean;
-    completed_evening_today: boolean;
-    completed_focus_today: boolean;
-    completed_break_today: boolean;
-  } {
-    const todayStart = DateTime.now().setZone(timezone).startOf('day');
-    const todaysStat = userDailyStats.find((stat) => {
-      const statDate = DateTime.fromJSDate(stat.date_completed).setZone(timezone).startOf('day');
-      return statDate.hasSame(todayStart, 'day');
-    });
-
-    if (!todaysStat) {
-      return {
-        completed_morning_today: false,
-        completed_evening_today: false,
-        completed_focus_today: false,
-        completed_break_today: false,
-      };
-    }
-
-    return {
-      completed_morning_today:
-        (todaysStat.morning_routine_completion_percentage ?? 0) >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
-      completed_evening_today:
-        (todaysStat.evening_routine_completion_percentage ?? 0) >= ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD,
-      completed_focus_today: (todaysStat.focus_modes_completed ?? 0) > 0,
-      completed_break_today: (todaysStat.seconds_spent_doing_breaks ?? 0) > 0,
-    };
   }
 
   calculateCompletionPercentages(

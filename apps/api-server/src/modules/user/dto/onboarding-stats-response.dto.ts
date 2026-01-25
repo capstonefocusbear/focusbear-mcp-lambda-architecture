@@ -42,12 +42,4 @@ export class OnboardingStatsResponseDto {
   break_routine_completion_streak_days: number;
 
   average_break_routines_completion_percentage: number;
-
-  completed_morning_today: boolean;
-
-  completed_evening_today: boolean;
-
-  completed_focus_today: boolean;
-
-  completed_break_today: boolean;
 }

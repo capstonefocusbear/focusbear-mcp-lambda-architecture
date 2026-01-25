@@ -20,7 +20,7 @@ import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { CustomRoutineTrigger } from '../domain/custom-routine-trigger.enum';
 
 function IsEndTimeAfterStartTime(validationOptions?: ValidationOptions) {
-  return function (object: Record<string, any>, propertyName: string) {
+  return (object: Record<string, any>, propertyName: string) => {
     registerDecorator({
       name: 'IsEndTimeAfterStartTime',
       target: object.constructor,

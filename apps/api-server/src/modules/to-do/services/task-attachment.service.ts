@@ -27,7 +27,7 @@ export class TaskAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = await this.userHasAccessToTask(userId, task);
+    const hasAccess = this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this task');
     }
@@ -49,7 +49,7 @@ export class TaskAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = await this.userHasAccessToTask(userId, task);
+    const hasAccess = this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this task');
     }
@@ -66,8 +66,6 @@ export class TaskAttachmentService {
         file_key: dto.file_key,
         content_type: dto.content_type,
         file_size: dto.file_size,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
@@ -85,7 +83,7 @@ export class TaskAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = await this.userHasAccessToTask(userId, task);
+    const hasAccess = this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this task');
     }
@@ -105,7 +103,7 @@ export class TaskAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = await this.userHasAccessToTask(userId, task);
+    const hasAccess = this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this task');
     }
@@ -135,10 +133,7 @@ export class TaskAttachmentService {
     await this.taskAttachmentRepository.deleteAttachment(attachmentId);
   }
 
-  private async userHasAccessToTask(
-    userId: string,
-    task: { user_id?: string; assignee_id?: string },
-  ): Promise<boolean> {
+  private userHasAccessToTask(userId: string, task: { user_id?: string; assignee_id?: string }): boolean {
     return task.user_id === userId || task.assignee_id === userId;
   }
 

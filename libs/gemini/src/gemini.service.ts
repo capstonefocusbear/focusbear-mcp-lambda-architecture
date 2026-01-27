@@ -7,13 +7,21 @@ import { GEMINI_MODULE_OPTIONS, GEMINI_PARAMS, GEMINI_PROMPT_CONFIG_PATH } from 
 
 @Injectable()
 export class GeminiService {
-  private ai: GoogleGenAI;
+  private ai: GoogleGenAI | null = null;
 
   constructor(
     @Inject(GEMINI_MODULE_OPTIONS) private options: IGeminiOptions,
     @InjectSentry() private readonly sentryService: SentryService,
-  ) {
-    this.ai = new GoogleGenAI({ apiKey: this.options.apiKey });
+  ) {}
+
+  private getAIInstance(): GoogleGenAI {
+    if (!this.ai) {
+      if (!this.options.apiKey) {
+        throw new Error('Gemini API key is not configured');
+      }
+      this.ai = new GoogleGenAI({ apiKey: this.options.apiKey });
+    }
+    return this.ai;
   }
 
   async processUsageImage(imageBuffer: string): Promise<
@@ -37,7 +45,7 @@ export class GeminiService {
 
       const prompt = await this.getPrompt();
 
-      const response = await this.ai.models.generateContent({
+      const response = await this.getAIInstance().models.generateContent({
         model: GEMINI_PARAMS.analyzeImage.model,
         contents: [
           {

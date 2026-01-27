@@ -1585,8 +1585,17 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       this.logger.debug(`OpenAI:extractHabitsFromImage parsed ${JSON.stringify({ habitCount: normalized.length })}`);
       return normalized;
     } catch (error) {
+      this.logger.error(
+        `OpenAI:extractHabitsFromImage error ${JSON.stringify({
+          errorMessage: error?.message ?? null,
+          errorName: error?.name ?? null,
+          errorCode: (error as any)?.code ?? null,
+          errorStatus: (error as any)?.status ?? null,
+          errorType: (error as any)?.type ?? null,
+        })}`,
+      );
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw new Error('Failed to extract habits from image');
+      throw new Error(`Failed to extract habits from image: ${error.message}`);
     }
   }
 

@@ -162,8 +162,8 @@ export const AUTH0_RETRY_CONFIG = {
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 export const GPT_5_MINI = 'gpt-5-mini';
 export const GPT_5_1 = 'gpt-5.1';
-
 export const GPT_4_1 = 'gpt-4.1';
+export const GPT_5_2 = 'gpt-5.2';
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',

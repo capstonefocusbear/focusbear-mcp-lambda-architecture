@@ -1,5 +1,11 @@
 import OpenAI from 'openai';
-import { GPT_4_1, GPT_4_1_MINI, GPT_5_MINI, GPT_5_1 } from '../../../apps/api-server/src/shared/utils/constants';
+import {
+  GPT_4_1,
+  GPT_4_1_MINI,
+  GPT_5_MINI,
+  GPT_5_1,
+  GPT_5_2,
+} from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
@@ -167,13 +173,13 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
 
   analyzeImage: {
-    model: GPT_4_1,
+    model: GPT_5_2,
     prompt_cache_retention: '24h',
     messages: null,
   },
 
   habitAdjustment: {
-    model: GPT_4_1,
+    model: GPT_5_MINI,
     prompt_cache_retention: '24h',
     temperature: 0,
     n: 1,
@@ -189,13 +195,13 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     response_format: { type: 'json_object' },
   },
   routineSuggestions: {
-    model: GPT_5_MINI,
+    model: GPT_5_2,
     temperature: 1,
     n: 1,
     messages: null,
   },
   habitImportExtraction: {
-    model: GPT_5_1,
+    model: GPT_5_MINI,
     temperature: 0,
     n: 1,
     messages: null,

@@ -211,13 +211,15 @@ export class CommentAttachmentService {
       throw new ForbiddenException('You can only delete your own attachments');
     }
 
-    await this.commentAttachmentRepository.deleteAttachment(attachmentId);
-
     try {
       await this.r2Service.deleteObject(S3_BUCKET_COMMENT_ATTACHMENTS, attachment.file_key);
     } catch (error) {
-      this.logger.error(`Failed to delete R2 object for attachment ${attachmentId}: ${error.message}`);
+      this.logger.error(
+        `Failed to delete R2 object for attachment ${attachmentId} (bucket=${S3_BUCKET_COMMENT_ATTACHMENTS}, key=${attachment.file_key}): ${error.message}`,
+      );
     }
+
+    await this.commentAttachmentRepository.deleteAttachment(attachmentId);
   }
 
   private userHasAccessToTask(userId: string, task: { user_id?: string; assignee_id?: string }): boolean {

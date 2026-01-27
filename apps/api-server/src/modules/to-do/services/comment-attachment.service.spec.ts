@@ -437,6 +437,9 @@ describe('CommentAttachmentService', () => {
 
       expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
       expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('comment-attachments', attachmentDummy.file_key);
+      expect(R2ServiceMock.deleteObject.mock.invocationCallOrder[0]).toBeLessThan(
+        CommentAttachmentRepositoryMock.deleteAttachment.mock.invocationCallOrder[0],
+      );
     });
 
     it('positive: should still succeed if R2 deletion fails', async () => {
@@ -450,6 +453,9 @@ describe('CommentAttachmentService', () => {
       ).resolves.not.toThrow();
 
       expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
+      expect(R2ServiceMock.deleteObject.mock.invocationCallOrder[0]).toBeLessThan(
+        CommentAttachmentRepositoryMock.deleteAttachment.mock.invocationCallOrder[0],
+      );
     });
 
     it('negative: should throw NotFoundException when attachment does not exist', async () => {

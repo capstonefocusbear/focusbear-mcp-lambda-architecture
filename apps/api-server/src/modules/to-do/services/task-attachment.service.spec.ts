@@ -25,6 +25,8 @@ const ToDoRepositoryMock = {
 const R2ServiceMock = {
   getPresignedUploadUrl: jest.fn(),
   getPresignedUrl: jest.fn(),
+  getObjectMetadata: jest.fn(),
+  deleteObject: jest.fn(),
 };
 
 describe('TaskAttachmentService', () => {
@@ -131,6 +133,7 @@ describe('TaskAttachmentService', () => {
   describe('createAttachment', () => {
     it('positive: should create a new attachment', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'application/pdf' });
       TaskAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(attachmentDummy);
       TaskAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
       R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
@@ -145,6 +148,7 @@ describe('TaskAttachmentService', () => {
       expect(result.file_name).toBe('test-file.pdf');
       expect(result.task_id).toBe(taskDummy.id);
       expect(result.user_id).toBe(userDummy.id);
+      expect(R2ServiceMock.getObjectMetadata).toHaveBeenCalledWith('task-attachments', attachmentDummy.file_key);
     });
 
     it('negative: should throw NotFoundException when task does not exist', async () => {
@@ -213,6 +217,78 @@ describe('TaskAttachmentService', () => {
           file_size: 1024,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException when file size exceeds 20 MB limit', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'large-file.pdf',
+          file_key: `${taskDummy.id}/${userDummy.id}-123456-large-file.pdf`,
+          content_type: 'application/pdf',
+          file_size: oversizedFileSize,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException when file not found in R2 storage', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockRejectedValueOnce(new Error('Not found'));
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'test-file.pdf',
+          file_key: `${taskDummy.id}/${userDummy.id}-123456-test-file.pdf`,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException and delete file when actual R2 file size exceeds limit', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: oversizedFileSize,
+        contentType: 'application/pdf',
+      });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      const fileKey = `${taskDummy.id}/${userDummy.id}-123456-large-file.pdf`;
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'large-file.pdf',
+          file_key: fileKey,
+          content_type: 'application/pdf',
+          file_size: 1024, // Client lies about size
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('task-attachments', fileKey);
+    });
+
+    it('positive: should use actual file size from R2 instead of client-supplied size', async () => {
+      const actualFileSize = 2048;
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: actualFileSize,
+        contentType: 'application/pdf',
+      });
+      const savedAttachment = { ...attachmentDummy, file_size: actualFileSize };
+      TaskAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(savedAttachment);
+      TaskAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(savedAttachment);
+      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
+
+      const result = await taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+        file_name: 'test-file.pdf',
+        file_key: attachmentDummy.file_key,
+        content_type: 'application/pdf',
+        file_size: 1024, // Client supplies different size
+      });
+
+      expect(result.file_size).toBe(actualFileSize);
     });
   });
 
@@ -299,11 +375,25 @@ describe('TaskAttachmentService', () => {
   });
 
   describe('deleteAttachment', () => {
-    it('positive: should delete own attachment', async () => {
+    it('positive: should delete own attachment and R2 object', async () => {
       TaskAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
       TaskAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
 
       await taskAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, attachmentDummy.id);
+
+      expect(TaskAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('task-attachments', attachmentDummy.file_key);
+    });
+
+    it('positive: should still succeed if R2 deletion fails', async () => {
+      TaskAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
+      TaskAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
+      R2ServiceMock.deleteObject.mockRejectedValueOnce(new Error('R2 error'));
+
+      await expect(
+        taskAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, attachmentDummy.id),
+      ).resolves.not.toThrow();
 
       expect(TaskAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
     });

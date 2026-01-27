@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { R2Service } from '@app/r2';
 import { TaskAttachmentRepository } from '../repositories/task-attachment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -6,10 +6,12 @@ import { TaskAttachment } from '../entities/task-attachment.entity';
 import { CreateTaskAttachmentDto } from '../dto/create-task-attachment.dto';
 import { TaskAttachmentResponseDto } from '../dto/task-attachment-response.dto';
 import { GenerateUploadAttachmentUrlDto } from '../dto/generate-upload-attachment-url.dto';
-import { S3_BUCKET_TASK_ATTACHMENTS } from '../../../shared/utils/constants';
+import { S3_BUCKET_TASK_ATTACHMENTS, MAX_ATTACHMENT_SIZE_BYTES } from '../../../shared/utils/constants';
 
 @Injectable()
 export class TaskAttachmentService {
+  private readonly logger = new Logger(TaskAttachmentService.name);
+
   constructor(
     private readonly taskAttachmentRepository: TaskAttachmentRepository,
     private readonly toDoRepository: ToDoRepository,
@@ -58,6 +60,27 @@ export class TaskAttachmentService {
       throw new BadRequestException('Invalid file key format');
     }
 
+    if (dto.file_size > MAX_ATTACHMENT_SIZE_BYTES) {
+      throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
+    }
+
+    let actualFileSize: number;
+    try {
+      const metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_TASK_ATTACHMENTS, dto.file_key);
+      actualFileSize = metadata.contentLength;
+    } catch (error) {
+      throw new BadRequestException('File not found in storage. Please upload the file first.');
+    }
+
+    if (actualFileSize > MAX_ATTACHMENT_SIZE_BYTES) {
+      try {
+        await this.r2Service.deleteObject(S3_BUCKET_TASK_ATTACHMENTS, dto.file_key);
+      } catch (deleteError) {
+        this.logger.error(`Failed to delete oversized file ${dto.file_key}: ${deleteError.message}`);
+      }
+      throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
+    }
+
     const attachment = new TaskAttachment(
       {
         task_id: taskId,
@@ -65,7 +88,9 @@ export class TaskAttachmentService {
         file_name: dto.file_name,
         file_key: dto.file_key,
         content_type: dto.content_type,
-        file_size: dto.file_size,
+        file_size: actualFileSize,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
@@ -131,6 +156,12 @@ export class TaskAttachmentService {
     }
 
     await this.taskAttachmentRepository.deleteAttachment(attachmentId);
+
+    try {
+      await this.r2Service.deleteObject(S3_BUCKET_TASK_ATTACHMENTS, attachment.file_key);
+    } catch (error) {
+      this.logger.error(`Failed to delete R2 object for attachment ${attachmentId}: ${error.message}`);
+    }
   }
 
   private userHasAccessToTask(userId: string, task: { user_id?: string; assignee_id?: string }): boolean {

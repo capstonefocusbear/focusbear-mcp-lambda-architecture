@@ -10,7 +10,7 @@ import { CommentAttachmentByIdParamsDto } from '../dto/comment-attachment-by-id-
 import { CommentAttachmentResponseDto } from '../dto/comment-attachment-response.dto';
 import { GenerateUploadCommentAttachmentUrlDto } from '../dto/generate-upload-comment-attachment-url.dto';
 
-@Controller('comments/:comment_id/attachments')
+@Controller('to-do/:task_id/comments/:comment_id/attachments')
 @ApiTags('comment-attachments')
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
@@ -23,7 +23,7 @@ export class CommentAttachmentController {
     @Body() dto: GenerateUploadCommentAttachmentUrlDto,
     @AuthContext() { user }: Passport,
   ): Promise<{ uploadUrl: string; fileKey: string }> {
-    return this.commentAttachmentService.generateUploadUrl(user.id, params.comment_id, dto);
+    return this.commentAttachmentService.generateUploadUrl(user.id, params.task_id, params.comment_id, dto);
   }
 
   @Post()
@@ -32,7 +32,7 @@ export class CommentAttachmentController {
     @Body() dto: CreateCommentAttachmentDto,
     @AuthContext() { user }: Passport,
   ): Promise<CommentAttachmentResponseDto> {
-    return this.commentAttachmentService.createAttachment(user.id, params.comment_id, dto);
+    return this.commentAttachmentService.createAttachment(user.id, params.task_id, params.comment_id, dto);
   }
 
   @Get()
@@ -40,7 +40,7 @@ export class CommentAttachmentController {
     @Param() params: CommentAttachmentParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<CommentAttachmentResponseDto[]> {
-    return this.commentAttachmentService.getAttachmentsByCommentId(user.id, params.comment_id);
+    return this.commentAttachmentService.getAttachmentsByCommentId(user.id, params.task_id, params.comment_id);
   }
 
   @Get(':attachment_id/download-url')
@@ -48,7 +48,12 @@ export class CommentAttachmentController {
     @Param() params: CommentAttachmentByIdParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<{ downloadUrl: string }> {
-    return this.commentAttachmentService.getAttachmentDownloadUrl(user.id, params.comment_id, params.attachment_id);
+    return this.commentAttachmentService.getAttachmentDownloadUrl(
+      user.id,
+      params.task_id,
+      params.comment_id,
+      params.attachment_id,
+    );
   }
 
   @Delete(':attachment_id')
@@ -56,6 +61,11 @@ export class CommentAttachmentController {
     @Param() params: CommentAttachmentByIdParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.commentAttachmentService.deleteAttachment(user.id, params.comment_id, params.attachment_id);
+    return this.commentAttachmentService.deleteAttachment(
+      user.id,
+      params.task_id,
+      params.comment_id,
+      params.attachment_id,
+    );
   }
 }

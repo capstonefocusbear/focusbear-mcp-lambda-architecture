@@ -22,6 +22,7 @@ export class CommentAttachmentService {
 
   async generateUploadUrl(
     userId: string,
+    taskId: string,
     commentId: string,
     dto: GenerateUploadCommentAttachmentUrlDto,
   ): Promise<{ uploadUrl: string; fileKey: string }> {
@@ -31,10 +32,14 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
-    const task = await this.toDoRepository.orm.findOne({ where: { id: comment.task_id } });
+    if (comment.task_id !== taskId) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
+    }
+
+    const task = await this.toDoRepository.orm.findOne({ where: { id: taskId } });
 
     if (!task) {
-      throw new NotFoundException(`Task with id ${comment.task_id} not found`);
+      throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
     const hasAccess = this.userHasAccessToTask(userId, task);
@@ -54,6 +59,7 @@ export class CommentAttachmentService {
 
   async createAttachment(
     userId: string,
+    taskId: string,
     commentId: string,
     dto: CreateCommentAttachmentDto,
   ): Promise<CommentAttachmentResponseDto> {
@@ -63,10 +69,14 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
-    const task = await this.toDoRepository.orm.findOne({ where: { id: comment.task_id } });
+    if (comment.task_id !== taskId) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
+    }
+
+    const task = await this.toDoRepository.orm.findOne({ where: { id: taskId } });
 
     if (!task) {
-      throw new NotFoundException(`Task with id ${comment.task_id} not found`);
+      throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
     const hasAccess = this.userHasAccessToTask(userId, task);
@@ -117,17 +127,25 @@ export class CommentAttachmentService {
     return this.mapAttachmentToResponse(attachmentWithUser);
   }
 
-  async getAttachmentsByCommentId(userId: string, commentId: string): Promise<CommentAttachmentResponseDto[]> {
+  async getAttachmentsByCommentId(
+    userId: string,
+    taskId: string,
+    commentId: string,
+  ): Promise<CommentAttachmentResponseDto[]> {
     const comment = await this.taskCommentRepository.getCommentById(commentId);
 
     if (!comment) {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
-    const task = await this.toDoRepository.orm.findOne({ where: { id: comment.task_id } });
+    if (comment.task_id !== taskId) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
+    }
+
+    const task = await this.toDoRepository.orm.findOne({ where: { id: taskId } });
 
     if (!task) {
-      throw new NotFoundException(`Task with id ${comment.task_id} not found`);
+      throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
     const hasAccess = this.userHasAccessToTask(userId, task);
@@ -141,6 +159,7 @@ export class CommentAttachmentService {
 
   async getAttachmentDownloadUrl(
     userId: string,
+    taskId: string,
     commentId: string,
     attachmentId: string,
   ): Promise<{ downloadUrl: string }> {
@@ -150,10 +169,14 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
-    const task = await this.toDoRepository.orm.findOne({ where: { id: comment.task_id } });
+    if (comment.task_id !== taskId) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
+    }
+
+    const task = await this.toDoRepository.orm.findOne({ where: { id: taskId } });
 
     if (!task) {
-      throw new NotFoundException(`Task with id ${comment.task_id} not found`);
+      throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
     const hasAccess = this.userHasAccessToTask(userId, task);
@@ -172,11 +195,16 @@ export class CommentAttachmentService {
     return { downloadUrl };
   }
 
-  async deleteAttachment(userId: string, commentId: string, attachmentId: string): Promise<void> {
+  async deleteAttachment(userId: string, taskId: string, commentId: string, attachmentId: string): Promise<void> {
     const attachment = await this.commentAttachmentRepository.getAttachmentById(attachmentId);
 
     if (!attachment || attachment.comment_id !== commentId) {
       throw new NotFoundException(`Attachment with id ${attachmentId} not found`);
+    }
+
+    const comment = await this.taskCommentRepository.getCommentById(commentId);
+    if (!comment || comment.task_id !== taskId) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
     if (attachment.user_id !== userId) {

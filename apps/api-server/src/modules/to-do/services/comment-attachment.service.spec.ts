@@ -105,7 +105,7 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
       R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://r2.example.com/upload');
 
-      const result = await commentAttachmentService.generateUploadUrl(userDummy.id, commentDummy.id, {
+      const result = await commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
         file_name: 'test-file.pdf',
         content_type: 'application/pdf',
       });
@@ -118,7 +118,7 @@ describe('CommentAttachmentService', () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(null);
 
       await expect(
-        commentAttachmentService.generateUploadUrl(userDummy.id, randomUUID(), {
+        commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, randomUUID(), {
           file_name: 'test.pdf',
           content_type: 'application/pdf',
         }),
@@ -131,7 +131,7 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(
-        commentAttachmentService.generateUploadUrl(userDummy.id, commentDummy.id, {
+        commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test.pdf',
           content_type: 'application/pdf',
         }),
@@ -144,7 +144,7 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(assignedTask);
       R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://r2.example.com/upload');
 
-      const result = await commentAttachmentService.generateUploadUrl(userDummy.id, commentDummy.id, {
+      const result = await commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
         file_name: 'test-file.pdf',
         content_type: 'application/pdf',
       });
@@ -162,7 +162,7 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
       R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
 
-      const result = await commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+      const result = await commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
         file_name: 'test-file.pdf',
         file_key: attachmentDummy.file_key,
         content_type: 'application/pdf',
@@ -179,7 +179,7 @@ describe('CommentAttachmentService', () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(null);
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, randomUUID(), {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, randomUUID(), {
           file_name: 'test.pdf',
           file_key: 'key',
           content_type: 'application/pdf',
@@ -194,7 +194,7 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test.pdf',
           file_key: 'key',
           content_type: 'application/pdf',
@@ -208,7 +208,7 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test.pdf',
           file_key: 'malicious-key-pointing-to-other-file',
           content_type: 'application/pdf',
@@ -223,7 +223,7 @@ describe('CommentAttachmentService', () => {
       const wrongCommentId = randomUUID();
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test.pdf',
           file_key: `${wrongCommentId}/${userDummy.id}-123456-test.pdf`,
           content_type: 'application/pdf',
@@ -238,7 +238,7 @@ describe('CommentAttachmentService', () => {
       const wrongUserId = randomUUID();
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test.pdf',
           file_key: `${commentDummy.id}/${wrongUserId}-123456-test.pdf`,
           content_type: 'application/pdf',
@@ -253,7 +253,7 @@ describe('CommentAttachmentService', () => {
       const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'large-file.pdf',
           file_key: `${commentDummy.id}/${userDummy.id}-123456-large-file.pdf`,
           content_type: 'application/pdf',
@@ -268,7 +268,7 @@ describe('CommentAttachmentService', () => {
       R2ServiceMock.getObjectMetadata.mockRejectedValueOnce(new Error('Not found'));
 
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'test-file.pdf',
           file_key: `${commentDummy.id}/${userDummy.id}-123456-test-file.pdf`,
           content_type: 'application/pdf',
@@ -289,7 +289,7 @@ describe('CommentAttachmentService', () => {
 
       const fileKey = `${commentDummy.id}/${userDummy.id}-123456-large-file.pdf`;
       await expect(
-        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
           file_name: 'large-file.pdf',
           file_key: fileKey,
           content_type: 'application/pdf',
@@ -313,7 +313,7 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(savedAttachment);
       R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
 
-      const result = await commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+      const result = await commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
         file_name: 'test-file.pdf',
         file_key: attachmentDummy.file_key,
         content_type: 'application/pdf',
@@ -331,7 +331,11 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([attachmentDummy]);
       R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
 
-      const result = await commentAttachmentService.getAttachmentsByCommentId(userDummy.id, commentDummy.id);
+      const result = await commentAttachmentService.getAttachmentsByCommentId(
+        userDummy.id,
+        taskDummy.id,
+        commentDummy.id,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].file_name).toBe('test-file.pdf');
@@ -342,7 +346,11 @@ describe('CommentAttachmentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
       CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([]);
 
-      const result = await commentAttachmentService.getAttachmentsByCommentId(userDummy.id, commentDummy.id);
+      const result = await commentAttachmentService.getAttachmentsByCommentId(
+        userDummy.id,
+        taskDummy.id,
+        commentDummy.id,
+      );
 
       expect(result).toHaveLength(0);
     });
@@ -350,9 +358,9 @@ describe('CommentAttachmentService', () => {
     it('negative: should throw NotFoundException when comment does not exist', async () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(null);
 
-      await expect(commentAttachmentService.getAttachmentsByCommentId(userDummy.id, randomUUID())).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        commentAttachmentService.getAttachmentsByCommentId(userDummy.id, taskDummy.id, randomUUID()),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('negative: should throw ForbiddenException when user has no access', async () => {
@@ -360,9 +368,9 @@ describe('CommentAttachmentService', () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
-      await expect(commentAttachmentService.getAttachmentsByCommentId(userDummy.id, commentDummy.id)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        commentAttachmentService.getAttachmentsByCommentId(userDummy.id, taskDummy.id, commentDummy.id),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -375,6 +383,7 @@ describe('CommentAttachmentService', () => {
 
       const result = await commentAttachmentService.getAttachmentDownloadUrl(
         userDummy.id,
+        taskDummy.id,
         commentDummy.id,
         attachmentDummy.id,
       );
@@ -386,7 +395,7 @@ describe('CommentAttachmentService', () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(null);
 
       await expect(
-        commentAttachmentService.getAttachmentDownloadUrl(userDummy.id, randomUUID(), attachmentDummy.id),
+        commentAttachmentService.getAttachmentDownloadUrl(userDummy.id, taskDummy.id, randomUUID(), attachmentDummy.id),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -396,7 +405,7 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(null);
 
       await expect(
-        commentAttachmentService.getAttachmentDownloadUrl(userDummy.id, commentDummy.id, randomUUID()),
+        commentAttachmentService.getAttachmentDownloadUrl(userDummy.id, taskDummy.id, commentDummy.id, randomUUID()),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -409,6 +418,7 @@ describe('CommentAttachmentService', () => {
       await expect(
         commentAttachmentService.getAttachmentDownloadUrl(
           userDummy.id,
+          taskDummy.id,
           commentDummy.id,
           attachmentOnDifferentComment.id,
         ),
@@ -419,10 +429,11 @@ describe('CommentAttachmentService', () => {
   describe('deleteAttachment', () => {
     it('positive: should delete own attachment and R2 object', async () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       CommentAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
       R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
 
-      await commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, attachmentDummy.id);
+      await commentAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, commentDummy.id, attachmentDummy.id);
 
       expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
       expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('comment-attachments', attachmentDummy.file_key);
@@ -430,11 +441,12 @@ describe('CommentAttachmentService', () => {
 
     it('positive: should still succeed if R2 deletion fails', async () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       CommentAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
       R2ServiceMock.deleteObject.mockRejectedValueOnce(new Error('R2 error'));
 
       await expect(
-        commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, attachmentDummy.id),
+        commentAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, commentDummy.id, attachmentDummy.id),
       ).resolves.not.toThrow();
 
       expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
@@ -444,7 +456,7 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(null);
 
       await expect(
-        commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, randomUUID()),
+        commentAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, commentDummy.id, randomUUID()),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -453,16 +465,22 @@ describe('CommentAttachmentService', () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentOnDifferentComment);
 
       await expect(
-        commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, attachmentOnDifferentComment.id),
+        commentAttachmentService.deleteAttachment(
+          userDummy.id,
+          taskDummy.id,
+          commentDummy.id,
+          attachmentOnDifferentComment.id,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('negative: should throw ForbiddenException when trying to delete others attachment', async () => {
       const otherUserAttachment = { ...attachmentDummy, user_id: randomUUID() };
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(otherUserAttachment);
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
 
       await expect(
-        commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, otherUserAttachment.id),
+        commentAttachmentService.deleteAttachment(userDummy.id, taskDummy.id, commentDummy.id, otherUserAttachment.id),
       ).rejects.toThrow(ForbiddenException);
     });
   });

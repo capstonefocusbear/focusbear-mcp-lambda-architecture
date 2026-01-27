@@ -1,5 +1,11 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 import { R2_MODULE_OPTIONS } from '../r2.constants';
@@ -9,6 +15,8 @@ import { ONE_WEEK_IN_SECONDS } from '../../../../apps/api-server/src/shared/util
 @Injectable()
 export class R2Service {
   private s3Client: S3Client;
+
+  private readonly logger = new Logger(R2Service.name);
 
   constructor(@Inject(R2_MODULE_OPTIONS) private readonly r2Options: IR2Options) {
     this.s3Client = new S3Client({
@@ -88,5 +96,37 @@ export class R2Service {
     }
     const data = Buffer.concat(chunks).toString('utf-8');
     return JSON.parse(data);
+  }
+
+  async deleteObject(bucket: string, key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+
+    try {
+      await this.s3Client.send(command);
+    } catch (error) {
+      this.logger.error(`Failed to delete object ${key} from bucket ${bucket}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getObjectMetadata(bucket: string, key: string): Promise<{ contentLength: number; contentType: string }> {
+    const command = new HeadObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+
+    try {
+      const response = await this.s3Client.send(command);
+      return {
+        contentLength: response.ContentLength || 0,
+        contentType: response.ContentType || 'application/octet-stream',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get metadata for object ${key} from bucket ${bucket}: ${error.message}`);
+      throw error;
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { R2Service } from '@app/r2';
 import { CommentAttachmentRepository } from '../repositories/comment-attachment.repository';
 import { TaskCommentRepository } from '../repositories/task-comment.repository';
@@ -11,6 +11,8 @@ import { S3_BUCKET_COMMENT_ATTACHMENTS, MAX_ATTACHMENT_SIZE_BYTES } from '../../
 
 @Injectable()
 export class CommentAttachmentService {
+  private readonly logger = new Logger(CommentAttachmentService.name);
+
   constructor(
     private readonly commentAttachmentRepository: CommentAttachmentRepository,
     private readonly taskCommentRepository: TaskCommentRepository,
@@ -80,6 +82,23 @@ export class CommentAttachmentService {
       throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
     }
 
+    let actualFileSize: number;
+    try {
+      const metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_COMMENT_ATTACHMENTS, dto.file_key);
+      actualFileSize = metadata.contentLength;
+    } catch (error) {
+      throw new BadRequestException('File not found in storage. Please upload the file first.');
+    }
+
+    if (actualFileSize > MAX_ATTACHMENT_SIZE_BYTES) {
+      try {
+        await this.r2Service.deleteObject(S3_BUCKET_COMMENT_ATTACHMENTS, dto.file_key);
+      } catch (deleteError) {
+        this.logger.error(`Failed to delete oversized file ${dto.file_key}: ${deleteError.message}`);
+      }
+      throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
+    }
+
     const attachment = new CommentAttachment(
       {
         comment_id: commentId,
@@ -87,7 +106,7 @@ export class CommentAttachmentService {
         file_name: dto.file_name,
         file_key: dto.file_key,
         content_type: dto.content_type,
-        file_size: dto.file_size,
+        file_size: actualFileSize,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -167,6 +186,12 @@ export class CommentAttachmentService {
     }
 
     await this.commentAttachmentRepository.deleteAttachment(attachmentId);
+
+    try {
+      await this.r2Service.deleteObject(S3_BUCKET_COMMENT_ATTACHMENTS, attachment.file_key);
+    } catch (error) {
+      this.logger.error(`Failed to delete R2 object for attachment ${attachmentId}: ${error.message}`);
+    }
   }
 
   private async userHasAccessToTask(

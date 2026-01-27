@@ -30,6 +30,8 @@ const ToDoRepositoryMock = {
 const R2ServiceMock = {
   getPresignedUploadUrl: jest.fn(),
   getPresignedUrl: jest.fn(),
+  getObjectMetadata: jest.fn(),
+  deleteObject: jest.fn(),
 };
 
 describe('CommentAttachmentService', () => {
@@ -155,6 +157,7 @@ describe('CommentAttachmentService', () => {
     it('positive: should create a new attachment', async () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'application/pdf' });
       CommentAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(attachmentDummy);
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
       R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
@@ -169,6 +172,7 @@ describe('CommentAttachmentService', () => {
       expect(result.file_name).toBe('test-file.pdf');
       expect(result.comment_id).toBe(commentDummy.id);
       expect(result.user_id).toBe(userDummy.id);
+      expect(R2ServiceMock.getObjectMetadata).toHaveBeenCalledWith('comment-attachments', attachmentDummy.file_key);
     });
 
     it('negative: should throw NotFoundException when comment does not exist', async () => {
@@ -256,6 +260,67 @@ describe('CommentAttachmentService', () => {
           file_size: oversizedFileSize,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException when file not found in R2 storage', async () => {
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockRejectedValueOnce(new Error('Not found'));
+
+      await expect(
+        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+          file_name: 'test-file.pdf',
+          file_key: `${commentDummy.id}/${userDummy.id}-123456-test-file.pdf`,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('negative: should throw BadRequestException and delete file when actual R2 file size exceeds limit', async () => {
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: oversizedFileSize,
+        contentType: 'application/pdf',
+      });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      const fileKey = `${commentDummy.id}/${userDummy.id}-123456-large-file.pdf`;
+      await expect(
+        commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+          file_name: 'large-file.pdf',
+          file_key: fileKey,
+          content_type: 'application/pdf',
+          file_size: 1024, // Client lies about size
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('comment-attachments', fileKey);
+    });
+
+    it('positive: should use actual file size from R2 instead of client-supplied size', async () => {
+      const actualFileSize = 2048;
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: actualFileSize,
+        contentType: 'application/pdf',
+      });
+      const savedAttachment = { ...attachmentDummy, file_size: actualFileSize };
+      CommentAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(savedAttachment);
+      CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(savedAttachment);
+      R2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/download');
+
+      const result = await commentAttachmentService.createAttachment(userDummy.id, commentDummy.id, {
+        file_name: 'test-file.pdf',
+        file_key: attachmentDummy.file_key,
+        content_type: 'application/pdf',
+        file_size: 1024, // Client supplies different size
+      });
+
+      expect(result.file_size).toBe(actualFileSize);
     });
   });
 
@@ -352,11 +417,25 @@ describe('CommentAttachmentService', () => {
   });
 
   describe('deleteAttachment', () => {
-    it('positive: should delete own attachment', async () => {
+    it('positive: should delete own attachment and R2 object', async () => {
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
       CommentAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
 
       await commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, attachmentDummy.id);
+
+      expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('comment-attachments', attachmentDummy.file_key);
+    });
+
+    it('positive: should still succeed if R2 deletion fails', async () => {
+      CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
+      CommentAttachmentRepositoryMock.deleteAttachment.mockResolvedValueOnce(undefined);
+      R2ServiceMock.deleteObject.mockRejectedValueOnce(new Error('R2 error'));
+
+      await expect(
+        commentAttachmentService.deleteAttachment(userDummy.id, commentDummy.id, attachmentDummy.id),
+      ).resolves.not.toThrow();
 
       expect(CommentAttachmentRepositoryMock.deleteAttachment).toHaveBeenCalledWith(attachmentDummy.id);
     });
